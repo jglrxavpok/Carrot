@@ -13,6 +13,10 @@ const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
         "VK_LAYER_KHRONOS_validation"
 };
 
+const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 #ifdef NO_DEBUG
     constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #else

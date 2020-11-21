@@ -11,6 +11,8 @@ set(SOURCES
         src/main.cpp
         src/CarrotEngine.cpp
         src/memory/NakedPtr.hpp
+        src/vulkan/VulkanResource.hpp
         )
+include_directories(src/)
 add_executable(Carrot ${SOURCES})
 target_link_libraries(Carrot Vulkan::Vulkan glfw glm)
