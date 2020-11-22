@@ -30,6 +30,8 @@ public:
     CarrotEngine() = default;
     void run();
 
+    void onWindowResize();
+
 private:
     bool running = true;
     NakedPtr<GLFWwindow> window = nullptr;
@@ -57,6 +59,7 @@ private:
     std::vector<Semaphore::Unique> renderFinishedSemaphore{};
     std::vector<Fence::Shared> inFlightFences{};
     std::vector<Fence::Shared> imagesInFlight{};
+    bool framebufferResized = false;
 
     /// Init engine
     void init();
@@ -140,4 +143,8 @@ private:
     void drawFrame(size_t currentFrame);
 
     void createSynchronizationObjects();
+
+    void recreateSwapchain();
+
+    void cleanupSwapchain();
 };

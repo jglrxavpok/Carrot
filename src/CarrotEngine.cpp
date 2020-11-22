@@ -68,15 +68,22 @@ void CarrotEngine::init() {
     initVulkan();
 }
 
+static void windowResize(GLFWwindow* window, int width, int height) {
+    auto app = reinterpret_cast<CarrotEngine*>(glfwGetWindowUserPointer(window));
+    app->onWindowResize();
+}
+
 void CarrotEngine::initWindow() {
     glfwInit();
 
     glfwDefaultWindowHints();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
+
+    glfwSetWindowUserPointer(window.get(), this);
+    glfwSetFramebufferSizeCallback(window.get(), windowResize);
 }
 
 void CarrotEngine::initVulkan() {
@@ -168,17 +175,13 @@ bool CarrotEngine::checkValidationLayerSupport() {
 }
 
 void CarrotEngine::cleanup() {
+    cleanupSwapchain();
+
     imagesInFlight.clear();
     inFlightFences.clear();
     renderFinishedSemaphore.clear();
     imageAvailableSemaphore.clear();
     commandPool = nullptr;
-    swapchainFramebuffers.clear();
-    graphicsPipeline = nullptr;
-    pipelineLayout = nullptr;
-    renderPass = nullptr;
-    swapchainImageViews.clear();
-    swapchain = nullptr;
 
     vkDestroyDevice(device, allocator.get());
     if(USE_VULKAN_VALIDATION_LAYERS) {
@@ -819,13 +822,19 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
     vkResetFences(device, 1, &fence);
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(device, *swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(device, *swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    if(result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapchain();
+        return;
+    } else if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        throw std::runtime_error("Failed to acquire swap chain image");
+    }
 
-    if(imagesInFlight[imageIndex] != nullptr) {
+/*    if(imagesInFlight[imageIndex] != nullptr) {
         VkFence imageFence = *imagesInFlight[imageIndex];
         vkWaitForFences(device, 1, &imageFence, true, UINT64_MAX);
     }
-    imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+    imagesInFlight[imageIndex] = inFlightFences[currentFrame];*/
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -861,7 +870,12 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+        recreateSwapchain();
+    } else if(result != VK_SUCCESS) {
+        throw std::runtime_error("Failed to present swap chain image");
+    }
 }
 
 void CarrotEngine::createSynchronizationObjects() {
@@ -882,6 +896,44 @@ void CarrotEngine::createSynchronizationObjects() {
         renderFinishedSemaphore[i] = Semaphore::createUnique(device, semaphoreInfo, allocator.get(), "Failed to create semaphore");
         inFlightFences[i] = Fence::createShared(device, fenceInfo, allocator.get(), "Failed to create fence");
     }
+}
+
+void CarrotEngine::recreateSwapchain() {
+    int w, h;
+    glfwGetFramebufferSize(window.get(), &w, &h);
+    while(w == 0 || h == 0) {
+        glfwGetFramebufferSize(window.get(), &w, &h);
+        glfwWaitEvents();
+    }
+
+    framebufferResized = false;
+
+    vkDeviceWaitIdle(device);
+
+    cleanupSwapchain();
+
+    createSwapChain();
+    createSwapChainImageViews();
+    createRenderPass();
+    createGraphicsPipeline();
+    createFramebuffers();
+    createCommandBuffers();
+}
+
+void CarrotEngine::cleanupSwapchain() {
+    swapchainFramebuffers.clear();
+    vkFreeCommandBuffers(device, *commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+    commandBuffers.clear();
+
+    graphicsPipeline = nullptr;
+    pipelineLayout = nullptr;
+    renderPass = nullptr;
+    swapchainImageViews.clear();
+    swapchain = nullptr;
+}
+
+void CarrotEngine::onWindowResize() {
+    framebufferResized = true;
 }
 
 bool QueueFamilies::isComplete() {
