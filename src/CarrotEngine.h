@@ -47,6 +47,16 @@ private:
     VkFormat swapchainImageFormat = VK_FORMAT_UNDEFINED;
     VkExtent2D swapchainExtent{};
     std::vector<std::unique_ptr<ImageView>> swapchainImageViews{};
+    RenderPass::Unique renderPass = nullptr;
+    PipelineLayout::Unique pipelineLayout = nullptr;
+    Pipeline::Unique graphicsPipeline = nullptr;
+    std::vector<Framebuffer::Unique> swapchainFramebuffers{};
+    CommandPool::Unique commandPool = nullptr;
+    std::vector<VkCommandBuffer> commandBuffers{};
+    std::vector<Semaphore::Unique> imageAvailableSemaphore{};
+    std::vector<Semaphore::Unique> renderFinishedSemaphore{};
+    std::vector<Fence::Shared> inFlightFences{};
+    std::vector<Fence::Shared> imagesInFlight{};
 
     /// Init engine
     void init();
@@ -114,4 +124,20 @@ private:
     void createSwapChainImageViews();
 
     [[nodiscard]] std::unique_ptr<ImageView> createImageView(const VkImage& image, VkFormat imageFormat, VkImageAspectFlagBits aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) const;
+
+    void createGraphicsPipeline();
+
+    ShaderModule::Unique createShaderModule(const std::vector<char>& bytecode);
+
+    void createRenderPass();
+
+    void createFramebuffers();
+
+    void createCommandPool();
+
+    void createCommandBuffers();
+
+    void drawFrame(size_t currentFrame);
+
+    void createSynchronizationObjects();
 };

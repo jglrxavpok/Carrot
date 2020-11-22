@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <algorithm>
 #include <memory>
+#include <string>
 
 /// Device-based resource that will be cleared inside this class' destructor
 /// <br/>
@@ -24,6 +25,9 @@ private:
     const VkAllocationCallbacks* allocator;
 
 public:
+    typedef std::unique_ptr<VulkanResource> Unique;
+    typedef std::shared_ptr<VulkanResource> Shared;
+
     VulkanResource(const VkDevice& device, const VkAllocationCallbacks* allocator, VulkanType resource): device(device), allocator(allocator), resource(resource)
     {}
 
@@ -39,7 +43,10 @@ public:
         Destructor(device, resource, allocator);
     };
 
-    static std::unique_ptr<VulkanResource> createUnique(const VkDevice& device, const CreateStruct& createStruct, const VkAllocationCallbacks* allocator, std::string errorMessage = "Failed to create resource!") {
+
+    // STATIC METHODS
+
+    static VulkanResource::Unique createUnique(const VkDevice& device, const CreateStruct& createStruct, const VkAllocationCallbacks* allocator, std::string errorMessage = "Failed to create resource!") {
         VulkanType out;
         VkResult result = Constructor(device, &createStruct, allocator, &out);
         if(result != VK_SUCCESS) {
@@ -48,7 +55,7 @@ public:
         return make_unique<VulkanResource>(device, allocator, out);
     }
 
-    static std::shared_ptr<VulkanResource> createShared(const VkDevice& device, const CreateStruct& createStruct, const VkAllocationCallbacks* allocator, std::string errorMessage = "Failed to create resource!") {
+    static VulkanResource::Shared createShared(const VkDevice& device, const CreateStruct& createStruct, const VkAllocationCallbacks* allocator, std::string errorMessage = "Failed to create resource!") {
         VulkanType out;
         VkResult result = Constructor(device, &createStruct, allocator, &out);
         if(result != VK_SUCCESS) {
