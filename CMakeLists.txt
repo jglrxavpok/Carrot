@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty/glfw-3.3.2/)

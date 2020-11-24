@@ -5,7 +5,10 @@
 #include <memory>
 #include <optional>
 #include <vector>
-#include <vulkan/vulkan.h>
+
+#undef VULKAN_HPP_DISABLE_ENHANCED_MODE
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include "memory/NakedPtr.hpp"
 #include "vulkan/types.h"
@@ -20,9 +23,9 @@ struct QueueFamilies {
 };
 
 struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
+    vk::SurfaceCapabilitiesKHR capabilities;
+    std::vector<vk::SurfaceFormatKHR> formats;
+    std::vector<vk::PresentModeKHR> presentModes;
 };
 
 class CarrotEngine {
@@ -32,33 +35,36 @@ public:
 
     void onWindowResize();
 
+    /// Cleanup resources
+    ~CarrotEngine();
+
 private:
     bool running = true;
     NakedPtr<GLFWwindow> window = nullptr;
-    NakedPtr<VkAllocationCallbacks> allocator = nullptr;
+    const vk::AllocationCallbacks* allocator = nullptr;
 
-    VkInstance instance{};
-    VkDebugUtilsMessengerEXT callback{};
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device = VK_NULL_HANDLE;
-    VkQueue graphicsQueue = VK_NULL_HANDLE;
-    VkQueue presentQueue = VK_NULL_HANDLE;
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    std::unique_ptr<Swapchain> swapchain = nullptr;
-    std::vector<VkImage> swapchainImages{};
-    VkFormat swapchainImageFormat = VK_FORMAT_UNDEFINED;
-    VkExtent2D swapchainExtent{};
-    std::vector<std::unique_ptr<ImageView>> swapchainImageViews{};
-    RenderPass::Unique renderPass = nullptr;
-    PipelineLayout::Unique pipelineLayout = nullptr;
-    Pipeline::Unique graphicsPipeline = nullptr;
-    std::vector<Framebuffer::Unique> swapchainFramebuffers{};
-    CommandPool::Unique commandPool = nullptr;
-    std::vector<VkCommandBuffer> commandBuffers{};
-    std::vector<Semaphore::Unique> imageAvailableSemaphore{};
-    std::vector<Semaphore::Unique> renderFinishedSemaphore{};
-    std::vector<Fence::Shared> inFlightFences{};
-    std::vector<Fence::Shared> imagesInFlight{};
+    vk::UniqueInstance instance;
+    vk::UniqueDebugUtilsMessengerEXT callback{};
+    vk::PhysicalDevice physicalDevice{};
+    vk::UniqueDevice device{};
+    vk::Queue graphicsQueue{};
+    vk::Queue presentQueue{};
+    vk::SurfaceKHR surface{};
+    vk::UniqueSwapchainKHR swapchain{};
+    std::vector<VkImage> swapchainImages{}; // not unique because deleted with swapchain
+    vk::Format swapchainImageFormat = vk::Format::eUndefined;
+    vk::Extent2D swapchainExtent{};
+    std::vector<vk::UniqueImageView> swapchainImageViews{};
+    vk::UniqueRenderPass renderPass{};
+    vk::UniquePipelineLayout pipelineLayout{};
+    vk::UniquePipeline graphicsPipeline{};
+    std::vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
+    vk::UniqueCommandPool commandPool{};
+    std::vector<vk::CommandBuffer> commandBuffers{};
+    std::vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
+    std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
+    std::vector<vk::UniqueFence> inFlightFences{};
+    std::vector<vk::UniqueFence> imagesInFlight{};
     bool framebufferResized = false;
 
     /// Init engine
@@ -69,9 +75,6 @@ private:
 
     /// Init Vulkan for rendering
     void initVulkan();
-
-    /// Cleanup resources
-    void cleanup();
 
     /// Create Vulkan instance
     void createInstance();
@@ -92,10 +95,10 @@ private:
     void pickPhysicalDevice();
 
     /// Rank physical device based on their capabilities
-    int ratePhysicalDevice(const VkPhysicalDevice& device);
+    int ratePhysicalDevice(const vk::PhysicalDevice& device);
 
     /// Gets the queue indices of a given physical device
-    QueueFamilies findQueueFamilies(const VkPhysicalDevice& device);
+    QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);
 
     /// Create the logical device to interface with Vulkan
     void createLogicalDevice();
@@ -107,30 +110,30 @@ private:
     bool checkDeviceExtensionSupport(const VkPhysicalDevice &device);
 
     /// Queries the format and present modes from a given physical device
-    SwapChainSupportDetails querySwapChainSuppor(const VkPhysicalDevice& device);
+    SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device);
 
     /// Choose best surface format from the list of given formats
     /// \param formats
     /// \return
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats);
 
     /// Choose best present mode from the list of given modes
     /// \param presentModes
     /// \return
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& presentModes);
+    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
 
     /// Choose resolution of swap chain images
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    vk::Extent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
     void createSwapChain();
 
     void createSwapChainImageViews();
 
-    [[nodiscard]] std::unique_ptr<ImageView> createImageView(const VkImage& image, VkFormat imageFormat, VkImageAspectFlagBits aspectMask = VK_IMAGE_ASPECT_COLOR_BIT) const;
+    [[nodiscard]] vk::UniqueImageView createImageView(const VkImage& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask = vk::ImageAspectFlagBits::eColor) const;
 
     void createGraphicsPipeline();
 
-    ShaderModule::Unique createShaderModule(const std::vector<char>& bytecode);
+    vk::UniqueShaderModule createShaderModule(const std::vector<char>& bytecode);
 
     void createRenderPass();
 
