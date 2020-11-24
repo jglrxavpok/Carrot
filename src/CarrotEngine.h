@@ -11,7 +11,6 @@
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include "memory/NakedPtr.hpp"
-#include "vulkan/types.h"
 
 using namespace std;
 

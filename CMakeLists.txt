@@ -22,8 +22,6 @@ endfunction()
 set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
-        src/vulkan/VulkanResource.hpp
-        src/vulkan/types.cpp
         src/CarrotEngine.cpp
         src/main.cpp
         )
