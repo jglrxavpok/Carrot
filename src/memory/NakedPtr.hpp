@@ -10,6 +10,7 @@ public:
     NakedPtr(): pointer(nullptr) {}
     NakedPtr(PointedType* ptr): pointer(ptr) {}
     NakedPtr(PointedType*& ptr): pointer(ptr) {}
+    NakedPtr(NakedPtr<PointedType>& ptr): pointer(ptr.pointer) {}
 
     PointedType operator->() const {
         static_assert(pointer != nullptr, "Pointer must not be nullptr!");

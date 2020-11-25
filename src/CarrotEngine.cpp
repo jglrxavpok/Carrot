@@ -27,6 +27,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
+CarrotEngine::CarrotEngine(NakedPtr<GLFWwindow> window): window(window) {}
+
+void CarrotEngine::init() {
+    initWindow();
+    initVulkan();
+}
+
 void CarrotEngine::run() {
     init();
 
@@ -47,32 +54,19 @@ void CarrotEngine::run() {
     device->waitIdle();
 }
 
-void CarrotEngine::init() {
-    initWindow();
-    initVulkan();
-}
-
 static void windowResize(GLFWwindow* window, int width, int height) {
     auto app = reinterpret_cast<CarrotEngine*>(glfwGetWindowUserPointer(window));
     app->onWindowResize();
 }
 
 void CarrotEngine::initWindow() {
-    glfwInit();
-
-    glfwDefaultWindowHints();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
 }
 
 void CarrotEngine::initVulkan() {
     vk::DynamicLoader dl;
-    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+    auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
     createInstance();
@@ -154,18 +148,8 @@ bool CarrotEngine::checkValidationLayerSupport() {
 }
 
 CarrotEngine::~CarrotEngine() {
-    cleanupSwapchain();
-
-    imagesInFlight.clear();
-    inFlightFences.clear();
-    renderFinishedSemaphore.clear();
-    imageAvailableSemaphore.clear();
-
-    instance->destroySurfaceKHR(surface, allocator); // TODO: is it the right place? Is it possible to make automatic?
-
-    glfwDestroyWindow(window.get());
-    glfwTerminate();
-    window.reset();
+    swapchain.reset();
+    instance->destroySurfaceKHR(surface, allocator);
 }
 
 std::vector<const char *> CarrotEngine::getRequiredExtensions() {
@@ -805,11 +789,13 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
             .pResults = nullptr,
     };
 
-    result = presentQueue.presentKHR(presentInfo);
+    try {
+        result = presentQueue.presentKHR(presentInfo);
+    } catch(vk::OutOfDateKHRError const &e) {
+        result = vk::Result::eErrorOutOfDateKHR;
+    }
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
         recreateSwapchain();
-    } else if(result != vk::Result::eSuccess) {
-        throw std::runtime_error("Failed to present swap chain image");
     }
 }
 

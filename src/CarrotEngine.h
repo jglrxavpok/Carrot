@@ -30,7 +30,8 @@ struct SwapChainSupportDetails {
 
 class CarrotEngine {
 public:
-    CarrotEngine() = default;
+    explicit CarrotEngine(NakedPtr<GLFWwindow> window);
+
     void run();
 
     void onWindowResize();
