@@ -20,27 +20,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
 
-    if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-    }
+    //}
 
     return VK_FALSE;
-}
-
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pCallback) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pCallback);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT callback) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, callback, pAllocator);
-    }
 }
 
 void CarrotEngine::run() {
@@ -110,24 +94,26 @@ void CarrotEngine::createInstance() {
         throw std::runtime_error("Could not find validation layer.");
     }
 
-    vk::ApplicationInfo appInfo{};
-    appInfo.pApplicationName = WINDOW_TITLE;
-    appInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
-    appInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_2;
-
-    vk::InstanceCreateInfo createInfo({}, &appInfo);
+    vk::ApplicationInfo appInfo{
+            .pApplicationName = WINDOW_TITLE,
+            .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
+            .engineVersion = VK_MAKE_VERSION(0, 1, 0),
+            .apiVersion = VK_API_VERSION_1_2,
+    };
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions();
+    vk::InstanceCreateInfo createInfo{
+        .pApplicationInfo = &appInfo,
 
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
-    createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+        .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames = requiredExtensions.data(),
+    };
 
     if(USE_VULKAN_VALIDATION_LAYERS) {
         createInfo.ppEnabledLayerNames = VULKAN_VALIDATION_LAYERS.data();
         createInfo.enabledLayerCount = VULKAN_VALIDATION_LAYERS.size();
 
-        VkDebugUtilsMessengerCreateInfoEXT instanceDebugMessenger{};
+        vk::DebugUtilsMessengerCreateInfoEXT instanceDebugMessenger{};
         setupMessenger(instanceDebugMessenger);
         createInfo.pNext = &instanceDebugMessenger;
     } else {
@@ -137,15 +123,11 @@ void CarrotEngine::createInstance() {
     }
 
     // check extension support before creating
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-    std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+    const std::vector<vk::ExtensionProperties> extensions = vk::enumerateInstanceExtensionProperties(nullptr);
 
     for(const auto& ext : requiredExtensions) {
         std::cout << "Required extension: " << ext << ", present = ";
-        bool found = std::find_if(extensions.begin(), extensions.end(), [&](const VkExtensionProperties& props) {
+        bool found = std::find_if(extensions.begin(), extensions.end(), [&](const vk::ExtensionProperties& props) {
             return strcmp(props.extensionName, ext) == 0;
         }) != extensions.end();
         std::cout << std::to_string(found) << std::endl;
@@ -157,14 +139,10 @@ void CarrotEngine::createInstance() {
 }
 
 bool CarrotEngine::checkValidationLayerSupport() {
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> layers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+    const std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
 
     for(const char* layer : VULKAN_VALIDATION_LAYERS) {
-        bool found = std::find_if(layers.begin(), layers.end(), [&](const VkLayerProperties& props) {
+        bool found = std::find_if(layers.begin(), layers.end(), [&](const vk::LayerProperties& props) {
             return strcmp(props.layerName, layer) == 0;
         }) != layers.end();
         if(!found) {
@@ -213,10 +191,9 @@ void CarrotEngine::setupDebugMessenger() {
     callback = instance->createDebugUtilsMessengerEXTUnique(createInfo, allocator);
 }
 
-void CarrotEngine::setupMessenger(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+void CarrotEngine::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& createInfo) {
+    createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
+    createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
     createInfo.pfnUserCallback = debugCallback;
     createInfo.pUserData = nullptr;
 }
@@ -224,7 +201,7 @@ void CarrotEngine::setupMessenger(VkDebugUtilsMessengerCreateInfoEXT& createInfo
 void CarrotEngine::pickPhysicalDevice() {
     const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
 
-    std::multimap<int, VkPhysicalDevice> candidates;
+    std::multimap<int, vk::PhysicalDevice> candidates;
     for(const auto& device : devices) {
         int score = ratePhysicalDevice(device);
         candidates.insert(std::make_pair(score, device));
@@ -252,14 +229,12 @@ int CarrotEngine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
 
     int score = 0;
 
-    VkPhysicalDeviceProperties deviceProperties;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    vk::PhysicalDeviceProperties deviceProperties = device.getProperties();
 
-    VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    vk::PhysicalDeviceFeatures deviceFeatures = device.getFeatures();
 
     // highly advantage dedicated GPUs
-    if(deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
         score += 1000;
     }
 
@@ -274,16 +249,12 @@ int CarrotEngine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
 }
 
 QueueFamilies CarrotEngine::findQueueFamilies(vk::PhysicalDevice const &device) {
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
     uint32_t index = 0;
 
     QueueFamilies families;
     for(const auto& family : queueFamilies) {
-        if(family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        if(family.queueFlags & vk::QueueFlagBits::eGraphics) {
             families.graphicsFamily = index;
         }
 
@@ -307,10 +278,11 @@ void CarrotEngine::createLogicalDevice() {
     std::set<uint32_t> uniqueQueueFamilies = { families.presentFamily.value(), families.graphicsFamily.value() };
 
     for(uint32_t queueFamily : uniqueQueueFamilies) {
-        vk::DeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.queueFamilyIndex = queueFamily;
-        queueCreateInfo.queueCount = 1;
-        queueCreateInfo.pQueuePriorities = &priority;
+        vk::DeviceQueueCreateInfo queueCreateInfo{
+                .queueFamilyIndex = queueFamily,
+                .queueCount = 1,
+                .pQueuePriorities = &priority,
+        };
 
         queueCreateInfoStructs.emplace_back(queueCreateInfo);
     }
@@ -318,13 +290,13 @@ void CarrotEngine::createLogicalDevice() {
     // TODO: define features we will use
     vk::PhysicalDeviceFeatures deviceFeatures{};
 
-    vk::DeviceCreateInfo createInfo{};
-    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size());
-    createInfo.pQueueCreateInfos = queueCreateInfoStructs.data();
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(VULKAN_DEVICE_EXTENSIONS.size());
-    createInfo.ppEnabledExtensionNames = VULKAN_DEVICE_EXTENSIONS.data();
-    createInfo.pEnabledFeatures = &deviceFeatures;
-
+    vk::DeviceCreateInfo createInfo{
+            .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
+            .pQueueCreateInfos = queueCreateInfoStructs.data(),
+            .enabledExtensionCount = static_cast<uint32_t>(VULKAN_DEVICE_EXTENSIONS.size()),
+            .ppEnabledExtensionNames = VULKAN_DEVICE_EXTENSIONS.data(),
+            .pEnabledFeatures = &deviceFeatures,
+    };
 
     if(USE_VULKAN_VALIDATION_LAYERS) { // keep compatibility with older Vulkan implementations
         createInfo.enabledLayerCount = static_cast<uint32_t>(VULKAN_VALIDATION_LAYERS.size());
@@ -350,12 +322,8 @@ void CarrotEngine::createSurface() {
     surface = cSurface;
 }
 
-bool CarrotEngine::checkDeviceExtensionSupport(VkPhysicalDevice const &device) {
-    uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-    std::vector<VkExtensionProperties> available(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, available.data());
+bool CarrotEngine::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
+    const std::vector<vk::ExtensionProperties> available = logicalDevice.enumerateDeviceExtensionProperties(nullptr);
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
 
@@ -373,17 +341,11 @@ bool CarrotEngine::checkDeviceExtensionSupport(VkPhysicalDevice const &device) {
 }
 
 SwapChainSupportDetails CarrotEngine::querySwapChainSupport(const vk::PhysicalDevice& device) {
-    SwapChainSupportDetails details{};
-
-    details.capabilities = device.getSurfaceCapabilitiesKHR(surface);
-
-    uint32_t formatCount;
-    uint32_t modeCount;
-
-    details.formats = device.getSurfaceFormatsKHR(surface);
-    details.presentModes = device.getSurfacePresentModesKHR(surface);
-
-    return details;
+    return {
+            .capabilities = device.getSurfaceCapabilitiesKHR(surface),
+            .formats = device.getSurfaceFormatsKHR(surface),
+            .presentModes = device.getSurfacePresentModesKHR(surface),
+    };
 }
 
 vk::SurfaceFormatKHR CarrotEngine::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {
@@ -409,7 +371,7 @@ vk::PresentModeKHR CarrotEngine::chooseSwapPresentMode(const std::vector<vk::Pre
     return vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D CarrotEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
+vk::Extent2D CarrotEngine::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
     if(capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent; // no choice
     } else {
@@ -442,17 +404,27 @@ void CarrotEngine::createSwapChain() {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
-    vk::SwapchainCreateInfoKHR createInfo{};
-    createInfo.oldSwapchain = nullptr;
-    createInfo.surface = surface;
+    vk::SwapchainCreateInfoKHR createInfo{
+        .surface = surface,
+        .minImageCount = imageCount,
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageExtent = swapchainExtent,
+        .imageArrayLayers = 1,
+        .imageUsage = vk::ImageUsageFlagBits::eColorAttachment, // used for rendering
+
+        .preTransform = swapChainSupport.capabilities.currentTransform,
+
+        // don't try to blend with background of other windows
+        .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+
+        .presentMode = presentMode,
+        .clipped = VK_TRUE,
+
+        .oldSwapchain = nullptr,
+    };
 
     // image info
-    createInfo.minImageCount = imageCount;
-    createInfo.imageFormat = surfaceFormat.format;
-    createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = swapchainExtent;
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; // used for rendering
 
     QueueFamilies queueFamilies = findQueueFamilies(physicalDevice);
     uint32_t indices[] = { queueFamilies.graphicsFamily.value(), queueFamilies.presentFamily.value() };
@@ -469,14 +441,6 @@ void CarrotEngine::createSwapChain() {
         createInfo.queueFamilyIndexCount = 0;
         createInfo.pQueueFamilyIndices = nullptr;
     }
-
-    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-
-    // don't try to blend with background of other windows
-    createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-
-    createInfo.presentMode = presentMode;
-    createInfo.clipped = VK_TRUE;
 
     swapchain = device->createSwapchainKHRUnique(createInfo, allocator);
 
@@ -501,23 +465,27 @@ void CarrotEngine::createSwapChainImageViews() {
     }
 }
 
-vk::UniqueImageView CarrotEngine::createImageView(const VkImage& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask) const {
-    vk::ImageViewCreateInfo createInfo{};
-    createInfo.image = image;
-    createInfo.viewType = vk::ImageViewType::e2D;
-    createInfo.format = imageFormat;
-    createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.a = vk::ComponentSwizzle::eIdentity;
+vk::UniqueImageView CarrotEngine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask) const {
+    return device->createImageViewUnique({
+                                                 .image = image,
+                                                 .viewType = vk::ImageViewType::e2D,
+                                                 .format = imageFormat,
 
-    createInfo.subresourceRange.aspectMask = aspectMask;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
+                                                 .components = {
+                                                         .r = vk::ComponentSwizzle::eIdentity,
+                                                         .g = vk::ComponentSwizzle::eIdentity,
+                                                         .b = vk::ComponentSwizzle::eIdentity,
+                                                         .a = vk::ComponentSwizzle::eIdentity,
+                                                 },
 
-    return device->createImageViewUnique(createInfo, allocator);
+                                                 .subresourceRange = {
+                                                         .aspectMask = aspectMask,
+                                                         .baseMipLevel = 0,
+                                                         .levelCount = 1,
+                                                         .baseArrayLayer = 0,
+                                                         .layerCount = 1,
+                                                 },
+                                             }, allocator);
 }
 
 void CarrotEngine::createGraphicsPipeline() {
@@ -527,186 +495,188 @@ void CarrotEngine::createGraphicsPipeline() {
     vk::UniqueShaderModule vertexShader = createShaderModule(vertexCode);
     vk::UniqueShaderModule fragmentShader = createShaderModule(fragmentCode);
 
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = *vertexShader;
-    vertShaderStageInfo.pName = "main";
+    vk::PipelineShaderStageCreateInfo shaderStages[] = { {
+                                                                 .stage = vk::ShaderStageFlagBits::eVertex,
+                                                                 .module = *vertexShader,
+                                                                 .pName = "main",
+                                                         },
+                                                         {
+                                                                 .stage = vk::ShaderStageFlagBits::eFragment,
+                                                                 .module = *fragmentShader,
+                                                                 .pName = "main",
+                                                         }};
 
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = *fragmentShader;
-    fragShaderStageInfo.pName = "main";
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+            .vertexBindingDescriptionCount = 0,
+            .pVertexBindingDescriptions = nullptr,
 
-    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            .vertexAttributeDescriptionCount = 0,
+            .pVertexAttributeDescriptions = nullptr,
+    };
     // TODO: vertex buffers
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
 
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+            .topology = vk::PrimitiveTopology::eTriangleList,
+            .primitiveRestartEnable = false,
+    };
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = false;
+    vk::Viewport viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(swapchainExtent.width),
+            .height = static_cast<float>(swapchainExtent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+    };
 
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(swapchainExtent.width);
-    viewport.height = static_cast<float>(swapchainExtent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    vk::Rect2D scissor{
+            .offset = vk::Offset2D{0, 0},
+            .extent = swapchainExtent,
+    };
 
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = swapchainExtent;
+    vk::PipelineViewportStateCreateInfo viewportState{
+            .viewportCount = 1,
+            .pViewports = &viewport,
 
-    VkPipelineViewportStateCreateInfo viewportState{};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
+            .scissorCount = 1,
+            .pScissors = &scissor,
+    };
 
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
+    vk::PipelineRasterizationStateCreateInfo rasterizer{
+            // TODO: change for shadow maps
+            .depthClampEnable = false,
 
-    VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            .rasterizerDiscardEnable = false,
 
-    // TODO: change for shadow maps
-    rasterizer.depthClampEnable = false;
+            .polygonMode = vk::PolygonMode::eFill,
 
-    rasterizer.rasterizerDiscardEnable = false;
+            .cullMode = vk::CullModeFlagBits::eBack,
+            .frontFace = vk::FrontFace::eClockwise,
 
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+            // TODO: change for shadow maps
+            .depthBiasEnable = false,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
 
-    rasterizer.lineWidth = 1.0f;
+            .lineWidth = 1.0f,
+    };
 
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-
-    // TODO: change for shadow maps
-    rasterizer.depthBiasEnable = false;
-    rasterizer.depthBiasConstantFactor = 0.0f;
-    rasterizer.depthBiasClamp = 0.0f;
-    rasterizer.depthBiasSlopeFactor = 0.0f;
-
-    VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.sampleShadingEnable = false;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.minSampleShading = 1.0f;
-    multisampling.pSampleMask = nullptr;
-    multisampling.alphaToCoverageEnable = false;
-    multisampling.alphaToOneEnable = false;
-
+    vk::PipelineMultisampleStateCreateInfo multisampling{
+            .rasterizationSamples = vk::SampleCountFlagBits::e1,
+            .sampleShadingEnable = false,
+            .minSampleShading = 1.0f,
+            .pSampleMask = nullptr,
+            .alphaToCoverageEnable = false,
+            .alphaToOneEnable = false,
+    };
     // TODO: Depth & stencil
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    // TODO: blending
-    colorBlendAttachment.blendEnable = false;
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+            // TODO: blending
+            .blendEnable = false,
 
-    VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = false;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
+            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+    };
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending{
+            .logicOpEnable = false,
+            .attachmentCount = 1,
+            .pAttachments = &colorBlendAttachment,
+    };
 
     // TODO: dynamic state
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 0;
-    pipelineLayoutCreateInfo.pSetLayouts = nullptr;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
+            .setLayoutCount = 0,
+            .pSetLayouts = nullptr,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = nullptr,
+    };
 
     pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutCreateInfo, allocator);
 
-    VkGraphicsPipelineCreateInfo pipelineInfo{};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
+    vk::GraphicsPipelineCreateInfo pipelineInfo{
+            .stageCount = 2,
+            .pStages = shaderStages,
 
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssembly;
-    pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &rasterizer;
-    pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = nullptr;
-    pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.pDynamicState = nullptr;
+            .pVertexInputState = &vertexInputInfo,
+            .pInputAssemblyState = &inputAssembly,
+            .pViewportState = &viewportState,
+            .pRasterizationState = &rasterizer,
+            .pMultisampleState = &multisampling,
+            .pDepthStencilState = nullptr,
+            .pColorBlendState = &colorBlending,
+            .pDynamicState = nullptr,
 
-    pipelineInfo.layout = *pipelineLayout;
-    pipelineInfo.renderPass = *renderPass;
-    pipelineInfo.subpass = 0;
+            .layout = *pipelineLayout,
+            .renderPass = *renderPass,
+            .subpass = 0,
+    };
 
     graphicsPipeline = device->createGraphicsPipelineUnique(nullptr, pipelineInfo, allocator);
     // modules will be destroyed after the end of this function
 }
 
 vk::UniqueShaderModule CarrotEngine::createShaderModule(const std::vector<char>& bytecode) {
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(bytecode.data());
-    createInfo.codeSize = bytecode.size();
-    return device->createShaderModuleUnique(createInfo, allocator);
+    return device->createShaderModuleUnique({
+                                                    .codeSize = bytecode.size(),
+                                                    .pCode = reinterpret_cast<const uint32_t*>(bytecode.data()),
+                                            }, allocator);
 }
 
 void CarrotEngine::createRenderPass() {
-    vk::AttachmentDescription colorAttachment{};
-    colorAttachment.format = swapchainImageFormat;
-    colorAttachment.samples = vk::SampleCountFlagBits::e1;
+    vk::AttachmentDescription colorAttachment{
+            .format = swapchainImageFormat,
+            .samples = vk::SampleCountFlagBits::e1,
 
-    colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-    colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore,
 
-    colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-    colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 
-    colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
-    colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = vk::ImageLayout::ePresentSrcKHR,
+    };
 
-    vk::AttachmentReference colorAttachmentRef{};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+    vk::AttachmentReference colorAttachmentRef{
+            .attachment = 0,
+            .layout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
 
-    vk::SubpassDescription subpass{};
-    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-    subpass.colorAttachmentCount = 1;
+    vk::SubpassDescription subpass{
+            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+            .inputAttachmentCount = 0,
 
-    // index in this array is used by `layout(location = 0)` inside shaders
-    subpass.pColorAttachments = &colorAttachmentRef;
-    subpass.inputAttachmentCount = 0;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pDepthStencilAttachment = nullptr;
+            .colorAttachmentCount = 1,
+            // index in this array is used by `layout(location = 0)` inside shaders
+            .pColorAttachments = &colorAttachmentRef,
+            .pDepthStencilAttachment = nullptr,
 
-    vk::RenderPassCreateInfo renderPassInfo{};
-    renderPassInfo.attachmentCount = 1;
-    renderPassInfo.pAttachments = &colorAttachment;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
+            .preserveAttachmentCount = 0,
+    };
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0; // our subpass
+    vk::SubpassDependency dependency{
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0, // our subpass
 
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
+            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            // TODO: .srcAccessMask = 0,
 
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+    };
 
-    renderPassInfo.dependencyCount = 1;
+    vk::RenderPassCreateInfo renderPassInfo{
+            .attachmentCount = 1,
+            .pAttachments = &colorAttachment,
+            .subpassCount = 1,
+            .pSubpasses = &subpass,
 
-    vk::SubpassDependency dep = dependency;
-    renderPassInfo.pDependencies = &dep;
+            .dependencyCount = 1,
+            .pDependencies = &dependency,
+    };
 
     renderPass = device->createRenderPassUnique(renderPassInfo, allocator);
 }
@@ -715,18 +685,18 @@ void CarrotEngine::createFramebuffers() {
     swapchainFramebuffers.resize(swapchainImages.size());
 
     for (size_t i = 0; i < swapchainImageViews.size(); ++i) {
-        VkImageView attachments[] = {
+        vk::ImageView attachments[] = {
                 *swapchainImageViews[i]
         };
 
-        VkFramebufferCreateInfo framebufferInfo{};
-        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferInfo.renderPass = *renderPass;
-        framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = attachments;
-        framebufferInfo.width = swapchainExtent.width;
-        framebufferInfo.height = swapchainExtent.height;
-        framebufferInfo.layers = 1;
+        vk::FramebufferCreateInfo framebufferInfo{
+                .renderPass = *renderPass,
+                .attachmentCount = 1,
+                .pAttachments = attachments,
+                .width = swapchainExtent.width,
+                .height = swapchainExtent.height,
+                .layers = 1,
+        };
 
         swapchainFramebuffers[i] = std::move(device->createFramebufferUnique(framebufferInfo, allocator));
     }
@@ -735,60 +705,59 @@ void CarrotEngine::createFramebuffers() {
 void CarrotEngine::createCommandPool() {
     QueueFamilies families = findQueueFamilies(physicalDevice);
 
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = families.graphicsFamily.value();
-    poolInfo.flags = 0; // TODO: resettable command buffers
+    vk::CommandPoolCreateInfo poolInfo{
+            .queueFamilyIndex = families.graphicsFamily.value(),
+            // .flags = <value>,  // TODO: resettable command buffers
+    };
 
     commandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
 void CarrotEngine::createCommandBuffers() {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = *commandPool;
-    allocInfo.commandBufferCount = static_cast<uint32_t>(swapchainFramebuffers.size());
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    vk::CommandBufferAllocateInfo allocInfo{
+            .commandPool = *commandPool,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+    };
 
     commandBuffers = device->allocateCommandBuffers(allocInfo);
 
     for(size_t i = 0; i < commandBuffers.size(); i++) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0;
-        beginInfo.pInheritanceInfo = nullptr;
+        vk::CommandBufferBeginInfo beginInfo{
+                .pInheritanceInfo = nullptr,
+                // TODO: different flags: .flags = vk::CommandBufferUsageFlagBits::<value>
+        };
 
-        if(vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to begin command buffer recording");
-        }
+        commandBuffers[i].begin(beginInfo);
 
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = *renderPass;
-        renderPassInfo.framebuffer = *swapchainFramebuffers[i];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = swapchainExtent;
+        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
 
-        VkClearValue clearColor = {0.0f,0.0f,0.0f,1.0f};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
+        vk::RenderPassBeginInfo renderPassInfo{
+                .renderPass = *renderPass,
+                .framebuffer = *swapchainFramebuffers[i],
+                .renderArea = {
+                        .offset = vk::Offset2D{0, 0},
+                        .extent = swapchainExtent
+                },
 
-        vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+                .clearValueCount = 1,
+                .pClearValues = &clearColor,
+        };
 
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *graphicsPipeline);
+        commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
-        vkCmdEndRenderPass(commandBuffers[i]);
+        commandBuffers[i].draw(3, 1, 0, 0);
 
-        if(vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to record command buffer");
-        }
+        commandBuffers[i].endRenderPass();
+
+        commandBuffers[i].end();
     }
 }
 
 void CarrotEngine::drawFrame(size_t currentFrame) {
-    device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX);
+    static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
     device->resetFences((*inFlightFences[currentFrame]));
 
     auto [result, imageIndex] = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
@@ -800,8 +769,7 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
     }
 
 /*    if(imagesInFlight[imageIndex] != nullptr) {
-        VkFence imageFence = *imagesInFlight[imageIndex];
-        vkWaitForFences(device, 1, &imageFence, true, UINT64_MAX);
+        device->waitForFences(*imagesInFlight[imageIndex], true, UINT64_MAX);
     }
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];*/
 
@@ -809,32 +777,33 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
     vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
-    vk::SubmitInfo submitInfo {};
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
+    vk::SubmitInfo submitInfo {
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = waitSemaphores,
 
-    submitInfo.pWaitDstStageMask = waitStages;
+            .pWaitDstStageMask = waitStages,
 
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+            .commandBufferCount = 1,
+            .pCommandBuffers = &commandBuffers[imageIndex],
 
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = signalSemaphores,
+    };
 
     device->resetFences(*inFlightFences[currentFrame]);
     graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 
     vk::SwapchainKHR swapchains[] = { *swapchain };
 
-    vk::PresentInfoKHR presentInfo{};
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
+    vk::PresentInfoKHR presentInfo{
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = signalSemaphores,
 
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapchains;
-    presentInfo.pImageIndices = &imageIndex;
-    presentInfo.pResults = nullptr;
-
+            .swapchainCount = 1,
+            .pSwapchains = swapchains,
+            .pImageIndices = &imageIndex,
+            .pResults = nullptr,
+    };
 
     result = presentQueue.presentKHR(presentInfo);
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
@@ -850,12 +819,11 @@ void CarrotEngine::createSynchronizationObjects() {
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
     imagesInFlight.resize(swapchainImages.size());
 
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    vk::SemaphoreCreateInfo semaphoreInfo{};
 
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    vk::FenceCreateInfo fenceInfo{
+            .flags = vk::FenceCreateFlagBits::eSignaled,
+    };
 
     for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         imageAvailableSemaphore[i] = device->createSemaphoreUnique(semaphoreInfo, allocator);

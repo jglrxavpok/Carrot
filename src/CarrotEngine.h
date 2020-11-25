@@ -7,6 +7,7 @@
 #include <vector>
 
 #undef VULKAN_HPP_DISABLE_ENHANCED_MODE
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
@@ -50,7 +51,7 @@ private:
     vk::Queue presentQueue{};
     vk::SurfaceKHR surface{};
     vk::UniqueSwapchainKHR swapchain{};
-    std::vector<VkImage> swapchainImages{}; // not unique because deleted with swapchain
+    std::vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
     vk::Format swapchainImageFormat = vk::Format::eUndefined;
     vk::Extent2D swapchainExtent{};
     std::vector<vk::UniqueImageView> swapchainImageViews{};
@@ -88,7 +89,7 @@ private:
     void setupDebugMessenger();
 
     /// Prepares a debug messenger
-    void setupMessenger(VkDebugUtilsMessengerCreateInfoEXT &ext);
+    void setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT &ext);
 
     /// Select a GPU
     void pickPhysicalDevice();
@@ -106,7 +107,7 @@ private:
     void createSurface();
 
     /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
-    bool checkDeviceExtensionSupport(const VkPhysicalDevice &device);
+    bool checkDeviceExtensionSupport(const vk::PhysicalDevice &logicalDevice);
 
     /// Queries the format and present modes from a given physical device
     SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device);
@@ -122,13 +123,13 @@ private:
     vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
 
     /// Choose resolution of swap chain images
-    vk::Extent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     void createSwapChain();
 
     void createSwapChainImageViews();
 
-    [[nodiscard]] vk::UniqueImageView createImageView(const VkImage& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask = vk::ImageAspectFlagBits::eColor) const;
+    [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask = vk::ImageAspectFlagBits::eColor) const;
 
     void createGraphicsPipeline();
 

@@ -1,9 +1,7 @@
 #include <iostream>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-#include <glm/common.hpp>
 #include "CarrotEngine.h"
-
 
 int main() {
     CarrotEngine engine{};
