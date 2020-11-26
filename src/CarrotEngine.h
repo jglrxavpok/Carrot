@@ -6,10 +6,7 @@
 #include <optional>
 #include <vector>
 
-#undef VULKAN_HPP_DISABLE_ENHANCED_MODE
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#include <vulkan/vulkan.hpp>
+#include <vulkan/includes.h>
 #include <GLFW/glfw3.h>
 #include "memory/NakedPtr.hpp"
 
@@ -66,6 +63,10 @@ private:
     std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
     std::vector<vk::UniqueFence> inFlightFences{};
     std::vector<vk::UniqueFence> imagesInFlight{};
+
+    // TODO: abstraction over vertex buffers
+    vk::UniqueBuffer vertexBuffer{};
+    vk::UniqueDeviceMemory vertexBufferMemory{};
     bool framebufferResized = false;
 
     /// Init engine
@@ -151,4 +152,16 @@ private:
     void recreateSwapchain();
 
     void cleanupSwapchain();
+
+    void createVertexBuffer();
+
+    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+
+    // Templates
+
+    template<typename T>
+    vk::UniqueDeviceMemory allocateUploadBuffer(vk::Device& device, vk::Buffer& buffer, const vector<T>& data);
 };
+
+// template implementation
+#include "CarrotEngine.ipp"

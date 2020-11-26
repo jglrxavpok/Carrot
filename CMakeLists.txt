@@ -23,6 +23,7 @@ set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
         src/CarrotEngine.cpp
+        src/render/Vertex.cpp
         src/main.cpp
         )
 

@@ -9,10 +9,17 @@
 #include <map>
 #include <set>
 #include <io/IO.h>
+#include <render/Vertex.h>
 #include "CarrotEngine.h"
 #include "constants.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
+const std::vector<Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -79,6 +86,7 @@ void CarrotEngine::initVulkan() {
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
+    createVertexBuffer();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -490,12 +498,15 @@ void CarrotEngine::createGraphicsPipeline() {
                                                                  .pName = "main",
                                                          }};
 
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = 0,
-            .pVertexBindingDescriptions = nullptr,
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
-            .vertexAttributeDescriptionCount = 0,
-            .pVertexAttributeDescriptions = nullptr,
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &bindingDescription,
+
+            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+            .pVertexAttributeDescriptions = attributeDescriptions.data(),
     };
     // TODO: vertex buffers
 
@@ -732,6 +743,7 @@ void CarrotEngine::createCommandBuffers() {
 
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
+        commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
         commandBuffers[i].draw(3, 1, 0, 0);
 
         commandBuffers[i].endRenderPass();
@@ -854,6 +866,29 @@ void CarrotEngine::cleanupSwapchain() {
 
 void CarrotEngine::onWindowResize() {
     framebufferResized = true;
+}
+
+void CarrotEngine::createVertexBuffer() {
+    vk::BufferCreateInfo bufferInfo = {
+            .size = sizeof(vertices[0]) * vertices.size(),
+            .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+            .sharingMode = vk::SharingMode::eExclusive,
+    };
+
+    vertexBuffer = device->createBufferUnique(bufferInfo, allocator);
+
+    vertexBufferMemory = allocateUploadBuffer(*device, *vertexBuffer, vertices);
+}
+
+uint32_t CarrotEngine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+    auto memProperties = physicalDevice.getMemoryProperties();
+    for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if(typeFilter & (1 << i)
+        && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+    throw runtime_error("Failed to find suitable memory type.");
 }
 
 bool QueueFamilies::isComplete() {
