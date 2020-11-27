@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include <set>
 
 #include <vulkan/includes.h>
 #include <GLFW/glfw3.h>
@@ -85,6 +86,10 @@ namespace Carrot {
 
         unique_ptr<Buffer> vertexBuffer = nullptr;
         unique_ptr<Buffer> indexBuffer = nullptr;
+
+        vk::UniqueDescriptorSetLayout descriptorSetLayout{};
+        vector<shared_ptr<Buffer>> uniformBuffers{};
+
         bool framebufferResized = false;
 
         /// Init engine
@@ -173,6 +178,18 @@ namespace Carrot {
 
         void createVertexBuffer();
 
+        void createTransferCommandPool();
+
+        void createIndexBuffer();
+
+        void createDescriptorSetLayout();
+
+        void createUniformBuffers();
+
+        set<uint32_t> createGraphicsAndTransferFamiliesSet();
+
+        void updateUniformBuffer(int imageIndex);
+
         // Templates
 
         template<typename T>
@@ -180,10 +197,6 @@ namespace Carrot {
 
         template<typename T>
         void uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data);
-
-        void createTransferCommandPool();
-
-        void createIndexBuffer();
     };
 }
 

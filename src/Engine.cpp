@@ -2,6 +2,11 @@
 // Created by jglrxavpok on 21/11/2020.
 //
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <chrono>
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
@@ -9,18 +14,19 @@
 #include <map>
 #include <set>
 #include <io/IO.h>
-#include "render/Buffer.h"
+#include <render/UniformBufferObject.h>
 #include "Engine.h"
 #include "constants.h"
+#include "render/Buffer.h"
 #include "render/Vertex.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 const std::vector<Carrot::Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
 };
 
 const std::vector<uint32_t> indices = {
@@ -92,12 +98,14 @@ void Carrot::Engine::initVulkan() {
     createLogicalDevice();
     createSwapChain();
     createRenderPass();
+    createDescriptorSetLayout();
     createGraphicsPipeline();
     createFramebuffers();
     createGraphicsCommandPool();
     createTransferCommandPool();
     createVertexBuffer();
     createIndexBuffer();
+    createUniformBuffers();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -604,8 +612,8 @@ void Carrot::Engine::createGraphicsPipeline() {
     // TODO: dynamic state
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-            .setLayoutCount = 0,
-            .pSetLayouts = nullptr,
+            .setLayoutCount = 1,
+            .pSetLayouts = &(*descriptorSetLayout),
             .pushConstantRangeCount = 0,
             .pPushConstantRanges = nullptr,
     };
@@ -781,6 +789,20 @@ void Carrot::Engine::createCommandBuffers() {
     }
 }
 
+void Carrot::Engine::updateUniformBuffer(int imageIndex) {
+    static UniformBufferObject ubo{};
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
+    ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
+
+    uniformBuffers[imageIndex]->directUpload(&ubo, sizeof(ubo));
+}
+
 void Carrot::Engine::drawFrame(size_t currentFrame) {
     static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
     device->resetFences((*inFlightFences[currentFrame]));
@@ -792,6 +814,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     } else if(result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
+
+    updateUniformBuffer(imageIndex);
 
 /*    if(imagesInFlight[imageIndex] != nullptr) {
         device->waitForFences(*imagesInFlight[imageIndex], true, UINT64_MAX);
@@ -878,6 +902,7 @@ void Carrot::Engine::recreateSwapchain() {
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
+    createUniformBuffers();
     createCommandBuffers();
 }
 
@@ -956,6 +981,42 @@ void Carrot::Engine::createIndexBuffer() {
                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
                                               families);
     indexBuffer->stageUpload(indices);
+}
+
+void Carrot::Engine::createDescriptorSetLayout() {
+    vk::DescriptorSetLayoutBinding uboBinding{
+        .binding = 0, // TODO: customizable
+        .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+    };
+
+    vk::DescriptorSetLayoutCreateInfo createInfo{
+        .bindingCount = 1,
+        .pBindings = &uboBinding,
+    };
+
+    descriptorSetLayout = device->createDescriptorSetLayoutUnique(createInfo, allocator);
+}
+
+void Carrot::Engine::createUniformBuffers() {
+    vk::DeviceSize bufferSize = sizeof(Carrot::UniformBufferObject);
+    uniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
+
+    for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
+        uniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+                                                        bufferSize,
+                                                        vk::BufferUsageFlagBits::eUniformBuffer,
+                                                        vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                        createGraphicsAndTransferFamiliesSet());
+    }
+}
+
+set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
+    return {
+        queueFamilies.graphicsFamily.value(),
+        queueFamilies.transferFamily.value(),
+    };
 }
 
 bool Carrot::QueueFamilies::isComplete() {

@@ -79,3 +79,13 @@ void Carrot::Buffer::copyTo(Carrot::Buffer& other) const {
 const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
     return *vkBuffer;
 }
+
+void Carrot::Buffer::directUpload(const void* data, size_t length) {
+    auto& device = engine.getLogicalDevice();
+    void* pData;
+    if(device.mapMemory(*memory, 0, size, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
+        throw runtime_error("Failed to map memory!");
+    }
+    memcpy(pData, data, length);
+    device.unmapMemory(*memory);
+}

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <Engine.h>
 #include "vulkan/includes.h"
+#include "Engine.h"
 #include <set>
 
 namespace Carrot {
@@ -25,11 +25,15 @@ namespace Carrot {
 
         void copyTo(Buffer& other) const;
 
+        void directUpload(const void* data, size_t length);
+
         /// Stage an upload to the GPU
         /// \tparam T
         /// \param data
         template<typename T>
         void stageUpload(const std::vector<T>& data);
+
+        ~Buffer() = default;
     };
 }
 
