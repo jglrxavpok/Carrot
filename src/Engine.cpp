@@ -9,13 +9,14 @@
 #include <map>
 #include <set>
 #include <io/IO.h>
-#include <render/Vertex.h>
-#include "CarrotEngine.h"
+#include "render/Buffer.h"
+#include "Engine.h"
 #include "constants.h"
+#include "render/Vertex.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-const std::vector<Vertex> vertices = {
+const std::vector<Carrot::Vertex> vertices = {
         {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
@@ -27,21 +28,21 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
 
-    //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-    //}
+    }
 
     return VK_FALSE;
 }
 
-CarrotEngine::CarrotEngine(NakedPtr<GLFWwindow> window): window(window) {}
+Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window) {}
 
-void CarrotEngine::init() {
+void Carrot::Engine::init() {
     initWindow();
     initVulkan();
 }
 
-void CarrotEngine::run() {
+void Carrot::Engine::run() {
     init();
 
     size_t currentFrame = 0;
@@ -62,16 +63,16 @@ void CarrotEngine::run() {
 }
 
 static void windowResize(GLFWwindow* window, int width, int height) {
-    auto app = reinterpret_cast<CarrotEngine*>(glfwGetWindowUserPointer(window));
+    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
     app->onWindowResize();
 }
 
-void CarrotEngine::initWindow() {
+void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
 }
 
-void CarrotEngine::initVulkan() {
+void Carrot::Engine::initVulkan() {
     vk::DynamicLoader dl;
     auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
@@ -85,13 +86,14 @@ void CarrotEngine::initVulkan() {
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
-    createCommandPool();
+    createGraphicsCommandPool();
+    createTransferCommandPool();
     createVertexBuffer();
     createCommandBuffers();
     createSynchronizationObjects();
 }
 
-void CarrotEngine::createInstance() {
+void Carrot::Engine::createInstance() {
     if(USE_VULKAN_VALIDATION_LAYERS && !checkValidationLayerSupport()) {
         throw std::runtime_error("Could not find validation layer.");
     }
@@ -140,7 +142,7 @@ void CarrotEngine::createInstance() {
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 }
 
-bool CarrotEngine::checkValidationLayerSupport() {
+bool Carrot::Engine::checkValidationLayerSupport() {
     const std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
 
     for(const char* layer : VULKAN_VALIDATION_LAYERS) {
@@ -155,12 +157,12 @@ bool CarrotEngine::checkValidationLayerSupport() {
     return true;
 }
 
-CarrotEngine::~CarrotEngine() {
+Carrot::Engine::~Engine() {
     swapchain.reset();
     instance->destroySurfaceKHR(surface, allocator);
 }
 
-std::vector<const char *> CarrotEngine::getRequiredExtensions() {
+std::vector<const char *> Carrot::Engine::getRequiredExtensions() {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
@@ -174,7 +176,7 @@ std::vector<const char *> CarrotEngine::getRequiredExtensions() {
     return extensions;
 }
 
-void CarrotEngine::setupDebugMessenger() {
+void Carrot::Engine::setupDebugMessenger() {
     if(!USE_VULKAN_VALIDATION_LAYERS) return;
 
     vk::DebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -183,20 +185,20 @@ void CarrotEngine::setupDebugMessenger() {
     callback = instance->createDebugUtilsMessengerEXTUnique(createInfo, allocator);
 }
 
-void CarrotEngine::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& createInfo) {
+void Carrot::Engine::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& createInfo) {
     createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
     createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
     createInfo.pfnUserCallback = debugCallback;
     createInfo.pUserData = nullptr;
 }
 
-void CarrotEngine::pickPhysicalDevice() {
+void Carrot::Engine::pickPhysicalDevice() {
     const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
 
     std::multimap<int, vk::PhysicalDevice> candidates;
-    for(const auto& device : devices) {
-        int score = ratePhysicalDevice(device);
-        candidates.insert(std::make_pair(score, device));
+    for(const auto& physicalDevice : devices) {
+        int score = ratePhysicalDevice(physicalDevice);
+        candidates.insert(std::make_pair(score, physicalDevice));
     }
 
     if(candidates.rbegin()->first > 0) { // can best candidate run this app?
@@ -206,7 +208,7 @@ void CarrotEngine::pickPhysicalDevice() {
     }
 }
 
-int CarrotEngine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
+int Carrot::Engine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
     QueueFamilies families = findQueueFamilies(device);
     if(!families.isComplete()) // must be able to generate graphics
         return 0;
@@ -240,7 +242,7 @@ int CarrotEngine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
     return score;
 }
 
-QueueFamilies CarrotEngine::findQueueFamilies(vk::PhysicalDevice const &device) {
+Carrot::QueueFamilies Carrot::Engine::findQueueFamilies(vk::PhysicalDevice const &device) {
     std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
     uint32_t index = 0;
 
@@ -248,6 +250,10 @@ QueueFamilies CarrotEngine::findQueueFamilies(vk::PhysicalDevice const &device) 
     for(const auto& family : queueFamilies) {
         if(family.queueFlags & vk::QueueFlagBits::eGraphics) {
             families.graphicsFamily = index;
+        }
+
+        if(family.queueFlags & vk::QueueFlagBits::eTransfer && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
+            families.transferFamily = index;
         }
 
         bool presentSupport = device.getSurfaceSupportKHR(index, surface);
@@ -258,16 +264,21 @@ QueueFamilies CarrotEngine::findQueueFamilies(vk::PhysicalDevice const &device) 
         index++;
     }
 
+    // graphics queue implicitly support transfer operations
+    if(!families.transferFamily.has_value()) {
+        families.transferFamily = families.graphicsFamily;
+    }
+
     return families;
 }
 
-void CarrotEngine::createLogicalDevice() {
-    QueueFamilies families = findQueueFamilies(physicalDevice);
+void Carrot::Engine::createLogicalDevice() {
+    queueFamilies = findQueueFamilies(physicalDevice);
 
     float priority = 1.0f;
 
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfoStructs{};
-    std::set<uint32_t> uniqueQueueFamilies = { families.presentFamily.value(), families.graphicsFamily.value() };
+    std::set<uint32_t> uniqueQueueFamilies = { queueFamilies.presentFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.transferFamily.value() };
 
     for(uint32_t queueFamily : uniqueQueueFamilies) {
         vk::DeviceQueueCreateInfo queueCreateInfo{
@@ -301,11 +312,12 @@ void CarrotEngine::createLogicalDevice() {
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
-    graphicsQueue = device->getQueue(families.graphicsFamily.value(), 0);
-    presentQueue = device->getQueue(families.presentFamily.value(), 0);
+    graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), 0);
+    presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
+    transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
 }
 
-void CarrotEngine::createSurface() {
+void Carrot::Engine::createSurface() {
     auto cAllocator = (const VkAllocationCallbacks*) (allocator);
     VkSurfaceKHR cSurface;
     if(glfwCreateWindowSurface(static_cast<VkInstance>(*instance), window.get(), cAllocator, &cSurface) != VK_SUCCESS) {
@@ -314,7 +326,7 @@ void CarrotEngine::createSurface() {
     surface = cSurface;
 }
 
-bool CarrotEngine::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
+bool Carrot::Engine::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
     const std::vector<vk::ExtensionProperties> available = logicalDevice.enumerateDeviceExtensionProperties(nullptr);
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
@@ -332,7 +344,7 @@ bool CarrotEngine::checkDeviceExtensionSupport(const vk::PhysicalDevice& logical
     return required.empty();
 }
 
-SwapChainSupportDetails CarrotEngine::querySwapChainSupport(const vk::PhysicalDevice& device) {
+Carrot::SwapChainSupportDetails Carrot::Engine::querySwapChainSupport(const vk::PhysicalDevice& device) {
     return {
             .capabilities = device.getSurfaceCapabilitiesKHR(surface),
             .formats = device.getSurfaceFormatsKHR(surface),
@@ -340,7 +352,7 @@ SwapChainSupportDetails CarrotEngine::querySwapChainSupport(const vk::PhysicalDe
     };
 }
 
-vk::SurfaceFormatKHR CarrotEngine::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {
+vk::SurfaceFormatKHR Carrot::Engine::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {
     for(const auto& available : formats) {
         if(available.format == vk::Format::eA8B8G8R8SrgbPack32 && available.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
             return available;
@@ -352,7 +364,7 @@ vk::SurfaceFormatKHR CarrotEngine::chooseSwapSurfaceFormat(const std::vector<vk:
     return formats[0];
 }
 
-vk::PresentModeKHR CarrotEngine::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes) {
+vk::PresentModeKHR Carrot::Engine::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes) {
     for(const auto& mode : presentModes) {
         if(mode == vk::PresentModeKHR::eMailbox) {
             return mode;
@@ -363,7 +375,7 @@ vk::PresentModeKHR CarrotEngine::chooseSwapPresentMode(const std::vector<vk::Pre
     return vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D CarrotEngine::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
+vk::Extent2D Carrot::Engine::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
     if(capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent; // no choice
     } else {
@@ -382,7 +394,7 @@ vk::Extent2D CarrotEngine::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &ca
     }
 }
 
-void CarrotEngine::createSwapChain() {
+void Carrot::Engine::createSwapChain() {
     SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -448,16 +460,16 @@ void CarrotEngine::createSwapChain() {
     createSwapChainImageViews();
 }
 
-void CarrotEngine::createSwapChainImageViews() {
+void Carrot::Engine::createSwapChainImageViews() {
     swapchainImageViews.resize(swapchainImages.size());
 
     for(size_t index = 0; index < swapchainImages.size(); index++) {
-        auto view = CarrotEngine::createImageView(swapchainImages[index], swapchainImageFormat);
+        auto view = Engine::createImageView(swapchainImages[index], swapchainImageFormat);
         swapchainImageViews[index] = std::move(view);
     }
 }
 
-vk::UniqueImageView CarrotEngine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask) const {
+vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask) const {
     return device->createImageViewUnique({
                                                  .image = image,
                                                  .viewType = vk::ImageViewType::e2D,
@@ -480,7 +492,7 @@ vk::UniqueImageView CarrotEngine::createImageView(const vk::Image& image, vk::Fo
                                              }, allocator);
 }
 
-void CarrotEngine::createGraphicsPipeline() {
+void Carrot::Engine::createGraphicsPipeline() {
     auto vertexCode = IO::readFile("resources/shaders/default.vertex.glsl.spv");
     auto fragmentCode = IO::readFile("resources/shaders/default.fragment.glsl.spv");
 
@@ -498,8 +510,8 @@ void CarrotEngine::createGraphicsPipeline() {
                                                                  .pName = "main",
                                                          }};
 
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = Carrot::Vertex::getBindingDescription();
+    auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
             .vertexBindingDescriptionCount = 1,
@@ -613,14 +625,14 @@ void CarrotEngine::createGraphicsPipeline() {
     // modules will be destroyed after the end of this function
 }
 
-vk::UniqueShaderModule CarrotEngine::createShaderModule(const std::vector<char>& bytecode) {
+vk::UniqueShaderModule Carrot::Engine::createShaderModule(const std::vector<char>& bytecode) {
     return device->createShaderModuleUnique({
                                                     .codeSize = bytecode.size(),
                                                     .pCode = reinterpret_cast<const uint32_t*>(bytecode.data()),
                                             }, allocator);
 }
 
-void CarrotEngine::createRenderPass() {
+void Carrot::Engine::createRenderPass() {
     vk::AttachmentDescription colorAttachment{
             .format = swapchainImageFormat,
             .samples = vk::SampleCountFlagBits::e1,
@@ -676,7 +688,7 @@ void CarrotEngine::createRenderPass() {
     renderPass = device->createRenderPassUnique(renderPassInfo, allocator);
 }
 
-void CarrotEngine::createFramebuffers() {
+void Carrot::Engine::createFramebuffers() {
     swapchainFramebuffers.resize(swapchainImages.size());
 
     for (size_t i = 0; i < swapchainImageViews.size(); ++i) {
@@ -697,20 +709,27 @@ void CarrotEngine::createFramebuffers() {
     }
 }
 
-void CarrotEngine::createCommandPool() {
-    QueueFamilies families = findQueueFamilies(physicalDevice);
-
+void Carrot::Engine::createGraphicsCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
-            .queueFamilyIndex = families.graphicsFamily.value(),
+            .queueFamilyIndex = queueFamilies.graphicsFamily.value(),
             // .flags = <value>,  // TODO: resettable command buffers
     };
 
-    commandPool = device->createCommandPoolUnique(poolInfo, allocator);
+    graphicsCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
-void CarrotEngine::createCommandBuffers() {
+void Carrot::Engine::createTransferCommandPool() {
+    vk::CommandPoolCreateInfo poolInfo{
+            .flags = vk::CommandPoolCreateFlagBits::eTransient, // short lived buffer (single use)
+            .queueFamilyIndex = queueFamilies.transferFamily.value(),
+    };
+
+    transferCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
+}
+
+void Carrot::Engine::createCommandBuffers() {
     vk::CommandBufferAllocateInfo allocInfo{
-            .commandPool = *commandPool,
+            .commandPool = *graphicsCommandPool,
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
     };
@@ -743,7 +762,7 @@ void CarrotEngine::createCommandBuffers() {
 
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
-        commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
+        commandBuffers[i].bindVertexBuffers(0, vertexBuffer->getVulkanBuffer(), {0});
         commandBuffers[i].draw(3, 1, 0, 0);
 
         commandBuffers[i].endRenderPass();
@@ -752,7 +771,7 @@ void CarrotEngine::createCommandBuffers() {
     }
 }
 
-void CarrotEngine::drawFrame(size_t currentFrame) {
+void Carrot::Engine::drawFrame(size_t currentFrame) {
     static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
     device->resetFences((*inFlightFences[currentFrame]));
 
@@ -811,7 +830,7 @@ void CarrotEngine::drawFrame(size_t currentFrame) {
     }
 }
 
-void CarrotEngine::createSynchronizationObjects() {
+void Carrot::Engine::createSynchronizationObjects() {
     imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -830,7 +849,7 @@ void CarrotEngine::createSynchronizationObjects() {
     }
 }
 
-void CarrotEngine::recreateSwapchain() {
+void Carrot::Engine::recreateSwapchain() {
     int w, h;
     glfwGetFramebufferSize(window.get(), &w, &h);
     while(w == 0 || h == 0) {
@@ -852,9 +871,9 @@ void CarrotEngine::recreateSwapchain() {
     createCommandBuffers();
 }
 
-void CarrotEngine::cleanupSwapchain() {
+void Carrot::Engine::cleanupSwapchain() {
     swapchainFramebuffers.clear();
-    device->freeCommandBuffers(*commandPool, commandBuffers);
+    device->freeCommandBuffers(*graphicsCommandPool, commandBuffers);
     commandBuffers.clear();
 
     graphicsPipeline.reset();
@@ -864,23 +883,24 @@ void CarrotEngine::cleanupSwapchain() {
     swapchain.reset();
 }
 
-void CarrotEngine::onWindowResize() {
+void Carrot::Engine::onWindowResize() {
     framebufferResized = true;
 }
 
-void CarrotEngine::createVertexBuffer() {
-    vk::BufferCreateInfo bufferInfo = {
-            .size = sizeof(vertices[0]) * vertices.size(),
-            .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-            .sharingMode = vk::SharingMode::eExclusive,
+void Carrot::Engine::createVertexBuffer() {
+    std::set<uint32_t> families = {
+            queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
     };
+    vertexBuffer = make_unique<Carrot::Buffer>(*this,
+                                               sizeof(Carrot::Vertex) * vertices.size(),
+                                               vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                               families);
 
-    vertexBuffer = device->createBufferUnique(bufferInfo, allocator);
-
-    vertexBufferMemory = allocateUploadBuffer(*device, *vertexBuffer, vertices);
+    vertexBuffer->stageUpload(vertices);
 }
 
-uint32_t CarrotEngine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+uint32_t Carrot::Engine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
     auto memProperties = physicalDevice.getMemoryProperties();
     for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
         if(typeFilter & (1 << i)
@@ -891,6 +911,30 @@ uint32_t CarrotEngine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFla
     throw runtime_error("Failed to find suitable memory type.");
 }
 
-bool QueueFamilies::isComplete() {
-    return graphicsFamily.has_value() && presentFamily.has_value();
+Carrot::QueueFamilies& Carrot::Engine::getQueueFamilies() {
+    return queueFamilies;
+}
+
+vk::Device& Carrot::Engine::getLogicalDevice() {
+    return *device;
+}
+
+vk::Optional<const vk::AllocationCallbacks> Carrot::Engine::getAllocator() {
+    return allocator;
+}
+
+vk::CommandPool& Carrot::Engine::getTransferCommandPool() {
+    return *transferCommandPool;
+}
+
+vk::CommandPool& Carrot::Engine::getGraphicsCommandPool() {
+    return *graphicsCommandPool;
+}
+
+vk::Queue& Carrot::Engine::getTransferQueue() {
+    return transferQueue;
+}
+
+bool Carrot::QueueFamilies::isComplete() {
+    return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
 }

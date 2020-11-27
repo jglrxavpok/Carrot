@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-#include "CarrotEngine.h"
+#include "Engine.h"
 #include "constants.h"
 
 int main() {
@@ -16,7 +16,7 @@ int main() {
         // create new scope, as the destructor requires the window to *not* be terminated at its end
         // otherwise this creates a DEP exception when destroying the surface provided by GLFW
         {
-            CarrotEngine engine{window};
+            Carrot::Engine engine{window};
             engine.run();
         }
 

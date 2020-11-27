@@ -22,8 +22,9 @@ endfunction()
 set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
-        src/CarrotEngine.cpp
+        src/Engine.cpp
         src/render/Vertex.cpp
+        src/render/Buffer.cpp
         src/main.cpp
         )
 
