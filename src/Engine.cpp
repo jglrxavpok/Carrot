@@ -17,9 +17,15 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 const std::vector<Carrot::Vertex> vertices = {
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+};
+
+const std::vector<uint32_t> indices = {
+        0,1,2,
+        2,3,0,
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -35,7 +41,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window) {}
+Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window) {
+    init();
+}
 
 void Carrot::Engine::init() {
     initWindow();
@@ -43,7 +51,6 @@ void Carrot::Engine::init() {
 }
 
 void Carrot::Engine::run() {
-    init();
 
     size_t currentFrame = 0;
 
@@ -51,6 +58,7 @@ void Carrot::Engine::run() {
         glfwPollEvents();
 
         if(glfwWindowShouldClose(window.get())) {
+            glfwHideWindow(window.get());
             running = false;
         }
 
@@ -89,6 +97,7 @@ void Carrot::Engine::initVulkan() {
     createGraphicsCommandPool();
     createTransferCommandPool();
     createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -762,8 +771,9 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
+        commandBuffers[i].bindIndexBuffer(indexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
         commandBuffers[i].bindVertexBuffers(0, vertexBuffer->getVulkanBuffer(), {0});
-        commandBuffers[i].draw(3, 1, 0, 0);
+        commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
 
         commandBuffers[i].endRenderPass();
 
@@ -933,6 +943,19 @@ vk::CommandPool& Carrot::Engine::getGraphicsCommandPool() {
 
 vk::Queue& Carrot::Engine::getTransferQueue() {
     return transferQueue;
+}
+
+void Carrot::Engine::createIndexBuffer() {
+    set<uint32_t> families = {
+            queueFamilies.transferFamily.value(),
+            queueFamilies.graphicsFamily.value(),
+    };
+    indexBuffer = make_unique<Carrot::Buffer>(*this,
+                                              sizeof(uint32_t) * indices.size(),
+                                              vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+                                              vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                              families);
+    indexBuffer->stageUpload(indices);
 }
 
 bool Carrot::QueueFamilies::isComplete() {

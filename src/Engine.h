@@ -84,6 +84,7 @@ namespace Carrot {
         vector<vk::UniqueFence> imagesInFlight{};
 
         unique_ptr<Buffer> vertexBuffer = nullptr;
+        unique_ptr<Buffer> indexBuffer = nullptr;
         bool framebufferResized = false;
 
         /// Init engine
@@ -181,6 +182,8 @@ namespace Carrot {
         void uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data);
 
         void createTransferCommandPool();
+
+        void createIndexBuffer();
     };
 }
 
