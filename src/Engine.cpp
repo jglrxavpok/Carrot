@@ -106,6 +106,8 @@ void Carrot::Engine::initVulkan() {
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
+    createDescriptorPool();
+    createDescriptorSets();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -574,7 +576,7 @@ void Carrot::Engine::createGraphicsPipeline() {
 
             .polygonMode = vk::PolygonMode::eFill,
 
-            .cullMode = vk::CullModeFlagBits::eBack,
+            .cullMode = vk::CullModeFlagBits::eFront,
             .frontFace = vk::FrontFace::eClockwise,
 
             // TODO: change for shadow maps
@@ -779,6 +781,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
+        commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, *descriptorSets[i], {0});
         commandBuffers[i].bindIndexBuffer(indexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
         commandBuffers[i].bindVertexBuffers(0, vertexBuffer->getVulkanBuffer(), {0});
         commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
@@ -903,6 +906,7 @@ void Carrot::Engine::recreateSwapchain() {
     createGraphicsPipeline();
     createFramebuffers();
     createUniformBuffers();
+    createDescriptorSets();
     createCommandBuffers();
 }
 
@@ -1017,6 +1021,51 @@ set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
         queueFamilies.graphicsFamily.value(),
         queueFamilies.transferFamily.value(),
     };
+}
+
+void Carrot::Engine::createDescriptorSets() {
+    vector<vk::DescriptorSetLayout> layouts{static_cast<uint32_t>(swapchainFramebuffers.size()), *descriptorSetLayout};
+    vk::DescriptorSetAllocateInfo allocInfo{
+        .descriptorPool = *descriptorPool,
+        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+        .pSetLayouts = layouts.data(),
+    };
+
+    descriptorSets = device->allocateDescriptorSetsUnique(allocInfo);
+
+    vector<vk::WriteDescriptorSet> writes{swapchainFramebuffers.size()};
+    for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
+        vk::DescriptorBufferInfo bufferInfo = {
+                .buffer = uniformBuffers[i]->getVulkanBuffer(),
+                .offset = 0,
+                .range = sizeof(UniformBufferObject),
+        };
+
+        writes[i] = {
+                .dstSet = *descriptorSets[i],
+                .dstBinding = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+                .pBufferInfo = &bufferInfo,
+        };
+    }
+    device->updateDescriptorSets(writes, {});
+}
+
+void Carrot::Engine::createDescriptorPool() {
+    vk::DescriptorPoolSize size{
+        .type = vk::DescriptorType::eUniformBufferDynamic,
+        .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+    };
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets = static_cast<uint32_t>(swapchainFramebuffers.size()),
+        .poolSizeCount = 1,
+        .pPoolSizes = &size,
+    };
+
+    descriptorPool = device->createDescriptorPoolUnique(poolInfo, allocator);
 }
 
 bool Carrot::QueueFamilies::isComplete() {

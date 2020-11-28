@@ -89,3 +89,7 @@ void Carrot::Buffer::directUpload(const void* data, size_t length) {
     memcpy(pData, data, length);
     device.unmapMemory(*memory);
 }
+
+uint64_t Carrot::Buffer::getSize() const {
+    return size;
+}

@@ -23,6 +23,8 @@ namespace Carrot {
 
         const vk::Buffer& getVulkanBuffer() const;
 
+        uint64_t getSize() const;
+
         void copyTo(Buffer& other) const;
 
         void directUpload(const void* data, size_t length);

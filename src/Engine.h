@@ -89,6 +89,8 @@ namespace Carrot {
 
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
         vector<shared_ptr<Buffer>> uniformBuffers{};
+        vk::UniqueDescriptorPool descriptorPool{};
+        vector<vk::UniqueDescriptorSet> descriptorSets{};
 
         bool framebufferResized = false;
 
@@ -197,6 +199,10 @@ namespace Carrot {
 
         template<typename T>
         void uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data);
+
+        void createDescriptorSets();
+
+        void createDescriptorPool();
     };
 }
 
