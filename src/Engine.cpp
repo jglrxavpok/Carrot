@@ -486,7 +486,7 @@ void Carrot::Engine::createSwapChain() {
     this->swapchainImageFormat = surfaceFormat.format;
     this->swapchainExtent = swapchainExtent;
 
-    depthFormat = vk::Format::eD24UnormS8Uint;
+    depthFormat = findDepthFormat();
 
     createSwapChainImageViews();
 }
@@ -689,7 +689,7 @@ void Carrot::Engine::createRenderPass() {
     };
 
     vk::AttachmentDescription depthAttachment{
-            .format = vk::Format::eD24UnormS8Uint, // TODO: depth format
+            .format = depthFormat,
             .samples = vk::SampleCountFlagBits::e1,
 
             .loadOp = vk::AttachmentLoadOp::eClear,
@@ -1128,6 +1128,29 @@ void Carrot::Engine::createDepthTexture() {
 
     auto depth = Engine::createImageView(depthImage->getVulkanImage(), depthFormat, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
     depthImageView = std::move(depth);
+}
+
+vk::Format Carrot::Engine::findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+    for(auto& format : candidates) {
+        vk::FormatProperties properties = physicalDevice.getFormatProperties(format);
+
+        if(tiling == vk::ImageTiling::eLinear && (properties.linearTilingFeatures & features) == features) {
+            return format;
+        }
+
+        if(tiling == vk::ImageTiling::eOptimal && (properties.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    throw runtime_error("Could not find supported format");
+}
+
+vk::Format Carrot::Engine::findDepthFormat() {
+    return findSupportedFormat(
+            {vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+            vk::ImageTiling::eOptimal,
+            vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
 bool Carrot::QueueFamilies::isComplete() {

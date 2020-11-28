@@ -196,6 +196,16 @@ namespace Carrot {
 
         void updateUniformBuffer(int imageIndex);
 
+        void createDescriptorSets();
+
+        void createDescriptorPool();
+
+        void createDepthTexture();
+
+        vk::Format findDepthFormat();
+
+        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+
         // Templates
 
         template<typename T>
@@ -203,12 +213,6 @@ namespace Carrot {
 
         template<typename T>
         void uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data);
-
-        void createDescriptorSets();
-
-        void createDescriptorPool();
-
-        void createDepthTexture();
     };
 }
 
