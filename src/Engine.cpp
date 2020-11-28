@@ -106,6 +106,7 @@ void Carrot::Engine::initVulkan() {
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createDepthTexture();
     createRenderPass();
     createDescriptorSetLayout();
     createGraphicsPipeline();
@@ -485,28 +486,17 @@ void Carrot::Engine::createSwapChain() {
     this->swapchainImageFormat = surfaceFormat.format;
     this->swapchainExtent = swapchainExtent;
 
-    swapchainDepthFormat = vk::Format::eD24UnormS8Uint;
+    depthFormat = vk::Format::eD24UnormS8Uint;
 
     createSwapChainImageViews();
 }
 
 void Carrot::Engine::createSwapChainImageViews() {
     swapchainImageViews.resize(swapchainImages.size());
-    swapchainDepthViews.resize(swapchainImages.size());
-    swapchainDepthImages.resize(swapchainImages.size());
 
     for(size_t index = 0; index < swapchainImages.size(); index++) {
         auto view = Engine::createImageView(swapchainImages[index], swapchainImageFormat);
         swapchainImageViews[index] = std::move(view);
-
-        swapchainDepthImages[index] = make_shared<Image>(*this,
-                                                         vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                         vk::ImageUsageFlagBits::eDepthStencilAttachment,
-                                                         swapchainDepthFormat,
-                                                         set<uint32_t>{queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()});
-
-        auto depth = Engine::createImageView(swapchainDepthImages[index]->getVulkanImage(), swapchainDepthFormat, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
-        swapchainDepthViews[index] = std::move(depth);
     }
 }
 
@@ -764,7 +754,7 @@ void Carrot::Engine::createFramebuffers() {
     for (size_t i = 0; i < swapchainImageViews.size(); ++i) {
         vk::ImageView attachments[] = {
                 *swapchainImageViews[i],
-                *swapchainDepthViews[i],
+                *depthImageView,
         };
 
         vk::FramebufferCreateInfo framebufferInfo{
@@ -962,7 +952,7 @@ void Carrot::Engine::recreateSwapchain() {
     cleanupSwapchain();
 
     createSwapChain();
-    createSwapChainImageViews();
+    createDepthTexture();
     createRenderPass();
     createGraphicsPipeline();
     createFramebuffers();
@@ -1127,6 +1117,17 @@ void Carrot::Engine::createDescriptorPool() {
     };
 
     descriptorPool = device->createDescriptorPoolUnique(poolInfo, allocator);
+}
+
+void Carrot::Engine::createDepthTexture() {
+    depthImage = make_unique<Image>(*this,
+                                           vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                           vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                                           depthFormat,
+                                           set<uint32_t>{queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()});
+
+    auto depth = Engine::createImageView(depthImage->getVulkanImage(), depthFormat, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+    depthImageView = std::move(depth);
 }
 
 bool Carrot::QueueFamilies::isComplete() {

@@ -69,13 +69,13 @@ namespace Carrot {
         vk::Queue transferQueue{};
         vk::SurfaceKHR surface{};
         vk::UniqueSwapchainKHR swapchain{};
-        vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
-        vector<shared_ptr<Image>> swapchainDepthImages{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
-        vk::Format swapchainDepthFormat = vk::Format::eUndefined;
+        vk::Format depthFormat = vk::Format::eUndefined;
+        vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
+        unique_ptr<Image> depthImage{};
         vk::Extent2D swapchainExtent{};
         vector<vk::UniqueImageView> swapchainImageViews{};
-        vector<vk::UniqueImageView> swapchainDepthViews{};
+        vk::UniqueImageView depthImageView{};
         vk::UniqueRenderPass renderPass{};
         vk::UniquePipelineLayout pipelineLayout{};
         vk::UniquePipeline graphicsPipeline{};
@@ -207,6 +207,8 @@ namespace Carrot {
         void createDescriptorSets();
 
         void createDescriptorPool();
+
+        void createDepthTexture();
     };
 }
 
