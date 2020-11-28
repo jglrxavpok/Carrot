@@ -18,6 +18,7 @@
 #include "Engine.h"
 #include "constants.h"
 #include "render/Buffer.h"
+#include "render/Image.h"
 #include "render/Vertex.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -26,12 +27,20 @@ const std::vector<Carrot::Vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
+        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+
+        {{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 };
 
 const std::vector<uint32_t> indices = {
         0,1,2,
         2,3,0,
+
+        4,5,6,
+        6,7,4,
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -476,19 +485,32 @@ void Carrot::Engine::createSwapChain() {
     this->swapchainImageFormat = surfaceFormat.format;
     this->swapchainExtent = swapchainExtent;
 
+    swapchainDepthFormat = vk::Format::eD24UnormS8Uint;
+
     createSwapChainImageViews();
 }
 
 void Carrot::Engine::createSwapChainImageViews() {
     swapchainImageViews.resize(swapchainImages.size());
+    swapchainDepthViews.resize(swapchainImages.size());
+    swapchainDepthImages.resize(swapchainImages.size());
 
     for(size_t index = 0; index < swapchainImages.size(); index++) {
         auto view = Engine::createImageView(swapchainImages[index], swapchainImageFormat);
         swapchainImageViews[index] = std::move(view);
+
+        swapchainDepthImages[index] = make_shared<Image>(*this,
+                                                         vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                         vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                                                         swapchainDepthFormat,
+                                                         set<uint32_t>{queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()});
+
+        auto depth = Engine::createImageView(swapchainDepthImages[index]->getVulkanImage(), swapchainDepthFormat, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+        swapchainDepthViews[index] = std::move(depth);
     }
 }
 
-vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask) const {
+vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) const {
     return device->createImageViewUnique({
                                                  .image = image,
                                                  .viewType = vk::ImageViewType::e2D,
@@ -596,7 +618,12 @@ void Carrot::Engine::createGraphicsPipeline() {
             .alphaToCoverageEnable = false,
             .alphaToOneEnable = false,
     };
-    // TODO: Depth & stencil
+    vk::PipelineDepthStencilStateCreateInfo depthStencil {
+        .depthTestEnable = true,
+        .depthWriteEnable = true,
+        .depthCompareOp = vk::CompareOp::eLessOrEqual,
+        .stencilTestEnable = false,
+    };
 
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{
             // TODO: blending
@@ -631,7 +658,7 @@ void Carrot::Engine::createGraphicsPipeline() {
             .pViewportState = &viewportState,
             .pRasterizationState = &rasterizer,
             .pMultisampleState = &multisampling,
-            .pDepthStencilState = nullptr,
+            .pDepthStencilState = &depthStencil,
             .pColorBlendState = &colorBlending,
             .pDynamicState = nullptr,
 
@@ -671,6 +698,25 @@ void Carrot::Engine::createRenderPass() {
             .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
 
+    vk::AttachmentDescription depthAttachment{
+            .format = vk::Format::eD24UnormS8Uint, // TODO: depth format
+            .samples = vk::SampleCountFlagBits::e1,
+
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore,
+
+            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+    };
+
+    vk::AttachmentReference depthAttachmentRef{
+            .attachment = 1,
+            .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+    };
+
     vk::SubpassDescription subpass{
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
             .inputAttachmentCount = 0,
@@ -678,7 +724,7 @@ void Carrot::Engine::createRenderPass() {
             .colorAttachmentCount = 1,
             // index in this array is used by `layout(location = 0)` inside shaders
             .pColorAttachments = &colorAttachmentRef,
-            .pDepthStencilAttachment = nullptr,
+            .pDepthStencilAttachment = &depthAttachmentRef,
 
             .preserveAttachmentCount = 0,
     };
@@ -694,9 +740,14 @@ void Carrot::Engine::createRenderPass() {
             .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
     };
 
+    vector<vk::AttachmentDescription> attachments = {
+            colorAttachment,
+            depthAttachment,
+    };
+
     vk::RenderPassCreateInfo renderPassInfo{
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachment,
+            .attachmentCount = static_cast<uint32_t>(attachments.size()),
+            .pAttachments = attachments.data(),
             .subpassCount = 1,
             .pSubpasses = &subpass,
 
@@ -712,12 +763,13 @@ void Carrot::Engine::createFramebuffers() {
 
     for (size_t i = 0; i < swapchainImageViews.size(); ++i) {
         vk::ImageView attachments[] = {
-                *swapchainImageViews[i]
+                *swapchainImageViews[i],
+                *swapchainDepthViews[i],
         };
 
         vk::FramebufferCreateInfo framebufferInfo{
                 .renderPass = *renderPass,
-                .attachmentCount = 1,
+                .attachmentCount = 2,
                 .pAttachments = attachments,
                 .width = swapchainExtent.width,
                 .height = swapchainExtent.height,
@@ -764,6 +816,15 @@ void Carrot::Engine::createCommandBuffers() {
         commandBuffers[i].begin(beginInfo);
 
         vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+        vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
+            .depth = INFINITY,
+            .stencil = 0
+        };
+
+        vk::ClearValue clearValues[] = {
+                clearColor,
+                clearDepth,
+        };
 
         vk::RenderPassBeginInfo renderPassInfo{
                 .renderPass = *renderPass,
@@ -773,8 +834,8 @@ void Carrot::Engine::createCommandBuffers() {
                         .extent = swapchainExtent
                 },
 
-                .clearValueCount = 1,
-                .pClearValues = &clearColor,
+                .clearValueCount = 2,
+                .pClearValues = clearValues,
         };
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);

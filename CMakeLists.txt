@@ -26,6 +26,7 @@ set(SOURCES
         src/render/Vertex.cpp
         src/render/Buffer.cpp
         src/render/UniformBufferObject.cpp
+        src/render/Image.cpp
         src/main.cpp
         )
 

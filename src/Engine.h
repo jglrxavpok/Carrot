@@ -15,6 +15,7 @@ using namespace std;
 
 namespace Carrot {
     class Buffer;
+    class Image;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -69,9 +70,12 @@ namespace Carrot {
         vk::SurfaceKHR surface{};
         vk::UniqueSwapchainKHR swapchain{};
         vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
+        vector<shared_ptr<Image>> swapchainDepthImages{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
+        vk::Format swapchainDepthFormat = vk::Format::eUndefined;
         vk::Extent2D swapchainExtent{};
         vector<vk::UniqueImageView> swapchainImageViews{};
+        vector<vk::UniqueImageView> swapchainDepthViews{};
         vk::UniqueRenderPass renderPass{};
         vk::UniquePipelineLayout pipelineLayout{};
         vk::UniquePipeline graphicsPipeline{};
@@ -156,7 +160,7 @@ namespace Carrot {
 
         void createSwapChainImageViews();
 
-        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlagBits aspectMask = vk::ImageAspectFlagBits::eColor) const;
+        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor) const;
 
         void createGraphicsPipeline();
 
