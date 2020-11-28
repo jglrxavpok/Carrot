@@ -94,7 +94,7 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
         vector<shared_ptr<Buffer>> uniformBuffers{};
         vk::UniqueDescriptorPool descriptorPool{};
-        vector<vk::UniqueDescriptorSet> descriptorSets{};
+        vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
         bool framebufferResized = false;
 

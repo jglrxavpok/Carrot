@@ -723,11 +723,11 @@ void Carrot::Engine::createRenderPass() {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0, // our subpass
 
-            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
             // TODO: .srcAccessMask = 0,
 
-            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
     };
 
     vector<vk::AttachmentDescription> attachments = {
@@ -807,7 +807,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
         vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
-            .depth = INFINITY,
+            .depth = 1.0f,
             .stencil = 0
         };
 
@@ -832,7 +832,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
-        commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, *descriptorSets[i], {0});
+        commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {0});
         commandBuffers[i].bindIndexBuffer(indexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
         commandBuffers[i].bindVertexBuffers(0, vertexBuffer->getVulkanBuffer(), {0});
         commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
@@ -957,6 +957,7 @@ void Carrot::Engine::recreateSwapchain() {
     createGraphicsPipeline();
     createFramebuffers();
     createUniformBuffers();
+    createDescriptorPool();
     createDescriptorSets();
     createCommandBuffers();
 }
@@ -1082,7 +1083,7 @@ void Carrot::Engine::createDescriptorSets() {
         .pSetLayouts = layouts.data(),
     };
 
-    descriptorSets = device->allocateDescriptorSetsUnique(allocInfo);
+    descriptorSets = device->allocateDescriptorSets(allocInfo);
 
     vector<vk::WriteDescriptorSet> writes{swapchainFramebuffers.size()};
     for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
@@ -1093,7 +1094,7 @@ void Carrot::Engine::createDescriptorSets() {
         };
 
         writes[i] = {
-                .dstSet = *descriptorSets[i],
+                .dstSet = descriptorSets[i],
                 .dstBinding = 0,
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
@@ -1120,6 +1121,8 @@ void Carrot::Engine::createDescriptorPool() {
 }
 
 void Carrot::Engine::createDepthTexture() {
+    depthImageView.reset();
+    depthImage = nullptr;
     depthImage = make_unique<Image>(*this,
                                            vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                            vk::ImageUsageFlagBits::eDepthStencilAttachment,
