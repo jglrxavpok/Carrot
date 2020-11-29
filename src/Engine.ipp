@@ -9,17 +9,9 @@
 
 using namespace std;
 
-template<typename T>
-void Carrot::Engine::uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data) {
-    size_t fullSize = data.size() * sizeof(T);
-    void* pData;
-    device.mapMemory(memory, 0, fullSize, static_cast<vk::MemoryMapFlagBits>(0), &pData);
-    memcpy(pData, data.data(), fullSize);
-    device.unmapMemory(memory);
-}
-
 template<typename CommandBufferConsumer>
 void Carrot::Engine::performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer) {
+    // allocate command buffer
     vk::CommandBufferAllocateInfo allocationInfo {
             .commandPool = commandPool,
             .level = vk::CommandBufferLevel::ePrimary,
@@ -27,13 +19,16 @@ void Carrot::Engine::performSingleTimeCommands(vk::CommandPool& commandPool, vk:
     };
     vk::CommandBuffer stagingCommands = device->allocateCommandBuffers(allocationInfo)[0];
 
+    // begin recording
     vk::CommandBufferBeginInfo beginInfo {
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
     };
     stagingCommands.begin(beginInfo);
 
+    // let user record their commands
     consumer(stagingCommands);
 
+    // end and submit
     stagingCommands.end();
 
     vk::SubmitInfo submitInfo = {
@@ -41,8 +36,11 @@ void Carrot::Engine::performSingleTimeCommands(vk::CommandPool& commandPool, vk:
             .pCommandBuffers = &stagingCommands,
     };
     queue.submit(submitInfo, nullptr);
+
+    // wait for execution
     queue.waitIdle();
 
+    // free now-useless command buffers
     device->freeCommandBuffers(commandPool, stagingCommands);
 }
 

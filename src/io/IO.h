@@ -7,5 +7,6 @@
 #include <string>
 
 namespace IO {
-    std::vector<char> readFile(const std::string& filename);
+    /// Reads the contents of a file as a list of bytes
+    std::vector<uint8_t> readFile(const std::string& filename);
 }

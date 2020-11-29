@@ -55,14 +55,14 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
 
 void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     // create buffer holding data
-    auto stagingBuffer = make_unique<Carrot::Buffer>(engine,
+    auto stagingBuffer = Carrot::Buffer(engine,
                                          static_cast<vk::DeviceSize>(data.size()),
                                          vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                                         set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
+                                         {engine.getQueueFamilies().transferFamily.value()});
 
     // fill buffer
-    stagingBuffer->directUpload(data.data(), data.size());
+    stagingBuffer.directUpload(data.data(), data.size());
 
     // prepare image for transfer
     transitionLayout(vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -80,7 +80,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
                 },
                 .imageExtent = size,
         };
-        commands.copyBufferToImage(stagingBuffer->getVulkanBuffer(), *vkImage,
+        commands.copyBufferToImage(stagingBuffer.getVulkanBuffer(), *vkImage,
                                    vk::ImageLayout::eTransferDstOptimal, region);
     });
 

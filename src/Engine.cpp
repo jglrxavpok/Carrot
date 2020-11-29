@@ -669,7 +669,7 @@ void Carrot::Engine::createGraphicsPipeline() {
     // modules will be destroyed after the end of this function
 }
 
-vk::UniqueShaderModule Carrot::Engine::createShaderModule(const std::vector<char>& bytecode) {
+vk::UniqueShaderModule Carrot::Engine::createShaderModule(const std::vector<uint8_t>& bytecode) {
     return device->createShaderModuleUnique({
                                                     .codeSize = bytecode.size(),
                                                     .pCode = reinterpret_cast<const uint32_t*>(bytecode.data()),

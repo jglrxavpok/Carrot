@@ -9,6 +9,7 @@
 #include <set>
 
 namespace Carrot {
+    /// Abstraction over Vulkan images. Manages lifetime and memory
     class Image {
     private:
         Carrot::Engine& engine;
@@ -17,6 +18,7 @@ namespace Carrot {
         vk::UniqueDeviceMemory memory;
 
     public:
+        /// Creates a new empty image with the given parameters. Will also allocate the corresponding memory
         explicit Image(Carrot::Engine& engine,
                        vk::Extent3D extent,
                        vk::ImageUsageFlags usage,
@@ -28,12 +30,16 @@ namespace Carrot {
         const vk::Image& getVulkanImage() const;
         const vk::Extent3D& getSize() const;
 
+        /// Stage a upload to this image, and wait for the upload to finish.
         void stageUpload(const vector<uint8_t>& data);
 
+        /// Transition the layout of this image from one layout to another
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 
+        /// Creates a ImageView pointing to this image
         vk::UniqueImageView createImageView();
 
+        /// Create and fill an Image from a given image file
         static unique_ptr<Image> fromFile(Carrot::Engine& engine, const std::string& filename);
 
         ~Image() = default;

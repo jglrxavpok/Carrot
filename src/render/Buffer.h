@@ -19,17 +19,22 @@ namespace Carrot {
         vk::UniqueDeviceMemory memory{};
 
     public:
+        /// Creates and allocates a buffer with the given parameters
         explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
 
         const vk::Buffer& getVulkanBuffer() const;
 
         uint64_t getSize() const;
 
+        /// Copies this buffer to 'other' as a transfer operation
         void copyTo(Buffer& other) const;
 
+        /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
+        /// Only use for host-visible and host-coherent memory
         void directUpload(const void* data, size_t length);
 
-        /// Stage an upload to the GPU
+        /// Stage an upload to the GPU, and wait for it to finish.
+        /// Requires device-local memory
         /// \tparam T
         /// \param data
         template<typename T>

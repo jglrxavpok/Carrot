@@ -4,6 +4,7 @@
 
 #pragma once
 
+/// Abstraction over naked pointers
 template<typename PointedType>
 class NakedPtr {
 public:

@@ -5,16 +5,16 @@
 #include "IO.h"
 #include <fstream>
 
-std::vector<char> IO::readFile(const std::string& filename) {
+std::vector<uint8_t> IO::readFile(const std::string& filename) {
     // start at end of file to get length directly
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
     size_t filesize = static_cast<size_t>(file.tellg());
 
-    std::vector<char> contents(filesize);
+    std::vector<uint8_t> contents(filesize);
     file.seekg(0);
 
-    file.read(contents.data(), filesize);
+    file.read(reinterpret_cast<char*>(contents.data()), filesize);
 
     file.close();
 
