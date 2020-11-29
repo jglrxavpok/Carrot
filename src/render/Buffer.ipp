@@ -6,14 +6,29 @@
 #include <memory>
 #include "render/Buffer.h"
 
-template<typename T>
-void Carrot::Buffer::stageUpload(const std::vector<T>& data) {
+template<typename... T>
+void Carrot::Buffer::stageUpload(const vector<T>&... data) {
+    uint64_t offset = 0;
+    (
+            (
+                stageUpload(make_pair(offset, data)),
+                offset += data.size() * sizeof(T)
+            )
+    , ...);
+}
+
+template<typename... T>
+void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs) {
     // allocate staging buffer used for transfer
     auto stagingBuffer = Carrot::Buffer(engine, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
-    auto& device = engine.getLogicalDevice();
-    stagingBuffer.directUpload(data.data(), data.size() * sizeof(T));
+    (
+            (
+                    stagingBuffer.directUpload(offsetDataPairs.second.data(), offsetDataPairs.second.size() * sizeof(T), offsetDataPairs.first)
+            )
+    , ...);
+
 
     // copy staging buffer to this buffer
     stagingBuffer.copyTo(*this);

@@ -19,6 +19,7 @@
 #include "constants.h"
 #include "render/Buffer.h"
 #include "render/Image.h"
+#include "render/Mesh.h"
 #include "render/Vertex.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -113,8 +114,7 @@ void Carrot::Engine::initVulkan() {
     createFramebuffers();
     createGraphicsCommandPool();
     createTransferCommandPool();
-    createVertexBuffer();
-    createIndexBuffer();
+    createMesh();
     createTexture();
     createSamplers();
     createUniformBuffers();
@@ -841,9 +841,8 @@ void Carrot::Engine::createCommandBuffers() {
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
         commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {0});
-        commandBuffers[i].bindIndexBuffer(indexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
-        commandBuffers[i].bindVertexBuffers(0, vertexBuffer->getVulkanBuffer(), {0});
-        commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
+        mesh->bind(commandBuffers[i]);
+        mesh->draw(commandBuffers[i]);
 
         commandBuffers[i].endRenderPass();
 
@@ -986,19 +985,6 @@ void Carrot::Engine::onWindowResize() {
     framebufferResized = true;
 }
 
-void Carrot::Engine::createVertexBuffer() {
-    std::set<uint32_t> families = {
-            queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
-    };
-    vertexBuffer = make_unique<Carrot::Buffer>(*this,
-                                               sizeof(Carrot::Vertex) * vertices.size(),
-                                               vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                               families);
-
-    vertexBuffer->stageUpload(vertices);
-}
-
 uint32_t Carrot::Engine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
     auto memProperties = physicalDevice.getMemoryProperties();
     for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
@@ -1036,19 +1022,6 @@ vk::Queue Carrot::Engine::getTransferQueue() {
 
 vk::Queue Carrot::Engine::getGraphicsQueue() {
     return graphicsQueue;
-}
-
-void Carrot::Engine::createIndexBuffer() {
-    set<uint32_t> families = {
-            queueFamilies.transferFamily.value(),
-            queueFamilies.graphicsFamily.value(),
-    };
-    indexBuffer = make_unique<Carrot::Buffer>(*this,
-                                              sizeof(uint32_t) * indices.size(),
-                                              vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-                                              vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                              families);
-    indexBuffer->stageUpload(indices);
 }
 
 void Carrot::Engine::createDescriptorSetLayout() {
@@ -1254,6 +1227,10 @@ void Carrot::Engine::createSamplers() {
                                                         .maxAnisotropy = 16.0f,
                                                         .unnormalizedCoordinates = false,
                                                 }, allocator);
+}
+
+void Carrot::Engine::createMesh() {
+    mesh = make_unique<Carrot::Mesh>(*this, vertices, indices);
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

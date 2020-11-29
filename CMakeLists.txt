@@ -25,6 +25,7 @@ set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
         src/Engine.cpp
+        src/render/Mesh.cpp
         src/render/Vertex.cpp
         src/render/Buffer.cpp
         src/render/UniformBufferObject.cpp

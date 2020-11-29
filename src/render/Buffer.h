@@ -31,14 +31,17 @@ namespace Carrot {
 
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
-        void directUpload(const void* data, size_t length);
+        void directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
 
         /// Stage an upload to the GPU, and wait for it to finish.
         /// Requires device-local memory
         /// \tparam T
         /// \param data
-        template<typename T>
-        void stageUpload(const std::vector<T>& data);
+        template<typename... T>
+        void stageUpload(const vector<T>&... data);
+
+        template<typename... T>
+        void stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs);
 
         ~Buffer() = default;
     };

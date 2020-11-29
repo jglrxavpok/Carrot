@@ -16,6 +16,7 @@ using namespace std;
 namespace Carrot {
     class Buffer;
     class Image;
+    class Mesh;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -128,8 +129,7 @@ namespace Carrot {
         vector<vk::UniqueFence> imagesInFlight{};
 
         // TODO: abstraction over meshes
-        unique_ptr<Buffer> vertexBuffer = nullptr;
-        unique_ptr<Buffer> indexBuffer = nullptr;
+        unique_ptr<Mesh> mesh = nullptr;
 
         // TODO: abstraction over textures
         unique_ptr<Image> texture = nullptr;
@@ -238,14 +238,8 @@ namespace Carrot {
         /// Cleanup swapchain resources after window resizing
         void cleanupSwapchain();
 
-        /// Create the vertex buffer
-        void createVertexBuffer();
-
         /// Create the command pool for transfer operations
         void createTransferCommandPool();
-
-        /// Create the index buffer
-        void createIndexBuffer();
 
         /// Create the descriptor set layout used by the pipeline
         void createDescriptorSetLayout();
@@ -279,6 +273,8 @@ namespace Carrot {
 
         /// Create the samplers used by the engine
         void createSamplers();
+
+        void createMesh();
     };
 }
 
