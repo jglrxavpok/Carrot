@@ -9,12 +9,13 @@
 
 namespace Carrot {
     struct Vertex {
-        glm::vec3 pos;
-        glm::vec3 color;
+        alignas(16) glm::vec3 pos;
+        alignas(16) glm::vec3 color;
+        alignas(16) glm::vec2 uv;
 
         static vk::VertexInputBindingDescription getBindingDescription();
 
-        static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+        static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions();
     };
 }
 

@@ -19,6 +19,8 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     )
 endfunction()
 
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/textures" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+
 set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
@@ -28,6 +30,7 @@ set(SOURCES
         src/render/UniformBufferObject.cpp
         src/render/Image.cpp
         src/main.cpp
+        src/stb_impls.cpp
         )
 
 set(VERTEX_SHADERS
@@ -50,5 +53,6 @@ foreach(shader ${FRAGMENT_SHADERS})
 endforeach()
 
 include_directories(src/)
+include_directories(thirdparty/stb/)
 add_executable(Carrot ${SOURCES} ${SHADERS})
 target_link_libraries(Carrot Vulkan::Vulkan glfw glm)

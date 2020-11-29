@@ -12,6 +12,7 @@ namespace Carrot {
     class Image {
     private:
         Carrot::Engine& engine;
+        vk::Extent3D size{};
         vk::UniqueImage vkImage;
         vk::UniqueDeviceMemory memory;
 
@@ -25,6 +26,15 @@ namespace Carrot {
                        vk::ImageType type = vk::ImageType::e2D);
 
         const vk::Image& getVulkanImage() const;
+        const vk::Extent3D& getSize() const;
+
+        void stageUpload(const vector<uint8_t>& data);
+
+        void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+
+        vk::UniqueImageView createImageView();
+
+        static unique_ptr<Image> fromFile(Carrot::Engine& engine, const std::string& filename);
 
         ~Image() = default;
     };

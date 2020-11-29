@@ -4,8 +4,8 @@
 
 #include "Vertex.h"
 
-std::array<vk::VertexInputAttributeDescription, 2> Carrot::Vertex::getAttributeDescriptions() {
-    std::array<vk::VertexInputAttributeDescription, 2> descriptions{};
+std::array<vk::VertexInputAttributeDescription, 3> Carrot::Vertex::getAttributeDescriptions() {
+    std::array<vk::VertexInputAttributeDescription, 3> descriptions{};
 
     descriptions[0] = {
             .location = 0,
@@ -19,6 +19,13 @@ std::array<vk::VertexInputAttributeDescription, 2> Carrot::Vertex::getAttributeD
             .binding = 0,
             .format = vk::Format::eR32G32B32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(Vertex, color)),
+    };
+
+    descriptions[2] = {
+            .location = 2,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(Vertex, uv)),
     };
 
     return descriptions;

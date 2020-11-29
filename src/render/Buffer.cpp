@@ -42,38 +42,14 @@ Carrot::Buffer::Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags
 }
 
 void Carrot::Buffer::copyTo(Carrot::Buffer& other) const {
-    auto& device = engine.getLogicalDevice();
-
-    vk::CommandBufferAllocateInfo allocationInfo {
-        .commandPool = engine.getTransferCommandPool(),
-        .level = vk::CommandBufferLevel::ePrimary,
-        .commandBufferCount = 1,
-    };
-    vk::CommandBuffer stagingCommands = device.allocateCommandBuffers(allocationInfo)[0];
-
-    vk::CommandBufferBeginInfo beginInfo {
-        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
-    };
-    stagingCommands.begin(beginInfo);
-
-    vk::BufferCopy copyRegion = {
-            .srcOffset = 0,
-            .dstOffset = 0,
-            .size = size,
-    };
-    stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
-
-    stagingCommands.end();
-
-    vk::SubmitInfo submitInfo = {
-            .commandBufferCount = 1,
-            .pCommandBuffers = &stagingCommands,
-    };
-    auto& transferQueue = engine.getTransferQueue();
-    transferQueue.submit(submitInfo, nullptr);
-    transferQueue.waitIdle();
-
-    device.freeCommandBuffers(engine.getTransferCommandPool(), stagingCommands);
+    engine.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+        vk::BufferCopy copyRegion = {
+                .srcOffset = 0,
+                .dstOffset = 0,
+                .size = size,
+        };
+        stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
+    });
 }
 
 const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {

@@ -22,7 +22,7 @@ namespace Carrot {
         std::optional<uint32_t> presentFamily;
         std::optional<uint32_t> transferFamily;
 
-        bool isComplete();
+        bool isComplete() const;
     };
 
     struct SwapChainSupportDetails {
@@ -52,7 +52,31 @@ namespace Carrot {
         vk::CommandPool& getTransferCommandPool();
         vk::CommandPool& getGraphicsCommandPool();
 
-        vk::Queue& getTransferQueue();
+        vk::Queue getTransferQueue();
+
+        vk::Queue getGraphicsQueue();
+
+        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor) const;
+
+        // templates
+
+        /// Performs a transfer operation on the transfer queue.
+        /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
+        /// \param consumer function describing the operation
+        template<typename CommandBufferConsumer>
+        void performSingleTimeTransferCommands(CommandBufferConsumer consumer);
+
+        /// Performs a graphics operation on the graphics queue.
+        /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
+        /// \param consumer function describing the operation
+        template<typename CommandBufferConsumer>
+        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer);
+
+        /// Performs an operation on the given queue.
+        /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
+        /// \param consumer function describing the operation
+        template<typename CommandBufferConsumer>
+        void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);
 
     private:
         bool running = true;
@@ -90,6 +114,12 @@ namespace Carrot {
 
         unique_ptr<Buffer> vertexBuffer = nullptr;
         unique_ptr<Buffer> indexBuffer = nullptr;
+
+        // TODO: abstraction over textures
+        unique_ptr<Image> texture = nullptr;
+        vk::UniqueImageView textureView{};
+        vk::UniqueSampler linearRepeatSampler{};
+        vk::UniqueSampler nearestRepeatSampler{};
 
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
         vector<shared_ptr<Buffer>> uniformBuffers{};
@@ -160,8 +190,6 @@ namespace Carrot {
 
         void createSwapChainImageViews();
 
-        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor) const;
-
         void createGraphicsPipeline();
 
         vk::UniqueShaderModule createShaderModule(const vector<char>& bytecode);
@@ -206,6 +234,8 @@ namespace Carrot {
 
         vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
+        void createTexture();
+
         // Templates
 
         template<typename T>
@@ -213,6 +243,8 @@ namespace Carrot {
 
         template<typename T>
         void uploadBuffer(vk::Device& device, vk::Buffer& buffer, vk::DeviceMemory& memory, const vector<T>& data);
+
+        void createSamplers();
     };
 }
 

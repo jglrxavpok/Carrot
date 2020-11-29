@@ -24,15 +24,15 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 const std::vector<Carrot::Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 
-        {{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+        {{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
 const std::vector<uint32_t> indices = {
@@ -115,6 +115,8 @@ void Carrot::Engine::initVulkan() {
     createTransferCommandPool();
     createVertexBuffer();
     createIndexBuffer();
+    createTexture();
+    createSamplers();
     createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
@@ -261,6 +263,10 @@ int Carrot::Engine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
         score += 1000;
     }
 
+    if(!deviceFeatures.samplerAnisotropy) { // must support anisotropy
+        return 0;
+    }
+
     // prefer maximum texture size
     score += deviceProperties.limits.maxImageDimension2D;
 
@@ -320,7 +326,9 @@ void Carrot::Engine::createLogicalDevice() {
     }
 
     // TODO: define features we will use
-    vk::PhysicalDeviceFeatures deviceFeatures{};
+    vk::PhysicalDeviceFeatures deviceFeatures{
+        .samplerAnisotropy = true,
+    };
 
     vk::DeviceCreateInfo createInfo{
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
@@ -1022,8 +1030,12 @@ vk::CommandPool& Carrot::Engine::getGraphicsCommandPool() {
     return *graphicsCommandPool;
 }
 
-vk::Queue& Carrot::Engine::getTransferQueue() {
+vk::Queue Carrot::Engine::getTransferQueue() {
     return transferQueue;
+}
+
+vk::Queue Carrot::Engine::getGraphicsQueue() {
+    return graphicsQueue;
 }
 
 void Carrot::Engine::createIndexBuffer() {
@@ -1047,9 +1059,29 @@ void Carrot::Engine::createDescriptorSetLayout() {
         .stageFlags = vk::ShaderStageFlagBits::eVertex,
     };
 
+    vk::DescriptorSetLayoutBinding textureBinding{
+        .binding = 1,
+        .descriptorType = vk::DescriptorType::eSampledImage,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    };
+
+    vk::DescriptorSetLayoutBinding samplerBinding{
+            .binding = 2,
+            .descriptorType = vk::DescriptorType::eSampler,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    };
+
+    vk::DescriptorSetLayoutBinding bindings[] = {
+            uboBinding,
+            textureBinding,
+            samplerBinding,
+    };
+
     vk::DescriptorSetLayoutCreateInfo createInfo{
-        .bindingCount = 1,
-        .pBindings = &uboBinding,
+        .bindingCount = 3,
+        .pBindings = bindings,
     };
 
     descriptorSetLayout = device->createDescriptorSetLayoutUnique(createInfo, allocator);
@@ -1085,36 +1117,73 @@ void Carrot::Engine::createDescriptorSets() {
 
     descriptorSets = device->allocateDescriptorSets(allocInfo);
 
-    vector<vk::WriteDescriptorSet> writes{swapchainFramebuffers.size()};
+    vector<vk::WriteDescriptorSet> writes{swapchainFramebuffers.size()*3};
     for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
-        vk::DescriptorBufferInfo bufferInfo = {
+        // write UBO buffer
+        vk::DescriptorBufferInfo bufferInfo {
                 .buffer = uniformBuffers[i]->getVulkanBuffer(),
                 .offset = 0,
                 .range = sizeof(UniformBufferObject),
         };
 
-        writes[i] = {
+        writes[i*3] = {
                 .dstSet = descriptorSets[i],
                 .dstBinding = 0,
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
                 .pBufferInfo = &bufferInfo,
         };
+
+        // write texture binding
+        vk::DescriptorImageInfo imageInfo {
+            .imageView = *textureView,
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+        writes[i*3+1] = {
+                .dstSet = descriptorSets[i],
+                .dstBinding = 1,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eSampledImage,
+                .pImageInfo = &imageInfo,
+        };
+
+        // write sampler binding
+        vk::DescriptorImageInfo samplerInfo {
+            .sampler = *linearRepeatSampler,
+        };
+        writes[i*3+2] = {
+                .dstSet = descriptorSets[i],
+                .dstBinding = 2,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eSampler,
+                .pImageInfo = &samplerInfo,
+        };
+
     }
     device->updateDescriptorSets(writes, {});
 }
 
 void Carrot::Engine::createDescriptorPool() {
-    vk::DescriptorPoolSize size{
-        .type = vk::DescriptorType::eUniformBufferDynamic,
-        .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+    vk::DescriptorPoolSize sizes[] = {
+            {
+                    .type = vk::DescriptorType::eUniformBufferDynamic,
+                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+            },
+            {
+                    .type = vk::DescriptorType::eSampledImage,
+                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+            },
+            {
+                    .type = vk::DescriptorType::eSampler,
+                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
+            },
     };
 
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
         .maxSets = static_cast<uint32_t>(swapchainFramebuffers.size()),
-        .poolSizeCount = 1,
-        .pPoolSizes = &size,
+        .poolSizeCount = 3,
+        .pPoolSizes = sizes,
     };
 
     descriptorPool = device->createDescriptorPoolUnique(poolInfo, allocator);
@@ -1156,6 +1225,37 @@ vk::Format Carrot::Engine::findDepthFormat() {
             vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
-bool Carrot::QueueFamilies::isComplete() {
+void Carrot::Engine::createTexture() {
+    texture = Image::fromFile(*this, "resources/textures/texture.jpg");
+    textureView = texture->createImageView();
+}
+
+void Carrot::Engine::createSamplers() {
+    nearestRepeatSampler = device->createSamplerUnique({
+                                                         .magFilter = vk::Filter::eNearest,
+                                                         .minFilter = vk::Filter::eNearest,
+                                                         .mipmapMode = vk::SamplerMipmapMode::eNearest,
+                                                         .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                                         .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                                         .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                                         .anisotropyEnable = true,
+                                                         .maxAnisotropy = 16.0f,
+                                                         .unnormalizedCoordinates = false,
+                                                 }, allocator);
+
+    linearRepeatSampler = device->createSamplerUnique({
+                                                        .magFilter = vk::Filter::eLinear,
+                                                        .minFilter = vk::Filter::eLinear,
+                                                        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                                                        .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                                        .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                                        .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                                        .anisotropyEnable = true,
+                                                        .maxAnisotropy = 16.0f,
+                                                        .unnormalizedCoordinates = false,
+                                                }, allocator);
+}
+
+bool Carrot::QueueFamilies::isComplete() const {
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
 }
