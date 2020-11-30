@@ -15,6 +15,7 @@
 #include <set>
 #include <io/IO.h>
 #include <render/UniformBufferObject.h>
+#include <render/ShaderStages.h>
 #include "Engine.h"
 #include "constants.h"
 #include "render/Buffer.h"
@@ -75,6 +76,8 @@ static void windowResize(GLFWwindow* window, int width, int height) {
 void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
+
+    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 }
 
 void Carrot::Engine::initVulkan() {
@@ -513,22 +516,7 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
 }
 
 void Carrot::Engine::createGraphicsPipeline() {
-    auto vertexCode = IO::readFile("resources/shaders/default.vertex.glsl.spv");
-    auto fragmentCode = IO::readFile("resources/shaders/default.fragment.glsl.spv");
-
-    vk::UniqueShaderModule vertexShader = createShaderModule(vertexCode);
-    vk::UniqueShaderModule fragmentShader = createShaderModule(fragmentCode);
-
-    vk::PipelineShaderStageCreateInfo shaderStages[] = { {
-                                                                 .stage = vk::ShaderStageFlagBits::eVertex,
-                                                                 .module = *vertexShader,
-                                                                 .pName = "main",
-                                                         },
-                                                         {
-                                                                 .stage = vk::ShaderStageFlagBits::eFragment,
-                                                                 .module = *fragmentShader,
-                                                                 .pName = "main",
-                                                         }};
+    auto shaderStages = Carrot::ShaderStages(*this, {"resources/shaders/default.vertex.glsl.spv", "resources/shaders/default.fragment.glsl.spv"});
 
     auto bindingDescription = Carrot::Vertex::getBindingDescription();
     auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
@@ -617,8 +605,6 @@ void Carrot::Engine::createGraphicsPipeline() {
             .pAttachments = &colorBlendAttachment,
     };
 
-    // TODO: dynamic state
-
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
             .setLayoutCount = 1,
             .pSetLayouts = &(*descriptorSetLayout),
@@ -628,9 +614,19 @@ void Carrot::Engine::createGraphicsPipeline() {
 
     pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutCreateInfo, allocator);
 
+    vk::DynamicState dynamicStates[] = {
+            vk::DynamicState::eScissor,
+            vk::DynamicState::eViewport,
+    };
+    vk::PipelineDynamicStateCreateInfo dynamicStateInfo {
+        .dynamicStateCount = 2,
+        .pDynamicStates = dynamicStates,
+    };
+
+    auto shaderStageCreation = shaderStages.createPipelineShaderStages();
     vk::GraphicsPipelineCreateInfo pipelineInfo{
-            .stageCount = 2,
-            .pStages = shaderStages,
+            .stageCount = static_cast<uint32_t>(shaderStageCreation.size()),
+            .pStages = shaderStageCreation.data(),
 
             .pVertexInputState = &vertexInputInfo,
             .pInputAssemblyState = &inputAssembly,
@@ -639,7 +635,7 @@ void Carrot::Engine::createGraphicsPipeline() {
             .pMultisampleState = &multisampling,
             .pDepthStencilState = &depthStencil,
             .pColorBlendState = &colorBlending,
-            .pDynamicState = nullptr,
+            .pDynamicState = &dynamicStateInfo,
 
             .layout = *pipelineLayout,
             .renderPass = *renderPass,
@@ -793,6 +789,7 @@ void Carrot::Engine::createCommandBuffers() {
         };
 
         commandBuffers[i].begin(beginInfo);
+        updateViewportAndScissor(commandBuffers[i]);
 
         vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
         vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
@@ -928,10 +925,9 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
-    int w, h;
-    glfwGetFramebufferSize(window.get(), &w, &h);
-    while(w == 0 || h == 0) {
-        glfwGetFramebufferSize(window.get(), &w, &h);
+    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+    while(framebufferWidth == 0 || framebufferHeight == 0) {
+        glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
         glfwWaitEvents();
     }
 
@@ -944,7 +940,6 @@ void Carrot::Engine::recreateSwapchain() {
     createSwapChain();
     createDepthTexture();
     createRenderPass();
-    createGraphicsPipeline();
     createFramebuffers();
     createUniformBuffers();
     createDescriptorPool();
@@ -957,8 +952,6 @@ void Carrot::Engine::cleanupSwapchain() {
     device->freeCommandBuffers(*graphicsCommandPool, commandBuffers);
     commandBuffers.clear();
 
-    graphicsPipeline.reset();
-    pipelineLayout.reset();
     renderPass.reset();
     swapchainImageViews.clear();
     swapchain.reset();
@@ -1224,6 +1217,25 @@ void Carrot::Engine::createModel() {
                                     0,1,2,
                                     3,0,2,
                                  });
+}
+
+void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
+    commands.setViewport(0, vk::Viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(framebufferWidth),
+            .height = static_cast<float>(framebufferHeight),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+    });
+
+    commands.setScissor(0, vk::Rect2D {
+            .offset = {0,0},
+            .extent = {
+                    static_cast<uint32_t>(framebufferWidth),
+                    static_cast<uint32_t>(framebufferHeight),
+            },
+    });
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

@@ -99,6 +99,8 @@ namespace Carrot {
         bool running = true;
         NakedPtr<GLFWwindow> window = nullptr;
         const vk::AllocationCallbacks* allocator = nullptr;
+        int framebufferWidth;
+        int framebufferHeight;
 
         vk::UniqueInstance instance;
         vk::UniqueDebugUtilsMessengerEXT callback{};
@@ -276,6 +278,8 @@ namespace Carrot {
         void createSamplers();
 
         void createModel();
+
+        void updateViewportAndScissor(vk::CommandBuffer& commands);
     };
 }
 

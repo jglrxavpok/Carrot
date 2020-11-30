@@ -38,6 +38,8 @@ set(SOURCES
         src/render/UniformBufferObject.cpp
         src/render/Image.cpp
         src/render/Material.cpp
+        src/render/ShaderModule.cpp
+        src/render/ShaderStages.cpp
         src/main.cpp
         src/stb_impls.cpp
         )
