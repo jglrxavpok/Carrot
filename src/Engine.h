@@ -17,6 +17,7 @@ namespace Carrot {
     class Buffer;
     class Image;
     class Mesh;
+    class Model;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -128,8 +129,7 @@ namespace Carrot {
         vector<vk::UniqueFence> inFlightFences{};
         vector<vk::UniqueFence> imagesInFlight{};
 
-        // TODO: abstraction over meshes
-        unique_ptr<Mesh> mesh = nullptr;
+        unique_ptr<Model> model = nullptr;
 
         // TODO: abstraction over textures
         unique_ptr<Image> texture = nullptr;
@@ -274,7 +274,7 @@ namespace Carrot {
         /// Create the samplers used by the engine
         void createSamplers();
 
-        void createMesh();
+        void createModel();
     };
 }
 

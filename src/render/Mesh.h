@@ -5,6 +5,7 @@
 #pragma once
 #include "vulkan/includes.h"
 #include "render/Vertex.h"
+#include "render/Buffer.h"
 #include "Engine.h"
 
 namespace Carrot {

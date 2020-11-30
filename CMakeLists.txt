@@ -7,6 +7,11 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
+set(ASSIMP_BUILD_TESTS CACHE BOOL OFF)
+set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
+set(ASSIMP_BUILD_GLTF_EXPORTER CACHE BOOL OFF)
+add_subdirectory(thirdparty/assimp)
+
 function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     set(FULL_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/${INPUT_FILE}")
     set(FULL_OUTPUT "${CMAKE_BINARY_DIR}/${OUTPUT_FILE}")
@@ -20,16 +25,19 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
 endfunction()
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/textures" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/models" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
 set(SOURCES
         src/io/IO.cpp
         src/memory/NakedPtr.hpp
         src/Engine.cpp
         src/render/Mesh.cpp
+        src/render/Model.cpp
         src/render/Vertex.cpp
         src/render/Buffer.cpp
         src/render/UniformBufferObject.cpp
         src/render/Image.cpp
+        src/render/Material.cpp
         src/main.cpp
         src/stb_impls.cpp
         )
@@ -56,4 +64,4 @@ endforeach()
 include_directories(src/)
 include_directories(thirdparty/stb/)
 add_executable(Carrot ${SOURCES} ${SHADERS})
-target_link_libraries(Carrot Vulkan::Vulkan glfw glm)
+target_link_libraries(Carrot Vulkan::Vulkan glfw glm assimp::assimp)

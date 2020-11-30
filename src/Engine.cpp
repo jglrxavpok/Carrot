@@ -20,29 +20,10 @@
 #include "render/Buffer.h"
 #include "render/Image.h"
 #include "render/Mesh.h"
+#include "render/Model.h"
 #include "render/Vertex.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
-
-const std::vector<Carrot::Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
-};
-
-const std::vector<uint32_t> indices = {
-        0,1,2,
-        2,3,0,
-
-        4,5,6,
-        6,7,4,
-};
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -114,7 +95,7 @@ void Carrot::Engine::initVulkan() {
     createFramebuffers();
     createGraphicsCommandPool();
     createTransferCommandPool();
-    createMesh();
+    createModel();
     createTexture();
     createSamplers();
     createUniformBuffers();
@@ -841,8 +822,7 @@ void Carrot::Engine::createCommandBuffers() {
         commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 
         commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {0});
-        mesh->bind(commandBuffers[i]);
-        mesh->draw(commandBuffers[i]);
+        model->draw(commandBuffers[i]);
 
         commandBuffers[i].endRenderPass();
 
@@ -1229,8 +1209,8 @@ void Carrot::Engine::createSamplers() {
                                                 }, allocator);
 }
 
-void Carrot::Engine::createMesh() {
-    mesh = make_unique<Carrot::Mesh>(*this, vertices, indices);
+void Carrot::Engine::createModel() {
+    model = make_unique<Model>(*this, "resources/models/viking_room.obj");
 }
 
 bool Carrot::QueueFamilies::isComplete() const {
