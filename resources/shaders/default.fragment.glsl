@@ -10,5 +10,5 @@ layout(set = 0, binding = 1) uniform texture2D albedo;
 layout(set = 0, binding = 2) uniform sampler linearSampler;
 
 void main() {
-    outColor = texture(sampler2D(albedo, linearSampler), uv);
+    outColor = vec4(texture(sampler2D(albedo, linearSampler), uv).rgb * fragColor, 1.0);
 }

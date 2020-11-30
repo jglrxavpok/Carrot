@@ -824,6 +824,9 @@ void Carrot::Engine::createCommandBuffers() {
         commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {0});
         model->draw(commandBuffers[i]);
 
+        testMesh->bind(commandBuffers[i]);
+        testMesh->draw(commandBuffers[i]);
+
         commandBuffers[i].endRenderPass();
 
         commandBuffers[i].end();
@@ -1179,7 +1182,7 @@ vk::Format Carrot::Engine::findDepthFormat() {
 }
 
 void Carrot::Engine::createTexture() {
-    texture = Image::fromFile(*this, "resources/textures/texture.jpg");
+    texture = Image::fromFile(*this, "resources/textures/viking_room.png");
     textureView = texture->createImageView();
 }
 
@@ -1211,6 +1214,16 @@ void Carrot::Engine::createSamplers() {
 
 void Carrot::Engine::createModel() {
     model = make_unique<Model>(*this, "resources/models/viking_room.obj");
+    testMesh = make_unique<Mesh>(*this, vector<Vertex>{
+                                         {{-0.5f, -0.5f, -1.5f}, {1,1,1}, {0,0}},
+                                         {{+0.5f, -0.5f, -1.5f}, {1,1,1}, {1,0}},
+                                         {{+0.5f, +0.5f, -1.5f}, {1,1,1}, {1,1}},
+                                         {{-0.5f, +0.5f, -1.5f}, {1,1,1}, {0,1}},
+                                },
+                                 vector<uint32_t>{
+                                    0,1,2,
+                                    3,0,2,
+                                 });
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

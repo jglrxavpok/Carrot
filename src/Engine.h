@@ -130,6 +130,7 @@ namespace Carrot {
         vector<vk::UniqueFence> imagesInFlight{};
 
         unique_ptr<Model> model = nullptr;
+        unique_ptr<Mesh> testMesh = nullptr;
 
         // TODO: abstraction over textures
         unique_ptr<Image> texture = nullptr;

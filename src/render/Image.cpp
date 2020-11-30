@@ -65,7 +65,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     stagingBuffer.directUpload(data.data(), data.size());
 
     // prepare image for transfer
-    transitionLayout(vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     // copy from staging buffer to image
     engine.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
         vk::BufferImageCopy region = {
@@ -85,7 +85,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     });
 
     // prepare image for shader reads
-    transitionLayout(vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
 unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::Engine& engine, const string &filename) {
@@ -104,7 +104,7 @@ unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::Engine& engine, const 
                                             .depth = 1,
                                         },
                                         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
-                                        vk::Format::eR8G8B8A8Srgb);
+                                        vk::Format::eR8G8B8A8Unorm);
 
     vector<uint8_t> pixelVector{pixels, pixels+(width*height)*4};
     image->stageUpload(pixelVector);
@@ -180,5 +180,5 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
 }
 
 vk::UniqueImageView Carrot::Image::createImageView() {
-    return std::move(engine.createImageView(*vkImage, vk::Format::eR8G8B8A8Srgb));
+    return std::move(engine.createImageView(*vkImage, vk::Format::eR8G8B8A8Unorm));
 }

@@ -11,7 +11,7 @@
 
 Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
     Assimp::Importer importer{};
-    const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_OptimizeMeshes);
+    const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
 
     if(!scene) {
         throw runtime_error("Failed to load model "+filename);
