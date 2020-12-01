@@ -46,6 +46,8 @@ set(SOURCES
         src/render/Material.cpp
         src/render/ShaderModule.cpp
         src/render/ShaderStages.cpp
+        src/render/Pipeline.cpp
+        src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp
         )

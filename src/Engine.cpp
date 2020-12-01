@@ -23,6 +23,7 @@
 #include "render/Mesh.h"
 #include "render/Model.h"
 #include "render/Vertex.h"
+#include "render/Pipeline.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -515,143 +516,7 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
 }
 
 void Carrot::Engine::createGraphicsPipeline() {
-    auto shaderStages = Carrot::ShaderStages(*this, {"resources/shaders/default.vertex.glsl.spv", "resources/shaders/default.fragment.glsl.spv"});
-
-    descriptorSetLayout = shaderStages.createDescriptorSetLayout();
-
-    auto bindingDescription = Carrot::Vertex::getBindingDescription();
-    auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = 1,
-            .pVertexBindingDescriptions = &bindingDescription,
-
-            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-            .pVertexAttributeDescriptions = attributeDescriptions.data(),
-    };
-    // TODO: vertex buffers
-
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-            .topology = vk::PrimitiveTopology::eTriangleList,
-            .primitiveRestartEnable = false,
-    };
-
-    vk::Viewport viewport{
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(swapchainExtent.width),
-            .height = static_cast<float>(swapchainExtent.height),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f,
-    };
-
-    vk::Rect2D scissor{
-            .offset = vk::Offset2D{0, 0},
-            .extent = swapchainExtent,
-    };
-
-    vk::PipelineViewportStateCreateInfo viewportState{
-            .viewportCount = 1,
-            .pViewports = &viewport,
-
-            .scissorCount = 1,
-            .pScissors = &scissor,
-    };
-
-    vk::PipelineRasterizationStateCreateInfo rasterizer{
-            // TODO: change for shadow maps
-            .depthClampEnable = false,
-
-            .rasterizerDiscardEnable = false,
-
-            .polygonMode = vk::PolygonMode::eFill,
-
-            .cullMode = vk::CullModeFlagBits::eFront,
-            .frontFace = vk::FrontFace::eClockwise,
-
-            // TODO: change for shadow maps
-            .depthBiasEnable = false,
-            .depthBiasConstantFactor = 0.0f,
-            .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = 0.0f,
-
-            .lineWidth = 1.0f,
-    };
-
-    vk::PipelineMultisampleStateCreateInfo multisampling{
-            .rasterizationSamples = vk::SampleCountFlagBits::e1,
-            .sampleShadingEnable = false,
-            .minSampleShading = 1.0f,
-            .pSampleMask = nullptr,
-            .alphaToCoverageEnable = false,
-            .alphaToOneEnable = false,
-    };
-    vk::PipelineDepthStencilStateCreateInfo depthStencil {
-        .depthTestEnable = true,
-        .depthWriteEnable = true,
-        .depthCompareOp = vk::CompareOp::eLessOrEqual,
-        .stencilTestEnable = false,
-    };
-
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-            // TODO: blending
-            .blendEnable = false,
-
-            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-    };
-
-    vk::PipelineColorBlendStateCreateInfo colorBlending{
-            .logicOpEnable = false,
-            .attachmentCount = 1,
-            .pAttachments = &colorBlendAttachment,
-    };
-
-    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-            .setLayoutCount = 1,
-            .pSetLayouts = &(*descriptorSetLayout),
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr,
-    };
-
-    pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutCreateInfo, allocator);
-
-    vk::DynamicState dynamicStates[] = {
-            vk::DynamicState::eScissor,
-            vk::DynamicState::eViewport,
-    };
-    vk::PipelineDynamicStateCreateInfo dynamicStateInfo {
-        .dynamicStateCount = 2,
-        .pDynamicStates = dynamicStates,
-    };
-
-    auto shaderStageCreation = shaderStages.createPipelineShaderStages();
-    vk::GraphicsPipelineCreateInfo pipelineInfo{
-            .stageCount = static_cast<uint32_t>(shaderStageCreation.size()),
-            .pStages = shaderStageCreation.data(),
-
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pDepthStencilState = &depthStencil,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicStateInfo,
-
-            .layout = *pipelineLayout,
-            .renderPass = *renderPass,
-            .subpass = 0,
-    };
-
-    graphicsPipeline = device->createGraphicsPipelineUnique(nullptr, pipelineInfo, allocator);
-    // modules will be destroyed after the end of this function
-}
-
-vk::UniqueShaderModule Carrot::Engine::createShaderModule(const std::vector<uint8_t>& bytecode) {
-    return device->createShaderModuleUnique({
-                                                    .codeSize = bytecode.size(),
-                                                    .pCode = reinterpret_cast<const uint32_t*>(bytecode.data()),
-                                            }, allocator);
+    graphicsPipeline = make_unique<Carrot::Pipeline>(*this, renderPass, "default");
 }
 
 void Carrot::Engine::createRenderPass() {
@@ -817,9 +682,8 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
-
-        commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {0});
+        graphicsPipeline->bind(commandBuffers[i]);
+        graphicsPipeline->bindDescriptorSets(commandBuffers[i], {descriptorSets[i]}, {0});
         model->draw(commandBuffers[i]);
 
         testMesh->bind(commandBuffers[i]);
@@ -1022,7 +886,7 @@ set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
 }
 
 void Carrot::Engine::createDescriptorSets() {
-    vector<vk::DescriptorSetLayout> layouts{static_cast<uint32_t>(swapchainFramebuffers.size()), *descriptorSetLayout};
+    vector<vk::DescriptorSetLayout> layouts{static_cast<uint32_t>(swapchainFramebuffers.size()), graphicsPipeline->getDescriptorSetLayout()};
     vk::DescriptorSetAllocateInfo allocInfo{
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),

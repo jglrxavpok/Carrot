@@ -24,6 +24,7 @@ int main() {
         glfwTerminate();
     } catch (const std::exception& e) {
         std::cerr << "Fatal exception happened: " << e.what() << std::endl;
+        throw e;
     }
     return 0;
 }

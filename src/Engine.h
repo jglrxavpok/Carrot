@@ -18,6 +18,7 @@ namespace Carrot {
     class Image;
     class Mesh;
     class Model;
+    class Pipeline;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -120,8 +121,7 @@ namespace Carrot {
         vector<vk::UniqueImageView> swapchainImageViews{};
         vk::UniqueImageView depthImageView{};
         vk::UniqueRenderPass renderPass{};
-        vk::UniquePipelineLayout pipelineLayout{};
-        vk::UniquePipeline graphicsPipeline{};
+        unique_ptr<Pipeline> graphicsPipeline{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
@@ -140,7 +140,6 @@ namespace Carrot {
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
 
-        vk::UniqueDescriptorSetLayout descriptorSetLayout{};
         vector<shared_ptr<Buffer>> uniformBuffers{};
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
@@ -213,9 +212,6 @@ namespace Carrot {
 
         /// Create the graphics pipeline, using the shaders inside resources/shaders/
         void createGraphicsPipeline();
-
-        /// Create a single shader module from the given bytecode
-        vk::UniqueShaderModule createShaderModule(const vector<uint8_t>& bytecode);
 
         /// Create the render pass
         void createRenderPass();

@@ -25,7 +25,7 @@ vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineSh
     return creates;
 }
 
-vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout() {
+vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout() const {
     auto& device = engine.getLogicalDevice();
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};

@@ -22,7 +22,7 @@ namespace Carrot {
 
         [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages() const;
 
-        vk::UniqueDescriptorSetLayout createDescriptorSetLayout();
+        vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
     };
 
 }

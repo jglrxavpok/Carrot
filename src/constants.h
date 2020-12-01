@@ -4,6 +4,8 @@
 
 #pragma once
 #include <string>
+#include <vector>
+#include "vulkan/includes.h"
 
 constexpr unsigned int WINDOW_WIDTH = 1200;
 constexpr unsigned int WINDOW_HEIGHT = 780;
