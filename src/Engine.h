@@ -245,7 +245,7 @@ namespace Carrot {
         void createTransferCommandPool();
 
         /// Create the descriptor set layout used by the pipeline
-        void createDescriptorSetLayout();
+        vk::UniqueDescriptorSetLayout createDescriptorSetLayout();
 
         /// Create the UBOs for rendering
         void createUniformBuffers();

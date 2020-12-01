@@ -21,6 +21,8 @@ namespace Carrot {
         explicit ShaderStages(Carrot::Engine& engine, const vector<string>& filenames);
 
         [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages() const;
+
+        vk::UniqueDescriptorSetLayout createDescriptorSetLayout();
     };
 
 }

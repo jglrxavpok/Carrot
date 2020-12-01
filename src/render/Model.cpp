@@ -6,8 +6,10 @@
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
+#include <assimp/material.h>
 #include "render/Mesh.h"
 #include "render/Material.h"
+#include <iostream>
 
 Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
     Assimp::Importer importer{};
@@ -21,6 +23,15 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
     for(size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
         auto material = make_shared<Material>();
         const aiMaterial* mat = scene->mMaterials[materialIndex];
+
+        int diffuseTextureCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
+        if(diffuseTextureCount == 1) {
+            aiString name;
+            mat->GetTexture(aiTextureType_DIFFUSE, 0, &name);
+            cout << "Texture is " << name.data << endl;
+        } else {
+            cerr << "(Material " << mat->GetName().data << ") Unsupported diffuse texture count: " << diffuseTextureCount << ". Ignoring." << endl;
+        }
         // TODO: build material
         materials.push_back(material);
         meshes[material.get()] = {};

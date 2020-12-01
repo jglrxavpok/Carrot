@@ -93,7 +93,6 @@ void Carrot::Engine::initVulkan() {
     createSwapChain();
     createDepthTexture();
     createRenderPass();
-    createDescriptorSetLayout();
     createGraphicsPipeline();
     createFramebuffers();
     createGraphicsCommandPool();
@@ -517,6 +516,8 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
 
 void Carrot::Engine::createGraphicsPipeline() {
     auto shaderStages = Carrot::ShaderStages(*this, {"resources/shaders/default.vertex.glsl.spv", "resources/shaders/default.fragment.glsl.spv"});
+
+    descriptorSetLayout = shaderStages.createDescriptorSetLayout();
 
     auto bindingDescription = Carrot::Vertex::getBindingDescription();
     auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
@@ -1000,42 +1001,6 @@ vk::Queue Carrot::Engine::getGraphicsQueue() {
     return graphicsQueue;
 }
 
-void Carrot::Engine::createDescriptorSetLayout() {
-    vk::DescriptorSetLayoutBinding uboBinding{
-        .binding = 0, // TODO: customizable
-        .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-    };
-
-    vk::DescriptorSetLayoutBinding textureBinding{
-        .binding = 1,
-        .descriptorType = vk::DescriptorType::eSampledImage,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eFragment,
-    };
-
-    vk::DescriptorSetLayoutBinding samplerBinding{
-            .binding = 2,
-            .descriptorType = vk::DescriptorType::eSampler,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eFragment,
-    };
-
-    vk::DescriptorSetLayoutBinding bindings[] = {
-            uboBinding,
-            textureBinding,
-            samplerBinding,
-    };
-
-    vk::DescriptorSetLayoutCreateInfo createInfo{
-        .bindingCount = 3,
-        .pBindings = bindings,
-    };
-
-    descriptorSetLayout = device->createDescriptorSetLayoutUnique(createInfo, allocator);
-}
-
 void Carrot::Engine::createUniformBuffers() {
     vk::DeviceSize bufferSize = sizeof(Carrot::UniformBufferObject);
     uniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
@@ -1084,16 +1049,22 @@ void Carrot::Engine::createDescriptorSets() {
         };
 
         // write texture binding
-        vk::DescriptorImageInfo imageInfo {
-            .imageView = *textureView,
-            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        vk::DescriptorImageInfo imageInfo[] = {
+                {
+                        .imageView = *textureView,
+                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                },
+                {
+                        .imageView = *textureView,
+                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                },
         };
         writes[i*3+1] = {
                 .dstSet = descriptorSets[i],
                 .dstBinding = 1,
-                .descriptorCount = 1,
+                .descriptorCount = 2,
                 .descriptorType = vk::DescriptorType::eSampledImage,
-                .pImageInfo = &imageInfo,
+                .pImageInfo = imageInfo,
         };
 
         // write sampler binding
