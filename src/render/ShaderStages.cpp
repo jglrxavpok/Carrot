@@ -41,3 +41,7 @@ vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout() 
 
     return device.createDescriptorSetLayoutUnique(createInfo, engine.getAllocator());
 }
+
+const map<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>& Carrot::ShaderStages::getModuleMap() const {
+    return stages;
+}

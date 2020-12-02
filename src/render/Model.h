@@ -26,6 +26,6 @@ namespace Carrot {
     public:
         explicit Model(Carrot::Engine& engine, const string& filename);
 
-        void draw(vk::CommandBuffer& commands);
+        void draw(const uint32_t imageIndex, vk::CommandBuffer& commands);
     };
 }

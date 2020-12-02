@@ -94,16 +94,13 @@ void Carrot::Engine::initVulkan() {
     createSwapChain();
     createDepthTexture();
     createRenderPass();
-    createGraphicsPipeline();
     createFramebuffers();
     createGraphicsCommandPool();
     createTransferCommandPool();
-    createModel();
-    createTexture();
-    createSamplers();
+    createDefaultTexture();
     createUniformBuffers();
-    createDescriptorPool();
-    createDescriptorSets();
+    createSamplers();
+    createModel();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -515,10 +512,6 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
                                              }, allocator);
 }
 
-void Carrot::Engine::createGraphicsPipeline() {
-    graphicsPipeline = make_unique<Carrot::Pipeline>(*this, renderPass, "default");
-}
-
 void Carrot::Engine::createRenderPass() {
     vk::AttachmentDescription colorAttachment{
             .format = swapchainImageFormat,
@@ -682,9 +675,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        graphicsPipeline->bind(commandBuffers[i]);
-        graphicsPipeline->bindDescriptorSets(commandBuffers[i], {descriptorSets[i]}, {0});
-        model->draw(commandBuffers[i]);
+        model->draw(i, commandBuffers[i]);
 
         testMesh->bind(commandBuffers[i]);
         testMesh->draw(commandBuffers[i]);
@@ -807,8 +798,10 @@ void Carrot::Engine::recreateSwapchain() {
     createRenderPass();
     createFramebuffers();
     createUniformBuffers();
-    createDescriptorPool();
-    createDescriptorSets();
+    for(const auto& [name, pipeline] : pipelines) {
+        pipeline->recreateDescriptorPool(swapchainFramebuffers.size());
+    }
+    // TODO: update material descriptor sets
     createCommandBuffers();
 }
 
@@ -885,94 +878,6 @@ set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
     };
 }
 
-void Carrot::Engine::createDescriptorSets() {
-    vector<vk::DescriptorSetLayout> layouts{static_cast<uint32_t>(swapchainFramebuffers.size()), graphicsPipeline->getDescriptorSetLayout()};
-    vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool = *descriptorPool,
-        .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-        .pSetLayouts = layouts.data(),
-    };
-
-    descriptorSets = device->allocateDescriptorSets(allocInfo);
-
-    vector<vk::WriteDescriptorSet> writes{swapchainFramebuffers.size()*3};
-    for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
-        // write UBO buffer
-        vk::DescriptorBufferInfo bufferInfo {
-                .buffer = uniformBuffers[i]->getVulkanBuffer(),
-                .offset = 0,
-                .range = sizeof(UniformBufferObject),
-        };
-
-        writes[i*3] = {
-                .dstSet = descriptorSets[i],
-                .dstBinding = 0,
-                .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-                .pBufferInfo = &bufferInfo,
-        };
-
-        // write texture binding
-        vk::DescriptorImageInfo imageInfo[] = {
-                {
-                        .imageView = *textureView,
-                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                },
-                {
-                        .imageView = *textureView,
-                        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                },
-        };
-        writes[i*3+1] = {
-                .dstSet = descriptorSets[i],
-                .dstBinding = 1,
-                .descriptorCount = 2,
-                .descriptorType = vk::DescriptorType::eSampledImage,
-                .pImageInfo = imageInfo,
-        };
-
-        // write sampler binding
-        vk::DescriptorImageInfo samplerInfo {
-            .sampler = *linearRepeatSampler,
-        };
-        writes[i*3+2] = {
-                .dstSet = descriptorSets[i],
-                .dstBinding = 2,
-                .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eSampler,
-                .pImageInfo = &samplerInfo,
-        };
-
-    }
-    device->updateDescriptorSets(writes, {});
-}
-
-void Carrot::Engine::createDescriptorPool() {
-    vk::DescriptorPoolSize sizes[] = {
-            {
-                    .type = vk::DescriptorType::eUniformBufferDynamic,
-                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
-            },
-            {
-                    .type = vk::DescriptorType::eSampledImage,
-                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
-            },
-            {
-                    .type = vk::DescriptorType::eSampler,
-                    .descriptorCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
-            },
-    };
-
-    vk::DescriptorPoolCreateInfo poolInfo{
-        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = static_cast<uint32_t>(swapchainFramebuffers.size()),
-        .poolSizeCount = 3,
-        .pPoolSizes = sizes,
-    };
-
-    descriptorPool = device->createDescriptorPoolUnique(poolInfo, allocator);
-}
-
 void Carrot::Engine::createDepthTexture() {
     depthImageView.reset();
     depthImage = nullptr;
@@ -1007,11 +912,6 @@ vk::Format Carrot::Engine::findDepthFormat() {
             {vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
             vk::ImageTiling::eOptimal,
             vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-}
-
-void Carrot::Engine::createTexture() {
-    texture = Image::fromFile(*this, "resources/textures/viking_room.png");
-    textureView = texture->createImageView();
 }
 
 void Carrot::Engine::createSamplers() {
@@ -1071,6 +971,54 @@ void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
                     static_cast<uint32_t>(framebufferHeight),
             },
     });
+}
+
+shared_ptr<Carrot::Pipeline> Carrot::Engine::getOrCreatePipeline(const string& shaderName) {
+    auto it = pipelines.find(shaderName);
+    if(it == pipelines.end()) {
+        pipelines[shaderName] = make_shared<Pipeline>(*this, renderPass, "default");
+    }
+    return pipelines[shaderName];
+}
+
+unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName) {
+    auto it = textureImages.find(textureName);
+    if(it == textureImages.end()) {
+        auto texture = Image::fromFile(*this, "resources/textures/"+textureName);
+        textureImages[textureName] = move(texture);
+    }
+    return textureImages[textureName];
+}
+
+vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textureName) {
+    auto it = textureImageViews.find(textureName);
+    if(it == textureImageViews.end()) {
+        auto& texture = getOrCreateTexture(textureName);
+        auto textureView = texture->createImageView();
+        textureImageViews[textureName] = move(textureView);
+    }
+    return textureImageViews[textureName];
+}
+
+uint32_t Carrot::Engine::getSwapchainImageCount() {
+    return swapchainFramebuffers.size();
+}
+
+vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getUniformBuffers() {
+    return uniformBuffers;
+}
+
+const vk::UniqueSampler& Carrot::Engine::getLinearSampler() {
+    return linearRepeatSampler;
+}
+
+void Carrot::Engine::createDefaultTexture() {
+    defaultImage = Image::fromFile(*this, "resources/textures/default.png");
+    defaultImageView = move(defaultImage->createImageView());
+}
+
+vk::UniqueHandle<vk::ImageView, vk::DispatchLoaderDynamic>& Carrot::Engine::getDefaultImageView() {
+    return defaultImageView;
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

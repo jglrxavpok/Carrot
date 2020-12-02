@@ -26,6 +26,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         const aiMaterial* mat = scene->mMaterials[materialIndex];
 
         int diffuseTextureCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
+
+        bool loadedMaterial = false;
         if(diffuseTextureCount == 1) {
             aiString name;
             mat->GetTexture(aiTextureType_DIFFUSE, 0, &name);
@@ -51,11 +53,15 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
                 const uint32_t textureIndex = atoi(nameParts[2].c_str());
                 const uint32_t bindingIndex = atoi(nameParts[3].c_str());
                 material->bind(shaderName, textureName, textureIndex, bindingIndex);
+                loadedMaterial = true;
             } else {
                 cerr << "Material " << mat->GetName().data << " has an invalid material descriptor (" << name.data << ")." << endl;
             }
         } else {
             cerr << "(Material " << mat->GetName().data << ") Unsupported diffuse texture count: " << diffuseTextureCount << ". Ignoring." << endl;
+        }
+        if(!loadedMaterial) {
+            material->bindDefaultValues();
         }
         materials.push_back(material);
         meshes[material.get()] = {};
@@ -112,10 +118,9 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
     }
 }
 
-void Carrot::Model::draw(vk::CommandBuffer& commands) {
+void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands) {
     for(const auto& material : materials) {
-        // TODO: bind graphics pipeline
-        // TODO: bind descriptors
+        material->bindForRender(imageIndex, commands);
 
         for(const auto& mesh : meshes[material.get()]) {
             mesh->bind(commands);

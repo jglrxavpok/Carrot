@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 21/11/2020.
 //
 #pragma once
+#include <map>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -96,6 +97,19 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);
 
+        shared_ptr<Pipeline> getOrCreatePipeline(const string& shaderName);
+
+        unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName);
+        vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textureName);
+
+        uint32_t getSwapchainImageCount();
+
+        vector<shared_ptr<Buffer>>& getUniformBuffers();
+
+        const vk::UniqueSampler& getLinearSampler();
+
+        vk::UniqueImageView& getDefaultImageView();
+
     private:
         bool running = true;
         NakedPtr<GLFWwindow> window = nullptr;
@@ -121,7 +135,7 @@ namespace Carrot {
         vector<vk::UniqueImageView> swapchainImageViews{};
         vk::UniqueImageView depthImageView{};
         vk::UniqueRenderPass renderPass{};
-        unique_ptr<Pipeline> graphicsPipeline{};
+        map<string, shared_ptr<Pipeline>> pipelines{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
@@ -135,8 +149,12 @@ namespace Carrot {
         unique_ptr<Mesh> testMesh = nullptr;
 
         // TODO: abstraction over textures
-        unique_ptr<Image> texture = nullptr;
-        vk::UniqueImageView textureView{};
+        map<string, unique_ptr<Image>> textureImages{};
+        map<string, vk::UniqueImageView> textureImageViews{};
+
+        unique_ptr<Image> defaultImage = nullptr;
+        vk::UniqueImageView defaultImageView{};
+
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
 
@@ -240,9 +258,6 @@ namespace Carrot {
         /// Create the command pool for transfer operations
         void createTransferCommandPool();
 
-        /// Create the descriptor set layout used by the pipeline
-        vk::UniqueDescriptorSetLayout createDescriptorSetLayout();
-
         /// Create the UBOs for rendering
         void createUniformBuffers();
 
@@ -251,12 +266,6 @@ namespace Carrot {
 
         /// Update the uniform buffer at index 'imageIndex'
         void updateUniformBuffer(int imageIndex);
-
-        /// Create and fill the descriptor sets used by the pipeline
-        void createDescriptorSets();
-
-        /// Create the descriptor pool
-        void createDescriptorPool();
 
         /// Create the depth texture, used for depth testing
         void createDepthTexture();
@@ -267,15 +276,14 @@ namespace Carrot {
         /// Find the best available format in the given candidates
         vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
-        /// Creates the albedo texture
-        void createTexture();
-
         /// Create the samplers used by the engine
         void createSamplers();
 
         void createModel();
 
         void updateViewportAndScissor(vk::CommandBuffer& commands);
+
+        void createDefaultTexture();
     };
 }
 

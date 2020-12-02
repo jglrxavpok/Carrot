@@ -19,6 +19,8 @@ Carrot::ShaderModule::ShaderModule(Carrot::Engine& engine, const string& filenam
     spirv_cross::Parser parser{reinterpret_cast<const uint32_t*>(code.data()), code.size()/sizeof(uint32_t)};
     parser.parse();
     parsedCode = parser.get_parsed_ir();
+
+    compiler = make_unique<spirv_cross::Compiler>(parsedCode);
 }
 
 vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStage(vk::ShaderStageFlagBits stage) const {
@@ -29,31 +31,29 @@ vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStag
     };
 }
 
-void Carrot::ShaderModule::addBindings(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings) const {
-    spirv_cross::Compiler compiler{parsedCode};
-    const auto resources = compiler.get_shader_resources();
+void Carrot::ShaderModule::addBindings(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings) {
+    const auto resources = compiler->get_shader_resources();
 
     // buffers
-    createBindings(compiler, stage, bindings, vk::DescriptorType::eUniformBufferDynamic, resources.uniform_buffers);
+    createBindings(stage, bindings, vk::DescriptorType::eUniformBufferDynamic, resources.uniform_buffers);
 
     // samplers
-    createBindings(compiler, stage, bindings, vk::DescriptorType::eSampler, resources.separate_samplers);
+    createBindings(stage, bindings, vk::DescriptorType::eSampler, resources.separate_samplers);
 
     // sampled images
-    createBindings(compiler, stage, bindings, vk::DescriptorType::eSampledImage, resources.sampled_images);
-    createBindings(compiler, stage, bindings, vk::DescriptorType::eSampledImage, resources.separate_images);
+    createBindings(stage, bindings, vk::DescriptorType::eSampledImage, resources.sampled_images);
+    createBindings(stage, bindings, vk::DescriptorType::eSampledImage, resources.separate_images);
 
     // TODO: other types
 }
 
-void Carrot::ShaderModule::createBindings(spirv_cross::Compiler& compiler,
-                                          vk::ShaderStageFlagBits stage,
+void Carrot::ShaderModule::createBindings(vk::ShaderStageFlagBits stage,
                                           vector<vk::DescriptorSetLayoutBinding>& bindings,
                                           vk::DescriptorType type,
-                                          const spirv_cross::SmallVector<spirv_cross::Resource>& resources) const {
+                                          const spirv_cross::SmallVector<spirv_cross::Resource>& resources) {
     for(const auto& resource : resources) {
-        const auto bindingID = compiler.get_decoration(resource.id, spv::DecorationBinding);
-        const auto& resourceType = compiler.get_type(resource.type_id);
+        const auto bindingID = compiler->get_decoration(resource.id, spv::DecorationBinding);
+        const auto& resourceType = compiler->get_type(resource.type_id);
         uint32_t count = 1;
         if(!resourceType.array.empty()) {
             count = resourceType.array[0];
@@ -64,5 +64,11 @@ void Carrot::ShaderModule::createBindings(spirv_cross::Compiler& compiler,
             .descriptorCount = count,
             .stageFlags = stage,
         });
+
+        bindingMap[static_cast<uint32_t>(bindingID)] = {
+                bindingID,
+                type,
+                count
+        };
     }
 }
