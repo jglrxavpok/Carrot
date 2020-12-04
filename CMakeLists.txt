@@ -30,8 +30,14 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     )
 endfunction()
 
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/textures" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/models" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+function(copy_resources TYPE)
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/${TYPE}" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+endfunction()
+
+copy_resources(textures)
+copy_resources(models)
+copy_resources(pipelines)
+copy_resources(materials)
 
 set(SOURCES
         src/io/IO.cpp
@@ -47,6 +53,7 @@ set(SOURCES
         src/render/ShaderModule.cpp
         src/render/ShaderStages.cpp
         src/render/Pipeline.cpp
+        src/render/shaders/Specialization.cpp
         src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp
@@ -73,5 +80,6 @@ endforeach()
 
 include_directories(src/)
 include_directories(thirdparty/stb/)
+include_directories(thirdparty/rapidjson/include)
 add_executable(Carrot ${SOURCES} ${SHADERS})
 target_link_libraries(Carrot Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)

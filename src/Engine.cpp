@@ -22,6 +22,7 @@
 #include "render/Image.h"
 #include "render/Mesh.h"
 #include "render/Model.h"
+#include "render/Material.h"
 #include "render/Vertex.h"
 #include "render/Pipeline.h"
 
@@ -952,6 +953,12 @@ void Carrot::Engine::createModel() {
                                     0,1,2,
                                     3,0,2,
                                  });
+
+    auto pipeline = getOrCreatePipeline("default");
+    auto texID = pipeline->reserveTextureSlot(getOrCreateTextureView("viking_room.png"));
+    auto material = getOrCreateMaterial("default");
+    material->setTextureID(texID);
+    pipeline->updateMaterial(*material);
 }
 
 void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
@@ -973,12 +980,12 @@ void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
     });
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::Engine::getOrCreatePipeline(const string& shaderName) {
-    auto it = pipelines.find(shaderName);
+shared_ptr<Carrot::Pipeline> Carrot::Engine::getOrCreatePipeline(const string& name) {
+    auto it = pipelines.find(name);
     if(it == pipelines.end()) {
-        pipelines[shaderName] = make_shared<Pipeline>(*this, renderPass, "default");
+        pipelines[name] = make_shared<Pipeline>(*this, renderPass, name);
     }
-    return pipelines[shaderName];
+    return pipelines[name];
 }
 
 unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName) {
@@ -1019,6 +1026,14 @@ void Carrot::Engine::createDefaultTexture() {
 
 vk::UniqueHandle<vk::ImageView, vk::DispatchLoaderDynamic>& Carrot::Engine::getDefaultImageView() {
     return defaultImageView;
+}
+
+shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& name) {
+    auto it = materials.find(name);
+    if(it == materials.end()) {
+        materials[name] = make_shared<Material>(*this, name);
+    }
+    return materials[name];
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

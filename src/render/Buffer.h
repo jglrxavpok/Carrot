@@ -43,6 +43,9 @@ namespace Carrot {
         template<typename... T>
         void stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs);
 
+        template<typename T>
+        void stageUploadWithOffset(uint64_t offset, const T* data);
+
         ~Buffer() = default;
     };
 }

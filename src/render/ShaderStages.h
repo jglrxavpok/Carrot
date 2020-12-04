@@ -20,7 +20,7 @@ namespace Carrot {
     public:
         explicit ShaderStages(Carrot::Engine& engine, const vector<string>& filenames);
 
-        [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages() const;
+        [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages(const vk::SpecializationInfo* specialization) const;
 
         vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
 

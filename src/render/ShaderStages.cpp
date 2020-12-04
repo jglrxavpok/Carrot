@@ -17,10 +17,10 @@ Carrot::ShaderStages::ShaderStages(Carrot::Engine& engine, const vector<string>&
     }
 }
 
-vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineShaderStages() const {
+vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineShaderStages(const vk::SpecializationInfo* specialization) const {
     vector<vk::PipelineShaderStageCreateInfo> creates{};
     for(const auto& [stage, module] : stages) {
-        creates.push_back(module->createPipelineShaderStage(stage));
+        creates.push_back(module->createPipelineShaderStage(stage, specialization));
     }
     return creates;
 }

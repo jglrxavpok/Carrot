@@ -20,50 +20,17 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         throw runtime_error("Failed to load model "+filename);
     }
 
-
     for(size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
-        auto material = make_shared<Material>(engine);
         const aiMaterial* mat = scene->mMaterials[materialIndex];
+        string materialName = mat->GetName().data;
 
-        int diffuseTextureCount = mat->GetTextureCount(aiTextureType_DIFFUSE);
+        // TODO: remove ugly hack, maybe due to Assimp creating a default material?
+        if(materialName == "DefaultMaterial") {
+            materialName = "default";
+        }
 
-        bool loadedMaterial = false;
-        if(diffuseTextureCount == 1) {
-            aiString name;
-            mat->GetTexture(aiTextureType_DIFFUSE, 0, &name);
-            cout << "Texture is " << name.data << endl;
-            auto nameParts = Carrot::splitString(name.data, ";");
-            if(nameParts.size() == 1) {
-                // add default shader
-                nameParts.emplace_back("default"); // shader name
-                nameParts.emplace_back("0"); // texture index
-                nameParts.emplace_back("1"); // binding index
-            }
-            if(nameParts.size() == 2) {
-                // add default shader
-                nameParts.emplace_back("0");
-                nameParts.emplace_back("1");
-            }
-            if(nameParts.size() == 3) {
-                nameParts.emplace_back("1");
-            }
-            if(nameParts.size() == 4) {
-                const string& textureName = nameParts[0];
-                const string& shaderName = nameParts[1];
-                const uint32_t textureIndex = atoi(nameParts[2].c_str());
-                const uint32_t bindingIndex = atoi(nameParts[3].c_str());
-                material->bind(shaderName, textureName, textureIndex, bindingIndex);
-                loadedMaterial = true;
-            } else {
-                cerr << "Material " << mat->GetName().data << " has an invalid material descriptor (" << name.data << ")." << endl;
-            }
-        } else {
-            cerr << "(Material " << mat->GetName().data << ") Unsupported diffuse texture count: " << diffuseTextureCount << ". Ignoring." << endl;
-        }
-        if(!loadedMaterial) {
-            material->bindDefaultValues();
-        }
-        materials.push_back(material);
+        auto material = engine.getOrCreateMaterial(materialName);
+        materials.emplace_back(material);
         meshes[material.get()] = {};
     }
 

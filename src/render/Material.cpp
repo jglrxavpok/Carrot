@@ -4,43 +4,38 @@
 
 #include "Material.h"
 #include "Pipeline.h"
+#include "IDTypes.h"
+#include "DrawData.h"
 #include <iostream>
+#include <rapidjson/document.h>
+#include <io/IO.h>
 
-Carrot::Material::Material(Carrot::Engine& engine): engine(engine) {
+Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): engine(engine) {
+    rapidjson::Document description;
+    description.Parse(IO::readFileAsText("resources/materials/"+materialName+".json").c_str());
 
-}
+    textureID = description["textureIndex"].GetUint64();
+    string pipelineName = description["pipeline"].GetString();
+    pipeline = engine.getOrCreatePipeline(pipelineName);
 
-void Carrot::Material::bind(const string& shaderName, const string& textureName, uint32_t textureIndex, uint32_t bindingIndex) {
-    if(!pipeline) {
-        pipeline = engine.getOrCreatePipeline(shaderName);
-        descriptorSets = pipeline->getDescriptorSets();
-    }
-
-    auto& textureView = engine.getOrCreateTextureView(textureName);
-
-    vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()};
-    vk::DescriptorImageInfo imageInfo{
-            .imageView = *textureView,
-            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-    };
-    for(uint32_t i = 0; i < engine.getSwapchainImageCount(); i++) {
-        auto& write = writes[i];
-        write.dstSet = descriptorSets[i];
-        write.dstBinding = bindingIndex;
-        write.dstArrayElement = textureIndex;
-        write.descriptorCount = 1;
-        write.descriptorType = vk::DescriptorType::eSampledImage;
-        write.pImageInfo = &imageInfo;
-    }
-    engine.getLogicalDevice().updateDescriptorSets(writes, {});
+    id = pipeline->reserveMaterialSlot(*this);
 }
 
 void Carrot::Material::bindForRender(const uint32_t imageIndex, vk::CommandBuffer& commands) const {
-    pipeline->bind(commands);
-    pipeline->bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0});
+    pipeline->bind(imageIndex, commands);
+    vector<DrawData> data{1};
+    data[0].materialIndex = id;
+    commands.pushConstants<DrawData>(pipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<uint32_t>(0), data);
 }
 
-void Carrot::Material::bindDefaultValues() {
-    bind("default", "default.png", 0, 1);
-    bind("default", "default.png", 1, 1);
+Carrot::MaterialID Carrot::Material::getMaterialID() const {
+    return id;
+}
+
+void Carrot::Material::setTextureID(Carrot::TextureID texID) {
+    textureID = texID;
+}
+
+Carrot::TextureID Carrot::Material::getTextureID() const {
+    return textureID;
 }

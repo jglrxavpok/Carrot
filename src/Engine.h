@@ -11,6 +11,7 @@
 #include <vulkan/includes.h>
 #include <GLFW/glfw3.h>
 #include "memory/NakedPtr.hpp"
+#include "render/IDTypes.h"
 
 using namespace std;
 
@@ -20,6 +21,7 @@ namespace Carrot {
     class Mesh;
     class Model;
     class Pipeline;
+    class Material;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -97,7 +99,7 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);
 
-        shared_ptr<Pipeline> getOrCreatePipeline(const string& shaderName);
+        shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
 
         unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName);
         vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textureName);
@@ -109,6 +111,11 @@ namespace Carrot {
         const vk::UniqueSampler& getLinearSampler();
 
         vk::UniqueImageView& getDefaultImageView();
+
+        shared_ptr<Material> getOrCreateMaterial(const string& name);
+
+        /// Creates a set with the graphics and transfer family indices
+        set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
     private:
         bool running = true;
@@ -151,6 +158,7 @@ namespace Carrot {
         // TODO: abstraction over textures
         map<string, unique_ptr<Image>> textureImages{};
         map<string, vk::UniqueImageView> textureImageViews{};
+        map<string, shared_ptr<Material>> materials{};
 
         unique_ptr<Image> defaultImage = nullptr;
         vk::UniqueImageView defaultImageView{};
@@ -228,9 +236,6 @@ namespace Carrot {
         /// Create the image views used by the swapchain
         void createSwapChainImageViews();
 
-        /// Create the graphics pipeline, using the shaders inside resources/shaders/
-        void createGraphicsPipeline();
-
         /// Create the render pass
         void createRenderPass();
 
@@ -260,9 +265,6 @@ namespace Carrot {
 
         /// Create the UBOs for rendering
         void createUniformBuffers();
-
-        /// Creates a set with the graphics and transfer family indices
-        set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
         /// Update the uniform buffer at index 'imageIndex'
         void updateUniformBuffer(int imageIndex);

@@ -9,6 +9,7 @@
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_parser.hpp>
 #include <map>
+#include <render/shaders/Specialization.h>
 
 using namespace std;
 
@@ -37,8 +38,10 @@ namespace Carrot {
     public:
         explicit ShaderModule(Carrot::Engine& engine, const string& filename, const string& entryPoint = "main");
 
-        [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage) const;
+        [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
         void addBindings(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings);
+
+        void addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const;
     };
 }

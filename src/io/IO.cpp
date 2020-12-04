@@ -4,8 +4,13 @@
 
 #include "IO.h"
 #include <fstream>
+#include <iostream>
+#include <filesystem>
 
 std::vector<uint8_t> IO::readFile(const std::string& filename) {
+    if(!std::filesystem::exists(filename))
+        throw std::runtime_error("File does not exist: " + filename);
+
     // start at end of file to get length directly
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -19,4 +24,22 @@ std::vector<uint8_t> IO::readFile(const std::string& filename) {
     file.close();
 
     return contents;
+}
+
+std::string IO::readFileAsText(const std::string& filename) {
+    if(!std::filesystem::exists(filename))
+        throw std::runtime_error("File does not exist: " + filename);
+
+    std::ifstream file(filename, std::ios::in);
+
+    std::string contents;
+
+    std::string line;
+    while(getline(file, line)) {
+        if(!contents.empty()) {
+            contents += '\n';
+        }
+        contents += line;
+    }
+    return std::move(contents);
 }

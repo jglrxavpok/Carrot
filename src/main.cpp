@@ -5,7 +5,7 @@
 #include "constants.h"
 
 int main() {
-   // try {
+    try {
         glfwInit();
 
         glfwDefaultWindowHints();
@@ -22,9 +22,9 @@ int main() {
 
         glfwDestroyWindow(window.get());
         glfwTerminate();
-    /*} catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << "Fatal exception happened: " << e.what() << std::endl;
         throw e;
-    }*/
+    }
     return 0;
 }

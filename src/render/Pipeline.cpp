@@ -8,13 +8,22 @@
 #include "Vertex.h"
 #include "UniformBufferObject.h"
 #include "Buffer.h"
+#include <rapidjson/document.h>
+#include "io/IO.h"
+#include "DrawData.h"
+#include "render/Material.h"
 
-Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderPass, const string& shaderName): engine(engine), renderPass(renderPass) {
+#include <iostream>
+
+Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderPass, const string& pipelineName): engine(engine), renderPass(renderPass) {
+    rapidjson::Document description;
+    description.Parse(IO::readFileAsText("resources/pipelines/"+pipelineName+".json").c_str());
+
     auto& device = engine.getLogicalDevice();
     stages = make_unique<Carrot::ShaderStages>(engine,
                                              vector<string> {
-        "resources/shaders/"+shaderName+".vertex.glsl.spv",
-        "resources/shaders/"+shaderName+".fragment.glsl.spv"
+                                                     description["vertexShader"].GetString(),
+                                                     description["fragmentShader"].GetString()
                                              });
 
     descriptorSetLayout = stages->createDescriptorSetLayout();
@@ -82,11 +91,16 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .pAttachments = &colorBlendAttachment,
     };
 
+    vector<vk::PushConstantRange> pushConstants{};
+    for(const auto& [stage, module] : stages->getModuleMap()) {
+        module->addPushConstants(stage, pushConstants);
+    }
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
             .setLayoutCount = 1,
             .pSetLayouts = &(*descriptorSetLayout),
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr,
+            .pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size()),
+            .pPushConstantRanges = pushConstants.data(),
     };
 
     layout = device.createPipelineLayoutUnique(pipelineLayoutCreateInfo, engine.getAllocator());
@@ -126,7 +140,38 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
         .pScissors = &scissor,
     };
 
-    auto shaderStageCreation = stages->createPipelineShaderStages();
+    vector<Specialization> specializations{};
+    vector<uint32_t> specializationData{}; // TODO: support something else than uint32
+    for(const auto& constants : description["constants"].GetObject()) {
+        if("MAX_MATERIALS" == constants.name) {
+            maxMaterialID = constants.value.GetUint64();
+        }
+        if("MAX_TEXTURES" == constants.name) {
+            maxTextureID = constants.value.GetUint64();
+        }
+        cout << "Specializing constant " << constants.name.GetString() << " to value " << constants.value.GetUint64() << endl;
+        specializations.push_back(Specialization {
+            .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
+            .size = sizeof(uint32_t),
+            .constantID = static_cast<uint32_t>(specializations.size()), // TODO: Map name to index
+        });
+        specializationData.push_back(static_cast<uint32_t>(constants.value.GetUint64()));
+    }
+
+    uint32_t totalDataSize = 0;
+    vector<vk::SpecializationMapEntry> entries{};
+    for(const auto& spec : specializations) {
+        entries.emplace_back(spec.convertToEntry());
+        totalDataSize += spec.size;
+    }
+    vk::SpecializationInfo specialization {
+            .mapEntryCount = static_cast<uint32_t>(entries.size()),
+            .pMapEntries = entries.data(),
+            .dataSize = totalDataSize,
+            .pData = specializationData.data(),
+    };
+
+    auto shaderStageCreation = stages->createPipelineShaderStages(&specialization);
     vk::GraphicsPipelineCreateInfo pipelineInfo{
             .stageCount = static_cast<uint32_t>(shaderStageCreation.size()),
             .pStages = shaderStageCreation.data(),
@@ -147,11 +192,24 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
 
     vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator()).value;
 
+    materialStorageBuffer = make_unique<Buffer>(engine,
+                                                sizeof(MaterialData)*maxMaterialID,
+                                                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                                engine.createGraphicsAndTransferFamiliesSet());
+    vector<char> zeroes{};
+    zeroes.resize(materialStorageBuffer->getSize());
+    materialStorageBuffer->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0), zeroes));
+
+    texturesBindingIndex = description["texturesBindingIndex"].GetUint64();
+    materialsBindingIndex = description["materialStorageBufferBindingIndex"].GetUint64();
+
     recreateDescriptorPool(engine.getSwapchainImageCount());
 }
 
-void Carrot::Pipeline::bind(vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
+void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
     commands.bindPipeline(bindPoint, *vkPipeline);
+    bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
 }
 
 const vk::PipelineLayout& Carrot::Pipeline::getPipelineLayout() const {
@@ -193,6 +251,36 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     descriptorPool = engine.getLogicalDevice().createDescriptorPoolUnique(poolInfo, engine.getAllocator());
 
     descriptorSets = allocateDescriptorSets();
+
+    for(uint64_t imageIndex = 0; imageIndex < engine.getSwapchainImageCount(); imageIndex++) {
+        vk::DescriptorBufferInfo storageBufferInfo{
+                .buffer = materialStorageBuffer->getVulkanBuffer(),
+                .offset = 0,
+                .range = materialStorageBuffer->getSize(),
+        };
+        vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer*/};
+        writes[0].dstSet = descriptorSets[imageIndex];
+        writes[0].descriptorCount = 1;
+        writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
+        writes[0].pBufferInfo = &storageBufferInfo;
+        writes[0].dstBinding = materialsBindingIndex;
+
+        writes[1].dstSet = descriptorSets[imageIndex];
+        writes[1].descriptorCount = maxTextureID;
+        writes[1].descriptorType = vk::DescriptorType::eSampledImage;
+        writes[1].dstBinding = texturesBindingIndex;
+
+        vector<vk::DescriptorImageInfo> imageInfoStructs {maxTextureID};
+        writes[1].pImageInfo = imageInfoStructs.data();
+
+        for(TextureID textureID = 0; textureID < maxTextureID; textureID++) {
+            auto& info = imageInfoStructs[textureID];
+            info.imageView = *engine.getDefaultImageView();
+            info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        }
+
+        engine.getLogicalDevice().updateDescriptorSets(writes, {});
+    }
 }
 
 vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
@@ -265,4 +353,41 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
 
 const vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets() const {
     return descriptorSets;
+}
+
+Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material& material) {
+    if(materialID >= maxMaterialID) {
+        throw runtime_error("Max material id is " + to_string(maxMaterialID));
+    }
+    MaterialID id = materialID++;
+    updateMaterial(material);
+    return id;
+}
+
+Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView& textureView) {
+    if(textureID >= maxTextureID) {
+        throw runtime_error("Max texture id is " + to_string(maxTextureID));
+    }
+    TextureID id = textureID++;
+
+    for(uint64_t imageIndex = 0; imageIndex < engine.getSwapchainImageCount(); imageIndex++) {
+        vk::DescriptorImageInfo imageInfo {
+                .imageView = *textureView,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+        vk::WriteDescriptorSet write {
+                .dstSet = descriptorSets[imageIndex],
+                .dstBinding = texturesBindingIndex,
+                .dstArrayElement = id,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eSampledImage,
+                .pImageInfo = &imageInfo
+        };
+        engine.getLogicalDevice().updateDescriptorSets(write, {});
+    }
+    return id;
+}
+
+void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
+    materialStorageBuffer->stageUploadWithOffset(static_cast<uint64_t>(material.getMaterialID()), &material);
 }
