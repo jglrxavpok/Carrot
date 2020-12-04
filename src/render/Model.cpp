@@ -20,24 +20,25 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         throw runtime_error("Failed to load model "+filename);
     }
 
+    map<uint32_t, shared_ptr<Material>> materialMap{};
     for(size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
         const aiMaterial* mat = scene->mMaterials[materialIndex];
         string materialName = mat->GetName().data;
 
         // TODO: remove ugly hack, maybe due to Assimp creating a default material?
         if(materialName == "DefaultMaterial") {
-            materialName = "default";
+            continue;
         }
 
         auto material = engine.getOrCreateMaterial(materialName);
         materials.emplace_back(material);
         meshes[material.get()] = {};
+        materialMap[materialIndex] = material;
     }
 
     for(size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
-        unsigned int materialIndex = mesh->mMaterialIndex;
-        auto material = materials[materialIndex];
+        auto material = materialMap[mesh->mMaterialIndex];
 
         vector<Vertex> vertices{};
         vector<uint32_t> indices{};

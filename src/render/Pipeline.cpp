@@ -26,7 +26,10 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
                                                      description["fragmentShader"].GetString()
                                              });
 
-    descriptorSetLayout = stages->createDescriptorSetLayout();
+    for(const auto& constant : description["constants"].GetObject()) {
+        constants[constant.name.GetString()] = constant.value.GetUint64();
+    }
+    descriptorSetLayout = stages->createDescriptorSetLayout(constants);
     auto bindingDescription = Carrot::Vertex::getBindingDescription();
     auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
 
@@ -231,7 +234,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindings(stage, bindings);
+        module->addBindings(stage, bindings, constants);
     }
 
     for(const auto& binding : bindings) {
@@ -294,7 +297,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindings(stage, bindings);
+        module->addBindings(stage, bindings, constants);
     }
 
     // allocate default values

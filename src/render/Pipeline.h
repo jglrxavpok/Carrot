@@ -27,6 +27,7 @@ namespace Carrot {
         uint32_t texturesBindingIndex = 0;
         uint32_t materialsBindingIndex = 0;
         unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
+        map<string, uint32_t> constants{};
 
         vector<vk::DescriptorSet> allocateDescriptorSets();
 

@@ -19,9 +19,9 @@ namespace Carrot {
     class Model {
     private:
         Carrot::Engine& engine;
+        map<Material*, vector<shared_ptr<Mesh>>> meshes{};
         vector<shared_ptr<Material>> materials{};
         // TODO: textures
-        map<Material*, vector<shared_ptr<Mesh>>> meshes{};
 
     public:
         explicit Model(Carrot::Engine& engine, const string& filename);
