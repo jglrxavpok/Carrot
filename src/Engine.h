@@ -23,6 +23,7 @@ namespace Carrot {
     class Pipeline;
     class Material;
     class InstanceData;
+    class Game;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -173,6 +174,7 @@ namespace Carrot {
 
         unique_ptr<Buffer> instanceBuffer = nullptr;
         Carrot::InstanceData* modelInstance = nullptr;
+        unique_ptr<Game> game = nullptr;
 
         bool framebufferResized = false;
 
@@ -292,6 +294,8 @@ namespace Carrot {
         void createDefaultTexture();
 
         void createModelInstances();
+
+        void initGame();
     };
 }
 

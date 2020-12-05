@@ -58,6 +58,8 @@ set(SOURCES
         src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp
+
+        src/game/Game.cpp
         )
 
 set(VERTEX_SHADERS

@@ -14,9 +14,11 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     rapidjson::Document description;
     description.Parse(IO::readFileAsText("resources/materials/"+materialName+".json").c_str());
 
-    textureID = description["textureIndex"].GetUint64();
+    string textureName = description["texture"].GetString();
     string pipelineName = description["pipeline"].GetString();
     pipeline = engine.getOrCreatePipeline(pipelineName);
+
+    textureID = pipeline->reserveTextureSlot(engine.getOrCreateTextureView(textureName));
     if(description.HasMember("ignoreInstanceColor")) {
         ignoreInstanceColor = description["ignoreInstanceColor"].GetBool();
     }

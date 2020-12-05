@@ -26,6 +26,7 @@
 #include "render/Vertex.h"
 #include "render/Pipeline.h"
 #include "render/InstanceData.h"
+#include "game/Game.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -51,6 +52,7 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window) {
 void Carrot::Engine::init() {
     initWindow();
     initVulkan();
+    initGame();
 }
 
 void Carrot::Engine::run() {
@@ -695,8 +697,6 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    modelInstance[0].transform = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    modelInstance[1].transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(-2.0f, -2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
     ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
@@ -946,17 +946,6 @@ void Carrot::Engine::createSamplers() {
 
 void Carrot::Engine::createModel() {
     model = make_unique<Model>(*this, "resources/models/unit.obj");
-
-    auto pipeline = getOrCreatePipeline("default");
-    auto bodyTexID = pipeline->reserveTextureSlot(getOrCreateTextureView("units/body.png"));
-    auto bodyMaterial = getOrCreateMaterial("unit_body");
-    bodyMaterial->setTextureID(bodyTexID);
-    pipeline->updateMaterial(*bodyMaterial);
-
-    auto eyeTexID = pipeline->reserveTextureSlot(getOrCreateTextureView("units/eye.png"));
-    auto eyeMaterial = getOrCreateMaterial("unit_eyes");
-    eyeMaterial->setTextureID(eyeTexID);
-    pipeline->updateMaterial(*eyeMaterial);
 }
 
 void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
@@ -1061,6 +1050,10 @@ void Carrot::Engine::createModelInstances() {
         };
 
     }
+}
+
+void Carrot::Engine::initGame() {
+    game = make_unique<Game>(*this);
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

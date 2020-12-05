@@ -1,6 +1,7 @@
 {
   "pipeline": "default",
   "texture": "units/body.png",
+  "ignoreInstanceColor": true,
   "todo": [
     "samplers", "uniforms (& buffers)"
   ]

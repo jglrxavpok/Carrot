@@ -1,6 +1,6 @@
 {
   "pipeline": "default",
-  "textureIndex": 1,
+  "texture": "units/eye.png",
   "ignoreInstanceColor": true,
   "todo": [
     "samplers", "uniforms (& buffers)"
