@@ -30,8 +30,6 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-int maxInstanceCount = 100; // TODO: change
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -52,7 +50,6 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window) {
 void Carrot::Engine::init() {
     initWindow();
     initVulkan();
-    initGame();
 }
 
 void Carrot::Engine::run() {
@@ -106,8 +103,7 @@ void Carrot::Engine::initVulkan() {
     createDefaultTexture();
     createUniformBuffers();
     createSamplers();
-    createModel();
-    createModelInstances();
+    initGame();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -318,11 +314,20 @@ void Carrot::Engine::createLogicalDevice() {
         .samplerAnisotropy = true,
     };
 
+    vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
+#ifndef NO_DEBUG
+    if(USE_DEBUG_MARKERS) {
+        for (const auto& debugExt : VULKAN_DEBUG_EXTENSIONS) {
+            deviceExtensions.push_back(debugExt);
+        }
+    }
+#endif
+
     vk::DeviceCreateInfo createInfo{
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
             .pQueueCreateInfos = queueCreateInfoStructs.data(),
-            .enabledExtensionCount = static_cast<uint32_t>(VULKAN_DEVICE_EXTENSIONS.size()),
-            .ppEnabledExtensionNames = VULKAN_DEVICE_EXTENSIONS.data(),
+            .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
+            .ppEnabledExtensionNames = deviceExtensions.data(),
             .pEnabledFeatures = &deviceFeatures,
     };
 
@@ -355,6 +360,14 @@ bool Carrot::Engine::checkDeviceExtensionSupport(const vk::PhysicalDevice& logic
     const std::vector<vk::ExtensionProperties> available = logicalDevice.enumerateDeviceExtensionProperties(nullptr);
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
+
+#ifndef NO_DEBUG
+    if(USE_DEBUG_MARKERS) {
+        for(const auto& debugExtension : VULKAN_DEBUG_EXTENSIONS) {
+            required.insert(debugExtension);
+        }
+    }
+#endif
 
     for(const auto& ext : available) {
         required.erase(ext.extensionName);
@@ -682,7 +695,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        model->draw(i, commandBuffers[i], *instanceBuffer, maxInstanceCount);
+        game->recordCommandBuffer(i, commandBuffers[i]);
 
         commandBuffers[i].endRenderPass();
 
@@ -697,8 +710,9 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    ubo.view = glm::lookAt(glm::vec3(-2.0f, -2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
+    auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
+    ubo.view = glm::lookAt(glm::vec3(center.x, center.y+1, 5.0f), center, glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 1000.0f);
     ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
 
     uniformBuffers[imageIndex]->directUpload(&ubo, sizeof(ubo));
@@ -716,6 +730,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
 
+    game->onFrame(imageIndex);
     updateUniformBuffer(imageIndex);
 
 /*    if(imagesInFlight[imageIndex] != nullptr) {
@@ -944,10 +959,6 @@ void Carrot::Engine::createSamplers() {
                                                 }, allocator);
 }
 
-void Carrot::Engine::createModel() {
-    model = make_unique<Model>(*this, "resources/models/unit.obj");
-}
-
 void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
     commands.setViewport(0, vk::Viewport{
             .x = 0.0f,
@@ -979,6 +990,7 @@ unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& text
     auto it = textureImages.find(textureName);
     if(it == textureImages.end()) {
         auto texture = Image::fromFile(*this, "resources/textures/"+textureName);
+        texture->name(textureName);
         textureImages[textureName] = move(texture);
     }
     return textureImages[textureName];
@@ -1021,35 +1033,6 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
         materials[name] = make_shared<Material>(*this, name);
     }
     return materials[name];
-}
-
-void Carrot::Engine::createModelInstances() {
-    int groupSize = maxInstanceCount /3;
-    instanceBuffer = make_unique<Buffer>(*this,
-                                         maxInstanceCount*sizeof(InstanceData),
-                                         vk::BufferUsageFlagBits::eVertexBuffer,
-                                         vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                         set<uint32_t>{queueFamilies.graphicsFamily.value()});
-    glm::vec4 colors[] =  {
-            {1,0,0,1},
-            {0,1,0,1},
-            {0,0,1,1},
-    };
-    modelInstance = instanceBuffer->map<InstanceData>();
-
-    const float spacing = 0.5f;
-    for(int i = 0; i < maxInstanceCount; i++) {
-        float x = (i % 10) * spacing;
-        float y = (i / 10) * spacing;
-        glm::mat4 transform = glm::translate(glm::mat4(1.0), glm::vec3(x, y, 0));
-        transform = glm::rotate(transform, glm::pi<float>()/2.0f, glm::vec3(0,0,1));
-
-        modelInstance[i] = {
-                colors[(i / groupSize) % 3],
-                transform,
-        };
-
-    }
 }
 
 void Carrot::Engine::initGame() {

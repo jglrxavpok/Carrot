@@ -7,7 +7,7 @@
 #include "stb_image.h"
 
 Carrot::Image::Image(Carrot::Engine& engine, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
-engine(engine), size(extent) {
+Carrot::DebugNameable(), engine(engine), size(extent) {
     auto& device = engine.getLogicalDevice();
     vk::ImageCreateInfo createInfo{
         .flags = flags,
@@ -181,4 +181,9 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
 
 vk::UniqueImageView Carrot::Image::createImageView() {
     return std::move(engine.createImageView(*vkImage, vk::Format::eR8G8B8A8Unorm));
+}
+
+void Carrot::Image::setDebugNames(const string& name) {
+    nameSingle(engine, name, *vkImage);
+    nameSingle(engine, name+" Memory", *memory);
 }

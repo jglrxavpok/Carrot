@@ -60,6 +60,7 @@ set(SOURCES
         src/stb_impls.cpp
 
         src/game/Game.cpp
+        src/game/Unit.cpp
         )
 
 set(VERTEX_SHADERS
@@ -84,5 +85,13 @@ endforeach()
 include_directories(src/)
 include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
-add_executable(Carrot ${SOURCES} ${SHADERS})
-target_link_libraries(Carrot Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)
+
+set(ALL_SOURCES ${SOURCES} ${SHADERS})
+set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)
+
+add_executable(Carrot ${ALL_SOURCES})
+target_link_libraries(Carrot ${ALL_LIBS})
+
+add_executable(Carrot-Renderdoc ${ALL_SOURCES})
+target_compile_definitions(Carrot-Renderdoc PRIVATE DEBUG_MARKERS=1)
+target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})

@@ -4,14 +4,27 @@
 
 #pragma once
 
+#include <cstdint>
+#include "vulkan/includes.h"
+#include "Engine.h"
+#include "Unit.h"
+
 namespace Carrot {
     class Engine;
 
     class Game {
     private:
         Engine& engine;
+        unique_ptr<Model> model = nullptr;
+        unique_ptr<Buffer> instanceBuffer = nullptr;
+        InstanceData* modelInstance = nullptr;
+        vector<unique_ptr<Unit>> units{};
 
     public:
         explicit Game(Engine& engine);
+
+        void onFrame(uint32_t frameIndex);
+
+        void recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands);
     };
 }

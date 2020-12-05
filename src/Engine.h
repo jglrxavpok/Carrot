@@ -154,9 +154,6 @@ namespace Carrot {
         vector<vk::UniqueFence> inFlightFences{};
         vector<vk::UniqueFence> imagesInFlight{};
 
-        unique_ptr<Model> model = nullptr;
-        unique_ptr<Mesh> testMesh = nullptr;
-
         // TODO: abstraction over textures
         map<string, unique_ptr<Image>> textureImages{};
         map<string, vk::UniqueImageView> textureImageViews{};
@@ -172,8 +169,6 @@ namespace Carrot {
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
-        unique_ptr<Buffer> instanceBuffer = nullptr;
-        Carrot::InstanceData* modelInstance = nullptr;
         unique_ptr<Game> game = nullptr;
 
         bool framebufferResized = false;
@@ -287,13 +282,9 @@ namespace Carrot {
         /// Create the samplers used by the engine
         void createSamplers();
 
-        void createModel();
-
         void updateViewportAndScissor(vk::CommandBuffer& commands);
 
         void createDefaultTexture();
-
-        void createModelInstances();
 
         void initGame();
     };

@@ -5,12 +5,13 @@
 #pragma once
 
 #include "vulkan/includes.h"
+#include "vulkan/DebugNameable.h"
 #include "Engine.h"
 #include <set>
 
 namespace Carrot {
     /// Abstraction over Vulkan images. Manages lifetime and memory
-    class Image {
+    class Image: public DebugNameable {
     private:
         Carrot::Engine& engine;
         vk::Extent3D size{};
@@ -43,6 +44,9 @@ namespace Carrot {
         static unique_ptr<Image> fromFile(Carrot::Engine& engine, const std::string& filename);
 
         ~Image() = default;
+
+    protected:
+        void setDebugNames(const string& name) override;
     };
 
 }
