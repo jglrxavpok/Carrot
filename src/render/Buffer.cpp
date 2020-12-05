@@ -41,11 +41,11 @@ Carrot::Buffer::Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags
     device.bindBufferMemory(*vkBuffer, *memory, 0);
 }
 
-void Carrot::Buffer::copyTo(Carrot::Buffer& other) const {
+void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize offset) const {
     engine.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
         vk::BufferCopy copyRegion = {
                 .srcOffset = 0,
-                .dstOffset = 0,
+                .dstOffset = offset,
                 .size = size,
         };
         stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});

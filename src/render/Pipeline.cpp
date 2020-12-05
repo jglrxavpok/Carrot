@@ -363,7 +363,7 @@ Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material&
         throw runtime_error("Max material id is " + to_string(maxMaterialID));
     }
     MaterialID id = materialID++;
-    updateMaterial(material);
+    updateMaterial(material, id);
     return id;
 }
 
@@ -391,6 +391,14 @@ Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView
     return id;
 }
 
+void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, MaterialID materialID) {
+    MaterialData data = {
+        material.getTextureID(),
+        material.ignoresInstanceColor(),
+    };
+    materialStorageBuffer->stageUploadWithOffset(static_cast<uint64_t>(materialID)*sizeof(MaterialData), &data);
+}
+
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
-    materialStorageBuffer->stageUploadWithOffset(static_cast<uint64_t>(material.getMaterialID()), &material);
+    updateMaterial(material, material.getMaterialID());
 }

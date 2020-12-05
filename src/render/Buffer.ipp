@@ -31,7 +31,7 @@ void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... 
 
 
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this);
+    stagingBuffer.copyTo(*this, 0);
 
     // stagingBuffer will be destroyed, and resources freed after this point
 }
@@ -39,14 +39,14 @@ void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffset(uint64_t offset, const T* data) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(engine, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(engine, sizeof(T), vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
-    stagingBuffer.directUpload(data, sizeof(T), offset);
+    stagingBuffer.directUpload(data, sizeof(T));
 
 
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this);
+    stagingBuffer.copyTo(*this, offset);
 }
 
 template<typename T>

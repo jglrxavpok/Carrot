@@ -1,0 +1,7 @@
+{
+  "pipeline": "default",
+  "textureIndex": 0,
+  "todo": [
+    "samplers", "uniforms (& buffers)"
+  ]
+}

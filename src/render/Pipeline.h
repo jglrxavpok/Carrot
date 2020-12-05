@@ -50,5 +50,6 @@ namespace Carrot {
         TextureID reserveTextureSlot(const vk::UniqueImageView& textureView);
 
         void updateMaterial(const Material& material);
+        void updateMaterial(const Material& material, MaterialID materialID);
     };
 }

@@ -1,0 +1,8 @@
+{
+  "pipeline": "default",
+  "textureIndex": 1,
+  "ignoreInstanceColor": true,
+  "todo": [
+    "samplers", "uniforms (& buffers)"
+  ]
+}

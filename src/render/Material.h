@@ -14,6 +14,7 @@ namespace Carrot {
         Carrot::Engine& engine;
         shared_ptr<Pipeline> pipeline = nullptr;
         TextureID textureID{0};
+        bool ignoreInstanceColor = false;
 
     public:
         explicit Material(Carrot::Engine& engine, const string& materialName);
@@ -21,6 +22,8 @@ namespace Carrot {
         MaterialID getMaterialID() const;
         TextureID getTextureID() const;
         void setTextureID(TextureID texID);
+
+        bool ignoresInstanceColor() const;
 
         void bindForRender(const uint32_t imageIndex, vk::CommandBuffer& commands) const;
     };

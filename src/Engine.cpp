@@ -29,6 +29,8 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
+int maxInstanceCount = 100; // TODO: change
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -678,10 +680,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        model->draw(i, commandBuffers[i], *instanceBuffer, 2);
-
-        testMesh->bind(commandBuffers[i]);
-        testMesh->draw(commandBuffers[i]);
+        model->draw(i, commandBuffers[i], *instanceBuffer, maxInstanceCount);
 
         commandBuffers[i].endRenderPass();
 
@@ -698,7 +697,7 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
 
     modelInstance[0].transform = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     modelInstance[1].transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(-2.0f, -2.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
     ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
 
@@ -946,23 +945,18 @@ void Carrot::Engine::createSamplers() {
 }
 
 void Carrot::Engine::createModel() {
-    model = make_unique<Model>(*this, "resources/models/viking_room.obj");
-    testMesh = make_unique<Mesh>(*this, vector<Vertex>{
-                                         {{-0.5f, -0.5f, -1.5f}, {1,1,1}, {0,0}},
-                                         {{+0.5f, -0.5f, -1.5f}, {1,1,1}, {1,0}},
-                                         {{+0.5f, +0.5f, -1.5f}, {1,1,1}, {1,1}},
-                                         {{-0.5f, +0.5f, -1.5f}, {1,1,1}, {0,1}},
-                                },
-                                 vector<uint32_t>{
-                                    0,1,2,
-                                    3,0,2,
-                                 });
+    model = make_unique<Model>(*this, "resources/models/unit.obj");
 
     auto pipeline = getOrCreatePipeline("default");
-    auto texID = pipeline->reserveTextureSlot(getOrCreateTextureView("viking_room.png"));
-    auto material = getOrCreateMaterial("default");
-    material->setTextureID(texID);
-    pipeline->updateMaterial(*material);
+    auto bodyTexID = pipeline->reserveTextureSlot(getOrCreateTextureView("units/body.png"));
+    auto bodyMaterial = getOrCreateMaterial("unit_body");
+    bodyMaterial->setTextureID(bodyTexID);
+    pipeline->updateMaterial(*bodyMaterial);
+
+    auto eyeTexID = pipeline->reserveTextureSlot(getOrCreateTextureView("units/eye.png"));
+    auto eyeMaterial = getOrCreateMaterial("unit_eyes");
+    eyeMaterial->setTextureID(eyeTexID);
+    pipeline->updateMaterial(*eyeMaterial);
 }
 
 void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
@@ -1041,21 +1035,32 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
 }
 
 void Carrot::Engine::createModelInstances() {
-    int maxInstanceCount = 2; // TODO: change
+    int groupSize = maxInstanceCount /3;
     instanceBuffer = make_unique<Buffer>(*this,
                                          maxInstanceCount*sizeof(InstanceData),
                                          vk::BufferUsageFlagBits::eVertexBuffer,
                                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
                                          set<uint32_t>{queueFamilies.graphicsFamily.value()});
+    glm::vec4 colors[] =  {
+            {1,0,0,1},
+            {0,1,0,1},
+            {0,0,1,1},
+    };
     modelInstance = instanceBuffer->map<InstanceData>();
-    modelInstance[0] = {
-            glm::vec4(1.0,1.0,1.0,1.0),
-            glm::mat4(1.0f),
-    };
-    modelInstance[1] = {
-            glm::vec4(1.0,1.0,1.0,1.0),
-            glm::mat4(1.0f),
-    };
+
+    const float spacing = 0.5f;
+    for(int i = 0; i < maxInstanceCount; i++) {
+        float x = (i % 10) * spacing;
+        float y = (i / 10) * spacing;
+        glm::mat4 transform = glm::translate(glm::mat4(1.0), glm::vec3(x, y, 0));
+        transform = glm::rotate(transform, glm::pi<float>()/2.0f, glm::vec3(0,0,1));
+
+        modelInstance[i] = {
+                colors[(i / groupSize) % 3],
+                transform,
+        };
+
+    }
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

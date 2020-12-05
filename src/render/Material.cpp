@@ -17,7 +17,9 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     textureID = description["textureIndex"].GetUint64();
     string pipelineName = description["pipeline"].GetString();
     pipeline = engine.getOrCreatePipeline(pipelineName);
-
+    if(description.HasMember("ignoreInstanceColor")) {
+        ignoreInstanceColor = description["ignoreInstanceColor"].GetBool();
+    }
     id = pipeline->reserveMaterialSlot(*this);
 }
 
@@ -38,4 +40,8 @@ void Carrot::Material::setTextureID(Carrot::TextureID texID) {
 
 Carrot::TextureID Carrot::Material::getTextureID() const {
     return textureID;
+}
+
+bool Carrot::Material::ignoresInstanceColor() const {
+    return ignoreInstanceColor;
 }

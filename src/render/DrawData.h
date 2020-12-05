@@ -12,5 +12,6 @@ namespace Carrot {
 
     struct MaterialData {
         uint32_t textureIndex;
+        uint32_t ignoreInstanceColor;
     };
 }

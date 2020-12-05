@@ -28,7 +28,7 @@ namespace Carrot {
         uint64_t getSize() const;
 
         /// Copies this buffer to 'other' as a transfer operation
-        void copyTo(Buffer& other) const;
+        void copyTo(Buffer& other, vk::DeviceSize offset) const;
 
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
