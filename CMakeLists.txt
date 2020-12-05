@@ -54,6 +54,7 @@ set(SOURCES
         src/render/ShaderStages.cpp
         src/render/Pipeline.cpp
         src/render/shaders/Specialization.cpp
+        src/render/InstanceData.cpp
         src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp

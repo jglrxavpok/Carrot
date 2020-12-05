@@ -22,6 +22,7 @@ namespace Carrot {
     class Model;
     class Pipeline;
     class Material;
+    class InstanceData;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -170,6 +171,9 @@ namespace Carrot {
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
+        unique_ptr<Buffer> instanceBuffer = nullptr;
+        Carrot::InstanceData* modelInstance = nullptr;
+
         bool framebufferResized = false;
 
         /// Init engine
@@ -286,6 +290,8 @@ namespace Carrot {
         void updateViewportAndScissor(vk::CommandBuffer& commands);
 
         void createDefaultTexture();
+
+        void createModelInstances();
     };
 }
 

@@ -69,3 +69,9 @@ void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::D
 uint64_t Carrot::Buffer::getSize() const {
     return size;
 }
+
+Carrot::Buffer::~Buffer() {
+    if(mapped) {
+        engine.getLogicalDevice().unmapMemory(*memory);
+    }
+}

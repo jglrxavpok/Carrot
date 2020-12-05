@@ -48,3 +48,10 @@ void Carrot::Buffer::stageUploadWithOffset(uint64_t offset, const T* data) {
     // copy staging buffer to this buffer
     stagingBuffer.copyTo(*this);
 }
+
+template<typename T>
+T* Carrot::Buffer::map() {
+    auto& device = engine.getLogicalDevice();
+    void* ptr = device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    return (T*) ptr;
+}

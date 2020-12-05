@@ -14,10 +14,5 @@ namespace Carrot {
 
         /// View matrix (transformation of the camera)
         alignas(16) glm::mat4 view;
-
-        /// Model matrix (transformation of the model)
-        alignas(16) glm::mat4 model;
-
-        // TODO: split proj+view and model matrices into different UBO?
     };
 }

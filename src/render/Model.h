@@ -15,6 +15,7 @@ namespace Carrot {
     class Mesh;
     class Engine;
     class Material;
+    class Buffer;
 
     class Model {
     private:
@@ -26,6 +27,6 @@ namespace Carrot {
     public:
         explicit Model(Carrot::Engine& engine, const string& filename);
 
-        void draw(const uint32_t imageIndex, vk::CommandBuffer& commands);
+        void draw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount);
     };
 }

@@ -34,8 +34,8 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
     auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = 1,
-            .pVertexBindingDescriptions = &bindingDescription,
+            .vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescription.size()),
+            .pVertexBindingDescriptions = bindingDescription.data(),
 
             .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
             .pVertexAttributeDescriptions = attributeDescriptions.data(),

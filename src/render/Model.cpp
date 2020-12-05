@@ -86,13 +86,14 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
     }
 }
 
-void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands) {
+void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount) {
+    commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
         material->bindForRender(imageIndex, commands);
 
         for(const auto& mesh : meshes[material.get()]) {
             mesh->bind(commands);
-            mesh->draw(commands);
+            mesh->draw(commands, instanceCount);
         }
     }
 }

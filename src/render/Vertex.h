@@ -20,10 +20,10 @@ namespace Carrot {
         alignas(16) glm::vec2 uv;
 
         /// Creates a binding description for this Vertex struct
-        static vk::VertexInputBindingDescription getBindingDescription();
+        static std::array<vk::VertexInputBindingDescription, 2> getBindingDescription();
 
         /// Creates an array describing the different attributes of a Vertex
-        static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions();
+        static std::array<vk::VertexInputAttributeDescription, 8> getAttributeDescriptions();
     };
 }
 

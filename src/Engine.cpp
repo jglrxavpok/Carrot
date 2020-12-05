@@ -25,6 +25,7 @@
 #include "render/Material.h"
 #include "render/Vertex.h"
 #include "render/Pipeline.h"
+#include "render/InstanceData.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -102,6 +103,7 @@ void Carrot::Engine::initVulkan() {
     createUniformBuffers();
     createSamplers();
     createModel();
+    createModelInstances();
     createCommandBuffers();
     createSynchronizationObjects();
 }
@@ -676,7 +678,7 @@ void Carrot::Engine::createCommandBuffers() {
 
         commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
-        model->draw(i, commandBuffers[i]);
+        model->draw(i, commandBuffers[i], *instanceBuffer, 2);
 
         testMesh->bind(commandBuffers[i]);
         testMesh->draw(commandBuffers[i]);
@@ -693,7 +695,9 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    modelInstance[0].transform = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    modelInstance[1].transform = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
     ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
@@ -1034,6 +1038,24 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
         materials[name] = make_shared<Material>(*this, name);
     }
     return materials[name];
+}
+
+void Carrot::Engine::createModelInstances() {
+    int maxInstanceCount = 2; // TODO: change
+    instanceBuffer = make_unique<Buffer>(*this,
+                                         maxInstanceCount*sizeof(InstanceData),
+                                         vk::BufferUsageFlagBits::eVertexBuffer,
+                                         vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                         set<uint32_t>{queueFamilies.graphicsFamily.value()});
+    modelInstance = instanceBuffer->map<InstanceData>();
+    modelInstance[0] = {
+            glm::vec4(1.0,1.0,1.0,1.0),
+            glm::mat4(1.0f),
+    };
+    modelInstance[1] = {
+            glm::vec4(1.0,1.0,1.0,1.0),
+            glm::mat4(1.0f),
+    };
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

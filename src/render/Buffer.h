@@ -13,6 +13,7 @@ namespace Carrot {
     class Buffer {
 
     private:
+        bool mapped = false;
         Engine& engine;
         uint64_t size;
         vk::UniqueBuffer vkBuffer{};
@@ -46,7 +47,10 @@ namespace Carrot {
         template<typename T>
         void stageUploadWithOffset(uint64_t offset, const T* data);
 
-        ~Buffer() = default;
+        template<typename T>
+        T* map();
+
+        ~Buffer();
     };
 }
 
