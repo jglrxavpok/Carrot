@@ -8,7 +8,7 @@
 
 namespace Carrot {
     /// UBO used by this engine
-    struct UniformBufferObject {
+    struct CameraBufferObject {
         /// Projection matrix
         alignas(16) glm::mat4 projection;
 

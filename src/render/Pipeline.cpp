@@ -4,9 +4,9 @@
 
 #include <constants.h>
 #include "Pipeline.h"
-#include "ShaderStages.h"
+#include "render/shaders/ShaderStages.h"
 #include "Vertex.h"
-#include "UniformBufferObject.h"
+#include "CameraBufferObject.h"
 #include "Buffer.h"
 #include <rapidjson/document.h>
 #include "io/IO.h"
@@ -318,9 +318,9 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
             switch (binding.descriptorType) {
                 case vk::DescriptorType::eUniformBufferDynamic: {
                     auto& buffer = buffers[writeIndex];
-                    buffer.buffer = engine.getUniformBuffers()[i]->getVulkanBuffer();
+                    buffer.buffer = engine.getCameraUniformBuffers()[i]->getVulkanBuffer();
                     buffer.offset = 0;
-                    buffer.range = sizeof(UniformBufferObject); // TODO: customizable
+                    buffer.range = sizeof(CameraBufferObject); // TODO: customizable
                     write.pBufferInfo = buffers.data()+writeIndex;
 
                     writeIndex++;

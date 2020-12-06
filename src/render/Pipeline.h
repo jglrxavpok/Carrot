@@ -5,7 +5,7 @@
 #pragma once
 #include "Engine.h"
 #include "vulkan/includes.h"
-#include "ShaderStages.h"
+#include "render/shaders/ShaderStages.h"
 
 namespace Carrot {
     class Pipeline {

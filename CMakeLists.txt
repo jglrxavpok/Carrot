@@ -9,7 +9,7 @@ add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
 set(ASSIMP_BUILD_TESTS CACHE BOOL OFF)
-set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
+#set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
 set(ASSIMP_BUILD_GLTF_EXPORTER CACHE BOOL OFF)
 add_subdirectory(thirdparty/assimp)
 
@@ -47,14 +47,15 @@ set(SOURCES
         src/render/Model.cpp
         src/render/Vertex.cpp
         src/render/Buffer.cpp
-        src/render/UniformBufferObject.cpp
+        src/render/CameraBufferObject.cpp
         src/render/Image.cpp
         src/render/Material.cpp
-        src/render/ShaderModule.cpp
-        src/render/ShaderStages.cpp
+        src/render/shaders/ShaderModule.cpp
+        src/render/shaders/ShaderStages.cpp
         src/render/Pipeline.cpp
         src/render/shaders/Specialization.cpp
         src/render/InstanceData.cpp
+        src/render/Camera.cpp
         src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp

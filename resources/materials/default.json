@@ -1,6 +1,6 @@
 {
   "pipeline": "default",
-  "textureIndex": 0,
+  "texture": "texture.jpg",
   "todo": [
     "samplers", "uniforms (& buffers)"
   ]

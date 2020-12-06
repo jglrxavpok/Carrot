@@ -15,8 +15,10 @@ namespace Carrot {
     class Game {
     private:
         Engine& engine;
+        unique_ptr<Model> mapModel = nullptr;
         unique_ptr<Model> model = nullptr;
         unique_ptr<Buffer> instanceBuffer = nullptr;
+        unique_ptr<Buffer> mapInstanceBuffer = nullptr;
         InstanceData* modelInstance = nullptr;
         vector<unique_ptr<Unit>> units{};
 
@@ -26,5 +28,7 @@ namespace Carrot {
         void onFrame(uint32_t frameIndex);
 
         void recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands);
+
+        void onMouseMove(double dx, double dy);
     };
 }

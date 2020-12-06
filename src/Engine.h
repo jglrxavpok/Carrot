@@ -24,6 +24,7 @@ namespace Carrot {
     class Material;
     class InstanceData;
     class Game;
+    class Camera;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -50,6 +51,7 @@ namespace Carrot {
 
         /// Called by GLFW when the window is resized
         void onWindowResize();
+        void onMouseMove(double xpos, double ypos);
 
         /// Cleanup resources
         ~Engine();
@@ -108,7 +110,7 @@ namespace Carrot {
 
         uint32_t getSwapchainImageCount();
 
-        vector<shared_ptr<Buffer>>& getUniformBuffers();
+        vector<shared_ptr<Buffer>>& getCameraUniformBuffers();
 
         const vk::UniqueSampler& getLinearSampler();
 
@@ -119,7 +121,11 @@ namespace Carrot {
         /// Creates a set with the graphics and transfer family indices
         set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
+        Camera& getCamera();
+
     private:
+        double mouseX = 0.0;
+        double mouseY = 0.0;
         bool running = true;
         NakedPtr<GLFWwindow> window = nullptr;
         const vk::AllocationCallbacks* allocator = nullptr;
@@ -165,10 +171,11 @@ namespace Carrot {
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
 
-        vector<shared_ptr<Buffer>> uniformBuffers{};
+        vector<shared_ptr<Buffer>> cameraUniformBuffers{};
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
+        unique_ptr<Camera> camera = nullptr;
         unique_ptr<Game> game = nullptr;
 
         bool framebufferResized = false;
@@ -287,6 +294,8 @@ namespace Carrot {
         void createDefaultTexture();
 
         void initGame();
+
+        void createCamera();
     };
 }
 

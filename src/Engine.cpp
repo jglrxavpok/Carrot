@@ -14,8 +14,8 @@
 #include <map>
 #include <set>
 #include <io/IO.h>
-#include <render/UniformBufferObject.h>
-#include <render/ShaderStages.h>
+#include <render/CameraBufferObject.h>
+#include <render/shaders/ShaderStages.h>
 #include "Engine.h"
 #include "constants.h"
 #include "render/Buffer.h"
@@ -26,6 +26,7 @@
 #include "render/Vertex.h"
 #include "render/Pipeline.h"
 #include "render/InstanceData.h"
+#include "render/Camera.h"
 #include "game/Game.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -77,9 +78,16 @@ static void windowResize(GLFWwindow* window, int width, int height) {
     app->onWindowResize();
 }
 
+static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
+    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
+    app->onMouseMove(xpos, ypos);
+}
+
 void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
+
+    glfwSetCursorPosCallback(window.get(), mouseMove);
 
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 }
@@ -103,6 +111,7 @@ void Carrot::Engine::initVulkan() {
     createDefaultTexture();
     createUniformBuffers();
     createSamplers();
+    createCamera();
     initGame();
     createCommandBuffers();
     createSynchronizationObjects();
@@ -704,18 +713,10 @@ void Carrot::Engine::createCommandBuffers() {
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
-    static UniformBufferObject ubo{};
-    static auto startTime = std::chrono::high_resolution_clock::now();
+    static CameraBufferObject cbo{};
 
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-    auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
-    ubo.view = glm::lookAt(glm::vec3(center.x, center.y+1, 5.0f), center, glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.projection = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 1000.0f);
-    ubo.projection[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
-
-    uniformBuffers[imageIndex]->directUpload(&ubo, sizeof(ubo));
+    camera->updateBufferObject(cbo);
+    cameraUniformBuffers[imageIndex]->directUpload(&cbo, sizeof(cbo));
 }
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
@@ -878,15 +879,15 @@ vk::Queue Carrot::Engine::getGraphicsQueue() {
 }
 
 void Carrot::Engine::createUniformBuffers() {
-    vk::DeviceSize bufferSize = sizeof(Carrot::UniformBufferObject);
-    uniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
+    vk::DeviceSize bufferSize = sizeof(Carrot::CameraBufferObject);
+    cameraUniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
 
     for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
-        uniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
-                                                        bufferSize,
-                                                        vk::BufferUsageFlagBits::eUniformBuffer,
-                                                        vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                        createGraphicsAndTransferFamiliesSet());
+        cameraUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+                                                              bufferSize,
+                                                              vk::BufferUsageFlagBits::eUniformBuffer,
+                                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                              createGraphicsAndTransferFamiliesSet());
     }
 }
 
@@ -1010,8 +1011,8 @@ uint32_t Carrot::Engine::getSwapchainImageCount() {
     return swapchainFramebuffers.size();
 }
 
-vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getUniformBuffers() {
-    return uniformBuffers;
+vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getCameraUniformBuffers() {
+    return cameraUniformBuffers;
 }
 
 const vk::UniqueSampler& Carrot::Engine::getLinearSampler() {
@@ -1037,6 +1038,28 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
 
 void Carrot::Engine::initGame() {
     game = make_unique<Game>(*this);
+}
+
+void Carrot::Engine::createCamera() {
+    auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
+
+    camera = make_unique<Camera>(45.0f, swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 1000.0f);
+    camera->position = glm::vec3(center.x, center.y + 1, 5.0f);
+    camera->target = center;
+}
+
+void Carrot::Engine::onMouseMove(double xpos, double ypos) {
+    double dx = xpos-mouseX;
+    double dy = ypos-mouseY;
+    if(game) {
+        game->onMouseMove(dx, dy);
+    }
+    mouseX = xpos;
+    mouseY = ypos;
+}
+
+Carrot::Camera& Carrot::Engine::getCamera() {
+    return *camera;
 }
 
 bool Carrot::QueueFamilies::isComplete() const {
