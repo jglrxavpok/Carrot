@@ -79,18 +79,15 @@ float pitch = 0.0f;
 
 void Carrot::Game::onMouseMove(double dx, double dy) {
     auto& camera = engine.getCamera();
-    yaw += dx * 0.001f;
-    pitch += dy * 0.001f;
+    yaw -= dx * 0.01f;
+    pitch -= dy * 0.01f;
 
     const float distanceFromCenter = 5.0f;
-    auto v = glm::yawPitchRoll(yaw, pitch, 0.0f) * glm::vec4(0,0,1, 0);
-    camera.position = glm::vec3{v.x, v.y, v.z} * distanceFromCenter;
+    float cosYaw = cos(yaw);
+    float sinYaw = sin(yaw);
+
+    float cosPitch = cos(pitch);
+    float sinPitch = sin(pitch);
+    camera.position = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
     camera.position += camera.target;
-
-    auto view = glm::lookAt(camera.position, camera.target, {0,0,1});
-
-    for(int i = 0;i<4;i++) {
-        cout << to_string(view[0][i]) << "\t" << to_string(view[1][i]) << "\t" << to_string(view[2][i]) << "\t" << to_string(view[3][i]) << endl;
-    }
-    cout << "================" << endl;
 }
