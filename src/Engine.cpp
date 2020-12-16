@@ -61,7 +61,6 @@ void Carrot::Engine::run() {
         glfwPollEvents();
 
         if(glfwWindowShouldClose(window.get())) {
-            glfwHideWindow(window.get());
             running = false;
         }
 
@@ -69,6 +68,8 @@ void Carrot::Engine::run() {
 
         currentFrame = (currentFrame+1) % MAX_FRAMES_IN_FLIGHT;
     }
+
+    glfwHideWindow(window.get());
 
     device->waitIdle();
 }
@@ -83,11 +84,19 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
     app->onMouseMove(xpos, ypos);
 }
 
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
+    app->onKeyEvent(key, scancode, action, mods);
+}
+
 void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
 
     glfwSetCursorPosCallback(window.get(), mouseMove);
+    glfwSetKeyCallback(window.get(), keyCallback);
+
+    glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 }
@@ -1060,6 +1069,14 @@ void Carrot::Engine::onMouseMove(double xpos, double ypos) {
 
 Carrot::Camera& Carrot::Engine::getCamera() {
     return *camera;
+}
+
+void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
+    if(key == GLFW_KEY_ESCAPE) {
+        running = false;
+    }
+
+    // TODO: pass input to game
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

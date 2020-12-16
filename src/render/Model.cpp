@@ -84,6 +84,14 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
 
         meshes[material.get()].push_back(make_shared<Mesh>(engine, vertices, indices));
     }
+
+    if(scene->HasAnimations()) {
+        for(int i = 0; i < scene->mNumAnimations; i++) {
+            aiAnimation* anim = scene->mAnimations[i];
+            cout << "Found animation named " << anim->mName.data << endl;
+            // TODO
+        }
+    }
 }
 
 void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount) {

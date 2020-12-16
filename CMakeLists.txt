@@ -32,6 +32,7 @@ endfunction()
 
 function(copy_resources TYPE)
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/${TYPE}" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+    message("Copying resources/${TYPE} next to binary output")
 endfunction()
 
 copy_resources(textures)

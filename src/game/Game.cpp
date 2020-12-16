@@ -16,7 +16,7 @@ int maxInstanceCount = 100; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
-    model = make_unique<Model>(engine, "resources/models/unit.obj");
+    model = make_unique<Model>(engine, "resources/models/unit.fbx");
 
     int groupSize = maxInstanceCount /3;
     instanceBuffer = make_unique<Buffer>(engine,
@@ -48,7 +48,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
 }
 
 void Carrot::Game::onFrame(uint32_t frameIndex) {
-    map<Unit::Type, glm::vec3> centers{};
+/*    map<Unit::Type, glm::vec3> centers{};
     map<Unit::Type, uint32_t> counts{};
 
     for(const auto& unit : units) {
@@ -59,11 +59,11 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     centers[Unit::Type::Red] /= counts[Unit::Type::Red];
     centers[Unit::Type::Green] /= counts[Unit::Type::Green];
     centers[Unit::Type::Blue] /= counts[Unit::Type::Blue];
-
+*/
     static double lastTime = glfwGetTime();
     float dt = static_cast<float>(glfwGetTime() - lastTime);
     for(const auto& unit : units) {
-        unit->moveTo(centers[unit->getType()]);
+   //     unit->moveTo(centers[unit->getType()]);
         unit->update(dt);
     }
     lastTime = glfwGetTime();

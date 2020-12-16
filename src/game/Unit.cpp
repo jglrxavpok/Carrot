@@ -30,12 +30,13 @@ void Carrot::Unit::update(float dt) {
     // TODO: move randomly
 
     instanceData.color = { color.r, color.g, color.b, 1.0f };
-    auto modelRotation = glm::rotate(rotation, -glm::pi<float>()/2, glm::vec3(0,0,01));
+    auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
     instanceData.transform = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
 }
 
 void Carrot::Unit::teleport(const glm::vec3& newPos) {
     position = newPos;
+    target = newPos;
 }
 
 Carrot::Unit::Type Carrot::Unit::getType() const {

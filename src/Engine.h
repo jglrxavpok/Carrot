@@ -52,6 +52,7 @@ namespace Carrot {
         /// Called by GLFW when the window is resized
         void onWindowResize();
         void onMouseMove(double xpos, double ypos);
+        void onKeyEvent(int key, int scancode, int action, int mods);
 
         /// Cleanup resources
         ~Engine();
