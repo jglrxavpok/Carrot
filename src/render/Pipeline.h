@@ -6,13 +6,16 @@
 #include "Engine.h"
 #include "vulkan/includes.h"
 #include "render/shaders/ShaderStages.h"
+#include "VertexFormat.h"
 
 namespace Carrot {
     class Pipeline {
     private:
         Carrot::Engine& engine;
         vk::UniqueRenderPass& renderPass;
-        vk::UniqueDescriptorSetLayout descriptorSetLayout{};
+        vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
+        /// can be nullptr, used for animations
+        vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
         vk::UniquePipelineLayout layout{};
         vk::UniquePipeline vkPipeline{};
         vk::UniqueDescriptorPool descriptorPool{};
@@ -29,6 +32,8 @@ namespace Carrot {
         unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
         map<string, uint32_t> constants{};
 
+        VertexFormat vertexFormat = VertexFormat::Invalid;
+
         vector<vk::DescriptorSet> allocateDescriptorSets();
 
     public:
@@ -39,11 +44,13 @@ namespace Carrot {
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
         [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout() const;
 
-        void bindDescriptorSets(vk::CommandBuffer& commands, const vector<vk::DescriptorSet>& descriptors, const vector<uint32_t>& dynamicOffsets) const;
+        void bindDescriptorSets(vk::CommandBuffer& commands, const vector<vk::DescriptorSet>& descriptors, const vector<uint32_t>& dynamicOffsets, uint32_t firstSet = 0) const;
 
         void recreateDescriptorPool(uint32_t imageCount);
 
         const vector<vk::DescriptorSet>& getDescriptorSets() const;
+
+        VertexFormat getVertexFormat() const;
 
         MaterialID reserveMaterialSlot(const Material& material);
 

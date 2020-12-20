@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Unit.h"
 
-Carrot::Unit::Unit(Unit::Type type, Carrot::InstanceData& instanceData): instanceData(instanceData), type(type) {
+Carrot::Unit::Unit(Unit::Type type, Carrot::AnimatedInstanceData& instanceData): instanceData(instanceData), type(type) {
     switch (type) {
         case Type::Blue:
             color = {0,0,1};
@@ -32,6 +32,9 @@ void Carrot::Unit::update(float dt) {
     instanceData.color = { color.r, color.g, color.b, 1.0f };
     auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
     instanceData.transform = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
+
+    instanceData.animationIndex = 1;
+    instanceData.animationTime += dt;
 }
 
 void Carrot::Unit::teleport(const glm::vec3& newPos) {

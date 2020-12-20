@@ -31,17 +31,17 @@ namespace Carrot {
         map<uint32_t, Binding> bindingMap{};
 
         void
-        createBindings(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings,
-                       vk::DescriptorType type,
-                       const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                       const map<string, uint32_t>& constants);
+        createBindingsSet0(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings,
+                           vk::DescriptorType type,
+                           const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
+                           const map<string, uint32_t>& constants);
 
     public:
         explicit ShaderModule(Carrot::Engine& engine, const string& filename, const string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
-        void addBindings(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings, const map<string, uint32_t>& constants);
+        void addBindingsSet0(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings, const map<string, uint32_t>& constants);
 
         void addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const;
     };

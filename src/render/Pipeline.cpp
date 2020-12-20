@@ -4,14 +4,13 @@
 
 #include <constants.h>
 #include "Pipeline.h"
-#include "render/shaders/ShaderStages.h"
-#include "Vertex.h"
 #include "CameraBufferObject.h"
 #include "Buffer.h"
 #include <rapidjson/document.h>
 #include "io/IO.h"
 #include "DrawData.h"
 #include "render/Material.h"
+#include "Vertex.h"
 
 #include <iostream>
 
@@ -29,16 +28,26 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
     for(const auto& constant : description["constants"].GetObject()) {
         constants[constant.name.GetString()] = constant.value.GetUint64();
     }
-    descriptorSetLayout = stages->createDescriptorSetLayout(constants);
-    auto bindingDescription = Carrot::Vertex::getBindingDescription();
-    auto attributeDescriptions = Carrot::Vertex::getAttributeDescriptions();
+    descriptorSetLayout0 = stages->createDescriptorSetLayout0(constants);
+
+    string vertexFormatStr = description["vertexFormat"].GetString();
+    if(vertexFormatStr == "Vertex") {
+        vertexFormat = Carrot::VertexFormat::Vertex;
+    } else if(vertexFormatStr == "SkinnedVertex") {
+        vertexFormat = Carrot::VertexFormat::SkinnedVertex;
+    } else {
+        throw runtime_error("Invalid vertex format: "+vertexFormatStr);
+    }
+
+    vector<vk::VertexInputBindingDescription> descriptions = Carrot::getBindingDescriptions(vertexFormat);
+    vector<vk::VertexInputAttributeDescription> attributes = Carrot::getAttributeDescriptions(vertexFormat);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescription.size()),
-            .pVertexBindingDescriptions = bindingDescription.data(),
+            .vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size()),
+            .pVertexBindingDescriptions = descriptions.data(),
 
-            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-            .pVertexAttributeDescriptions = attributeDescriptions.data(),
+            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size()),
+            .pVertexAttributeDescriptions = attributes.data(),
     };
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
@@ -99,9 +108,26 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
         module->addPushConstants(stage, pushConstants);
     }
 
+    vector<vk::DescriptorSetLayout> layouts{};
+    layouts.push_back(*descriptorSetLayout0);
+    if(vertexFormat == VertexFormat::SkinnedVertex) {
+        vk::DescriptorSetLayoutBinding binding {
+                .binding = 0,
+                .descriptorType = vk::DescriptorType::eStorageBuffer,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eVertex,
+        };
+        descriptorSetLayout1 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
+                .bindingCount = 1,
+                .pBindings = &binding,
+        }, engine.getAllocator());
+
+        layouts.push_back(*descriptorSetLayout1);
+    }
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-            .setLayoutCount = 1,
-            .pSetLayouts = &(*descriptorSetLayout),
+            .setLayoutCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
             .pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size()),
             .pPushConstantRanges = pushConstants.data(),
     };
@@ -193,7 +219,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .subpass = 0,
     };
 
-    vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator()).value;
+    vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator());
 
     materialStorageBuffer = make_unique<Buffer>(engine,
                                                 sizeof(MaterialData)*maxMaterialID,
@@ -220,13 +246,14 @@ const vk::PipelineLayout& Carrot::Pipeline::getPipelineLayout() const {
 }
 
 const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout() const {
-    return *descriptorSetLayout;
+    return *descriptorSetLayout0;
 }
 
 void Carrot::Pipeline::bindDescriptorSets(vk::CommandBuffer& commands,
                                           const vector<vk::DescriptorSet>& descriptors,
-                                          const vector<uint32_t>& dynamicOffsets) const {
-    commands.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout, 0, descriptors, dynamicOffsets);
+                                          const vector<uint32_t>& dynamicOffsets,
+                                          uint32_t firstSet) const {
+    commands.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout, firstSet, descriptors, dynamicOffsets);
 }
 
 void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
@@ -234,7 +261,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindings(stage, bindings, constants);
+        module->addBindingsSet0(stage, bindings, constants);
     }
 
     for(const auto& binding : bindings) {
@@ -287,7 +314,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 }
 
 vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
-    vector<vk::DescriptorSetLayout> layouts{engine.getSwapchainImageCount(), *descriptorSetLayout};
+    vector<vk::DescriptorSetLayout> layouts{engine.getSwapchainImageCount(), *descriptorSetLayout0};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
@@ -297,7 +324,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets() {
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindings(stage, bindings, constants);
+        module->addBindingsSet0(stage, bindings, constants);
     }
 
     // allocate default values
@@ -401,4 +428,8 @@ void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, Material
 
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
     updateMaterial(material, material.getMaterialID());
+}
+
+Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
+    return vertexFormat;
 }

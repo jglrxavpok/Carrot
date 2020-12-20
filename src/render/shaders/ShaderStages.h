@@ -22,7 +22,7 @@ namespace Carrot {
 
         [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages(const vk::SpecializationInfo* specialization) const;
 
-        vk::UniqueDescriptorSetLayout createDescriptorSetLayout(const map<string, uint32_t>& constants) const;
+        vk::UniqueDescriptorSetLayout createDescriptorSetLayout0(const map<string, uint32_t>& constants) const;
 
         [[nodiscard]] const map<vk::ShaderStageFlagBits, unique_ptr<ShaderModule>>& getModuleMap() const;
     };

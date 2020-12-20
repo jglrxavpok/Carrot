@@ -19,7 +19,7 @@ namespace Carrot {
 
 
     private:
-        InstanceData& instanceData;
+        AnimatedInstanceData& instanceData;
         glm::vec3 position{};
         glm::vec3 color{};
         glm::quat rotation{0.0f,0.0f,0.0f,1.0f};
@@ -29,7 +29,7 @@ namespace Carrot {
         glm::vec3 target{};
 
     public:
-        explicit Unit(Unit::Type type, InstanceData& instanceData);
+        explicit Unit(Unit::Type type, AnimatedInstanceData& instanceData);
 
         void teleport(const glm::vec3& newPos);
         void moveTo(const glm::vec3& targetPosition);

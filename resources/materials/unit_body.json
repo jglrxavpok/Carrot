@@ -1,5 +1,5 @@
 {
-  "pipeline": "default",
+  "pipeline": "skinned_instancing",
   "texture": "units/body.png",
   "todo": [
     "samplers", "uniforms (& buffers)"

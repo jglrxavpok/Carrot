@@ -1,10 +1,10 @@
 {
-  "vertexFormat": "Vertex",
+  "vertexFormat": "SkinnedVertex",
   "constants": {
     "MAX_TEXTURES": 16,
     "MAX_MATERIALS": 16
   },
-  "vertexShader": "resources/shaders/default.vertex.glsl.spv",
+  "vertexShader": "resources/shaders/skinned_instancing.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/default.fragment.glsl.spv",
   "materialStorageBufferBindingIndex": 3,
   "texturesBindingIndex": 1

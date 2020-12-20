@@ -26,5 +26,7 @@ namespace Carrot {
         bool ignoresInstanceColor() const;
 
         void bindForRender(const uint32_t imageIndex, vk::CommandBuffer& commands) const;
+
+        const Pipeline& getPipeline() const;
     };
 }

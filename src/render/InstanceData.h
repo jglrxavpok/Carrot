@@ -10,5 +10,12 @@ namespace Carrot {
         alignas(16) glm::vec4 color;
         alignas(16) glm::mat4 transform;
     };
+
+    struct AnimatedInstanceData {
+        alignas(16) glm::vec4 color;
+        alignas(16) glm::mat4 transform;
+        alignas(16) uint32_t animationIndex;
+        float animationTime;
+    };
 }
 

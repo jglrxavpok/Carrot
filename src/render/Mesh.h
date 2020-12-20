@@ -22,11 +22,12 @@ namespace Carrot {
         uint64_t indexStartOffset = 0;
 
     public:
-        explicit Mesh(Carrot::Engine& engine, const std::vector<Carrot::Vertex>& vertices, const std::vector<uint32_t>& indices);
+        template<typename VertexType>
+        explicit Mesh(Carrot::Engine& engine, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
 
         void bind(const vk::CommandBuffer& buffer) const;
         void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
     };
 }
 
-
+#include "Mesh.ipp"

@@ -7,10 +7,11 @@
 #include "vulkan/includes.h"
 #include "Engine.h"
 #include <set>
+#include <vulkan/DebugNameable.h>
 
 namespace Carrot {
     /// Abstraction over Vulkan buffers
-    class Buffer {
+    class Buffer: public DebugNameable {
 
     private:
         bool mapped = false;
@@ -51,6 +52,8 @@ namespace Carrot {
         T* map();
 
         ~Buffer();
+
+        void setDebugNames(const string& name) override;
     };
 }
 

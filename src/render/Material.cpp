@@ -47,3 +47,7 @@ Carrot::TextureID Carrot::Material::getTextureID() const {
 bool Carrot::Material::ignoresInstanceColor() const {
     return ignoreInstanceColor;
 }
+
+const Carrot::Pipeline& Carrot::Material::getPipeline() const {
+    return *pipeline;
+}

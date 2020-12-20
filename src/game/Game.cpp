@@ -12,7 +12,7 @@
 #include "render/Camera.h"
 #include <iostream>
 
-int maxInstanceCount = 100; // TODO: change
+int maxInstanceCount = 1; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
@@ -20,10 +20,10 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
 
     int groupSize = maxInstanceCount /3;
     instanceBuffer = make_unique<Buffer>(engine,
-                                         maxInstanceCount*sizeof(InstanceData),
+                                         maxInstanceCount*sizeof(AnimatedInstanceData),
                                          vk::BufferUsageFlagBits::eVertexBuffer,
                                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
-    modelInstance = instanceBuffer->map<InstanceData>();
+    modelInstance = instanceBuffer->map<AnimatedInstanceData>();
 
     mapInstanceBuffer = make_unique<Buffer>(engine,
                                             sizeof(InstanceData),
@@ -40,7 +40,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         float x = (i % (int)sqrt(maxInstanceCount)) * spacing;
         float y = (i / (int)sqrt(maxInstanceCount)) * spacing;
         auto position = glm::vec3(x, y, 0);
-        auto color = static_cast<Unit::Type>((i / groupSize) % 3);
+        auto color = static_cast<Unit::Type>((i / max(1, groupSize)) % 3);
         auto unit = make_unique<Unit>(color, modelInstance[i]);
         unit->teleport(position);
         units.emplace_back(move(unit));
@@ -70,7 +70,7 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
 }
 
 void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands) {
-    mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
+    // FIXME: re-add mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
     model->draw(frameIndex, commands, *instanceBuffer, units.size());
 }
 

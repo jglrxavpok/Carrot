@@ -57,6 +57,9 @@ set(SOURCES
         src/render/shaders/Specialization.cpp
         src/render/InstanceData.cpp
         src/render/Camera.cpp
+        src/render/VertexFormat.cpp
+        src/render/Animation.cpp
+        src/utils/conversions.cpp
         src/utils/stringmanip.cpp
         src/main.cpp
         src/stb_impls.cpp
@@ -67,6 +70,7 @@ set(SOURCES
 
 set(VERTEX_SHADERS
         resources/shaders/default.vertex.glsl
+        resources/shaders/skinned_instancing.vertex.glsl
         )
 
 set(FRAGMENT_SHADERS

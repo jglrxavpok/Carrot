@@ -19,7 +19,7 @@ namespace Carrot {
         unique_ptr<Model> model = nullptr;
         unique_ptr<Buffer> instanceBuffer = nullptr;
         unique_ptr<Buffer> mapInstanceBuffer = nullptr;
-        InstanceData* modelInstance = nullptr;
+        AnimatedInstanceData* modelInstance = nullptr;
         vector<unique_ptr<Unit>> units{};
 
     public:

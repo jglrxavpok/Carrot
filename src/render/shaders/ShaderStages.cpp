@@ -25,13 +25,13 @@ vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineSh
     return creates;
 }
 
-vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout(const map<string, uint32_t>& constants) const {
+vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(const map<string, uint32_t>& constants) const {
     auto& device = engine.getLogicalDevice();
 
     vector<vk::DescriptorSetLayoutBinding> bindings{};
 
     for(const auto& [stage, module] : stages) {
-        module->addBindings(stage, bindings, constants);
+        module->addBindingsSet0(stage, bindings, constants);
     }
 
     vk::DescriptorSetLayoutCreateInfo createInfo{

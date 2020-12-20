@@ -37,9 +37,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
 
-    if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-    }
+    //}
 
     return VK_FALSE;
 }
@@ -330,6 +330,10 @@ void Carrot::Engine::createLogicalDevice() {
     // TODO: define features we will use
     vk::PhysicalDeviceFeatures deviceFeatures{
         .samplerAnisotropy = true,
+        .shaderUniformBufferArrayDynamicIndexing = true,
+        .shaderSampledImageArrayDynamicIndexing = true,
+        .shaderStorageBufferArrayDynamicIndexing = true,
+        .shaderStorageImageArrayDynamicIndexing = true,
     };
 
     vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
