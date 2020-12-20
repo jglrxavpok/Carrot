@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-const uint MAX_KEYFRAMES = 100;
+const uint MAX_KEYFRAMES = 140;
 const uint MAX_BONES = 20;
 
 layout(set = 0, binding = 0) uniform CameraBufferObject {
@@ -44,6 +44,7 @@ layout(set = 1, binding = 0) buffer Animations {
 mat4 computeSkinning() {
     if(boneIDs.x < 0)
         return mat4(1.0);
+    // TODO: interpolation
     float timestamp = mod(animationTime, animations[animationIndex].duration);
     uint keyframeIndex = 0;
     for(uint i = 0; i < animations[animationIndex].keyframeCount-1; i++) {

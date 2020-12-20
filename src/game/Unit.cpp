@@ -17,6 +17,8 @@ Carrot::Unit::Unit(Unit::Type type, Carrot::AnimatedInstanceData& instanceData):
             color = {0,1,0};
             break;
     }
+
+    instanceData.animationTime = rand() / 10.0f;
 }
 
 void Carrot::Unit::update(float dt) {

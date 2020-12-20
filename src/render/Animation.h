@@ -9,7 +9,7 @@
 #include <glm/glm.hpp>
 
 namespace Carrot {
-    static constexpr int MAX_KEYFRAMES_PER_ANIMATION = 100;
+    static constexpr int MAX_KEYFRAMES_PER_ANIMATION = 140;
     static constexpr int MAX_BONES_PER_MESH = 20;
 
     struct Keyframe {

@@ -39,17 +39,15 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
             continue;
         }
 
-        cout << "Material is " << materialName << endl;
         auto material = engine.getOrCreateMaterial(materialName);
         materials.emplace_back(material);
         meshes[material.get()] = {};
         materialMap[materialIndex] = material;
     }
 
-    cout << "Finished loading materials" << endl;
-
     unordered_map<string, uint32_t> boneMapping{};
     unordered_map<string, glm::mat4> offsetMatrices{};
+    aiNode* armature = scene->mRootNode;
 
     for(size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
@@ -59,7 +57,6 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         meshes[material.get()].push_back(loadedMesh);
     }
 
-    aiNode* armature = scene->mRootNode;
     if(scene->HasAnimations()) {
         loadAnimations(engine, scene, boneMapping, offsetMatrices, armature);
     }
@@ -75,8 +72,6 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     for(int animationIndex = 0; animationIndex < scene->mNumAnimations; animationIndex++) {
         aiAnimation* anim = scene->mAnimations[animationIndex];
         string name = anim->mName.data;
-
-        cout << "Loading animation " << name << endl;
 
         // collect all timestamps
         set<float> timestampSet{};
@@ -110,14 +105,11 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
             auto& keyframe = animation.keyframes[index];
             keyframe.timestamp = time / anim->mTicksPerSecond;
             this->updateKeyframeRecursively(keyframe, armature, time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform);
-            cout << index << endl;
         }
         this->animations[name] = &allAnimations[animationIndex];
 
         this->animationMapping[name] = animationIndex;
     }
-
-    cout << "Upload animations to GPU" << endl;
 
     // upload staging buffer to GPU buffer
     this->animationData = make_unique<Carrot::Buffer>(engine,
@@ -126,8 +118,6 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
                                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
     animationData->setDebugNames("Animations");
     animationData->stageUploadWithOffsets(make_pair(0ull, allAnimations));
-
-    cout << "Upload done" << endl;
 
     // create descriptor set for animation buffer
     vk::DescriptorSetLayoutBinding binding {
@@ -219,19 +209,21 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
             };
         }
 
+        glm::vec3 position = {vec.x, vec.y, vec.z};
+
         if(usesSkinning) {
             skinnedVertices.push_back({
-                                       {vec.x, vec.y, vec.z},
-                                       color,
-                                       uv,
-                                       glm::ivec4{-1, -1, -1, -1},
-                                       glm::vec4{0.0f},
+                                        position,
+                                        color,
+                                        uv,
+                                        glm::ivec4{-1, -1, -1, -1},
+                                        glm::vec4{0.0f},
                                });
         } else {
             vertices.push_back({
-                                       {vec.x, vec.y, vec.z},
-                                       color,
-                                       uv,
+                                        position,
+                                        color,
+                                        uv,
                                });
         }
     }
@@ -275,11 +267,11 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
     string boneName = armature->mName.data;
     auto potentialMapping = boneMapping.find(boneName);
     auto potentialAnim = animationNodes.find(boneName);
-    glm::mat4 finalMatrix{1.0f};
+    glm::mat4 nodeTransform = glmMat4FromAssimp(armature->mTransformation);
+    glm::mat4 globalTransform{1.0f};
     if(potentialMapping != boneMapping.end()) {
         uint32_t boneID = potentialMapping->second;
 
-        finalMatrix = glmMat4FromAssimp(armature->mTransformation);
 
         if(potentialAnim != animationNodes.end()) {
             aiNodeAnim* animInfo = potentialAnim->second;
@@ -317,13 +309,18 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
             glm::mat4 translationMat = glm::translate(glm::mat4{1.0f}, translation);
             glm::mat4 rotationMat = glm::toMat4(rotation);
             glm::mat4 scalingMat = glm::scale(glm::mat4{1.0f}, scaling);
-            finalMatrix = parentMatrix * translationMat * rotationMat * scalingMat;
+            nodeTransform = translationMat * rotationMat * scalingMat;
         }
 
-        keyframe.boneTransforms[boneID] = globalInverseTransform * finalMatrix * (offsetMatrices.find(boneName)->second);
+        glm::mat4 boneOffset = (offsetMatrices.find(boneName)->second);
+        globalTransform = parentMatrix * nodeTransform;
+        keyframe.boneTransforms[boneID] = globalInverseTransform * globalTransform * boneOffset;
+    } else {
+        globalTransform = parentMatrix * nodeTransform;
     }
 
     for(int i = 0; i < armature->mNumChildren; i++) {
-        updateKeyframeRecursively(keyframe, armature->mChildren[i], time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform, finalMatrix);
+        updateKeyframeRecursively(keyframe, armature->mChildren[i], time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform, globalTransform);
     }
 }
+

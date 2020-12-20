@@ -12,7 +12,7 @@
 #include "render/Camera.h"
 #include <iostream>
 
-int maxInstanceCount = 1; // TODO: change
+int maxInstanceCount = 100; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
@@ -70,7 +70,7 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
 }
 
 void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands) {
-    // FIXME: re-add mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
+    mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
     model->draw(frameIndex, commands, *instanceBuffer, units.size());
 }
 

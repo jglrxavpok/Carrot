@@ -37,10 +37,12 @@ namespace Carrot {
 
         shared_ptr<Mesh> loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, unordered_map<string, uint32_t>& boneMapping, unordered_map<string, glm::mat4>& offsetMatrices);
 
-        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, aiNodeAnim*>& animationNodes, const unordered_map<string, glm::mat4>& offsetMatrices, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
+        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, aiNodeAnim*>& animationNodes, const unordered_map<string, glm::mat4>& offsetMatrices, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
 
         void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
                                    const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, glm::mat4>& offsetMatrices, const aiNode *armature);
+
+        glm::mat4 findGlobalTransform(const aiNode* node, const unordered_map<string, uint32_t>& boneMapping);
 
     public:
         explicit Model(Carrot::Engine& engine, const string& filename);
