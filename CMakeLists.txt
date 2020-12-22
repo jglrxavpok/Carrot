@@ -61,6 +61,7 @@ set(SOURCES
         src/render/Animation.cpp
         src/utils/conversions.cpp
         src/utils/stringmanip.cpp
+        src/vulkan/CustomTracyVulkan.cpp
         src/main.cpp
         src/stb_impls.cpp
 
@@ -88,11 +89,14 @@ foreach(shader ${FRAGMENT_SHADERS})
     set(SHADERS "${SHADERS}" "${shader}.spv")
 endforeach()
 
+set(EXTERNAL_SOURCES thirdparty/tracy/TracyClient.cpp)
+
 include_directories(src/)
 include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
+include_directories(thirdparty/tracy/)
 
-set(ALL_SOURCES ${SOURCES} ${SHADERS})
+set(ALL_SOURCES ${SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
 set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)
 
 add_executable(Carrot ${ALL_SOURCES})
@@ -100,4 +104,5 @@ target_link_libraries(Carrot ${ALL_LIBS})
 
 add_executable(Carrot-Renderdoc ${ALL_SOURCES})
 target_compile_definitions(Carrot-Renderdoc PRIVATE DEBUG_MARKERS=1)
+target_compile_definitions(Carrot PRIVATE TRACY_ENABLE=1)
 target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})

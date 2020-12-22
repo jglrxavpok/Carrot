@@ -25,8 +25,10 @@ void Carrot::Engine::performSingleTimeCommands(vk::CommandPool& commandPool, vk:
     };
     stagingCommands.begin(beginInfo);
 
-    // let user record their commands
-    consumer(stagingCommands);
+    {
+        // let user record their commands
+        consumer(stagingCommands);
+    }
 
     // end and submit
     stagingCommands.end();

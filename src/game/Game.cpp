@@ -12,7 +12,7 @@
 #include "render/Camera.h"
 #include <iostream>
 
-int maxInstanceCount = 100; // TODO: change
+int maxInstanceCount = 1000; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
@@ -48,6 +48,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
 }
 
 void Carrot::Game::onFrame(uint32_t frameIndex) {
+    ZoneScoped;
 /*    map<Unit::Type, glm::vec3> centers{};
     map<Unit::Type, uint32_t> counts{};
 
@@ -63,6 +64,7 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     static double lastTime = glfwGetTime();
     float dt = static_cast<float>(glfwGetTime() - lastTime);
     for(const auto& unit : units) {
+        ZoneScoped;
    //     unit->moveTo(centers[unit->getType()]);
         unit->update(dt);
     }
@@ -70,8 +72,15 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
 }
 
 void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands) {
-    mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
-    model->draw(frameIndex, commands, *instanceBuffer, units.size());
+    {
+        TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render map");
+        mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
+    }
+
+    {
+        TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render units");
+        model->draw(frameIndex, commands, *instanceBuffer, units.size());
+    }
 }
 
 float yaw = 0.0f;

@@ -67,6 +67,8 @@ void Carrot::Engine::run() {
         drawFrame(currentFrame);
 
         currentFrame = (currentFrame+1) % MAX_FRAMES_IN_FLIGHT;
+
+        FrameMark;
     }
 
     glfwHideWindow(window.get());
@@ -112,17 +114,21 @@ void Carrot::Engine::initVulkan() {
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createGraphicsCommandPool();
+
+    allocateGraphicsCommandBuffers();
+    createTracyContexts();
+
+    createTransferCommandPool();
     createDepthTexture();
     createRenderPass();
     createFramebuffers();
-    createGraphicsCommandPool();
-    createTransferCommandPool();
     createDefaultTexture();
     createUniformBuffers();
     createSamplers();
     createCamera();
     initGame();
-    createCommandBuffers();
+    recordCommandBuffers();
     createSynchronizationObjects();
 }
 
@@ -191,6 +197,10 @@ bool Carrot::Engine::checkValidationLayerSupport() {
 }
 
 Carrot::Engine::~Engine() {
+    tracyCtx.clear();
+/*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        TracyVkDestroy(tracyCtx[i]);
+    }*/
     swapchain.reset();
     instance->destroySurfaceKHR(surface, allocator);
 }
@@ -658,8 +668,8 @@ void Carrot::Engine::createFramebuffers() {
 
 void Carrot::Engine::createGraphicsCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
+            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = queueFamilies.graphicsFamily.value(),
-            // .flags = <value>,  // TODO: resettable command buffers
     };
 
     graphicsCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
@@ -674,15 +684,7 @@ void Carrot::Engine::createTransferCommandPool() {
     transferCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
-void Carrot::Engine::createCommandBuffers() {
-    vk::CommandBufferAllocateInfo allocInfo{
-            .commandPool = *graphicsCommandPool,
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = static_cast<uint32_t>(swapchainFramebuffers.size()),
-    };
-
-    commandBuffers = device->allocateCommandBuffers(allocInfo);
-
+void Carrot::Engine::recordCommandBuffers() {
     for(size_t i = 0; i < commandBuffers.size(); i++) {
         vk::CommandBufferBeginInfo beginInfo{
                 .pInheritanceInfo = nullptr,
@@ -690,39 +692,59 @@ void Carrot::Engine::createCommandBuffers() {
         };
 
         commandBuffers[i].begin(beginInfo);
-        updateViewportAndScissor(commandBuffers[i]);
+        {
+            tracyCtx[i]->prepareForTracing(commandBuffers[i]);
 
-        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
-        vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
-            .depth = 1.0f,
-            .stencil = 0
-        };
+            TracyVulkanZone(*tracyCtx[i], commandBuffers[i], "Render frame");
+            updateViewportAndScissor(commandBuffers[i]);
 
-        vk::ClearValue clearValues[] = {
-                clearColor,
-                clearDepth,
-        };
+            vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+            vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
+                    .depth = 1.0f,
+                    .stencil = 0
+            };
 
-        vk::RenderPassBeginInfo renderPassInfo{
-                .renderPass = *renderPass,
-                .framebuffer = *swapchainFramebuffers[i],
-                .renderArea = {
-                        .offset = vk::Offset2D{0, 0},
-                        .extent = swapchainExtent
-                },
+            vk::ClearValue clearValues[] = {
+                    clearColor,
+                    clearDepth,
+            };
 
-                .clearValueCount = 2,
-                .pClearValues = clearValues,
-        };
+            vk::RenderPassBeginInfo renderPassInfo{
+                    .renderPass = *renderPass,
+                    .framebuffer = *swapchainFramebuffers[i],
+                    .renderArea = {
+                            .offset = vk::Offset2D{0, 0},
+                            .extent = swapchainExtent
+                    },
 
-        commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+                    .clearValueCount = 2,
+                    .pClearValues = clearValues,
+            };
 
-        game->recordCommandBuffer(i, commandBuffers[i]);
+            {
+                TracyVulkanZone(*tracyCtx[i], commandBuffers[i], "Render pass 0");
 
-        commandBuffers[i].endRenderPass();
+                commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+                game->recordCommandBuffer(i, commandBuffers[i]);
+
+                commandBuffers[i].endRenderPass();
+
+            }
+        }
 
         commandBuffers[i].end();
     }
+}
+
+void Carrot::Engine::allocateGraphicsCommandBuffers() {
+    vk::CommandBufferAllocateInfo allocInfo{
+            .commandPool = *this->graphicsCommandPool,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
+    };
+
+    this->commandBuffers = this->device->allocateCommandBuffers(allocInfo);
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
@@ -733,6 +755,7 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
 }
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
+    ZoneScoped;
     static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
     device->resetFences((*inFlightFences[currentFrame]));
 
@@ -756,18 +779,22 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
     vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
+    vector<vk::CommandBuffer> cmdBuffers = {
+            commandBuffers[imageIndex],
+    };
     vk::SubmitInfo submitInfo {
             .waitSemaphoreCount = 1,
             .pWaitSemaphores = waitSemaphores,
 
             .pWaitDstStageMask = waitStages,
 
-            .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffers[imageIndex],
+            .commandBufferCount = static_cast<uint32_t>(cmdBuffers.size()),
+            .pCommandBuffers = cmdBuffers.data(),
 
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = signalSemaphores,
     };
+
 
     device->resetFences(*inFlightFences[currentFrame]);
     graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
@@ -789,6 +816,11 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     } catch(vk::OutOfDateKHRError const &e) {
         result = vk::Result::eErrorOutOfDateKHR;
     }
+
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        tracyCtx[i]->collect();
+    }
+
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
         recreateSwapchain();
     }
@@ -835,7 +867,8 @@ void Carrot::Engine::recreateSwapchain() {
         pipeline->recreateDescriptorPool(swapchainFramebuffers.size());
     }
     // TODO: update material descriptor sets
-    createCommandBuffers();
+    allocateGraphicsCommandBuffers();
+    recordCommandBuffers();
 }
 
 void Carrot::Engine::cleanupSwapchain() {
@@ -1021,7 +1054,7 @@ vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textur
 }
 
 uint32_t Carrot::Engine::getSwapchainImageCount() {
-    return swapchainFramebuffers.size();
+    return swapchainImages.size();
 }
 
 vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getCameraUniformBuffers() {
@@ -1081,6 +1114,23 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
     }
 
     // TODO: pass input to game
+}
+
+void Carrot::Engine::createTracyContexts() {
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        tracyCtx.emplace_back(move(make_unique<TracyVulkanContext>(physicalDevice, *device, graphicsQueue, queueFamilies.graphicsFamily.value())));
+    }
+/*
+    for(size_t i = 0; i < commandBuffers.size(); i++) {
+        auto& cmd = tracyCommandBuffers[i];
+        vk::CommandBufferBeginInfo beginInfo {
+            .pInheritanceInfo = nullptr,
+        };
+        cmd.begin(beginInfo);
+        TracyVkCollect(tracyCtx, cmd);
+        cmd.end();
+    }*/
+//    device->freeCommandBuffers(*tracyCommandPool, cmd);
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

@@ -12,6 +12,7 @@
 #include <GLFW/glfw3.h>
 #include "memory/NakedPtr.hpp"
 #include "render/IDTypes.h"
+#include "vulkan/CustomTracyVulkan.h"
 
 using namespace std;
 
@@ -43,6 +44,8 @@ namespace Carrot {
     /// Base class interfacing with Vulkan
     class Engine {
     public:
+        vector<unique_ptr<TracyVulkanContext>> tracyCtx{};
+
         /// Init the engine with the given GLFW window. Will immediately load Vulkan resources
         explicit Engine(NakedPtr<GLFWwindow> window);
 
@@ -155,6 +158,10 @@ namespace Carrot {
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
+
+        vk::UniqueCommandPool tracyCommandPool{};
+        vector<vk::CommandBuffer> tracyCommandBuffers{};
+
         vector<vk::CommandBuffer> commandBuffers{};
         vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
@@ -255,7 +262,7 @@ namespace Carrot {
         void createGraphicsCommandPool();
 
         /// Create the primary command buffers for rendering
-        void createCommandBuffers();
+        void recordCommandBuffers();
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(size_t currentFrame);
@@ -297,6 +304,10 @@ namespace Carrot {
         void initGame();
 
         void createCamera();
+
+        void createTracyContexts();
+
+        void allocateGraphicsCommandBuffers();
     };
 }
 
