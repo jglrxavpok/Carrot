@@ -693,7 +693,7 @@ void Carrot::Engine::recordCommandBuffers() {
 
         commandBuffers[i].begin(beginInfo);
         {
-            tracyCtx[i]->prepareForTracing(commandBuffers[i]);
+            PrepareVulkanTracy(tracyCtx[i], commandBuffers[i]);
 
             TracyVulkanZone(*tracyCtx[i], commandBuffers[i], "Render frame");
             updateViewportAndScissor(commandBuffers[i]);
@@ -768,57 +768,62 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     }
 
     game->onFrame(imageIndex);
-    updateUniformBuffer(imageIndex);
+
+    {
+        ZoneScopedN("Update uniform buffer");
+        updateUniformBuffer(imageIndex);
+    }
 
 /*    if(imagesInFlight[imageIndex] != nullptr) {
         device->waitForFences(*imagesInFlight[imageIndex], true, UINT64_MAX);
     }
     imagesInFlight[imageIndex] = inFlightFences[currentFrame];*/
 
-    vk::Semaphore waitSemaphores[] = {*imageAvailableSemaphore[currentFrame]};
-    vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-    vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
+    {
+        ZoneScopedN("Present");
+        vk::Semaphore waitSemaphores[] = {*imageAvailableSemaphore[currentFrame]};
+        vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
-    vector<vk::CommandBuffer> cmdBuffers = {
-            commandBuffers[imageIndex],
-    };
-    vk::SubmitInfo submitInfo {
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = waitSemaphores,
+        vk::SubmitInfo submitInfo {
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = waitSemaphores,
 
-            .pWaitDstStageMask = waitStages,
+                .pWaitDstStageMask = waitStages,
 
-            .commandBufferCount = static_cast<uint32_t>(cmdBuffers.size()),
-            .pCommandBuffers = cmdBuffers.data(),
+                .commandBufferCount = 1,
+                .pCommandBuffers = &commandBuffers[imageIndex],
 
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = signalSemaphores,
-    };
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = signalSemaphores,
+        };
 
 
-    device->resetFences(*inFlightFences[currentFrame]);
-    graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
+        device->resetFences(*inFlightFences[currentFrame]);
+        graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 
-    vk::SwapchainKHR swapchains[] = { *swapchain };
+        vk::SwapchainKHR swapchains[] = { *swapchain };
 
-    vk::PresentInfoKHR presentInfo{
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = signalSemaphores,
+        vk::PresentInfoKHR presentInfo{
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = signalSemaphores,
 
-            .swapchainCount = 1,
-            .pSwapchains = swapchains,
-            .pImageIndices = &imageIndex,
-            .pResults = nullptr,
-    };
+                .swapchainCount = 1,
+                .pSwapchains = swapchains,
+                .pImageIndices = &imageIndex,
+                .pResults = nullptr,
+        };
 
-    try {
-        result = presentQueue.presentKHR(presentInfo);
-    } catch(vk::OutOfDateKHRError const &e) {
-        result = vk::Result::eErrorOutOfDateKHR;
+        try {
+            result = presentQueue.presentKHR(presentInfo);
+        } catch(vk::OutOfDateKHRError const &e) {
+            result = vk::Result::eErrorOutOfDateKHR;
+        }
     }
 
+
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        tracyCtx[i]->collect();
+        TracyVulkanCollect(tracyCtx[i]);
     }
 
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {

@@ -12,7 +12,7 @@
 #include "render/Camera.h"
 #include <iostream>
 
-int maxInstanceCount = 1000; // TODO: change
+int maxInstanceCount = 100; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");

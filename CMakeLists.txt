@@ -101,8 +101,11 @@ set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)
 
 add_executable(Carrot ${ALL_SOURCES})
 target_link_libraries(Carrot ${ALL_LIBS})
+target_compile_definitions(Carrot PRIVATE TRACY_ENABLE=1)
 
 add_executable(Carrot-Renderdoc ${ALL_SOURCES})
 target_compile_definitions(Carrot-Renderdoc PRIVATE DEBUG_MARKERS=1)
-target_compile_definitions(Carrot PRIVATE TRACY_ENABLE=1)
 target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
+
+add_executable(Carrot-NoTracy ${ALL_SOURCES})
+target_link_libraries(Carrot-NoTracy ${ALL_LIBS})

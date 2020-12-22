@@ -4,8 +4,9 @@
 //
 //
 // or maybe I don't understand how it works, so let's reinvent the wheel.
-
 #include "vulkan/includes.h"
+#ifdef TRACY_ENABLE
+
 #include <Tracy.hpp>
 #include <client/TracyProfiler.hpp>
 #include <iostream>
@@ -74,3 +75,19 @@ public:
     TracyVulkanScope varname( context, commandBuffer, name, &TracyConcat(__tracy_gpu_source_location,__LINE__));
 
 #define TracyVulkanZone(context, commandBuffer, name) TracyVulkanNamedZone(context, commandBuffer, name, ____tracy_vulkan_zone)
+#define PrepareVulkanTracy(context, commandBuffer) context->prepareForTracing(commandBuffer)
+#define TracyVulkanCollect(context) context->collect()
+
+#else
+struct TracyVulkanContext {
+    explicit TracyVulkanContext(vk::PhysicalDevice& physicalDevice, vk::Device& device, vk::Queue& queue, uint32_t queueFamilyIndex, vk::AllocationCallbacks* allocator = nullptr) {}
+};
+#define TracyVulkanZone(context, commandBuffer, name)
+#define TracyVulkanNamedZone(context, commandBuffer, name)
+#define TracyVulkanContext(physicalDevice, device, queue, queueIndex) ((void*)0)
+#define FrameMark
+#define ZoneScoped
+#define ZoneScopedN
+#define PrepareVulkanTracy(context, commandBuffer)
+#define TracyVulkanCollect(context)
+#endif

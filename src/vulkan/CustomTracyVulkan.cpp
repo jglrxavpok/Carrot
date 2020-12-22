@@ -1,5 +1,6 @@
 #include "CustomTracyVulkan.h"
 
+#ifdef TRACY_ENABLE
 void TracyVulkanContext::writeRecurse(const Scope& scope) const {
     // write zones
     for(const auto& child : scope.children) {
@@ -188,3 +189,5 @@ TracyVulkanScope::~TracyVulkanScope() {
     tracy::MemWrite( &item.queryId, uint16_t( queryID ) );
     tracy::MemWrite( &item.context, tracyContext.getTracyID() );
 }
+
+#endif
