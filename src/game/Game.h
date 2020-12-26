@@ -19,6 +19,7 @@ namespace Carrot {
         unique_ptr<Model> model = nullptr;
         unique_ptr<Buffer> instanceBuffer = nullptr;
         unique_ptr<Buffer> mapInstanceBuffer = nullptr;
+        map<MeshID, shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* modelInstance = nullptr;
         vector<unique_ptr<Unit>> units{};
 

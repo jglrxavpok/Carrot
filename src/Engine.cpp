@@ -339,6 +339,8 @@ void Carrot::Engine::createLogicalDevice() {
 
     // TODO: define features we will use
     vk::PhysicalDeviceFeatures deviceFeatures{
+        .multiDrawIndirect = true,
+
         .samplerAnisotropy = true,
         .shaderUniformBufferArrayDynamicIndexing = true,
         .shaderSampledImageArrayDynamicIndexing = true,

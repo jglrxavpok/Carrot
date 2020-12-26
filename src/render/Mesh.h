@@ -11,6 +11,8 @@
 namespace Carrot {
     class Mesh: public DebugNameable {
     private:
+        static uint64_t currentMeshID;
+
         Carrot::Engine& engine;
         /// <vertices>+<indices> at the end of the vertex list, to better use cache
         unique_ptr<Carrot::Buffer> vertexAndIndexBuffer = nullptr;
@@ -21,6 +23,8 @@ namespace Carrot {
         /// Index at which indices start inside the buffer
         uint64_t vertexStartOffset = 0;
 
+        uint64_t meshID = 0;
+
     protected:
         void setDebugNames(const string& name) override;
 
@@ -30,6 +34,11 @@ namespace Carrot {
 
         void bind(const vk::CommandBuffer& buffer) const;
         void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
+        void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
+
+        uint64_t getIndexCount() const;
+
+        uint64_t getMeshID() const;
     };
 }
 

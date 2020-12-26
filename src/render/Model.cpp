@@ -5,18 +5,12 @@
 #include "Model.h"
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/material.h>
 #include "render/Mesh.h"
 #include "render/Material.h"
 #include <iostream>
 #include <utils/stringmanip.h>
 #include "render/Pipeline.h"
-#include "render/VertexFormat.h"
-#include "render/Vertex.h"
-#include "render/Buffer.h"
 #include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/matrix_operation.hpp>
 #include <utils/conversions.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
@@ -182,6 +176,21 @@ void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands,
     }
 }
 
+void Carrot::Model::indirectDraw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const map<MeshID, shared_ptr<Carrot::Buffer>>& indirectDrawCommands, uint32_t drawCount) {
+    commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
+    for(const auto& material : materials) {
+        material->bindForRender(imageIndex, commands);
+        if(!animations.empty()) {
+            material->getPipeline().bindDescriptorSets(commands, {animationDescriptorSets[imageIndex]}, {}, 1);
+        }
+
+        for(const auto& mesh : meshes[material.get()]) {
+            mesh->bind(commands);
+            mesh->indirectDraw(commands, *indirectDrawCommands.at(mesh->getMeshID()), drawCount);
+        }
+    }
+}
+
 shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, unordered_map<string, uint32_t>& boneMapping, unordered_map<string, glm::mat4>& offsetMatrices) {
     vector<Vertex> vertices{};
     vector<SkinnedVertex> skinnedVertices{};
@@ -323,5 +332,23 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
     for(int i = 0; i < armature->mNumChildren; i++) {
         updateKeyframeRecursively(keyframe, armature->mChildren[i], time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform, globalTransform);
     }
+}
+
+vector<shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
+    vector<shared_ptr<Mesh>> result{};
+    for(const auto& [material, meshes] : meshes) {
+        for(const auto& mesh : meshes) {
+            result.push_back(mesh);
+        }
+    }
+    return result;
+}
+
+const map<Carrot::MaterialID, vector<shared_ptr<Carrot::Mesh>>> Carrot::Model::getMaterialToMeshMap() const {
+    map<MaterialID, vector<shared_ptr<Mesh>>> result{};
+    for(const auto& [material, meshList] : meshes) {
+        result[material->getMaterialID()] = meshList;
+    }
+    return result;
 }
 

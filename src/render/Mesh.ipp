@@ -1,7 +1,7 @@
 #include "Mesh.h"
 
 template<typename VertexType>
-Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, const vector<uint32_t>& indices): engine(engine) {
+Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, const vector<uint32_t>& indices): meshID(currentMeshID++), engine(engine) {
     const auto& queueFamilies = engine.getQueueFamilies();
     // create and allocate underlying buffer
     std::set<uint32_t> families = {

@@ -10,6 +10,7 @@
 #include "render/Model.h"
 #include "render/Buffer.h"
 #include "render/Camera.h"
+#include "render/Mesh.h"
 #include <iostream>
 
 int maxInstanceCount = 100; // TODO: change
@@ -35,6 +36,16 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
             glm::mat4(1.0f)
     };
 
+    // TODO: abstract
+    map<MeshID, vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
+    auto meshes = model->getMeshes();
+    for(const auto& mesh : meshes) {
+        indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine,
+                                             maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
+                                             vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                             vk::MemoryPropertyFlagBits::eDeviceLocal);
+    }
+
     const float spacing = 0.5f;
     for(int i = 0; i < maxInstanceCount; i++) {
         float x = (i % (int)sqrt(maxInstanceCount)) * spacing;
@@ -44,6 +55,20 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         auto unit = make_unique<Unit>(color, modelInstance[i]);
         unit->teleport(position);
         units.emplace_back(move(unit));
+
+        for(const auto& mesh : meshes) {
+            indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
+                    .indexCount = static_cast<uint32_t>(mesh->getIndexCount()),
+                    .instanceCount = 1,
+                    .firstIndex = 0,
+                    .vertexOffset = 0, // TODO: change for animations
+                    .firstInstance = static_cast<uint32_t>(i),
+            });
+        }
+    }
+    for(const auto& mesh : meshes) {
+        indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0),
+                                                                             indirectCommands[mesh->getMeshID()]));
     }
 }
 
@@ -80,7 +105,8 @@ void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& c
 
     {
         TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render units");
-        model->draw(frameIndex, commands, *instanceBuffer, units.size());
+        const int indirectDrawCount = maxInstanceCount; // TODO: Not all units will be always on the field, + visibility culling?
+        model->indirectDraw(frameIndex, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
     }
 }
 

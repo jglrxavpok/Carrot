@@ -8,4 +8,5 @@
 namespace Carrot {
     using TextureID = uint32_t;
     using MaterialID = uint32_t;
+    using MeshID = uint32_t;
 }
