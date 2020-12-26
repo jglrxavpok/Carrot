@@ -9,7 +9,7 @@ add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
 set(ASSIMP_BUILD_TESTS CACHE BOOL OFF)
-#set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
+set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
 set(ASSIMP_BUILD_GLTF_EXPORTER CACHE BOOL OFF)
 add_subdirectory(thirdparty/assimp)
 

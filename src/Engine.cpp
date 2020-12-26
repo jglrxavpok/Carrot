@@ -756,15 +756,23 @@ void Carrot::Engine::updateUniformBuffer(int imageIndex) {
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
     ZoneScoped;
-    static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
-    device->resetFences((*inFlightFences[currentFrame]));
 
-    auto [result, imageIndex] = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
-    if(result == vk::Result::eErrorOutOfDateKHR) {
-        recreateSwapchain();
-        return;
-    } else if(result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-        throw std::runtime_error("Failed to acquire swap chain image");
+    vk::Result result;
+    uint32_t imageIndex;
+    {
+        ZoneNamedN(__acquire, "Acquire image", true);
+        static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
+        device->resetFences((*inFlightFences[currentFrame]));
+
+        auto nextImage = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
+        result = nextImage.result;
+        if(result == vk::Result::eErrorOutOfDateKHR) {
+            recreateSwapchain();
+            return;
+        } else if(result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+            throw std::runtime_error("Failed to acquire swap chain image");
+        }
+        imageIndex = nextImage.value;
     }
 
     game->onFrame(imageIndex);

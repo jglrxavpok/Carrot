@@ -65,9 +65,10 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     float dt = static_cast<float>(glfwGetTime() - lastTime);
     for(const auto& unit : units) {
         ZoneScoped;
-   //     unit->moveTo(centers[unit->getType()]);
+  //      unit->moveTo(centers[unit->getType()]);
         unit->update(dt);
     }
+   // TracyPlot("onFrame delta time", dt*1000);
     lastTime = glfwGetTime();
 }
 

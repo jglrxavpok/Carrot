@@ -9,7 +9,7 @@
 #include "Engine.h"
 
 namespace Carrot {
-    class Mesh {
+    class Mesh: public DebugNameable {
     private:
         Carrot::Engine& engine;
         /// <vertices>+<indices> at the end of the vertex list, to better use cache
@@ -19,7 +19,10 @@ namespace Carrot {
         uint64_t indexCount = 0;
 
         /// Index at which indices start inside the buffer
-        uint64_t indexStartOffset = 0;
+        uint64_t vertexStartOffset = 0;
+
+    protected:
+        void setDebugNames(const string& name) override;
 
     public:
         template<typename VertexType>

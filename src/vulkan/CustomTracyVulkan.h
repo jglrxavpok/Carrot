@@ -88,6 +88,7 @@ struct TracyVulkanContext {
 #define FrameMark
 #define ZoneScoped
 #define ZoneScopedN
+#define ZoneNamedN(varname, name, active)
 #define PrepareVulkanTracy(context, commandBuffer)
 #define TracyVulkanCollect(context)
 #endif

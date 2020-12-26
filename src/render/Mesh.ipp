@@ -8,18 +8,18 @@ Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, c
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
     };
 
-    indexStartOffset = sizeof(VertexType) * vertices.size();
-    if(indexStartOffset % sizeof(uint32_t) != 0) {
+    vertexStartOffset = sizeof(uint32_t) * indices.size();
+    if(vertexStartOffset % sizeof(uint32_t) != 0) {
         // align on uint32 boundary
-        indexStartOffset += sizeof(uint32_t) - (indexStartOffset % sizeof(uint32_t));
+        vertexStartOffset += sizeof(uint32_t) - (vertexStartOffset % sizeof(uint32_t));
     }
     indexCount = indices.size();
     vertexAndIndexBuffer = make_unique<Carrot::Buffer>(engine,
-                                                       indexStartOffset + sizeof(uint32_t) * indices.size(),
+                                                       vertexStartOffset + sizeof(VertexType) * vertices.size(),
                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                        families);
 
     // upload vertices
-    vertexAndIndexBuffer->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0), vertices), make_pair(indexStartOffset, indices));
+    vertexAndIndexBuffer->stageUploadWithOffsets(make_pair(vertexStartOffset, vertices), make_pair(static_cast<uint64_t>(0), indices));
 }
