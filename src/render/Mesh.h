@@ -41,6 +41,9 @@ namespace Carrot {
 
         uint64_t getIndexCount() const;
         uint64_t getVertexCount() const;
+        uint64_t getVertexStartOffset() const;
+
+        Carrot::Buffer& getBackingBuffer();
 
         uint64_t getMeshID() const;
     };

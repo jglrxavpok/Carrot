@@ -39,3 +39,11 @@ uint64_t Carrot::Mesh::getVertexCount() const {
 uint64_t Carrot::Mesh::getMeshID() const {
     return meshID;
 }
+
+uint64_t Carrot::Mesh::getVertexStartOffset() const {
+    return vertexStartOffset;
+}
+
+Carrot::Buffer& Carrot::Mesh::getBackingBuffer() {
+    return *vertexAndIndexBuffer;
+}

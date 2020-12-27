@@ -42,14 +42,26 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     auto meshes = model->getMeshes();
     uint64_t maxVertexCount = 0;
     vector<uint32_t> meshSizes{};
+    size_t vertexCountPerInstance = 0;
+    map<MeshID, size_t> meshOffsets{};
     for(const auto& mesh : meshes) {
         indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine,
                                              maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
                                              vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                              vk::MemoryPropertyFlagBits::eDeviceLocal);
-        maxVertexCount = max(mesh->getVertexCount(), maxVertexCount);
-        meshSizes.push_back(static_cast<uint32_t>(mesh->getVertexCount()));
+        size_t meshSize = mesh->getVertexCount();
+        maxVertexCount = max(meshSize, maxVertexCount);
+        meshSizes.push_back(static_cast<uint32_t>(meshSize));
+
+        meshOffsets[mesh->getMeshID()] = vertexCountPerInstance;
+        vertexCountPerInstance += meshSize;
     }
+
+    fullySkinnedUnitVertices = make_unique<Buffer>(engine,
+                                                   sizeof(SkinnedVertex) * vertexCountPerInstance * maxInstanceCount,
+                                                   vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                   vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                                   engine.createGraphicsAndTransferFamiliesSet());
 
     const float spacing = 0.5f;
     for(int i = 0; i < maxInstanceCount; i++) {
@@ -62,11 +74,24 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         units.emplace_back(move(unit));
 
         for(const auto& mesh : meshes) {
+            int32_t vertexOffset = static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]);
+
+            // TODO: tmp, remove
+            //  copies original vertices to fullySkinnedUnitVertices
+            engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
+                vk::BufferCopy region {
+                        .srcOffset = mesh->getVertexStartOffset(),
+                        .dstOffset = vertexOffset*sizeof(SkinnedVertex),
+                        .size = mesh->getVertexCount()*sizeof(SkinnedVertex),
+                };
+                commands.copyBuffer(mesh->getBackingBuffer().getVulkanBuffer(), fullySkinnedUnitVertices->getVulkanBuffer(), region);
+            });
+
             indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
                     .indexCount = static_cast<uint32_t>(mesh->getIndexCount()),
                     .instanceCount = 1,
                     .firstIndex = 0,
-                    .vertexOffset = 0, // TODO: change for animations
+                    .vertexOffset = vertexOffset,
                     .firstInstance = static_cast<uint32_t>(i),
             });
         }
@@ -90,13 +115,30 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
     });
 
     // sets the mesh count (per instance) for this skinning pipeline
-    vk::SpecializationInfo specialization {
-        // TODO
-        .mapEntryCount = 0,
-        .pMapEntries = nullptr,
+    vk::SpecializationMapEntry specEntries[] = {
+            {
+                .constantID = 0,
+                .offset = 0,
+                .size = sizeof(uint32_t),
+            },
 
-        .dataSize = 0,
-        .pData = nullptr,
+            {
+                .constantID = 1,
+                .offset = 1*sizeof(uint32_t),
+                .size = sizeof(uint32_t),
+            },
+    };
+
+    uint32_t specData[] = {
+            static_cast<uint32_t>(meshSizes.size()),
+            static_cast<uint32_t>(maxInstanceCount),
+    };
+    vk::SpecializationInfo specialization {
+        .mapEntryCount = 2,
+        .pMapEntries = specEntries,
+
+        .dataSize = 2*sizeof(uint32_t),
+        .pData = specData,
     };
 
     auto computeStage = ShaderModule(engine, "resources/shaders/skinning.compute.glsl.spv");
@@ -137,8 +179,6 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
     }
 
     // TODO: create flat buffer (merge all meshes) for skinning input
-    // X TODO: record skinning command buffers
-    // TODO: create skinning barrier
     // TODO: create output buffer
 }
 
@@ -188,6 +228,7 @@ void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& c
     {
         TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render units");
         const int indirectDrawCount = maxInstanceCount; // TODO: Not all units will be always on the field, + visibility culling?
+        commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
         model->indirectDraw(frameIndex, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
     }
 }

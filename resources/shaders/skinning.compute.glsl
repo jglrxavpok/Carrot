@@ -44,7 +44,7 @@ layout(push_constant) uniform PushConstants {
 };
 
 layout(set = 0, binding = 1) buffer VertexBuffer {
-    VertexWithBones vertices[];
+    VertexWithBones originalVertices[];
 };
 
 layout(set = 0, binding = 2) buffer InstanceBuffer {
@@ -60,7 +60,7 @@ layout(set = 1, binding = 0) buffer Animations {
 };
 
 mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
-    #define vertex vertices[vertexIndex]
+    #define vertex originalVertices[vertexIndex]
     #define instance instances[instanceIndex]
     if(vertex.boneIDs.x < 0)
         return mat4(1.0);
