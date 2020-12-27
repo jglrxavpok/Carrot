@@ -51,6 +51,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                                              vk::MemoryPropertyFlagBits::eDeviceLocal);
         size_t meshSize = mesh->getVertexCount();
         maxVertexCount = max(meshSize, maxVertexCount);
+
         meshOffsets[mesh->getMeshID()] = vertexCountPerInstance;
         vertexCountPerInstance += meshSize;
     }
@@ -60,6 +61,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                                        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
                                        engine.createGraphicsAndTransferFamiliesSet());
+    flatVertices->name("flat vertices");
 
     // copy mesh vertices into a flat buffer to allow for easy indexing inside the compute shader
     for(const auto& mesh : meshes) {
@@ -80,6 +82,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                                                    vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                    vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                    engine.createGraphicsAndTransferFamiliesSet());
+    fullySkinnedUnitVertices->name("full skinned unit vertices");
 
     const float spacing = 0.5f;
     for(int i = 0; i < maxInstanceCount; i++) {
@@ -94,17 +97,6 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         for(const auto& mesh : meshes) {
             int32_t vertexOffset = static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]);
 
-            // TODO: tmp, remove
-            //  copies original vertices to fullySkinnedUnitVertices
-            engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
-                vk::BufferCopy region {
-                        .srcOffset = mesh->getVertexStartOffset(),
-                        .dstOffset = vertexOffset*sizeof(SkinnedVertex),
-                        .size = mesh->getVertexCount()*sizeof(SkinnedVertex),
-                };
-                commands.copyBuffer(mesh->getBackingBuffer().getVulkanBuffer(), fullySkinnedUnitVertices->getVulkanBuffer(), region);
-            });
-
             indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
                     .indexCount = static_cast<uint32_t>(mesh->getIndexCount()),
                     .instanceCount = 1,
@@ -115,14 +107,15 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         }
     }
     for(const auto& mesh : meshes) {
+        indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #"+to_string(mesh->getMeshID()));
         indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0),
                                                                              indirectCommands[mesh->getMeshID()]));
     }
 
-    createSkinningComputePipeline(maxVertexCount);
+    createSkinningComputePipeline(vertexCountPerInstance);
 }
 
-void Carrot::Game::createSkinningComputePipeline(uint64_t maxVertexCount) {
+void Carrot::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) {
     // TODO: move outside of game code
 
     auto& computeCommandPool = engine.getComputeCommandPool();
@@ -150,8 +143,8 @@ void Carrot::Game::createSkinningComputePipeline(uint64_t maxVertexCount) {
     };
 
     uint32_t specData[] = {
+            static_cast<uint32_t>(vertexCountPerInstance),
             static_cast<uint32_t>(maxInstanceCount),
-            static_cast<uint32_t>(maxVertexCount),
     };
     vk::SpecializationInfo specialization {
         .mapEntryCount = 2,
@@ -330,7 +323,7 @@ void Carrot::Game::createSkinningComputePipeline(uint64_t maxVertexCount) {
         .layout = *computePipelineLayout,
     }, engine.getAllocator());
 
-    uint32_t vertexGroups = (maxVertexCount + 127)/128;
+    uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
     uint32_t instanceGroups = (maxInstanceCount + 7)/8;
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
         vk::CommandBuffer& commands = skinningCommandBuffers[i];

@@ -5,8 +5,8 @@ layout (local_size_x = 128) in;
 // instance
 layout (local_size_y = 8) in;
 
-layout(constant_id = 0) const uint INSTANCE_COUNT = 1;
-layout(constant_id = 1) const uint VERTEX_COUNT = 1;
+layout(constant_id = 0) const uint VERTEX_COUNT = 1;
+layout(constant_id = 1) const uint INSTANCE_COUNT = 1;
 
 const uint MAX_KEYFRAMES = 140;
 const uint MAX_BONES = 20;
@@ -81,8 +81,8 @@ void main() {
     uint vertexIndex = gl_GlobalInvocationID.x;
     uint instanceIndex = gl_GlobalInvocationID.y;
 
-    if(instanceIndex >= INSTANCE_COUNT) return;
     if(vertexIndex >= VERTEX_COUNT) return;
+    if(instanceIndex >= INSTANCE_COUNT) return;
 
     mat4 skinning = computeSkinning(instanceIndex, vertexIndex);
     uint finalVertexIndex = instanceIndex * VERTEX_COUNT + vertexIndex;

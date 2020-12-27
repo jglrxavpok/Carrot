@@ -48,7 +48,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         auto material = materialMap[mesh->mMaterialIndex];
         auto loadedMesh = loadMesh(material->getPipeline().getVertexFormat(), mesh, boneMapping, offsetMatrices);
 
-        loadedMesh->name(filename+" vertex buffer");
+        loadedMesh->name(filename+", mesh #"+to_string(loadedMesh->getMeshID()));
         meshes[material.get()].push_back(loadedMesh);
     }
 
