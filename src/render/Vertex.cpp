@@ -11,7 +11,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDes
     descriptions[0] = {
             .location = 0,
             .binding = 0,
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(Vertex, pos)),
     };
 
@@ -82,7 +82,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
     descriptions[0] = {
             .location = 0,
             .binding = 0,
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, pos)),
     };
 

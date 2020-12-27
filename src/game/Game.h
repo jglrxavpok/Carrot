@@ -35,7 +35,7 @@ namespace Carrot {
         vector<vk::CommandBuffer> skinningCommandBuffers{};
         vector<vk::UniqueSemaphore> skinningSemaphores{};
 
-        void createSkinningComputePipeline(const vector<uint32_t>& meshSizes, uint64_t maxVertexCount);
+        void createSkinningComputePipeline(uint64_t maxVertexCount);
 
     public:
         explicit Game(Engine& engine);

@@ -220,7 +220,7 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
             };
         }
 
-        glm::vec3 position = {vec.x, vec.y, vec.z};
+        glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
 
         if(usesSkinning) {
             skinnedVertices.push_back({

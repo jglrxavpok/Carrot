@@ -11,7 +11,7 @@ namespace Carrot {
     /// Definition of a vertex for this engine
     struct Vertex {
         /// World position of the vertex
-        alignas(16) glm::vec3 pos;
+        alignas(16) glm::vec4 pos;
 
         /// RGB color
         alignas(16) glm::vec3 color;
@@ -28,7 +28,7 @@ namespace Carrot {
 
     struct SkinnedVertex {
         /// World position of the vertex
-        alignas(16) glm::vec3 pos;
+        alignas(16) glm::vec4 pos;
 
         /// RGB color
         alignas(16) glm::vec3 color;

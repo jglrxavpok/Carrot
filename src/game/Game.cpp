@@ -41,7 +41,6 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     map<MeshID, vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
     auto meshes = model->getMeshes();
     uint64_t maxVertexCount = 0;
-    vector<uint32_t> meshSizes{};
     size_t vertexCountPerInstance = 0;
     map<MeshID, size_t> meshOffsets{};
 
@@ -52,8 +51,6 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                                              vk::MemoryPropertyFlagBits::eDeviceLocal);
         size_t meshSize = mesh->getVertexCount();
         maxVertexCount = max(meshSize, maxVertexCount);
-        meshSizes.push_back(static_cast<uint32_t>(meshSize));
-
         meshOffsets[mesh->getMeshID()] = vertexCountPerInstance;
         vertexCountPerInstance += meshSize;
     }
@@ -122,10 +119,10 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                                                                              indirectCommands[mesh->getMeshID()]));
     }
 
-    createSkinningComputePipeline(meshSizes, maxVertexCount);
+    createSkinningComputePipeline(maxVertexCount);
 }
 
-void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSizes, uint64_t maxVertexCount) {
+void Carrot::Game::createSkinningComputePipeline(uint64_t maxVertexCount) {
     // TODO: move outside of game code
 
     auto& computeCommandPool = engine.getComputeCommandPool();
@@ -153,8 +150,8 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
     };
 
     uint32_t specData[] = {
-            static_cast<uint32_t>(meshSizes.size()),
             static_cast<uint32_t>(maxInstanceCount),
+            static_cast<uint32_t>(maxVertexCount),
     };
     vk::SpecializationInfo specialization {
         .mapEntryCount = 2,
@@ -215,7 +212,7 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
     // set0
     poolSizes.push_back(vk::DescriptorPoolSize {
             .type = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = set0Size * engine.getSwapchainImageCount(),
+            .descriptorCount = static_cast<uint32_t>(set0Size * engine.getSwapchainImageCount()),
     });
     // set1
     poolSizes.push_back(vk::DescriptorPoolSize {
@@ -317,11 +314,6 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
 
     auto computeStage = ShaderModule(engine, "resources/shaders/skinning.compute.glsl.spv");
 
-    vk::PushConstantRange pushConstant {
-        .stageFlags = vk::ShaderStageFlagBits::eCompute,
-        .offset = 0,
-        .size = static_cast<uint32_t>(sizeof(uint32_t)*meshSizes.size()),
-    };
     // create the pipeline
     vk::DescriptorSetLayout setLayouts[] = {
             *computeSetLayout0,
@@ -330,17 +322,16 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
     computePipelineLayout = engine.getLogicalDevice().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo {
         .setLayoutCount = 2,
         .pSetLayouts = setLayouts,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushConstant,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = nullptr,
     }, engine.getAllocator());
     computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
         .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
         .layout = *computePipelineLayout,
     }, engine.getAllocator());
 
-    uint32_t vertexGroups = (maxVertexCount + 63)/64;
+    uint32_t vertexGroups = (maxVertexCount + 127)/128;
     uint32_t instanceGroups = (maxInstanceCount + 7)/8;
-    uint32_t meshGroups = (meshSizes.size() + 1)/2;
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
         vk::CommandBuffer& commands = skinningCommandBuffers[i];
         commands.begin(vk::CommandBufferBeginInfo {
@@ -348,9 +339,8 @@ void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSiz
         {
             // TODO: tracy zone
             commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
-            commands.pushConstants(*computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, meshSizes.size()*sizeof(uint32_t), meshSizes.data());
             commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0[i], computeDescriptorSet1[i]}, {});
-            commands.dispatch(vertexGroups, instanceGroups, meshGroups);
+            commands.dispatch(vertexGroups, instanceGroups, 1);
         }
         commands.end();
 
