@@ -358,13 +358,14 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
 */
     static double lastTime = glfwGetTime();
     float dt = static_cast<float>(glfwGetTime() - lastTime);
+    lastTime = glfwGetTime();
     for(const auto& unit : units) {
         ZoneScoped;
   //      unit->moveTo(centers[unit->getType()]);
         unit->update(dt);
     }
    // TracyPlot("onFrame delta time", dt*1000);
-    lastTime = glfwGetTime();
+
 
     // TODO: optimize
     // submit skinning command buffer

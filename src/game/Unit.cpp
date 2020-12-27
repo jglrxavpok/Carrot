@@ -36,7 +36,6 @@ void Carrot::Unit::update(float dt) {
     auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
     instanceData.transform = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
 
-    instanceData.animationIndex = 1;
     instanceData.animationTime += dt;
 }
 
