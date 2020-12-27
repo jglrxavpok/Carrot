@@ -19,6 +19,7 @@ namespace Carrot {
 
         /// How many indices are inside this mesh? Used for the actual drawcall
         uint64_t indexCount = 0;
+        uint64_t vertexCount = 0;
 
         /// Index at which indices start inside the buffer
         uint64_t vertexStartOffset = 0;
@@ -33,10 +34,13 @@ namespace Carrot {
         explicit Mesh(Carrot::Engine& engine, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
 
         void bind(const vk::CommandBuffer& buffer) const;
+        /// Does not bind the original vertex buffer (but does bind the index buffer)
+        void bindForIndirect(const vk::CommandBuffer& buffer) const;
         void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
         void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
 
         uint64_t getIndexCount() const;
+        uint64_t getVertexCount() const;
 
         uint64_t getMeshID() const;
     };

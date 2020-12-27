@@ -14,6 +14,7 @@ Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, c
         vertexStartOffset += sizeof(uint32_t) - (vertexStartOffset % sizeof(uint32_t));
     }
     indexCount = indices.size();
+    vertexCount = vertices.size();
     vertexAndIndexBuffer = make_unique<Carrot::Buffer>(engine,
                                                        vertexStartOffset + sizeof(VertexType) * vertices.size(),
                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,

@@ -12,6 +12,7 @@
 #include "render/Camera.h"
 #include "render/Mesh.h"
 #include <iostream>
+#include <render/shaders/ShaderModule.h>
 
 int maxInstanceCount = 100; // TODO: change
 
@@ -39,11 +40,15 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     // TODO: abstract
     map<MeshID, vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
     auto meshes = model->getMeshes();
+    uint64_t maxVertexCount = 0;
+    vector<uint32_t> meshSizes{};
     for(const auto& mesh : meshes) {
         indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine,
                                              maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
                                              vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                              vk::MemoryPropertyFlagBits::eDeviceLocal);
+        maxVertexCount = max(mesh->getVertexCount(), maxVertexCount);
+        meshSizes.push_back(static_cast<uint32_t>(mesh->getVertexCount()));
     }
 
     const float spacing = 0.5f;
@@ -70,6 +75,71 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0),
                                                                              indirectCommands[mesh->getMeshID()]));
     }
+
+    createSkinningComputePipeline(meshSizes, maxVertexCount);
+}
+
+void Carrot::Game::createSkinningComputePipeline(const vector<uint32_t>& meshSizes, uint64_t maxVertexCount) {
+    auto& computeCommandPool = engine.getComputeCommandPool();
+
+    // command buffers which will be sent to the compute queue to compute skinning
+    skinningCommandBuffers = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+            .commandPool = computeCommandPool,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = engine.getSwapchainImageCount(),
+    });
+
+    // sets the mesh count (per instance) for this skinning pipeline
+    vk::SpecializationInfo specialization {
+        // TODO
+        .mapEntryCount = 0,
+        .pMapEntries = nullptr,
+
+        .dataSize = 0,
+        .pData = nullptr,
+    };
+
+    auto computeStage = ShaderModule(engine, "resources/shaders/skinning.compute.glsl.spv");
+
+    vk::PushConstantRange pushConstant {
+        .stageFlags = vk::ShaderStageFlagBits::eCompute,
+        .offset = 0,
+        .size = static_cast<uint32_t>(sizeof(uint32_t)*meshSizes.size()),
+    };
+    // create the pipeline
+    computePipelineLayout = engine.getLogicalDevice().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo {
+        .setLayoutCount = 0, // TODO
+        .pSetLayouts = nullptr, // TODO
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushConstant,
+    }, engine.getAllocator());
+    computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
+        .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
+        .layout = *computePipelineLayout,
+    }, engine.getAllocator());
+
+    uint32_t vertexGroups = (maxVertexCount + 63)/64;
+    uint32_t instanceGroups = (maxInstanceCount + 7)/8;
+    uint32_t meshGroups = (meshSizes.size() + 1)/2;
+    for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
+        vk::CommandBuffer& commands = skinningCommandBuffers[i];
+        commands.begin(vk::CommandBufferBeginInfo {
+        });
+        {
+            // TODO: tracy zone
+            commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
+            commands.pushConstants(*computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, meshSizes.size()*sizeof(uint32_t), meshSizes.data());
+            commands.dispatch(vertexGroups, instanceGroups, meshGroups);
+        }
+        commands.end();
+
+        skinningSemaphores.emplace_back(move(engine.getLogicalDevice().createSemaphoreUnique({})));
+    }
+
+    // TODO: create flat buffer (merge all meshes) for skinning input
+    // X TODO: record skinning command buffers
+    // TODO: create skinning barrier
+    // TODO: create output buffer
 }
 
 void Carrot::Game::onFrame(uint32_t frameIndex) {
@@ -95,6 +165,18 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     }
    // TracyPlot("onFrame delta time", dt*1000);
     lastTime = glfwGetTime();
+
+    // TODO: optimize
+    // submit skinning command buffer
+    engine.getComputeQueue().submit(vk::SubmitInfo {
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = nullptr,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &skinningCommandBuffers[frameIndex],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
+    });
 }
 
 void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands) {
@@ -127,3 +209,9 @@ void Carrot::Game::onMouseMove(double dx, double dy) {
     camera.position = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
     camera.position += camera.target;
 }
+
+void Carrot::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
+    semaphores.emplace_back(*skinningSemaphores[frameIndex]);
+    waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);
+}
+

@@ -12,6 +12,10 @@ void Carrot::Mesh::bind(const vk::CommandBuffer& buffer) const {
     buffer.bindIndexBuffer(vertexAndIndexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
 }
 
+void Carrot::Mesh::bindForIndirect(const vk::CommandBuffer& buffer) const {
+    buffer.bindIndexBuffer(vertexAndIndexBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
+}
+
 void Carrot::Mesh::draw(const vk::CommandBuffer& buffer, uint32_t instanceCount) const {
     buffer.drawIndexed(indexCount, instanceCount, 0, 0, 0);
 }
@@ -26,6 +30,10 @@ void Carrot::Mesh::setDebugNames(const string& name) {
 
 uint64_t Carrot::Mesh::getIndexCount() const {
     return indexCount;
+}
+
+uint64_t Carrot::Mesh::getVertexCount() const {
+    return vertexCount;
 }
 
 uint64_t Carrot::Mesh::getMeshID() const {

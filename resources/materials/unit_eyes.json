@@ -1,5 +1,5 @@
 {
-  "pipeline": "skinned_instancing",
+  "pipeline": "defaultWithBoneInfo",
   "texture": "units/eye.png",
   "ignoreInstanceColor": true,
   "todo": [

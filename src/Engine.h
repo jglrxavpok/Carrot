@@ -31,6 +31,7 @@ namespace Carrot {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
         std::optional<uint32_t> transferFamily;
+        std::optional<uint32_t> computeFamily;
 
         bool isComplete() const;
     };
@@ -78,11 +79,16 @@ namespace Carrot {
         /// Command pool for graphics operations
         vk::CommandPool& getGraphicsCommandPool();
 
+        /// Command pool for compute operations
+        vk::CommandPool& getComputeCommandPool();
+
         /// Queue for transfer operations
         vk::Queue getTransferQueue();
 
         /// Queue for graphics operations
         vk::Queue getGraphicsQueue();
+
+        vk::Queue getComputeQueue();
 
         /// Create an image view from a given image
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor) const;
@@ -144,6 +150,7 @@ namespace Carrot {
         vk::Queue graphicsQueue{};
         vk::Queue presentQueue{};
         vk::Queue transferQueue{};
+        vk::Queue computeQueue{};
         vk::SurfaceKHR surface{};
         vk::UniqueSwapchainKHR swapchain{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
@@ -158,6 +165,7 @@ namespace Carrot {
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
+        vk::UniqueCommandPool computeCommandPool{};
 
         vk::UniqueCommandPool tracyCommandPool{};
         vector<vk::CommandBuffer> tracyCommandBuffers{};
@@ -260,6 +268,9 @@ namespace Carrot {
 
         /// Create the command pool for graphics operations
         void createGraphicsCommandPool();
+
+        /// Create the command pool for compute operations
+        void createComputeCommandPool();
 
         /// Create the primary command buffers for rendering
         void recordCommandBuffers();

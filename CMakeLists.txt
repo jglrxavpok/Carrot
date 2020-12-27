@@ -58,7 +58,7 @@ set(SOURCES
         src/render/InstanceData.cpp
         src/render/Camera.cpp
         src/render/VertexFormat.cpp
-        src/render/Animation.cpp
+        src/render/animation/Animation.cpp
         src/utils/conversions.cpp
         src/utils/stringmanip.cpp
         src/vulkan/CustomTracyVulkan.cpp
@@ -71,11 +71,15 @@ set(SOURCES
 
 set(VERTEX_SHADERS
         resources/shaders/default.vertex.glsl
-        resources/shaders/skinned_instancing.vertex.glsl
+        resources/shaders/defaultWithBoneInfo.vertex.glsl
         )
 
 set(FRAGMENT_SHADERS
         resources/shaders/default.fragment.glsl
+        )
+
+set(COMPUTE_SHADERS
+        resources/shaders/skinning.compute.glsl
         )
 
 set(SHADERS "")
@@ -86,6 +90,11 @@ endforeach()
 
 foreach(shader ${FRAGMENT_SHADERS})
     add_spirv_shader(fragment "${shader}" "${shader}.spv")
+    set(SHADERS "${SHADERS}" "${shader}.spv")
+endforeach()
+
+foreach(shader ${COMPUTE_SHADERS})
+    add_spirv_shader(compute "${shader}" "${shader}.spv")
     set(SHADERS "${SHADERS}" "${shader}.spv")
 endforeach()
 

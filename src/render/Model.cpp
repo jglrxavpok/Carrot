@@ -185,6 +185,7 @@ void Carrot::Model::indirectDraw(const uint32_t imageIndex, vk::CommandBuffer& c
         }
 
         for(const auto& mesh : meshes[material.get()]) {
+            // TODO: USE mesh->bindForIndirect(commands);
             mesh->bind(commands);
             mesh->indirectDraw(commands, *indirectDrawCommands.at(mesh->getMeshID()), drawCount);
         }

@@ -22,6 +22,12 @@ namespace Carrot {
         map<MeshID, shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* modelInstance = nullptr;
         vector<unique_ptr<Unit>> units{};
+        vk::UniquePipelineLayout computePipelineLayout{};
+        vk::UniquePipeline computePipeline{};
+        vector<vk::CommandBuffer> skinningCommandBuffers{};
+        vector<vk::UniqueSemaphore> skinningSemaphores{};
+
+        void createSkinningComputePipeline(const vector<uint32_t>& meshSizes, uint64_t maxVertexCount);
 
     public:
         explicit Game(Engine& engine);
@@ -31,5 +37,7 @@ namespace Carrot {
         void recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands);
 
         void onMouseMove(double dx, double dy);
+
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages);
     };
 }

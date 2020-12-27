@@ -10,7 +10,7 @@
 #include "vulkan/includes.h"
 #include <assimp/scene.h>
 #include "render/VertexFormat.h"
-#include "Animation.h"
+#include "render/animation/Animation.h"
 #include "IDTypes.h"
 
 using namespace std;

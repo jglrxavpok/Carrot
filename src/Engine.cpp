@@ -114,6 +114,7 @@ void Carrot::Engine::initVulkan() {
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createComputeCommandPool();
     createGraphicsCommandPool();
 
     allocateGraphicsCommandBuffers();
@@ -303,6 +304,10 @@ Carrot::QueueFamilies Carrot::Engine::findQueueFamilies(vk::PhysicalDevice const
             families.transferFamily = index;
         }
 
+        if(family.queueFlags & vk::QueueFlagBits::eCompute && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
+            families.computeFamily = index;
+        }
+
         bool presentSupport = device.getSurfaceSupportKHR(index, surface);
         if(presentSupport) {
             families.presentFamily = index;
@@ -311,9 +316,12 @@ Carrot::QueueFamilies Carrot::Engine::findQueueFamilies(vk::PhysicalDevice const
         index++;
     }
 
-    // graphics queue implicitly support transfer operations
+    // graphics queue implicitly support transfer & compute operations
     if(!families.transferFamily.has_value()) {
         families.transferFamily = families.graphicsFamily;
+    }
+    if(!families.computeFamily.has_value()) {
+        families.computeFamily = families.graphicsFamily;
     }
 
     return families;
@@ -379,6 +387,7 @@ void Carrot::Engine::createLogicalDevice() {
     graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), 0);
     presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
     transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
+    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), 0);
 }
 
 void Carrot::Engine::createSurface() {
@@ -686,6 +695,15 @@ void Carrot::Engine::createTransferCommandPool() {
     transferCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
+void Carrot::Engine::createComputeCommandPool() {
+    vk::CommandPoolCreateInfo poolInfo{
+            .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, // short lived buffer (single use)
+            .queueFamilyIndex = queueFamilies.computeFamily.value(),
+    };
+
+    computeCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
+}
+
 void Carrot::Engine::recordCommandBuffers() {
     for(size_t i = 0; i < commandBuffers.size(); i++) {
         vk::CommandBufferBeginInfo beginInfo{
@@ -791,15 +809,17 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     {
         ZoneScopedN("Present");
-        vk::Semaphore waitSemaphores[] = {*imageAvailableSemaphore[currentFrame]};
-        vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[currentFrame]};
+        vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
         vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
-        vk::SubmitInfo submitInfo {
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = waitSemaphores,
+        game->changeGraphicsWaitSemaphores(imageIndex, waitSemaphores, waitStages);
 
-                .pWaitDstStageMask = waitStages,
+        vk::SubmitInfo submitInfo {
+                .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+                .pWaitSemaphores = waitSemaphores.data(),
+
+                .pWaitDstStageMask = waitStages.data(),
 
                 .commandBufferCount = 1,
                 .pCommandBuffers = &commandBuffers[imageIndex],
@@ -882,6 +902,7 @@ void Carrot::Engine::recreateSwapchain() {
         pipeline->recreateDescriptorPool(swapchainFramebuffers.size());
     }
     // TODO: update material descriptor sets
+    // TODO: update game swapchain-dependent content
     allocateGraphicsCommandBuffers();
     recordCommandBuffers();
 }
@@ -1148,6 +1169,14 @@ void Carrot::Engine::createTracyContexts() {
 //    device->freeCommandBuffers(*tracyCommandPool, cmd);
 }
 
+vk::Queue Carrot::Engine::getComputeQueue() {
+    return computeQueue;
+}
+
+vk::CommandPool& Carrot::Engine::getComputeCommandPool() {
+    return *computeCommandPool;
+}
+
 bool Carrot::QueueFamilies::isComplete() const {
-    return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+    return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
