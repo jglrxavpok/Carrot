@@ -353,3 +353,7 @@ const map<Carrot::MaterialID, vector<shared_ptr<Carrot::Mesh>>> Carrot::Model::g
     return result;
 }
 
+Carrot::Buffer& Carrot::Model::getAnimationDataBuffer() {
+    return *animationData;
+}
+

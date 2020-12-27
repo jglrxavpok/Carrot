@@ -20,9 +20,16 @@ namespace Carrot {
         unique_ptr<Buffer> instanceBuffer = nullptr;
         unique_ptr<Buffer> mapInstanceBuffer = nullptr;
         unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
+        unique_ptr<Buffer> flatVertices = nullptr;
         map<MeshID, shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* modelInstance = nullptr;
         vector<unique_ptr<Unit>> units{};
+
+        vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
+        vector<vk::DescriptorSet> computeDescriptorSet0{};
+        vector<vk::DescriptorSet> computeDescriptorSet1{};
+        vk::UniqueDescriptorSetLayout computeSetLayout0{};
+        vk::UniqueDescriptorSetLayout computeSetLayout1{};
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
         vector<vk::CommandBuffer> skinningCommandBuffers{};

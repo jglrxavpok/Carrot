@@ -61,5 +61,7 @@ namespace Carrot {
         [[nodiscard]] vector<shared_ptr<Carrot::Mesh>> getMeshes() const;
 
         [[nodiscard]] const map<MaterialID, vector<shared_ptr<Mesh>>> getMaterialToMeshMap() const;
+
+        Carrot::Buffer& getAnimationDataBuffer();
     };
 }
