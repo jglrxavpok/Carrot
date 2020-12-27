@@ -260,6 +260,7 @@ void Carrot::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance
         .range = model->getAnimationDataBuffer().getSize(),
     };
 
+    // TODO: fix validation error with arrays
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
         using DT = vk::DescriptorType;
         vector<vk::WriteDescriptorSet> writes = {
@@ -281,7 +282,7 @@ void Carrot::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance
                         .pBufferInfo = &instanceBufferInfo,
                 },
 
-                // set0, binding2, instance buffer
+                // set0, binding2, output buffer
                 vk::WriteDescriptorSet {
                         .dstSet = computeDescriptorSet0[i],
                         .dstBinding = 2,

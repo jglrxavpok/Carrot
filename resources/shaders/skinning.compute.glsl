@@ -38,15 +38,15 @@ struct Animation {
 };
 
 layout(set = 0, binding = 0) buffer VertexBuffer {
-    VertexWithBones originalVertices[];
+    VertexWithBones originalVertices[VERTEX_COUNT];
 };
 
 layout(set = 0, binding = 1) buffer InstanceBuffer {
-    Instance instances[];
+    Instance instances[INSTANCE_COUNT];
 };
 
 layout(set = 0, binding = 2) buffer OutputVertexBuffer {
-    VertexWithBones outputVertices[];
+    VertexWithBones outputVertices[VERTEX_COUNT*INSTANCE_COUNT];
 };
 
 layout(set = 1, binding = 0) buffer Animations {
