@@ -1,0 +1,13 @@
+{
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "Vertex",
+  "constants": {
+    "MAX_TEXTURES": 16,
+    "MAX_MATERIALS": 16
+  },
+  "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/gBuffer.fragment.glsl.spv",
+  "materialStorageBufferBindingIndex": 3,
+  "texturesBindingIndex": 1
+}

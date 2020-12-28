@@ -42,7 +42,7 @@ namespace Carrot {
 
         void onFrame(uint32_t frameIndex);
 
-        void recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands);
+        void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands);
 
         void onMouseMove(double dx, double dy);
 

@@ -46,6 +46,9 @@ void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector
     createBindingsSet0(stage, bindings, vk::DescriptorType::eSampledImage, resources.separate_images, constants);
 
 
+    createBindingsSet0(stage, bindings, vk::DescriptorType::eInputAttachment, resources.subpass_inputs, constants);
+
+
     createBindingsSet0(stage, bindings, vk::DescriptorType::eStorageBufferDynamic, resources.storage_buffers, constants);
 
     // TODO: other types

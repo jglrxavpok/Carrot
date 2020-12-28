@@ -11,7 +11,8 @@ namespace Carrot {
     enum class VertexFormat {
         Vertex,
         SkinnedVertex,
-        Invalid,
+        ScreenSpace,
+        Invalid
     };
 
     VertexFormat getVertexFormat(const std::string& name);

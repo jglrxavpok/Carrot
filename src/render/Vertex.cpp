@@ -157,3 +157,26 @@ void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
 
     assert(0);
 }
+
+std::vector<vk::VertexInputAttributeDescription> Carrot::ScreenSpaceVertex::getAttributeDescriptions() {
+    std::vector<vk::VertexInputAttributeDescription> descriptions{1};
+
+    descriptions[0] = {
+            .location = 0,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ScreenSpaceVertex, pos)),
+    };
+
+    return descriptions;
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::ScreenSpaceVertex::getBindingDescription() {
+    return {
+        vk::VertexInputBindingDescription {
+            .binding = 0,
+            .stride = sizeof(ScreenSpaceVertex),
+            .inputRate = vk::VertexInputRate::eVertex,
+        },
+    };
+}

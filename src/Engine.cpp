@@ -128,8 +128,14 @@ void Carrot::Engine::initVulkan() {
     createUniformBuffers();
     createSamplers();
     createCamera();
+    createScreenQuadMesh();
     initGame();
-    recordCommandBuffers();
+
+    createGResolvePipeline();
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
+    }
+    recordMainCommandBuffers();
     createSynchronizationObjects();
 }
 
@@ -541,6 +547,22 @@ void Carrot::Engine::createSwapChain() {
     depthFormat = findDepthFormat();
 
     createSwapChainImageViews();
+    createGBufferImages();
+}
+
+void Carrot::Engine::createGBufferImages() {
+    gBufferColorImages.resize(getSwapchainImageCount());
+    gBufferColorImageViews.resize(getSwapchainImageCount());
+
+    for(size_t index = 0; index < swapchainImages.size(); index++) {
+        gBufferColorImages[index] = move(make_unique<Image>(*this,
+                                                            vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                            vk::Format::eR8G8B8A8Unorm));
+
+        auto view = gBufferColorImages[index]->createImageView();
+        gBufferColorImageViews[index] = std::move(view);
+    }
 }
 
 void Carrot::Engine::createSwapChainImageViews() {
@@ -576,7 +598,7 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
 }
 
 void Carrot::Engine::createRenderPass() {
-    vk::AttachmentDescription colorAttachment{
+    vk::AttachmentDescription finalColorAttachment {
             .format = swapchainImageFormat,
             .samples = vk::SampleCountFlagBits::e1,
 
@@ -590,7 +612,7 @@ void Carrot::Engine::createRenderPass() {
             .finalLayout = vk::ImageLayout::ePresentSrcKHR,
     };
 
-    vk::AttachmentReference colorAttachmentRef{
+    vk::AttachmentReference finalColorAttachmentRef{
             .attachment = 0,
             .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
@@ -614,42 +636,102 @@ void Carrot::Engine::createRenderPass() {
             .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
     };
 
-    vk::SubpassDescription subpass{
+    vk::AttachmentDescription gBufferColorAttachment {
+            .format = vk::Format::eR8G8B8A8Unorm,
+            .samples = vk::SampleCountFlagBits::e1,
+
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore,
+
+            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::AttachmentReference gBufferColorOutputAttachmentRef{
+            .attachment = 2,
+            .layout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::AttachmentReference gBufferColorInputAttachmentRef{
+            .attachment = 2,
+            .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
+    vk::SubpassDescription gBufferSubpass {
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
             .inputAttachmentCount = 0,
 
             .colorAttachmentCount = 1,
             // index in this array is used by `layout(location = 0)` inside shaders
-            .pColorAttachments = &colorAttachmentRef,
+            .pColorAttachments = &gBufferColorOutputAttachmentRef,
             .pDepthStencilAttachment = &depthAttachmentRef,
 
             .preserveAttachmentCount = 0,
     };
 
-    vk::SubpassDependency dependency{
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0, // our subpass
+    vk::SubpassDescription gResolveSubpass {
+            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+            .inputAttachmentCount = 1,
+            .pInputAttachments = &gBufferColorInputAttachmentRef,
 
-            .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-            // TODO: .srcAccessMask = 0,
+            .colorAttachmentCount = 1,
+            // index in this array is used by `layout(location = 0)` inside shaders
+            .pColorAttachments = &finalColorAttachmentRef,
+            .pDepthStencilAttachment = nullptr,
 
-            .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-            .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            .preserveAttachmentCount = 0,
+    };
+
+    vk::SubpassDescription subpasses[] = {
+            gBufferSubpass,
+            gResolveSubpass,
+    };
+
+    vk::SubpassDependency dependencies[] = {
+            {
+                    .srcSubpass = VK_SUBPASS_EXTERNAL,
+                    .dstSubpass = 0, // gBuffer
+
+                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    // TODO: .srcAccessMask = 0,
+
+                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite |
+                                     vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            },
+            {
+                    .srcSubpass = 0, // gBuffer
+                    .dstSubpass = 1, // gResolve
+
+                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    // TODO: .srcAccessMask = 0,
+
+                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+            }
     };
 
     vector<vk::AttachmentDescription> attachments = {
-            colorAttachment,
+            finalColorAttachment,
             depthAttachment,
+            gBufferColorAttachment,
     };
 
     vk::RenderPassCreateInfo renderPassInfo{
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
             .pAttachments = attachments.data(),
-            .subpassCount = 1,
-            .pSubpasses = &subpass,
+            .subpassCount = 2,
+            .pSubpasses = subpasses,
 
-            .dependencyCount = 1,
-            .pDependencies = &dependency,
+            .dependencyCount = 2,
+            .pDependencies = dependencies,
     };
 
     renderPass = device->createRenderPassUnique(renderPassInfo, allocator);
@@ -662,11 +744,12 @@ void Carrot::Engine::createFramebuffers() {
         vk::ImageView attachments[] = {
                 *swapchainImageViews[i],
                 *depthImageView,
+                *gBufferColorImageViews[i],
         };
 
         vk::FramebufferCreateInfo framebufferInfo{
                 .renderPass = *renderPass,
-                .attachmentCount = 2,
+                .attachmentCount = 3,
                 .pAttachments = attachments,
                 .width = swapchainExtent.width,
                 .height = swapchainExtent.height,
@@ -704,19 +787,88 @@ void Carrot::Engine::createComputeCommandPool() {
     computeCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
-void Carrot::Engine::recordCommandBuffers() {
-    for(size_t i = 0; i < commandBuffers.size(); i++) {
+void Carrot::Engine::createGResolvePipeline() {
+    pipelines.erase("gResolve");
+    gResolvePipeline = getOrCreatePipeline("gResolve");
+    vector<vk::WriteDescriptorSet> writes{getSwapchainImageCount()};
+    vector<vk::DescriptorImageInfo> imageInfo{getSwapchainImageCount()};
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        auto& info = imageInfo[i];
+        info.imageView = *gBufferColorImageViews[i];
+        info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        info.sampler = *linearRepeatSampler;
+
+        auto& write = writes[i];
+        write.descriptorCount = 1;
+        write.descriptorType = vk::DescriptorType::eInputAttachment;
+        write.pImageInfo = &info;
+        write.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        write.dstArrayElement = 0;
+        write.dstBinding = 0;
+    }
+    device->updateDescriptorSets(writes, {});
+}
+
+void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
+    recordGBufferPass(frameIndex, gBufferCommandBuffers[frameIndex]);
+    recordGResolvePass(frameIndex, gResolveCommandBuffers[frameIndex]);
+}
+
+void Carrot::Engine::recordGResolvePass(size_t frameIndex, vk::CommandBuffer& commandBuffer) {
+    vk::CommandBufferInheritanceInfo inheritance {
+            .renderPass = *this->renderPass,
+            .subpass = 1,
+            .framebuffer = *this->swapchainFramebuffers[frameIndex],
+    };
+    vk::CommandBufferBeginInfo beginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue | vk::CommandBufferUsageFlagBits::eSimultaneousUse,
+            .pInheritanceInfo = &inheritance,
+    };
+
+    commandBuffer.begin(beginInfo);
+    {
+        updateViewportAndScissor(commandBuffer);
+        gResolvePipeline->bind(frameIndex, commandBuffer);
+        screenQuadMesh->bind(commandBuffer);
+        screenQuadMesh->draw(commandBuffer);
+    }
+    commandBuffer.end();
+}
+
+void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBufferCommandBuffer) {
+    vk::CommandBufferInheritanceInfo inheritance {
+            .renderPass = *this->renderPass,
+            .subpass = 0,
+            .framebuffer = *this->swapchainFramebuffers[frameIndex],
+    };
+    vk::CommandBufferBeginInfo beginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue | vk::CommandBufferUsageFlagBits::eSimultaneousUse,
+            .pInheritanceInfo = &inheritance,
+    };
+
+    gBufferCommandBuffer.begin(beginInfo);
+    {
+        this->updateViewportAndScissor(gBufferCommandBuffer);
+
+        this->game->recordGBufferPass(frameIndex, gBufferCommandBuffer);
+    }
+    gBufferCommandBuffer.end();
+}
+
+void Carrot::Engine::recordMainCommandBuffers() {
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        // main command buffer
         vk::CommandBufferBeginInfo beginInfo{
                 .pInheritanceInfo = nullptr,
                 // TODO: different flags: .flags = vk::CommandBufferUsageFlagBits::<value>
         };
 
-        commandBuffers[i].begin(beginInfo);
+        mainCommandBuffers[i].begin(beginInfo);
         {
-            PrepareVulkanTracy(tracyCtx[i], commandBuffers[i]);
+            PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
 
-            TracyVulkanZone(*tracyCtx[i], commandBuffers[i], "Render frame");
-            updateViewportAndScissor(commandBuffers[i]);
+            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render frame");
+            updateViewportAndScissor(mainCommandBuffers[i]);
 
             vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
             vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
@@ -725,8 +877,9 @@ void Carrot::Engine::recordCommandBuffers() {
             };
 
             vk::ClearValue clearValues[] = {
-                    clearColor,
+                    clearColor, // final presented color
                     clearDepth,
+                    clearColor, // gbuffer color
             };
 
             vk::RenderPassBeginInfo renderPassInfo{
@@ -737,23 +890,32 @@ void Carrot::Engine::recordCommandBuffers() {
                             .extent = swapchainExtent
                     },
 
-                    .clearValueCount = 2,
+                    .clearValueCount = 3,
                     .pClearValues = clearValues,
             };
 
             {
-                TracyVulkanZone(*tracyCtx[i], commandBuffers[i], "Render pass 0");
+                TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
 
-                commandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+                mainCommandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
 
-                game->recordCommandBuffer(i, commandBuffers[i]);
+                mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
 
-                commandBuffers[i].endRenderPass();
+                // TODO: RT pass
+
+                // TODO:
+                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
+                mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
+/*
+                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
+                mainCommandBuffers[i].executeCommands(uiCommandBuffers[i]);*/
+
+                mainCommandBuffers[i].endRenderPass();
 
             }
         }
 
-        commandBuffers[i].end();
+        mainCommandBuffers[i].end();
     }
 }
 
@@ -764,7 +926,15 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
             .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
     };
 
-    this->commandBuffers = this->device->allocateCommandBuffers(allocInfo);
+    this->mainCommandBuffers = this->device->allocateCommandBuffers(allocInfo);
+
+    vk::CommandBufferAllocateInfo gAllocInfo {
+            .commandPool = *this->graphicsCommandPool,
+            .level = vk::CommandBufferLevel::eSecondary,
+            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
+    };
+    this->gBufferCommandBuffers = device->allocateCommandBuffers(gAllocInfo);
+    this->gResolveCommandBuffers = device->allocateCommandBuffers(gAllocInfo);
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
@@ -822,7 +992,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 .pWaitDstStageMask = waitStages.data(),
 
                 .commandBufferCount = 1,
-                .pCommandBuffers = &commandBuffers[imageIndex],
+                .pCommandBuffers = &mainCommandBuffers[imageIndex],
 
                 .signalSemaphoreCount = 1,
                 .pSignalSemaphores = signalSemaphores,
@@ -901,16 +1071,20 @@ void Carrot::Engine::recreateSwapchain() {
     for(const auto& [name, pipeline] : pipelines) {
         pipeline->recreateDescriptorPool(swapchainFramebuffers.size());
     }
+    createGResolvePipeline();
     // TODO: update material descriptor sets
     // TODO: update game swapchain-dependent content
     allocateGraphicsCommandBuffers();
-    recordCommandBuffers();
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
+    }
+    recordMainCommandBuffers();
 }
 
 void Carrot::Engine::cleanupSwapchain() {
     swapchainFramebuffers.clear();
-    device->freeCommandBuffers(*graphicsCommandPool, commandBuffers);
-    commandBuffers.clear();
+    device->freeCommandBuffers(*graphicsCommandPool, mainCommandBuffers);
+    mainCommandBuffers.clear();
 
     renderPass.reset();
     swapchainImageViews.clear();
@@ -1116,6 +1290,20 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
         materials[name] = make_shared<Material>(*this, name);
     }
     return materials[name];
+}
+
+void Carrot::Engine::createScreenQuadMesh() {
+    screenQuadMesh = make_unique<Mesh>(*this,
+                                       vector<ScreenSpaceVertex>{
+                                            { { -1, -1} },
+                                            { { 1, -1} },
+                                            { { 1, 1} },
+                                            { { -1, 1} },
+                                       },
+                                       vector<uint32_t>{
+                                            2,1,0,
+                                            3,2,0,
+                                       });
 }
 
 void Carrot::Engine::initGame() {

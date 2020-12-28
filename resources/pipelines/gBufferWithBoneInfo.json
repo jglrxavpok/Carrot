@@ -1,10 +1,12 @@
 {
+  "type": "gbuffer",
+  "subpassIndex": 0,
   "vertexFormat": "SkinnedVertex",
   "constants": {
     "MAX_TEXTURES": 16,
     "MAX_MATERIALS": 16
   },
-  "vertexShader": "resources/shaders/defaultWithBoneInfo.vertex.glsl.spv",
+  "vertexShader": "resources/shaders/gBufferWithBoneInfo.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/default.fragment.glsl.spv",
   "materialStorageBufferBindingIndex": 3,
   "texturesBindingIndex": 1

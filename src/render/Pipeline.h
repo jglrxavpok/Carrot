@@ -10,6 +10,12 @@
 
 namespace Carrot {
     class Pipeline {
+        enum class Type {
+            GBuffer,
+            ScreenSpace,
+            Unknown
+        };
+
     private:
         Carrot::Engine& engine;
         vk::UniqueRenderPass& renderPass;
@@ -31,10 +37,14 @@ namespace Carrot {
         uint32_t materialsBindingIndex = 0;
         unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
         map<string, uint32_t> constants{};
+        uint64_t subpassIndex = 0;
+        Type type = Type::Unknown;
 
         VertexFormat vertexFormat = VertexFormat::Invalid;
 
-        vector<vk::DescriptorSet> allocateDescriptorSets();
+        vector<vk::DescriptorSet> allocateDescriptorSets0();
+
+        static Type getPipelineType(const string& name);
 
     public:
         explicit Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderPass, const string& pipelineName);

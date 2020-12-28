@@ -70,12 +70,14 @@ set(SOURCES
         )
 
 set(VERTEX_SHADERS
-        resources/shaders/default.vertex.glsl
-        resources/shaders/defaultWithBoneInfo.vertex.glsl
+        resources/shaders/gBuffer.vertex.glsl
+        resources/shaders/gBufferWithBoneInfo.vertex.glsl
+        resources/shaders/screenQuad.vertex.glsl
         )
 
 set(FRAGMENT_SHADERS
-        resources/shaders/default.fragment.glsl
+        resources/shaders/gBuffer.fragment.glsl
+        resources/shaders/blit.fragment.glsl
         )
 
 set(COMPUTE_SHADERS

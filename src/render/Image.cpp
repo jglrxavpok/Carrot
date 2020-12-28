@@ -179,8 +179,8 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
     });
 }
 
-vk::UniqueImageView Carrot::Image::createImageView() {
-    return std::move(engine.createImageView(*vkImage, vk::Format::eR8G8B8A8Unorm));
+vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat) {
+    return std::move(engine.createImageView(*vkImage, imageFormat));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {

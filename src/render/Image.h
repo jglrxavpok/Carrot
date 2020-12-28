@@ -38,7 +38,7 @@ namespace Carrot {
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 
         /// Creates a ImageView pointing to this image
-        vk::UniqueImageView createImageView();
+        vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm);
 
         /// Create and fill an Image from a given image file
         static unique_ptr<Image> fromFile(Carrot::Engine& engine, const std::string& filename);

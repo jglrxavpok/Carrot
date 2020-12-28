@@ -380,7 +380,7 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     });
 }
 
-void Carrot::Game::recordCommandBuffer(uint32_t frameIndex, vk::CommandBuffer& commands) {
+void Carrot::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {
     {
         TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render map");
         mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);

@@ -1,5 +1,5 @@
 {
-  "pipeline": "default",
+  "pipeline": "gBuffer",
   "texture": "texture.jpg",
   "todo": [
     "samplers", "uniforms (& buffers)"

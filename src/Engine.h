@@ -156,9 +156,11 @@ namespace Carrot {
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
         vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
+        vector<unique_ptr<Image>> gBufferColorImages{};
         unique_ptr<Image> depthImage{};
         vk::Extent2D swapchainExtent{};
         vector<vk::UniqueImageView> swapchainImageViews{};
+        vector<vk::UniqueImageView> gBufferColorImageViews{};
         vk::UniqueImageView depthImageView{};
         vk::UniqueRenderPass renderPass{};
         map<string, shared_ptr<Pipeline>> pipelines{};
@@ -170,7 +172,9 @@ namespace Carrot {
         vk::UniqueCommandPool tracyCommandPool{};
         vector<vk::CommandBuffer> tracyCommandBuffers{};
 
-        vector<vk::CommandBuffer> commandBuffers{};
+        vector<vk::CommandBuffer> mainCommandBuffers{};
+        vector<vk::CommandBuffer> gBufferCommandBuffers{};
+        vector<vk::CommandBuffer> gResolveCommandBuffers{};
         vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         vector<vk::UniqueFence> inFlightFences{};
@@ -190,6 +194,9 @@ namespace Carrot {
         vector<shared_ptr<Buffer>> cameraUniformBuffers{};
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
+
+        shared_ptr<Pipeline> gResolvePipeline = nullptr;
+        unique_ptr<Mesh> screenQuadMesh = nullptr;
 
         unique_ptr<Camera> camera = nullptr;
         unique_ptr<Game> game = nullptr;
@@ -259,9 +266,13 @@ namespace Carrot {
 
         /// Create the image views used by the swapchain
         void createSwapChainImageViews();
+        void createGBufferImages();
 
         /// Create the render pass
         void createRenderPass();
+
+        /// Create the pipeline responsible for lighting via the gbuffer
+        void createGResolvePipeline();
 
         /// Create the framebuffers to render to
         void createFramebuffers();
@@ -272,8 +283,15 @@ namespace Carrot {
         /// Create the command pool for compute operations
         void createComputeCommandPool();
 
+        void createScreenQuadMesh();
+
         /// Create the primary command buffers for rendering
-        void recordCommandBuffers();
+        void recordMainCommandBuffers();
+
+        void recordSecondaryCommandBuffers(size_t frameIndex);
+
+        void recordGBufferPass(size_t frameIndex, vk::CommandBuffer& commandBuffer);
+        void recordGResolvePass(size_t frameIndex, vk::CommandBuffer& commandBuffer);
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(size_t currentFrame);
