@@ -203,6 +203,7 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
         const aiVector3D vec = mesh->mVertices[vertexIndex];
         const aiColor4D* vertexColor = mesh->mColors[0];
         const aiVector3D* vertexUVW = mesh->mTextureCoords[0];
+        const aiVector3D vertexNormal = mesh->mNormals[vertexIndex];
         glm::vec3 color = {1.0f, 1.0f, 1.0f};
         if(vertexColor) {
             color = {
@@ -220,12 +221,19 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
             };
         }
 
+        glm::vec3 normal = {
+                vertexNormal.x,
+                vertexNormal.y,
+                vertexNormal.z,
+        };
+
         glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
 
         if(usesSkinning) {
             skinnedVertices.push_back({
                                         position,
                                         color,
+                                        normal,
                                         uv,
                                         glm::ivec4{-1, -1, -1, -1},
                                         glm::vec4{0.0f},
@@ -234,6 +242,7 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
             vertices.push_back({
                                         position,
                                         color,
+                                        normal,
                                         uv,
                                });
         }

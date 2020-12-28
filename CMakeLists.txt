@@ -62,6 +62,7 @@ set(SOURCES
         src/utils/conversions.cpp
         src/utils/stringmanip.cpp
         src/vulkan/CustomTracyVulkan.cpp
+        src/render/GBuffer.cpp
         src/main.cpp
         src/stb_impls.cpp
 
@@ -78,6 +79,7 @@ set(VERTEX_SHADERS
 set(FRAGMENT_SHADERS
         resources/shaders/gBuffer.fragment.glsl
         resources/shaders/blit.fragment.glsl
+        resources/shaders/gResolve.fragment.glsl
         )
 
 set(COMPUTE_SHADERS

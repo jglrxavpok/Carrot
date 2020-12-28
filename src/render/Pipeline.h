@@ -12,7 +12,7 @@ namespace Carrot {
     class Pipeline {
         enum class Type {
             GBuffer,
-            ScreenSpace,
+            GResolve,
             Unknown
         };
 

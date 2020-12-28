@@ -87,8 +87,8 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .alphaToOneEnable = false,
     };
     vk::PipelineDepthStencilStateCreateInfo depthStencil {
-            .depthTestEnable = type != Type::ScreenSpace,
-            .depthWriteEnable = type != Type::ScreenSpace,
+            .depthTestEnable = type != Type::GResolve,
+            .depthWriteEnable = type != Type::GResolve,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
@@ -100,10 +100,16 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
     };
 
+    vector<vk::PipelineColorBlendAttachmentState> colorBlendingStates =
+            {
+            static_cast<size_t>(type == Type::GBuffer ? 3 : 1),
+            colorBlendAttachment
+            };
+
     vk::PipelineColorBlendStateCreateInfo colorBlending{
             .logicOpEnable = false,
-            .attachmentCount = 1,
-            .pAttachments = &colorBlendAttachment,
+            .attachmentCount = static_cast<uint32_t>(colorBlendingStates.size()),
+            .pAttachments = colorBlendingStates.data(),
     };
 
     vector<vk::PushConstantRange> pushConstants{};
@@ -250,7 +256,7 @@ void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk
     if(type == Type::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
     } else {
-        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {});
+        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0});
     }
 }
 
@@ -450,8 +456,8 @@ Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
 }
 
 Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
-    if(name == "screenSpace") {
-        return Type::ScreenSpace;
+    if(name == "gResolve") {
+        return Type::GResolve;
     } else if(name == "gbuffer") {
         return Type::GBuffer;
     }

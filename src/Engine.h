@@ -26,6 +26,7 @@ namespace Carrot {
     class InstanceData;
     class Game;
     class Camera;
+    class GBuffer;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -133,6 +134,14 @@ namespace Carrot {
 
         Camera& getCamera();
 
+        void updateViewportAndScissor(vk::CommandBuffer& commands);
+
+        vk::Extent2D getSwapchainExtent() const;
+
+        vk::Format getDepthFormat() const;
+
+        vk::Format getSwapchainImageFormat() const;
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -157,11 +166,9 @@ namespace Carrot {
         vk::Format depthFormat = vk::Format::eUndefined;
         vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
         vector<unique_ptr<Image>> gBufferColorImages{};
-        unique_ptr<Image> depthImage{};
         vk::Extent2D swapchainExtent{};
         vector<vk::UniqueImageView> swapchainImageViews{};
-        vector<vk::UniqueImageView> gBufferColorImageViews{};
-        vk::UniqueImageView depthImageView{};
+
         vk::UniqueRenderPass renderPass{};
         map<string, shared_ptr<Pipeline>> pipelines{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
@@ -195,8 +202,7 @@ namespace Carrot {
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
-        shared_ptr<Pipeline> gResolvePipeline = nullptr;
-        unique_ptr<Mesh> screenQuadMesh = nullptr;
+        unique_ptr<GBuffer> gBuffer = nullptr;
 
         unique_ptr<Camera> camera = nullptr;
         unique_ptr<Game> game = nullptr;
@@ -272,7 +278,7 @@ namespace Carrot {
         void createRenderPass();
 
         /// Create the pipeline responsible for lighting via the gbuffer
-        void createGResolvePipeline();
+        void createGBuffer();
 
         /// Create the framebuffers to render to
         void createFramebuffers();
@@ -282,8 +288,6 @@ namespace Carrot {
 
         /// Create the command pool for compute operations
         void createComputeCommandPool();
-
-        void createScreenQuadMesh();
 
         /// Create the primary command buffers for rendering
         void recordMainCommandBuffers();
@@ -314,9 +318,6 @@ namespace Carrot {
         /// Update the uniform buffer at index 'imageIndex'
         void updateUniformBuffer(int imageIndex);
 
-        /// Create the depth texture, used for depth testing
-        void createDepthTexture();
-
         /// Find the best available format for the depth texture
         vk::Format findDepthFormat();
 
@@ -325,8 +326,6 @@ namespace Carrot {
 
         /// Create the samplers used by the engine
         void createSamplers();
-
-        void updateViewportAndScissor(vk::CommandBuffer& commands);
 
         void createDefaultTexture();
 
@@ -337,6 +336,7 @@ namespace Carrot {
         void createTracyContexts();
 
         void allocateGraphicsCommandBuffers();
+
     };
 }
 

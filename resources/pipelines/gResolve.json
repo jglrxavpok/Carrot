@@ -1,7 +1,7 @@
 {
-  "type": "screenSpace",
+  "type": "gResolve",
   "subpassIndex": 1,
   "vertexFormat": "ScreenSpace",
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/blit.fragment.glsl.spv"
+  "fragmentShader": "resources/shaders/gResolve.fragment.glsl.spv"
 }

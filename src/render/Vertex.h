@@ -16,6 +16,9 @@ namespace Carrot {
         /// RGB color
         alignas(16) glm::vec3 color;
 
+        /// Vertex Normal
+        alignas(16) glm::vec3 normal;
+
         /// UV coordinates
         alignas(16) glm::vec2 uv;
 
@@ -32,6 +35,9 @@ namespace Carrot {
 
         /// RGB color
         alignas(16) glm::vec3 color;
+
+        /// Vertex normal
+        alignas(16) glm::vec3 normal;
 
         /// UV coordinates
         alignas(16) glm::vec2 uv;

@@ -14,6 +14,7 @@ const uint MAX_BONES = 20;
 struct VertexWithBones {
     vec4 pos;
     vec3 color;
+    vec3 normal;
     vec2 uv;
     ivec4 boneIDs;
     vec4 boneWeights;
@@ -88,4 +89,7 @@ void main() {
     uint finalVertexIndex = instanceIndex * VERTEX_COUNT + vertexIndex;
     outputVertices[finalVertexIndex] = originalVertices[vertexIndex];
     outputVertices[finalVertexIndex].pos = skinning * outputVertices[finalVertexIndex].pos;
+
+    vec4 transformedNormal = skinning * vec4(outputVertices[finalVertexIndex].normal, 0.0);
+    outputVertices[finalVertexIndex].normal = transformedNormal.xyz;
 }
