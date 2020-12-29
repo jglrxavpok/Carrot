@@ -27,6 +27,7 @@ namespace Carrot {
     class Game;
     class Camera;
     class GBuffer;
+    class RayTracer;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -202,6 +203,7 @@ namespace Carrot {
         vk::UniqueDescriptorPool descriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
+        unique_ptr<RayTracer> raytracer = nullptr;
         unique_ptr<GBuffer> gBuffer = nullptr;
 
         unique_ptr<Camera> camera = nullptr;
@@ -280,6 +282,9 @@ namespace Carrot {
         /// Create the pipeline responsible for lighting via the gbuffer
         void createGBuffer();
 
+        /// Create the object responsible of raytracing operations and subpasses
+        void createRayTracer();
+
         /// Create the framebuffers to render to
         void createFramebuffers();
 
@@ -295,7 +300,6 @@ namespace Carrot {
         void recordSecondaryCommandBuffers(size_t frameIndex);
 
         void recordGBufferPass(size_t frameIndex, vk::CommandBuffer& commandBuffer);
-        void recordGResolvePass(size_t frameIndex, vk::CommandBuffer& commandBuffer);
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(size_t currentFrame);

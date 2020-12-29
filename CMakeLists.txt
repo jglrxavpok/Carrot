@@ -63,6 +63,7 @@ set(SOURCES
         src/utils/stringmanip.cpp
         src/vulkan/CustomTracyVulkan.cpp
         src/render/GBuffer.cpp
+        src/render/raytracing/RayTracer.cpp
         src/main.cpp
         src/stb_impls.cpp
 

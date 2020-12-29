@@ -27,6 +27,7 @@
 #include "render/Pipeline.h"
 #include "render/InstanceData.h"
 #include "render/Camera.h"
+#include "render/raytracing/RayTracer.h"
 #include "render/GBuffer.h"
 #include "game/Game.h"
 
@@ -123,6 +124,7 @@ void Carrot::Engine::initVulkan() {
 
     createTransferCommandPool();
 
+    createRayTracer();
     createGBuffer();
     createRenderPass();
     createFramebuffers();
@@ -636,25 +638,36 @@ void Carrot::Engine::createComputeCommandPool() {
     computeCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
+void Carrot::Engine::createRayTracer() {
+    raytracer = make_unique<RayTracer>(*this);
+}
+
 void Carrot::Engine::createGBuffer() {
-    gBuffer = make_unique<GBuffer>(*this);
+    gBuffer = make_unique<GBuffer>(*this, *raytracer);
 }
 
 void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
     recordGBufferPass(frameIndex, gBufferCommandBuffers[frameIndex]);
 
-    vk::CommandBufferInheritanceInfo inheritance {
+    vk::CommandBufferInheritanceInfo raytracedLightingInheritance {
             .renderPass = *this->renderPass,
-            .subpass = 1,
+            .subpass = RenderPasses::RaytracedLightingSubpassIndex,
             .framebuffer = *this->swapchainFramebuffers[frameIndex],
     };
-    gBuffer->recordResolvePass(frameIndex, gResolveCommandBuffers[frameIndex], &inheritance);
+    raytracer->recordCommands(frameIndex, &raytracedLightingInheritance);
+
+    vk::CommandBufferInheritanceInfo gResolveInheritance {
+            .renderPass = *this->renderPass,
+            .subpass = RenderPasses::GResolveSubPassIndex,
+            .framebuffer = *this->swapchainFramebuffers[frameIndex],
+    };
+    gBuffer->recordResolvePass(frameIndex, gResolveCommandBuffers[frameIndex], &gResolveInheritance);
 }
 
 void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBufferCommandBuffer) {
     vk::CommandBufferInheritanceInfo inheritance {
             .renderPass = *this->renderPass,
-            .subpass = 0,
+            .subpass = RenderPasses::GBufferSubPassIndex,
             .framebuffer = *this->swapchainFramebuffers[frameIndex],
     };
     vk::CommandBufferBeginInfo beginInfo{
@@ -687,6 +700,7 @@ void Carrot::Engine::recordMainCommandBuffers() {
             updateViewportAndScissor(mainCommandBuffers[i]);
 
             vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+            vk::ClearValue lightingClear = vk::ClearColorValue(std::array{1.0f,1.0f,1.0f,1.0f});
             vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
             vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
                     .depth = 1.0f,
@@ -698,7 +712,8 @@ void Carrot::Engine::recordMainCommandBuffers() {
                     clearDepth,
                     clearColor, // gbuffer color
                     positionClear, // gbuffer view position
-                    positionClear, // gbuffer view normal
+                    positionClear, // gbuffer view normal,
+                    lightingClear, // raytraced lighting colors
             };
 
             vk::RenderPassBeginInfo renderPassInfo{
@@ -709,7 +724,7 @@ void Carrot::Engine::recordMainCommandBuffers() {
                             .extent = swapchainExtent
                     },
 
-                    .clearValueCount = 5,
+                    .clearValueCount = 6,
                     .pClearValues = clearValues,
             };
 
@@ -720,7 +735,8 @@ void Carrot::Engine::recordMainCommandBuffers() {
 
                 mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
 
-                // TODO: RT pass
+                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
+                mainCommandBuffers[i].executeCommands(raytracer->getCommandBuffers()[i]);
 
                 mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
                 mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
@@ -885,6 +901,7 @@ void Carrot::Engine::recreateSwapchain() {
 
     createSwapChain();
     createUniformBuffers();
+    raytracer->onSwapchainRecreation();
     gBuffer->onSwapchainRecreation();
     createRenderPass();
     createFramebuffers();

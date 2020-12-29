@@ -5,8 +5,9 @@ layout(input_attachment_index = 0, binding = 0) uniform subpassInput albedo;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput depth;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput viewPos;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput viewNormals;
+layout(input_attachment_index = 4, binding = 4) uniform subpassInput raytracedLighting;
 
-layout(set = 0, binding = 4) uniform CameraBufferObject {
+layout(set = 0, binding = 5) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;
