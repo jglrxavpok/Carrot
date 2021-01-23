@@ -28,6 +28,7 @@ namespace Carrot {
     class Camera;
     class GBuffer;
     class RayTracer;
+    class ASBuilder;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -143,6 +144,10 @@ namespace Carrot {
 
         vk::Format getSwapchainImageFormat() const;
 
+        vk::PhysicalDevice& getPhysicalDevice();
+
+        ASBuilder& getASBuilder();
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -204,6 +209,7 @@ namespace Carrot {
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
         unique_ptr<RayTracer> raytracer = nullptr;
+        unique_ptr<ASBuilder> asBuilder = nullptr;
         unique_ptr<GBuffer> gBuffer = nullptr;
 
         unique_ptr<Camera> camera = nullptr;

@@ -17,7 +17,7 @@ Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, c
     vertexCount = vertices.size();
     vertexAndIndexBuffer = make_unique<Carrot::Buffer>(engine,
                                                        vertexStartOffset + sizeof(VertexType) * vertices.size(),
-                                                       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc/*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/,
+                                                       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                        families);
 

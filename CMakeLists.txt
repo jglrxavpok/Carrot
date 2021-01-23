@@ -64,6 +64,8 @@ set(SOURCES
         src/vulkan/CustomTracyVulkan.cpp
         src/render/GBuffer.cpp
         src/render/raytracing/RayTracer.cpp
+        src/render/raytracing/ASBuilder.cpp
+        src/render/raytracing/AccelerationStructure.cpp
         src/main.cpp
         src/stb_impls.cpp
 
@@ -109,6 +111,7 @@ include_directories(src/)
 include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
+include_directories(thirdparty/threadpool/)
 
 set(ALL_SOURCES ${SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
 set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)

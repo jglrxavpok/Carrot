@@ -35,6 +35,7 @@ namespace Carrot {
         void moveTo(const glm::vec3& targetPosition);
         void update(float dt);
 
+        glm::mat4 getTransform() const;
         Type getType() const;
         glm::vec3 getPosition() const;
     };

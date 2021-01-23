@@ -28,6 +28,7 @@
 #include "render/InstanceData.h"
 #include "render/Camera.h"
 #include "render/raytracing/RayTracer.h"
+#include "render/raytracing/ASBuilder.h"
 #include "render/GBuffer.h"
 #include "game/Game.h"
 
@@ -155,6 +156,7 @@ void Carrot::Engine::createInstance() {
     };
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions();
+
     vk::InstanceCreateInfo createInfo{
         .pApplicationInfo = &appInfo,
 
@@ -300,6 +302,7 @@ int Carrot::Engine::ratePhysicalDevice(const vk::PhysicalDevice& device) {
 }
 
 Carrot::QueueFamilies Carrot::Engine::findQueueFamilies(vk::PhysicalDevice const &device) {
+    // TODO: check raytracing capabilities
     std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
     uint32_t index = 0;
 
@@ -355,17 +358,37 @@ void Carrot::Engine::createLogicalDevice() {
     }
 
     // TODO: define features we will use
-    vk::PhysicalDeviceFeatures deviceFeatures{
-        .multiDrawIndirect = true,
 
-        .samplerAnisotropy = true,
-        .shaderUniformBufferArrayDynamicIndexing = true,
-        .shaderSampledImageArrayDynamicIndexing = true,
-        .shaderStorageBufferArrayDynamicIndexing = true,
-        .shaderStorageImageArrayDynamicIndexing = true,
+    vk::StructureChain deviceFeatures {
+            vk::PhysicalDeviceFeatures2 {
+                .features = {
+                        .multiDrawIndirect = true,
+                        .samplerAnisotropy = true,
+                        .shaderUniformBufferArrayDynamicIndexing = true,
+                        .shaderSampledImageArrayDynamicIndexing = true,
+                        .shaderStorageBufferArrayDynamicIndexing = true,
+                        .shaderStorageImageArrayDynamicIndexing = true,
+                },
+            },
+            vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
+                .rayTracingPipeline = true,
+            },
+            vk::PhysicalDeviceRayQueryFeaturesKHR {
+                .rayQuery = true,
+            },
+            vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
+                .accelerationStructure = true,
+            },
+            vk::PhysicalDeviceVulkan12Features {
+                .bufferDeviceAddress = true,
+            }
     };
 
     vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
+
+    for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
+        deviceExtensions.push_back(rayTracingExt);
+    }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
         for (const auto& debugExt : VULKAN_DEBUG_EXTENSIONS) {
@@ -375,11 +398,12 @@ void Carrot::Engine::createLogicalDevice() {
 #endif
 
     vk::DeviceCreateInfo createInfo{
+            .pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
             .pQueueCreateInfos = queueCreateInfoStructs.data(),
             .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
             .ppEnabledExtensionNames = deviceExtensions.data(),
-            .pEnabledFeatures = &deviceFeatures,
+            .pEnabledFeatures = nullptr,
     };
 
     if(USE_VULKAN_VALIDATION_LAYERS) { // keep compatibility with older Vulkan implementations
@@ -640,6 +664,7 @@ void Carrot::Engine::createComputeCommandPool() {
 
 void Carrot::Engine::createRayTracer() {
     raytracer = make_unique<RayTracer>(*this);
+    asBuilder = make_unique<ASBuilder>(*this);
 }
 
 void Carrot::Engine::createGBuffer() {
@@ -1174,6 +1199,14 @@ vk::Format Carrot::Engine::getDepthFormat() const {
 
 vk::Format Carrot::Engine::getSwapchainImageFormat() const {
     return swapchainImageFormat;
+}
+
+vk::PhysicalDevice& Carrot::Engine::getPhysicalDevice() {
+    return physicalDevice;
+}
+
+Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
+    return *asBuilder;
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

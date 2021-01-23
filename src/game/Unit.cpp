@@ -33,8 +33,7 @@ void Carrot::Unit::update(float dt) {
     // TODO: move randomly
 
     instanceData.color = { color.r, color.g, color.b, 1.0f };
-    auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
-    instanceData.transform = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
+    instanceData.transform = getTransform();
 
     instanceData.animationTime += dt;
 }
@@ -54,4 +53,9 @@ void Carrot::Unit::moveTo(const glm::vec3& targetPosition) {
 
 glm::vec3 Carrot::Unit::getPosition() const {
     return position;
+}
+
+glm::mat4 Carrot::Unit::getTransform() const {
+    auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
+    return glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
 }

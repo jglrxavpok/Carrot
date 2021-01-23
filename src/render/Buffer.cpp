@@ -32,12 +32,17 @@ Carrot::Buffer::Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags
     vkBuffer = device.createBufferUnique(bufferInfo, engine.getAllocator());
 
     vk::MemoryRequirements memoryRequirements = device.getBufferMemoryRequirements(*vkBuffer);
-    vk::MemoryAllocateInfo allocInfo = {
-            .allocationSize = memoryRequirements.size,
-            .memoryTypeIndex = engine.findMemoryType(memoryRequirements.memoryTypeBits, properties)
+    vk::StructureChain<vk::MemoryAllocateInfo, vk::MemoryAllocateFlagsInfo> allocInfo = {
+            {
+                    .allocationSize = memoryRequirements.size,
+                    .memoryTypeIndex = engine.findMemoryType(memoryRequirements.memoryTypeBits, properties)
+            },
+            {
+                    .flags = vk::MemoryAllocateFlagBits::eDeviceAddress,
+            }
     };
 
-    memory = device.allocateMemoryUnique(allocInfo, engine.getAllocator());
+    memory = device.allocateMemoryUnique(allocInfo.get(), engine.getAllocator());
     device.bindBufferMemory(*vkBuffer, *memory, 0);
 }
 

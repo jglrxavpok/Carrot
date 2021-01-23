@@ -13,6 +13,7 @@
 #include "render/Mesh.h"
 #include <iostream>
 #include <render/shaders/ShaderModule.h>
+#include <render/raytracing/ASBuilder.h>
 
 int maxInstanceCount = 100; // TODO: change
 
@@ -79,12 +80,15 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
 
     fullySkinnedUnitVertices = make_unique<Buffer>(engine,
                                                    sizeof(SkinnedVertex) * vertexCountPerInstance * maxInstanceCount,
-                                                   vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                   vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                                    vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                    engine.createGraphicsAndTransferFamiliesSet());
     fullySkinnedUnitVertices->name("full skinned unit vertices");
 
+    auto& as = engine.getASBuilder();
     const float spacing = 0.5f;
+
+    vector<GeometryInput*> geometries{};
     for(int i = 0; i < maxInstanceCount; i++) {
         float x = (i % (int)sqrt(maxInstanceCount)) * spacing;
         float y = (i / (int)sqrt(maxInstanceCount)) * spacing;
@@ -104,8 +108,21 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
                     .vertexOffset = vertexOffset,
                     .firstInstance = static_cast<uint32_t>(i),
             });
+
+            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {static_cast<uint64_t>(vertexOffset)});
+            geometries.push_back(g);
+
+            as.addInstance(InstanceInput {
+                .transform = units.back()->getTransform(),
+                .customInstanceIndex = static_cast<uint32_t>(i),
+                .geometryIndex = static_cast<uint32_t>(geometries.size()-1),
+                .mask = 0,
+                .hitGroup = 0, // TODO: different materials
+            });
         }
     }
+    as.buildBottomLevelAS();
+    as.buildTopLevelAS(false);
     for(const auto& mesh : meshes) {
         indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #"+to_string(mesh->getMeshID()));
         indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0),

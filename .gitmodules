@@ -7,3 +7,6 @@
 [submodule "thirdparty/tracy"]
 	path = thirdparty/tracy
 	url = https://github.com/wolfpld/tracy
+[submodule "thirdparty/threadpool"]
+	path = thirdparty/threadpool
+	url = https://github.com/progschj/ThreadPool
