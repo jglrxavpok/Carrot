@@ -29,6 +29,7 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
     // create a GeometryInput for each vertex buffer sub-range
     bottomLevelGeometries.resize(bottomLevelGeometries.size()+1);
     GeometryInput& input = bottomLevelGeometries.back();
+    input = {};
     for(uint64_t vertexOffset : vertexOffsets) {
         vk::AccelerationStructureGeometryTrianglesDataKHR triangles {
                 // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)

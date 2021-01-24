@@ -40,7 +40,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
 
-    //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
     //}
 
@@ -339,6 +339,10 @@ Carrot::QueueFamilies Carrot::Engine::findQueueFamilies(vk::PhysicalDevice const
     return families;
 }
 
+#ifdef AFTERMATH_ENABLE
+extern "C++" void initAftermath();
+#endif
+
 void Carrot::Engine::createLogicalDevice() {
     queueFamilies = findQueueFamilies(physicalDevice);
 
@@ -381,7 +385,7 @@ void Carrot::Engine::createLogicalDevice() {
             },
             vk::PhysicalDeviceVulkan12Features {
                 .bufferDeviceAddress = true,
-            }
+            },
     };
 
     vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
@@ -397,8 +401,28 @@ void Carrot::Engine::createLogicalDevice() {
     }
 #endif
 
+#ifdef AFTERMATH_ENABLE
+    initAftermath();
+
+    deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+
+    vk::DeviceDiagnosticsConfigCreateInfoNV aftermath {
+        .flags =
+                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableShaderDebugInfo |
+                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableResourceTracking |
+                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableAutomaticCheckpoints
+    };
+
+    aftermath.pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>();
+#endif
+
     vk::DeviceCreateInfo createInfo{
+#ifdef AFTERMATH_ENABLE
+            .pNext = &aftermath,
+#else
             .pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
+#endif
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
             .pQueueCreateInfos = queueCreateInfoStructs.data(),
             .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),

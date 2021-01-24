@@ -5,6 +5,7 @@
 #include "ASBuilder.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
+#include <iostream>
 
 Carrot::ASBuilder::ASBuilder(Carrot::Engine& engine): engine(engine) {
 
@@ -28,11 +29,11 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
         info.srcAccelerationStructure = nullptr; // TODO: change for updates
     }
 
-    vector<vk::DeviceSize> scratchSizes(bottomLevelGeometries.size());
+    vk::DeviceSize scratchSize = 0;
     vector<vk::DeviceSize> originalSizes(bottomLevelGeometries.size());
     // allocate memory for each entry
     for(size_t index = 0; index < blasCount; index++) {
-        vector<uint32_t> primitiveCounts(bottomLevelGeometries[index].geometries.size());
+        vector<uint32_t> primitiveCounts(bottomLevelGeometries[index].buildRanges.size());
         // copy primitive counts to flat vector
         for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
             primitiveCounts[geomIndex] = bottomLevelGeometries[index].buildRanges[geomIndex].primitiveCount;
@@ -49,17 +50,12 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
         bottomLevelGeometries[index].as = move(make_unique<AccelerationStructure>(engine, createInfo));
         buildInfo[index].dstAccelerationStructure = bottomLevelGeometries[index].as->getVulkanAS();
 
-        scratchSizes[index] = sizeInfo.buildScratchSize;
+        scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
 
         originalSizes[index] = sizeInfo.accelerationStructureSize;
     }
 
-    // allocate temporary buffers to hold AS data during building (one per AS)
-    // this is different from NVIDIA nvpro-samples, as this allows multi-threaded builds
-    vector<unique_ptr<Buffer>> scratchBuffers{};
-    for(size_t index = 0; index < bottomLevelGeometries.size(); index++) {
-        scratchBuffers.emplace_back(make_unique<Buffer>(engine, scratchSizes[index], vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal));
-    }
+    unique_ptr<Buffer> scratchBuffer = make_unique<Buffer>(engine, scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     bool compactAS = (flags & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
 
@@ -75,21 +71,34 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = static_cast<uint32_t>(bottomLevelGeometries.size()),
     });
+
+    auto scratchAddress = device.getBufferAddress({.buffer = scratchBuffer->getVulkanBuffer() });
     for(size_t index = 0; index < bottomLevelGeometries.size(); index++) {
         auto& cmds = buildCommands[index];
         cmds.begin(vk::CommandBufferBeginInfo {
                 .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
                 .pInheritanceInfo = nullptr,
         });
-        buildInfo[index].scratchData.deviceAddress = device.getBufferAddress({.buffer = scratchBuffers[index]->getVulkanBuffer() });
+        buildInfo[index].scratchData.deviceAddress = scratchAddress;
 
-        vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges{};
-        for(const auto& range : bottomLevelGeometries[index].buildRanges) {
-            pBuildRanges.push_back(&range);
+        vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges{bottomLevelGeometries[index].buildRanges.size()};
+        for(size_t i = 0; i < bottomLevelGeometries[index].buildRanges.size(); i++) {
+            pBuildRanges[i] = &bottomLevelGeometries[index].buildRanges[i];
         }
 
+#ifdef AFTERMATH_ENABLE
+        cmds.setCheckpointNV("Before AS build");
+#endif
         // build AS
         cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges);
+#ifdef AFTERMATH_ENABLE
+        cmds.setCheckpointNV("After AS build");
+#endif
+        vk::MemoryBarrier barrier {
+            .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
+            .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
+        };
+        cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, static_cast<vk::DependencyFlags>(0), barrier, {}, {});
 
         // write compacted size
         if(compactAS) {
@@ -103,7 +112,16 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
         .commandBufferCount = static_cast<uint32_t>(buildCommands.size()),
         .pCommandBuffers = buildCommands.data(),
     });
+#ifdef AFTERMATH_ENABLE
+    try {
+        engine.getGraphicsQueue().waitIdle();
+    } catch (std::exception& e) {
+        std::this_thread::sleep_for(std::chrono::seconds(6));
+        exit(1);
+    }
+#else
     engine.getGraphicsQueue().waitIdle();
+#endif
 
     if(compactAS) {
         vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, bottomLevelGeometries.size(), bottomLevelGeometries.size()*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);

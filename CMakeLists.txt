@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.17)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
+list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
+
+set(ARCH "x64")
 
 include(FetchContent)
 find_package(Vulkan REQUIRED)
+find_package(Aftermath)
 add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
@@ -126,3 +130,14 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
+
+if(AFTERMATH_LIBS)
+    set(AFTERMATH_SOURCES
+            src/utils/AftermathIntegration.cpp)
+    add_executable(Carrot-Aftermath ${ALL_SOURCES} ${AFTERMATH_SOURCES})
+    target_include_directories(Carrot-Aftermath PRIVATE ${AFTERMATH_INCLUDES})
+    target_compile_definitions(Carrot-Aftermath PRIVATE AFTERMATH_ENABLE=1)
+    target_link_libraries(Carrot-Aftermath ${ALL_LIBS} ${AFTERMATH_LIBS})
+else()
+    message("Could not find Aftermath SDK")
+endif()
