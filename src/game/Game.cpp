@@ -15,7 +15,7 @@
 #include <render/shaders/ShaderModule.h>
 #include <render/raytracing/ASBuilder.h>
 
-int maxInstanceCount = 1; // TODO: change
+int maxInstanceCount = 100; // TODO: change
 
 Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");

@@ -29,35 +29,29 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
     // create a GeometryInput for each vertex buffer sub-range
     bottomLevelGeometries.resize(bottomLevelGeometries.size()+1);
     GeometryInput& input = bottomLevelGeometries.back();
-    input = {};
     for(uint64_t vertexOffset : vertexOffsets) {
-        vk::AccelerationStructureGeometryTrianglesDataKHR triangles {
-                // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
-                .vertexFormat = vk::Format::eR32G32B32Sfloat,
-                .vertexData = vertexAddress + vertexOffset*sizeof(VertexType),
-                .vertexStride = sizeof(VertexType),
-                .maxVertex = static_cast<uint32_t>(vertexCount),
-                .indexType = vk::IndexType::eUint32,
-                .indexData = indexAddress,
-                .transformData = nullptr,
-        };
-
-        vk::AccelerationStructureGeometryKHR geometry {
+        input.geometries.emplace_back(vk::AccelerationStructureGeometryKHR {
             .geometryType = vk::GeometryTypeKHR::eTriangles,
-            .geometry = triangles,
+            .geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
+                    // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
+                    .vertexFormat = vk::Format::eR32G32B32Sfloat,
+                    .vertexData = vertexAddress + vertexOffset,
+                    .vertexStride = sizeof(VertexType),
+                    .maxVertex = static_cast<uint32_t>(vertexCount),
+                    .indexType = vk::IndexType::eUint32,
+                    .indexData = indexAddress + indexOffset * sizeof(uint32_t),
+                    .transformData = {},
+            },
             .flags = vk::GeometryFlagBitsKHR::eOpaque, // TODO: opacity should be user-defined
-        };
+        });
 
         // set correct range for sub vertex buffer
-        vk::AccelerationStructureBuildRangeInfoKHR buildRange {
+        input.buildRanges.emplace_back(vk::AccelerationStructureBuildRangeInfoKHR {
             .primitiveCount = static_cast<uint32_t>(primitiveCount),
-            .primitiveOffset = static_cast<uint32_t>(vertexOffset),
+            .primitiveOffset = 0,
             .firstVertex = 0,
             .transformOffset = 0,
-        };
-
-        input.geometries.push_back(geometry);
-        input.buildRanges.push_back(buildRange);
+        });
     }
 
     return &bottomLevelGeometries.back();

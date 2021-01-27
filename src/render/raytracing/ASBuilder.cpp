@@ -30,7 +30,7 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
     }
 
     vk::DeviceSize scratchSize = 0;
-    vector<vk::DeviceSize> originalSizes(bottomLevelGeometries.size());
+    vector<vk::DeviceSize> originalSizes(blasCount);
     // allocate memory for each entry
     for(size_t index = 0; index < blasCount; index++) {
         vector<uint32_t> primitiveCounts(bottomLevelGeometries[index].buildRanges.size());
@@ -61,7 +61,7 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
 
     vk::QueryPoolCreateInfo queryPoolCreateInfo {
         .queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR,
-        .queryCount = static_cast<uint32_t>(bottomLevelGeometries.size()),
+        .queryCount = static_cast<uint32_t>(blasCount),
     };
 
     vk::UniqueQueryPool queryPool = device.createQueryPoolUnique(queryPoolCreateInfo, engine.getAllocator());
@@ -69,11 +69,11 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
     vector<vk::CommandBuffer> buildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = engine.getGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = static_cast<uint32_t>(bottomLevelGeometries.size()),
+            .commandBufferCount = static_cast<uint32_t>(blasCount),
     });
 
     auto scratchAddress = device.getBufferAddress({.buffer = scratchBuffer->getVulkanBuffer() });
-    for(size_t index = 0; index < bottomLevelGeometries.size(); index++) {
+    for(size_t index = 0; index < blasCount; index++) {
         auto& cmds = buildCommands[index];
         cmds.begin(vk::CommandBufferBeginInfo {
                 .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -89,6 +89,7 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
 #ifdef AFTERMATH_ENABLE
         cmds.setCheckpointNV("Before AS build");
 #endif
+        assert(pBuildRanges.size() == 1);
         // build AS
         cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges);
 #ifdef AFTERMATH_ENABLE
@@ -124,9 +125,9 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
 #endif
 
     if(compactAS) {
-        vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, bottomLevelGeometries.size(), bottomLevelGeometries.size()*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
+        vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
         vector<unique_ptr<AccelerationStructure>> compactedAS{};
-        for (size_t index = 0; index < bottomLevelGeometries.size(); index++) {
+        for (size_t index = 0; index < blasCount; index++) {
             auto& cmds = buildCommands[index];
             cmds.begin(vk::CommandBufferBeginInfo{
                     .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -157,7 +158,7 @@ void Carrot::ASBuilder::buildBottomLevelAS() {
         });
         engine.getGraphicsQueue().waitIdle();
         // replace old AS with compacted AS
-        for(size_t i = 0; i < bottomLevelGeometries.size(); i++) {
+        for(size_t i = 0; i < blasCount; i++) {
             bottomLevelGeometries[i].as = move(compactedAS[i]);
         }
     }
@@ -219,7 +220,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     // upload instances to the device
     instancesBuffer = make_unique<Buffer>(engine,
                                           instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
-                                          vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                          vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
                                           vk::MemoryPropertyFlagBits::eDeviceLocal
                                           );
 
