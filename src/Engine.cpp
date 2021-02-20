@@ -213,6 +213,9 @@ bool Carrot::Engine::checkValidationLayerSupport() {
 }
 
 Carrot::Engine::~Engine() {
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     tracyCtx.clear();
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         TracyVkDestroy(tracyCtx[i]);
@@ -1363,7 +1366,7 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
 }
 
 void Carrot::Engine::initGame() {
-    game = make_unique<Game>(*this);
+    game = make_unique<Game::Game>(*this);
 }
 
 void Carrot::Engine::createCamera() {

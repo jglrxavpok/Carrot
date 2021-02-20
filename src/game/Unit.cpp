@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Unit.h"
 
-Carrot::Unit::Unit(Unit::Type type, Carrot::AnimatedInstanceData& instanceData): instanceData(instanceData), type(type) {
+Game::Unit::Unit(Unit::Type type, Carrot::AnimatedInstanceData& instanceData): instanceData(instanceData), type(type) {
     switch (type) {
         case Type::Blue:
             color = {0,0,1};
@@ -22,7 +22,7 @@ Carrot::Unit::Unit(Unit::Type type, Carrot::AnimatedInstanceData& instanceData):
     instanceData.animationIndex = rand() % 2;
 }
 
-void Carrot::Unit::update(float dt) {
+void Game::Unit::update(float dt) {
     glm::vec3 direction = target-position;
     if(direction.length() > 0.01) {
         auto normalizedDirection = glm::vec3(direction.x / direction.length(), direction.y / direction.length(), direction.z / direction.length());
@@ -38,24 +38,24 @@ void Carrot::Unit::update(float dt) {
     instanceData.animationTime += dt;
 }
 
-void Carrot::Unit::teleport(const glm::vec3& newPos) {
+void Game::Unit::teleport(const glm::vec3& newPos) {
     position = newPos;
     target = newPos;
 }
 
-Carrot::Unit::Type Carrot::Unit::getType() const {
+Game::Unit::Type Game::Unit::getType() const {
     return type;
 }
 
-void Carrot::Unit::moveTo(const glm::vec3& targetPosition) {
+void Game::Unit::moveTo(const glm::vec3& targetPosition) {
     target = targetPosition;
 }
 
-glm::vec3 Carrot::Unit::getPosition() const {
+glm::vec3 Game::Unit::getPosition() const {
     return position;
 }
 
-glm::mat4 Carrot::Unit::getTransform() const {
+glm::mat4 Game::Unit::getTransform() const {
     auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
     return glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation);
 }

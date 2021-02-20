@@ -15,9 +15,13 @@
 #include <render/shaders/ShaderModule.h>
 #include <render/raytracing/ASBuilder.h>
 
+#include <ecs/components/Component.h>
+#include <ecs/components/Transform.h>
+#include "UnitColor.h"
+
 int maxInstanceCount = 100; // TODO: change
 
-Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
+Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
     model = make_unique<Model>(engine, "resources/models/unit.fbx");
 
@@ -98,6 +102,13 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
         unit->teleport(position);
         units.emplace_back(move(unit));
 
+        auto entity = world.newEntity()
+                .addComponent<Transform>()
+                .addComponent<UnitColor>(color);
+        if(auto transform = entity.getComponent<Transform>()) {
+            transform->position = position;
+        }
+
         for(const auto& mesh : meshes) {
             int32_t vertexOffset = static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]);
 
@@ -132,7 +143,7 @@ Carrot::Game::Game(Carrot::Engine& engine): engine(engine) {
     createSkinningComputePipeline(vertexCountPerInstance);
 }
 
-void Carrot::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) {
+void Game::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) {
     // TODO: move outside of game code
 
     auto& computeCommandPool = engine.getComputeCommandPool();
@@ -359,7 +370,7 @@ void Carrot::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance
     }
 }
 
-void Carrot::Game::onFrame(uint32_t frameIndex) {
+void Game::Game::onFrame(uint32_t frameIndex) {
     ZoneScoped;
 /*    map<Unit::Type, glm::vec3> centers{};
     map<Unit::Type, uint32_t> counts{};
@@ -399,7 +410,7 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
     ImGui::ShowDemoWindow();
 }
 
-void Carrot::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {
+void Game::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {
     {
         TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render map");
         mapModel->draw(frameIndex, commands, *mapInstanceBuffer, 1);
@@ -416,7 +427,7 @@ void Carrot::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& com
 float yaw = 0.0f;
 float pitch = 0.0f;
 
-void Carrot::Game::onMouseMove(double dx, double dy) {
+void Game::Game::onMouseMove(double dx, double dy) {
     auto& camera = engine.getCamera();
     yaw -= dx * 0.01f;
     pitch -= dy * 0.01f;
@@ -431,7 +442,7 @@ void Carrot::Game::onMouseMove(double dx, double dy) {
     camera.position += camera.target;
 }
 
-void Carrot::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
+void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
     semaphores.emplace_back(*skinningSemaphores[frameIndex]);
     waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);
 }

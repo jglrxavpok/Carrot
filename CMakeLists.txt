@@ -65,6 +65,11 @@ set(SOURCES
         src/render/animation/Animation.cpp
         src/utils/conversions.cpp
         src/utils/stringmanip.cpp
+
+        src/ecs/components/Component.cpp
+        src/ecs/systems/System.cpp
+        src/ecs/World.cpp
+
         src/vulkan/CustomTracyVulkan.cpp
         src/render/GBuffer.cpp
         src/render/raytracing/RayTracer.cpp

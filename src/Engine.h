@@ -19,6 +19,10 @@
 
 using namespace std;
 
+namespace Game {
+    class Game;
+}
+
 namespace Carrot {
     class Buffer;
     class Image;
@@ -27,7 +31,6 @@ namespace Carrot {
     class Pipeline;
     class Material;
     class InstanceData;
-    class Game;
     class Camera;
     class GBuffer;
     class RayTracer;
@@ -225,7 +228,7 @@ namespace Carrot {
         unique_ptr<GBuffer> gBuffer = nullptr;
 
         unique_ptr<Camera> camera = nullptr;
-        unique_ptr<Game> game = nullptr;
+        unique_ptr<Game::Game> game = nullptr;
 
         bool framebufferResized = false;
 

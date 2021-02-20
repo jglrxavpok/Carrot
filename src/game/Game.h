@@ -8,9 +8,14 @@
 #include "vulkan/includes.h"
 #include "Engine.h"
 #include "Unit.h"
+#include <ecs/World.h>
 
 namespace Carrot {
     class Engine;
+}
+
+namespace Game {
+    using namespace Carrot;
 
     class Game {
     private:
@@ -34,6 +39,7 @@ namespace Carrot {
         vk::UniquePipeline computePipeline{};
         vector<vk::CommandBuffer> skinningCommandBuffers{};
         vector<vk::UniqueSemaphore> skinningSemaphores{};
+        World world;
 
         void createSkinningComputePipeline(uint64_t vertexCountPerInstance);
 

@@ -8,7 +8,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-namespace Carrot {
+
+namespace Game {
+    using namespace Carrot;
+
     class Unit {
     public:
         enum class Type {
