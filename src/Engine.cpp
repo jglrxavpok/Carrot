@@ -43,6 +43,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     //if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
     //}
+    if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+    }
 
     return VK_FALSE;
 }
@@ -102,6 +104,7 @@ void Carrot::Engine::initWindow() {
     glfwSetKeyCallback(window.get(), keyCallback);
 
     glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    grabCursor = true;
 
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 }
@@ -126,20 +129,21 @@ void Carrot::Engine::initVulkan() {
     createTransferCommandPool();
 
     createRayTracer();
+    createUIResources();
     createGBuffer();
-    createRenderPass();
+    createRenderPasses();
     createFramebuffers();
+    initImgui();
     createUniformBuffers();
+    createSamplers();
     gBuffer->loadResolvePipeline();
 
     createDefaultTexture();
-    createSamplers();
     createCamera();
     initGame();
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
     }
-    recordMainCommandBuffers();
     createSynchronizationObjects();
 }
 
@@ -229,6 +233,43 @@ std::vector<const char *> Carrot::Engine::getRequiredExtensions() {
     }
 
     return extensions;
+}
+
+void Carrot::Engine::createUIResources() {
+    vk::DescriptorPoolSize pool_sizes[] =
+            {
+                    { vk::DescriptorType::eSampler, 1000 },
+                    { vk::DescriptorType::eCombinedImageSampler, 1000 },
+                    { vk::DescriptorType::eSampledImage, 1000 },
+                    { vk::DescriptorType::eStorageImage, 1000 },
+                    { vk::DescriptorType::eUniformTexelBuffer, 1000 },
+                    { vk::DescriptorType::eStorageTexelBuffer, 1000 },
+                    { vk::DescriptorType::eUniformBuffer, 1000 },
+                    { vk::DescriptorType::eStorageBuffer, 1000 },
+                    { vk::DescriptorType::eUniformBufferDynamic, 1000 },
+                    { vk::DescriptorType::eStorageBufferDynamic, 1000 },
+                    { vk::DescriptorType::eInputAttachment, 1000 }
+            };
+    vk::DescriptorPoolCreateInfo pool_info = {};
+    pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+    pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+    pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+    imguiDescriptorPool = device->createDescriptorPoolUnique(pool_info, allocator);
+
+
+
+    uiImages.resize(getSwapchainImageCount());
+    uiImageViews.resize(getSwapchainImageCount());
+    for (int i = 0; i < getSwapchainImageCount(); ++i) {
+        uiImages[i] = move(make_unique<Image>(*this,
+                                                  vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                  vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                                                  vk::Format::eR8G8B8A8Unorm));
+
+        auto view = uiImages[i]->createImageView();
+        uiImageViews[i] = std::move(view);
+    }
 }
 
 void Carrot::Engine::setupDebugMessenger() {
@@ -632,12 +673,69 @@ vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::
                                              }, allocator);
 }
 
-void Carrot::Engine::createRenderPass() {
-    renderPass = gBuffer->createRenderPass();
+void Carrot::Engine::createRenderPasses() {
+    gRenderPass = gBuffer->createRenderPass();
+
+    vk::AttachmentDescription attachments[] = {
+            {
+                .format = vk::Format::eR8G8B8A8Unorm,
+                .samples = vk::SampleCountFlagBits::e1,
+                .loadOp = vk::AttachmentLoadOp::eClear,
+                .storeOp = vk::AttachmentStoreOp::eStore,
+                .initialLayout = vk::ImageLayout::eUndefined,
+                .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+            }
+    };
+
+    vk::SubpassDependency dependencies[] = {
+            {
+                    .srcSubpass = VK_SUBPASS_EXTERNAL,
+                    .dstSubpass = 0,
+
+                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    // TODO: .srcAccessMask = 0,
+
+                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
+                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+            }
+    };
+
+    vk::AttachmentReference colorAttachment = {
+            .attachment = 0,
+            .layout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::SubpassDescription subpasses[] = {
+            {
+                    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+                    .inputAttachmentCount = 0,
+                    .pInputAttachments = nullptr,
+
+                    .colorAttachmentCount = 1,
+                    // index in this array is used by `layout(location = 0)` inside shaders
+                    .pColorAttachments = &colorAttachment,
+                    .pDepthStencilAttachment = nullptr,
+
+                    .preserveAttachmentCount = 0,
+            }
+    };
+
+    vk::RenderPassCreateInfo imguiRenderPassInfo {
+        .attachmentCount = 1,
+        .pAttachments = attachments,
+        .subpassCount = 1,
+        .pSubpasses = subpasses,
+        .dependencyCount = 1,
+        .pDependencies = dependencies,
+    };
+    imguiRenderPass = device->createRenderPassUnique(imguiRenderPassInfo);
 }
 
 void Carrot::Engine::createFramebuffers() {
     swapchainFramebuffers.resize(swapchainImages.size());
+    imguiFramebuffers.resize(swapchainImages.size());
 
     for (size_t i = 0; i < swapchainImageViews.size(); ++i) {
         vector<vk::ImageView> attachments = {
@@ -646,8 +744,8 @@ void Carrot::Engine::createFramebuffers() {
 
         gBuffer->addFramebufferAttachments(i, attachments);
 
-        vk::FramebufferCreateInfo framebufferInfo{
-                .renderPass = *renderPass,
+        vk::FramebufferCreateInfo swapchainFramebufferInfo {
+                .renderPass = *gRenderPass,
                 .attachmentCount = static_cast<uint32_t>(attachments.size()),
                 .pAttachments = attachments.data(),
                 .width = swapchainExtent.width,
@@ -655,7 +753,20 @@ void Carrot::Engine::createFramebuffers() {
                 .layers = 1,
         };
 
-        swapchainFramebuffers[i] = std::move(device->createFramebufferUnique(framebufferInfo, allocator));
+        swapchainFramebuffers[i] = std::move(device->createFramebufferUnique(swapchainFramebufferInfo, allocator));
+
+        vk::ImageView imguiAttachment[] = {
+            *uiImageViews[i]
+        };
+        vk::FramebufferCreateInfo imguiFramebufferInfo {
+                .renderPass = *imguiRenderPass,
+                .attachmentCount = 1,
+                .pAttachments = imguiAttachment,
+                .width = swapchainExtent.width,
+                .height = swapchainExtent.height,
+                .layers = 1,
+        };
+        imguiFramebuffers[i] = std::move(device->createFramebufferUnique(imguiFramebufferInfo, allocator));
     }
 }
 
@@ -686,6 +797,59 @@ void Carrot::Engine::createComputeCommandPool() {
     computeCommandPool = device->createCommandPoolUnique(poolInfo, allocator);
 }
 
+static void check_vk_result(VkResult err)
+{
+    if (err == 0)
+        return;
+    fprintf(stderr, "[vulkan-imgui] Error: VkResult = %d\n", err);
+    if (err < 0)
+        abort();
+}
+
+void Carrot::Engine::initImgui() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForVulkan(window.get(), true);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = *instance;
+    init_info.PhysicalDevice = physicalDevice;
+    init_info.Device = getLogicalDevice();
+    init_info.QueueFamily = getQueueFamilies().graphicsFamily.value();
+    init_info.Queue = getGraphicsQueue();
+    init_info.PipelineCache = nullptr;
+    init_info.DescriptorPool = *imguiDescriptorPool;
+    init_info.Allocator = nullptr;
+
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
+    // maxImageCount == 0 means we can request any number of image
+    if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        // ensure we don't ask for more images than the device will be able to provide
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    init_info.MinImageCount = swapChainSupport.capabilities.minImageCount;
+    init_info.ImageCount = imageCount;
+    init_info.CheckVkResultFn = check_vk_result;
+    ImGui_ImplVulkan_Init(&init_info, *imguiRenderPass);
+
+    // Upload fonts
+    performSingleTimeGraphicsCommands([&](vk::CommandBuffer& buffer) {
+        ImGui_ImplVulkan_CreateFontsTexture(buffer);
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    });
+}
+
 void Carrot::Engine::createRayTracer() {
     raytracer = make_unique<RayTracer>(*this);
     asBuilder = make_unique<ASBuilder>(*this);
@@ -699,14 +863,14 @@ void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
     recordGBufferPass(frameIndex, gBufferCommandBuffers[frameIndex]);
 
     vk::CommandBufferInheritanceInfo raytracedLightingInheritance {
-            .renderPass = *this->renderPass,
+            .renderPass = *this->gRenderPass,
             .subpass = RenderPasses::RaytracedLightingSubpassIndex,
             .framebuffer = *this->swapchainFramebuffers[frameIndex],
     };
     raytracer->recordCommands(frameIndex, &raytracedLightingInheritance);
 
     vk::CommandBufferInheritanceInfo gResolveInheritance {
-            .renderPass = *this->renderPass,
+            .renderPass = *this->gRenderPass,
             .subpass = RenderPasses::GResolveSubPassIndex,
             .framebuffer = *this->swapchainFramebuffers[frameIndex],
     };
@@ -715,7 +879,7 @@ void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
 
 void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBufferCommandBuffer) {
     vk::CommandBufferInheritanceInfo inheritance {
-            .renderPass = *this->renderPass,
+            .renderPass = *this->gRenderPass,
             .subpass = RenderPasses::GBufferSubPassIndex,
             .framebuffer = *this->swapchainFramebuffers[frameIndex],
     };
@@ -733,75 +897,95 @@ void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBu
     gBufferCommandBuffer.end();
 }
 
-void Carrot::Engine::recordMainCommandBuffers() {
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        // main command buffer
-        vk::CommandBufferBeginInfo beginInfo{
-                .pInheritanceInfo = nullptr,
-                // TODO: different flags: .flags = vk::CommandBufferUsageFlagBits::<value>
+void Carrot::Engine::recordMainCommandBuffer(size_t i) {
+    // main command buffer
+    vk::CommandBufferBeginInfo beginInfo{
+            .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+            .pInheritanceInfo = nullptr,
+    };
+
+    mainCommandBuffers[i].begin(beginInfo);
+    {
+        PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
+
+        TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render frame");
+        updateViewportAndScissor(mainCommandBuffers[i]);
+
+        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+        vk::ClearValue lightingClear = vk::ClearColorValue(std::array{1.0f,1.0f,1.0f,1.0f});
+        vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+        vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+        vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
+                .depth = 1.0f,
+                .stencil = 0
         };
 
-        mainCommandBuffers[i].begin(beginInfo);
+        vk::ClearValue clearValues[] = {
+                clearColor, // final presented color
+                clearDepth,
+                clearColor, // gbuffer color
+                positionClear, // gbuffer view position
+                positionClear, // gbuffer view normal,
+                lightingClear, // raytraced lighting colors
+        };
+
+        vk::ClearValue imguiClearValues[] = {
+                uiClear, // UI contents
+        };
+
+        vk::RenderPassBeginInfo imguiRenderPassInfo {
+                .renderPass = *imguiRenderPass,
+                .framebuffer = *imguiFramebuffers[i],
+                .renderArea = {
+                        .offset = vk::Offset2D{0, 0},
+                        .extent = swapchainExtent
+                },
+
+                .clearValueCount = 1,
+                .pClearValues = imguiClearValues,
+        };
+
         {
-            PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
-
-            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render frame");
-            updateViewportAndScissor(mainCommandBuffers[i]);
-
-            vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
-            vk::ClearValue lightingClear = vk::ClearColorValue(std::array{1.0f,1.0f,1.0f,1.0f});
-            vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-            vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
-                    .depth = 1.0f,
-                    .stencil = 0
-            };
-
-            vk::ClearValue clearValues[] = {
-                    clearColor, // final presented color
-                    clearDepth,
-                    clearColor, // gbuffer color
-                    positionClear, // gbuffer view position
-                    positionClear, // gbuffer view normal,
-                    lightingClear, // raytraced lighting colors
-            };
-
-            vk::RenderPassBeginInfo renderPassInfo{
-                    .renderPass = *renderPass,
-                    .framebuffer = *swapchainFramebuffers[i],
-                    .renderArea = {
-                            .offset = vk::Offset2D{0, 0},
-                            .extent = swapchainExtent
-                    },
-
-                    .clearValueCount = 6,
-                    .pClearValues = clearValues,
-            };
-
-            {
-                TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
-
-                mainCommandBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
-
-                mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
-
-                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
-                mainCommandBuffers[i].executeCommands(raytracer->getCommandBuffers()[i]);
-
-                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
-                mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
-
-                // TODO:
-/*
-                mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
-                mainCommandBuffers[i].executeCommands(uiCommandBuffers[i]);*/
-
-                mainCommandBuffers[i].endRenderPass();
-
-            }
+            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
+            mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
+            ImGui::Render();
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), mainCommandBuffers[i]);
+            mainCommandBuffers[i].endRenderPass();
         }
 
-        mainCommandBuffers[i].end();
+        uiImages[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        vk::RenderPassBeginInfo gRenderPassInfo {
+                .renderPass = *gRenderPass,
+                .framebuffer = *swapchainFramebuffers[i],
+                .renderArea = {
+                        .offset = vk::Offset2D{0, 0},
+                        .extent = swapchainExtent
+                },
+
+                .clearValueCount = 6,
+                .pClearValues = clearValues,
+        };
+        {
+            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
+
+            mainCommandBuffers[i].beginRenderPass(gRenderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
+
+            mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
+
+            mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
+            mainCommandBuffers[i].executeCommands(raytracer->getCommandBuffers()[i]);
+
+
+            mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
+            mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
+
+            mainCommandBuffers[i].endRenderPass();
+
+        }
     }
+
+    mainCommandBuffers[i].end();
 }
 
 void Carrot::Engine::allocateGraphicsCommandBuffers() {
@@ -820,6 +1004,13 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     };
     this->gBufferCommandBuffers = device->allocateCommandBuffers(gAllocInfo);
     this->gResolveCommandBuffers = device->allocateCommandBuffers(gAllocInfo);
+
+    vk::CommandBufferAllocateInfo uiAllocInfo {
+            .commandPool = *this->graphicsCommandPool,
+            .level = vk::CommandBufferLevel::eSecondary,
+            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
+    };
+    this->uiCommandBuffers = device->allocateCommandBuffers(uiAllocInfo);
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
@@ -839,8 +1030,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         static_cast<void>(device->waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
         device->resetFences((*inFlightFences[currentFrame]));
 
+
         auto nextImage = device->acquireNextImageKHR(*swapchain, UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
         result = nextImage.result;
+
         if(result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapchain();
             return;
@@ -848,9 +1041,14 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             throw std::runtime_error("Failed to acquire swap chain image");
         }
         imageIndex = nextImage.value;
-    }
 
-    game->onFrame(imageIndex);
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        game->onFrame(imageIndex);
+
+        recordMainCommandBuffer(imageIndex);
+    }
 
     {
         ZoneScopedN("Update uniform buffer");
@@ -952,7 +1150,7 @@ void Carrot::Engine::recreateSwapchain() {
     createUniformBuffers();
     raytracer->onSwapchainRecreation();
     gBuffer->onSwapchainRecreation();
-    createRenderPass();
+    createRenderPasses();
     createFramebuffers();
     gBuffer->loadResolvePipeline();
     for(const auto& [name, pipeline] : pipelines) {
@@ -964,7 +1162,6 @@ void Carrot::Engine::recreateSwapchain() {
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
     }
-    recordMainCommandBuffers();
 }
 
 void Carrot::Engine::cleanupSwapchain() {
@@ -972,7 +1169,7 @@ void Carrot::Engine::cleanupSwapchain() {
     device->freeCommandBuffers(*graphicsCommandPool, mainCommandBuffers);
     mainCommandBuffers.clear();
 
-    renderPass.reset();
+    gRenderPass.reset();
     swapchainImageViews.clear();
     swapchain.reset();
 }
@@ -1111,7 +1308,7 @@ void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
 shared_ptr<Carrot::Pipeline> Carrot::Engine::getOrCreatePipeline(const string& name) {
     auto it = pipelines.find(name);
     if(it == pipelines.end()) {
-        pipelines[name] = make_shared<Pipeline>(*this, renderPass, name);
+        pipelines[name] = make_shared<Pipeline>(*this, gRenderPass, name);
     }
     return pipelines[name];
 }
@@ -1196,6 +1393,11 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         running = false;
     }
 
+    if(key == GLFW_KEY_G && action == GLFW_PRESS) {
+        grabCursor = !grabCursor;
+        glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+
     // TODO: pass input to game
 }
 
@@ -1231,6 +1433,10 @@ vk::PhysicalDevice& Carrot::Engine::getPhysicalDevice() {
 
 Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
     return *asBuilder;
+}
+
+vector<vk::UniqueImageView>& Carrot::Engine::getUIImageViews() {
+    return uiImageViews;
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

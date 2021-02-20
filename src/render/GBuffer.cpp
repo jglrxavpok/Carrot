@@ -75,7 +75,7 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
 void Carrot::GBuffer::loadResolvePipeline() {
     gResolvePipeline = engine.getOrCreatePipeline("gResolve");
 
-    const size_t imageCount = 5/*albedo+depth+viewPosition+normal+lighting*/;
+    const size_t imageCount = 6/*albedo+depth+viewPosition+normal+lighting+ui*/;
     vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()*imageCount};
     vector<vk::DescriptorImageInfo> imageInfo{engine.getSwapchainImageCount()*imageCount};
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
@@ -148,6 +148,20 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeLighting.dstSet = gResolvePipeline->getDescriptorSets()[i];
         writeLighting.dstArrayElement = 0;
         writeLighting.dstBinding = 4;
+
+        // ui
+        auto& uiInfo = imageInfo[i*imageCount+5];
+        uiInfo.imageView = *engine.getUIImageViews()[i];
+        uiInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        uiInfo.sampler = nullptr;
+
+        auto& writeUI = writes[i*imageCount+5];
+        writeUI.descriptorCount = 1;
+        writeUI.descriptorType = vk::DescriptorType::eSampledImage;
+        writeUI.pImageInfo = &uiInfo;
+        writeUI.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeUI.dstArrayElement = 0;
+        writeUI.dstBinding = 5;
     }
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 }
@@ -363,7 +377,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             depthInputAttachmentRef,
             gBufferViewPositionInputAttachmentRef,
             gBufferNormalInputAttachmentRef,
-            raytracedLightingAttachmentInputRef
+            raytracedLightingAttachmentInputRef,
     };
 
     vk::SubpassDescription gResolveSubpass {

@@ -395,6 +395,8 @@ void Carrot::Game::onFrame(uint32_t frameIndex) {
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
     });
+
+    ImGui::ShowDemoWindow();
 }
 
 void Carrot::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {

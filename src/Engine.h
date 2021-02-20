@@ -13,6 +13,9 @@
 #include "memory/NakedPtr.hpp"
 #include "render/IDTypes.h"
 #include "vulkan/CustomTracyVulkan.h"
+#include "imgui.h"
+#include "backends/imgui_impl_vulkan.h"
+#include "backends/imgui_impl_glfw.h"
 
 using namespace std;
 
@@ -148,10 +151,13 @@ namespace Carrot {
 
         ASBuilder& getASBuilder();
 
+        vector<vk::UniqueImageView>& getUIImageViews();
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
         bool running = true;
+        bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
         const vk::AllocationCallbacks* allocator = nullptr;
         int framebufferWidth;
@@ -171,12 +177,17 @@ namespace Carrot {
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
         vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
-        vector<unique_ptr<Image>> gBufferColorImages{};
+
+        vector<unique_ptr<Image>> uiImages{};
+        vector<vk::UniqueImageView> uiImageViews{};
+
         vk::Extent2D swapchainExtent{};
         vector<vk::UniqueImageView> swapchainImageViews{};
 
-        vk::UniqueRenderPass renderPass{};
+        vk::UniqueRenderPass gRenderPass{};
+        vk::UniqueRenderPass imguiRenderPass{};
         map<string, shared_ptr<Pipeline>> pipelines{};
+        vector<vk::UniqueFramebuffer> imguiFramebuffers{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
@@ -188,6 +199,7 @@ namespace Carrot {
         vector<vk::CommandBuffer> mainCommandBuffers{};
         vector<vk::CommandBuffer> gBufferCommandBuffers{};
         vector<vk::CommandBuffer> gResolveCommandBuffers{};
+        vector<vk::CommandBuffer> uiCommandBuffers{};
         vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         vector<vk::UniqueFence> inFlightFences{};
@@ -205,7 +217,7 @@ namespace Carrot {
         vk::UniqueSampler nearestRepeatSampler{};
 
         vector<shared_ptr<Buffer>> cameraUniformBuffers{};
-        vk::UniqueDescriptorPool descriptorPool{};
+        vk::UniqueDescriptorPool imguiDescriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
         unique_ptr<RayTracer> raytracer = nullptr;
@@ -225,6 +237,8 @@ namespace Carrot {
 
         /// Init Vulkan for rendering
         void initVulkan();
+
+        void initImgui();
 
         /// Create Vulkan instance
         void createInstance();
@@ -280,10 +294,11 @@ namespace Carrot {
 
         /// Create the image views used by the swapchain
         void createSwapChainImageViews();
-        void createGBufferImages();
+
+        void createUIResources();
 
         /// Create the render pass
-        void createRenderPass();
+        void createRenderPasses();
 
         /// Create the pipeline responsible for lighting via the gbuffer
         void createGBuffer();
@@ -301,7 +316,7 @@ namespace Carrot {
         void createComputeCommandPool();
 
         /// Create the primary command buffers for rendering
-        void recordMainCommandBuffers();
+        void recordMainCommandBuffer(size_t frameIndex);
 
         void recordSecondaryCommandBuffers(size_t frameIndex);
 

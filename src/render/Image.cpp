@@ -118,6 +118,62 @@ const vk::Extent3D& Carrot::Image::getSize() const {
     return size;
 }
 
+void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+    vk::ImageMemoryBarrier barrier {
+            .oldLayout = oldLayout,
+            .newLayout = newLayout,
+
+            // concurrent sharing, so no ownership transfer
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+
+            .image = *vkImage,
+
+            .subresourceRange = {
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+            }
+    };
+
+    auto sourceStage = static_cast<vk::PipelineStageFlags>(0);
+    auto destinationStage = static_cast<vk::PipelineStageFlags>(0);
+
+    if(oldLayout == vk::ImageLayout::eUndefined) {
+        barrier.srcAccessMask = static_cast<vk::AccessFlagBits>(0);
+        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    }
+
+    if(oldLayout == vk::ImageLayout::eTransferDstOptimal) {
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
+        sourceStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+    if(oldLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+        barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
+        sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+
+    if(newLayout == vk::ImageLayout::eTransferDstOptimal) {
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
+        destinationStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+
+    if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
+        destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+
+    commands.pipelineBarrier(sourceStage,
+                             destinationStage,
+                             static_cast<vk::DependencyFlags>(0),
+                             {},
+                             {},
+                             barrier
+    );
+}
+
 void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
     vk::CommandPool commandPool = engine.getTransferCommandPool();
     vk::Queue queue = engine.getTransferQueue();
@@ -128,59 +184,12 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
         queue = engine.getGraphicsQueue();
     }
     engine.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
-        vk::ImageMemoryBarrier barrier {
-                .oldLayout = oldLayout,
-                .newLayout = newLayout,
-
-                // concurrent sharing, so no ownership transfer
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-
-                .image = *vkImage,
-
-                .subresourceRange = {
-                        .aspectMask = vk::ImageAspectFlagBits::eColor,
-                        .baseMipLevel = 0,
-                        .levelCount = 1,
-                        .baseArrayLayer = 0,
-                        .layerCount = 1,
-                }
-        };
-
-        auto sourceStage = static_cast<vk::PipelineStageFlags>(0);
-        auto destinationStage = static_cast<vk::PipelineStageFlags>(0);
-
-        if(oldLayout == vk::ImageLayout::eUndefined) {
-            barrier.srcAccessMask = static_cast<vk::AccessFlagBits>(0);
-            sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-        }
-
-        if(oldLayout == vk::ImageLayout::eTransferDstOptimal) {
-            barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
-            sourceStage = vk::PipelineStageFlagBits::eTransfer;
-        }
-        if(newLayout == vk::ImageLayout::eTransferDstOptimal) {
-            barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
-            destinationStage = vk::PipelineStageFlagBits::eTransfer;
-        }
-
-        if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-            barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
-            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-        }
-
-        commands.pipelineBarrier(sourceStage,
-                                 destinationStage,
-                                 static_cast<vk::DependencyFlags>(0),
-                                 {},
-                                 {},
-                                 barrier
-                                 );
+        transitionLayoutInline(commands, format, oldLayout, newLayout);
     });
 }
 
-vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat) {
-    return std::move(engine.createImageView(*vkImage, imageFormat));
+vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect) {
+    return std::move(engine.createImageView(*vkImage, imageFormat, aspect));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {

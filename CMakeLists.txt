@@ -109,13 +109,23 @@ foreach(shader ${COMPUTE_SHADERS})
     set(SHADERS "${SHADERS}" "${shader}.spv")
 endforeach()
 
-set(EXTERNAL_SOURCES thirdparty/tracy/TracyClient.cpp)
+set(EXTERNAL_SOURCES
+        thirdparty/tracy/TracyClient.cpp
+        thirdparty/imgui/backends/imgui_impl_vulkan.cpp
+        thirdparty/imgui/backends/imgui_impl_glfw.cpp
+        thirdparty/imgui/imgui.cpp
+        thirdparty/imgui/imgui_draw.cpp
+        thirdparty/imgui/imgui_demo.cpp
+        thirdparty/imgui/imgui_widgets.cpp
+        thirdparty/imgui/imgui_tables.cpp
+        )
 
 include_directories(src/)
 include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
 include_directories(thirdparty/threadpool/)
+include_directories(thirdparty/imgui/)
 
 set(ALL_SOURCES ${SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
 set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)

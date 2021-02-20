@@ -6,8 +6,10 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput depth;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput viewPos;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput viewNormals;
 layout(input_attachment_index = 4, binding = 4) uniform subpassInput raytracedLighting;
+layout(set = 0, binding = 5) uniform texture2D uiRendered;
+layout(set = 0, binding = 6) uniform sampler linearSampler;
 
-layout(set = 0, binding = 5) uniform CameraBufferObject {
+layout(set = 0, binding = 7) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;
@@ -24,5 +26,10 @@ void main() {
     vec4 fragmentColor = subpassLoad(albedo);
     vec3 normal = (cbo.inverseView * subpassLoad(viewNormals)).xyz;
     float lighting = max(0.1, dot(nSunDirection, normal));
-    outColor = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
+    vec4 outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
+    vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
+
+    vec4 renderedColor = vec4(outColorWorld.rgb * outColorWorld.a, 1.0);
+    renderedColor.rgb += outColorUI.rgb * outColorUI.a;
+    outColor = renderedColor;
 }
