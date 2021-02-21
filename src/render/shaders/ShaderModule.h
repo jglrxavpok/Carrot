@@ -10,6 +10,7 @@
 #include <spirv_cross/spirv_parser.hpp>
 #include <map>
 #include <render/shaders/Specialization.h>
+#include <render/NamedBinding.h>
 
 using namespace std;
 
@@ -31,7 +32,7 @@ namespace Carrot {
         map<uint32_t, Binding> bindingMap{};
 
         void
-        createBindingsSet0(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings,
+        createBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings,
                            vk::DescriptorType type,
                            const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
                            const map<string, uint32_t>& constants);
@@ -41,7 +42,7 @@ namespace Carrot {
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
-        void addBindingsSet0(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings, const map<string, uint32_t>& constants);
+        void addBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings, const map<string, uint32_t>& constants);
 
         void addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const;
     };

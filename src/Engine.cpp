@@ -141,6 +141,11 @@ void Carrot::Engine::initVulkan() {
     createDefaultTexture();
     createCamera();
     initGame();
+
+    raytracer->createDescriptorSets();
+    raytracer->createPipeline();
+    raytracer->createShaderBindingTable();
+
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
     }
@@ -865,13 +870,6 @@ void Carrot::Engine::createGBuffer() {
 void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
     recordGBufferPass(frameIndex, gBufferCommandBuffers[frameIndex]);
 
-    vk::CommandBufferInheritanceInfo raytracedLightingInheritance {
-            .renderPass = *this->gRenderPass,
-            .subpass = RenderPasses::RaytracedLightingSubpassIndex,
-            .framebuffer = *this->swapchainFramebuffers[frameIndex],
-    };
-    raytracer->recordCommands(frameIndex, &raytracedLightingInheritance);
-
     vk::CommandBufferInheritanceInfo gResolveInheritance {
             .renderPass = *this->gRenderPass,
             .subpass = RenderPasses::GResolveSubPassIndex,
@@ -948,6 +946,8 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 .pClearValues = imguiClearValues,
         };
 
+        raytracer->recordCommands(i, mainCommandBuffers[i]);
+
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
             mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
@@ -969,6 +969,10 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 .clearValueCount = 6,
                 .pClearValues = clearValues,
         };
+
+        static bool onlyRaytracing = true;
+
+
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
 
@@ -977,10 +981,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
 
             mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
-            mainCommandBuffers[i].executeCommands(raytracer->getCommandBuffers()[i]);
 
-
-            mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
             mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
 
             mainCommandBuffers[i].endRenderPass();
@@ -1048,6 +1049,16 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        static DebugBufferObject debug{};
+        if(ImGui::Begin("Debug"))
+        {
+            ImGui::Checkbox("Show only raytracing output", &debug.onlyRaytracing);
+        }
+        ImGui::End();
+
+        debugUniformBuffers[imageIndex]->directUpload(&debug, sizeof(debug));
+
         game->onFrame(imageIndex);
 
         recordMainCommandBuffer(imageIndex);
@@ -1231,6 +1242,17 @@ void Carrot::Engine::createUniformBuffers() {
                                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
                                                               createGraphicsAndTransferFamiliesSet());
     }
+
+    vk::DeviceSize debugBufferSize = sizeof(Carrot::DebugBufferObject);
+    debugUniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
+
+    for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
+        debugUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+                                                              debugBufferSize,
+                                                              vk::BufferUsageFlagBits::eUniformBuffer,
+                                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                              createGraphicsAndTransferFamiliesSet());
+    }
 }
 
 set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
@@ -1342,6 +1364,10 @@ uint32_t Carrot::Engine::getSwapchainImageCount() {
 
 vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getCameraUniformBuffers() {
     return cameraUniformBuffers;
+}
+
+vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getDebugUniformBuffers() {
+    return debugUniformBuffers;
 }
 
 const vk::UniqueSampler& Carrot::Engine::getLinearSampler() {

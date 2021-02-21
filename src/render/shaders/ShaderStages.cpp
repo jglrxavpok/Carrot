@@ -13,7 +13,16 @@ Carrot::ShaderStages::ShaderStages(Carrot::Engine& engine, const vector<string>&
         if(filename.ends_with(".fragment.glsl.spv")) {
             stage = vk::ShaderStageFlagBits::eFragment;
         }
-        stages[stage] = move(make_unique<ShaderModule>(engine, filename));
+        if(filename.ends_with(".rchit.spv")) {
+            stage = vk::ShaderStageFlagBits::eClosestHitKHR;
+        }
+        if(filename.ends_with(".rmiss.spv")) {
+            stage = vk::ShaderStageFlagBits::eMissKHR;
+        }
+        if(filename.ends_with(".rgen.spv")) {
+            stage = vk::ShaderStageFlagBits::eRaygenKHR;
+        }
+        stages.emplace_back(make_pair(stage, move(make_unique<ShaderModule>(engine, filename))));
     }
 }
 
@@ -28,20 +37,24 @@ vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineSh
 vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(const map<string, uint32_t>& constants) const {
     auto& device = engine.getLogicalDevice();
 
-    vector<vk::DescriptorSetLayoutBinding> bindings{};
+    vector<NamedBinding> bindings{};
 
     for(const auto& [stage, module] : stages) {
         module->addBindingsSet0(stage, bindings, constants);
     }
 
+    vector<vk::DescriptorSetLayoutBinding> vkBindings{bindings.size()};
+    for (int i = 0; i < vkBindings.size(); ++i) {
+        vkBindings[i] = bindings[i].vkBinding;
+    }
     vk::DescriptorSetLayoutCreateInfo createInfo{
             .bindingCount = static_cast<uint32_t>(bindings.size()),
-            .pBindings = bindings.data(),
+            .pBindings = vkBindings.data(),
     };
 
     return device.createDescriptorSetLayoutUnique(createInfo, engine.getAllocator());
 }
 
-const map<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>& Carrot::ShaderStages::getModuleMap() const {
+const vector<pair<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>>& Carrot::ShaderStages::getModuleMap() const {
     return stages;
 }

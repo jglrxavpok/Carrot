@@ -15,9 +15,20 @@ namespace Carrot {
     private:
         Engine& engine;
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
-        vector<vk::CommandBuffer> commandBuffers{};
         vector<unique_ptr<Image>> lightingImages{};
         vector<vk::UniqueImageView> lightingImageViews{};
+
+        vk::UniqueDescriptorPool rtDescriptorPool;
+        vk::UniqueDescriptorSetLayout rtDescriptorLayout;
+        vector<vk::DescriptorSet> rtDescriptorSets;
+        vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
+        vk::UniquePipelineLayout pipelineLayout;
+        vk::UniquePipeline pipeline;
+        unique_ptr<Buffer> sbtBuffer;
+
+        void updateDescriptorSets();
+
+        constexpr uint32_t alignUp(uint32_t value, uint32_t alignment);
 
     public:
         /// Extensions required for raytracing
@@ -25,12 +36,16 @@ namespace Carrot {
 
         explicit RayTracer(Engine& engine);
 
-        void recordCommands(uint32_t frameIndex, vk::CommandBufferInheritanceInfo* inheritance);
+        void recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands);
 
         void onSwapchainRecreation();
 
-        vector<vk::CommandBuffer>& getCommandBuffers();
-
         vector<vk::UniqueImageView>& getLightingImageViews();
+
+        void createDescriptorSets();
+
+        void createPipeline();
+
+        void createShaderBindingTable();
     };
 }

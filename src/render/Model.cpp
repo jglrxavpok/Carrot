@@ -119,7 +119,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
         .binding = 0,
         .descriptorType = vk::DescriptorType::eStorageBuffer,
         .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eRaygenKHR,
     };
     animationSetLayout = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
         .bindingCount = 1,

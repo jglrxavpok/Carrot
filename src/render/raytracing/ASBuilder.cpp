@@ -291,3 +291,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
 
     device.freeCommandBuffers(engine.getGraphicsCommandPool(), buildCommand);
 }
+
+Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
+    return tlas;
+}

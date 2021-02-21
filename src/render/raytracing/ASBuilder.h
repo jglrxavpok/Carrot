@@ -59,6 +59,8 @@ namespace Carrot {
         void buildBottomLevelAS();
         void buildTopLevelAS(bool update);
 
+        TLAS& getTopLevelAS();
+
         // TODO: update bottom & top AS functions
     };
 }

@@ -84,3 +84,8 @@ Carrot::Buffer::~Buffer() {
 void Carrot::Buffer::setDebugNames(const string& name) {
     nameSingle(engine, name, getVulkanBuffer());
 }
+
+void Carrot::Buffer::unmap() {
+    auto& device = engine.getLogicalDevice();
+    device.unmapMemory(*memory);
+}

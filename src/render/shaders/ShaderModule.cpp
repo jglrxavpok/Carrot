@@ -7,6 +7,7 @@
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_parser.hpp>
 #include <iostream>
+#include "render/NamedBinding.h"
 
 Carrot::ShaderModule::ShaderModule(Carrot::Engine& engine, const string& filename, const string& entryPoint): engine(engine), entryPoint(entryPoint) {
     auto code = IO::readFile(filename);
@@ -32,7 +33,7 @@ vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStag
     };
 }
 
-void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector<vk::DescriptorSetLayoutBinding>& bindings, const map<string, uint32_t>& constants) {
+void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings, const map<string, uint32_t>& constants) {
     const auto resources = compiler->get_shader_resources();
 
     // buffers
@@ -55,7 +56,7 @@ void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector
 }
 
 void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
-                                              vector<vk::DescriptorSetLayoutBinding>& bindings,
+                                              vector<NamedBinding>& bindings,
                                               vk::DescriptorType type,
                                               const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
                                               const map<string, uint32_t>& constants) {
@@ -84,12 +85,12 @@ void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
                 }
             }
         }
-        bindings.push_back(vk::DescriptorSetLayoutBinding {
+        bindings.push_back({vk::DescriptorSetLayoutBinding {
             .binding = bindingID,
             .descriptorType = type,
             .descriptorCount = count,
             .stageFlags = stage,
-        });
+        }, resource.name});
 
         bindingMap[static_cast<uint32_t>(bindingID)] = {
                 bindingID,

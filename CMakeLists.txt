@@ -28,8 +28,9 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
-            COMMAND echo glslc -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
-            COMMAND glslc -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
+            COMMAND echo glslc --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
+            COMMAND glslc --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             MAIN_DEPENDENCY ${FULL_INPUT}
     )
 endfunction()
@@ -98,6 +99,18 @@ set(COMPUTE_SHADERS
         resources/shaders/skinning.compute.glsl
         )
 
+set(RAYGEN_SHADERS
+        resources/shaders/rt/raytrace.rgen
+        )
+
+set(RAYMISS_SHADERS
+        resources/shaders/rt/raytrace.rmiss
+        )
+
+set(RAYHIT_SHADERS
+        resources/shaders/rt/raytrace.rchit
+        )
+
 set(SHADERS "")
 foreach(shader ${VERTEX_SHADERS})
     add_spirv_shader(vertex "${shader}" "${shader}.spv")
@@ -111,6 +124,21 @@ endforeach()
 
 foreach(shader ${COMPUTE_SHADERS})
     add_spirv_shader(compute "${shader}" "${shader}.spv")
+    set(SHADERS "${SHADERS}" "${shader}.spv")
+endforeach()
+
+foreach(shader ${RAYGEN_SHADERS})
+    add_spirv_shader(rgen "${shader}" "${shader}.spv")
+    set(SHADERS "${SHADERS}" "${shader}.spv")
+endforeach()
+
+foreach(shader ${RAYMISS_SHADERS})
+    add_spirv_shader(rmiss "${shader}" "${shader}.spv")
+    set(SHADERS "${SHADERS}" "${shader}.spv")
+endforeach()
+
+foreach(shader ${RAYHIT_SHADERS})
+    add_spirv_shader(rchit "${shader}" "${shader}.spv")
     set(SHADERS "${SHADERS}" "${shader}.spv")
 endforeach()
 

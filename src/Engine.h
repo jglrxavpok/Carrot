@@ -16,6 +16,7 @@
 #include "imgui.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
+#include "render/DebugBufferObject.h"
 
 using namespace std;
 
@@ -130,6 +131,7 @@ namespace Carrot {
         uint32_t getSwapchainImageCount();
 
         vector<shared_ptr<Buffer>>& getCameraUniformBuffers();
+        vector<shared_ptr<Buffer>>& getDebugUniformBuffers();
 
         const vk::UniqueSampler& getLinearSampler();
 
@@ -220,6 +222,7 @@ namespace Carrot {
         vk::UniqueSampler nearestRepeatSampler{};
 
         vector<shared_ptr<Buffer>> cameraUniformBuffers{};
+        vector<shared_ptr<Buffer>> debugUniformBuffers{};
         vk::UniqueDescriptorPool imguiDescriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 

@@ -53,5 +53,5 @@ template<typename T>
 T* Carrot::Buffer::map() {
     auto& device = engine.getLogicalDevice();
     void* ptr = device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
-    return (T*) ptr;
+    return reinterpret_cast<T*>(ptr);
 }

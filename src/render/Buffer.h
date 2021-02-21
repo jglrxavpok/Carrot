@@ -51,6 +51,8 @@ namespace Carrot {
         template<typename T>
         T* map();
 
+        void unmap();
+
         ~Buffer();
 
         void setDebugNames(const string& name) override;

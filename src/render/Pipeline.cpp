@@ -11,6 +11,7 @@
 #include "DrawData.h"
 #include "render/Material.h"
 #include "Vertex.h"
+#include "DebugBufferObject.h"
 
 #include <iostream>
 
@@ -124,7 +125,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
                 .binding = 0,
                 .descriptorType = vk::DescriptorType::eStorageBuffer,
                 .descriptorCount = 1,
-                .stageFlags = vk::ShaderStageFlagBits::eVertex,
+                .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eRaygenKHR,
         };
         descriptorSetLayout1 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
                 .bindingCount = 1,
@@ -256,7 +257,7 @@ void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk
     if(type == Type::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
     } else {
-        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0});
+        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
     }
 }
 
@@ -278,15 +279,15 @@ void Carrot::Pipeline::bindDescriptorSets(vk::CommandBuffer& commands,
 void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     vector<vk::DescriptorPoolSize> sizes{};
 
-    vector<vk::DescriptorSetLayoutBinding> bindings{};
+    vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addBindingsSet0(stage, bindings, constants);
     }
 
     for(const auto& binding : bindings) {
         sizes.emplace_back(vk::DescriptorPoolSize {
-            .type = binding.descriptorType,
-            .descriptorCount = imageCount*binding.descriptorCount,
+            .type = binding.vkBinding.descriptorType,
+            .descriptorCount = imageCount*binding.vkBinding.descriptorCount,
         });
     }
 
@@ -343,7 +344,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     };
     vector<vk::DescriptorSet> sets = engine.getLogicalDevice().allocateDescriptorSets(allocateInfo);
 
-    vector<vk::DescriptorSetLayoutBinding> bindings{};
+    vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addBindingsSet0(stage, bindings, constants);
     }
@@ -358,17 +359,22 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     for(const auto& binding : bindings) {
         for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
             auto& write = writes[writeIndex];
-            write.dstBinding = binding.binding;
-            write.descriptorCount = binding.descriptorCount;
-            write.descriptorType = binding.descriptorType;
+            write.dstBinding = binding.vkBinding.binding;
+            write.descriptorCount = binding.vkBinding.descriptorCount;
+            write.descriptorType = binding.vkBinding.descriptorType;
             write.dstSet = sets[i];
 
-            switch (binding.descriptorType) {
+            switch (binding.vkBinding.descriptorType) {
                 case vk::DescriptorType::eUniformBufferDynamic: {
                     auto& buffer = buffers[writeIndex];
-                    buffer.buffer = engine.getCameraUniformBuffers()[i]->getVulkanBuffer();
+                    if(binding.name == "Debug") {
+                        buffer.buffer = engine.getDebugUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.range = sizeof(DebugBufferObject);
+                    } else {
+                        buffer.buffer = engine.getCameraUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.range = sizeof(CameraBufferObject); // TODO: customizable
+                    }
                     buffer.offset = 0;
-                    buffer.range = sizeof(CameraBufferObject); // TODO: customizable
                     write.pBufferInfo = buffers.data()+writeIndex;
 
                     writeIndex++;

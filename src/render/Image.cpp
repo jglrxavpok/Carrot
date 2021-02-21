@@ -146,6 +146,11 @@ void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Form
         sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
     }
 
+    if(oldLayout == vk::ImageLayout::eGeneral) {
+        barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
+        sourceStage = vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+    }
+
     if(oldLayout == vk::ImageLayout::eTransferDstOptimal) {
         barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
         sourceStage = vk::PipelineStageFlagBits::eTransfer;
@@ -163,6 +168,11 @@ void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Form
     if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
         barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
         destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+
+    if(newLayout == vk::ImageLayout::eGeneral) {
+        barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
+        destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
     }
 
     commands.pipelineBarrier(sourceStage,

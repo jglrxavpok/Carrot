@@ -139,11 +139,11 @@ void Carrot::GBuffer::loadResolvePipeline() {
         auto& lightingNfo = imageInfo[i*imageCount+4];
         lightingNfo.imageView = *raytracer.getLightingImageViews()[i];
         lightingNfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        lightingNfo.sampler = *engine.getLinearSampler();
+        lightingNfo.sampler = nullptr;
 
         auto& writeLighting = writes[i*imageCount+4];
         writeLighting.descriptorCount = 1;
-        writeLighting.descriptorType = vk::DescriptorType::eInputAttachment;
+        writeLighting.descriptorType = vk::DescriptorType::eSampledImage;
         writeLighting.pImageInfo = &lightingNfo;
         writeLighting.dstSet = gResolvePipeline->getDescriptorSets()[i];
         writeLighting.dstArrayElement = 0;
@@ -191,7 +191,6 @@ void Carrot::GBuffer::addFramebufferAttachments(uint32_t frameIndex, vector<vk::
     attachments.push_back(*albedoImageViews[frameIndex]);
     attachments.push_back(*viewPositionImageViews[frameIndex]);
     attachments.push_back(*viewNormalImageViews[frameIndex]);
-    attachments.push_back(*raytracer.getLightingImageViews()[frameIndex]);
 }
 
 vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
@@ -310,30 +309,6 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
-    vk::AttachmentDescription raytracedLightingAttachment {
-            .format = vk::Format::eR32G32B32A32Sfloat,
-            .samples = vk::SampleCountFlagBits::e1,
-
-            .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = vk::AttachmentStoreOp::eStore,
-
-            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-
-            .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-    vk::AttachmentReference raytracedLightingAttachmentInputRef{
-            .attachment = 5,
-            .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
-    };
-
-    vk::AttachmentReference raytracedLightingAttachmentOutputRef{
-            .attachment = 5,
-            .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
     vk::AttachmentReference outputs[] = {
             gBufferColorOutputAttachmentRef,
             gBufferViewPositionOutputAttachmentRef,
@@ -352,37 +327,16 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             .preserveAttachmentCount = 0,
     };
 
-    vk::AttachmentReference raytracingInputs[] = {
-            gBufferColorInputAttachmentRef,
-            depthInputAttachmentRef,
-            gBufferViewPositionInputAttachmentRef,
-            gBufferNormalInputAttachmentRef,
-    };
-
-    vk::SubpassDescription raytracedSubpass {
-            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .inputAttachmentCount = 4,
-            .pInputAttachments = raytracingInputs,
-
-            .colorAttachmentCount = 1,
-            // index in this array is used by `layout(location = 0)` inside shaders
-            .pColorAttachments = &raytracedLightingAttachmentOutputRef,
-            .pDepthStencilAttachment = nullptr,
-
-            .preserveAttachmentCount = 0,
-    };
-
     vk::AttachmentReference resolveInputs[] = {
             gBufferColorInputAttachmentRef,
             depthInputAttachmentRef,
             gBufferViewPositionInputAttachmentRef,
             gBufferNormalInputAttachmentRef,
-            raytracedLightingAttachmentInputRef,
     };
 
     vk::SubpassDescription gResolveSubpass {
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .inputAttachmentCount = 5,
+            .inputAttachmentCount = 4,
             .pInputAttachments = resolveInputs,
 
             .colorAttachmentCount = 1,
@@ -395,7 +349,6 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
 
     vk::SubpassDescription subpasses[] = {
             gBufferSubpass,
-            raytracedSubpass,
             gResolveSubpass,
     };
 
@@ -415,19 +368,6 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             },
             {
                     .srcSubpass = RenderPasses::GBufferSubPassIndex, // gBuffer
-                    .dstSubpass = RenderPasses::RaytracedLightingSubpassIndex, // raytraced-lighting subpass
-
-                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    // TODO: .srcAccessMask = 0,
-
-                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite |
-                                     vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-            },
-            {
-                    .srcSubpass = RenderPasses::RaytracedLightingSubpassIndex, // gBuffer
                     .dstSubpass = RenderPasses::GResolveSubPassIndex, // gResolve
 
                     .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
@@ -446,16 +386,15 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             gBufferColorAttachment,
             gBufferViewPositionAttachment,
             gBufferNormalAttachment,
-            raytracedLightingAttachment,
     };
 
     vk::RenderPassCreateInfo renderPassInfo{
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
             .pAttachments = attachments.data(),
-            .subpassCount = 3,
+            .subpassCount = sizeof(subpasses)/sizeof(vk::SubpassDescription),
             .pSubpasses = subpasses,
 
-            .dependencyCount = 3,
+            .dependencyCount = sizeof(dependencies)/sizeof(vk::SubpassDependency),
             .pDependencies = dependencies,
     };
 

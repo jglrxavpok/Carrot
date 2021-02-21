@@ -7,6 +7,5 @@
 
 namespace Carrot::RenderPasses {
     constexpr uint32_t GBufferSubPassIndex = 0;
-    constexpr uint32_t RaytracedLightingSubpassIndex = 1;
-    constexpr uint32_t GResolveSubPassIndex = 2;
+    constexpr uint32_t GResolveSubPassIndex = 1;
 }
