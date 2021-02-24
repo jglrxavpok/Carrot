@@ -15,4 +15,5 @@ void Carrot::Camera::updateBufferObject(Carrot::CameraBufferObject& obj) {
     obj.view = glm::lookAt(position, target, up);
     obj.inverseView = glm::inverse(obj.view);
     obj.projection = projectionMatrix;
+    obj.inverseProjection = glm::inverse(projectionMatrix);
 }

@@ -19,7 +19,7 @@
 #include <ecs/components/Transform.h>
 #include "UnitColor.h"
 
-int maxInstanceCount = 100; // TODO: change
+static int maxInstanceCount = 100; // TODO: change
 
 Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
@@ -127,7 +127,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
                 .transform = units.back()->getTransform(),
                 .customInstanceIndex = static_cast<uint32_t>(i),
                 .geometryIndex = static_cast<uint32_t>(geometries.size()-1),
-                .mask = 0,
+                .mask = 0xFF,
                 .hitGroup = 0, // TODO: different materials
             });
         }

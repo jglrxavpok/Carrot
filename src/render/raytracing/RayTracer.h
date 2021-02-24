@@ -19,8 +19,11 @@ namespace Carrot {
         vector<vk::UniqueImageView> lightingImageViews{};
 
         vk::UniqueDescriptorPool rtDescriptorPool;
+        vk::UniqueDescriptorPool sceneDescriptorPool;
         vk::UniqueDescriptorSetLayout rtDescriptorLayout;
+        vk::UniqueDescriptorSetLayout sceneDescriptorLayout;
         vector<vk::DescriptorSet> rtDescriptorSets;
+        vector<vk::DescriptorSet> sceneDescriptorSets;
         vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
         vk::UniquePipelineLayout pipelineLayout;
         vk::UniquePipeline pipeline;

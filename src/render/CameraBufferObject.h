@@ -17,5 +17,8 @@ namespace Carrot {
 
         /// Inverse view matrix (transformation of the camera)
         alignas(16) glm::mat4 inverseView;
+
+        /// Inverse view matrix (transformation of the camera)
+        alignas(16) glm::mat4 inverseProjection;
     };
 }

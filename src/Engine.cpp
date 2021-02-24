@@ -166,24 +166,35 @@ void Carrot::Engine::createInstance() {
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions();
 
-    vk::InstanceCreateInfo createInfo{
-        .pApplicationInfo = &appInfo,
-
-        .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
-        .ppEnabledExtensionNames = requiredExtensions.data(),
+    array<vk::ValidationFeatureEnableEXT, 2> validationFeatures = {
+        vk::ValidationFeatureEnableEXT::eGpuAssisted,
+        vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
     };
+
+    vk::StructureChain<vk::InstanceCreateInfo, vk::ValidationFeaturesEXT, vk::DebugUtilsMessengerCreateInfoEXT> createChain {
+            {
+                .pApplicationInfo = &appInfo,
+
+                .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
+                .ppEnabledExtensionNames = requiredExtensions.data(),
+            },
+            {
+                .enabledValidationFeatureCount = validationFeatures.size(),
+                .pEnabledValidationFeatures = validationFeatures.data(),
+            },
+            {}
+    };
+    vk::InstanceCreateInfo& createInfo = createChain.get();
 
     if(USE_VULKAN_VALIDATION_LAYERS) {
         createInfo.ppEnabledLayerNames = VULKAN_VALIDATION_LAYERS.data();
         createInfo.enabledLayerCount = VULKAN_VALIDATION_LAYERS.size();
 
-        vk::DebugUtilsMessengerCreateInfoEXT instanceDebugMessenger{};
-        setupMessenger(instanceDebugMessenger);
-        createInfo.pNext = &instanceDebugMessenger;
+        setupMessenger(createChain.get<vk::DebugUtilsMessengerCreateInfoEXT>());
     } else {
         createInfo.ppEnabledLayerNames = nullptr;
         createInfo.enabledLayerCount = 0;
-        createInfo.pNext = nullptr;
+        createChain.unlink<vk::DebugUtilsMessengerCreateInfoEXT>();
     }
 
     // check extension support before creating
@@ -854,7 +865,6 @@ void Carrot::Engine::initImgui() {
     // Upload fonts
     performSingleTimeGraphicsCommands([&](vk::CommandBuffer& buffer) {
         ImGui_ImplVulkan_CreateFontsTexture(buffer);
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
     });
 }
 
@@ -1045,6 +1055,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             throw std::runtime_error("Failed to acquire swap chain image");
         }
         imageIndex = nextImage.value;
+
 
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();

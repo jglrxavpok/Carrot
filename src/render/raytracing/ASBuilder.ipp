@@ -35,7 +35,7 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
             .geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
                     // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
                     .vertexFormat = vk::Format::eR32G32B32Sfloat,
-                    .vertexData = vertexAddress + vertexOffset,
+                    .vertexData = vertexAddress + vertexOffset*sizeof(VertexType),
                     .vertexStride = sizeof(VertexType),
                     .maxVertex = static_cast<uint32_t>(vertexCount),
                     .indexType = vk::IndexType::eUint32,

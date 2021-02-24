@@ -44,6 +44,7 @@ copy_resources(textures)
 copy_resources(models)
 copy_resources(pipelines)
 copy_resources(materials)
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/vk_layer_settings.txt")
 
 set(SOURCES
         src/io/IO.cpp
@@ -53,7 +54,6 @@ set(SOURCES
         src/render/Model.cpp
         src/render/Vertex.cpp
         src/render/Buffer.cpp
-        src/render/CameraBufferObject.cpp
         src/render/Image.cpp
         src/render/Material.cpp
         src/render/shaders/ShaderModule.cpp
@@ -177,10 +177,12 @@ target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES
             src/utils/AftermathIntegration.cpp)
-    add_executable(Carrot-Aftermath ${ALL_SOURCES} ${AFTERMATH_SOURCES})
-    target_include_directories(Carrot-Aftermath PRIVATE ${AFTERMATH_INCLUDES})
-    target_compile_definitions(Carrot-Aftermath PRIVATE AFTERMATH_ENABLE=1)
-    target_link_libraries(Carrot-Aftermath ${ALL_LIBS} ${AFTERMATH_LIBS})
+    add_executable(Carrot-GPUDebug ${ALL_SOURCES} ${AFTERMATH_SOURCES})
+    target_include_directories(Carrot-GPUDebug PRIVATE ${AFTERMATH_INCLUDES})
+    target_compile_definitions(Carrot-GPUDebug PRIVATE AFTERMATH_ENABLE=1)
+    target_compile_definitions(Carrot-GPUDebug PRIVATE GPU_ASSISTED_VALIDATION=1)
+    target_compile_definitions(Carrot-GPUDebug PRIVATE DEBUG_MARKERS=1)
+    target_link_libraries(Carrot-GPUDebug ${ALL_LIBS} ${AFTERMATH_LIBS})
 else()
     message("Could not find Aftermath SDK")
 endif()

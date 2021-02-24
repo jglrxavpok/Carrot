@@ -6,9 +6,44 @@
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0, rgba32f) uniform image2D image;
 
+// Scene description
+layout(binding = 0, set = 1) uniform CameraBufferObject {
+    mat4 projection;
+    mat4 view;
+    mat4 inverseView;
+    mat4 inverseProjection;
+} cbo;
+// TODO: more data in scene description
+
 layout(location = 0) rayPayloadEXT hitPayload payload;
 
 void main()
 {
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(0.1, 0.5, 0.5, 1.0));
+    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+    vec2 d = inUV * 2.0 - 1.0;
+    vec4 origin = cbo.inverseView * vec4(0,0,0,1);
+    vec4 target = cbo.inverseProjection * vec4(d.x, d.y, 1, 1);
+    vec4 direction = cbo.inverseView * vec4(normalize(target.xyz), 0.0);
+
+    // TODO: vvv configurable vvv
+    uint rayFlags = gl_RayFlagsOpaqueEXT;
+    float tMin = 0.001;
+    float tMax = 100000.0;
+    // TODO: ^^^ configurable ^^^
+
+    traceRayEXT(topLevelAS, // AS
+                rayFlags, // ray flags
+                0xFF, // cull mask
+                0, // sbtRecordOffset
+                0, // sbtRecordStride
+                0, // missIndex
+                origin.xyz, // ray origin
+                tMin, // ray min range
+                direction.xyz, // ray direction
+                tMax, // ray max range,
+                0 // payload location
+    );
+
+    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(payload.hitColor, 1.0));
 }

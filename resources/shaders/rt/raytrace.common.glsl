@@ -1,4 +1,3 @@
 struct hitPayload {
-    // TODO
-    int _;
+    vec3 hitColor;
 };

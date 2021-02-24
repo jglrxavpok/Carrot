@@ -13,6 +13,7 @@ layout(set = 0, binding = 7) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;
+    mat4 inverseProjection;
 } cbo;
 
 layout(set = 0, binding = 8) uniform Debug {
@@ -37,7 +38,11 @@ void main() {
         outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
     }
     vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
-    vec4 renderedColor = vec4(outColorWorld.rgb * outColorWorld.a, 1.0);
-    renderedColor.rgb += outColorUI.rgb * outColorUI.a;
-    outColor = renderedColor;
+    float alpha01 = (1 - outColorUI.a)*outColorWorld.a + outColorUI.a;
+
+    vec4 renderedColor = vec4(
+    ((1-outColorUI.a) * outColorWorld.a * outColorWorld.rgb + outColorUI.a*outColorUI.rgb) / alpha01,
+    1.0
+    );
+    outColor = vec4(renderedColor.rgb, 1.0);
 }
