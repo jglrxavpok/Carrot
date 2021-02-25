@@ -90,6 +90,8 @@ void main() {
     outputVertices[finalVertexIndex] = originalVertices[vertexIndex];
     outputVertices[finalVertexIndex].pos = skinning * outputVertices[finalVertexIndex].pos;
 
+    outputVertices[finalVertexIndex].pos = vec4(outputVertices[finalVertexIndex].pos.xyz / outputVertices[finalVertexIndex].pos.w, 1.0);
+
     vec4 transformedNormal = skinning * vec4(outputVertices[finalVertexIndex].normal, 0.0);
     outputVertices[finalVertexIndex].normal = transformedNormal.xyz;
 }

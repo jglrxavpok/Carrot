@@ -59,7 +59,7 @@ namespace Carrot {
         void buildBottomLevelAS(bool enableUpdate = true);
         void buildTopLevelAS(bool update);
 
-        void updateBottomLevelAS(size_t blasIndex);
+        void updateBottomLevelAS(const vector<size_t>& blasIndices);
         void updateTopLevelAS();
 
         TLAS& getTopLevelAS();

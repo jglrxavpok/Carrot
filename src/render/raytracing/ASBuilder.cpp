@@ -297,47 +297,54 @@ Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
     return tlas;
 }
 
-void Carrot::ASBuilder::updateBottomLevelAS(size_t blasIndex) {
-    auto& blas = bottomLevelGeometries[blasIndex];
+void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
     auto& device = engine.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
 
-    vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
-            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
-            .flags = flags,
-            .mode = vk::BuildAccelerationStructureModeKHR::eUpdate,
-            .srcAccelerationStructure = blas.as->getVulkanAS(),
-            .dstAccelerationStructure = blas.as->getVulkanAS(),
-            .geometryCount = static_cast<uint32_t>(blas.geometries.size()),
-            .pGeometries = blas.geometries.data(),
-    };
-
-    // figure scratch size required to build
-    vector<uint32_t> primitiveCounts(blas.buildRanges.size());
-    // copy primitive counts to flat vector
-    for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
-        primitiveCounts[geomIndex] = blas.buildRanges[geomIndex].primitiveCount;
-    }
-
-    vk::AccelerationStructureBuildSizesInfoKHR sizeInfo =
-            device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, primitiveCounts);
-
-    vk::AccelerationStructureCreateInfoKHR createInfo {
-            .size = sizeInfo.accelerationStructureSize,
-            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
-    };
-
-    auto scratchSize = sizeInfo.buildScratchSize;
-    Buffer scratchBuffer(engine, scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
-    buildInfo.scratchData.deviceAddress = scratchBuffer.getDeviceAddress();
-
-    vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());
-    for(size_t i = 0; i < blas.buildRanges.size(); i++) {
-        pBuildRanges[i] = &blas.buildRanges[i];
-    }
+    vector<unique_ptr<Buffer>> scratchBuffers(blasIndices.size());
 
     engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
-         commands.buildAccelerationStructuresKHR(buildInfo, pBuildRanges);
+        for (int j = 0; j < blasIndices.size(); ++j) {
+            auto blasIndex = blasIndices[j];
+            auto& blas = bottomLevelGeometries[blasIndex];
+
+            vk::AccelerationStructureBuildGeometryInfoKHR buildInfo = {
+                    .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+                    .flags = flags,
+                    .mode = vk::BuildAccelerationStructureModeKHR::eUpdate,
+                    .srcAccelerationStructure = blas.as->getVulkanAS(),
+                    .dstAccelerationStructure = blas.as->getVulkanAS(),
+                    .geometryCount = static_cast<uint32_t>(blas.geometries.size()),
+                    .pGeometries = blas.geometries.data(),
+            };
+
+            // figure scratch size required to build
+            vector<uint32_t> primitiveCounts(blas.buildRanges.size());
+            // copy primitive counts to flat vector
+            for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
+                primitiveCounts[geomIndex] = blas.buildRanges[geomIndex].primitiveCount;
+            }
+
+            vk::AccelerationStructureBuildSizesInfoKHR sizeInfo =
+                    device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, primitiveCounts);
+
+            vk::AccelerationStructureCreateInfoKHR createInfo {
+                    .size = sizeInfo.accelerationStructureSize,
+                    .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+            };
+
+            auto scratchSize = sizeInfo.buildScratchSize;
+            auto scratchBuffer = make_unique<Buffer>(engine, scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+            buildInfo.scratchData.deviceAddress = scratchBuffer->getDeviceAddress();
+
+            vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());
+            for(size_t i = 0; i < blas.buildRanges.size(); i++) {
+                pBuildRanges[i] = &blas.buildRanges[i];
+            }
+
+            commands.buildAccelerationStructuresKHR(buildInfo, pBuildRanges);
+            scratchBuffers[j] = std::move(scratchBuffer);
+        }
     });
 }
 

@@ -19,9 +19,16 @@
 #include <ecs/components/Transform.h>
 #include "UnitColor.h"
 
-static int maxInstanceCount = 100; // TODO: change
+constexpr static int maxInstanceCount = 100; // TODO: change
+
+static vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): engine(engine) {
+
+    for (int i = 0; i < maxInstanceCount * 3; ++i) {
+        blasIndices.push_back(i);
+    }
+
     mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
     model = make_unique<Model>(engine, "resources/models/unit.fbx");
 
@@ -412,10 +419,11 @@ void Game::Game::onFrame(uint32_t frameIndex) {
 
     // ensure skinning is done
     engine.getComputeQueue().waitIdle();
+
     // TODO: proper indexing
-    for (int i = 0; i < maxInstanceCount * 3; ++i) {
-        engine.getASBuilder().updateBottomLevelAS(i);
-    }
+
+
+    engine.getASBuilder().updateBottomLevelAS(blasIndices);
     engine.getASBuilder().updateTopLevelAS();
 }
 
