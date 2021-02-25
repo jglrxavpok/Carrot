@@ -56,8 +56,11 @@ namespace Carrot {
 
         void addInstance(const InstanceInput input);
 
-        void buildBottomLevelAS();
+        void buildBottomLevelAS(bool enableUpdate = true);
         void buildTopLevelAS(bool update);
+
+        void updateBottomLevelAS(size_t blasIndex);
+        void updateTopLevelAS();
 
         TLAS& getTopLevelAS();
 

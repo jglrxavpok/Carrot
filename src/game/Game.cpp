@@ -120,7 +120,8 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
                     .firstInstance = static_cast<uint32_t>(i),
             });
 
-            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {static_cast<uint64_t>(vertexOffset)});
+            auto tmpOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
+            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {static_cast<uint64_t>(tmpOffset)});
             geometries.push_back(g);
 
             as.addInstance(InstanceInput {
@@ -372,6 +373,20 @@ void Game::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) 
 
 void Game::Game::onFrame(uint32_t frameIndex) {
     ZoneScoped;
+    // TODO: optimize
+
+    // submit skinning command buffer
+    // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
+    engine.getComputeQueue().submit(vk::SubmitInfo {
+            .waitSemaphoreCount = 0,
+            .pWaitSemaphores = nullptr,
+            .pWaitDstStageMask = nullptr,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &skinningCommandBuffers[frameIndex],
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
+    });
+
 /*    map<Unit::Type, glm::vec3> centers{};
     map<Unit::Type, uint32_t> counts{};
 
@@ -395,17 +410,13 @@ void Game::Game::onFrame(uint32_t frameIndex) {
    // TracyPlot("onFrame delta time", dt*1000);
 
 
-    // TODO: optimize
-    // submit skinning command buffer
-    engine.getComputeQueue().submit(vk::SubmitInfo {
-        .waitSemaphoreCount = 0,
-        .pWaitSemaphores = nullptr,
-        .pWaitDstStageMask = nullptr,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &skinningCommandBuffers[frameIndex],
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
-    });
+    // ensure skinning is done
+    engine.getComputeQueue().waitIdle();
+    // TODO: proper indexing
+    for (int i = 0; i < maxInstanceCount * 3; ++i) {
+        engine.getASBuilder().updateBottomLevelAS(i);
+    }
+    engine.getASBuilder().updateTopLevelAS();
 }
 
 void Game::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {

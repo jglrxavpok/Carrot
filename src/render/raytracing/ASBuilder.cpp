@@ -3,6 +3,7 @@
 //
 
 #include "ASBuilder.h"
+#include <vulkan/vulkan.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <iostream>
@@ -11,8 +12,8 @@ Carrot::ASBuilder::ASBuilder(Carrot::Engine& engine): engine(engine) {
 
 }
 
-void Carrot::ASBuilder::buildBottomLevelAS() {
-    const vk::BuildAccelerationStructureFlagBitsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
+    const vk::BuildAccelerationStructureFlagsKHR flags = enableUpdate ? (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate) : vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
     auto& device = engine.getLogicalDevice();
 
     // add a bottom level AS for each geometry entry
@@ -200,7 +201,7 @@ vk::AccelerationStructureInstanceKHR Carrot::ASBuilder::convertToVulkanInstance(
 
 void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     auto& device = engine.getLogicalDevice();
-    const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
+    const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
     vk::CommandBuffer buildCommand = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = engine.getGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
@@ -294,4 +295,52 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
 
 Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
     return tlas;
+}
+
+void Carrot::ASBuilder::updateBottomLevelAS(size_t blasIndex) {
+    auto& blas = bottomLevelGeometries[blasIndex];
+    auto& device = engine.getLogicalDevice();
+    const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
+
+    vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
+            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+            .flags = flags,
+            .mode = vk::BuildAccelerationStructureModeKHR::eUpdate,
+            .srcAccelerationStructure = blas.as->getVulkanAS(),
+            .dstAccelerationStructure = blas.as->getVulkanAS(),
+            .geometryCount = static_cast<uint32_t>(blas.geometries.size()),
+            .pGeometries = blas.geometries.data(),
+    };
+
+    // figure scratch size required to build
+    vector<uint32_t> primitiveCounts(blas.buildRanges.size());
+    // copy primitive counts to flat vector
+    for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
+        primitiveCounts[geomIndex] = blas.buildRanges[geomIndex].primitiveCount;
+    }
+
+    vk::AccelerationStructureBuildSizesInfoKHR sizeInfo =
+            device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, primitiveCounts);
+
+    vk::AccelerationStructureCreateInfoKHR createInfo {
+            .size = sizeInfo.accelerationStructureSize,
+            .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+    };
+
+    auto scratchSize = sizeInfo.buildScratchSize;
+    Buffer scratchBuffer(engine, scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    buildInfo.scratchData.deviceAddress = scratchBuffer.getDeviceAddress();
+
+    vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());
+    for(size_t i = 0; i < blas.buildRanges.size(); i++) {
+        pBuildRanges[i] = &blas.buildRanges[i];
+    }
+
+    engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
+         commands.buildAccelerationStructuresKHR(buildInfo, pBuildRanges);
+    });
+}
+
+void Carrot::ASBuilder::updateTopLevelAS() {
+    buildTopLevelAS(true);
 }

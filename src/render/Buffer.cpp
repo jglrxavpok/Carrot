@@ -89,3 +89,7 @@ void Carrot::Buffer::unmap() {
     auto& device = engine.getLogicalDevice();
     device.unmapMemory(*memory);
 }
+
+vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
+    return engine.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
+}

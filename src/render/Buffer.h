@@ -8,10 +8,11 @@
 #include "Engine.h"
 #include <set>
 #include <vulkan/DebugNameable.h>
+#include <vulkan/DeviceAddressable.h>
 
 namespace Carrot {
     /// Abstraction over Vulkan buffers
-    class Buffer: public DebugNameable {
+    class Buffer: public DebugNameable, public DeviceAddressable {
 
     private:
         bool mapped = false;
@@ -56,6 +57,8 @@ namespace Carrot {
         ~Buffer();
 
         void setDebugNames(const string& name) override;
+
+        vk::DeviceAddress getDeviceAddress() const override;
     };
 }
 
