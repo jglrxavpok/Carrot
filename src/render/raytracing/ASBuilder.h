@@ -13,6 +13,11 @@ namespace Carrot {
         vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
         unique_ptr<AccelerationStructure> as{};
+
+        // cached structures for rebuilding
+        unique_ptr<Buffer> scratchBuffer{};
+        unique_ptr<vk::AccelerationStructureBuildGeometryInfoKHR> cachedBuildInfo{};
+        vector<const vk::AccelerationStructureBuildRangeInfoKHR*> cachedBuildRanges{};
     };
 
     struct InstanceInput {
@@ -64,7 +69,8 @@ namespace Carrot {
 
         TLAS& getTopLevelAS();
 
-        // TODO: update bottom & top AS functions
+        const vector<GeometryInput>& getBottomLevelGeometries() const;
+        vector<GeometryInput>& getBottomLevelGeometries();
     };
 }
 

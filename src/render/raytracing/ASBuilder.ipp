@@ -54,5 +54,5 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
         });
     }
 
-    return &bottomLevelGeometries.back();
+    return &bottomLevelGeometries[bottomLevelGeometries.size()-1];
 }
