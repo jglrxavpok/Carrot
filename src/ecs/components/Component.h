@@ -7,14 +7,14 @@
 
 namespace Carrot {
 
-    template<class Self>
-    struct IdentifiableComponent: public Component, Identifiable<Self> {
-
-    };
-
     struct Component {
     public:
         virtual ~Component() = default;
+    };
+
+    template<class Self>
+    struct IdentifiableComponent: public Component, Identifiable<Self> {
+
     };
 
 }

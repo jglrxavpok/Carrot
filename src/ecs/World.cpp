@@ -3,6 +3,7 @@
 //
 
 #include "World.h"
+#include "systems/System.h"
 
 Carrot::World::EasyEntity Carrot::World::newEntity() {
     auto newID = freeEntityID++;
@@ -16,14 +17,61 @@ void Carrot::World::tick(double dt) {
     for(const auto& toAdd : entitiesToAdd) {
         entities.push_back(toAdd);
     }
+    if(!entitiesToAdd.empty()) {
+        for(const auto& logic : logicSystems) {
+            logic->onEntitiesAdded(entitiesToAdd);
+        }
+        for(const auto& render : renderSystems) {
+            render->onEntitiesAdded(entitiesToAdd);
+        }
+    }
     for(const auto& toRemove : entitiesToRemove) {
         auto position = find(entities.begin(), entities.end(), toRemove);
         if(position != entities.end()) { // clear components
             entityComponents.erase(entityComponents.find(toRemove));
         }
     }
+    if(!entitiesToRemove.empty()) {
+        for(const auto& logic : logicSystems) {
+            logic->onEntitiesRemoved(entitiesToRemove);
+        }
+        for(const auto& render : renderSystems) {
+            render->onEntitiesRemoved(entitiesToRemove);
+        }
+    }
     entitiesToAdd.clear();
     entitiesToRemove.clear();
 
-    // TODO: tick systems
+    for(const auto& logic : logicSystems) {
+        logic->tick(dt);
+    }
+
+    for(const auto& render : renderSystems) {
+        render->tick(dt);
+    }
+}
+
+void Carrot::World::onFrame(size_t frameIndex) {
+    for(const auto& logic : logicSystems) {
+        logic->onFrame(frameIndex);
+    }
+
+    for(const auto& render : renderSystems) {
+        render->onFrame(frameIndex);
+    }
+}
+
+Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
+    auto componentMapLocation = this->entityComponents.find(entity);
+    if(componentMapLocation == this->entityComponents.end()) {
+        // no such entity
+        return Signature{};
+    }
+
+    auto& componentMap = componentMapLocation->second;
+    Signature s{};
+    for(const auto& [id, _] : componentMap) {
+        s.addComponent(id);
+    }
+    return s;
 }

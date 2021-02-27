@@ -5,9 +5,11 @@
 #pragma once
 
 #include <cstddef>
-#include <ecs/Signature.hpp>
 
 namespace Carrot {
+
+    using ComponentID = std::size_t;
+
     template<typename Type>
     struct Identifiable {
         static const ComponentID id;

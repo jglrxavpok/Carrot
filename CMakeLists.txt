@@ -68,8 +68,11 @@ set(SOURCES
         src/utils/stringmanip.cpp
 
         src/ecs/components/Component.cpp
+        src/ecs/components/Transform.cpp
         src/ecs/systems/System.cpp
+        src/ecs/systems/SystemUpdateAnimatedModelInstance.cpp
         src/ecs/World.cpp
+        src/ecs/Signature.cpp
 
         src/vulkan/CustomTracyVulkan.cpp
         src/render/GBuffer.cpp
@@ -80,7 +83,6 @@ set(SOURCES
         src/stb_impls.cpp
 
         src/game/Game.cpp
-        src/game/Unit.cpp
         )
 
 set(VERTEX_SHADERS

@@ -7,8 +7,8 @@
 #include <cstdint>
 #include "vulkan/includes.h"
 #include "Engine.h"
-#include "Unit.h"
 #include <ecs/World.h>
+#include "render/InstanceData.h"
 
 namespace Carrot {
     class Engine;
@@ -28,7 +28,6 @@ namespace Game {
         unique_ptr<Buffer> flatVertices = nullptr;
         map<MeshID, shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* modelInstance = nullptr;
-        vector<unique_ptr<Unit>> units{};
 
         vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
         vector<vk::DescriptorSet> computeDescriptorSet0{};

@@ -5,10 +5,17 @@
 #pragma once
 
 #include "ecs/components/Component.h"
-#include "Unit.h"
 
 namespace Game {
-    struct UnitColor: public Carrot::IdentifiableComponent<Carrot::Transform> {
+    namespace Unit {
+        enum class Type {
+            Red,
+            Green,
+            Blue,
+        };
+    }
+
+    struct UnitColor: public Carrot::IdentifiableComponent<UnitColor> {
         Unit::Type color;
 
         explicit UnitColor(Unit::Type color): color(color) {}

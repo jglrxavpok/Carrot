@@ -8,16 +8,12 @@
 #include <memory>
 #include <unordered_map>
 #include <ecs/components/Component.h>
+#include <ecs/systems/System.h>
+#include "EntityTypes.h"
 
 using namespace std;
 
 namespace Carrot {
-
-
-    using EntityID = uint32_t;
-    using Entity = EntityID;
-    using Entity_Ptr = shared_ptr<uint32_t>;
-    using Entity_WeakPtr = weak_ptr<Entity>;
 
     class World {
     private:
@@ -26,12 +22,11 @@ namespace Carrot {
         struct EasyEntity {
             EasyEntity(Entity_Ptr ent, World& worldRef): internalEntity(ent), worldRef(worldRef) {}
 
-        public:
             template<typename Comp>
             EasyEntity& addComponent(unique_ptr<Comp>&& component);
 
             template<typename Comp, typename... Arg>
-            EasyEntity& addComponent(Arg... args);
+            EasyEntity& addComponent(Arg&&... args);
 
             template<typename Comp>
             Comp* getComponent();
@@ -49,13 +44,25 @@ namespace Carrot {
 
         unordered_map<Entity_Ptr, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
 
+        vector<unique_ptr<System>> logicSystems;
+        vector<unique_ptr<System>> renderSystems;
+
     public:
+        Signature getSignature(const Entity_Ptr& entity) const;
+
         template<class Comp>
         Comp* getComponent(Entity_Ptr& entity) const;
 
         void tick(double dt);
+        void onFrame(size_t frameIndex);
 
         EasyEntity newEntity();
+
+        template<class RenderSystemType, typename... Args>
+        void addRenderSystem(Args&&... args);
+
+        template<class LogicSystemType, typename... Args>
+        void addLogicSystem(Args&&... args);
     };
 }
 

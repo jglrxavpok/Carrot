@@ -17,6 +17,8 @@
 
 #include <ecs/components/Component.h>
 #include <ecs/components/Transform.h>
+#include <ecs/components/AnimatedModelInstance.h>
+#include <ecs/systems/SystemUpdateAnimatedModelInstance.h>
 #include "UnitColor.h"
 
 constexpr static int maxInstanceCount = 100; // TODO: change
@@ -24,6 +26,7 @@ constexpr static int maxInstanceCount = 100; // TODO: change
 static vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): engine(engine) {
+    world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
 
     for (int i = 0; i < maxInstanceCount * 3; ++i) {
         blasIndices.push_back(i);
@@ -105,15 +108,24 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
         float y = (i / (int)sqrt(maxInstanceCount)) * spacing;
         auto position = glm::vec3(x, y, 0);
         auto color = static_cast<Unit::Type>((i / max(1, groupSize)) % 3);
-        auto unit = make_unique<Unit>(color, modelInstance[i]);
-        unit->teleport(position);
-        units.emplace_back(move(unit));
 
         auto entity = world.newEntity()
                 .addComponent<Transform>()
-                .addComponent<UnitColor>(color);
+                .addComponent<UnitColor>(color)
+                .addComponent<AnimatedModelInstance>(modelInstance[i]);
         if(auto transform = entity.getComponent<Transform>()) {
             transform->position = position;
+        }
+        switch (color) {
+            case Unit::Type::Blue:
+                modelInstance[i].color = {0,0,1,1};
+                break;
+            case Unit::Type::Red:
+                modelInstance[i].color = {1,0,0,1};
+                break;
+            case Unit::Type::Green:
+                modelInstance[i].color = {0,1,0,1};
+                break;
         }
 
         for(const auto& mesh : meshes) {
@@ -131,8 +143,9 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
             auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {static_cast<uint64_t>(tmpOffset)});
             geometries.push_back(g);
 
+            auto transform = entity.getComponent<Transform>();
             as.addInstance(InstanceInput {
-                .transform = units.back()->getTransform(),
+                .transform = transform->toTransformMatrix(),
                 .customInstanceIndex = static_cast<uint32_t>(i),
                 .geometryIndex = static_cast<uint32_t>(geometries.size()-1),
                 .mask = 0xFF,
@@ -149,6 +162,10 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     }
 
     createSkinningComputePipeline(vertexCountPerInstance);
+
+    // prepare for first frame
+    world.tick(0);
+    world.onFrame(0);
 }
 
 void Game::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) {
@@ -409,11 +426,8 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     static double lastTime = glfwGetTime();
     float dt = static_cast<float>(glfwGetTime() - lastTime);
     lastTime = glfwGetTime();
-    for(const auto& unit : units) {
-        ZoneScoped;
-  //      unit->moveTo(centers[unit->getType()]);
-        unit->update(dt);
-    }
+    world.tick(dt);
+    world.onFrame(frameIndex);
    // TracyPlot("onFrame delta time", dt*1000);
 
 
@@ -421,8 +435,6 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     engine.getComputeQueue().waitIdle();
 
     // TODO: proper indexing
-
-
     engine.getASBuilder().updateBottomLevelAS(blasIndices);
     engine.getASBuilder().updateTopLevelAS();
 }
