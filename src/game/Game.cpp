@@ -129,7 +129,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
         }
 
         for(const auto& mesh : meshes) {
-            int32_t vertexOffset = static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]);
+            int32_t vertexOffset = (static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
             indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
                     .indexCount = static_cast<uint32_t>(mesh->getIndexCount()),
@@ -139,8 +139,8 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
                     .firstInstance = static_cast<uint32_t>(i),
             });
 
-            auto tmpOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
-            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {static_cast<uint64_t>(tmpOffset)});
+            uint64_t vertexStartAddress = vertexOffset * sizeof(SkinnedVertex);
+            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {vertexStartAddress});
             geometries.push_back(g);
 
             auto transform = entity.getComponent<Transform>();
@@ -153,6 +153,17 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
             });
         }
     }
+
+    // add map to AS
+    auto worldMesh = mapModel->getMeshes()[0];
+    as.addGeometries<Vertex>(worldMesh->getBackingBuffer(), worldMesh->getIndexCount(), 0, worldMesh->getBackingBuffer(), worldMesh->getVertexCount(), {worldMesh->getVertexStartOffset()});
+    as.addInstance(InstanceInput {
+        .customInstanceIndex = maxInstanceCount,
+        .geometryIndex = maxInstanceCount*3, // TODO: don't hardcode
+        .mask = 0xFF,
+        .hitGroup = 0,
+    });
+
     as.buildBottomLevelAS();
     as.buildTopLevelAS(false);
     for(const auto& mesh : meshes) {
