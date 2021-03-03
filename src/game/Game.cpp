@@ -93,7 +93,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     }
 
     fullySkinnedUnitVertices = make_unique<Buffer>(engine,
-                                                   sizeof(SkinnedVertex) * vertexCountPerInstance * maxInstanceCount,
+                                                   sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
                                                    vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                                    vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                    engine.createGraphicsAndTransferFamiliesSet());
@@ -139,14 +139,14 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
                     .firstInstance = static_cast<uint32_t>(i),
             });
 
-            uint64_t vertexStartAddress = vertexOffset * sizeof(SkinnedVertex);
-            auto g = as.addGeometries<SkinnedVertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {vertexStartAddress});
+            uint64_t vertexStartAddress = vertexOffset * sizeof(Vertex);
+            auto g = as.addGeometries<Vertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, *fullySkinnedUnitVertices, mesh->getVertexCount(), {vertexStartAddress});
             geometries.push_back(g);
 
             auto transform = entity.getComponent<Transform>();
             as.addInstance(InstanceInput {
                 .transform = transform->toTransformMatrix(),
-                .customInstanceIndex = static_cast<uint32_t>(i),
+                .customInstanceIndex = static_cast<uint32_t>(geometries.size()-1),
                 .geometryIndex = static_cast<uint32_t>(geometries.size()-1),
                 .mask = 0xFF,
                 .hitGroup = 0, // TODO: different materials
@@ -468,6 +468,9 @@ float yaw = 0.0f;
 float pitch = 0.0f;
 
 void Game::Game::onMouseMove(double dx, double dy) {
+    if( ! engine.grabbingCursor())
+        return;
+
     auto& camera = engine.getCamera();
     yaw -= dx * 0.01f;
     pitch -= dy * 0.01f;

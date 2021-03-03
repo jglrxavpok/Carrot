@@ -69,6 +69,70 @@ std::vector<vk::VertexInputBindingDescription> Carrot::Vertex::getBindingDescrip
     };
 }
 
+std::vector<vk::VertexInputAttributeDescription> Carrot::ComputeSkinnedVertex::getAttributeDescriptions() {
+    std::vector<vk::VertexInputAttributeDescription> descriptions{9};
+
+    descriptions[0] = {
+            .location = 0,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ComputeSkinnedVertex, pos)),
+    };
+
+    descriptions[1] = {
+            .location = 1,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ComputeSkinnedVertex, color)),
+    };
+
+    descriptions[2] = {
+            .location = 2,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ComputeSkinnedVertex, normal)),
+    };
+
+    descriptions[3] = {
+            .location = 3,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ComputeSkinnedVertex, uv)),
+    };
+
+    descriptions[4] = {
+            .location = 4,
+            .binding = 1,
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, color)),
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[5+i] = {
+                .location = static_cast<uint32_t>(5+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, transform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    return descriptions;
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::ComputeSkinnedVertex::getBindingDescription() {
+    return {vk::VertexInputBindingDescription {
+                    .binding = 0,
+                    .stride = sizeof(ComputeSkinnedVertex),
+                    .inputRate = vk::VertexInputRate::eVertex,
+            },
+            vk::VertexInputBindingDescription {
+                    .binding = 1,
+                    .stride = sizeof(AnimatedInstanceData),
+                    .inputRate = vk::VertexInputRate::eInstance,
+            },
+    };
+}
+
 std::vector<vk::VertexInputBindingDescription> Carrot::SkinnedVertex::getBindingDescription() {
     return {vk::VertexInputBindingDescription {
             .binding = 0,

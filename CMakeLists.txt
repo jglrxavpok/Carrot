@@ -107,6 +107,7 @@ set(RAYGEN_SHADERS
 
 set(RAYMISS_SHADERS
         resources/shaders/rt/raytrace.rmiss
+        resources/shaders/rt/shadow.rmiss
         )
 
 set(RAYHIT_SHADERS

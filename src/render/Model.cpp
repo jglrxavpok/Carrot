@@ -166,7 +166,7 @@ void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands,
     for(const auto& material : materials) {
         material->bindForRender(imageIndex, commands);
         if(!animations.empty()) {
-            material->getPipeline().bindDescriptorSets(commands, {animationDescriptorSets[imageIndex]}, {}, 1);
+            material->getRenderingPipeline().bindDescriptorSets(commands, {animationDescriptorSets[imageIndex]}, {}, 1);
         }
 
         for(const auto& mesh : meshes[material.get()]) {
@@ -180,9 +180,6 @@ void Carrot::Model::indirectDraw(const uint32_t imageIndex, vk::CommandBuffer& c
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
         material->bindForRender(imageIndex, commands);
-        if(!animations.empty()) {
-            material->getPipeline().bindDescriptorSets(commands, {animationDescriptorSets[imageIndex]}, {}, 1);
-        }
 
         for(const auto& mesh : meshes[material.get()]) {
             mesh->bindForIndirect(commands);
@@ -197,7 +194,7 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
     vector<SkinnedVertex> skinnedVertices{};
     vector<uint32_t> indices{};
 
-    bool usesSkinning = vertexFormat == VertexFormat::SkinnedVertex;
+    bool usesSkinning = vertexFormat == VertexFormat::SkinnedVertex || vertexFormat == VertexFormat::ComputeSkinnedVertex;
 
     for(size_t vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++) {
         const aiVector3D vec = mesh->mVertices[vertexIndex];

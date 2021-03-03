@@ -18,18 +18,24 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     string pipelineName = description["pipeline"].GetString();
     pipeline = engine.getOrCreatePipeline(pipelineName);
 
-    textureID = pipeline->reserveTextureSlot(engine.getOrCreateTextureView(textureName));
+    if(description.HasMember("renderingPipeline")) {
+        renderingPipeline = engine.getOrCreatePipeline(description["renderingPipeline"].GetString());
+    } else {
+        renderingPipeline = pipeline;
+    }
+
+    textureID = renderingPipeline->reserveTextureSlot(engine.getOrCreateTextureView(textureName));
     if(description.HasMember("ignoreInstanceColor")) {
         ignoreInstanceColor = description["ignoreInstanceColor"].GetBool();
     }
-    id = pipeline->reserveMaterialSlot(*this);
+    id = renderingPipeline->reserveMaterialSlot(*this);
 }
 
 void Carrot::Material::bindForRender(const uint32_t imageIndex, vk::CommandBuffer& commands) const {
-    pipeline->bind(imageIndex, commands);
+    renderingPipeline->bind(imageIndex, commands);
     vector<DrawData> data{1};
     data[0].materialIndex = id;
-    commands.pushConstants<DrawData>(pipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<uint32_t>(0), data);
+    commands.pushConstants<DrawData>(renderingPipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<uint32_t>(0), data);
 }
 
 Carrot::MaterialID Carrot::Material::getMaterialID() const {
@@ -50,4 +56,8 @@ bool Carrot::Material::ignoresInstanceColor() const {
 
 const Carrot::Pipeline& Carrot::Material::getPipeline() const {
     return *pipeline;
+}
+
+const Carrot::Pipeline& Carrot::Material::getRenderingPipeline() const {
+    return *renderingPipeline;
 }

@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_scalar_block_layout : enable
 
 // vertex
 layout (local_size_x = 128) in;
@@ -18,6 +19,13 @@ struct VertexWithBones {
     vec2 uv;
     ivec4 boneIDs;
     vec4 boneWeights;
+};
+
+struct Vertex {
+    vec4 pos;
+    vec3 color;
+    vec3 normal;
+    vec2 uv;
 };
 
 struct Instance {
@@ -47,7 +55,7 @@ layout(set = 0, binding = 1) buffer InstanceBuffer {
 };
 
 layout(set = 0, binding = 2) buffer OutputVertexBuffer {
-    VertexWithBones outputVertices[VERTEX_COUNT*INSTANCE_COUNT];
+    Vertex outputVertices[VERTEX_COUNT*INSTANCE_COUNT];
 };
 
 layout(set = 1, binding = 0) buffer Animations {
@@ -87,7 +95,10 @@ void main() {
 
     mat4 skinning = computeSkinning(instanceIndex, vertexIndex);
     uint finalVertexIndex = instanceIndex * VERTEX_COUNT + vertexIndex;
-    outputVertices[finalVertexIndex] = originalVertices[vertexIndex];
+    outputVertices[finalVertexIndex].pos = originalVertices[vertexIndex].pos;
+    outputVertices[finalVertexIndex].normal = originalVertices[vertexIndex].normal;
+    outputVertices[finalVertexIndex].uv = originalVertices[vertexIndex].uv;
+    outputVertices[finalVertexIndex].color = originalVertices[vertexIndex].color;
     outputVertices[finalVertexIndex].pos = skinning * outputVertices[finalVertexIndex].pos;
 
     outputVertices[finalVertexIndex].pos = vec4(outputVertices[finalVertexIndex].pos.xyz / outputVertices[finalVertexIndex].pos.w, 1.0);

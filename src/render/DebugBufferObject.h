@@ -7,7 +7,17 @@
 #include <glm/glm.hpp>
 
 namespace Carrot {
+    enum class SingleGChannel: int32_t {
+        All = -1,
+        Albedo = 0,
+        Position,
+        Normals,
+        Depth,
+        RaytracingOnly,
+        OnlyUI, // < UI is always shown
+    };
+
     struct DebugBufferObject {
-        alignas(16) bool onlyRaytracing = false;
+        alignas(16) SingleGChannel gChannel = SingleGChannel::All;
     };
 }

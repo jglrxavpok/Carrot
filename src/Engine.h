@@ -158,6 +158,8 @@ namespace Carrot {
 
         vector<vk::UniqueImageView>& getUIImageViews();
 
+        bool grabbingCursor() const { return grabCursor; };
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;

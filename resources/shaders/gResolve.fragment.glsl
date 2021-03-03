@@ -28,21 +28,44 @@ const vec3 sunDirection = vec3(1,1,1);
 
 void main() {
     vec4 outColorWorld;
-    if(debug.onlyRaytracing) {
-        outColorWorld = texture(sampler2D(rayTracedLighting, linearSampler), uv);
+
+    if(debug.showSingleGChannel >= 0) {
+        switch(debug.showSingleGChannel) {
+            case 0:
+                outColorWorld = subpassLoad(albedo);
+            break;
+
+            case 1:
+                outColorWorld = vec4(subpassLoad(viewPos).rgb, 1.0);
+            break;
+
+            case 2:
+                outColorWorld = vec4(subpassLoad(viewNormals).rgb, 1.0);
+            break;
+
+            case 3:
+                outColorWorld = subpassLoad(depth);
+            break;
+
+            case 4:
+                outColorWorld = texture(sampler2D(rayTracedLighting, linearSampler), uv);
+            break;
+
+            case 5:
+                outColorWorld = vec4(0.0,0.0,0.0,1.0);
+            break;
+        }
+
     } else {
         const vec3 nSunDirection = normalize(sunDirection);
         vec4 fragmentColor = subpassLoad(albedo);
         vec3 normal = (cbo.inverseView * subpassLoad(viewNormals)).xyz;
-        float lighting = max(0.1, dot(nSunDirection, normal));
+        vec3 lighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
         outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
     }
+
     vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
     float alpha01 = (1 - outColorUI.a)*outColorWorld.a + outColorUI.a;
-
-    vec4 renderedColor = vec4(
-    ((1-outColorUI.a) * outColorWorld.a * outColorWorld.rgb + outColorUI.a*outColorUI.rgb) / alpha01,
-    1.0
-    );
+    vec4 renderedColor = vec4(((1-outColorUI.a) * outColorWorld.a * outColorWorld.rgb + outColorUI.a*outColorUI.rgb) / alpha01, 1.0);
     outColor = vec4(renderedColor.rgb, 1.0);
 }

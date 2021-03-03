@@ -7,6 +7,7 @@
 #include "render/Image.h"
 #include "render/CameraBufferObject.h"
 #include "ASBuilder.h"
+#include "SceneElement.h"
 #include <iostream>
 
 Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
@@ -27,6 +28,14 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
         lightingImages.emplace_back(move(image));
         lightingImageViews.emplace_back(move(view));
     }
+
+    sceneBuffers.resize(engine.getSwapchainImageCount());
+    for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
+        sceneBuffers[i] = make_unique<Buffer>(engine,
+                                              sizeof(SceneElement)*400/* TODO: proper size for scene description*/,
+                                              vk::BufferUsageFlagBits::eStorageBuffer,
+                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+    }
 }
 
 void Carrot::RayTracer::onSwapchainRecreation() {
@@ -34,6 +43,13 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 }
 
 void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands) {
+    // TODO: proper size
+    vector<SceneElement> sceneElements(400);
+    for (int i = 0; i < 400; ++i) {
+        sceneElements[i].mappedIndex = i;
+    }
+    sceneBuffers[frameIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
+
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
     commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[frameIndex], sceneDescriptorSets[frameIndex]}, {0});
     // TODO: scene data
@@ -47,8 +63,8 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
     using Stride = vk::StridedDeviceAddressRegionKHR;
     array<Stride, 4> strideAddresses {
         Stride { sbtAddress + 0u * groupSize, groupStride, groupSize*1 }, // raygen
-        Stride { sbtAddress + 1u * groupSize, groupStride, groupSize*1 }, // miss
-        Stride { sbtAddress + 2u * groupSize, groupStride, groupSize*1 }, // hit
+        Stride { sbtAddress + 1u * groupSize, groupStride, groupSize*1 }, // miss + miss shadow
+        Stride { sbtAddress + 3u * groupSize, groupStride, groupSize*1 }, // hit
         Stride { 0u, 0u, 0u }, // callable
     };
 
@@ -92,45 +108,31 @@ void Carrot::RayTracer::updateDescriptorSets() {
     }
 }
 
-void Carrot::RayTracer::createDescriptorSets() {
+void Carrot::RayTracer::createRTDescriptorSets() {
     auto& device = engine.getLogicalDevice();
     std::array<vk::DescriptorPoolSize, 2> rtSizes = {
             vk::DescriptorPoolSize {
-                .type = vk::DescriptorType::eAccelerationStructureKHR,
-                .descriptorCount = 1,
+                    .type = vk::DescriptorType::eAccelerationStructureKHR,
+                    .descriptorCount = 1,
             },
             vk::DescriptorPoolSize {
-                .type = vk::DescriptorType::eStorageImage,
-                .descriptorCount = 1,
+                    .type = vk::DescriptorType::eStorageImage,
+                    .descriptorCount = 1,
             },
     };
     rtDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = engine.getSwapchainImageCount(),
-        .poolSizeCount = rtSizes.size(),
-        .pPoolSizes = rtSizes.data()
-    }, engine.getAllocator());
-
-    std::array<vk::DescriptorPoolSize, 1> sceneSizes = {
-            // Camera
-            vk::DescriptorPoolSize {
-                .type = vk::DescriptorType::eUniformBufferDynamic,
-                .descriptorCount = 1,
-            },
-    };
-    sceneDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = engine.getSwapchainImageCount(),
-        .poolSizeCount = sceneSizes.size(),
-        .pPoolSizes = sceneSizes.data()
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = engine.getSwapchainImageCount(),
+            .poolSizeCount = rtSizes.size(),
+            .pPoolSizes = rtSizes.data()
     }, engine.getAllocator());
 
     array<vk::DescriptorSetLayoutBinding, 2> rtBindings = {
             vk::DescriptorSetLayoutBinding {
-                .binding = 0,
-                .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
-                .descriptorCount = 1,
-                .stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
             },
             vk::DescriptorSetLayoutBinding {
                     .binding = 1,
@@ -140,24 +142,9 @@ void Carrot::RayTracer::createDescriptorSets() {
             },
     };
 
-    array<vk::DescriptorSetLayoutBinding, 1> sceneBindings = {
-            // Camera
-            vk::DescriptorSetLayoutBinding {
-                .binding = 0,
-                .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-                .descriptorCount = 1,
-                .stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
-            },
-    };
-
     rtDescriptorLayout = device.createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-           .bindingCount = rtBindings.size(),
-           .pBindings = rtBindings.data()
-    }, engine.getAllocator());
-
-    sceneDescriptorLayout = device.createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-            .bindingCount = sceneBindings.size(),
-            .pBindings = sceneBindings.data()
+            .bindingCount = rtBindings.size(),
+            .pBindings = rtBindings.data()
     }, engine.getAllocator());
 
     vector<vk::DescriptorSetLayout> rtLayouts = {engine.getSwapchainImageCount(), *rtDescriptorLayout};
@@ -168,26 +155,17 @@ void Carrot::RayTracer::createDescriptorSets() {
             .pSetLayouts = rtLayouts.data(),
     });
 
-    vector<vk::DescriptorSetLayout> sceneLayouts = {engine.getSwapchainImageCount(), *sceneDescriptorLayout};
-
-    sceneDescriptorSets = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-            .descriptorPool = *sceneDescriptorPool,
-            .descriptorSetCount = engine.getSwapchainImageCount(),
-            .pSetLayouts = sceneLayouts.data(),
-    });
-
     // write data to descriptor sets
-
     std::size_t frameIndex = 0;
     for (const auto& set : rtDescriptorSets) {
         vk::WriteDescriptorSetAccelerationStructureKHR writeAS {
-            .accelerationStructureCount = 1,
-            .pAccelerationStructures = &engine.getASBuilder().getTopLevelAS().as->getVulkanAS(),
+                .accelerationStructureCount = 1,
+                .pAccelerationStructures = &engine.getASBuilder().getTopLevelAS().as->getVulkanAS(),
         };
 
         vk::DescriptorImageInfo writeImage {
-            .imageView = *this->lightingImageViews[frameIndex],
-            .imageLayout = vk::ImageLayout::eGeneral,
+                .imageView = *this->lightingImageViews[frameIndex],
+                .imageLayout = vk::ImageLayout::eGeneral,
         };
 
         array<vk::WriteDescriptorSet, 2> writes = {
@@ -211,8 +189,92 @@ void Carrot::RayTracer::createDescriptorSets() {
 
         frameIndex++;
     }
+}
 
-    frameIndex = 0;
+void Carrot::RayTracer::createSceneDescriptorSets() {
+    auto& device = engine.getLogicalDevice();
+
+    std::vector<vk::DescriptorPoolSize> sceneSizes = {
+            // Camera
+            vk::DescriptorPoolSize {
+                    .type = vk::DescriptorType::eUniformBufferDynamic,
+                    .descriptorCount = 1,
+            },
+
+            // Scene elements
+            vk::DescriptorPoolSize {
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+            },
+
+            // Vertex buffers
+            vk::DescriptorPoolSize {
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 400 /* TODO: proper size */,
+            },
+
+            // Index buffers
+            vk::DescriptorPoolSize {
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 400 /* TODO: proper size */,
+            },
+    };
+    sceneDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = engine.getSwapchainImageCount(),
+            .poolSizeCount = static_cast<uint32_t>(sceneSizes.size()),
+            .pPoolSizes = sceneSizes.data()
+    }, engine.getAllocator());
+
+    vector<vk::DescriptorSetLayoutBinding> sceneBindings = {
+            // Camera
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
+            },
+
+            // Scene Elements
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 1,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+            },
+
+            // Vertex buffers
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 2,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 400, /* TODO: proper size */
+                    .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+            },
+
+            // Index buffers
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 3,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 400, /* TODO: proper size */
+                    .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+            },
+    };
+
+    sceneDescriptorLayout = device.createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = static_cast<uint32_t>(sceneBindings.size()),
+            .pBindings = sceneBindings.data()
+    }, engine.getAllocator());
+
+    vector<vk::DescriptorSetLayout> sceneLayouts = {engine.getSwapchainImageCount(), *sceneDescriptorLayout};
+
+    sceneDescriptorSets = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *sceneDescriptorPool,
+            .descriptorSetCount = engine.getSwapchainImageCount(),
+            .pSetLayouts = sceneLayouts.data(),
+    });
+
+    // write data to descriptor sets
+    std::size_t frameIndex = 0;
     for (const auto& set : sceneDescriptorSets) {
         vk::DescriptorBufferInfo writeCamera {
                 .buffer = engine.getCameraUniformBuffers()[frameIndex]->getVulkanBuffer(),
@@ -220,13 +282,27 @@ void Carrot::RayTracer::createDescriptorSets() {
                 .range = sizeof(CameraBufferObject),
         };
 
-        array<vk::WriteDescriptorSet, 1> writes = {
+        vk::DescriptorBufferInfo writeScene {
+                .buffer = sceneBuffers[frameIndex]->getVulkanBuffer(),
+                .offset = 0,
+                .range = sizeof(SceneElement)*400/* TODO: get scene description */,
+        };
+
+        vector<vk::WriteDescriptorSet> writes = {
                 vk::WriteDescriptorSet {
                         .dstSet = set,
                         .dstBinding = 0,
                         .descriptorCount = 1,
                         .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
                         .pBufferInfo = &writeCamera,
+                },
+
+                vk::WriteDescriptorSet {
+                        .dstSet = set,
+                        .dstBinding = 1,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eStorageBuffer,
+                        .pBufferInfo = &writeScene,
                 },
         };
         device.updateDescriptorSets(writes, {});
@@ -235,11 +311,17 @@ void Carrot::RayTracer::createDescriptorSets() {
     }
 }
 
+void Carrot::RayTracer::createDescriptorSets() {
+    createRTDescriptorSets();
+    createSceneDescriptorSets();
+}
+
 void Carrot::RayTracer::createPipeline() {
     auto stages = ShaderStages(engine, {
             "resources/shaders/rt/raytrace.rgen.spv",
             "resources/shaders/rt/raytrace.rmiss.spv",
             "resources/shaders/rt/raytrace.rchit.spv",
+            "resources/shaders/rt/shadow.rmiss.spv",
     });
 
     auto stageCreations = stages.createPipelineShaderStages();
@@ -265,6 +347,17 @@ void Carrot::RayTracer::createPipeline() {
             .intersectionShader = VK_SHADER_UNUSED_KHR,
     };
     shaderGroups.push_back(mg);
+
+    // Miss shadow
+    vk::RayTracingShaderGroupCreateInfoKHR missShadowG {
+            .type = vk::RayTracingShaderGroupTypeKHR::eGeneral,
+            .generalShader = 3, // index into stageCreations (same as filenames)
+
+            .closestHitShader = VK_SHADER_UNUSED_KHR,
+            .anyHitShader = VK_SHADER_UNUSED_KHR,
+            .intersectionShader = VK_SHADER_UNUSED_KHR,
+    };
+    shaderGroups.push_back(missShadowG);
 
     // Hit Group 0
     vk::RayTracingShaderGroupCreateInfoKHR hg {
@@ -298,7 +391,7 @@ void Carrot::RayTracer::createPipeline() {
     rayPipelineInfo.groupCount = shaderGroups.size();
     rayPipelineInfo.pGroups = shaderGroups.data();
 
-    rayPipelineInfo.maxPipelineRayRecursionDepth = 1;
+    rayPipelineInfo.maxPipelineRayRecursionDepth = 2;
     rayPipelineInfo.layout = *pipelineLayout;
 
     pipeline = device.createRayTracingPipelineKHRUnique({}, {}, rayPipelineInfo, engine.getAllocator()).value;
@@ -328,10 +421,6 @@ void Carrot::RayTracer::createShaderBindingTable() {
 
     auto* pData = sbtBuffer->map<uint8_t>();
     for (uint32_t g = 0; g < groupCount; g++) {
-        for(uint32_t i = 0; i < groupHandleSize; i++) {
-            cout << to_string(shaderHandleStorage[i + g*groupHandleSize]) << " ";
-        }
-        cout << endl;
         memcpy(pData + g*groupSizeAligned, &shaderHandleStorage[g*groupHandleSize], groupHandleSize);
     }
     sbtBuffer->unmap();

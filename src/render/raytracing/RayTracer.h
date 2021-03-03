@@ -28,10 +28,14 @@ namespace Carrot {
         vk::UniquePipelineLayout pipelineLayout;
         vk::UniquePipeline pipeline;
         unique_ptr<Buffer> sbtBuffer;
+        vector<unique_ptr<Buffer>> sceneBuffers{};
 
         void updateDescriptorSets();
 
         constexpr uint32_t alignUp(uint32_t value, uint32_t alignment);
+
+        void createRTDescriptorSets();
+        void createSceneDescriptorSets();
 
     public:
         /// Extensions required for raytracing

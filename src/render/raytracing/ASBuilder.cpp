@@ -180,7 +180,7 @@ vk::AccelerationStructureInstanceKHR Carrot::ASBuilder::convertToVulkanInstance(
     vkInstance.instanceCustomIndex = instance.customInstanceIndex;
 
     // TODO: custom flags
-    vkInstance.setFlags(vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable);
+    vkInstance.setFlags(vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable | vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable);
 
     vkInstance.instanceShaderBindingTableRecordOffset = instance.hitGroup;
     vkInstance.mask = instance.mask;

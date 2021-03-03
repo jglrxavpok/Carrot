@@ -10,6 +10,8 @@ Carrot::VertexFormat Carrot::getVertexFormat(const std::string& name) {
         return VertexFormat::Vertex;
     } else if(name == "SkinnedVertex") {
         return VertexFormat::SkinnedVertex;
+    } else if(name == "ComputeSkinnedVertex") {
+        return VertexFormat::ComputeSkinnedVertex;
     } else if(name == "ScreenSpace") {
         return VertexFormat::ScreenSpace;
     }
@@ -22,6 +24,10 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getBindingDescriptions(Ca
             return Carrot::Vertex::getBindingDescription();
         case VertexFormat::SkinnedVertex:
             return Carrot::SkinnedVertex::getBindingDescription();
+
+        case VertexFormat::ComputeSkinnedVertex:
+            return Carrot::ComputeSkinnedVertex::getBindingDescription();
+
         case VertexFormat::ScreenSpace:
             return Carrot::ScreenSpaceVertex::getBindingDescription();
         default:
@@ -33,9 +39,14 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getAttributeDescription
     switch(vertexFormat) {
         case VertexFormat::Vertex:
             return Carrot::Vertex::getAttributeDescriptions();
+
         case VertexFormat::SkinnedVertex:
             return Carrot::SkinnedVertex::getAttributeDescriptions();
-            case VertexFormat::ScreenSpace:
+
+        case VertexFormat::ComputeSkinnedVertex:
+            return Carrot::ComputeSkinnedVertex::getAttributeDescriptions();
+
+        case VertexFormat::ScreenSpace:
             return Carrot::ScreenSpaceVertex::getAttributeDescriptions();
         default:
             throw std::runtime_error("Invalid vertex format!");

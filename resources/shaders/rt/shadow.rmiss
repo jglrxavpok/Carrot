@@ -3,9 +3,9 @@
 #extension GL_GOOGLE_include_directive : enable
 #include "raytrace.common.glsl"
 
-layout(location = 0) rayPayloadInEXT hitPayload payload;
+layout(location = 1) rayPayloadInEXT bool isShadowed;
 
 void main()
 {
-    payload.hitColor = vec3(0);
+    isShadowed = false;
 }

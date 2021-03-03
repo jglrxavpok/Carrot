@@ -13,6 +13,7 @@ layout(binding = 0, set = 1) uniform CameraBufferObject {
     mat4 inverseView;
     mat4 inverseProjection;
 } cbo;
+
 // TODO: more data in scene description
 
 layout(location = 0) rayPayloadEXT hitPayload payload;
@@ -29,7 +30,7 @@ void main()
     // TODO: vvv configurable vvv
     uint rayFlags = gl_RayFlagsOpaqueEXT;
     float tMin = 0.001;
-    float tMax = 100000.0;
+    float tMax = 1000.0;
     // TODO: ^^^ configurable ^^^
 
     traceRayEXT(topLevelAS, // AS

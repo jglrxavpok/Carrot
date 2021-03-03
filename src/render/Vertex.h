@@ -29,6 +29,26 @@ namespace Carrot {
         static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
     };
 
+    struct ComputeSkinnedVertex {
+        /// World position of the vertex
+        alignas(16) glm::vec4 pos;
+
+        /// RGB color
+        alignas(16) glm::vec3 color;
+
+        /// Vertex Normal
+        alignas(16) glm::vec3 normal;
+
+        /// UV coordinates
+        alignas(16) glm::vec2 uv;
+
+        /// Creates a binding description for this Vertex struct
+        static std::vector<vk::VertexInputBindingDescription> getBindingDescription();
+
+        /// Creates an array describing the different attributes of a Vertex
+        static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
+    };
+
     struct SkinnedVertex {
         /// World position of the vertex
         alignas(16) glm::vec4 pos;

@@ -1,5 +1,6 @@
 {
   "pipeline": "gBufferWithBoneInfo",
+  "renderingPipeline": "gBufferWithBoneInfo2",
   "texture": "units/body.png",
   "todo": [
     "samplers", "uniforms (& buffers)"

@@ -44,6 +44,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
     //}
     if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+//        std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
     }
 
     return VK_FALSE;
@@ -444,6 +445,7 @@ void Carrot::Engine::createLogicalDevice() {
                 .accelerationStructure = true,
             },
             vk::PhysicalDeviceVulkan12Features {
+                .scalarBlockLayout = true,
                 .bufferDeviceAddress = true,
             },
     };
@@ -1062,9 +1064,17 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         ImGui::NewFrame();
 
         static DebugBufferObject debug{};
-        if(ImGui::Begin("Debug"))
+        if(ImGui::Begin("GBuffer View"))
         {
-            ImGui::Checkbox("Show only raytracing output", &debug.onlyRaytracing);
+            auto* gIndex = reinterpret_cast<int32_t*>(&debug.gChannel);
+
+            ImGui::RadioButton("All channels", gIndex, -1);
+            ImGui::RadioButton("Albedo", gIndex, 0);
+            ImGui::RadioButton("Position", gIndex, 1);
+            ImGui::RadioButton("Normals", gIndex, 2);
+            ImGui::RadioButton("Depth", gIndex, 3);
+            ImGui::RadioButton("Raytracing", gIndex, 4);
+            ImGui::RadioButton("UI", gIndex, 5);
         }
         ImGui::End();
 
