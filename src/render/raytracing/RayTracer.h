@@ -29,6 +29,8 @@ namespace Carrot {
         vk::UniquePipeline pipeline;
         unique_ptr<Buffer> sbtBuffer;
         vector<unique_ptr<Buffer>> sceneBuffers{};
+        size_t vertexBufferIndex = 0;
+        size_t indexBufferIndex = 0;
 
         void updateDescriptorSets();
 
@@ -36,6 +38,8 @@ namespace Carrot {
 
         void createRTDescriptorSets();
         void createSceneDescriptorSets();
+
+        void registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index);
 
     public:
         /// Extensions required for raytracing
@@ -54,5 +58,10 @@ namespace Carrot {
         void createPipeline();
 
         void createShaderBindingTable();
+
+        void finishInit();
+
+        void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
+        void registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length);
     };
 }

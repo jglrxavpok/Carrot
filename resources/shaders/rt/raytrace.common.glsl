@@ -5,11 +5,12 @@ struct hitPayload {
 
 struct SceneElement {
     uint mappedIndex;
+    mat4 transform;
 };
 
 struct Vertex {
-    vec4 inPosition;
-    vec3 inColor;
-    vec3 inNormal;
-    vec2 inUV;
+    vec4 pos;
+    vec3 color;
+    vec3 normal;
+    vec2 uv;
 };

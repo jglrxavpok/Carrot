@@ -8,16 +8,18 @@ Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, c
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
     };
 
+    // TODO: change default of 0x10 (used because of storage buffer alignments on my RTX 3070)
+    const size_t alignment = 0x10;//sizeof(uint32_t);
     vertexStartOffset = sizeof(uint32_t) * indices.size();
-    if(vertexStartOffset % sizeof(uint32_t) != 0) {
+    if(vertexStartOffset % alignment != 0) {
         // align on uint32 boundary
-        vertexStartOffset += sizeof(uint32_t) - (vertexStartOffset % sizeof(uint32_t));
+        vertexStartOffset += alignment - (vertexStartOffset % alignment);
     }
     indexCount = indices.size();
     vertexCount = vertices.size();
     vertexAndIndexBuffer = make_unique<Carrot::Buffer>(engine,
                                                        vertexStartOffset + sizeof(VertexType) * vertices.size(),
-                                                       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                                       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
                                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                        families);
 

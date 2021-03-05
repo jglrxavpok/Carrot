@@ -6,6 +6,7 @@
 
 namespace Carrot {
     struct SceneElement {
-        std::uint32_t mappedIndex;
+        alignas(16) std::uint32_t mappedIndex;
+        alignas(16) glm::mat4 transform{1.0f};
     };
 }

@@ -24,12 +24,15 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
     auto& device = engine.getLogicalDevice();
     auto indexAddress = device.getBufferAddress({.buffer = indexBuffer.getVulkanBuffer()});
     auto vertexAddress = device.getBufferAddress({.buffer = vertexBuffer.getVulkanBuffer()});
+    registerIndexBuffer(indexBuffer, indexOffset, indexCount*sizeof(uint32_t));
     auto primitiveCount = indexCount / 3; // all triangles
 
     // create a GeometryInput for each vertex buffer sub-range
     bottomLevelGeometries.resize(bottomLevelGeometries.size()+1);
     GeometryInput& input = bottomLevelGeometries.back();
     for(uint64_t vertexOffset : vertexOffsets) {
+        registerVertexBuffer(vertexBuffer, vertexOffset, vertexCount*sizeof(VertexType));
+
         input.geometries.emplace_back(vk::AccelerationStructureGeometryKHR {
             .geometryType = vk::GeometryTypeKHR::eTriangles,
             .geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
@@ -39,7 +42,7 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
                     .vertexStride = sizeof(VertexType),
                     .maxVertex = static_cast<uint32_t>(vertexCount),
                     .indexType = vk::IndexType::eUint32,
-                    .indexData = indexAddress + indexOffset * sizeof(uint32_t),
+                    .indexData = indexAddress + indexOffset,
                     .transformData = {},
             },
             .flags = vk::GeometryFlagBitsKHR::eOpaque, // TODO: opacity should be user-defined

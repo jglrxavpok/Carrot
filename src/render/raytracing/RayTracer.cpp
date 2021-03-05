@@ -32,7 +32,7 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
     sceneBuffers.resize(engine.getSwapchainImageCount());
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
         sceneBuffers[i] = make_unique<Buffer>(engine,
-                                              sizeof(SceneElement)*400/* TODO: proper size for scene description*/,
+                                              sizeof(SceneElement)*301/* TODO: proper size for scene description*/,
                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
@@ -44,9 +44,14 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 
 void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands) {
     // TODO: proper size
-    vector<SceneElement> sceneElements(400);
-    for (int i = 0; i < 400; ++i) {
+    vector<SceneElement> sceneElements(301);
+    auto& topLevel = engine.getASBuilder().getTopLevelInstances();
+    size_t maxInstance = topLevel.size();
+    for (int i = 0; i < 301; ++i) {
         sceneElements[i].mappedIndex = i;
+        if(i < maxInstance) {
+            sceneElements[i].transform = topLevel[i].transform;
+        }
     }
     sceneBuffers[frameIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
 
@@ -154,41 +159,6 @@ void Carrot::RayTracer::createRTDescriptorSets() {
             .descriptorSetCount = engine.getSwapchainImageCount(),
             .pSetLayouts = rtLayouts.data(),
     });
-
-    // write data to descriptor sets
-    std::size_t frameIndex = 0;
-    for (const auto& set : rtDescriptorSets) {
-        vk::WriteDescriptorSetAccelerationStructureKHR writeAS {
-                .accelerationStructureCount = 1,
-                .pAccelerationStructures = &engine.getASBuilder().getTopLevelAS().as->getVulkanAS(),
-        };
-
-        vk::DescriptorImageInfo writeImage {
-                .imageView = *this->lightingImageViews[frameIndex],
-                .imageLayout = vk::ImageLayout::eGeneral,
-        };
-
-        array<vk::WriteDescriptorSet, 2> writes = {
-                vk::WriteDescriptorSet {
-                        .pNext = &writeAS,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
-                },
-
-                vk::WriteDescriptorSet {
-                        .dstSet = set,
-                        .dstBinding = 1,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eStorageImage,
-                        .pImageInfo = &writeImage,
-                },
-        };
-        device.updateDescriptorSets(writes, {});
-
-        frameIndex++;
-    }
 }
 
 void Carrot::RayTracer::createSceneDescriptorSets() {
@@ -210,13 +180,13 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             // Vertex buffers
             vk::DescriptorPoolSize {
                     .type = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 400 /* TODO: proper size */,
+                    .descriptorCount = 301 /* TODO: proper size */,
             },
 
             // Index buffers
             vk::DescriptorPoolSize {
                     .type = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 400 /* TODO: proper size */,
+                    .descriptorCount = 301 /* TODO: proper size */,
             },
     };
     sceneDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
@@ -247,7 +217,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             vk::DescriptorSetLayoutBinding {
                     .binding = 2,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 400, /* TODO: proper size */
+                    .descriptorCount = 301, /* TODO: proper size */
                     .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
             },
 
@@ -255,7 +225,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             vk::DescriptorSetLayoutBinding {
                     .binding = 3,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 400, /* TODO: proper size */
+                    .descriptorCount = 301, /* TODO: proper size */
                     .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
             },
     };
@@ -285,7 +255,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
         vk::DescriptorBufferInfo writeScene {
                 .buffer = sceneBuffers[frameIndex]->getVulkanBuffer(),
                 .offset = 0,
-                .range = sizeof(SceneElement)*400/* TODO: get scene description */,
+                .range = sizeof(SceneElement)*301/* TODO: get scene description */,
         };
 
         vector<vk::WriteDescriptorSet> writes = {
@@ -428,4 +398,77 @@ void Carrot::RayTracer::createShaderBindingTable() {
 
 constexpr uint32_t Carrot::RayTracer::alignUp(uint32_t value, uint32_t alignment) {
     return (value + (alignment-1)) & ~(alignment -1);
+}
+
+void Carrot::RayTracer::registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index) {
+    auto& device = engine.getLogicalDevice();
+
+    vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()};
+    vector<vk::DescriptorBufferInfo> bufferInfo{engine.getSwapchainImageCount()};
+    for(size_t frameIndex = 0; frameIndex < engine.getSwapchainImageCount(); frameIndex++) {
+        vk::WriteDescriptorSet& write = writes[frameIndex];
+        vk::DescriptorBufferInfo& buffer = bufferInfo[frameIndex];
+
+        buffer.buffer = vertexBuffer.getVulkanBuffer();
+        buffer.offset = start;
+        buffer.range = length;
+
+        write.pBufferInfo = &buffer;
+        write.descriptorType = vk::DescriptorType::eStorageBuffer;
+        write.descriptorCount = 1;
+        write.dstSet = sceneDescriptorSets[frameIndex];
+        write.dstBinding = bindingIndex;
+        write.dstArrayElement = index;
+    }
+    index++;
+    device.updateDescriptorSets(writes, {});
+}
+
+void Carrot::RayTracer::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    registerBuffer(2, vertexBuffer, start, length, vertexBufferIndex);
+}
+
+void Carrot::RayTracer::registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    registerBuffer(3, indexBuffer, start, length, indexBufferIndex);
+}
+
+void Carrot::RayTracer::finishInit() {
+    // we need the TLAS to write, but it is not available before a call to buildTopLevelAS()
+
+    auto& device = engine.getLogicalDevice();
+
+    // write data to descriptor sets
+    std::size_t frameIndex = 0;
+    for (const auto& set : rtDescriptorSets) {
+        vk::WriteDescriptorSetAccelerationStructureKHR writeAS {
+                .accelerationStructureCount = 1,
+                .pAccelerationStructures = &engine.getASBuilder().getTopLevelAS().as->getVulkanAS(),
+        };
+
+        vk::DescriptorImageInfo writeImage {
+                .imageView = *this->lightingImageViews[frameIndex],
+                .imageLayout = vk::ImageLayout::eGeneral,
+        };
+
+        array<vk::WriteDescriptorSet, 2> writes = {
+                vk::WriteDescriptorSet {
+                        .pNext = &writeAS,
+                        .dstSet = set,
+                        .dstBinding = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
+                },
+
+                vk::WriteDescriptorSet {
+                        .dstSet = set,
+                        .dstBinding = 1,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eStorageImage,
+                        .pImageInfo = &writeImage,
+                },
+        };
+        device.updateDescriptorSets(writes, {});
+
+        frameIndex++;
+    }
 }

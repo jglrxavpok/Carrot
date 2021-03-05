@@ -141,11 +141,14 @@ void Carrot::Engine::initVulkan() {
 
     createDefaultTexture();
     createCamera();
-    initGame();
 
     raytracer->createDescriptorSets();
     raytracer->createPipeline();
     raytracer->createShaderBindingTable();
+
+    initGame();
+
+    raytracer->finishInit();
 
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
@@ -434,6 +437,10 @@ void Carrot::Engine::createLogicalDevice() {
                         .shaderStorageBufferArrayDynamicIndexing = true,
                         .shaderStorageImageArrayDynamicIndexing = true,
                 },
+            },
+            vk::PhysicalDeviceDescriptorIndexingFeatures {
+                .shaderStorageBufferArrayNonUniformIndexing = true,
+                .runtimeDescriptorArray = true,
             },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
                 .rayTracingPipeline = true,

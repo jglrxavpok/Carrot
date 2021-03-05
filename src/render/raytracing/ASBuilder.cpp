@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <iostream>
+#include "RayTracer.h"
 
 Carrot::ASBuilder::ASBuilder(Carrot::Engine& engine): engine(engine) {
 
@@ -356,4 +357,16 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
 
 void Carrot::ASBuilder::updateTopLevelAS() {
     buildTopLevelAS(true);
+}
+
+void Carrot::ASBuilder::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    engine.getRayTracer().registerVertexBuffer(vertexBuffer, start, length);
+}
+
+void Carrot::ASBuilder::registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    engine.getRayTracer().registerIndexBuffer(indexBuffer, start, length);
+}
+
+vector<Carrot::InstanceInput>& Carrot::ASBuilder::getTopLevelInstances() {
+    return topLevelInstances;
 }

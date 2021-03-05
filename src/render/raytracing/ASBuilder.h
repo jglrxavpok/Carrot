@@ -45,6 +45,9 @@ namespace Carrot {
 
         vk::AccelerationStructureInstanceKHR convertToVulkanInstance(const InstanceInput& instance);
 
+        void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
+        void registerIndexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
+
     public:
         explicit ASBuilder(Engine& engine);
 
@@ -71,6 +74,7 @@ namespace Carrot {
 
         const vector<GeometryInput>& getBottomLevelGeometries() const;
         vector<GeometryInput>& getBottomLevelGeometries();
+        vector<InstanceInput>& getTopLevelInstances();
     };
 }
 

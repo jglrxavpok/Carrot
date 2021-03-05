@@ -160,6 +160,8 @@ namespace Carrot {
 
         bool grabbingCursor() const { return grabCursor; };
 
+        RayTracer& getRayTracer() { return *raytracer; };
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
