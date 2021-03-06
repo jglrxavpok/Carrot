@@ -22,13 +22,25 @@ layout(binding = 3, set = 1, scalar) buffer IndexBuffers {
     uint indices[];
 } indexBuffers[];
 
+struct Light {
+    vec3 position;
+    float intensity;
+    vec3 direction;
+    uint type;
+    vec3 color;
+    bool enabled;
+};
+
+layout(binding = 4, set = 1) buffer Lights {
+    vec3 ambientColor;
+    uint count;
+    Light l[];
+} lights;
+
 hitAttributeEXT vec3 attribs;
 
 void main()
 {
-    // TODO
-    const vec3 lightPosition = vec3(2,2,1);
-
     #define sceneElement sceneDescription.elements[gl_InstanceCustomIndexEXT]
     #define indexBuffer indexBuffers[nonuniformEXT(sceneElement.mappedIndex)]
     #define vertexBuffer vertexBuffers[nonuniformEXT(sceneElement.mappedIndex)]
@@ -47,39 +59,53 @@ void main()
     float tMax = 1000.0;
     // TODO: ^^^ configurable ^^^
 
-    // TODO: use vertex buffer
     vec3 worldPos = (sceneElement.transform * (v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z)).xyz;
     vec3 normal = normalize((sceneElement.transform * vec4(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z, 0.0)).xyz);
 
     vec3 finalColor = vec3(1.0);
 
-    isShadowed = true;
+    vec3 lightContribution = vec3(0.0);
 
-    vec3 lightDirection = normalize(lightPosition-worldPos);
-    if(dot(normal, lightDirection) > 0) {
-        traceRayEXT(topLevelAS, // AS
-            rayFlags, // ray flags
-            0xFF, // cull mask
-            0, // sbtRecordOffset
-            0, // sbtRecordStride
-            1, // missIndex
-            worldPos, // ray origin
-            tMin, // ray min range
-            lightDirection, // ray direction
-            tMax, // ray max range,
-            1 // payload location
-        );
+    for(uint i = 0; i < lights.count; i++) {
+        #define light lights.l[i]
+
+        if(!light.enabled)
+            continue;
+
+        // TODO: directional lights/ light types
+
+        // point type
+        vec3 lightPosition = light.position;
+        vec3 lightDirection = normalize(lightPosition-worldPos);
+
+        // is this point in shadow?
+        isShadowed = true;
+        if(dot(normal, lightDirection) > 0) {
+            traceRayEXT(topLevelAS, // AS
+                rayFlags, // ray flags
+                0xFF, // cull mask
+                0, // sbtRecordOffset
+                0, // sbtRecordStride
+                1, // missIndex
+                worldPos, // ray origin
+                tMin, // ray min range
+                lightDirection, // ray direction
+                tMax, // ray max range,
+                1 // payload location
+            );
+
+            if(!isShadowed) {
+                const float maxDist = 2;
+                float distance = length(lightPosition-worldPos);
+                if(distance < maxDist) {
+                    float lightFactor = (maxDist-distance)/maxDist; // TODO: calculate based on intensity, falloff, etc.
+                    lightContribution += light.color * lightFactor;
+                }
+            }
+        }
     }
 
-    //isShadowed = false; // TODO: debug only
+    finalColor = lightContribution + lights.ambientColor;
 
-/*    finalColor.r *= (id == 0) ? 1 : 0;
-    finalColor.g *= (id == 1) ? 1 : 0;
-    finalColor.b *= (id == 2) ? 1 : 0;
-*/
-    if(isShadowed) {
-        payload.hitColor = finalColor * 0.1; // TODO: ambient lighting
-    } else {
-        payload.hitColor = finalColor;
-    }
+    payload.hitColor = finalColor;
 }

@@ -31,6 +31,14 @@ namespace Carrot {
             template<typename Comp>
             Comp* getComponent();
 
+            operator Entity_Ptr() {
+                return internalEntity;
+            }
+
+            operator Entity_Ptr() const {
+                return internalEntity;
+            }
+
         private:
             Entity_Ptr internalEntity;
             World& worldRef;

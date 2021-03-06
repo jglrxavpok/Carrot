@@ -14,11 +14,16 @@
 #include <iostream>
 #include <render/shaders/ShaderModule.h>
 #include <render/raytracing/ASBuilder.h>
+#include <render/raytracing/RayTracer.h>
 
 #include <ecs/components/Component.h>
 #include <ecs/components/Transform.h>
 #include <ecs/components/AnimatedModelInstance.h>
+#include <ecs/components/ForceSinPosition.h>
+#include <ecs/components/RaycastedShadowsLight.h>
 #include <ecs/systems/SystemUpdateAnimatedModelInstance.h>
+#include <ecs/systems/SystemSinPosition.h>
+#include <ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
 
 constexpr static int maxInstanceCount = 100; // TODO: change
@@ -27,6 +32,8 @@ static vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
+    world.addLogicSystem<SystemSinPosition>();
+    world.addLogicSystem<SystemUpdateLightPosition>();
 
     for (int i = 0; i < maxInstanceCount * 3; ++i) {
         blasIndices.push_back(i);
@@ -173,6 +180,19 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     }
 
     createSkinningComputePipeline(vertexCountPerInstance);
+
+    // TODO: light ID booking system
+    auto& light = engine.getRayTracer().getLightBuffer().lights[0];
+    auto& dynLight = world.newEntity()
+            .addComponent<Transform>()
+            .addComponent<RaycastedShadowsLight>(light)
+            .addComponent<ForceSinPosition>();
+
+    auto* sinPosition = dynLight.getComponent<ForceSinPosition>();
+    sinPosition->angularOffset = {0, 1, 2};
+    sinPosition->angularFrequency = {1, 2, 3.14};
+    sinPosition->amplitude = {1, 2, 0.2};
+    sinPosition->centerPosition = {2,2,1};
 
     // prepare for first frame
     world.tick(0);

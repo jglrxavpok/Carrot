@@ -71,6 +71,8 @@ set(SOURCES
         src/ecs/components/Transform.cpp
         src/ecs/systems/System.cpp
         src/ecs/systems/SystemUpdateAnimatedModelInstance.cpp
+        src/ecs/systems/SystemSinPosition.cpp
+        src/ecs/systems/SystemUpdateLightPosition.cpp
         src/ecs/World.cpp
         src/ecs/Signature.cpp
 

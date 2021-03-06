@@ -6,6 +6,7 @@
 #include "Engine.h"
 #include "vulkan/includes.h"
 #include "RenderPasses.h"
+#include "render/lighting/Lights.h"
 
 namespace Carrot {
     /// Class responsible for creating acceleration structures and updating them, creating the shader binding table and
@@ -29,6 +30,8 @@ namespace Carrot {
         vk::UniquePipeline pipeline;
         unique_ptr<Buffer> sbtBuffer;
         vector<unique_ptr<Buffer>> sceneBuffers{};
+        unique_ptr<RaycastedShadowingLightBuffer> lightBuffer;
+        vector<unique_ptr<Buffer>> lightVkBuffers{};
         size_t vertexBufferIndex = 0;
         size_t indexBufferIndex = 0;
 
@@ -40,6 +43,8 @@ namespace Carrot {
         void createSceneDescriptorSets();
 
         void registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index);
+
+
 
     public:
         /// Extensions required for raytracing
@@ -60,6 +65,8 @@ namespace Carrot {
         void createShaderBindingTable();
 
         void finishInit();
+
+        RaycastedShadowingLightBuffer& getLightBuffer();
 
         void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
         void registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length);

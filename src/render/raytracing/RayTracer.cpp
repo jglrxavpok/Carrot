@@ -36,6 +36,16 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
+
+    lightBuffer = RaycastedShadowingLightBuffer::create(16);
+
+    lightVkBuffers.resize(engine.getSwapchainImageCount());
+    for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
+        lightVkBuffers[i] = make_unique<Buffer>(engine,
+                                              lightBuffer->getStructSize(),
+                                              vk::BufferUsageFlagBits::eStorageBuffer,
+                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+    }
 }
 
 void Carrot::RayTracer::onSwapchainRecreation() {
@@ -54,6 +64,8 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
         }
     }
     sceneBuffers[frameIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
+
+    lightVkBuffers[frameIndex]->directUpload(lightBuffer.get(), lightBuffer->getStructSize());
 
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
     commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[frameIndex], sceneDescriptorSets[frameIndex]}, {0});
@@ -188,6 +200,12 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
                     .type = vk::DescriptorType::eStorageBuffer,
                     .descriptorCount = 301 /* TODO: proper size */,
             },
+
+            // Light buffer
+            vk::DescriptorPoolSize {
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+            },
     };
     sceneDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
@@ -228,6 +246,14 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
                     .descriptorCount = 301, /* TODO: proper size */
                     .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
             },
+
+            // Light buffer
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 4,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+            },
     };
 
     sceneDescriptorLayout = device.createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -258,6 +284,12 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
                 .range = sizeof(SceneElement)*301/* TODO: get scene description */,
         };
 
+        vk::DescriptorBufferInfo writeLights {
+                .buffer = lightVkBuffers[frameIndex]->getVulkanBuffer(),
+                .offset = 0,
+                .range = lightBuffer->getStructSize(),
+        };
+
         vector<vk::WriteDescriptorSet> writes = {
                 vk::WriteDescriptorSet {
                         .dstSet = set,
@@ -273,6 +305,14 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
                         .descriptorCount = 1,
                         .descriptorType = vk::DescriptorType::eStorageBuffer,
                         .pBufferInfo = &writeScene,
+                },
+
+                vk::WriteDescriptorSet {
+                        .dstSet = set,
+                        .dstBinding = 4,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eStorageBuffer,
+                        .pBufferInfo = &writeLights,
                 },
         };
         device.updateDescriptorSets(writes, {});
@@ -471,4 +511,8 @@ void Carrot::RayTracer::finishInit() {
 
         frameIndex++;
     }
+}
+
+Carrot::RaycastedShadowingLightBuffer& Carrot::RayTracer::getLightBuffer() {
+    return *lightBuffer;
 }

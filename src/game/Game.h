@@ -38,6 +38,7 @@ namespace Game {
         vk::UniquePipeline computePipeline{};
         vector<vk::CommandBuffer> skinningCommandBuffers{};
         vector<vk::UniqueSemaphore> skinningSemaphores{};
+
         World world;
 
         void createSkinningComputePipeline(uint64_t vertexCountPerInstance);
