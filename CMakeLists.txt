@@ -47,42 +47,43 @@ copy_resources(materials)
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/vk_layer_settings.txt")
 
 set(SOURCES
-        src/io/IO.cpp
-        src/memory/NakedPtr.hpp
-        src/Engine.cpp
-        src/render/Mesh.cpp
-        src/render/Model.cpp
-        src/render/Vertex.cpp
-        src/render/Buffer.cpp
-        src/render/Image.cpp
-        src/render/Material.cpp
-        src/render/shaders/ShaderModule.cpp
-        src/render/shaders/ShaderStages.cpp
-        src/render/Pipeline.cpp
-        src/render/shaders/Specialization.cpp
-        src/render/InstanceData.cpp
-        src/render/Camera.cpp
-        src/render/VertexFormat.cpp
-        src/render/animation/Animation.cpp
-        src/utils/conversions.cpp
-        src/utils/stringmanip.cpp
+        src/engine/io/IO.cpp
+        src/engine/memory/NakedPtr.hpp
+        src/engine/Engine.cpp
+        src/engine/render/Mesh.cpp
+        src/engine/render/Model.cpp
+        src/engine/render/Vertex.cpp
+        src/engine/render/Buffer.cpp
+        src/engine/render/Image.cpp
+        src/engine/render/Material.cpp
+        src/engine/render/shaders/ShaderModule.cpp
+        src/engine/render/shaders/ShaderStages.cpp
+        src/engine/render/Pipeline.cpp
+        src/engine/render/shaders/Specialization.cpp
+        src/engine/render/InstanceData.cpp
+        src/engine/render/Camera.cpp
+        src/engine/render/VertexFormat.cpp
+        src/engine/render/animation/Animation.cpp
+        src/engine/utils/conversions.cpp
+        src/engine/utils/stringmanip.cpp
 
-        src/ecs/components/Component.cpp
-        src/ecs/components/Transform.cpp
-        src/ecs/systems/System.cpp
-        src/ecs/systems/SystemUpdateAnimatedModelInstance.cpp
-        src/ecs/systems/SystemSinPosition.cpp
-        src/ecs/systems/SystemUpdateLightPosition.cpp
-        src/ecs/World.cpp
-        src/ecs/Signature.cpp
+        src/engine/ecs/components/Component.cpp
+        src/engine/ecs/components/Transform.cpp
+        src/engine/ecs/systems/System.cpp
+        src/engine/ecs/systems/SystemUpdateAnimatedModelInstance.cpp
+        src/engine/ecs/systems/SystemSinPosition.cpp
+        src/engine/ecs/systems/SystemUpdateLightPosition.cpp
+        src/engine/ecs/World.cpp
+        src/engine/ecs/Signature.cpp
 
-        src/vulkan/CustomTracyVulkan.cpp
-        src/render/GBuffer.cpp
-        src/render/raytracing/RayTracer.cpp
-        src/render/raytracing/ASBuilder.cpp
-        src/render/raytracing/AccelerationStructure.cpp
+        src/engine/vulkan/CustomTracyVulkan.cpp
+        src/engine/render/GBuffer.cpp
+        src/engine/render/raytracing/RayTracer.cpp
+        src/engine/render/raytracing/ASBuilder.cpp
+        src/engine/render/raytracing/AccelerationStructure.cpp
+        src/engine/stb_impls.cpp
+
         src/main.cpp
-        src/stb_impls.cpp
 
         src/game/Game.cpp
         )
@@ -181,7 +182,7 @@ target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
 
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES
-            src/utils/AftermathIntegration.cpp)
+            src/engine/utils/AftermathIntegration.cpp)
     add_executable(Carrot-GPUDebug ${ALL_SOURCES} ${AFTERMATH_SOURCES})
     target_include_directories(Carrot-GPUDebug PRIVATE ${AFTERMATH_INCLUDES})
     target_compile_definitions(Carrot-GPUDebug PRIVATE AFTERMATH_ENABLE=1)

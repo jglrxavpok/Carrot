@@ -6,24 +6,24 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <memory>
 #include "Game.h"
-#include "Engine.h"
-#include "render/Model.h"
-#include "render/Buffer.h"
-#include "render/Camera.h"
-#include "render/Mesh.h"
+#include "engine/Engine.h"
+#include "engine/render/Model.h"
+#include "engine/render/Buffer.h"
+#include "engine/render/Camera.h"
+#include "engine/render/Mesh.h"
 #include <iostream>
-#include <render/shaders/ShaderModule.h>
-#include <render/raytracing/ASBuilder.h>
-#include <render/raytracing/RayTracer.h>
+#include <engine/render/shaders/ShaderModule.h>
+#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RayTracer.h>
 
-#include <ecs/components/Component.h>
-#include <ecs/components/Transform.h>
-#include <ecs/components/AnimatedModelInstance.h>
-#include <ecs/components/ForceSinPosition.h>
-#include <ecs/components/RaycastedShadowsLight.h>
-#include <ecs/systems/SystemUpdateAnimatedModelInstance.h>
-#include <ecs/systems/SystemSinPosition.h>
-#include <ecs/systems/SystemUpdateLightPosition.h>
+#include <engine/ecs/components/Component.h>
+#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/AnimatedModelInstance.h>
+#include <engine/ecs/components/ForceSinPosition.h>
+#include <engine/ecs/components/RaycastedShadowsLight.h>
+#include <engine/ecs/systems/SystemUpdateAnimatedModelInstance.h>
+#include <engine/ecs/systems/SystemSinPosition.h>
+#include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
 
 constexpr static int maxInstanceCount = 100; // TODO: change

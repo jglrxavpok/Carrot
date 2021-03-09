@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "ecs/components/Component.h"
+#include "engine/ecs/components/Component.h"
 
 namespace Game {
     namespace Unit {
