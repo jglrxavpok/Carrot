@@ -172,6 +172,7 @@ namespace Carrot {
         const vk::AllocationCallbacks* allocator = nullptr;
         int framebufferWidth;
         int framebufferHeight;
+        uint32_t lastFrameIndex = 0;
 
         vk::UniqueInstance instance;
         vk::UniqueDebugUtilsMessengerEXT callback{};
@@ -338,6 +339,8 @@ namespace Carrot {
 
         /// Update the game systems
         void tick(double deltaTime);
+
+        void takeScreenshot();
 
         /// Create fences and semaphores used for rendering
         void createSynchronizationObjects();

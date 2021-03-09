@@ -119,6 +119,10 @@ const vk::Extent3D& Carrot::Image::getSize() const {
 }
 
 void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+    transition(*vkImage, commands, format, oldLayout, newLayout);
+}
+
+void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
     vk::ImageMemoryBarrier barrier {
             .oldLayout = oldLayout,
             .newLayout = newLayout,
@@ -127,7 +131,7 @@ void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Form
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 
-            .image = *vkImage,
+            .image = image,
 
             .subresourceRange = {
                     .aspectMask = vk::ImageAspectFlagBits::eColor,

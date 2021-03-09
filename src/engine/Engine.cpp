@@ -3,6 +3,7 @@
 //
 
 #define GLM_FORCE_RADIANS
+#include <filesystem>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -31,6 +32,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/GBuffer.h"
 #include "game/Game.h"
+#include "stb_image_write.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -1170,6 +1172,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         TracyVulkanCollect(tracyCtx[i]);
     }
 
+    lastFrameIndex = imageIndex;
+
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
         recreateSwapchain();
     }
@@ -1469,6 +1473,10 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         running = false;
     }
 
+    if(key == GLFW_KEY_F2 && action == GLFW_PRESS) {
+        takeScreenshot();
+    }
+
     if(key == GLFW_KEY_G && action == GLFW_PRESS) {
         grabCursor = !grabCursor;
         glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
@@ -1513,6 +1521,96 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 
 void Carrot::Engine::tick(double deltaTime) {
     game->tick(deltaTime);
+}
+
+void Carrot::Engine::takeScreenshot() {
+    namespace fs = std::filesystem;
+
+    auto currentTime = chrono::system_clock::now().time_since_epoch().count();
+    auto screenshotFolder = fs::current_path() / "screenshots";
+    if(!fs::exists(screenshotFolder)) {
+        if(!fs::create_directories(screenshotFolder)) {
+            throw runtime_error("Could not create screenshot folder");
+        }
+    }
+    auto screenshotPath = screenshotFolder / (to_string(currentTime) + ".png");
+
+    auto lastImage = swapchainImages[lastFrameIndex];
+
+    auto screenshotImage = Image(*this,
+                                 {swapchainExtent.width, swapchainExtent.height, 1},
+                                 vk::ImageUsageFlagBits::eTransferDst,
+                                 vk::Format::eR8G8B8A8Unorm
+                                 );
+
+    vk::DeviceSize bufferSize = 4*swapchainExtent.width*swapchainExtent.height * sizeof(uint32_t); // TODO
+    auto screenshotBuffer = Buffer(*this,
+                                   bufferSize,
+                                   vk::BufferUsageFlagBits::eTransferDst,
+                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+                                   );
+
+    auto offsetMin = vk::Offset3D {
+            .x = 0,
+            .y = 0,
+            .z = 0,
+    };
+    auto offsetMax = vk::Offset3D {
+            .x = static_cast<int32_t>(swapchainExtent.width),
+            .y = static_cast<int32_t>(swapchainExtent.height),
+            .z = 1,
+    };
+    performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
+        Image::transition(lastImage, commands, swapchainImageFormat, vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
+        screenshotImage.transitionLayoutInline(commands, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+        commands.blitImage(lastImage, vk::ImageLayout::eTransferSrcOptimal, screenshotImage.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, vk::ImageBlit {
+                .srcSubresource = {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .mipLevel = 0,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                },
+                .srcOffsets = std::array<vk::Offset3D, 2> {
+                        offsetMin,
+                        offsetMax,
+                },
+                .dstSubresource = {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .mipLevel = 0,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                },
+                .dstOffsets = std::array<vk::Offset3D, 2> {
+                        offsetMin,
+                        offsetMax,
+                },
+        }, vk::Filter::eNearest);
+
+        commands.copyImageToBuffer(screenshotImage.getVulkanImage(), vk::ImageLayout::eGeneral, screenshotBuffer.getVulkanBuffer(), vk::BufferImageCopy {
+            // tightly packed
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+
+            .imageSubresource = {
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+            },
+
+            .imageExtent = {
+                    .width = swapchainExtent.width,
+                    .height = swapchainExtent.height,
+                    .depth = 1,
+            },
+        });
+    });
+
+    void* pData = screenshotBuffer.map<void>();
+    stbi_write_png(screenshotPath.generic_string().c_str(), swapchainExtent.width, swapchainExtent.height, 4, pData, 4 * swapchainExtent.width);
+
+    screenshotBuffer.unmap();
 }
 
 vector<vk::UniqueImageView>& Carrot::Engine::getUIImageViews() {
