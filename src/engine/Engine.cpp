@@ -63,12 +63,36 @@ void Carrot::Engine::run() {
 
     size_t currentFrame = 0;
 
-    while(running) {
-        glfwPollEvents();
 
+    auto previous = chrono::steady_clock::now();
+    auto lag = chrono::duration<float>(0.0f);
+    const auto timeBetweenUpdates = chrono::duration<float>(1.0f/60.0f); // 60 Hz
+    while(running) {
+        auto frameStartTime = chrono::steady_clock::now();
+        chrono::duration<float> timeElapsed = frameStartTime-previous;
+        currentFPS = 1.0f / timeElapsed.count();
+        previous = frameStartTime;
+
+        lag += timeElapsed;
+
+        glfwPollEvents();
         if(glfwWindowShouldClose(window.get())) {
             running = false;
         }
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        while(lag >= timeBetweenUpdates) {
+            tick(timeBetweenUpdates.count());
+            lag -= timeBetweenUpdates;
+        }
+
+        if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
+            ImGui::Text("%f FPS", currentFPS);
+        }
+        ImGui::End();
 
         drawFrame(currentFrame);
 
@@ -1039,7 +1063,7 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
     static CameraBufferObject cbo{};
 
-    camera->updateBufferObject(cbo);
+    cbo.update(*camera);
     cameraUniformBuffers[imageIndex]->directUpload(&cbo, sizeof(cbo));
 }
 
@@ -1064,11 +1088,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             throw std::runtime_error("Failed to acquire swap chain image");
         }
         imageIndex = nextImage.value;
-
-
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
 
         static DebugBufferObject debug{};
         if(ImGui::Begin("GBuffer View"))
@@ -1490,6 +1509,10 @@ vk::PhysicalDevice& Carrot::Engine::getPhysicalDevice() {
 
 Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
     return *asBuilder;
+}
+
+void Carrot::Engine::tick(double deltaTime) {
+    game->tick(deltaTime);
 }
 
 vector<vk::UniqueImageView>& Carrot::Engine::getUIImageViews() {

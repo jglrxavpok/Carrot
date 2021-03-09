@@ -463,10 +463,6 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     centers[Unit::Type::Green] /= counts[Unit::Type::Green];
     centers[Unit::Type::Blue] /= counts[Unit::Type::Blue];
 */
-    static double lastTime = glfwGetTime();
-    float dt = static_cast<float>(glfwGetTime() - lastTime);
-    lastTime = glfwGetTime();
-    world.tick(dt);
     world.onFrame(frameIndex);
    // TracyPlot("onFrame delta time", dt*1000);
 
@@ -519,3 +515,6 @@ void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Se
     waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);
 }
 
+void Game::Game::tick(double frameTime) {
+    world.tick(frameTime);
+}

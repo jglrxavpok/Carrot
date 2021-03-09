@@ -165,6 +165,7 @@ namespace Carrot {
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
+        float currentFPS = 0.0f;
         bool running = true;
         bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
@@ -334,6 +335,9 @@ namespace Carrot {
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(size_t currentFrame);
+
+        /// Update the game systems
+        void tick(double deltaTime);
 
         /// Create fences and semaphores used for rendering
         void createSynchronizationObjects();

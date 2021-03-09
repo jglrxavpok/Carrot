@@ -4,7 +4,7 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
-#include "CameraBufferObject.h"
+#include <glm/glm.hpp>
 
 namespace Carrot {
     class Camera {
@@ -18,7 +18,8 @@ namespace Carrot {
 
         explicit Camera(float fov, float aspectRatio, float zNear, float zFar, glm::vec3 up = {0,0,1});
 
-        void updateBufferObject(CameraBufferObject& obj);
+        const glm::mat4& getProjectionMatrix() const;
+        const glm::vec3& getUp() const;
     };
 }
 

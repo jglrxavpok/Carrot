@@ -48,6 +48,8 @@ namespace Game {
 
         void onFrame(uint32_t frameIndex);
 
+        void tick(double frameTime);
+
         void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands);
 
         void onMouseMove(double dx, double dy);

@@ -11,9 +11,10 @@ Carrot::Camera::Camera(float fov, float aspectRatio, float zNear, float zFar, gl
     projectionMatrix[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
 }
 
-void Carrot::Camera::updateBufferObject(Carrot::CameraBufferObject& obj) {
-    obj.view = glm::lookAt(position, target, up);
-    obj.inverseView = glm::inverse(obj.view);
-    obj.projection = projectionMatrix;
-    obj.inverseProjection = glm::inverse(projectionMatrix);
+const glm::mat4& Carrot::Camera::getProjectionMatrix() const {
+    return projectionMatrix;
+}
+
+const glm::vec3& Carrot::Camera::getUp() const {
+    return up;
 }
