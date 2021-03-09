@@ -194,6 +194,15 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     sinPosition->amplitude = {1, 2, 0.2};
     sinPosition->centerPosition = {2,2,1};
 
+    auto& sun = engine.getRayTracer().getLightBuffer().lights[1];
+    sun.type = Carrot::LightType::Directional;
+    sun.color = glm::vec3(1.0, 1.0, 0.995);
+    sun.direction = glm::vec3(1, 1, -1);
+    sun.intensity = 0.2f;
+
+    world.newEntity()
+            .addComponent<RaycastedShadowsLight>(sun);
+
     // prepare for first frame
     world.tick(0);
     world.onFrame(0);

@@ -30,7 +30,6 @@ static void OnDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDesc
 }
 
 void initAftermath() {
-// TODO
     AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_EnableGpuCrashDumps(
             GFSDK_Aftermath_Version_API,
             GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,

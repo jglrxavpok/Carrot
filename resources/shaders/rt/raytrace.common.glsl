@@ -6,6 +6,7 @@ struct hitPayload {
 struct SceneElement {
     uint mappedIndex;
     mat4 transform;
+    mat4 transformIT;
 };
 
 struct Vertex {

@@ -6,7 +6,11 @@
 
 namespace Carrot {
     struct SceneElement {
-        alignas(16) std::uint32_t mappedIndex;
-        alignas(16) glm::mat4 transform{1.0f};
+        std::uint32_t mappedIndex;
+
+        glm::mat4 transform{1.0f};
+
+        /// inverse transpose of the transform matrix
+        glm::mat4 transformIT{1.0f};
     };
 }

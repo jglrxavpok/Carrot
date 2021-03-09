@@ -26,9 +26,9 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
         info.geometryCount = blas.geometries.size();
         info.flags = flags;
         info.pGeometries = blas.geometries.data();
-        info.mode = vk::BuildAccelerationStructureModeKHR::eBuild; // TODO: change for updates
+        info.mode = vk::BuildAccelerationStructureModeKHR::eBuild;
         info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-        info.srcAccelerationStructure = nullptr; // TODO: change for updates
+        info.srcAccelerationStructure = nullptr;
     }
 
     vk::DeviceSize scratchSize = 0;

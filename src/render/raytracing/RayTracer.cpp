@@ -60,7 +60,8 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
     for (int i = 0; i < 301; ++i) {
         sceneElements[i].mappedIndex = i;
         if(i < maxInstance) {
-            sceneElements[i].transform = topLevel[i].transform;
+            sceneElements[i].transform = glm::inverse(topLevel[i].transform);
+            sceneElements[i].transformIT = glm::transpose(glm::inverse(topLevel[i].transform));
         }
     }
     sceneBuffers[frameIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));

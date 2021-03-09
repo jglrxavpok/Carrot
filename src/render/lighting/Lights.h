@@ -7,12 +7,18 @@
 #include <glm/common.hpp>
 
 namespace Carrot {
+    enum class LightType: std::uint32_t {
+        Point,
+        Directional,
+// TODO:        Spot,
+    };
+
     struct Light {
         alignas(16) glm::vec3 position{0.0f};
         float intensity = 1.0f;
 
         alignas(16) glm::vec3 direction{1.0f};
-        std::uint32_t type;
+        LightType type = LightType::Point;
 
         alignas(16) glm::vec3 color{1.0f};
         bool enabled = false;
