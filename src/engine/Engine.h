@@ -8,6 +8,10 @@
 #include <vector>
 #include <set>
 
+namespace Carrot {
+    class Engine;
+}
+
 #include <engine/vulkan/includes.h>
 #include <GLFW/glfw3.h>
 #include "engine/memory/NakedPtr.hpp"
@@ -18,6 +22,8 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
+#include "engine/vulkan/VulkanDevice.h"
+
 using namespace std;
 
 namespace Game {
@@ -26,31 +32,30 @@ namespace Game {
 
 namespace Carrot {
     class Buffer;
+
+    class BufferView;
+
     class Image;
+
     class Mesh;
+
     class Model;
+
     class Pipeline;
+
     class Material;
+
     class InstanceData;
+
     class Camera;
+
     class GBuffer;
+
     class RayTracer;
+
     class ASBuilder;
 
-    struct QueueFamilies {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-        std::optional<uint32_t> transferFamily;
-        std::optional<uint32_t> computeFamily;
-
-        bool isComplete() const;
-    };
-
-    struct SwapChainSupportDetails {
-        vk::SurfaceCapabilitiesKHR capabilities;
-        std::vector<vk::SurfaceFormatKHR> formats;
-        std::vector<vk::PresentModeKHR> presentModes;
-    };
+    class ResourceAllocator;
 
     /// Base class interfacing with Vulkan
     class Engine {
@@ -65,7 +70,9 @@ namespace Carrot {
 
         /// Called by GLFW when the window is resized
         void onWindowResize();
+
         void onMouseMove(double xpos, double ypos);
+
         void onKeyEvent(int key, int scancode, int action, int mods);
 
         /// Cleanup resources
@@ -75,13 +82,10 @@ namespace Carrot {
         vk::Device& getLogicalDevice();
 
         /// Queue families used by the engine
-        Carrot::QueueFamilies& getQueueFamilies();
+        const Carrot::QueueFamilies& getQueueFamilies();
 
         /// Vulkan Allocator
         vk::Optional<const vk::AllocationCallbacks> getAllocator();
-
-        /// Find the memory type compatible with the filter and the given properties
-        uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
         /// Command pool for transfer operations
         vk::CommandPool& getTransferCommandPool();
@@ -98,10 +102,13 @@ namespace Carrot {
         /// Queue for graphics operations
         vk::Queue getGraphicsQueue();
 
+        vk::Queue getPresentQueue();
+
         vk::Queue getComputeQueue();
 
         /// Create an image view from a given image
-        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor) const;
+        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
+                                                          vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor);
 
         // templates
 
@@ -109,28 +116,24 @@ namespace Carrot {
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeTransferCommands(CommandBufferConsumer consumer);
+        void performSingleTimeTransferCommands(CommandBufferConsumer&& consumer);
 
         /// Performs a graphics operation on the graphics queue.
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer);
-
-        /// Performs an operation on the given queue.
-        /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
-        /// \param consumer function describing the operation
-        template<typename CommandBufferConsumer>
-        void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);
+        void performSingleTimeGraphicsCommands(CommandBufferConsumer&& consumer);
 
         shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
 
         unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName);
+
         vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textureName);
 
         uint32_t getSwapchainImageCount();
 
         vector<shared_ptr<Buffer>>& getCameraUniformBuffers();
+
         vector<shared_ptr<Buffer>>& getDebugUniformBuffers();
 
         const vk::UniqueSampler& getLinearSampler();
@@ -162,6 +165,10 @@ namespace Carrot {
 
         RayTracer& getRayTracer() { return *raytracer; };
 
+        ResourceAllocator& getResourceAllocator() { return *resourceAllocator; };
+
+        VulkanDevice& getVulkanDevice() { return vkDevice; };
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -169,25 +176,17 @@ namespace Carrot {
         bool running = true;
         bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
-        const vk::AllocationCallbacks* allocator = nullptr;
+        VulkanDevice vkDevice;
         int framebufferWidth;
         int framebufferHeight;
         uint32_t lastFrameIndex = 0;
 
-        vk::UniqueInstance instance;
-        vk::UniqueDebugUtilsMessengerEXT callback{};
-        vk::PhysicalDevice physicalDevice{};
-        vk::UniqueDevice device{};
-        QueueFamilies queueFamilies{};
-        vk::Queue graphicsQueue{};
-        vk::Queue presentQueue{};
-        vk::Queue transferQueue{};
-        vk::Queue computeQueue{};
-        vk::SurfaceKHR surface{};
         vk::UniqueSwapchainKHR swapchain{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
         vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
+
+        unique_ptr<ResourceAllocator> resourceAllocator;
 
         vector<unique_ptr<Image>> uiImages{};
         vector<vk::UniqueImageView> uiImageViews{};
@@ -200,9 +199,6 @@ namespace Carrot {
         map<string, shared_ptr<Pipeline>> pipelines{};
         vector<vk::UniqueFramebuffer> imguiFramebuffers{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
-        vk::UniqueCommandPool graphicsCommandPool{};
-        vk::UniqueCommandPool transferCommandPool{};
-        vk::UniqueCommandPool computeCommandPool{};
 
         vk::UniqueCommandPool tracyCommandPool{};
         vector<vk::CommandBuffer> tracyCommandBuffers{};
@@ -251,42 +247,6 @@ namespace Carrot {
         void initVulkan();
 
         void initImgui();
-
-        /// Create Vulkan instance
-        void createInstance();
-
-        /// Check validation layers are supported (if NO_DEBUG disabled)
-        bool checkValidationLayerSupport();
-
-        /// Generate a vector with the required extensions for this application
-        vector<const char *> getRequiredExtensions();
-
-        /// Setups debug messages
-        void setupDebugMessenger();
-
-        /// Prepares a debug messenger
-        void setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT &ext);
-
-        /// Select a GPU
-        void pickPhysicalDevice();
-
-        /// Rank physical device based on their capabilities
-        int ratePhysicalDevice(const vk::PhysicalDevice& device);
-
-        /// Gets the queue indices of a given physical device
-        Carrot::QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);
-
-        /// Create the logical device to interface with Vulkan
-        void createLogicalDevice();
-
-        /// Create the rendering surface for Vulkan
-        void createSurface();
-
-        /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
-        bool checkDeviceExtensionSupport(const vk::PhysicalDevice &logicalDevice);
-
-        /// Queries the format and present modes from a given physical device
-        Carrot::SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device);
 
         /// Choose best surface format from the list of given formats
         /// \param formats
@@ -351,9 +311,6 @@ namespace Carrot {
         /// Cleanup swapchain resources after window resizing
         void cleanupSwapchain();
 
-        /// Create the command pool for transfer operations
-        void createTransferCommandPool();
-
         /// Create the UBOs for rendering
         void createUniformBuffers();
 
@@ -364,7 +321,8 @@ namespace Carrot {
         vk::Format findDepthFormat();
 
         /// Find the best available format in the given candidates
-        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling,
+                                       vk::FormatFeatureFlags features);
 
         /// Create the samplers used by the engine
         void createSamplers();
@@ -379,8 +337,9 @@ namespace Carrot {
 
         void allocateGraphicsCommandBuffers();
 
+        vk::Instance& getVkInstance() { return vkDevice.getInstance(); };
+
     };
 }
 
-// template implementation
 #include "Engine.ipp"

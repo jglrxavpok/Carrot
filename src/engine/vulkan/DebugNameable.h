@@ -9,12 +9,14 @@
 #include "engine/Engine.h"
 
 namespace Carrot {
+    using namespace std;
+
     class DebugNameable {
     protected:
         virtual void setDebugNames(const string& name) = 0;
 
         template<typename VulkanType>
-        void nameSingle(Carrot::Engine& engine, const string& name, const VulkanType& object) {
+        void nameSingle(VulkanDevice& device, const string& name, const VulkanType& object) {
 #ifndef NO_DEBUG
             if(USE_DEBUG_MARKERS) {
                 vk::DebugMarkerObjectNameInfoEXT nameInfo {
@@ -22,7 +24,7 @@ namespace Carrot {
                         .object = (uint64_t) ((VulkanType::CType&) object),
                         .pObjectName = name.c_str(),
                 };
-                engine.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
+                device.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
             }
 #endif
         }

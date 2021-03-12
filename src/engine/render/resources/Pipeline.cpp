@@ -4,14 +4,14 @@
 
 #include <engine/constants.h>
 #include "Pipeline.h"
-#include "CameraBufferObject.h"
-#include "Buffer.h"
+#include "engine/render/CameraBufferObject.h"
+#include "engine/render/resources/Buffer.h"
 #include <rapidjson/document.h>
 #include "engine/io/IO.h"
-#include "DrawData.h"
+#include "engine/render/DrawData.h"
 #include "engine/render/Material.h"
 #include "Vertex.h"
-#include "DebugBufferObject.h"
+#include "engine/render/DebugBufferObject.h"
 
 #include <iostream>
 
@@ -234,7 +234,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
     vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator());
 
     if(type == Type::GBuffer) {
-        materialStorageBuffer = make_unique<Buffer>(engine,
+        materialStorageBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
                                                     sizeof(MaterialData)*maxMaterialID,
                                                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                     vk::MemoryPropertyFlagBits::eDeviceLocal,

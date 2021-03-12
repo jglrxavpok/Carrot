@@ -3,7 +3,7 @@
 //
 
 #include "Mesh.h"
-#include "engine/render/Buffer.h"
+#include "engine/render/resources/Buffer.h"
 
 uint64_t Carrot::Mesh::currentMeshID = 0;
 
@@ -25,7 +25,7 @@ void Carrot::Mesh::indirectDraw(const vk::CommandBuffer& buffer, const Carrot::B
 }
 
 void Carrot::Mesh::setDebugNames(const string& name) {
-    nameSingle(engine, name, vertexAndIndexBuffer->getVulkanBuffer());
+    nameSingle(device, name, vertexAndIndexBuffer->getVulkanBuffer());
 }
 
 uint64_t Carrot::Mesh::getIndexCount() const {

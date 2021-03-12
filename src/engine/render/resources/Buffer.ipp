@@ -4,7 +4,7 @@
 
 #pragma once
 #include <memory>
-#include "engine/render/Buffer.h"
+#include "Buffer.h"
 
 template<typename... T>
 void Carrot::Buffer::stageUpload(const vector<T>&... data) {
@@ -20,7 +20,7 @@ void Carrot::Buffer::stageUpload(const vector<T>&... data) {
 template<typename... T>
 void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(engine, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(device, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{device.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
     (
@@ -39,7 +39,7 @@ void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffset(uint64_t offset, const T* data) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(engine, sizeof(T), vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{engine.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(device, sizeof(T), vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{device.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, sizeof(T));
@@ -51,7 +51,6 @@ void Carrot::Buffer::stageUploadWithOffset(uint64_t offset, const T* data) {
 
 template<typename T>
 T* Carrot::Buffer::map() {
-    auto& device = engine.getLogicalDevice();
-    void* ptr = device.mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    void* ptr = device.getLogicalDevice().mapMemory(*memory, 0, VK_WHOLE_SIZE);
     return reinterpret_cast<T*>(ptr);
 }

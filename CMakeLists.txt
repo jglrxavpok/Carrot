@@ -50,19 +50,21 @@ set(SOURCES
         src/engine/io/IO.cpp
         src/engine/memory/NakedPtr.hpp
         src/engine/Engine.cpp
-        src/engine/render/Mesh.cpp
+        src/engine/render/resources/Mesh.cpp
         src/engine/render/Model.cpp
-        src/engine/render/Vertex.cpp
-        src/engine/render/Buffer.cpp
-        src/engine/render/Image.cpp
+        src/engine/render/resources/Vertex.cpp
+        src/engine/render/resources/Buffer.cpp
+        src/engine/render/resources/BufferView.cpp
+        src/engine/render/resources/Image.cpp
+        src/engine/render/resources/ResourceAllocator.cpp
         src/engine/render/Material.cpp
         src/engine/render/shaders/ShaderModule.cpp
         src/engine/render/shaders/ShaderStages.cpp
-        src/engine/render/Pipeline.cpp
+        src/engine/render/resources/Pipeline.cpp
         src/engine/render/shaders/Specialization.cpp
         src/engine/render/InstanceData.cpp
         src/engine/render/Camera.cpp
-        src/engine/render/VertexFormat.cpp
+        src/engine/render/resources/VertexFormat.cpp
         src/engine/render/animation/Animation.cpp
         src/engine/utils/conversions.cpp
         src/engine/utils/stringmanip.cpp
@@ -82,6 +84,7 @@ set(SOURCES
         src/engine/render/raytracing/ASBuilder.cpp
         src/engine/render/raytracing/AccelerationStructure.cpp
         src/engine/stb_impls.cpp
+        src/engine/vulkan/VulkanDevice.cpp
 
         src/main.cpp
 

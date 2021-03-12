@@ -5,11 +5,11 @@
 #include "Model.h"
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
-#include "engine/render/Mesh.h"
+#include "engine/render/resources/Mesh.h"
 #include "engine/render/Material.h"
 #include <iostream>
 #include <engine/utils/stringmanip.h>
-#include "engine/render/Pipeline.h"
+#include "engine/render/resources/Pipeline.h"
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
 
@@ -58,7 +58,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
 }
 
 void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                           const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, glm::mat4>& offsetMatrices, const aiNode *armature) {
+                                   const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, glm::mat4>& offsetMatrices, const aiNode *armature) {
 
     glm::mat4 globalInverseTransform = glm::inverse(glmMat4FromAssimp(armature->mTransformation));
 
@@ -107,9 +107,9 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     }
 
     // upload staging buffer to GPU buffer
-    this->animationData = make_unique<Carrot::Buffer>(engine,
+    this->animationData = make_unique<Carrot::Buffer>(engine.getVulkanDevice(),
                                                       sizeof(Carrot::Animation) * scene->mNumAnimations,
-                                        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                      vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
     animationData->setDebugNames("Animations");
     animationData->stageUploadWithOffsets(make_pair(0ull, allAnimations));
@@ -272,9 +272,9 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
     }
 
     if(usesSkinning) {
-        return make_shared<Mesh>(engine, skinnedVertices, indices);
+        return make_shared<Mesh>(engine.getVulkanDevice(), skinnedVertices, indices);
     } else {
-        return make_shared<Mesh>(engine, vertices, indices);
+        return make_shared<Mesh>(engine.getVulkanDevice(), vertices, indices);
     }
 }
 

@@ -5,26 +5,35 @@
 #pragma once
 
 #include "engine/vulkan/includes.h"
-#include "engine/Engine.h"
 #include <set>
+#include <engine/vulkan/VulkanDevice.h>
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
 
 namespace Carrot {
+    class Engine;
+    class BufferView;
+    class ResourceAllocator;
+
     /// Abstraction over Vulkan buffers
-    class Buffer: public DebugNameable, public DeviceAddressable {
+    class Buffer: public DebugNameable, public DeviceAddressable, std::enable_shared_from_this<Buffer> {
 
     private:
         bool mapped = false;
-        Engine& engine;
+        VulkanDevice& device;
         uint64_t size;
         vk::UniqueBuffer vkBuffer{};
         vk::UniqueDeviceMemory memory{};
 
-    public:
         /// Creates and allocates a buffer with the given parameters
-        explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
+        //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
 
+        friend class ResourceAllocator;
+        friend class std::unique_ptr<Buffer>;
+        friend class std::shared_ptr<Buffer>;
+    public:
+        /// TODO: PRIVATE ONLY
+        explicit Buffer(VulkanDevice& device, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
         const vk::Buffer& getVulkanBuffer() const;
 
         uint64_t getSize() const;
@@ -59,6 +68,9 @@ namespace Carrot {
         void setDebugNames(const string& name) override;
 
         vk::DeviceAddress getDeviceAddress() const override;
+
+        // TODO: make const asap
+        BufferView getWholeView();
     };
 }
 

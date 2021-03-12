@@ -8,9 +8,9 @@
 #include "Game.h"
 #include "engine/Engine.h"
 #include "engine/render/Model.h"
-#include "engine/render/Buffer.h"
+#include "engine/render/resources/Buffer.h"
 #include "engine/render/Camera.h"
-#include "engine/render/Mesh.h"
+#include "engine/render/resources/Mesh.h"
 #include <iostream>
 #include <engine/render/shaders/ShaderModule.h>
 #include <engine/render/raytracing/ASBuilder.h>
@@ -43,13 +43,13 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     model = make_unique<Model>(engine, "resources/models/unit.fbx");
 
     int groupSize = maxInstanceCount /3;
-    instanceBuffer = make_unique<Buffer>(engine,
+    instanceBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
                                          maxInstanceCount*sizeof(AnimatedInstanceData),
                                          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
                                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     modelInstance = instanceBuffer->map<AnimatedInstanceData>();
 
-    mapInstanceBuffer = make_unique<Buffer>(engine,
+    mapInstanceBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
                                             sizeof(InstanceData),
                                             vk::BufferUsageFlagBits::eVertexBuffer,
                                             vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
@@ -67,7 +67,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     map<MeshID, size_t> meshOffsets{};
 
     for(const auto& mesh : meshes) {
-        indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine,
+        indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine.getVulkanDevice(),
                                              maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
                                              vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                              vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -78,7 +78,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
         vertexCountPerInstance += meshSize;
     }
 
-    flatVertices = make_unique<Buffer>(engine,
+    flatVertices = make_unique<Buffer>(engine.getVulkanDevice(),
                                        sizeof(SkinnedVertex) * vertexCountPerInstance,
                                        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
@@ -99,7 +99,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
         });
     }
 
-    fullySkinnedUnitVertices = make_unique<Buffer>(engine,
+    fullySkinnedUnitVertices = make_unique<Buffer>(engine.getVulkanDevice(),
                                                    sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
                                                    vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                                    vk::MemoryPropertyFlagBits::eDeviceLocal,

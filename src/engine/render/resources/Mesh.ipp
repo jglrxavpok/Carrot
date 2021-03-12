@@ -1,8 +1,8 @@
 #include "Mesh.h"
 
 template<typename VertexType>
-Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, const vector<uint32_t>& indices): meshID(currentMeshID++), engine(engine) {
-    const auto& queueFamilies = engine.getQueueFamilies();
+Carrot::Mesh::Mesh(Carrot::VulkanDevice& device, const vector<VertexType>& vertices, const vector<uint32_t>& indices): meshID(currentMeshID++), device(device) {
+    const auto& queueFamilies = device.getQueueFamilies();
     // create and allocate underlying buffer
     std::set<uint32_t> families = {
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
@@ -17,7 +17,7 @@ Carrot::Mesh::Mesh(Carrot::Engine& engine, const vector<VertexType>& vertices, c
     }
     indexCount = indices.size();
     vertexCount = vertices.size();
-    vertexAndIndexBuffer = make_unique<Carrot::Buffer>(engine,
+    vertexAndIndexBuffer = make_unique<Carrot::Buffer>(device,
                                                        vertexStartOffset + sizeof(VertexType) * vertices.size(),
                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
                                                        vk::MemoryPropertyFlagBits::eDeviceLocal,

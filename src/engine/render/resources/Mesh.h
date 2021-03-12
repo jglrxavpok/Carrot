@@ -4,8 +4,8 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
-#include "engine/render/Vertex.h"
-#include "engine/render/Buffer.h"
+#include "Vertex.h"
+#include "engine/render/resources/Buffer.h"
 #include "engine/Engine.h"
 
 namespace Carrot {
@@ -13,7 +13,7 @@ namespace Carrot {
     private:
         static uint64_t currentMeshID;
 
-        Carrot::Engine& engine;
+        Carrot::VulkanDevice& device;
         /// <vertices>+<indices> at the end of the vertex list, to better use cache
         unique_ptr<Carrot::Buffer> vertexAndIndexBuffer = nullptr;
 
@@ -31,7 +31,7 @@ namespace Carrot {
 
     public:
         template<typename VertexType>
-        explicit Mesh(Carrot::Engine& engine, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
+        explicit Mesh(Carrot::VulkanDevice& device, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
 
         void bind(const vk::CommandBuffer& buffer) const;
         /// Does not bind the original vertex buffer (but does bind the index buffer)

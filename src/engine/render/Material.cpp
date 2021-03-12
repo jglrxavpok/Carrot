@@ -3,7 +3,7 @@
 //
 
 #include "Material.h"
-#include "Pipeline.h"
+#include "engine/render/resources/Pipeline.h"
 #include "IDTypes.h"
 #include "DrawData.h"
 #include <iostream>

@@ -3,12 +3,11 @@
 //
 
 #include "Image.h"
-#include "Buffer.h"
+#include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
 
-Carrot::Image::Image(Carrot::Engine& engine, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
-Carrot::DebugNameable(), engine(engine), size(extent) {
-    auto& device = engine.getLogicalDevice();
+Carrot::Image::Image(Carrot::VulkanDevice& device, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
+Carrot::DebugNameable(), device(device), size(extent) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
@@ -21,7 +20,7 @@ Carrot::DebugNameable(), engine(engine), size(extent) {
         .initialLayout = vk::ImageLayout::eUndefined,
     };
 
-    auto& queueFamilies = engine.getQueueFamilies();
+    auto& queueFamilies = device.getQueueFamilies();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
     }
@@ -35,18 +34,18 @@ Carrot::DebugNameable(), engine(engine), size(extent) {
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(familyList.size());
         createInfo.pQueueFamilyIndices = familyList.data();
     }
-    vkImage = device.createImageUnique(createInfo, engine.getAllocator());
+    vkImage = device.getLogicalDevice().createImageUnique(createInfo, device.getAllocationCallbacks());
 
     // allocate memory to use image
-    vk::MemoryRequirements requirements = device.getImageMemoryRequirements(*vkImage);
+    vk::MemoryRequirements requirements = device.getLogicalDevice().getImageMemoryRequirements(*vkImage);
     vk::MemoryAllocateInfo allocationInfo{
         .allocationSize = requirements.size,
-        .memoryTypeIndex = engine.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
+        .memoryTypeIndex = device.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
-    memory = device.allocateMemoryUnique(allocationInfo, engine.getAllocator());
+    memory = device.getLogicalDevice().allocateMemoryUnique(allocationInfo, device.getAllocationCallbacks());
 
     // bind memory to image
-    device.bindImageMemory(*vkImage, *memory, 0);
+    device.getLogicalDevice().bindImageMemory(*vkImage, *memory, 0);
 }
 
 const vk::Image& Carrot::Image::getVulkanImage() const {
@@ -55,11 +54,11 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
 
 void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     // create buffer holding data
-    auto stagingBuffer = Carrot::Buffer(engine,
+    auto stagingBuffer = Carrot::Buffer(device,
                                          static_cast<vk::DeviceSize>(data.size()),
                                          vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                                         {engine.getQueueFamilies().transferFamily.value()});
+                                         {device.getQueueFamilies().transferFamily.value()});
 
     // fill buffer
     stagingBuffer.directUpload(data.data(), data.size());
@@ -67,7 +66,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     // prepare image for transfer
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     // copy from staging buffer to image
-    engine.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
+    device.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
         vk::BufferImageCopy region = {
                 .bufferOffset = 0,
                 .bufferRowLength = 0,
@@ -88,7 +87,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::Engine& engine, const string &filename) {
+unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDevice& device, const string &filename) {
     int width;
     int height;
     int channels;
@@ -97,7 +96,7 @@ unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::Engine& engine, const 
         throw runtime_error("Failed to load image "+filename);
     }
 
-    auto image = make_unique<Carrot::Image>(engine,
+    auto image = make_unique<Carrot::Image>(device,
                                         vk::Extent3D {
                                             .width = static_cast<uint32_t>(width),
                                             .height = static_cast<uint32_t>(height),
@@ -189,24 +188,24 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
 }
 
 void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    vk::CommandPool commandPool = engine.getTransferCommandPool();
-    vk::Queue queue = engine.getTransferQueue();
+    vk::CommandPool commandPool = device.getTransferCommandPool();
+    vk::Queue queue = device.getTransferQueue();
 
     // ensure we are using the correct command pool and queue if transitioning to graphics-related layouts
     if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        commandPool = engine.getGraphicsCommandPool();
-        queue = engine.getGraphicsQueue();
+        commandPool = device.getGraphicsCommandPool();
+        queue = device.getGraphicsQueue();
     }
-    engine.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
+    device.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
         transitionLayoutInline(commands, format, oldLayout, newLayout);
     });
 }
 
 vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect) {
-    return std::move(engine.createImageView(*vkImage, imageFormat, aspect));
+    return std::move(device.createImageView(*vkImage, imageFormat, aspect));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {
-    nameSingle(engine, name, *vkImage);
-    nameSingle(engine, name+" Memory", *memory);
+    nameSingle(device, name, *vkImage);
+    nameSingle(device, name+" Memory", *memory);
 }

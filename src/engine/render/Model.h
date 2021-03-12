@@ -9,8 +9,9 @@
 #include <map>
 #include "engine/vulkan/includes.h"
 #include <assimp/scene.h>
-#include "engine/render/VertexFormat.h"
+#include "engine/render/resources/VertexFormat.h"
 #include "engine/render/animation/Animation.h"
+#include "engine/Engine.h"
 #include "IDTypes.h"
 
 using namespace std;
@@ -42,8 +43,6 @@ namespace Carrot {
 
         void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
                                    const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, glm::mat4>& offsetMatrices, const aiNode *armature);
-
-        glm::mat4 findGlobalTransform(const aiNode* node, const unordered_map<string, uint32_t>& boneMapping);
 
     public:
         explicit Model(Carrot::Engine& engine, const string& filename);
