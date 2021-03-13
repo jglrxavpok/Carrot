@@ -6,8 +6,8 @@
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
 
-Carrot::Image::Image(Carrot::VulkanDevice& device, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
-Carrot::DebugNameable(), device(device), size(extent) {
+Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
+        Carrot::DebugNameable(), driver(driver), size(extent) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
@@ -20,7 +20,7 @@ Carrot::DebugNameable(), device(device), size(extent) {
         .initialLayout = vk::ImageLayout::eUndefined,
     };
 
-    auto& queueFamilies = device.getQueueFamilies();
+    auto& queueFamilies = driver.getQueueFamilies();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
     }
@@ -34,18 +34,18 @@ Carrot::DebugNameable(), device(device), size(extent) {
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(familyList.size());
         createInfo.pQueueFamilyIndices = familyList.data();
     }
-    vkImage = device.getLogicalDevice().createImageUnique(createInfo, device.getAllocationCallbacks());
+    vkImage = driver.getLogicalDevice().createImageUnique(createInfo, driver.getAllocationCallbacks());
 
     // allocate memory to use image
-    vk::MemoryRequirements requirements = device.getLogicalDevice().getImageMemoryRequirements(*vkImage);
+    vk::MemoryRequirements requirements = driver.getLogicalDevice().getImageMemoryRequirements(*vkImage);
     vk::MemoryAllocateInfo allocationInfo{
         .allocationSize = requirements.size,
-        .memoryTypeIndex = device.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
+        .memoryTypeIndex = driver.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
-    memory = device.getLogicalDevice().allocateMemoryUnique(allocationInfo, device.getAllocationCallbacks());
+    memory = driver.getLogicalDevice().allocateMemoryUnique(allocationInfo, driver.getAllocationCallbacks());
 
     // bind memory to image
-    device.getLogicalDevice().bindImageMemory(*vkImage, *memory, 0);
+    driver.getLogicalDevice().bindImageMemory(*vkImage, *memory, 0);
 }
 
 const vk::Image& Carrot::Image::getVulkanImage() const {
@@ -54,11 +54,11 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
 
 void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     // create buffer holding data
-    auto stagingBuffer = Carrot::Buffer(device,
-                                         static_cast<vk::DeviceSize>(data.size()),
-                                         vk::BufferUsageFlagBits::eTransferSrc,
+    auto stagingBuffer = Carrot::Buffer(driver,
+                                        static_cast<vk::DeviceSize>(data.size()),
+                                        vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-                                         {device.getQueueFamilies().transferFamily.value()});
+                                        {driver.getQueueFamilies().transferFamily.value()});
 
     // fill buffer
     stagingBuffer.directUpload(data.data(), data.size());
@@ -66,7 +66,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     // prepare image for transfer
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     // copy from staging buffer to image
-    device.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
         vk::BufferImageCopy region = {
                 .bufferOffset = 0,
                 .bufferRowLength = 0,
@@ -87,7 +87,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDevice& device, const string &filename) {
+unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const string &filename) {
     int width;
     int height;
     int channels;
@@ -188,24 +188,24 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
 }
 
 void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    vk::CommandPool commandPool = device.getTransferCommandPool();
-    vk::Queue queue = device.getTransferQueue();
+    vk::CommandPool commandPool = driver.getTransferCommandPool();
+    vk::Queue queue = driver.getTransferQueue();
 
     // ensure we are using the correct command pool and queue if transitioning to graphics-related layouts
     if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        commandPool = device.getGraphicsCommandPool();
-        queue = device.getGraphicsQueue();
+        commandPool = driver.getGraphicsCommandPool();
+        queue = driver.getGraphicsQueue();
     }
-    device.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
+    driver.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
         transitionLayoutInline(commands, format, oldLayout, newLayout);
     });
 }
 
 vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect) {
-    return std::move(device.createImageView(*vkImage, imageFormat, aspect));
+    return std::move(driver.createImageView(*vkImage, imageFormat, aspect));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {
-    nameSingle(device, name, *vkImage);
-    nameSingle(device, name+" Memory", *memory);
+    nameSingle(driver, name, *vkImage);
+    nameSingle(driver, name + " Memory", *memory);
 }

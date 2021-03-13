@@ -9,7 +9,7 @@
 #include "engine/RenderPasses.h"
 
 Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): engine(engine), raytracer(raytracer) {
-    screenQuadMesh = make_unique<Mesh>(engine.getVulkanDevice(),
+    screenQuadMesh = make_unique<Mesh>(engine.getVulkanDriver(),
                                        vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
                                                { { 1, -1} },
@@ -37,7 +37,7 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
     for(size_t index = 0; index < engine.getSwapchainImageCount(); index++) {
         // Albedo
         auto swapchainExtent = engine.getSwapchainExtent();
-        albedoImages[index] = move(make_unique<Image>(engine.getVulkanDevice(),
+        albedoImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
                                                             vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                             vk::Format::eR8G8B8A8Unorm));
@@ -46,7 +46,7 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
         albedoImageViews[index] = std::move(view);
 
         // Depth
-        depthImages[index] = move(make_unique<Image>(engine.getVulkanDevice(),
+        depthImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
                                         vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                         vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                         engine.getDepthFormat()));
@@ -55,7 +55,7 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
         depthOnlyImageViews[index] = move(engine.createImageView(depthImages[index]->getVulkanImage(), engine.getDepthFormat(), vk::ImageAspectFlagBits::eDepth));
 
         // View-space positions
-        viewPositionImages[index] = move(make_unique<Image>(engine.getVulkanDevice(),
+        viewPositionImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
                                                       vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                       vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                       vk::Format::eR32G32B32A32Sfloat));
@@ -63,7 +63,7 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
         viewPositionImageViews[index] = std::move(viewPositionImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
 
         // View-space normals
-        viewNormalImages[index] = move(make_unique<Image>(engine.getVulkanDevice(),
+        viewNormalImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
                                                             vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                             vk::Format::eR32G32B32A32Sfloat));

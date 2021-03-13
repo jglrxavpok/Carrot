@@ -22,7 +22,7 @@ namespace Carrot {
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
-#include "engine/vulkan/VulkanDevice.h"
+#include "engine/vulkan/VulkanDriver.h"
 
 using namespace std;
 
@@ -167,7 +167,7 @@ namespace Carrot {
 
         ResourceAllocator& getResourceAllocator() { return *resourceAllocator; };
 
-        VulkanDevice& getVulkanDevice() { return vkDevice; };
+        VulkanDriver& getVulkanDriver() { return vkDriver; };
 
     private:
         double mouseX = 0.0;
@@ -176,7 +176,7 @@ namespace Carrot {
         bool running = true;
         bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
-        VulkanDevice vkDevice;
+        VulkanDriver vkDriver;
         int framebufferWidth;
         int framebufferHeight;
         uint32_t lastFrameIndex = 0;
@@ -337,7 +337,7 @@ namespace Carrot {
 
         void allocateGraphicsCommandBuffers();
 
-        vk::Instance& getVkInstance() { return vkDevice.getInstance(); };
+        vk::Instance& getVkInstance() { return vkDriver.getInstance(); };
 
     };
 }

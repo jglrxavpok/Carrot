@@ -4,7 +4,7 @@
 
 #include "ResourceAllocator.h"
 
-Carrot::ResourceAllocator::ResourceAllocator(Carrot::VulkanDevice& device): device(device) {}
+Carrot::ResourceAllocator::ResourceAllocator(Carrot::VulkanDriver& device): device(device) {}
 
 Carrot::BufferView Carrot::ResourceAllocator::allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                              vk::MemoryPropertyFlags properties,

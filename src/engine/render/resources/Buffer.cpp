@@ -5,13 +5,12 @@
 #include "Buffer.h"
 #include <set>
 #include <vector>
-#include <engine/Engine.h>
 #include "BufferView.h"
 #include "ResourceAllocator.h"
 
-Carrot::Buffer::Buffer(VulkanDevice& device, vk::DeviceSize size, vk::BufferUsageFlags usage,
-                       vk::MemoryPropertyFlags properties, std::set<uint32_t> families): device(device), size(size) {
-    auto& queueFamilies = device.getQueueFamilies();
+Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
+                       vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
+    auto& queueFamilies = driver.getQueueFamilies();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
     }
@@ -30,25 +29,25 @@ Carrot::Buffer::Buffer(VulkanDevice& device, vk::DeviceSize size, vk::BufferUsag
         bufferInfo.pQueueFamilyIndices = familyList.data();
     }
 
-    vkBuffer = device.getLogicalDevice().createBufferUnique(bufferInfo, device.getAllocationCallbacks());
+    vkBuffer = driver.getLogicalDevice().createBufferUnique(bufferInfo, driver.getAllocationCallbacks());
 
-    vk::MemoryRequirements memoryRequirements = device.getLogicalDevice().getBufferMemoryRequirements(*vkBuffer);
+    vk::MemoryRequirements memoryRequirements = driver.getLogicalDevice().getBufferMemoryRequirements(*vkBuffer);
     vk::StructureChain<vk::MemoryAllocateInfo, vk::MemoryAllocateFlagsInfo> allocInfo = {
             {
                     .allocationSize = memoryRequirements.size,
-                    .memoryTypeIndex = device.findMemoryType(memoryRequirements.memoryTypeBits, properties)
+                    .memoryTypeIndex = driver.findMemoryType(memoryRequirements.memoryTypeBits, properties)
             },
             {
                     .flags = vk::MemoryAllocateFlagBits::eDeviceAddress,
             }
     };
 
-    memory = device.getLogicalDevice().allocateMemoryUnique(allocInfo.get(), device.getAllocationCallbacks());
-    device.getLogicalDevice().bindBufferMemory(*vkBuffer, *memory, 0);
+    memory = driver.getLogicalDevice().allocateMemoryUnique(allocInfo.get(), driver.getAllocationCallbacks());
+    driver.getLogicalDevice().bindBufferMemory(*vkBuffer, *memory, 0);
 }
 
 void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize offset) const {
-    device.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
         vk::BufferCopy copyRegion = {
                 .srcOffset = 0,
                 .dstOffset = offset,
@@ -64,11 +63,11 @@ const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
 
 void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
     void* pData;
-    if(device.getLogicalDevice().mapMemory(*memory, offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
+    if(driver.getLogicalDevice().mapMemory(*memory, offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
         throw runtime_error("Failed to map memory!");
     }
     std::copy(reinterpret_cast<const uint8_t*>(data), reinterpret_cast<const uint8_t*>(data)+length, reinterpret_cast<uint8_t*>(pData));
-    device.getLogicalDevice().unmapMemory(*memory);
+    driver.getLogicalDevice().unmapMemory(*memory);
 }
 
 uint64_t Carrot::Buffer::getSize() const {
@@ -77,20 +76,20 @@ uint64_t Carrot::Buffer::getSize() const {
 
 Carrot::Buffer::~Buffer() {
     if(mapped) {
-        device.getLogicalDevice().unmapMemory(*memory);
+        driver.getLogicalDevice().unmapMemory(*memory);
     }
 }
 
 void Carrot::Buffer::setDebugNames(const string& name) {
-    nameSingle(device, name, getVulkanBuffer());
+    nameSingle(driver, name, getVulkanBuffer());
 }
 
 void Carrot::Buffer::unmap() {
-    device.getLogicalDevice().unmapMemory(*memory);
+    driver.getLogicalDevice().unmapMemory(*memory);
 }
 
 vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
-    return device.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
+    return driver.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
 }
 
 Carrot::BufferView Carrot::Buffer::getWholeView() {

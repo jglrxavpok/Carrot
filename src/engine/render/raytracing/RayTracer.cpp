@@ -17,7 +17,7 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
 
     // output images
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
-        auto image = make_unique<Image>(engine.getVulkanDevice(),
+        auto image = make_unique<Image>(engine.getVulkanDriver(),
                                         vk::Extent3D{engine.getSwapchainExtent().width, engine.getSwapchainExtent().height, 1},
                                         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
                                         vk::Format::eR32G32B32A32Sfloat);
@@ -31,7 +31,7 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
 
     sceneBuffers.resize(engine.getSwapchainImageCount());
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
-        sceneBuffers[i] = make_unique<Buffer>(engine.getVulkanDevice(),
+        sceneBuffers[i] = make_unique<Buffer>(engine.getVulkanDriver(),
                                               sizeof(SceneElement)*301/* TODO: proper size for scene description*/,
                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
@@ -41,7 +41,7 @@ Carrot::RayTracer::RayTracer(Carrot::Engine& engine): engine(engine) {
 
     lightVkBuffers.resize(engine.getSwapchainImageCount());
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
-        lightVkBuffers[i] = make_unique<Buffer>(engine.getVulkanDevice(),
+        lightVkBuffers[i] = make_unique<Buffer>(engine.getVulkanDriver(),
                                               lightBuffer->getStructSize(),
                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
@@ -422,7 +422,7 @@ void Carrot::RayTracer::createShaderBindingTable() {
     auto result = device.getRayTracingShaderGroupHandlesKHR(*pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
     assert(result == vk::Result::eSuccess);
 
-    sbtBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
+    sbtBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
                                     sbtSize,
                                     vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eTransferDst,
                                     vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible

@@ -234,7 +234,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
     vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator());
 
     if(type == Type::GBuffer) {
-        materialStorageBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
+        materialStorageBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
                                                     sizeof(MaterialData)*maxMaterialID,
                                                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                     vk::MemoryPropertyFlagBits::eDeviceLocal,

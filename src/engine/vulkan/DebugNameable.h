@@ -16,7 +16,7 @@ namespace Carrot {
         virtual void setDebugNames(const string& name) = 0;
 
         template<typename VulkanType>
-        void nameSingle(VulkanDevice& device, const string& name, const VulkanType& object) {
+        void nameSingle(VulkanDriver& driver, const string& name, const VulkanType& object) {
 #ifndef NO_DEBUG
             if(USE_DEBUG_MARKERS) {
                 vk::DebugMarkerObjectNameInfoEXT nameInfo {
@@ -24,7 +24,7 @@ namespace Carrot {
                         .object = (uint64_t) ((VulkanType::CType&) object),
                         .pObjectName = name.c_str(),
                 };
-                device.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
+                driver.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
             }
 #endif
         }

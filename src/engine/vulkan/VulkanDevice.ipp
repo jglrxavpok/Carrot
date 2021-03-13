@@ -2,11 +2,11 @@
 // Created by jglrxavpok on 12/03/2021.
 //
 
-#include "VulkanDevice.h"
+#include "VulkanDriver.h"
 
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDevice::performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer) {
+void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer) {
     // allocate command buffer
     vk::CommandBufferAllocateInfo allocationInfo {
             .commandPool = commandPool,
@@ -43,11 +43,11 @@ void Carrot::VulkanDevice::performSingleTimeCommands(vk::CommandPool& commandPoo
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDevice::performSingleTimeTransferCommands(CommandBufferConsumer consumer) {
+void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer) {
     performSingleTimeCommands(getTransferCommandPool(), getTransferQueue(), consumer);
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDevice::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer) {
+void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer) {
     performSingleTimeCommands(getGraphicsCommandPool(), getGraphicsQueue(), consumer);
 }

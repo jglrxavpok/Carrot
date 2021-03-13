@@ -5,17 +5,17 @@
 #include "AccelerationStructure.h"
 #include "engine/render/resources/Buffer.h"
 
-Carrot::AccelerationStructure::AccelerationStructure(Carrot::Engine& engine,
-                                                     vk::AccelerationStructureCreateInfoKHR& createInfo): engine(engine) {
+Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
+                                                     vk::AccelerationStructureCreateInfoKHR& createInfo): driver(driver) {
     // allocate buffer to store AS
-    buffer = make_unique<Buffer>(engine.getVulkanDevice(),
+    buffer = make_unique<Buffer>(driver,
                                  createInfo.size,
                                  vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                  vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     createInfo.buffer = buffer->getVulkanBuffer();
 
-    as = engine.getLogicalDevice().createAccelerationStructureKHRUnique(createInfo, engine.getAllocator());
+    as = driver.getLogicalDevice().createAccelerationStructureKHRUnique(createInfo, driver.getAllocationCallbacks());
 }
 
 vk::AccelerationStructureKHR& Carrot::AccelerationStructure::getVulkanAS() {

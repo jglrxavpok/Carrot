@@ -37,7 +37,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDevice(window) {
+Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(window) {
     init();
 }
 
@@ -122,7 +122,7 @@ void Carrot::Engine::initWindow() {
 }
 
 void Carrot::Engine::initVulkan() {
-    resourceAllocator = make_unique<ResourceAllocator>(vkDevice);
+    resourceAllocator = make_unique<ResourceAllocator>(vkDriver);
 
     createSwapChain();
 
@@ -165,7 +165,7 @@ Carrot::Engine::~Engine() {
         TracyVkDestroy(tracyCtx[i]);
     }*/
     swapchain.reset();
-    getVkInstance().destroySurfaceKHR(vkDevice.getSurface(), vkDevice.getAllocationCallbacks());
+    getVkInstance().destroySurfaceKHR(vkDriver.getSurface(), vkDriver.getAllocationCallbacks());
 }
 
 void Carrot::Engine::createUIResources() {
@@ -188,17 +188,17 @@ void Carrot::Engine::createUIResources() {
     pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
     pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
-    imguiDescriptorPool = getLogicalDevice().createDescriptorPoolUnique(pool_info, vkDevice.getAllocationCallbacks());
+    imguiDescriptorPool = getLogicalDevice().createDescriptorPoolUnique(pool_info, vkDriver.getAllocationCallbacks());
 
 
 
     uiImages.resize(getSwapchainImageCount());
     uiImageViews.resize(getSwapchainImageCount());
     for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        uiImages[i] = move(make_unique<Image>(vkDevice,
-                                                  vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+        uiImages[i] = move(make_unique<Image>(vkDriver,
+                                              vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                   vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                                                  vk::Format::eR8G8B8A8Unorm));
+                                              vk::Format::eR8G8B8A8Unorm));
 
         auto view = uiImages[i]->createImageView();
         uiImageViews[i] = std::move(view);
@@ -248,7 +248,7 @@ vk::Extent2D Carrot::Engine::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &
 }
 
 void Carrot::Engine::createSwapChain() {
-    SwapChainSupportDetails swapChainSupport = vkDevice.querySwapChainSupport(getPhysicalDevice());
+    SwapChainSupportDetails swapChainSupport = vkDriver.querySwapChainSupport(getPhysicalDevice());
 
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -262,7 +262,7 @@ void Carrot::Engine::createSwapChain() {
     }
 
     vk::SwapchainCreateInfoKHR createInfo{
-        .surface = vkDevice.getSurface(),
+        .surface = vkDriver.getSurface(),
         .minImageCount = imageCount,
         .imageFormat = surfaceFormat.format,
         .imageColorSpace = surfaceFormat.colorSpace,
@@ -298,7 +298,7 @@ void Carrot::Engine::createSwapChain() {
         createInfo.pQueueFamilyIndices = nullptr;
     }
 
-    swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, vkDevice.getAllocationCallbacks());
+    swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, vkDriver.getAllocationCallbacks());
 
     const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
     swapchainImages.clear();
@@ -324,7 +324,7 @@ void Carrot::Engine::createSwapChainImageViews() {
 }
 
 vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {
-    return vkDevice.createImageView(image, imageFormat, aspectMask);
+    return vkDriver.createImageView(image, imageFormat, aspectMask);
 }
 
 void Carrot::Engine::createRenderPasses() {
@@ -407,7 +407,7 @@ void Carrot::Engine::createFramebuffers() {
                 .layers = 1,
         };
 
-        swapchainFramebuffers[i] = std::move(getLogicalDevice().createFramebufferUnique(swapchainFramebufferInfo, vkDevice.getAllocationCallbacks()));
+        swapchainFramebuffers[i] = std::move(getLogicalDevice().createFramebufferUnique(swapchainFramebufferInfo, vkDriver.getAllocationCallbacks()));
 
         vk::ImageView imguiAttachment[] = {
             *uiImageViews[i]
@@ -420,7 +420,7 @@ void Carrot::Engine::createFramebuffers() {
                 .height = swapchainExtent.height,
                 .layers = 1,
         };
-        imguiFramebuffers[i] = std::move(getLogicalDevice().createFramebufferUnique(imguiFramebufferInfo, vkDevice.getAllocationCallbacks()));
+        imguiFramebuffers[i] = std::move(getLogicalDevice().createFramebufferUnique(imguiFramebufferInfo, vkDriver.getAllocationCallbacks()));
     }
 }
 
@@ -456,7 +456,7 @@ void Carrot::Engine::initImgui() {
     init_info.DescriptorPool = *imguiDescriptorPool;
     init_info.Allocator = nullptr;
 
-    SwapChainSupportDetails swapChainSupport = vkDevice.querySwapChainSupport(getPhysicalDevice());
+    SwapChainSupportDetails swapChainSupport = vkDriver.querySwapChainSupport(getPhysicalDevice());
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
     // maxImageCount == 0 means we can request any number of image
@@ -765,9 +765,9 @@ void Carrot::Engine::createSynchronizationObjects() {
     };
 
     for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        imageAvailableSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDevice.getAllocationCallbacks());
-        renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDevice.getAllocationCallbacks());
-        inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDevice.getAllocationCallbacks());
+        imageAvailableSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
+        renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
+        inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
 }
 
@@ -817,39 +817,39 @@ void Carrot::Engine::onWindowResize() {
 }
 
 const Carrot::QueueFamilies& Carrot::Engine::getQueueFamilies() {
-    return vkDevice.getQueueFamilies();
+    return vkDriver.getQueueFamilies();
 }
 
 vk::Device& Carrot::Engine::getLogicalDevice() {
-    return vkDevice.getLogicalDevice();
+    return vkDriver.getLogicalDevice();
 }
 
 vk::Optional<const vk::AllocationCallbacks> Carrot::Engine::getAllocator() {
-    return vkDevice.getAllocationCallbacks();
+    return vkDriver.getAllocationCallbacks();
 }
 
 vk::CommandPool& Carrot::Engine::getTransferCommandPool() {
-    return vkDevice.getTransferCommandPool();
+    return vkDriver.getTransferCommandPool();
 }
 
 vk::CommandPool& Carrot::Engine::getGraphicsCommandPool() {
-    return vkDevice.getGraphicsCommandPool();
+    return vkDriver.getGraphicsCommandPool();
 }
 
 vk::CommandPool& Carrot::Engine::getComputeCommandPool() {
-    return vkDevice.getComputeCommandPool();
+    return vkDriver.getComputeCommandPool();
 }
 
 vk::Queue Carrot::Engine::getTransferQueue() {
-    return vkDevice.getTransferQueue();
+    return vkDriver.getTransferQueue();
 }
 
 vk::Queue Carrot::Engine::getGraphicsQueue() {
-    return vkDevice.getGraphicsQueue();
+    return vkDriver.getGraphicsQueue();
 }
 
 vk::Queue Carrot::Engine::getPresentQueue() {
-    return vkDevice.getPresentQueue();
+    return vkDriver.getPresentQueue();
 }
 
 void Carrot::Engine::createUniformBuffers() {
@@ -868,11 +868,11 @@ void Carrot::Engine::createUniformBuffers() {
     debugUniformBuffers.resize(swapchainFramebuffers.size(), nullptr);
 
     for(size_t i = 0; i < swapchainFramebuffers.size(); i++) {
-        debugUniformBuffers[i] = make_unique<Carrot::Buffer>(vkDevice,
-                                                              debugBufferSize,
-                                                              vk::BufferUsageFlagBits::eUniformBuffer,
+        debugUniformBuffers[i] = make_unique<Carrot::Buffer>(vkDriver,
+                                                             debugBufferSize,
+                                                             vk::BufferUsageFlagBits::eUniformBuffer,
                                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                              createGraphicsAndTransferFamiliesSet());
+                                                             createGraphicsAndTransferFamiliesSet());
     }
 }
 
@@ -917,7 +917,7 @@ void Carrot::Engine::createSamplers() {
                                                          .anisotropyEnable = true,
                                                          .maxAnisotropy = 16.0f,
                                                          .unnormalizedCoordinates = false,
-                                                 }, vkDevice.getAllocationCallbacks());
+                                                 }, vkDriver.getAllocationCallbacks());
 
     linearRepeatSampler = getLogicalDevice().createSamplerUnique({
                                                         .magFilter = vk::Filter::eLinear,
@@ -929,7 +929,7 @@ void Carrot::Engine::createSamplers() {
                                                         .anisotropyEnable = true,
                                                         .maxAnisotropy = 16.0f,
                                                         .unnormalizedCoordinates = false,
-                                                }, vkDevice.getAllocationCallbacks());
+                                                }, vkDriver.getAllocationCallbacks());
 }
 
 void Carrot::Engine::updateViewportAndScissor(vk::CommandBuffer& commands) {
@@ -962,7 +962,7 @@ shared_ptr<Carrot::Pipeline> Carrot::Engine::getOrCreatePipeline(const string& n
 unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName) {
     auto it = textureImages.find(textureName);
     if(it == textureImages.end()) {
-        auto texture = Image::fromFile(vkDevice, "resources/textures/"+textureName);
+        auto texture = Image::fromFile(vkDriver, "resources/textures/" + textureName);
         texture->name(textureName);
         textureImages[textureName] = move(texture);
     }
@@ -996,7 +996,7 @@ const vk::UniqueSampler& Carrot::Engine::getLinearSampler() {
 }
 
 void Carrot::Engine::createDefaultTexture() {
-    defaultImage = Image::fromFile(vkDevice, "resources/textures/default.png");
+    defaultImage = Image::fromFile(vkDriver, "resources/textures/default.png");
     defaultImageView = move(defaultImage->createImageView());
 }
 
@@ -1062,7 +1062,7 @@ void Carrot::Engine::createTracyContexts() {
 }
 
 vk::Queue Carrot::Engine::getComputeQueue() {
-    return vkDevice.getComputeQueue();
+    return vkDriver.getComputeQueue();
 }
 
 vk::Extent2D Carrot::Engine::getSwapchainExtent() const {
@@ -1078,7 +1078,7 @@ vk::Format Carrot::Engine::getSwapchainImageFormat() const {
 }
 
 vk::PhysicalDevice& Carrot::Engine::getPhysicalDevice() {
-    return vkDevice.getPhysicalDevice();
+    return vkDriver.getPhysicalDevice();
 }
 
 Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
@@ -1103,7 +1103,7 @@ void Carrot::Engine::takeScreenshot() {
 
     auto lastImage = swapchainImages[lastFrameIndex];
 
-    auto screenshotImage = Image(vkDevice,
+    auto screenshotImage = Image(vkDriver,
                                  {swapchainExtent.width, swapchainExtent.height, 1},
                                  vk::ImageUsageFlagBits::eTransferDst,
                                  vk::Format::eR8G8B8A8Unorm

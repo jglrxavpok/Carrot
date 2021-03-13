@@ -49,7 +49,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
         };
 
-        bottomLevelGeometries[index].as = move(make_unique<AccelerationStructure>(engine, createInfo));
+        bottomLevelGeometries[index].as = move(make_unique<AccelerationStructure>(engine.getVulkanDriver(), createInfo));
         buildInfo[index].dstAccelerationStructure = bottomLevelGeometries[index].as->getVulkanAS();
 
         scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
@@ -57,7 +57,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
         originalSizes[index] = sizeInfo.accelerationStructureSize;
     }
 
-    unique_ptr<Buffer> scratchBuffer = make_unique<Buffer>(engine.getVulkanDevice(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    unique_ptr<Buffer> scratchBuffer = make_unique<Buffer>(engine.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     bool compactAS = (flags & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
 
@@ -142,7 +142,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
             };
 
-            auto compactAS = make_unique<AccelerationStructure>(engine, createInfo);
+            auto compactAS = make_unique<AccelerationStructure>(engine.getVulkanDriver(), createInfo);
 
             // copy AS
             cmds.copyAccelerationStructureKHR(vk::CopyAccelerationStructureInfoKHR {
@@ -220,7 +220,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
     });
     // upload instances to the device
-    instancesBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
+    instancesBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
                                           instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
                                           vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
                                           vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -260,11 +260,11 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
                 .size = sizeInfo.accelerationStructureSize,
                 .type = vk::AccelerationStructureTypeKHR::eTopLevel,
         };
-        tlas.as = make_unique<AccelerationStructure>(engine, createInfo);
+        tlas.as = make_unique<AccelerationStructure>(engine.getVulkanDriver(), createInfo);
     }
 
     // Allocate scratch memory
-    auto scratchBuffer = make_unique<Buffer>(engine.getVulkanDevice(),
+    auto scratchBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
                                              sizeInfo.buildScratchSize,
                                              vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                              vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -339,7 +339,7 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
                 };
 
                 auto scratchSize = sizeInfo.buildScratchSize;
-                blas.scratchBuffer = move(make_unique<Buffer>(engine.getVulkanDevice(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal));
+                blas.scratchBuffer = move(make_unique<Buffer>(engine.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal));
                 buildInfo.scratchData.deviceAddress = blas.scratchBuffer->getDeviceAddress();
 
                 vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());

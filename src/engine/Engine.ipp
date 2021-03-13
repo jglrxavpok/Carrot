@@ -11,10 +11,10 @@ using namespace std;
 
 template<typename CommandBufferConsumer>
 void Carrot::Engine::performSingleTimeTransferCommands(CommandBufferConsumer&& consumer) {
-    vkDevice.performSingleTimeTransferCommands<CommandBufferConsumer>(consumer);
+    vkDriver.performSingleTimeTransferCommands<CommandBufferConsumer>(consumer);
 }
 
 template<typename CommandBufferConsumer>
 void Carrot::Engine::performSingleTimeGraphicsCommands(CommandBufferConsumer&& consumer) {
-    vkDevice.performSingleTimeGraphicsCommands<CommandBufferConsumer>(consumer);
+    vkDriver.performSingleTimeGraphicsCommands<CommandBufferConsumer>(consumer);
 }

@@ -26,7 +26,7 @@ namespace Carrot {
         std::vector<vk::PresentModeKHR> presentModes;
     };
 
-    class VulkanDevice {
+    class VulkanDriver {
     private:
         const vk::AllocationCallbacks* allocator = nullptr;
 
@@ -86,7 +86,7 @@ namespace Carrot {
         void createComputeCommandPool();
 
     public:
-        VulkanDevice(NakedPtr<GLFWwindow> window);
+        VulkanDriver(NakedPtr<GLFWwindow> window);
 
         /// Gets the queue indices of a given physical device
         QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);

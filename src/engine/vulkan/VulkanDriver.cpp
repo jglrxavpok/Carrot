@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 11/03/2021.
 //
 
-#include "VulkanDevice.h"
+#include "VulkanDriver.h"
 #include "engine/constants.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include <iostream>
@@ -28,7 +28,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDevice::VulkanDevice(NakedPtr<GLFWwindow> window): window(window) {
+Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window) {
     vk::DynamicLoader dl;
     auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
@@ -45,7 +45,7 @@ Carrot::VulkanDevice::VulkanDevice(NakedPtr<GLFWwindow> window): window(window) 
 }
 
 
-bool Carrot::VulkanDevice::checkValidationLayerSupport() {
+bool Carrot::VulkanDriver::checkValidationLayerSupport() {
     const std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
 
     for(const char* layer : VULKAN_VALIDATION_LAYERS) {
@@ -60,7 +60,7 @@ bool Carrot::VulkanDevice::checkValidationLayerSupport() {
     return true;
 }
 
-void Carrot::VulkanDevice::createInstance() {
+void Carrot::VulkanDriver::createInstance() {
     if(USE_VULKAN_VALIDATION_LAYERS && !checkValidationLayerSupport()) {
         throw std::runtime_error("Could not find validation layer.");
     }
@@ -121,7 +121,7 @@ void Carrot::VulkanDevice::createInstance() {
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 }
 
-std::vector<const char *> Carrot::VulkanDevice::getRequiredExtensions() {
+std::vector<const char *> Carrot::VulkanDriver::getRequiredExtensions() {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
@@ -135,7 +135,7 @@ std::vector<const char *> Carrot::VulkanDevice::getRequiredExtensions() {
     return extensions;
 }
 
-void Carrot::VulkanDevice::setupDebugMessenger() {
+void Carrot::VulkanDriver::setupDebugMessenger() {
     if(!USE_VULKAN_VALIDATION_LAYERS) return;
 
     vk::DebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -144,14 +144,14 @@ void Carrot::VulkanDevice::setupDebugMessenger() {
     callback = instance->createDebugUtilsMessengerEXTUnique(createInfo, allocator);
 }
 
-void Carrot::VulkanDevice::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& createInfo) {
+void Carrot::VulkanDriver::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& createInfo) {
     createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
     createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
     createInfo.pfnUserCallback = debugCallback;
     createInfo.pUserData = nullptr;
 }
 
-void Carrot::VulkanDevice::pickPhysicalDevice() {
+void Carrot::VulkanDriver::pickPhysicalDevice() {
     const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
 
     std::multimap<int, vk::PhysicalDevice> candidates;
@@ -167,7 +167,7 @@ void Carrot::VulkanDevice::pickPhysicalDevice() {
     }
 }
 
-int Carrot::VulkanDevice::ratePhysicalDevice(const vk::PhysicalDevice& device) {
+int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
     QueueFamilies families = findQueueFamilies(device);
     if(!families.isComplete()) // must be able to generate graphics
         return 0;
@@ -205,7 +205,7 @@ int Carrot::VulkanDevice::ratePhysicalDevice(const vk::PhysicalDevice& device) {
     return score;
 }
 
-Carrot::QueueFamilies Carrot::VulkanDevice::findQueueFamilies(vk::PhysicalDevice const &device) {
+Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice const &device) {
     // TODO: check raytracing capabilities
     std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
     uint32_t index = 0;
@@ -247,7 +247,7 @@ Carrot::QueueFamilies Carrot::VulkanDevice::findQueueFamilies(vk::PhysicalDevice
 extern "C++" void initAftermath();
 #endif
 
-void Carrot::VulkanDevice::createLogicalDevice() {
+void Carrot::VulkanDriver::createLogicalDevice() {
     queueFamilies = findQueueFamilies(physicalDevice);
 
     float priority = 1.0f;
@@ -356,7 +356,7 @@ void Carrot::VulkanDevice::createLogicalDevice() {
     presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
 }
 
-bool Carrot::VulkanDevice::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
+bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {
     const std::vector<vk::ExtensionProperties> available = logicalDevice.enumerateDeviceExtensionProperties(nullptr);
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
@@ -382,7 +382,7 @@ bool Carrot::VulkanDevice::checkDeviceExtensionSupport(const vk::PhysicalDevice&
     return required.empty();
 }
 
-void Carrot::VulkanDevice::createSurface() {
+void Carrot::VulkanDriver::createSurface() {
     auto cAllocator = (const VkAllocationCallbacks*) allocator;
     VkSurfaceKHR cSurface;
     if(glfwCreateWindowSurface(static_cast<VkInstance>(*instance), window.get(), cAllocator, &cSurface) != VK_SUCCESS) {
@@ -391,7 +391,7 @@ void Carrot::VulkanDevice::createSurface() {
     surface = cSurface;
 }
 
-Carrot::SwapChainSupportDetails Carrot::VulkanDevice::querySwapChainSupport(const vk::PhysicalDevice& device) {
+Carrot::SwapChainSupportDetails Carrot::VulkanDriver::querySwapChainSupport(const vk::PhysicalDevice& device) {
     return {
             .capabilities = device.getSurfaceCapabilitiesKHR(surface),
             .formats = device.getSurfaceFormatsKHR(surface),
@@ -399,7 +399,7 @@ Carrot::SwapChainSupportDetails Carrot::VulkanDevice::querySwapChainSupport(cons
     };
 }
 
-uint32_t Carrot::VulkanDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+uint32_t Carrot::VulkanDriver::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
     auto memProperties = getPhysicalDevice().getMemoryProperties();
     for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
         if(typeFilter & (1 << i)
@@ -410,7 +410,7 @@ uint32_t Carrot::VulkanDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPro
     throw runtime_error("Failed to find suitable memory type.");
 }
 
-void Carrot::VulkanDevice::createGraphicsCommandPool() {
+void Carrot::VulkanDriver::createGraphicsCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = getQueueFamilies().graphicsFamily.value(),
@@ -419,7 +419,7 @@ void Carrot::VulkanDevice::createGraphicsCommandPool() {
     graphicsCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-void Carrot::VulkanDevice::createTransferCommandPool() {
+void Carrot::VulkanDriver::createTransferCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eTransient, // short lived buffer (single use)
             .queueFamilyIndex = getQueueFamilies().transferFamily.value(),
@@ -428,7 +428,7 @@ void Carrot::VulkanDevice::createTransferCommandPool() {
     transferCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-void Carrot::VulkanDevice::createComputeCommandPool() {
+void Carrot::VulkanDriver::createComputeCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, // short lived buffer (single use)
             .queueFamilyIndex = getQueueFamilies().computeFamily.value(),
@@ -437,7 +437,7 @@ void Carrot::VulkanDevice::createComputeCommandPool() {
     computeCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-vk::UniqueImageView Carrot::VulkanDevice::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {
+vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {
     return getLogicalDevice().createImageViewUnique({
                                                             .image = image,
                                                             .viewType = vk::ImageViewType::e2D,

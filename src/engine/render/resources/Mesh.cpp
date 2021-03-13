@@ -25,7 +25,7 @@ void Carrot::Mesh::indirectDraw(const vk::CommandBuffer& buffer, const Carrot::B
 }
 
 void Carrot::Mesh::setDebugNames(const string& name) {
-    nameSingle(device, name, vertexAndIndexBuffer->getVulkanBuffer());
+    nameSingle(driver, name, vertexAndIndexBuffer->getVulkanBuffer());
 }
 
 uint64_t Carrot::Mesh::getIndexCount() const {

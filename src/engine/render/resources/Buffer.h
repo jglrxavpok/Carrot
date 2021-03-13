@@ -6,7 +6,7 @@
 
 #include "engine/vulkan/includes.h"
 #include <set>
-#include <engine/vulkan/VulkanDevice.h>
+#include <engine/vulkan/VulkanDriver.h>
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
 
@@ -20,7 +20,7 @@ namespace Carrot {
 
     private:
         bool mapped = false;
-        VulkanDevice& device;
+        VulkanDriver& driver;
         uint64_t size;
         vk::UniqueBuffer vkBuffer{};
         vk::UniqueDeviceMemory memory{};
@@ -33,7 +33,7 @@ namespace Carrot {
         friend class std::shared_ptr<Buffer>;
     public:
         /// TODO: PRIVATE ONLY
-        explicit Buffer(VulkanDevice& device, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
+        explicit Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
         const vk::Buffer& getVulkanBuffer() const;
 
         uint64_t getSize() const;

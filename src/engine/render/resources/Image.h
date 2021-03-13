@@ -13,14 +13,14 @@ namespace Carrot {
     /// Abstraction over Vulkan images. Manages lifetime and memory
     class Image: public DebugNameable {
     private:
-        Carrot::VulkanDevice& device;
+        Carrot::VulkanDriver& driver;
         vk::Extent3D size{};
         vk::UniqueImage vkImage;
         vk::UniqueDeviceMemory memory;
 
     public:
         /// Creates a new empty image with the given parameters. Will also allocate the corresponding memory
-        explicit Image(Carrot::VulkanDevice& device,
+        explicit Image(Carrot::VulkanDriver& driver,
                        vk::Extent3D extent,
                        vk::ImageUsageFlags usage,
                        vk::Format format,
@@ -46,7 +46,7 @@ namespace Carrot {
         vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
         /// Create and fill an Image from a given image file
-        static unique_ptr<Image> fromFile(Carrot::VulkanDevice& device, const std::string& filename);
+        static unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const std::string& filename);
 
         ~Image() = default;
 

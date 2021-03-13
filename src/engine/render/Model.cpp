@@ -107,7 +107,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     }
 
     // upload staging buffer to GPU buffer
-    this->animationData = make_unique<Carrot::Buffer>(engine.getVulkanDevice(),
+    this->animationData = make_unique<Carrot::Buffer>(engine.getVulkanDriver(),
                                                       sizeof(Carrot::Animation) * scene->mNumAnimations,
                                                       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -272,9 +272,9 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
     }
 
     if(usesSkinning) {
-        return make_shared<Mesh>(engine.getVulkanDevice(), skinnedVertices, indices);
+        return make_shared<Mesh>(engine.getVulkanDriver(), skinnedVertices, indices);
     } else {
-        return make_shared<Mesh>(engine.getVulkanDevice(), vertices, indices);
+        return make_shared<Mesh>(engine.getVulkanDriver(), vertices, indices);
     }
 }
 

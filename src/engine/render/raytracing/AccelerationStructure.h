@@ -9,12 +9,12 @@
 namespace Carrot {
     class AccelerationStructure {
     private:
-        Engine& engine;
+        VulkanDriver& driver;
         unique_ptr<Buffer> buffer = nullptr;
         vk::UniqueAccelerationStructureKHR as{};
 
     public:
-        explicit AccelerationStructure(Engine& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
+        explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
 
         vk::AccelerationStructureKHR& getVulkanAS();
     };
