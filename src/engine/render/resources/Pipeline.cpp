@@ -15,13 +15,13 @@
 
 #include <iostream>
 
-Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderPass, const string& pipelineName): engine(engine), renderPass(renderPass) {
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& renderPass, const string& pipelineName): driver(driver), renderPass(renderPass) {
     rapidjson::Document description;
     description.Parse(IO::readFileAsText("resources/pipelines/"+pipelineName+".json").c_str());
 
-    auto& device = engine.getLogicalDevice();
-    stages = make_unique<Carrot::ShaderStages>(engine,
-                                             vector<string> {
+    auto& device = driver.getLogicalDevice();
+    stages = make_unique<Carrot::ShaderStages>(driver,
+                                               vector<string> {
                                                      description["vertexShader"].GetString(),
                                                      description["fragmentShader"].GetString()
                                              });
@@ -127,10 +127,10 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
                 .descriptorCount = 1,
                 .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eRaygenKHR,
         };
-        descriptorSetLayout1 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
+        descriptorSetLayout1 = driver.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
                 .bindingCount = 1,
                 .pBindings = &binding,
-        }, engine.getAllocator());
+        }, driver.getAllocationCallbacks());
 
         layouts.push_back(*descriptorSetLayout1);
     }
@@ -142,7 +142,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .pPushConstantRanges = pushConstants.data(),
     };
 
-    layout = device.createPipelineLayoutUnique(pipelineLayoutCreateInfo, engine.getAllocator());
+    layout = device.createPipelineLayoutUnique(pipelineLayoutCreateInfo, driver.getAllocationCallbacks());
 
     vk::DynamicState dynamicStates[] = {
             vk::DynamicState::eScissor,
@@ -231,14 +231,14 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
             .subpass = static_cast<uint32_t>(subpassIndex),
     };
 
-    vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, engine.getAllocator());
+    vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, driver.getAllocationCallbacks());
 
     if(type == Type::GBuffer) {
-        materialStorageBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
+        materialStorageBuffer = make_unique<Buffer>(driver,
                                                     sizeof(MaterialData)*maxMaterialID,
                                                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                     vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                                    engine.createGraphicsAndTransferFamiliesSet());
+                                                    driver.createGraphicsAndTransferFamiliesSet());
         vector<char> zeroes{};
         zeroes.resize(materialStorageBuffer->getSize());
         materialStorageBuffer->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0), zeroes));
@@ -249,7 +249,7 @@ Carrot::Pipeline::Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderP
     if(description.HasMember("materialStorageBufferBindingIndex"))
         materialsBindingIndex = description["materialStorageBufferBindingIndex"].GetUint64();
 
-    recreateDescriptorPool(engine.getSwapchainImageCount());
+    recreateDescriptorPool(driver.getSwapchainImageCount());
 }
 
 void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
@@ -298,12 +298,12 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
             .pPoolSizes = sizes.data(),
     };
 
-    descriptorPool = engine.getLogicalDevice().createDescriptorPoolUnique(poolInfo, engine.getAllocator());
+    descriptorPool = driver.getLogicalDevice().createDescriptorPoolUnique(poolInfo, driver.getAllocationCallbacks());
 
     descriptorSets = allocateDescriptorSets0();
 
     if(type == Type::GBuffer) {
-        for(uint64_t imageIndex = 0; imageIndex < engine.getSwapchainImageCount(); imageIndex++) {
+        for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
             vk::DescriptorBufferInfo storageBufferInfo{
                     .buffer = materialStorageBuffer->getVulkanBuffer(),
                     .offset = 0,
@@ -326,23 +326,23 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
             for(TextureID textureID = 0; textureID < maxTextureID; textureID++) {
                 auto& info = imageInfoStructs[textureID];
-                info.imageView = *engine.getDefaultImageView();
+                info.imageView = *driver.getDefaultImageView();
                 info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
             }
 
-            engine.getLogicalDevice().updateDescriptorSets(writes, {});
+            driver.getLogicalDevice().updateDescriptorSets(writes, {});
         }
     }
 }
 
 vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
-    vector<vk::DescriptorSetLayout> layouts{engine.getSwapchainImageCount(), *descriptorSetLayout0};
+    vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), *descriptorSetLayout0};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
         .pSetLayouts = layouts.data(),
     };
-    vector<vk::DescriptorSet> sets = engine.getLogicalDevice().allocateDescriptorSets(allocateInfo);
+    vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
 
     vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
@@ -350,14 +350,14 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     }
 
     // allocate default values
-    vector<vk::WriteDescriptorSet> writes{bindings.size() * engine.getSwapchainImageCount()};
-    vector<vk::DescriptorBufferInfo> buffers{bindings.size() * engine.getSwapchainImageCount()};
-    vector<vk::DescriptorImageInfo> samplers{bindings.size() * engine.getSwapchainImageCount()};
-    vector<vk::DescriptorImageInfo> images{bindings.size() * engine.getSwapchainImageCount()};
+    vector<vk::WriteDescriptorSet> writes{bindings.size() * driver.getSwapchainImageCount()};
+    vector<vk::DescriptorBufferInfo> buffers{bindings.size() * driver.getSwapchainImageCount()};
+    vector<vk::DescriptorImageInfo> samplers{bindings.size() * driver.getSwapchainImageCount()};
+    vector<vk::DescriptorImageInfo> images{bindings.size() * driver.getSwapchainImageCount()};
 
     uint32_t writeIndex = 0;
     for(const auto& binding : bindings) {
-        for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
+        for(size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
             auto& write = writes[writeIndex];
             write.dstBinding = binding.vkBinding.binding;
             write.descriptorCount = binding.vkBinding.descriptorCount;
@@ -368,10 +368,10 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                 case vk::DescriptorType::eUniformBufferDynamic: {
                     auto& buffer = buffers[writeIndex];
                     if(binding.name == "Debug") {
-                        buffer.buffer = engine.getDebugUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
                         buffer.range = sizeof(DebugBufferObject);
                     } else {
-                        buffer.buffer = engine.getCameraUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.buffer = driver.getCameraUniformBuffers()[i]->getVulkanBuffer();
                         buffer.range = sizeof(CameraBufferObject); // TODO: customizable
                     }
                     buffer.offset = 0;
@@ -383,7 +383,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
 
                 case vk::DescriptorType::eSampler: {
                     auto& sampler = samplers[writeIndex];
-                    sampler.sampler = *engine.getLinearSampler();
+                    sampler.sampler = driver.getLinearSampler();
                     write.pImageInfo = samplers.data()+writeIndex;
 
                     writeIndex++;
@@ -404,7 +404,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
         }
     }
 
-    engine.getLogicalDevice().updateDescriptorSets(writeIndex, writes.data(), 0, nullptr);
+    driver.getLogicalDevice().updateDescriptorSets(writeIndex, writes.data(), 0, nullptr);
     return sets;
 }
 
@@ -427,7 +427,7 @@ Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView
     }
     TextureID id = textureID++;
 
-    for(uint64_t imageIndex = 0; imageIndex < engine.getSwapchainImageCount(); imageIndex++) {
+    for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
         vk::DescriptorImageInfo imageInfo {
                 .imageView = *textureView,
                 .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -440,7 +440,7 @@ Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView
                 .descriptorType = vk::DescriptorType::eSampledImage,
                 .pImageInfo = &imageInfo
         };
-        engine.getLogicalDevice().updateDescriptorSets(write, {});
+        driver.getLogicalDevice().updateDescriptorSets(write, {});
     }
     return id;
 }

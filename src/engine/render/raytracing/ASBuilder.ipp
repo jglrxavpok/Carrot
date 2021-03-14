@@ -21,7 +21,7 @@ Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& in
                                       const Carrot::Buffer& vertexBuffer, uint64_t vertexCount, const vector<uint64_t>& vertexOffsets) {
     // index buffer is assumed to be the same for all subranges
     // example usage: an original vertex buffer skinned by a compute shader, output to a global vertex buffer, but all using the same index buffer with offset
-    auto& device = engine.getLogicalDevice();
+    auto& device = renderer.getLogicalDevice();
     auto indexAddress = device.getBufferAddress({.buffer = indexBuffer.getVulkanBuffer()});
     auto vertexAddress = device.getBufferAddress({.buffer = vertexBuffer.getVulkanBuffer()});
     registerIndexBuffer(indexBuffer, indexOffset, indexCount*sizeof(uint32_t));

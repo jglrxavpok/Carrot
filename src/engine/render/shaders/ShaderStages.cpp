@@ -4,7 +4,7 @@
 
 #include "ShaderStages.h"
 
-Carrot::ShaderStages::ShaderStages(Carrot::Engine& engine, const vector<string>& filenames): engine(engine) {
+Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const vector<string>& filenames): driver(driver) {
     for(const string& filename : filenames) {
         auto stage = static_cast<vk::ShaderStageFlagBits>(0);
         if(filename.ends_with(".vertex.glsl.spv")) {
@@ -22,7 +22,7 @@ Carrot::ShaderStages::ShaderStages(Carrot::Engine& engine, const vector<string>&
         if(filename.ends_with(".rgen.spv")) {
             stage = vk::ShaderStageFlagBits::eRaygenKHR;
         }
-        stages.emplace_back(make_pair(stage, move(make_unique<ShaderModule>(engine, filename))));
+        stages.emplace_back(make_pair(stage, move(make_unique<ShaderModule>(driver, filename))));
     }
 }
 
@@ -35,7 +35,7 @@ vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipelineSh
 }
 
 vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(const map<string, uint32_t>& constants) const {
-    auto& device = engine.getLogicalDevice();
+    auto& device = driver.getLogicalDevice();
 
     vector<NamedBinding> bindings{};
 
@@ -52,7 +52,7 @@ vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(c
             .pBindings = vkBindings.data(),
     };
 
-    return device.createDescriptorSetLayoutUnique(createInfo, engine.getAllocator());
+    return device.createDescriptorSetLayoutUnique(createInfo, driver.getAllocationCallbacks());
 }
 
 const vector<pair<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>>& Carrot::ShaderStages::getModuleMap() const {

@@ -3,14 +3,15 @@
 //
 
 #pragma once
-#include "engine/Engine.h"
 #include "engine/vulkan/includes.h"
+#include "engine/render/VulkanRenderer.h"
+#include "engine/render/resources/Mesh.h"
 #include "engine/render/raytracing/RayTracer.h"
 
 namespace Carrot {
     class GBuffer {
     private:
-        Engine& engine;
+        VulkanRenderer& renderer;
         RayTracer& raytracer;
         vector<unique_ptr<Image>> viewPositionImages{};
         vector<vk::UniqueImageView> viewPositionImageViews{};
@@ -29,7 +30,7 @@ namespace Carrot {
         unique_ptr<Mesh> screenQuadMesh = nullptr;
 
     public:
-        explicit GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer);
+        explicit GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer);
 
         void loadResolvePipeline();
 

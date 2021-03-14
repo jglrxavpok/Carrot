@@ -8,8 +8,8 @@
 #include "engine/render/resources/Image.h"
 #include "engine/RenderPasses.h"
 
-Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): engine(engine), raytracer(raytracer) {
-    screenQuadMesh = make_unique<Mesh>(engine.getVulkanDriver(),
+Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
+    screenQuadMesh = make_unique<Mesh>(renderer.getVulkanDriver(),
                                        vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
                                                { { 1, -1} },
@@ -21,69 +21,69 @@ Carrot::GBuffer::GBuffer(Carrot::Engine& engine, Carrot::RayTracer& raytracer): 
                                                3,2,0,
                                        });
 
-    albedoImages.resize(engine.getSwapchainImageCount());
-    albedoImageViews.resize(engine.getSwapchainImageCount());
+    albedoImages.resize(renderer.getSwapchainImageCount());
+    albedoImageViews.resize(renderer.getSwapchainImageCount());
 
-    depthImages.resize(engine.getSwapchainImageCount());
-    depthStencilImageViews.resize(engine.getSwapchainImageCount());
-    depthOnlyImageViews.resize(engine.getSwapchainImageCount());
+    depthImages.resize(renderer.getSwapchainImageCount());
+    depthStencilImageViews.resize(renderer.getSwapchainImageCount());
+    depthOnlyImageViews.resize(renderer.getSwapchainImageCount());
 
-    viewPositionImages.resize(engine.getSwapchainImageCount());
-    viewPositionImageViews.resize(engine.getSwapchainImageCount());
+    viewPositionImages.resize(renderer.getSwapchainImageCount());
+    viewPositionImageViews.resize(renderer.getSwapchainImageCount());
 
-    viewNormalImages.resize(engine.getSwapchainImageCount());
-    viewNormalImageViews.resize(engine.getSwapchainImageCount());
+    viewNormalImages.resize(renderer.getSwapchainImageCount());
+    viewNormalImageViews.resize(renderer.getSwapchainImageCount());
 
-    for(size_t index = 0; index < engine.getSwapchainImageCount(); index++) {
+    for(size_t index = 0; index < renderer.getSwapchainImageCount(); index++) {
         // Albedo
-        auto swapchainExtent = engine.getSwapchainExtent();
-        albedoImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
-                                                            vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+        auto swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
+        albedoImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+                                                      vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-                                                            vk::Format::eR8G8B8A8Unorm));
+                                                      vk::Format::eR8G8B8A8Unorm));
 
         auto view = albedoImages[index]->createImageView();
         albedoImageViews[index] = std::move(view);
 
         // Depth
-        depthImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
-                                        vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+        depthImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+                                                     vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                         vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-                                        engine.getDepthFormat()));
+                                                     renderer.getVulkanDriver().getDepthFormat()));
 
-        depthStencilImageViews[index] = move(engine.createImageView(depthImages[index]->getVulkanImage(), engine.getDepthFormat(), vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil));
-        depthOnlyImageViews[index] = move(engine.createImageView(depthImages[index]->getVulkanImage(), engine.getDepthFormat(), vk::ImageAspectFlagBits::eDepth));
+        depthStencilImageViews[index] = move(renderer.getVulkanDriver().createImageView(depthImages[index]->getVulkanImage(), renderer.getVulkanDriver().getDepthFormat(), vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil));
+        depthOnlyImageViews[index] = move(renderer.getVulkanDriver().createImageView(depthImages[index]->getVulkanImage(), renderer.getVulkanDriver().getDepthFormat(), vk::ImageAspectFlagBits::eDepth));
 
         // View-space positions
-        viewPositionImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
-                                                      vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+        viewPositionImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+                                                            vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                       vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-                                                      vk::Format::eR32G32B32A32Sfloat));
+                                                            vk::Format::eR32G32B32A32Sfloat));
 
         viewPositionImageViews[index] = std::move(viewPositionImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
 
         // View-space normals
-        viewNormalImages[index] = move(make_unique<Image>(engine.getVulkanDriver(),
-                                                            vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+        viewNormalImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+                                                          vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-                                                            vk::Format::eR32G32B32A32Sfloat));
+                                                          vk::Format::eR32G32B32A32Sfloat));
 
         viewNormalImageViews[index] = std::move(viewNormalImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
     }
 }
 
 void Carrot::GBuffer::loadResolvePipeline() {
-    gResolvePipeline = engine.getOrCreatePipeline("gResolve");
+    gResolvePipeline = renderer.getOrCreatePipeline("gResolve");
 
     const size_t imageCount = 6/*albedo+depth+viewPosition+normal+lighting+ui*/;
-    vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()*imageCount};
-    vector<vk::DescriptorImageInfo> imageInfo{engine.getSwapchainImageCount()*imageCount};
-    for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
+    vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount() * imageCount};
+    vector<vk::DescriptorImageInfo> imageInfo{renderer.getSwapchainImageCount() * imageCount};
+    for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
         // albedo
         auto& albedoInfo = imageInfo[i*imageCount];
         albedoInfo.imageView = *albedoImageViews[i];
         albedoInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        albedoInfo.sampler = *engine.getLinearSampler();
+        albedoInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
         auto& writeAlbedo = writes[i*imageCount];
         writeAlbedo.descriptorCount = 1;
@@ -97,7 +97,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         auto& depthInfo = imageInfo[i*imageCount+1];
         depthInfo.imageView = *depthOnlyImageViews[i];
         depthInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        depthInfo.sampler = *engine.getLinearSampler();
+        depthInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
         auto& writeDepth = writes[i*imageCount+1];
         writeDepth.descriptorCount = 1;
@@ -111,7 +111,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         auto& viewPositionInfo = imageInfo[i*imageCount+2];
         viewPositionInfo.imageView = *viewPositionImageViews[i];
         viewPositionInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        viewPositionInfo.sampler = *engine.getLinearSampler();
+        viewPositionInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
         auto& writeViewPosition = writes[i*imageCount+2];
         writeViewPosition.descriptorCount = 1;
@@ -125,7 +125,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         auto& viewNormalInfo = imageInfo[i*imageCount+3];
         viewNormalInfo.imageView = *viewNormalImageViews[i];
         viewNormalInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        viewNormalInfo.sampler = *engine.getLinearSampler();
+        viewNormalInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
         auto& writeViewNormal = writes[i*imageCount+3];
         writeViewNormal.descriptorCount = 1;
@@ -151,7 +151,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // ui
         auto& uiInfo = imageInfo[i*imageCount+5];
-        uiInfo.imageView = *engine.getUIImageViews()[i];
+        uiInfo.imageView = *renderer.getUIImageViews()[i];
         uiInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         uiInfo.sampler = nullptr;
 
@@ -163,7 +163,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeUI.dstArrayElement = 0;
         writeUI.dstBinding = 5;
     }
-    engine.getLogicalDevice().updateDescriptorSets(writes, {});
+    renderer.getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
 }
 
 void Carrot::GBuffer::recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& commandBuffer, vk::CommandBufferInheritanceInfo* inheritance) const {
@@ -174,7 +174,7 @@ void Carrot::GBuffer::recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& 
 
     commandBuffer.begin(beginInfo);
     {
-        engine.updateViewportAndScissor(commandBuffer);
+        renderer.getVulkanDriver().updateViewportAndScissor(commandBuffer);
         gResolvePipeline->bind(frameIndex, commandBuffer);
         screenQuadMesh->bind(commandBuffer);
         screenQuadMesh->draw(commandBuffer);
@@ -195,7 +195,7 @@ void Carrot::GBuffer::addFramebufferAttachments(uint32_t frameIndex, vector<vk::
 
 vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
     vk::AttachmentDescription finalColorAttachment {
-            .format = engine.getSwapchainImageFormat(),
+            .format = renderer.getVulkanDriver().getSwapchainImageFormat(),
             .samples = vk::SampleCountFlagBits::e1,
 
             .loadOp = vk::AttachmentLoadOp::eClear,
@@ -214,7 +214,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
     };
 
     vk::AttachmentDescription depthAttachment{
-            .format = engine.getDepthFormat(),
+            .format = renderer.getVulkanDriver().getDepthFormat(),
             .samples = vk::SampleCountFlagBits::e1,
 
             .loadOp = vk::AttachmentLoadOp::eClear,
@@ -398,5 +398,5 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             .pDependencies = dependencies,
     };
 
-    return engine.getLogicalDevice().createRenderPassUnique(renderPassInfo, engine.getAllocator());
+    return renderer.getVulkanDriver().getLogicalDevice().createRenderPassUnique(renderPassInfo, renderer.getVulkanDriver().getAllocationCallbacks());
 }

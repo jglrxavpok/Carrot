@@ -3,12 +3,17 @@
 //
 
 #pragma once
-#include "engine/Engine.h"
 #include "engine/vulkan/includes.h"
+#include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/IDTypes.h"
 #include "engine/render/shaders/ShaderStages.h"
 #include "VertexFormat.h"
 
 namespace Carrot {
+    class Material;
+
+    class Buffer;
+
     class Pipeline {
         enum class Type {
             GBuffer,
@@ -17,7 +22,7 @@ namespace Carrot {
         };
 
     private:
-        Carrot::Engine& engine;
+        Carrot::VulkanDriver& driver;
         vk::UniqueRenderPass& renderPass;
         vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
         /// can be nullptr, used for animations
@@ -47,7 +52,7 @@ namespace Carrot {
         static Type getPipelineType(const string& name);
 
     public:
-        explicit Pipeline(Carrot::Engine& engine, vk::UniqueRenderPass& renderPass, const string& pipelineName);
+        explicit Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& renderPass, const string& pipelineName);
 
         void bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 

@@ -6,7 +6,8 @@
 
 #include "engine/vulkan/includes.h"
 #include "engine/vulkan/DebugNameable.h"
-#include "engine/Engine.h"
+#include "engine/vulkan/VulkanDriver.h"
+#include <memory>
 #include <set>
 
 namespace Carrot {

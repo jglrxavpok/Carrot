@@ -399,7 +399,7 @@ void Game::Game::createSkinningComputePipeline(uint64_t vertexCountPerInstance) 
         engine.getLogicalDevice().updateDescriptorSets(writes, {});
     }
 
-    auto computeStage = ShaderModule(engine, "resources/shaders/skinning.compute.glsl.spv");
+    auto computeStage = ShaderModule(engine.getVulkanDriver(), "resources/shaders/skinning.compute.glsl.spv");
 
     // create the pipeline
     vk::DescriptorSetLayout setLayouts[] = {

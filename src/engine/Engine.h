@@ -23,6 +23,7 @@ namespace Carrot {
 #include "backends/imgui_impl_glfw.h"
 
 #include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/VulkanRenderer.h"
 
 using namespace std;
 
@@ -52,8 +53,6 @@ namespace Carrot {
     class GBuffer;
 
     class RayTracer;
-
-    class ASBuilder;
 
     class ResourceAllocator;
 
@@ -124,21 +123,11 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeGraphicsCommands(CommandBufferConsumer&& consumer);
 
-        shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
-
-        unique_ptr<Carrot::Image>& Carrot::Engine::getOrCreateTexture(const string& textureName);
-
-        vk::UniqueImageView& Carrot::Engine::getOrCreateTextureView(const string& textureName);
-
         uint32_t getSwapchainImageCount();
 
         vector<shared_ptr<Buffer>>& getCameraUniformBuffers();
 
         vector<shared_ptr<Buffer>>& getDebugUniformBuffers();
-
-        const vk::UniqueSampler& getLinearSampler();
-
-        vk::UniqueImageView& getDefaultImageView();
 
         shared_ptr<Material> getOrCreateMaterial(const string& name);
 
@@ -147,27 +136,23 @@ namespace Carrot {
 
         Camera& getCamera();
 
-        void updateViewportAndScissor(vk::CommandBuffer& commands);
-
         vk::Extent2D getSwapchainExtent() const;
-
-        vk::Format getDepthFormat() const;
-
-        vk::Format getSwapchainImageFormat() const;
 
         vk::PhysicalDevice& getPhysicalDevice();
 
         ASBuilder& getASBuilder();
 
-        vector<vk::UniqueImageView>& getUIImageViews();
-
         bool grabbingCursor() const { return grabCursor; };
 
-        RayTracer& getRayTracer() { return *raytracer; };
+        RayTracer& getRayTracer() { return renderer.getRayTracer(); };
 
         ResourceAllocator& getResourceAllocator() { return *resourceAllocator; };
 
         VulkanDriver& getVulkanDriver() { return vkDriver; };
+
+        VulkanRenderer& getRenderer() { return renderer; };
+
+        GBuffer& getGBuffer() { return renderer.getGBuffer(); };
 
     private:
         double mouseX = 0.0;
@@ -177,28 +162,10 @@ namespace Carrot {
         bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
         VulkanDriver vkDriver;
-        int framebufferWidth;
-        int framebufferHeight;
+        VulkanRenderer renderer;
         uint32_t lastFrameIndex = 0;
 
-        vk::UniqueSwapchainKHR swapchain{};
-        vk::Format swapchainImageFormat = vk::Format::eUndefined;
-        vk::Format depthFormat = vk::Format::eUndefined;
-        vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
-
         unique_ptr<ResourceAllocator> resourceAllocator;
-
-        vector<unique_ptr<Image>> uiImages{};
-        vector<vk::UniqueImageView> uiImageViews{};
-
-        vk::Extent2D swapchainExtent{};
-        vector<vk::UniqueImageView> swapchainImageViews{};
-
-        vk::UniqueRenderPass gRenderPass{};
-        vk::UniqueRenderPass imguiRenderPass{};
-        map<string, shared_ptr<Pipeline>> pipelines{};
-        vector<vk::UniqueFramebuffer> imguiFramebuffers{};
-        vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
 
         vk::UniqueCommandPool tracyCommandPool{};
         vector<vk::CommandBuffer> tracyCommandBuffers{};
@@ -212,25 +179,9 @@ namespace Carrot {
         vector<vk::UniqueFence> inFlightFences{};
         vector<vk::UniqueFence> imagesInFlight{};
 
-        // TODO: abstraction over textures
-        map<string, unique_ptr<Image>> textureImages{};
-        map<string, vk::UniqueImageView> textureImageViews{};
         map<string, shared_ptr<Material>> materials{};
 
-        unique_ptr<Image> defaultImage = nullptr;
-        vk::UniqueImageView defaultImageView{};
-
-        vk::UniqueSampler linearRepeatSampler{};
-        vk::UniqueSampler nearestRepeatSampler{};
-
-        vector<shared_ptr<Buffer>> cameraUniformBuffers{};
-        vector<shared_ptr<Buffer>> debugUniformBuffers{};
-        vk::UniqueDescriptorPool imguiDescriptorPool{};
         vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
-
-        unique_ptr<RayTracer> raytracer = nullptr;
-        unique_ptr<ASBuilder> asBuilder = nullptr;
-        unique_ptr<GBuffer> gBuffer = nullptr;
 
         unique_ptr<Camera> camera = nullptr;
         unique_ptr<Game::Game> game = nullptr;
@@ -245,47 +196,6 @@ namespace Carrot {
 
         /// Init Vulkan for rendering
         void initVulkan();
-
-        void initImgui();
-
-        /// Choose best surface format from the list of given formats
-        /// \param formats
-        /// \return
-        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const vector<vk::SurfaceFormatKHR>& formats);
-
-        /// Choose best present mode from the list of given modes
-        /// \param presentModes
-        /// \return
-        vk::PresentModeKHR chooseSwapPresentMode(const vector<vk::PresentModeKHR>& presentModes);
-
-        /// Choose resolution of swap chain images
-        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-
-        /// Create the swapchain
-        void createSwapChain();
-
-        /// Create the image views used by the swapchain
-        void createSwapChainImageViews();
-
-        void createUIResources();
-
-        /// Create the render pass
-        void createRenderPasses();
-
-        /// Create the pipeline responsible for lighting via the gbuffer
-        void createGBuffer();
-
-        /// Create the object responsible of raytracing operations and subpasses
-        void createRayTracer();
-
-        /// Create the framebuffers to render to
-        void createFramebuffers();
-
-        /// Create the command pool for graphics operations
-        void createGraphicsCommandPool();
-
-        /// Create the command pool for compute operations
-        void createComputeCommandPool();
 
         /// Create the primary command buffers for rendering
         void recordMainCommandBuffer(size_t frameIndex);
@@ -311,23 +221,8 @@ namespace Carrot {
         /// Cleanup swapchain resources after window resizing
         void cleanupSwapchain();
 
-        /// Create the UBOs for rendering
-        void createUniformBuffers();
-
         /// Update the uniform buffer at index 'imageIndex'
         void updateUniformBuffer(int imageIndex);
-
-        /// Find the best available format for the depth texture
-        vk::Format findDepthFormat();
-
-        /// Find the best available format in the given candidates
-        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling,
-                                       vk::FormatFeatureFlags features);
-
-        /// Create the samplers used by the engine
-        void createSamplers();
-
-        void createDefaultTexture();
 
         void initGame();
 

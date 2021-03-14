@@ -3,8 +3,8 @@
 //
 
 #pragma once
-#include "engine/Engine.h"
 #include "engine/vulkan/includes.h"
+#include "engine/render/VulkanRenderer.h"
 #include "engine/RenderPasses.h"
 #include "engine/render/lighting/Lights.h"
 
@@ -14,7 +14,7 @@ namespace Carrot {
     /// Modeled on NVIDIA's tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
     class RayTracer {
     private:
-        Engine& engine;
+        VulkanRenderer& renderer;
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
         vector<unique_ptr<Image>> lightingImages{};
         vector<vk::UniqueImageView> lightingImageViews{};
@@ -50,7 +50,7 @@ namespace Carrot {
         /// Extensions required for raytracing
         static vector<const char*> getRequiredDeviceExtensions();
 
-        explicit RayTracer(Engine& engine);
+        explicit RayTracer(VulkanRenderer& renderer);
 
         void recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands);
 

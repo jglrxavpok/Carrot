@@ -4,7 +4,7 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
-#include <glm/common.hpp>
+#include <glm/glm.hpp>
 
 namespace Carrot {
     enum class LightType: std::uint32_t {

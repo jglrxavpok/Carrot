@@ -7,10 +7,16 @@
 #include "includes.h"
 #include <optional>
 #include <vector>
+#include <set>
 #include <engine/memory/NakedPtr.hpp>
 #include <GLFW/glfw3.h>
 
 namespace Carrot {
+    using namespace std;
+
+    class Image;
+    class Buffer;
+
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
@@ -31,6 +37,9 @@ namespace Carrot {
         const vk::AllocationCallbacks* allocator = nullptr;
 
         NakedPtr<GLFWwindow> window = nullptr;
+        int framebufferWidth;
+        int framebufferHeight;
+
         vk::UniqueInstance instance;
         vk::UniqueDebugUtilsMessengerEXT callback{};
         vk::PhysicalDevice physicalDevice{};
@@ -45,6 +54,22 @@ namespace Carrot {
         vk::UniqueCommandPool graphicsCommandPool{};
         vk::UniqueCommandPool transferCommandPool{};
         vk::UniqueCommandPool computeCommandPool{};
+
+        std::unique_ptr<Image> defaultImage = nullptr;
+        vk::UniqueImageView defaultImageView{};
+
+        vk::UniqueSampler linearRepeatSampler{};
+        vk::UniqueSampler nearestRepeatSampler{};
+
+        vk::UniqueSwapchainKHR swapchain{};
+        vk::Format swapchainImageFormat = vk::Format::eUndefined;
+        vk::Format depthFormat = vk::Format::eUndefined;
+        vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
+        vk::Extent2D swapchainExtent{};
+        vector<vk::UniqueImageView> swapchainImageViews{};
+
+        vector<shared_ptr<Buffer>> cameraUniformBuffers{};
+        vector<shared_ptr<Buffer>> debugUniformBuffers{};
 
         /// Create Vulkan instance
         void createInstance();
@@ -85,8 +110,28 @@ namespace Carrot {
         /// Create the command pool for compute operations
         void createComputeCommandPool();
 
+        void createDefaultTexture();
+
+        /// Choose best surface format from the list of given formats
+        /// \param formats
+        /// \return
+        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const vector<vk::SurfaceFormatKHR>& formats);
+
+        /// Choose best present mode from the list of given modes
+        /// \param presentModes
+        /// \return
+        vk::PresentModeKHR chooseSwapPresentMode(const vector<vk::PresentModeKHR>& presentModes);
+
+        /// Choose resolution of swap chain images
+        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+        /// Create the image views used by the swapchain
+        void createSwapChainImageViews();
+
     public:
         VulkanDriver(NakedPtr<GLFWwindow> window);
+
+        ~VulkanDriver();
 
         /// Gets the queue indices of a given physical device
         QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);
@@ -136,6 +181,47 @@ namespace Carrot {
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
                                                           vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor);
 
+        std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
+
+        vk::UniqueImageView& getDefaultImageView();
+
+        const vk::Sampler& getLinearSampler() { return *linearRepeatSampler; };
+
+        /// Find the best available format for the depth texture
+        vk::Format findDepthFormat();
+
+        /// Find the best available format in the given candidates
+        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling,
+                                       vk::FormatFeatureFlags features);
+
+        const vk::Extent2D& getSwapchainExtent() const { return swapchainExtent; };
+
+        vector<vk::Image>& getSwapchainImages() { return swapchainImages; };
+        vector<vk::UniqueImageView>& getSwapchainImageViews() { return swapchainImageViews; };
+
+        size_t getSwapchainImageCount() const { return swapchainImages.size(); };
+
+        vk::Format getSwapchainImageFormat() const { return swapchainImageFormat; };
+
+        /// Create the swapchain
+        void createSwapChain();
+
+        void cleanupSwapchain();
+
+        vk::SwapchainKHR& getSwapchain() { return *swapchain; };
+
+        void createUniformBuffers();
+
+        vector<shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
+        vector<shared_ptr<Buffer>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
+
+        NakedPtr<GLFWwindow>& getWindow() { return window; };
+
+        vk::Format getDepthFormat() { return depthFormat; };
+
+        void updateViewportAndScissor(vk::CommandBuffer& commands);
+
+        void recreateSwapchain();
     };
 }
 

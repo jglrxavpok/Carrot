@@ -5,6 +5,9 @@
 #include "VulkanDriver.h"
 #include "engine/constants.h"
 #include "engine/render/raytracing/RayTracer.h"
+#include "engine/render/DebugBufferObject.h"
+#include "engine/render/CameraBufferObject.h"
+#include "engine/render/resources/Buffer.h"
 #include <iostream>
 #include <map>
 #include <set>
@@ -29,6 +32,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 
 Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window) {
+    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+
     vk::DynamicLoader dl;
     auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
@@ -42,6 +47,35 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window) 
     createTransferCommandPool();
     createGraphicsCommandPool();
     createComputeCommandPool();
+
+    createDefaultTexture();
+
+    nearestRepeatSampler = getLogicalDevice().createSamplerUnique({
+                                                                          .magFilter = vk::Filter::eNearest,
+                                                                          .minFilter = vk::Filter::eNearest,
+                                                                          .mipmapMode = vk::SamplerMipmapMode::eNearest,
+                                                                          .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                                                          .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                                                          .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                                                          .anisotropyEnable = true,
+                                                                          .maxAnisotropy = 16.0f,
+                                                                          .unnormalizedCoordinates = false,
+                                                                  }, getAllocationCallbacks());
+
+    linearRepeatSampler = getLogicalDevice().createSamplerUnique({
+                                                                         .magFilter = vk::Filter::eLinear,
+                                                                         .minFilter = vk::Filter::eLinear,
+                                                                         .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                                                                         .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                                                         .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                                                         .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                                                         .anisotropyEnable = true,
+                                                                         .maxAnisotropy = 16.0f,
+                                                                         .unnormalizedCoordinates = false,
+                                                                 }, getAllocationCallbacks());
+
+    createSwapChain();
+    createUniformBuffers();
 }
 
 
@@ -458,6 +492,224 @@ vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image
                                                                     .layerCount = 1,
                                                             },
                                                     }, getAllocationCallbacks());
+}
+
+std::set<uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() {
+    return {
+            getQueueFamilies().graphicsFamily.value(),
+            getQueueFamilies().transferFamily.value(),
+    };
+}
+
+void Carrot::VulkanDriver::createDefaultTexture() {
+    defaultImage = Image::fromFile(*this, "resources/textures/default.png");
+    defaultImageView = move(defaultImage->createImageView());
+}
+
+vk::UniqueHandle<vk::ImageView, vk::DispatchLoaderDynamic>& Carrot::VulkanDriver::getDefaultImageView() {
+    return defaultImageView;
+}
+
+vk::SurfaceFormatKHR Carrot::VulkanDriver::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {
+    for(const auto& available : formats) {
+        if(available.format == vk::Format::eA8B8G8R8SrgbPack32 && available.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+            return available;
+        }
+    }
+
+    // TODO: rank based on format and color space
+
+    return formats[0];
+}
+
+vk::PresentModeKHR Carrot::VulkanDriver::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes) {
+    for(const auto& mode : presentModes) {
+        if(mode == vk::PresentModeKHR::eMailbox) {
+            return mode;
+        }
+    }
+
+    // only one guaranteed
+    return vk::PresentModeKHR::eFifo;
+}
+
+vk::Extent2D Carrot::VulkanDriver::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
+    if(capabilities.currentExtent.width != UINT32_MAX) {
+        return capabilities.currentExtent; // no choice
+    } else {
+        int width, height;
+        glfwGetFramebufferSize(window.get(), &width, &height);
+
+        vk::Extent2D actualExtent = {
+                static_cast<uint32_t>(width),
+                static_cast<uint32_t>(height),
+        };
+
+        actualExtent.width = max(capabilities.minImageExtent.width, min(capabilities.maxImageExtent.width, actualExtent.width));
+        actualExtent.height = max(capabilities.minImageExtent.height, min(capabilities.maxImageExtent.height, actualExtent.height));
+
+        return actualExtent;
+    }
+}
+
+void Carrot::VulkanDriver::createSwapChain() {
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(getPhysicalDevice());
+
+    vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    vk::Extent2D swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities);
+
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
+    // maxImageCount == 0 means we can request any number of image
+    if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        // ensure we don't ask for more images than the device will be able to provide
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    vk::SwapchainCreateInfoKHR createInfo{
+            .surface = getSurface(),
+            .minImageCount = imageCount,
+            .imageFormat = surfaceFormat.format,
+            .imageColorSpace = surfaceFormat.colorSpace,
+            .imageExtent = swapchainExtent,
+            .imageArrayLayers = 1,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment, // used for rendering
+
+            .preTransform = swapChainSupport.capabilities.currentTransform,
+
+            // don't try to blend with background of other windows
+            .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+
+            .presentMode = presentMode,
+            .clipped = VK_TRUE,
+
+            .oldSwapchain = nullptr,
+    };
+
+    // image info
+
+    uint32_t indices[] = { getQueueFamilies().graphicsFamily.value(), getQueueFamilies().presentFamily.value() };
+
+    if(getQueueFamilies().presentFamily != getQueueFamilies().graphicsFamily) {
+        // image will be shared between the 2 queues, without explicit transfers
+        createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = indices;
+    } else {
+        // always on same queue, no need to share
+
+        createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+        createInfo.queueFamilyIndexCount = 0;
+        createInfo.pQueueFamilyIndices = nullptr;
+    }
+
+    swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, getAllocationCallbacks());
+
+    const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
+    swapchainImages.clear();
+    for(const auto& image : swapchainDeviceImages) {
+        swapchainImages.push_back(image);
+    }
+
+    this->swapchainImageFormat = surfaceFormat.format;
+    this->swapchainExtent = swapchainExtent;
+
+    depthFormat = findDepthFormat();
+
+    createSwapChainImageViews();
+}
+
+void Carrot::VulkanDriver::createSwapChainImageViews() {
+    swapchainImageViews.resize(swapchainImages.size());
+
+    for(size_t index = 0; index < swapchainImages.size(); index++) {
+        auto view = createImageView(swapchainImages[index], swapchainImageFormat);
+        swapchainImageViews[index] = std::move(view);
+    }
+}
+
+vk::Format Carrot::VulkanDriver::findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+    for(auto& format : candidates) {
+        vk::FormatProperties properties = getPhysicalDevice().getFormatProperties(format);
+
+        if(tiling == vk::ImageTiling::eLinear && (properties.linearTilingFeatures & features) == features) {
+            return format;
+        }
+
+        if(tiling == vk::ImageTiling::eOptimal && (properties.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    throw runtime_error("Could not find supported format");
+}
+
+vk::Format Carrot::VulkanDriver::findDepthFormat() {
+    return findSupportedFormat(
+            {vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+            vk::ImageTiling::eOptimal,
+            vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+
+Carrot::VulkanDriver::~VulkanDriver() {
+    swapchain.reset();
+    instance->destroySurfaceKHR(getSurface(), getAllocationCallbacks());
+}
+
+void Carrot::VulkanDriver::cleanupSwapchain() {
+    swapchainImageViews.clear();
+    swapchain.reset();
+}
+
+void Carrot::VulkanDriver::createUniformBuffers() {
+    vk::DeviceSize bufferSize = sizeof(Carrot::CameraBufferObject);
+    cameraUniformBuffers.resize(getSwapchainImageCount(), nullptr);
+
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        cameraUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+                bufferSize,
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                createGraphicsAndTransferFamiliesSet());
+    }
+
+    vk::DeviceSize debugBufferSize = sizeof(Carrot::DebugBufferObject);
+    debugUniformBuffers.resize(getSwapchainImageCount(), nullptr);
+
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        debugUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+                                                             debugBufferSize,
+                                                             vk::BufferUsageFlagBits::eUniformBuffer,
+                                                             vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                             createGraphicsAndTransferFamiliesSet());
+    }
+}
+
+void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands) {
+    commands.setViewport(0, vk::Viewport{
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(framebufferWidth),
+            .height = static_cast<float>(framebufferHeight),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f,
+    });
+
+    commands.setScissor(0, vk::Rect2D {
+            .offset = {0,0},
+            .extent = {
+                    static_cast<uint32_t>(framebufferWidth),
+                    static_cast<uint32_t>(framebufferHeight),
+            },
+    });
+}
+
+void Carrot::VulkanDriver::recreateSwapchain() {
+    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+    while(framebufferWidth == 0 || framebufferHeight == 0) {
+        glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+        glfwWaitEvents();
+    }
 }
 
 bool Carrot::QueueFamilies::isComplete() const {

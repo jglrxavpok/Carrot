@@ -85,6 +85,7 @@ set(SOURCES
         src/engine/render/raytracing/AccelerationStructure.cpp
         src/engine/stb_impls.cpp
         src/engine/vulkan/VulkanDriver.cpp
+        src/engine/render/VulkanRenderer.cpp
 
         src/main.cpp
 

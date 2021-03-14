@@ -87,7 +87,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const string &filename) {
+std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const string &filename) {
     int width;
     int height;
     int channels;

@@ -9,13 +9,13 @@
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 
-Carrot::ShaderModule::ShaderModule(Carrot::Engine& engine, const string& filename, const string& entryPoint): engine(engine), entryPoint(entryPoint) {
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
     auto code = IO::readFile(filename);
-    auto& device = engine.getLogicalDevice();
+    auto& device = driver.getLogicalDevice();
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),
             .pCode = reinterpret_cast<const uint32_t*>(code.data()),
-    }, engine.getAllocator());
+    }, driver.getAllocationCallbacks());
 
     spirv_cross::Parser parser{reinterpret_cast<const uint32_t*>(code.data()), code.size()/sizeof(uint32_t)};
     parser.parse();

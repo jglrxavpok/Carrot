@@ -36,7 +36,7 @@ namespace Carrot {
     /// Helpers build Acceleration Structures for raytracing
     class ASBuilder {
     private:
-        Engine& engine;
+        VulkanRenderer& renderer;
         vector<GeometryInput> bottomLevelGeometries{};
         vector<InstanceInput> topLevelInstances{};
         unique_ptr<AccelerationStructure> topLevelAS{};
@@ -49,7 +49,7 @@ namespace Carrot {
         void registerIndexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
 
     public:
-        explicit ASBuilder(Engine& engine);
+        explicit ASBuilder(VulkanRenderer& renderer);
 
         template<typename VertexType>
         vector<Carrot::GeometryInput*> addModelGeometries(const Model& model);

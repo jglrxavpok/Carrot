@@ -5,7 +5,7 @@
 #pragma once
 #include <string>
 #include "engine/vulkan/includes.h"
-#include "engine/Engine.h"
+#include "engine/vulkan/VulkanDriver.h"
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_parser.hpp>
 #include <map>
@@ -24,7 +24,7 @@ namespace Carrot {
         };
 
     private:
-        Carrot::Engine& engine;
+        Carrot::VulkanDriver& driver;
         vk::UniqueShaderModule vkModule{};
         string entryPoint = "main";
         spirv_cross::ParsedIR parsedCode{};
@@ -38,7 +38,7 @@ namespace Carrot {
                            const map<string, uint32_t>& constants);
 
     public:
-        explicit ShaderModule(Carrot::Engine& engine, const string& filename, const string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
