@@ -515,6 +515,15 @@ void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Se
     waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);
 }
 
+static float totalTime = 0.0f;
 void Game::Game::tick(double frameTime) {
     world.tick(frameTime);
+
+    totalTime += frameTime*10.0f;
+    modelInstance[99].color = {
+            glm::sin(totalTime)/2.0f+0.5f,
+            glm::cos(totalTime)/2.0f+0.5f,
+            glm::cos(totalTime)*glm::sin(totalTime)/2.0f+0.5f,
+            1.0f,
+    };
 }

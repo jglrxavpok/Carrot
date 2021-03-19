@@ -18,6 +18,7 @@ void operator delete(void* ptr) noexcept{
 #endif
 
 int main() {
+    std::ios::sync_with_stdio(false);
    // try {
         glfwInit();
 

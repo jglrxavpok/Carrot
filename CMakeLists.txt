@@ -44,7 +44,9 @@ copy_resources(textures)
 copy_resources(models)
 copy_resources(pipelines)
 copy_resources(materials)
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/vk_layer_settings.txt")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
 set(SOURCES
         src/engine/io/IO.cpp
@@ -86,6 +88,7 @@ set(SOURCES
         src/engine/stb_impls.cpp
         src/engine/vulkan/VulkanDriver.cpp
         src/engine/render/VulkanRenderer.cpp
+        src/engine/LoadingScreen.cpp
 
         src/main.cpp
 

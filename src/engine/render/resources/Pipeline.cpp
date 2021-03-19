@@ -256,6 +256,8 @@ void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk
     commands.bindPipeline(bindPoint, *vkPipeline);
     if(type == Type::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
+    } if(type == Type::Blit) {
+        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {});
     } else {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
     }
@@ -466,6 +468,8 @@ Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
         return Type::GResolve;
     } else if(name == "gbuffer") {
         return Type::GBuffer;
+    } else if(name == "blit") {
+        return Type::Blit;
     }
     return Type::Unknown;
 }

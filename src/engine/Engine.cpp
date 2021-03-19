@@ -34,6 +34,7 @@
 #include "engine/render/resources/ResourceAllocator.h"
 #include "game/Game.h"
 #include "stb_image_write.h"
+#include "LoadingScreen.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -43,6 +44,10 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(wi
 
 void Carrot::Engine::init() {
     initWindow();
+
+    allocateGraphicsCommandBuffers();
+    // quickly render something on screen
+    LoadingScreen screen{*this};
     initVulkan();
 }
 
@@ -122,7 +127,6 @@ void Carrot::Engine::initWindow() {
 void Carrot::Engine::initVulkan() {
     resourceAllocator = make_unique<ResourceAllocator>(vkDriver);
 
-    allocateGraphicsCommandBuffers();
     createTracyContexts();
 
     createCamera();
@@ -149,10 +153,6 @@ Carrot::Engine::~Engine() {
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         TracyVkDestroy(tracyCtx[i]);
     }*/
-}
-
-vk::UniqueImageView Carrot::Engine::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {
-    return vkDriver.createImageView(image, imageFormat, aspectMask);
 }
 
 void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
@@ -296,13 +296,6 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     };
     this->gBufferCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
     this->gResolveCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
-
-    vk::CommandBufferAllocateInfo uiAllocInfo {
-            .commandPool = getGraphicsCommandPool(),
-            .level = vk::CommandBufferLevel::eSecondary,
-            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
-    };
-    this->uiCommandBuffers = getLogicalDevice().allocateCommandBuffers(uiAllocInfo);
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
@@ -587,20 +580,12 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 
 void Carrot::Engine::createTracyContexts() {
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        tracyCtx.emplace_back(move(make_unique<TracyVulkanContext>(getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue(), getQueueFamilies().graphicsFamily.value())));
+        tracyCtx.emplace_back(move(make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue(), getQueueFamilies().graphicsFamily.value())));
     }
 }
 
 vk::Queue Carrot::Engine::getComputeQueue() {
     return vkDriver.getComputeQueue();
-}
-
-vk::Extent2D Carrot::Engine::getSwapchainExtent() const {
-    return vkDriver.getSwapchainExtent();
-}
-
-vk::PhysicalDevice& Carrot::Engine::getPhysicalDevice() {
-    return vkDriver.getPhysicalDevice();
 }
 
 Carrot::ASBuilder& Carrot::Engine::getASBuilder() {

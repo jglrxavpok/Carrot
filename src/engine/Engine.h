@@ -105,10 +105,6 @@ namespace Carrot {
 
         vk::Queue getComputeQueue();
 
-        /// Create an image view from a given image
-        [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
-                                                          vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor);
-
         // templates
 
         /// Performs a transfer operation on the transfer queue.
@@ -135,8 +131,6 @@ namespace Carrot {
         set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
         Camera& getCamera();
-
-        vk::Extent2D getSwapchainExtent() const;
 
         vk::PhysicalDevice& getPhysicalDevice();
 
@@ -173,7 +167,6 @@ namespace Carrot {
         vector<vk::CommandBuffer> mainCommandBuffers{};
         vector<vk::CommandBuffer> gBufferCommandBuffers{};
         vector<vk::CommandBuffer> gResolveCommandBuffers{};
-        vector<vk::CommandBuffer> uiCommandBuffers{};
         vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         vector<vk::UniqueFence> inFlightFences{};
@@ -231,8 +224,6 @@ namespace Carrot {
         void createTracyContexts();
 
         void allocateGraphicsCommandBuffers();
-
-        vk::Instance& getVkInstance() { return vkDriver.getInstance(); };
 
     };
 }

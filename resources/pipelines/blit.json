@@ -1,0 +1,12 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "ScreenSpace",
+  "constants": {
+    "MAX_TEXTURES": 16,
+    "MAX_MATERIALS": 16
+  },
+  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/blit.fragment.glsl.spv",
+  "texturesBindingIndex": 0
+}

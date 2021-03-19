@@ -117,7 +117,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
     });
 #ifdef AFTERMATH_ENABLE
     try {
-        engine.getGraphicsQueue().waitIdle();
+        renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
     } catch (std::exception& e) {
         std::this_thread::sleep_for(std::chrono::seconds(6));
         exit(1);

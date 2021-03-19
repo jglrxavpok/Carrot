@@ -18,6 +18,7 @@ namespace Carrot {
         enum class Type {
             GBuffer,
             GResolve,
+            Blit,
             Unknown
         };
 
