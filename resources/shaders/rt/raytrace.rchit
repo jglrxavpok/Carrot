@@ -59,6 +59,13 @@ void main()
 
     vec4 p = (v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z);
     // gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+
+    #define DEBUG 0
+    #if DEBUG
+    vec3 worldPos = (sceneElement.transform * vec4(p.xyz, 1.0)).xyz;
+    vec3 rayHitPosition = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    vec3 finalColor = vec3(length(worldPos - rayHitPosition)*20);
+    #else
     vec3 worldPos = (sceneElement.transform * vec4(p.xyz, 1.0)).xyz;
     vec3 normal = normalize((sceneElement.transformIT * vec4(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z, 0.0))).xyz;
 
@@ -122,6 +129,6 @@ void main()
     lightContribution = min(vec3(1.0)-lights.ambientColor, lightContribution);
 
     finalColor = lightContribution + lights.ambientColor;
-
+    #endif
     payload.hitColor = finalColor;
 }

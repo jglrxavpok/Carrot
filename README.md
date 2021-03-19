@@ -12,3 +12,6 @@ Don't expect support.
 
 ## Last screenshot
 ![Last screenshot](./screenshot.png)
+
+# Credits
+* Splash screen & logo by *Benjamin "beb" Er-Raach*
