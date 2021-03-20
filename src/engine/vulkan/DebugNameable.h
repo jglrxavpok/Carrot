@@ -21,7 +21,7 @@ namespace Carrot {
             if(USE_DEBUG_MARKERS) {
                 vk::DebugMarkerObjectNameInfoEXT nameInfo {
                         .objectType = VulkanType::debugReportObjectType,
-                        .object = (uint64_t) ((VulkanType::CType&) object),
+                    //    .object = (uint64_t) ((VulkanType::CType&) object),
                         .pObjectName = name.c_str(),
                 };
                 driver.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);

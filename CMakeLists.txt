@@ -172,7 +172,6 @@ include_directories(src/)
 include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
-include_directories(thirdparty/threadpool/)
 include_directories(thirdparty/imgui/)
 
 set(ALL_SOURCES ${SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})

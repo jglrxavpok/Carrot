@@ -2,7 +2,6 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
-#include <ThreadPool.h>
 
 // Logic based on NVIDIA nvpro-samples tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
 

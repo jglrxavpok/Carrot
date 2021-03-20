@@ -96,14 +96,14 @@ namespace Carrot {
         vk::CommandPool& getComputeCommandPool();
 
         /// Queue for transfer operations
-        vk::Queue getTransferQueue();
+        vk::Queue& getTransferQueue();
 
         /// Queue for graphics operations
-        vk::Queue getGraphicsQueue();
+        vk::Queue& getGraphicsQueue();
 
-        vk::Queue getPresentQueue();
+        vk::Queue& getPresentQueue();
 
-        vk::Queue getComputeQueue();
+        vk::Queue& getComputeQueue();
 
         // templates
 

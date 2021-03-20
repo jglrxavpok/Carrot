@@ -499,15 +499,15 @@ vk::CommandPool& Carrot::Engine::getComputeCommandPool() {
     return vkDriver.getComputeCommandPool();
 }
 
-vk::Queue Carrot::Engine::getTransferQueue() {
+vk::Queue& Carrot::Engine::getTransferQueue() {
     return vkDriver.getTransferQueue();
 }
 
-vk::Queue Carrot::Engine::getGraphicsQueue() {
+vk::Queue& Carrot::Engine::getGraphicsQueue() {
     return vkDriver.getGraphicsQueue();
 }
 
-vk::Queue Carrot::Engine::getPresentQueue() {
+vk::Queue& Carrot::Engine::getPresentQueue() {
     return vkDriver.getPresentQueue();
 }
 
@@ -584,7 +584,7 @@ void Carrot::Engine::createTracyContexts() {
     }
 }
 
-vk::Queue Carrot::Engine::getComputeQueue() {
+vk::Queue& Carrot::Engine::getComputeQueue() {
     return vkDriver.getComputeQueue();
 }
 

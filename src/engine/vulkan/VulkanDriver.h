@@ -146,10 +146,10 @@ namespace Carrot {
 
         const vk::AllocationCallbacks* getAllocationCallbacks() { return allocator; };
 
-        vk::Queue getPresentQueue() { return presentQueue; };
-        vk::Queue getTransferQueue() { return transferQueue; };
-        vk::Queue getGraphicsQueue() { return graphicsQueue; };
-        vk::Queue getComputeQueue() { return computeQueue; };
+        vk::Queue& getPresentQueue() { return presentQueue; };
+        vk::Queue& getTransferQueue() { return transferQueue; };
+        vk::Queue& getGraphicsQueue() { return graphicsQueue; };
+        vk::Queue& getComputeQueue() { return computeQueue; };
 
         vk::SurfaceKHR getSurface() { return surface; };
 
