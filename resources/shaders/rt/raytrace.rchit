@@ -60,16 +60,16 @@ void main()
     vec4 p = (v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z);
     // gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
+    vec3 worldPos = (sceneElement.transform * vec4(p.xyz, 1.0)).xyz;
+    vec3 normal = normalize((sceneElement.transformIT * vec4(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z, 0.0)).xyz);
+
     #define DEBUG 0
     #if DEBUG
-    vec3 worldPos = (sceneElement.transform * vec4(p.xyz, 1.0)).xyz;
     vec3 rayHitPosition = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3 finalColor = vec3(length(worldPos - rayHitPosition)*20);
+    vec3 finalColor = vec3(dot(normal, -normalize(worldPos-lights.l[0].position)));
     #else
-    vec3 worldPos = (sceneElement.transform * vec4(p.xyz, 1.0)).xyz;
-    vec3 normal = normalize((sceneElement.transformIT * vec4(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z, 0.0))).xyz;
 
-    vec3 finalColor = vec3(1.0);
+    vec3 finalColor = vec3(0.0);
 
     vec3 lightContribution = vec3(0.0);
 
@@ -89,12 +89,14 @@ void main()
             lightDirection = -normalize(light.direction);
         } else {
             // TODO
-            lightDirection = vec3(1.0);
+            lightDirection = -normal;
         }
 
-        // is this point in shadow?
-        isShadowed = true;
+
         if(dot(normal, lightDirection) > 0) {
+            // is this point in shadow?
+            isShadowed = true;
+
             traceRayEXT(topLevelAS, // AS
                 rayFlags, // ray flags
                 0xFF, // cull mask
@@ -115,12 +117,9 @@ void main()
                 if(light.type == 0) {
                     const float maxDist = 3;
                     float distance = length(light.position-worldPos);
-                    if(distance < maxDist) {
-                        lightFactor = (maxDist-distance)/maxDist; // TODO: calculate based on intensity, falloff, etc.
-                    } else {
-                        lightFactor = 0.0f;
-                    }
+                    lightFactor = max(0, (maxDist-distance)/maxDist); // TODO: calculate based on intensity, falloff, etc.
                 }
+                lightFactor *= max(0, dot(normal, lightDirection));
                 lightContribution += light.color * lightFactor * light.intensity;
             }
         }

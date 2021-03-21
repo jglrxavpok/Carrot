@@ -188,12 +188,12 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
 }
 
 void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    vk::CommandPool commandPool = driver.getTransferCommandPool();
+    vk::CommandPool commandPool = driver.getThreadTransferCommandPool();
     vk::Queue queue = driver.getTransferQueue();
 
     // ensure we are using the correct command pool and queue if transitioning to graphics-related layouts
     if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        commandPool = driver.getGraphicsCommandPool();
+        commandPool = driver.getThreadGraphicsCommandPool();
         queue = driver.getGraphicsQueue();
     }
     driver.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {

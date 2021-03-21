@@ -165,7 +165,7 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     auto worldMesh = mapModel->getMeshes()[0];
     as.addGeometries<Vertex>(worldMesh->getBackingBuffer(), worldMesh->getIndexCount(), 0, worldMesh->getBackingBuffer(), worldMesh->getVertexCount(), {worldMesh->getVertexStartOffset()});
     as.addInstance(InstanceInput {
-        .customInstanceIndex = maxInstanceCount*3,
+        .customInstanceIndex = static_cast<uint32_t>(geometries.size()),
         .geometryIndex = maxInstanceCount*3, // TODO: don't hardcode
         .mask = 0xFF,
         .hitGroup = 0,

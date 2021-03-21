@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include "engine/Engine.h"
 #include "engine/constants.h"

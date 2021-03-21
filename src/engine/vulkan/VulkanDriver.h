@@ -10,6 +10,7 @@
 #include <set>
 #include <engine/memory/NakedPtr.hpp>
 #include <GLFW/glfw3.h>
+#include "engine/memory/ThreadLocal.hpp"
 
 namespace Carrot {
     using namespace std;
@@ -51,9 +52,9 @@ namespace Carrot {
         vk::Queue computeQueue{};
         vk::SurfaceKHR surface{};
 
-        vk::UniqueCommandPool graphicsCommandPool{};
-        vk::UniqueCommandPool transferCommandPool{};
-        vk::UniqueCommandPool computeCommandPool{};
+        ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
+        ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
+        ThreadLocal<vk::UniqueCommandPool> computeCommandPool;
 
         std::unique_ptr<Image> defaultImage = nullptr;
         vk::UniqueImageView defaultImageView{};
@@ -102,13 +103,13 @@ namespace Carrot {
         void createSurface();
 
         /// Create the command pool for transfer operations
-        void createTransferCommandPool();
+        vk::UniqueCommandPool createTransferCommandPool();
 
         /// Create the command pool for graphic operations
-        void createGraphicsCommandPool();
+        vk::UniqueCommandPool createGraphicsCommandPool();
 
         /// Create the command pool for compute operations
-        void createComputeCommandPool();
+        vk::UniqueCommandPool createComputeCommandPool();
 
         void createDefaultTexture();
 
@@ -159,9 +160,9 @@ namespace Carrot {
         /// Find the memory type compatible with the filter and the given properties
         uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
-        vk::CommandPool& getComputeCommandPool() { return *computeCommandPool; };
-        vk::CommandPool& getGraphicsCommandPool() { return *graphicsCommandPool; };
-        vk::CommandPool& getTransferCommandPool() { return *transferCommandPool; };
+        vk::CommandPool& getThreadComputeCommandPool() { return *computeCommandPool.get(); };
+        vk::CommandPool& getThreadGraphicsCommandPool() { return *graphicsCommandPool.get(); };
+        vk::CommandPool& getThreadTransferCommandPool() { return *transferCommandPool.get(); };
 
         template<typename CommandBufferConsumer>
         void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);

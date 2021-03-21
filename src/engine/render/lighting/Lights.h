@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 
 namespace Carrot {
+    using bool32 = uint32_t;
+
     enum class LightType: std::uint32_t {
         Point,
         Directional,
@@ -21,7 +23,7 @@ namespace Carrot {
         LightType type = LightType::Point;
 
         alignas(16) glm::vec3 color{1.0f};
-        bool enabled = false;
+        bool32 enabled = false;
     };
 
     struct RaycastedShadowingLightBuffer {

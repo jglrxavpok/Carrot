@@ -31,7 +31,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window) {
+Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window),
+    graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
+    computeCommandPool([&]() { return createComputeCommandPool(); }),
+    transferCommandPool([&]() { return createTransferCommandPool(); })
+
+{
+
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 
     vk::DynamicLoader dl;
@@ -444,31 +450,31 @@ uint32_t Carrot::VulkanDriver::findMemoryType(uint32_t typeFilter, vk::MemoryPro
     throw runtime_error("Failed to find suitable memory type.");
 }
 
-void Carrot::VulkanDriver::createGraphicsCommandPool() {
+vk::UniqueCommandPool Carrot::VulkanDriver::createGraphicsCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
             .queueFamilyIndex = getQueueFamilies().graphicsFamily.value(),
     };
 
-    graphicsCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
+    return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-void Carrot::VulkanDriver::createTransferCommandPool() {
+vk::UniqueCommandPool Carrot::VulkanDriver::createTransferCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eTransient, // short lived buffer (single use)
             .queueFamilyIndex = getQueueFamilies().transferFamily.value(),
     };
 
-    transferCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
+    return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-void Carrot::VulkanDriver::createComputeCommandPool() {
+vk::UniqueCommandPool Carrot::VulkanDriver::createComputeCommandPool() {
     vk::CommandPoolCreateInfo poolInfo{
             .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, // short lived buffer (single use)
             .queueFamilyIndex = getQueueFamilies().computeFamily.value(),
     };
 
-    computeCommandPool = getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
+    return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
 vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {

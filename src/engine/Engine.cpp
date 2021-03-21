@@ -488,15 +488,15 @@ vk::Optional<const vk::AllocationCallbacks> Carrot::Engine::getAllocator() {
 }
 
 vk::CommandPool& Carrot::Engine::getTransferCommandPool() {
-    return vkDriver.getTransferCommandPool();
+    return vkDriver.getThreadTransferCommandPool();
 }
 
 vk::CommandPool& Carrot::Engine::getGraphicsCommandPool() {
-    return vkDriver.getGraphicsCommandPool();
+    return vkDriver.getThreadGraphicsCommandPool();
 }
 
 vk::CommandPool& Carrot::Engine::getComputeCommandPool() {
-    return vkDriver.getComputeCommandPool();
+    return vkDriver.getThreadComputeCommandPool();
 }
 
 vk::Queue& Carrot::Engine::getTransferQueue() {

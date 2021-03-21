@@ -44,10 +44,10 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
 
 template<typename CommandBufferConsumer>
 void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer) {
-    performSingleTimeCommands(getTransferCommandPool(), getTransferQueue(), consumer);
+    performSingleTimeCommands(getThreadTransferCommandPool(), getTransferQueue(), consumer);
 }
 
 template<typename CommandBufferConsumer>
 void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer) {
-    performSingleTimeCommands(getGraphicsCommandPool(), getGraphicsQueue(), consumer);
+    performSingleTimeCommands(getThreadGraphicsCommandPool(), getGraphicsQueue(), consumer);
 }

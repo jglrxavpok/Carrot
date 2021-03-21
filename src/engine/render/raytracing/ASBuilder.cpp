@@ -69,7 +69,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
     vk::UniqueQueryPool queryPool = device.createQueryPoolUnique(queryPoolCreateInfo, renderer.getVulkanDriver().getAllocationCallbacks());
 
     vector<vk::CommandBuffer> buildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = renderer.getVulkanDriver().getGraphicsCommandPool(),
+            .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = static_cast<uint32_t>(blasCount),
     });
@@ -165,7 +165,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
         }
     }
 
-    device.freeCommandBuffers(renderer.getVulkanDriver().getGraphicsCommandPool(), buildCommands);
+    device.freeCommandBuffers(renderer.getVulkanDriver().getThreadGraphicsCommandPool(), buildCommands);
 }
 
 void Carrot::ASBuilder::addInstance(const InstanceInput instance) {
@@ -204,7 +204,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
     vk::CommandBuffer buildCommand = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = renderer.getVulkanDriver().getGraphicsCommandPool(),
+            .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = 1,
     })[0];
@@ -291,7 +291,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     });
     renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
 
-    device.freeCommandBuffers(renderer.getVulkanDriver().getGraphicsCommandPool(), buildCommand);
+    device.freeCommandBuffers(renderer.getVulkanDriver().getThreadGraphicsCommandPool(), buildCommand);
 }
 
 Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
