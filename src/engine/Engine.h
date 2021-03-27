@@ -24,6 +24,7 @@ namespace Carrot {
 
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/VulkanRenderer.h"
+#include "render/Skybox.hpp"
 
 using namespace std;
 
@@ -148,6 +149,8 @@ namespace Carrot {
 
         GBuffer& getGBuffer() { return renderer.getGBuffer(); };
 
+        void setSkybox(Skybox::Type type);
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -167,6 +170,7 @@ namespace Carrot {
         vector<vk::CommandBuffer> mainCommandBuffers{};
         vector<vk::CommandBuffer> gBufferCommandBuffers{};
         vector<vk::CommandBuffer> gResolveCommandBuffers{};
+        vector<vk::CommandBuffer> skyboxCommandBuffers{};
         vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         vector<vk::UniqueFence> inFlightFences{};
@@ -180,6 +184,12 @@ namespace Carrot {
         unique_ptr<Game::Game> game = nullptr;
 
         bool framebufferResized = false;
+
+        Skybox::Type currentSkybox = Skybox::Type::None;
+        unique_ptr<Image> loadedSkyboxTexture = nullptr;
+        vk::UniqueImageView loadedSkyboxTextureView{};
+        shared_ptr<Pipeline> skyboxPipeline = nullptr;
+        unique_ptr<Mesh> skyboxMesh = nullptr;
 
         /// Init engine
         void init();

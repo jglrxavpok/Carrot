@@ -27,11 +27,16 @@ namespace Carrot {
         vector<unique_ptr<Image>> uiImages{};
         vector<vk::UniqueImageView> uiImageViews{};
 
+        vector<unique_ptr<Image>> skyboxImages{};
+        vector<vk::UniqueImageView> skyboxImageViews{};
+
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 
         vk::UniqueRenderPass gRenderPass{};
         vk::UniqueRenderPass imguiRenderPass{};
+        vk::UniqueRenderPass skyboxRenderPass{};
         vector<vk::UniqueFramebuffer> imguiFramebuffers{};
+        vector<vk::UniqueFramebuffer> skyboxFramebuffers{};
         vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
 
         unique_ptr<RayTracer> raytracer = nullptr;
@@ -48,6 +53,7 @@ namespace Carrot {
 
         void initImgui();
 
+        void createSkyboxRenderPass();
 
     public:
         explicit VulkanRenderer(VulkanDriver& driver);
@@ -75,13 +81,20 @@ namespace Carrot {
 
         vector<vk::UniqueFramebuffer>& getSwapchainFramebuffers() { return swapchainFramebuffers; };
         vector<vk::UniqueFramebuffer>& getImguiFramebuffers() { return imguiFramebuffers; };
+        vector<vk::UniqueFramebuffer>& getSkyboxFramebuffers() { return skyboxFramebuffers; };
 
         vk::RenderPass& getGRenderPass() { return *gRenderPass; };
         vk::RenderPass& getImguiRenderPass() { return *imguiRenderPass; };
+        vk::RenderPass& getSkyboxRenderPass() { return *skyboxRenderPass; };
 
         vector<unique_ptr<Image>>& getUIImages() { return uiImages; };
         vector<vk::UniqueImageView>& getUIImageViews() { return uiImageViews; };
 
+        vector<unique_ptr<Image>>& getSkyboxImages() { return skyboxImages; };
+        vector<vk::UniqueImageView>& getSkyboxImageViews() { return skyboxImageViews; };
+
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
+
+        void createSkyboxResources();
     };
 }

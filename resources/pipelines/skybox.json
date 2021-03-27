@@ -1,0 +1,7 @@
+{
+  "type": "skybox",
+  "subpassIndex": 0,
+  "vertexFormat": "SimpleVertex",
+  "vertexShader": "resources/shaders/skybox.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/skybox.fragment.glsl.spv"
+}

@@ -15,6 +15,7 @@ namespace Carrot {
         Depth,
         RaytracingOnly,
         OnlyUI, // < UI is always shown
+        Skybox,
     };
 
     struct DebugBufferObject {

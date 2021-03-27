@@ -20,6 +20,8 @@ layout(set = 0, binding = 8) uniform Debug {
     #include "debugparams.glsl"
 } debug;
 
+layout(set = 0, binding = 9) uniform texture2D skyboxTexture;
+
 layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
@@ -53,6 +55,9 @@ void main() {
 
             case 5:
                 outColorWorld = vec4(0.0,0.0,0.0,1.0);
+
+            case 6:
+                outColorWorld = texture(sampler2D(skyboxTexture, linearSampler), uv);
             break;
         }
 
@@ -61,7 +66,14 @@ void main() {
         vec4 fragmentColor = subpassLoad(albedo);
         vec3 normal = (cbo.inverseView * subpassLoad(viewNormals)).xyz;
         vec3 lighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
-        outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
+        vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
+
+        float currDepth = subpassLoad(depth).r;
+        if(currDepth < 1.0) {
+            outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
+        } else {
+            outColorWorld = vec4(skyboxRGB, fragmentColor.a);
+        }
     }
 
     vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);

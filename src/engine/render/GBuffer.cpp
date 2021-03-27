@@ -75,7 +75,7 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
 void Carrot::GBuffer::loadResolvePipeline() {
     gResolvePipeline = renderer.getOrCreatePipeline("gResolve");
 
-    const size_t imageCount = 6/*albedo+depth+viewPosition+normal+lighting+ui*/;
+    const size_t imageCount = 7/*albedo+depth+viewPosition+normal+lighting+ui*/;
     vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount() * imageCount};
     vector<vk::DescriptorImageInfo> imageInfo{renderer.getSwapchainImageCount() * imageCount};
     for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
@@ -162,6 +162,20 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeUI.dstSet = gResolvePipeline->getDescriptorSets()[i];
         writeUI.dstArrayElement = 0;
         writeUI.dstBinding = 5;
+
+        // skybox
+        auto& skyboxInfo = imageInfo[i*imageCount+6];
+        skyboxInfo.imageView = *renderer.getSkyboxImageViews()[i];
+        skyboxInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        skyboxInfo.sampler = nullptr;
+
+        auto& writeSkybox = writes[i*imageCount+6];
+        writeSkybox.descriptorCount = 1;
+        writeSkybox.descriptorType = vk::DescriptorType::eSampledImage;
+        writeSkybox.pImageInfo = &skyboxInfo;
+        writeSkybox.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeSkybox.dstArrayElement = 0;
+        writeSkybox.dstBinding = 9;
     }
     renderer.getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
 }
@@ -336,7 +350,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
 
     vk::SubpassDescription gResolveSubpass {
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .inputAttachmentCount = 4,
+            .inputAttachmentCount = sizeof(resolveInputs)/sizeof(vk::AttachmentReference),
             .pInputAttachments = resolveInputs,
 
             .colorAttachmentCount = 1,
@@ -368,7 +382,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             },
             {
                     .srcSubpass = RenderPasses::GBufferSubPassIndex, // gBuffer
-                    .dstSubpass = RenderPasses::GResolveSubPassIndex, // gResolve
+                    .dstSubpass = RenderPasses::GResolveSubPassIndex,
 
                     .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
                                     vk::PipelineStageFlagBits::eEarlyFragmentTests,

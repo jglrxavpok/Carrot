@@ -180,7 +180,8 @@ namespace Carrot {
         void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer);
 
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
-                                                          vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor);
+                                                          vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                          vk::ImageViewType viewType = vk::ImageViewType::e2D, uint32_t layerCount = 1);
 
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 

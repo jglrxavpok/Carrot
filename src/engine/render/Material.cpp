@@ -24,7 +24,10 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
         renderingPipeline = pipeline;
     }
 
-    textureID = renderingPipeline->reserveTextureSlot(engine.getRenderer().getOrCreateTextureView(textureName));
+    if(description.HasMember("texture")) {
+        string textureName = description["texture"].GetString();
+        textureID = renderingPipeline->reserveTextureSlot(engine.getRenderer().getOrCreateTextureView(textureName));
+    }
     if(description.HasMember("ignoreInstanceColor")) {
         ignoreInstanceColor = description["ignoreInstanceColor"].GetBool();
     }

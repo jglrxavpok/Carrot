@@ -18,13 +18,14 @@ namespace Carrot {
         enum class Type {
             GBuffer,
             GResolve,
+            Skybox,
             Blit,
             Unknown
         };
 
     private:
         Carrot::VulkanDriver& driver;
-        vk::UniqueRenderPass& renderPass;
+        vk::RenderPass& renderPass;
         vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
         /// can be nullptr, used for animations
         vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
@@ -53,7 +54,7 @@ namespace Carrot {
         static Type getPipelineType(const string& name);
 
     public:
-        explicit Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& renderPass, const string& pipelineName);
+        explicit Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const string& pipelineName);
 
         void bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 

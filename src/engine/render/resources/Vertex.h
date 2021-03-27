@@ -85,6 +85,17 @@ namespace Carrot {
         /// Creates an array describing the different attributes of a Vertex
         static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
     };
+
+    struct SimpleVertex {
+        /// Screen position of the vertex
+        alignas(16) glm::vec3 pos;
+
+        /// Creates a binding description for this Vertex struct
+        static std::vector<vk::VertexInputBindingDescription> getBindingDescription();
+
+        /// Creates an array describing the different attributes of a Vertex
+        static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
+    };
 }
 
 

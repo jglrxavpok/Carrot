@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& renderPass, const string& pipelineName): driver(driver), renderPass(renderPass) {
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const string& pipelineName): driver(driver), renderPass(renderPass) {
     rapidjson::Document description;
     description.Parse(IO::readFileAsText("resources/pipelines/"+pipelineName+".json").c_str());
 
@@ -67,7 +67,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& r
 
             .polygonMode = vk::PolygonMode::eFill,
 
-            .cullMode = vk::CullModeFlagBits::eFront,
+            .cullMode = type == Type::Skybox ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eFront,
             .frontFace = vk::FrontFace::eClockwise,
 
             // TODO: change for shadow maps
@@ -89,7 +89,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& r
     };
     vk::PipelineDepthStencilStateCreateInfo depthStencil {
             .depthTestEnable = type != Type::GResolve,
-            .depthWriteEnable = type != Type::GResolve,
+            .depthWriteEnable = type != Type::GResolve && type != Type::Skybox,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
@@ -227,7 +227,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::UniqueRenderPass& r
             .pDynamicState = &dynamicStateInfo,
 
             .layout = *layout,
-            .renderPass = *renderPass,
+            .renderPass = renderPass,
             .subpass = static_cast<uint32_t>(subpassIndex),
     };
 
@@ -256,7 +256,7 @@ void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk
     commands.bindPipeline(bindPoint, *vkPipeline);
     if(type == Type::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
-    } if(type == Type::Blit) {
+    } else if(type == Type::Blit) {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {});
     } else {
         bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
@@ -470,6 +470,8 @@ Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
         return Type::GBuffer;
     } else if(name == "blit") {
         return Type::Blit;
+    } else if(name == "skybox") {
+        return Type::Skybox;
     }
     return Type::Unknown;
 }

@@ -164,6 +164,8 @@ void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
             .framebuffer = *renderer.getSwapchainFramebuffers()[frameIndex],
     };
     renderer.getGBuffer().recordResolvePass(frameIndex, gResolveCommandBuffers[frameIndex], &gResolveInheritance);
+
+
 }
 
 void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBufferCommandBuffer) {
@@ -260,6 +262,37 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
 
         static bool onlyRaytracing = true;
 
+        {
+            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Skybox pass");
+
+            // TODO: custom framebuffer, custom render pass
+            if(currentSkybox != Skybox::Type::None) {
+                vk::ClearValue skyboxClear[] = {
+                    clearColor,
+                    clearDepth,
+                };
+
+                vk::RenderPassBeginInfo skyboxRenderPassInfo {
+                        .renderPass = renderer.getSkyboxRenderPass(),
+                        .framebuffer = *renderer.getSkyboxFramebuffers()[i],
+                        .renderArea = {
+                                .offset = vk::Offset2D{0, 0},
+                                .extent = vkDriver.getSwapchainExtent()
+                        },
+
+                        .clearValueCount = 2,
+                        .pClearValues = skyboxClear,
+                };
+
+                renderer.getSkyboxImages()[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eColorAttachmentOptimal);
+
+                mainCommandBuffers[i].beginRenderPass(skyboxRenderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
+                mainCommandBuffers[i].executeCommands(skyboxCommandBuffers[i]);
+                mainCommandBuffers[i].endRenderPass();
+
+                renderer.getSkyboxImages()[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+            }
+        }
 
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
@@ -273,7 +306,6 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
 
             mainCommandBuffers[i].endRenderPass();
-
         }
     }
 
@@ -296,6 +328,7 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     };
     this->gBufferCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
     this->gResolveCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
+    this->skyboxCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
@@ -339,6 +372,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ImGui::RadioButton("Depth", gIndex, 3);
             ImGui::RadioButton("Raytracing", gIndex, 4);
             ImGui::RadioButton("UI", gIndex, 5);
+            ImGui::RadioButton("Skybox", gIndex, 6);
         }
         ImGui::End();
 
@@ -685,4 +719,85 @@ void Carrot::Engine::takeScreenshot() {
     stbi_write_png(screenshotPath.generic_string().c_str(), swapchainExtent.width, swapchainExtent.height, 4, pData, 4 * swapchainExtent.width);
 
     screenshotBuffer.unmap();
+}
+
+void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
+    static vector<SimpleVertex> skyboxVertices = {
+            { { 1.0f, -1.0f, -1.0f } },
+            { { 1.0f, -1.0f, 1.0f } },
+            { { -1.0f, -1.0f, -1.0f } },
+            { { -1.0f, -1.0f, 1.0f } },
+            { { 1.0f, 1.0f, -1.0f } },
+            { { 1.0f, 1.0f, 1.0f } },
+            { { -1.0f, 1.0f, -1.0f } },
+            { { -1.0f, 1.0f, 1.0f } },
+    };
+    static vector<uint32_t> skyboxIndices = {
+            1, 2, 0,
+            3, 6, 2,
+            7, 4, 6,
+            5, 0, 4,
+            6, 0, 2,
+            3, 5, 7,
+            1, 3, 2,
+            3, 7, 6,
+            7, 5, 4,
+            5, 1, 0,
+            6, 4, 0,
+            3, 1, 5,
+    };
+    currentSkybox = type;
+    if(type != Carrot::Skybox::Type::None) {
+        loadedSkyboxTexture = Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+            return Skybox::getTexturePath(type, dir);
+        });
+        loadedSkyboxTexture->name("Current loaded skybox");
+        loadedSkyboxTextureView = vkDriver.createImageView(loadedSkyboxTexture->getVulkanImage(),
+                                                           vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor,
+                                                           vk::ImageViewType::eCube, 6
+                                                           );
+        skyboxPipeline = make_shared<Pipeline>(vkDriver, renderer.getSkyboxRenderPass(), "skybox");
+        skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
+
+        vector<vk::WriteDescriptorSet> writes{getSwapchainImageCount()};
+        vector<vk::DescriptorImageInfo> images{getSwapchainImageCount()};
+
+        for (int i = 0; i < getSwapchainImageCount(); i++) {
+            auto& write = writes[i];
+            auto& image = images[i];
+
+            image.sampler = vkDriver.getLinearSampler();
+            image.imageView = *loadedSkyboxTextureView;
+            image.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+            write.descriptorCount = 1;
+            write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+            write.pImageInfo = &image;
+            write.dstBinding = 0;
+            write.dstSet = skyboxPipeline->getDescriptorSets()[i];
+        }
+        vkDriver.getLogicalDevice().updateDescriptorSets(writes, {});
+
+
+        for (int i = 0; i < getSwapchainImageCount(); i++) {
+            vk::CommandBufferInheritanceInfo inheritanceInfo {
+                    .renderPass = renderer.getSkyboxRenderPass(),
+                    .subpass = 0,
+                    .framebuffer = *renderer.getSkyboxFramebuffers()[i],
+            };
+
+            auto& cmds = skyboxCommandBuffers[i];
+            cmds.begin(vk::CommandBufferBeginInfo {
+                .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue,
+                .pInheritanceInfo = &inheritanceInfo
+            });
+
+            vkDriver.updateViewportAndScissor(cmds);
+            skyboxPipeline->bind(i, cmds);
+            skyboxMesh->bind(cmds);
+            skyboxMesh->draw(cmds);
+
+            cmds.end();
+        }
+    }
 }

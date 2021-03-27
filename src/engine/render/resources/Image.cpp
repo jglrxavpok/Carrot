@@ -6,15 +6,16 @@
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
 
-Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format, set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType):
-        Carrot::DebugNameable(), driver(driver), size(extent) {
+Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
+                     set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, uint32_t layerCount):
+        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
         .format = format,
         .extent = extent,
         .mipLevels = 1,
-        .arrayLayers = 1,
+        .arrayLayers = layerCount,
         .samples = vk::SampleCountFlagBits::e1,
         .usage = usage,
         .initialLayout = vk::ImageLayout::eUndefined,
@@ -52,7 +53,7 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
     return *vkImage;
 }
 
-void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
+void Carrot::Image::stageUpload(const vector<uint8_t> &data, uint32_t layer, uint32_t layerCount) {
     // create buffer holding data
     auto stagingBuffer = Carrot::Buffer(driver,
                                         static_cast<vk::DeviceSize>(data.size()),
@@ -74,8 +75,8 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data) {
                 .imageSubresource = {
                         .aspectMask = vk::ImageAspectFlagBits::eColor,
                         .mipLevel = 0,
-                        .baseArrayLayer = 0,
-                        .layerCount = 1,
+                        .baseArrayLayer = layer,
+                        .layerCount = layerCount,
                 },
                 .imageExtent = size,
         };
@@ -118,10 +119,10 @@ const vk::Extent3D& Carrot::Image::getSize() const {
 }
 
 void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    transition(*vkImage, commands, format, oldLayout, newLayout);
+    transition(*vkImage, commands, format, oldLayout, newLayout, layerCount);
 }
 
-void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount) {
     vk::ImageMemoryBarrier barrier {
             .oldLayout = oldLayout,
             .newLayout = newLayout,
@@ -137,7 +138,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
                     .baseMipLevel = 0,
                     .levelCount = 1,
                     .baseArrayLayer = 0,
-                    .layerCount = 1,
+                    .layerCount = static_cast<uint32_t>(layerCount),
             }
     };
 
@@ -162,6 +163,10 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
         sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
     }
+    if(oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
+        sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
 
     if(newLayout == vk::ImageLayout::eTransferDstOptimal) {
         barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
@@ -171,6 +176,10 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
     if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
         barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
         destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    }
+    if(newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+        barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite; // shader must be able to read
+        destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     }
 
     if(newLayout == vk::ImageLayout::eGeneral) {
@@ -208,4 +217,53 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
 void Carrot::Image::setDebugNames(const string& name) {
     nameSingle(driver, name, *vkImage);
     nameSingle(driver, name + " Memory", *memory);
+}
+
+std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier) {
+    int w, h, n;
+    int firstWidth, firstHeight;
+    stbi_uc* pixelsNX = stbi_load(textureSupplier(Skybox::Direction::NegativeX).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    firstWidth = w;
+    firstHeight = h;
+    stbi_uc* pixelsNY = stbi_load(textureSupplier(Skybox::Direction::NegativeY).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    assert(w == firstWidth && h == firstHeight);
+    stbi_uc* pixelsNZ = stbi_load(textureSupplier(Skybox::Direction::NegativeZ).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    assert(w == firstWidth && h == firstHeight);
+    stbi_uc* pixelsPX = stbi_load(textureSupplier(Skybox::Direction::PositiveX).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    assert(w == firstWidth && h == firstHeight);
+    stbi_uc* pixelsPY = stbi_load(textureSupplier(Skybox::Direction::PositiveY).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    assert(w == firstWidth && h == firstHeight);
+    stbi_uc* pixelsPZ = stbi_load(textureSupplier(Skybox::Direction::PositiveZ).c_str(), &w, &h, &n, STBI_rgb_alpha);
+    assert(w == firstWidth && h == firstHeight);
+
+    vk::Extent3D extent {
+        .width = static_cast<uint32_t>(w),
+        .height = static_cast<uint32_t>(h),
+        .depth = 1,
+    };
+    vk::DeviceSize imageSize = w*h*4;
+    auto image = make_unique<Image>(device,
+                                    extent,
+                                    vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+                                    vk::Format::eR8G8B8A8Unorm,
+                                    device.createGraphicsAndTransferFamiliesSet(),
+                                    vk::ImageCreateFlagBits::eCubeCompatible,
+                                    vk::ImageType::e2D,
+                                    6);
+
+    image->stageUpload(vector<uint8_t>{pixelsPX, pixelsPX+imageSize}, 0);
+    image->stageUpload(vector<uint8_t>{pixelsNX, pixelsNX+imageSize}, 1);
+    image->stageUpload(vector<uint8_t>{pixelsPY, pixelsPY+imageSize}, 2);
+    image->stageUpload(vector<uint8_t>{pixelsNY, pixelsNY+imageSize}, 3);
+    image->stageUpload(vector<uint8_t>{pixelsPZ, pixelsPZ+imageSize}, 4);
+    image->stageUpload(vector<uint8_t>{pixelsNZ, pixelsNZ+imageSize}, 5);
+
+    stbi_image_free(pixelsPZ);
+    stbi_image_free(pixelsPY);
+    stbi_image_free(pixelsPX);
+    stbi_image_free(pixelsNZ);
+    stbi_image_free(pixelsNY);
+    stbi_image_free(pixelsNX);
+
+    return image;
 }

@@ -31,6 +31,8 @@ constexpr static int maxInstanceCount = 100; // TODO: change
 static vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): engine(engine) {
+    engine.setSkybox(Skybox::Type::Forest);
+
     world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
     world.addLogicSystem<SystemSinPosition>();
     world.addLogicSystem<SystemUpdateLightPosition>();

@@ -13,6 +13,7 @@ namespace Carrot {
         SkinnedVertex,
         ScreenSpace,
         ComputeSkinnedVertex,
+        SimpleVertex,
         Invalid
     };
 

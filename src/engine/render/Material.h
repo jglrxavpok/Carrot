@@ -14,7 +14,7 @@ namespace Carrot {
         Carrot::Engine& engine;
         shared_ptr<Pipeline> pipeline = nullptr;
         shared_ptr<Pipeline> renderingPipeline = nullptr;
-        TextureID textureID{0};
+        TextureID textureID{0xFFFFFFFF};
         bool ignoreInstanceColor = false;
 
     public:

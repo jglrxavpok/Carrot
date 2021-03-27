@@ -477,10 +477,10 @@ vk::UniqueCommandPool Carrot::VulkanDriver::createComputeCommandPool() {
     return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask) {
+vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask, vk::ImageViewType viewType, uint32_t layerCount) {
     return getLogicalDevice().createImageViewUnique({
                                                             .image = image,
-                                                            .viewType = vk::ImageViewType::e2D,
+                                                            .viewType = viewType,
                                                             .format = imageFormat,
 
                                                             .components = {
@@ -495,7 +495,7 @@ vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image
                                                                     .baseMipLevel = 0,
                                                                     .levelCount = 1,
                                                                     .baseArrayLayer = 0,
-                                                                    .layerCount = 1,
+                                                                    .layerCount = layerCount,
                                                             },
                                                     }, getAllocationCallbacks());
 }
