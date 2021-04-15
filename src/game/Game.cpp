@@ -529,3 +529,11 @@ void Game::Game::tick(double frameTime) {
             1.0f,
     };
 }
+
+void Game::Game::onSwapchainSizeChange(int newWidth, int newHeight) {
+    // TODO
+}
+
+void Game::Game::onSwapchainImageCountChange(size_t newCount) {
+    // TODO
+}

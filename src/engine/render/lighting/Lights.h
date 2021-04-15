@@ -39,7 +39,7 @@ namespace Carrot {
             auto* lightBuffer = (RaycastedShadowingLightBuffer*) malloc(sizeof(RaycastedShadowingLightBuffer) + lightCount * sizeof(Light));
 
             // default init
-            lightBuffer->ambient = glm::vec3(0.1f);
+            lightBuffer->ambient = glm::vec3(0.6f);
             lightBuffer->lightCount = lightCount;
             for (int i = 0; i < lightCount; ++i) {
                 lightBuffer->lights[i] = Light{};

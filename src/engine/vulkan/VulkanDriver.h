@@ -10,6 +10,7 @@
 #include <set>
 #include <engine/memory/NakedPtr.hpp>
 #include <GLFW/glfw3.h>
+#include "engine/vulkan/SwapchainAware.h"
 #include "engine/memory/ThreadLocal.hpp"
 
 namespace Carrot {
@@ -33,7 +34,7 @@ namespace Carrot {
         std::vector<vk::PresentModeKHR> presentModes;
     };
 
-    class VulkanDriver {
+    class VulkanDriver: public SwapchainAware {
     private:
         const vk::AllocationCallbacks* allocator = nullptr;
 
@@ -223,8 +224,12 @@ namespace Carrot {
 
         void updateViewportAndScissor(vk::CommandBuffer& commands);
 
-        void recreateSwapchain();
+        void fetchNewFramebufferSize();
+
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
     };
 }
 
-#include "VulkanDevice.ipp"
+#include "VulkanDriver.ipp"

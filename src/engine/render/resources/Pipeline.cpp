@@ -156,8 +156,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
     vk::Viewport viewport {
         .x = 0.0f,
         .y = 0.0f,
-        .width = WINDOW_WIDTH,
-        .height = WINDOW_HEIGHT,
+        .width = static_cast<float>(driver.getSwapchainExtent().width),
+        .height = static_cast<float>(driver.getSwapchainExtent().height),
 
         .minDepth = 0.0f,
         .maxDepth = 1.0f,
@@ -166,8 +166,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
     vk::Rect2D scissor {
         .offset = {0,0},
         .extent = {
-                .width = WINDOW_WIDTH,
-                .height = WINDOW_HEIGHT,
+                .width = driver.getSwapchainExtent().width,
+                .height = driver.getSwapchainExtent().height,
         }
     };
 
@@ -302,6 +302,11 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     descriptorPool = driver.getLogicalDevice().createDescriptorPoolUnique(poolInfo, driver.getAllocationCallbacks());
 
+    allocateDescriptorSets();
+}
+
+void Carrot::Pipeline::allocateDescriptorSets() {
+    driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     descriptorSets = allocateDescriptorSets0();
 
     if(type == Type::GBuffer) {
@@ -428,23 +433,28 @@ Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView
         throw runtime_error("Max texture id is " + to_string(maxTextureID));
     }
     TextureID id = textureID++;
+    reservedTextures[id] = *textureView;
 
-    for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
-        vk::DescriptorImageInfo imageInfo {
-                .imageView = *textureView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-        };
-        vk::WriteDescriptorSet write {
-                .dstSet = descriptorSets[imageIndex],
-                .dstBinding = texturesBindingIndex,
-                .dstArrayElement = id,
-                .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eSampledImage,
-                .pImageInfo = &imageInfo
-        };
-        driver.getLogicalDevice().updateDescriptorSets(write, {});
+    for(size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+        updateTextureReservation(*textureView, id, imageIndex);
     }
     return id;
+}
+
+void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex) {
+    vk::DescriptorImageInfo imageInfo {
+            .imageView = textureView,
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+    vk::WriteDescriptorSet write {
+            .dstSet = descriptorSets[imageIndex],
+            .dstBinding = texturesBindingIndex,
+            .dstArrayElement = id,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eSampledImage,
+            .pImageInfo = &imageInfo
+    };
+    driver.getLogicalDevice().updateDescriptorSets(write, {});
 }
 
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, MaterialID materialID) {
@@ -474,4 +484,20 @@ Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
         return Type::Skybox;
     }
     return Type::Unknown;
+}
+
+void Carrot::Pipeline::onSwapchainImageCountChange(size_t newCount) {
+    allocateDescriptorSets();
+
+    // pipeline will be refreshed, so update reserved slots
+    for(TextureID texID = 0; texID < textureID; texID++) {
+        auto& textureView = reservedTextures[texID];
+        for(size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+            updateTextureReservation(textureView, texID, imageIndex);
+        }
+    }
+}
+
+void Carrot::Pipeline::onSwapchainSizeChange(int newWidth, int newHeight) {
+
 }

@@ -131,9 +131,7 @@ void Carrot::Engine::initVulkan() {
 
     createCamera();
 
-    getRayTracer().createDescriptorSets();
-    getRayTracer().createPipeline();
-    getRayTracer().createShaderBindingTable();
+    getRayTracer().init();
 
     initGame();
 
@@ -164,8 +162,6 @@ void Carrot::Engine::recordSecondaryCommandBuffers(size_t frameIndex) {
             .framebuffer = *renderer.getSwapchainFramebuffers()[frameIndex],
     };
     renderer.getGBuffer().recordResolvePass(frameIndex, gResolveCommandBuffers[frameIndex], &gResolveInheritance);
-
-
 }
 
 void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBufferCommandBuffer) {
@@ -469,40 +465,19 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
-    vkDriver.recreateSwapchain();
+    cout << "========== RESIZE ==========" << std::endl;
+    vkDriver.fetchNewFramebufferSize();
 
     framebufferResized = false;
 
     getLogicalDevice().waitIdle();
 
-    cleanupSwapchain();
-
+    vkDriver.cleanupSwapchain();
     vkDriver.createSwapChain();
-    vkDriver.createUniformBuffers();
-    // TODO: move to renderer
-    getRayTracer().onSwapchainRecreation();
-    getGBuffer().onSwapchainRecreation();
-    renderer.createRenderPasses();
-    renderer.createFramebuffers();
 
-    getGBuffer().loadResolvePipeline();
-    renderer.recreateDescriptorPools(getSwapchainImageCount());
-    // TODO: update material descriptor sets
-    // TODO: update game swapchain-dependent content
-    allocateGraphicsCommandBuffers();
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
-    }
-}
-
-void Carrot::Engine::cleanupSwapchain() {
-    /* TODO: redo
-    swapchainFramebuffers.clear();
-    getLogicalDevice().freeCommandBuffers(getGraphicsCommandPool(), mainCommandBuffers);
-    mainCommandBuffers.clear();
-
-    gRenderPass.reset();
-    vkDriver.cleanupSwapchain();*/
+    // TODO: only recreate if necessary
+    onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
+    onSwapchainSizeChange(vkDriver.getSwapchainExtent().width, vkDriver.getSwapchainExtent().height);
 }
 
 void Carrot::Engine::onWindowResize() {
@@ -759,45 +734,93 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
         skyboxPipeline = make_shared<Pipeline>(vkDriver, renderer.getSkyboxRenderPass(), "skybox");
         skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
 
-        vector<vk::WriteDescriptorSet> writes{getSwapchainImageCount()};
-        vector<vk::DescriptorImageInfo> images{getSwapchainImageCount()};
+        updateSkyboxCommands();
+    }
+}
 
-        for (int i = 0; i < getSwapchainImageCount(); i++) {
-            auto& write = writes[i];
-            auto& image = images[i];
+void Carrot::Engine::updateSkyboxCommands() {
+    vector<vk::WriteDescriptorSet> writes{getSwapchainImageCount()};
+    vector<vk::DescriptorImageInfo> images{getSwapchainImageCount()};
 
-            image.sampler = vkDriver.getLinearSampler();
-            image.imageView = *loadedSkyboxTextureView;
-            image.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    for (int i = 0; i < getSwapchainImageCount(); i++) {
+        auto& write = writes[i];
+        auto& image = images[i];
 
-            write.descriptorCount = 1;
-            write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-            write.pImageInfo = &image;
-            write.dstBinding = 0;
-            write.dstSet = skyboxPipeline->getDescriptorSets()[i];
-        }
-        vkDriver.getLogicalDevice().updateDescriptorSets(writes, {});
+        image.sampler = vkDriver.getLinearSampler();
+        image.imageView = *loadedSkyboxTextureView;
+        image.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+        write.descriptorCount = 1;
+        write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        write.pImageInfo = &image;
+        write.dstBinding = 0;
+        write.dstSet = skyboxPipeline->getDescriptorSets()[i];
+    }
+    vkDriver.getLogicalDevice().updateDescriptorSets(writes, {});
 
 
-        for (int i = 0; i < getSwapchainImageCount(); i++) {
-            vk::CommandBufferInheritanceInfo inheritanceInfo {
-                    .renderPass = renderer.getSkyboxRenderPass(),
-                    .subpass = 0,
-                    .framebuffer = *renderer.getSkyboxFramebuffers()[i],
-            };
+    for (int i = 0; i < getSwapchainImageCount(); i++) {
+        vk::CommandBufferInheritanceInfo inheritanceInfo {
+                .renderPass = renderer.getSkyboxRenderPass(),
+                .subpass = 0,
+                .framebuffer = *renderer.getSkyboxFramebuffers()[i],
+        };
 
-            auto& cmds = skyboxCommandBuffers[i];
-            cmds.begin(vk::CommandBufferBeginInfo {
+        auto& cmds = skyboxCommandBuffers[i];
+        cmds.begin(vk::CommandBufferBeginInfo {
                 .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue,
                 .pInheritanceInfo = &inheritanceInfo
-            });
+        });
 
-            vkDriver.updateViewportAndScissor(cmds);
-            skyboxPipeline->bind(i, cmds);
-            skyboxMesh->bind(cmds);
-            skyboxMesh->draw(cmds);
+        vkDriver.updateViewportAndScissor(cmds);
+        skyboxPipeline->bind(i, cmds);
+        skyboxMesh->bind(cmds);
+        skyboxMesh->draw(cmds);
 
-            cmds.end();
-        }
+        cmds.end();
     }
+}
+
+void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
+    vkDriver.onSwapchainImageCountChange(newCount);
+
+    // TODO: multi-threading (command pools are threadlocal)
+    vkDriver.getLogicalDevice().resetCommandPool(getGraphicsCommandPool());
+    allocateGraphicsCommandBuffers();
+
+    renderer.onSwapchainImageCountChange(newCount);
+
+    if(skyboxPipeline) {
+        skyboxPipeline->onSwapchainImageCountChange(newCount);
+    }
+    for(const auto& [name, mat]: materials) {
+        mat->onSwapchainImageCountChange(newCount);
+    }
+
+    createSynchronizationObjects();
+
+    game->onSwapchainImageCountChange(newCount);
+}
+
+void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
+    vkDriver.onSwapchainSizeChange(newWidth, newHeight);
+
+    renderer.onSwapchainSizeChange(newWidth, newHeight);
+
+    if(skyboxPipeline) {
+        skyboxPipeline->onSwapchainSizeChange(newWidth, newHeight);
+    }
+    for(const auto& [name, mat]: materials) {
+        mat->onSwapchainSizeChange(newWidth, newHeight);
+    }
+
+    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+        recordSecondaryCommandBuffers(i); // g-buffer pass and rt pass
+    }
+
+    if(currentSkybox != Skybox::Type::None) {
+        updateSkyboxCommands();
+    }
+
+    game->onSwapchainSizeChange(newWidth, newHeight);
 }

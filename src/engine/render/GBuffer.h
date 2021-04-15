@@ -4,12 +4,13 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
+#include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/raytracing/RayTracer.h"
 
 namespace Carrot {
-    class GBuffer {
+    class GBuffer: public SwapchainAware {
     private:
         VulkanRenderer& renderer;
         RayTracer& raytracer;
@@ -29,17 +30,21 @@ namespace Carrot {
         mutable shared_ptr<Pipeline> gResolvePipeline = nullptr;
         unique_ptr<Mesh> screenQuadMesh = nullptr;
 
+        void generateImages();
+
     public:
         explicit GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer);
 
         void loadResolvePipeline();
 
         void recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& commandBuffer, vk::CommandBufferInheritanceInfo* inheritance) const;
-        void onSwapchainRecreation();
-
 
         void addFramebufferAttachments(uint32_t frameIndex, vector<vk::ImageView>& attachments);
 
         vk::UniqueRenderPass createRenderPass();
+
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
     };
 }

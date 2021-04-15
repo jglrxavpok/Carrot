@@ -78,19 +78,7 @@ void Carrot::VulkanRenderer::createUIResources() {
     pool_info.pPoolSizes = pool_sizes;
     imguiDescriptorPool = driver.getLogicalDevice().createDescriptorPoolUnique(pool_info, driver.getAllocationCallbacks());
 
-
-
-    uiImages.resize(getSwapchainImageCount());
-    uiImageViews.resize(getSwapchainImageCount());
-    for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        uiImages[i] = move(make_unique<Image>(driver,
-                                              vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
-                                              vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                                              vk::Format::eR8G8B8A8Unorm));
-
-        auto view = uiImages[i]->createImageView();
-        uiImageViews[i] = std::move(view);
-    }
+    createUIImages();
 }
 
 void Carrot::VulkanRenderer::createRenderPasses() {
@@ -337,5 +325,40 @@ void Carrot::VulkanRenderer::createSkyboxResources() {
 
         auto view = skyboxImages[i]->createImageView();
         skyboxImageViews[i] = std::move(view);
+    }
+}
+
+void Carrot::VulkanRenderer::createUIImages() {
+    uiImages.resize(getSwapchainImageCount());
+    uiImageViews.resize(getSwapchainImageCount());
+    for (int i = 0; i < getSwapchainImageCount(); ++i) {
+        uiImages[i] = move(make_unique<Image>(driver,
+                                              vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
+                                              vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+                                              vk::Format::eR8G8B8A8Unorm));
+
+        auto view = uiImages[i]->createImageView();
+        uiImageViews[i] = std::move(view);
+    }
+}
+
+void Carrot::VulkanRenderer::onSwapchainImageCountChange(size_t newCount) {
+    raytracer->onSwapchainImageCountChange(newCount);
+    gBuffer->onSwapchainImageCountChange(newCount);
+    for(const auto& [name, pipe]: pipelines) {
+        pipe->onSwapchainImageCountChange(newCount);
+    }
+}
+
+void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
+    createUIImages();
+    createSkyboxResources();
+    raytracer->onSwapchainSizeChange(newWidth, newHeight);
+    gBuffer->onSwapchainSizeChange(newWidth, newHeight);
+    createRenderPasses();
+    createFramebuffers();
+
+    for(const auto& [name, pipe]: pipelines) {
+        pipe->onSwapchainSizeChange(newWidth, newHeight);
     }
 }

@@ -6,9 +6,10 @@
 
 #include "engine/Engine.h"
 #include "IDTypes.h"
+#include "engine/vulkan/SwapchainAware.h"
 
 namespace Carrot {
-    class Material {
+    class Material: public SwapchainAware {
     private:
         MaterialID id = 0;
         Carrot::Engine& engine;

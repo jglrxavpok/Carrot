@@ -9,13 +9,14 @@
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/resources/Image.h"
+#include "engine/vulkan/SwapchainAware.h"
 
 namespace Carrot {
     class GBuffer;
     class ASBuilder;
     class RayTracer;
 
-    class VulkanRenderer {
+    class VulkanRenderer: public SwapchainAware {
     private:
         VulkanDriver& driver;
 
@@ -54,6 +55,8 @@ namespace Carrot {
         void initImgui();
 
         void createSkyboxRenderPass();
+
+        void createUIImages();
 
     public:
         explicit VulkanRenderer(VulkanDriver& driver);
@@ -96,5 +99,9 @@ namespace Carrot {
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
 
         void createSkyboxResources();
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        void onSwapchainImageCountChange(size_t newCount) override;
     };
 }

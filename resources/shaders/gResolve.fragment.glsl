@@ -55,6 +55,7 @@ void main() {
 
             case 5:
                 outColorWorld = vec4(0.0,0.0,0.0,1.0);
+            break;
 
             case 6:
                 outColorWorld = texture(sampler2D(skyboxTexture, linearSampler), uv);

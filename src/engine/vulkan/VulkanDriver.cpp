@@ -589,7 +589,7 @@ void Carrot::VulkanDriver::createSwapChain() {
             .presentMode = presentMode,
             .clipped = VK_TRUE,
 
-            .oldSwapchain = nullptr,
+            .oldSwapchain = *swapchain,
     };
 
     // image info
@@ -710,7 +710,7 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands)
     });
 }
 
-void Carrot::VulkanDriver::recreateSwapchain() {
+void Carrot::VulkanDriver::fetchNewFramebufferSize() {
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
     while(framebufferWidth == 0 || framebufferHeight == 0) {
         glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
@@ -720,4 +720,12 @@ void Carrot::VulkanDriver::recreateSwapchain() {
 
 bool Carrot::QueueFamilies::isComplete() const {
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
+}
+
+void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
+    /*re-*/ createUniformBuffers();
+}
+
+void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
+
 }

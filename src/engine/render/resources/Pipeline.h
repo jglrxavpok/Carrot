@@ -5,6 +5,7 @@
 #pragma once
 #include "engine/vulkan/includes.h"
 #include "engine/vulkan/VulkanDriver.h"
+#include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/IDTypes.h"
 #include "engine/render/shaders/ShaderStages.h"
 #include "VertexFormat.h"
@@ -14,7 +15,7 @@ namespace Carrot {
 
     class Buffer;
 
-    class Pipeline {
+    class Pipeline: public SwapchainAware {
         enum class Type {
             GBuffer,
             GResolve,
@@ -44,12 +45,17 @@ namespace Carrot {
         uint32_t materialsBindingIndex = 0;
         unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
         map<string, uint32_t> constants{};
+        unordered_map<TextureID, vk::ImageView> reservedTextures{};
         uint64_t subpassIndex = 0;
         Type type = Type::Unknown;
 
         VertexFormat vertexFormat = VertexFormat::Invalid;
 
         vector<vk::DescriptorSet> allocateDescriptorSets0();
+
+        void allocateDescriptorSets();
+
+        void updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex);
 
         static Type getPipelineType(const string& name);
 
@@ -75,5 +81,9 @@ namespace Carrot {
 
         void updateMaterial(const Material& material);
         void updateMaterial(const Material& material, MaterialID materialID);
+
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
     };
 }

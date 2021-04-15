@@ -21,6 +21,10 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
                                                3,2,0,
                                        });
 
+    generateImages();
+}
+
+void Carrot::GBuffer::generateImages() {
     albedoImages.resize(renderer.getSwapchainImageCount());
     albedoImageViews.resize(renderer.getSwapchainImageCount());
 
@@ -39,7 +43,7 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
         auto swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
         albedoImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
                                                       vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                       vk::Format::eR8G8B8A8Unorm));
 
         auto view = albedoImages[index]->createImageView();
@@ -48,7 +52,7 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
         // Depth
         depthImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
                                                      vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                        vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                     vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                      renderer.getVulkanDriver().getDepthFormat()));
 
         depthStencilImageViews[index] = move(renderer.getVulkanDriver().createImageView(depthImages[index]->getVulkanImage(), renderer.getVulkanDriver().getDepthFormat(), vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil));
@@ -57,7 +61,7 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
         // View-space positions
         viewPositionImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
                                                             vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                             vk::Format::eR32G32B32A32Sfloat));
 
         viewPositionImageViews[index] = std::move(viewPositionImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
@@ -65,7 +69,7 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
         // View-space normals
         viewNormalImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
                                                           vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
                                                           vk::Format::eR32G32B32A32Sfloat));
 
         viewNormalImageViews[index] = std::move(viewNormalImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
@@ -194,10 +198,6 @@ void Carrot::GBuffer::recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& 
         screenQuadMesh->draw(commandBuffer);
     }
     commandBuffer.end();
-}
-
-void Carrot::GBuffer::onSwapchainRecreation() {
-    // TODO
 }
 
 void Carrot::GBuffer::addFramebufferAttachments(uint32_t frameIndex, vector<vk::ImageView>& attachments) {
@@ -413,4 +413,13 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
     };
 
     return renderer.getVulkanDriver().getLogicalDevice().createRenderPassUnique(renderPassInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+}
+
+void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
+
+}
+
+void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
+    generateImages();
+    loadResolvePipeline();
 }

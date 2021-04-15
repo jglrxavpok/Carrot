@@ -13,6 +13,7 @@ namespace Carrot {
 }
 
 #include <engine/vulkan/includes.h>
+#include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
 #include "engine/memory/NakedPtr.hpp"
 #include "engine/render/IDTypes.h"
@@ -58,7 +59,7 @@ namespace Carrot {
     class ResourceAllocator;
 
     /// Base class interfacing with Vulkan
-    class Engine {
+    class Engine: public SwapchainAware {
     public:
         vector<unique_ptr<TracyVulkanContext>> tracyCtx{};
 
@@ -151,6 +152,10 @@ namespace Carrot {
 
         void setSkybox(Skybox::Type type);
 
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        void onSwapchainImageCountChange(size_t newCount) override;
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -177,8 +182,6 @@ namespace Carrot {
         vector<vk::UniqueFence> imagesInFlight{};
 
         map<string, shared_ptr<Material>> materials{};
-
-        vector<vk::DescriptorSet> descriptorSets{}; // not unique pointers because owned by descriptor pool
 
         unique_ptr<Camera> camera = nullptr;
         unique_ptr<Game::Game> game = nullptr;
@@ -218,11 +221,7 @@ namespace Carrot {
         /// Create fences and semaphores used for rendering
         void createSynchronizationObjects();
 
-        /// Recreate the swapchain when the window is resized
         void recreateSwapchain();
-
-        /// Cleanup swapchain resources after window resizing
-        void cleanupSwapchain();
 
         /// Update the uniform buffer at index 'imageIndex'
         void updateUniformBuffer(int imageIndex);
@@ -234,6 +233,8 @@ namespace Carrot {
         void createTracyContexts();
 
         void allocateGraphicsCommandBuffers();
+
+        void updateSkyboxCommands();
 
     };
 }

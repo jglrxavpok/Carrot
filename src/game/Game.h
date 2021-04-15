@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstdint>
+#include "engine/vulkan/SwapchainAware.h"
 #include "engine/vulkan/includes.h"
 #include "engine/Engine.h"
 #include <engine/ecs/World.h>
@@ -17,7 +18,7 @@ namespace Carrot {
 namespace Game {
     using namespace Carrot;
 
-    class Game {
+    class Game: public SwapchainAware {
     private:
         Engine& engine;
         unique_ptr<Model> mapModel = nullptr;
@@ -55,5 +56,9 @@ namespace Game {
         void onMouseMove(double dx, double dy);
 
         void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages);
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        void onSwapchainImageCountChange(size_t newCount) override;
     };
 }
