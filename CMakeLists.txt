@@ -84,6 +84,7 @@ set(SOURCES
 
         src/engine/vulkan/CustomTracyVulkan.cpp
         src/engine/render/GBuffer.cpp
+        src/engine/render/animation/AnimatedInstances.cpp
         src/engine/render/raytracing/RayTracer.cpp
         src/engine/render/raytracing/ASBuilder.cpp
         src/engine/render/raytracing/AccelerationStructure.cpp

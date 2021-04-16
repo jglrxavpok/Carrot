@@ -472,11 +472,14 @@ void Carrot::Engine::recreateSwapchain() {
 
     getLogicalDevice().waitIdle();
 
+    size_t previousImageCount = getSwapchainImageCount();
     vkDriver.cleanupSwapchain();
     vkDriver.createSwapChain();
 
     // TODO: only recreate if necessary
-    onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
+    if(previousImageCount != vkDriver.getSwapchainImageCount()) {
+        onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
+    }
     onSwapchainSizeChange(vkDriver.getSwapchainExtent().width, vkDriver.getSwapchainExtent().height);
 }
 
