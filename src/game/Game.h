@@ -30,7 +30,7 @@ namespace Game {
 
         World world;
 
-        void createSkinningComputePipeline(uint64_t vertexCountPerInstance);
+        void createSkinningComputePipeline();
 
     public:
         explicit Game(Engine& engine);

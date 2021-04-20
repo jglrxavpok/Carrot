@@ -4,6 +4,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 set(ARCH "x64")
 
 include(FetchContent)
@@ -21,6 +23,11 @@ FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
         GIT_TAG             2020-09-17)
 FetchContent_MakeAvailable(spirv_cross)
+
+FetchContent_Declare(openal-soft
+        GIT_REPOSITORY      https://github.com/kcat/openal-soft.git
+        GIT_TAG             1.21.1)
+FetchContent_MakeAvailable(openal-soft)
 
 function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     set(FULL_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/${INPUT_FILE}")
@@ -44,13 +51,15 @@ copy_resources(textures)
 copy_resources(models)
 copy_resources(pipelines)
 copy_resources(materials)
+copy_resources(sounds)
+copy_resources(musics)
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon64.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
-set(SOURCES
+set(ENGINE-SOURCES
         src/engine/io/IO.cpp
         src/engine/memory/NakedPtr.hpp
         src/engine/Engine.cpp
@@ -93,9 +102,10 @@ set(SOURCES
         src/engine/render/VulkanRenderer.cpp
         src/engine/LoadingScreen.cpp
 
-        src/main.cpp
-
-        src/game/Game.cpp
+        src/engine/audio/SoundSource.cpp
+        src/engine/audio/Sound.cpp
+        src/engine/audio/SoundThread.cpp
+        src/engine/audio/decoders/WavDecoder.cpp
         )
 
 set(VERTEX_SHADERS
@@ -176,9 +186,16 @@ include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
 include_directories(thirdparty/imgui/)
+include_directories(thirdparty/dr_libs/)
 
-set(ALL_SOURCES ${SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
-set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp)
+set(GAME-SOURCES
+        src/main.cpp
+
+        src/game/Game.cpp
+        )
+
+set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
+set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp OpenAL)
 
 add_executable(Carrot ${ALL_SOURCES})
 target_link_libraries(Carrot ${ALL_LIBS})
@@ -190,6 +207,10 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
+
+link_directories(OpenAL_BINARY_DIR)
+add_executable(Carrot-TestAudio ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Audio.cpp)
+target_link_libraries(Carrot-TestAudio ${ALL_LIBS})
 
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES
