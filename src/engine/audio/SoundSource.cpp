@@ -25,26 +25,28 @@ void Carrot::SoundSource::play(std::unique_ptr<Carrot::Sound>&& sound) {
 void Carrot::SoundSource::updateAudio() {
     source.unqueue(source.getProcessedBufferCount());
 
-    bool eof = false;
-    size_t loaded = 0;
-    for (int i = 0; i < BUFFERS_AT_ONCE; ++i) {
-        auto buffer = currentSound->getNextBuffer();
-        if(buffer == nullptr) {
-            eof = true;
-            break;
-        }
-        loaded = i;
-        source.queue(buffer);
-    }
-
-    if(eof && looping) {
-        currentSound->rewind();
-        for (int i = 0; i < BUFFERS_AT_ONCE - loaded; ++i) {
+    if(source.getQueuedBufferCount() < BUFFERS_AT_ONCE) {
+        bool eof = false;
+        size_t loaded = 0;
+        for (int i = 0; i < BUFFERS_AT_ONCE; ++i) {
             auto buffer = currentSound->getNextBuffer();
             if(buffer == nullptr) {
+                eof = true;
                 break;
             }
+            loaded = i;
             source.queue(buffer);
+        }
+
+        if(eof && looping) {
+            currentSound->rewind();
+            for (int i = 0; i < BUFFERS_AT_ONCE - loaded; ++i) {
+                auto buffer = currentSound->getNextBuffer();
+                if(buffer == nullptr) {
+                    break;
+                }
+                source.queue(buffer);
+            }
         }
     }
 }

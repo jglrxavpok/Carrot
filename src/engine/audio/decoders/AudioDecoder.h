@@ -21,6 +21,7 @@ namespace Carrot {
         virtual ALenum getFormat() = 0;
         virtual size_t getSampleCount() = 0;
         virtual uint64_t getFrequency() = 0;
+        virtual uint64_t getChannelCount() = 0;
         virtual void seek(size_t sampleIndex) = 0;
         virtual vector<float> extractSamples(size_t sampleCount) = 0;
         virtual ~AudioDecoder() = default;

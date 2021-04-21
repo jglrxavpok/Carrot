@@ -7,3 +7,9 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+#define DR_WAV_IMPLEMENTATION
+#include "dr_wav.h"
+
+#define DR_MP3_IMPLEMENTATION
+#include "dr_mp3.h"

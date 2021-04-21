@@ -157,6 +157,11 @@ namespace AL {
                 unqueueContainer.resize(count);
             }
             alSourceUnqueueBuffers(source, count, unqueueContainer.data());
+            queuedBuffers.erase(queuedBuffers.begin(), queuedBuffers.begin() + count);
+        }
+
+        size_t getQueuedBufferCount() const {
+            return queuedBuffers.size();
         }
 
         bool isPlaying() const {

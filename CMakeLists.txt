@@ -97,7 +97,7 @@ set(ENGINE-SOURCES
         src/engine/render/raytracing/RayTracer.cpp
         src/engine/render/raytracing/ASBuilder.cpp
         src/engine/render/raytracing/AccelerationStructure.cpp
-        src/engine/stb_impls.cpp
+        src/engine/single_file_header_impls.cpp
         src/engine/vulkan/VulkanDriver.cpp
         src/engine/render/VulkanRenderer.cpp
         src/engine/LoadingScreen.cpp
@@ -106,6 +106,7 @@ set(ENGINE-SOURCES
         src/engine/audio/Sound.cpp
         src/engine/audio/SoundThread.cpp
         src/engine/audio/decoders/WavDecoder.cpp
+        src/engine/audio/decoders/MP3Decoder.cpp
         )
 
 set(VERTEX_SHADERS

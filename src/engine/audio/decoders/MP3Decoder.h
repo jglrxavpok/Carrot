@@ -1,22 +1,20 @@
 //
-// Created by jglrxavpok on 19/04/2021.
+// Created by jglrxavpok on 21/04/2021.
 //
 
 #pragma once
 
 #include <engine/audio/OpenAL.hpp>
+#include "dr_mp3.h"
 #include "AudioDecoder.h"
-#include "dr_wav.h"
 
 namespace Carrot {
-    using namespace std;
-
-    class WavDecoder: public AudioDecoder {
+    class MP3Decoder: public AudioDecoder {
     private:
-        drwav wav;
+        drmp3 mp3;
 
     public:
-        explicit WavDecoder(string filename);
+        explicit MP3Decoder(string filename);
 
         size_t getSampleCount() override;
 
@@ -30,6 +28,6 @@ namespace Carrot {
 
         uint64_t getChannelCount() override;
 
-        ~WavDecoder() override;
+        ~MP3Decoder() override;
     };
 }

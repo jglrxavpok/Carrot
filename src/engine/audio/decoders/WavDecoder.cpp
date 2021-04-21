@@ -42,6 +42,10 @@ ALenum Carrot::WavDecoder::getFormat() {
     return AL_FORMAT_STEREO_FLOAT32;
 }
 
+uint64_t Carrot::WavDecoder::getChannelCount() {
+    return wav.channels;
+}
+
 Carrot::WavDecoder::~WavDecoder() {
     drwav_uninit(&wav);
 }

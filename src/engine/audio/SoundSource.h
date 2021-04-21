@@ -28,6 +28,7 @@ namespace Carrot {
         unique_ptr<Sound> currentSound = nullptr;
         AL::Source source{};
         bool looping = false;
+        size_t queuedBufferCount = 0;
 
     public:
         explicit SoundSource();

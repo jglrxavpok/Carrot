@@ -4,8 +4,6 @@
 #include "engine/audio/OpenAL.hpp"
 #include "engine/audio/Sound.h"
 #include "engine/audio/SoundSource.h"
-
-#define DR_WAV_IMPLEMENTATION
 #include "dr_wav.h"
 
 namespace Game {
@@ -87,12 +85,18 @@ int main() {
     using namespace Carrot;
     {
         shared_ptr<SoundSource> source = make_shared<SoundSource>();
-//        source->setLooping(true);
+     //   source->setLooping(true);
         source->play(Sound::loadSoundEffect("resources/sounds/coin.wav"));
         while(source->isPlaying());
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    {
+        shared_ptr<SoundSource> source = make_shared<SoundSource>();
+       // source->setLooping(true);
+        source->play(Sound::loadMusic("resources/musics/Space Fighter Loop.mp3"));
+        while(source->isPlaying());
+    }
+//    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
     return 0;
 }
