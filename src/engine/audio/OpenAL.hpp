@@ -192,6 +192,10 @@ namespace AL {
 
         ALuint getALSource() { return source; };
 
+        void updateGain(float gain) {
+            alSourcef(source, AL_GAIN, gain);
+        }
+
         ~Source() {
             alDeleteSources(1, &source);
         }

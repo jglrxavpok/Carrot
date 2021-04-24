@@ -5,6 +5,7 @@
 #include "Sound.h"
 #include "decoders/WavDecoder.h"
 #include "decoders/MP3Decoder.h"
+#include "decoders/VorbisDecoder.h"
 #include <memory>
 
 Carrot::Sound::Sound(const std::string& filename, bool streaming): streaming(streaming) {
@@ -12,8 +13,8 @@ Carrot::Sound::Sound(const std::string& filename, bool streaming): streaming(str
         decoder = make_unique<WavDecoder>(filename);
     } else if(filename.ends_with(".mp3")) {
         decoder = make_unique<MP3Decoder>(filename);
-/*    } else if(filename.ends_with(".ogg")) {
-*/
+    } else if(filename.ends_with(".ogg")) {
+        decoder = make_unique<VorbisDecoder>(filename);
     } else {
         throw runtime_error("Unsupported audio file type");
     }

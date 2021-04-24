@@ -29,6 +29,7 @@ namespace Carrot {
         AL::Source source{};
         bool looping = false;
         size_t queuedBufferCount = 0;
+        float gain = 1.0f;
 
     public:
         explicit SoundSource();
@@ -44,6 +45,10 @@ namespace Carrot {
         void setLooping(bool loop) { this->looping = loop; };
 
         bool isReadyForCleanup();
+
+        void setGain(float gain);
+
+        float getGain() const { return gain; };
 
         ~SoundSource();
     };

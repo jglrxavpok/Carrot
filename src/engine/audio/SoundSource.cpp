@@ -55,6 +55,11 @@ bool Carrot::SoundSource::isReadyForCleanup() {
     return cleanupPolicy == CleanupPolicy::OnSoundEnd && (!currentSound || currentSound->hasBeenFullyRead()) && !isPlaying() && !looping;
 }
 
+void Carrot::SoundSource::setGain(float gain) {
+    this->gain = gain;
+    source.updateGain(gain);
+}
+
 Carrot::SoundSource::~SoundSource() {
 
 }

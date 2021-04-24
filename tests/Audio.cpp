@@ -93,7 +93,8 @@ int main() {
     {
         shared_ptr<SoundSource> source = make_shared<SoundSource>();
        // source->setLooping(true);
-        source->play(Sound::loadMusic("resources/musics/Space Fighter Loop.mp3"));
+        source->play(Sound::loadMusic("resources/musics/mus_mettaton_ex.ogg"));
+        source->setGain(0.3f);
         while(source->isPlaying());
     }
 //    std::this_thread::sleep_for(std::chrono::milliseconds(5000));

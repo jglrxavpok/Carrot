@@ -107,6 +107,8 @@ set(ENGINE-SOURCES
         src/engine/audio/SoundThread.cpp
         src/engine/audio/decoders/WavDecoder.cpp
         src/engine/audio/decoders/MP3Decoder.cpp
+        src/engine/audio/decoders/VorbisDecoder.cpp
+        src/engine/audio/SoundListener.cpp
         )
 
 set(VERTEX_SHADERS
