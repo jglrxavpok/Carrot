@@ -4,6 +4,7 @@
 
 #include "Vertex.h"
 #include "engine/render/InstanceData.h"
+#include "engine/render/particles/Particles.h"
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{9};
@@ -280,4 +281,12 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingD
                     .inputRate = vk::VertexInputRate::eVertex,
             },
     };
+}
+
+std::vector<vk::VertexInputAttributeDescription> Carrot::Particle::getAttributeDescriptions() {
+    return {};
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::Particle::getBindingDescription() {
+    return {};
 }

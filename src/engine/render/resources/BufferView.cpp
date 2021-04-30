@@ -21,6 +21,10 @@ void Carrot::BufferView::unmap() {
     buffer.unmap();
 }
 
+void Carrot::BufferView::flushMappedMemory() {
+    buffer.flushMappedMemory(start, size);
+}
+
 Carrot::BufferView::~BufferView() {
     if(allocator) {
         allocator->freeBufferView(*this);

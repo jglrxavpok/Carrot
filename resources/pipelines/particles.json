@@ -1,0 +1,10 @@
+{
+  "type": "particles",
+  "subpassIndex": 0,
+  "vertexFormat": "Particle",
+  "constants": {
+    "MAX_PARTICLES": 1000
+  },
+  "vertexShader": "resources/shaders/particles.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/particles.fragment.glsl.spv"
+}

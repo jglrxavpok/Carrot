@@ -32,6 +32,8 @@ namespace Carrot {
 
         [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;
 
+        void flushMappedMemory();
+
         template<typename T>
         T* map();
 

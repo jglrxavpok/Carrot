@@ -86,8 +86,6 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<
 }
 
 void Carrot::AnimatedInstances::createSkinningComputePipeline() {
-    // TODO: move outside of game code
-
     auto& computeCommandPool = engine.getComputeCommandPool();
 
     // command buffers which will be sent to the compute queue to compute skinning

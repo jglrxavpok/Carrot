@@ -74,7 +74,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
-    auto& set = pipeline.getDescriptorSets()[imageIndex];
+    auto& set = pipeline.getDescriptorSets0()[imageIndex];
     vk::WriteDescriptorSet writeLoadingImage {
             .dstSet = set,
             .dstBinding = 0,

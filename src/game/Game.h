@@ -11,6 +11,7 @@
 #include <engine/ecs/World.h>
 #include "engine/render/InstanceData.h"
 #include "engine/render/animation/AnimatedInstances.h"
+#include "engine/render/particles/Particles.h"
 
 namespace Carrot {
     class Engine;
@@ -29,8 +30,8 @@ namespace Game {
         unique_ptr<AnimatedInstances> animatedUnits = nullptr;
 
         World world;
-
-        void createSkinningComputePipeline();
+        unique_ptr<ParticleBlueprint> blueprint = nullptr;
+        unique_ptr<ParticleSystem> particles = nullptr;
 
     public:
         explicit Game(Engine& engine);

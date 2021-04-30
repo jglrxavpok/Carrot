@@ -35,6 +35,7 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/compute"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
             COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
@@ -109,6 +110,11 @@ set(ENGINE-SOURCES
         src/engine/audio/decoders/MP3Decoder.cpp
         src/engine/audio/decoders/VorbisDecoder.cpp
         src/engine/audio/SoundListener.cpp
+
+        src/engine/render/particles/ParticleSystem.cpp
+        src/engine/render/particles/ParticleEmitter.cpp
+
+        src/engine/render/ComputePipeline.cpp
         )
 
 set(VERTEX_SHADERS
@@ -116,6 +122,7 @@ set(VERTEX_SHADERS
         resources/shaders/gBufferWithBoneInfo.vertex.glsl
         resources/shaders/screenQuad.vertex.glsl
         resources/shaders/skybox.vertex.glsl
+        resources/shaders/particles.vertex.glsl
         )
 
 set(FRAGMENT_SHADERS
@@ -123,10 +130,12 @@ set(FRAGMENT_SHADERS
         resources/shaders/blit.fragment.glsl
         resources/shaders/gResolve.fragment.glsl
         resources/shaders/skybox.fragment.glsl
+        resources/shaders/particles.fragment.glsl
         )
 
 set(COMPUTE_SHADERS
         resources/shaders/skinning.compute.glsl
+        resources/shaders/compute/particles.compute.glsl
         )
 
 set(RAYGEN_SHADERS

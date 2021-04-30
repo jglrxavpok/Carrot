@@ -93,7 +93,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeAlbedo.descriptorCount = 1;
         writeAlbedo.descriptorType = vk::DescriptorType::eInputAttachment;
         writeAlbedo.pImageInfo = &albedoInfo;
-        writeAlbedo.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeAlbedo.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeAlbedo.dstArrayElement = 0;
         writeAlbedo.dstBinding = 0;
 
@@ -107,7 +107,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeDepth.descriptorCount = 1;
         writeDepth.descriptorType = vk::DescriptorType::eInputAttachment;
         writeDepth.pImageInfo = &depthInfo;
-        writeDepth.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeDepth.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeDepth.dstArrayElement = 0;
         writeDepth.dstBinding = 1;
 
@@ -121,7 +121,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeViewPosition.descriptorCount = 1;
         writeViewPosition.descriptorType = vk::DescriptorType::eInputAttachment;
         writeViewPosition.pImageInfo = &viewPositionInfo;
-        writeViewPosition.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeViewPosition.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeViewPosition.dstArrayElement = 0;
         writeViewPosition.dstBinding = 2;
 
@@ -135,7 +135,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeViewNormal.descriptorCount = 1;
         writeViewNormal.descriptorType = vk::DescriptorType::eInputAttachment;
         writeViewNormal.pImageInfo = &viewNormalInfo;
-        writeViewNormal.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeViewNormal.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeViewNormal.dstArrayElement = 0;
         writeViewNormal.dstBinding = 3;
 
@@ -149,7 +149,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeLighting.descriptorCount = 1;
         writeLighting.descriptorType = vk::DescriptorType::eSampledImage;
         writeLighting.pImageInfo = &lightingNfo;
-        writeLighting.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeLighting.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeLighting.dstArrayElement = 0;
         writeLighting.dstBinding = 4;
 
@@ -163,7 +163,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeUI.descriptorCount = 1;
         writeUI.descriptorType = vk::DescriptorType::eSampledImage;
         writeUI.pImageInfo = &uiInfo;
-        writeUI.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeUI.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeUI.dstArrayElement = 0;
         writeUI.dstBinding = 5;
 
@@ -177,7 +177,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeSkybox.descriptorCount = 1;
         writeSkybox.descriptorType = vk::DescriptorType::eSampledImage;
         writeSkybox.pImageInfo = &skyboxInfo;
-        writeSkybox.dstSet = gResolvePipeline->getDescriptorSets()[i];
+        writeSkybox.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeSkybox.dstArrayElement = 0;
         writeSkybox.dstBinding = 9;
     }

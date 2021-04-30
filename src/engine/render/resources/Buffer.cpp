@@ -95,3 +95,11 @@ vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
 Carrot::BufferView Carrot::Buffer::getWholeView() {
     return BufferView(nullptr, *this, 0u, static_cast<vk::DeviceSize>(size));
 }
+
+void Carrot::Buffer::flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length) {
+    driver.getLogicalDevice().flushMappedMemoryRanges(vk::MappedMemoryRange {
+       .memory = *memory,
+       .offset = start,
+       .size = length,
+    });
+}

@@ -144,6 +144,14 @@ Game::Game::Game(Carrot::Engine& engine): engine(engine) {
     // prepare for first frame
     world.tick(0);
     world.onFrame(0);
+
+    blueprint = make_unique<ParticleBlueprint>();
+    particles = make_unique<ParticleSystem>(engine, *blueprint, 1000ul);
+    auto emitter = particles->createEmitter();
+
+    float f = sqrt(maxInstanceCount) * spacing / 2.0f;
+    emitter->getPosition() = { f, f, 0 };
+    emitter->setRate(20);
 }
 
 void Game::Game::onFrame(uint32_t frameIndex) {
@@ -174,6 +182,8 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     // TODO: proper indexing
     engine.getASBuilder().updateBottomLevelAS(blasIndices);
     engine.getASBuilder().updateTopLevelAS();
+
+    particles->onFrame(frameIndex);
 }
 
 void Game::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {
@@ -185,6 +195,8 @@ void Game::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& comma
     {
         animatedUnits->recordGBufferPass(frameIndex, commands, maxInstanceCount);
     }
+
+    particles->gBufferRender(frameIndex, commands);
 }
 
 float yaw = 0.0f;
@@ -224,12 +236,14 @@ void Game::Game::tick(double frameTime) {
             glm::cos(totalTime)*glm::sin(totalTime)/2.0f+0.5f,
             1.0f,
     };
+
+    particles->tick(frameTime);
 }
 
 void Game::Game::onSwapchainSizeChange(int newWidth, int newHeight) {
-    // TODO
+    particles->onSwapchainSizeChange(newWidth, newHeight);
 }
 
 void Game::Game::onSwapchainImageCountChange(size_t newCount) {
-    // TODO
+    particles->onSwapchainImageCountChange(newCount);
 }

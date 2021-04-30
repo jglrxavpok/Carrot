@@ -85,18 +85,29 @@ void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
                 }
             }
         }
-        bindings.push_back({vk::DescriptorSetLayoutBinding {
-            .binding = bindingID,
-            .descriptorType = type,
-            .descriptorCount = count,
-            .stageFlags = stage,
-        }, resource.name});
+        NamedBinding bindingToAdd = {vk::DescriptorSetLayoutBinding {
+                .binding = bindingID,
+                .descriptorType = type,
+                .descriptorCount = count,
+                .stageFlags = stage,
+        }, resource.name};
 
-        bindingMap[static_cast<uint32_t>(bindingID)] = {
-                bindingID,
-                type,
-                count
-        };
+        auto existing = std::find_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.name == bindingToAdd.name; });
+        if(existing != bindings.end()) {
+            if(bindingToAdd.areSame(*existing)) {
+                existing->vkBinding.stageFlags |= stage;
+            } else {
+                throw std::runtime_error("Mismatched of binding " + to_string(bindingID) + " over different stages.");
+            }
+        } else {
+            bindings.push_back(bindingToAdd);
+
+            bindingMap[static_cast<uint32_t>(bindingID)] = {
+                    bindingID,
+                    type,
+                    count
+            };
+        }
     }
 }
 

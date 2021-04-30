@@ -21,6 +21,8 @@ namespace Carrot {
             uint32_t index;
             vk::DescriptorType type;
             uint32_t count;
+
+            auto operator<=>(const Binding& rhs) const = default;
         };
 
     private:

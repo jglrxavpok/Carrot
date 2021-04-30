@@ -21,6 +21,7 @@ namespace Carrot {
             GResolve,
             Skybox,
             Blit,
+            Particles,
             Unknown
         };
 
@@ -34,7 +35,7 @@ namespace Carrot {
         vk::UniquePipeline vkPipeline{};
         vk::UniqueDescriptorPool descriptorPool{};
         unique_ptr<ShaderStages> stages = nullptr;
-        vector<vk::DescriptorSet> descriptorSets{};
+        vector<vk::DescriptorSet> descriptorSets0{};
         MaterialID materialID = 0;
         MaterialID maxMaterialID = 16;
 
@@ -71,7 +72,7 @@ namespace Carrot {
 
         void recreateDescriptorPool(uint32_t imageCount);
 
-        const vector<vk::DescriptorSet>& getDescriptorSets() const;
+        const vector<vk::DescriptorSet>& getDescriptorSets0() const;
 
         VertexFormat getVertexFormat() const;
 

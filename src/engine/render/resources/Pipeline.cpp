@@ -54,8 +54,13 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
             .pVertexAttributeDescriptions = attributes.data(),
     };
 
+    vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+    if(description.HasMember("topology")) {
+        // TODO
+    }
+
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-            .topology = vk::PrimitiveTopology::eTriangleList,
+            .topology = topology,
             .primitiveRestartEnable = false,
     };
 
@@ -103,7 +108,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
     vector<vk::PipelineColorBlendAttachmentState> colorBlendingStates =
             {
-            static_cast<size_t>(type == Type::GBuffer ? 3 : 1),
+            static_cast<size_t>(type == Type::Particles || type == Type::GBuffer ? 3 : 1),
             colorBlendAttachment
             };
 
@@ -255,11 +260,11 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
     commands.bindPipeline(bindPoint, *vkPipeline);
     if(type == Type::GBuffer) {
-        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
+        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
     } else if(type == Type::Blit) {
-        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {});
+        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {});
     } else {
-        bindDescriptorSets(commands, {descriptorSets[imageIndex]}, {0, 0});
+        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
     }
 }
 
@@ -307,7 +312,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
 void Carrot::Pipeline::allocateDescriptorSets() {
     driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
-    descriptorSets = allocateDescriptorSets0();
+    descriptorSets0 = allocateDescriptorSets0();
 
     if(type == Type::GBuffer) {
         for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
@@ -317,13 +322,13 @@ void Carrot::Pipeline::allocateDescriptorSets() {
                     .range = materialStorageBuffer->getSize(),
             };
             vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer*/};
-            writes[0].dstSet = descriptorSets[imageIndex];
+            writes[0].dstSet = descriptorSets0[imageIndex];
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
             writes[0].pBufferInfo = &storageBufferInfo;
             writes[0].dstBinding = materialsBindingIndex;
 
-            writes[1].dstSet = descriptorSets[imageIndex];
+            writes[1].dstSet = descriptorSets0[imageIndex];
             writes[1].descriptorCount = maxTextureID;
             writes[1].descriptorType = vk::DescriptorType::eSampledImage;
             writes[1].dstBinding = texturesBindingIndex;
@@ -377,6 +382,10 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                     if(binding.name == "Debug") {
                         buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
                         buffer.range = sizeof(DebugBufferObject);
+                    } else if(binding.name == "Particles") {
+                        // TODO
+                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.range = sizeof(DebugBufferObject);
                     } else {
                         buffer.buffer = driver.getCameraUniformBuffers()[i]->getVulkanBuffer();
                         buffer.range = sizeof(CameraBufferObject); // TODO: customizable
@@ -415,8 +424,8 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     return sets;
 }
 
-const vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets() const {
-    return descriptorSets;
+const vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets0() const {
+    return descriptorSets0;
 }
 
 Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material& material) {
@@ -447,7 +456,7 @@ void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
     vk::WriteDescriptorSet write {
-            .dstSet = descriptorSets[imageIndex],
+            .dstSet = descriptorSets0[imageIndex],
             .dstBinding = texturesBindingIndex,
             .dstArrayElement = id,
             .descriptorCount = 1,
@@ -482,6 +491,8 @@ Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
         return Type::Blit;
     } else if(name == "skybox") {
         return Type::Skybox;
+    } else if(name == "particles") {
+        return Type::Particles;
     }
     return Type::Unknown;
 }

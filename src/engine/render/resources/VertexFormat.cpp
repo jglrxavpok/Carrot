@@ -4,6 +4,7 @@
 
 #include "VertexFormat.h"
 #include "Vertex.h"
+#include "engine/render/particles/Particles.h"
 
 Carrot::VertexFormat Carrot::getVertexFormat(const std::string& name) {
     if(name == "Vertex") {
@@ -16,6 +17,8 @@ Carrot::VertexFormat Carrot::getVertexFormat(const std::string& name) {
         return VertexFormat::ScreenSpace;
     } else if(name == "SimpleVertex") {
         return VertexFormat::SimpleVertex;
+    } else if(name == "Particle") {
+        return VertexFormat::Particle;
     }
     return Carrot::VertexFormat::Invalid;
 }
@@ -35,6 +38,8 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getBindingDescriptions(Ca
 
         case VertexFormat::SimpleVertex:
             return Carrot::SimpleVertex::getBindingDescription();
+        case VertexFormat::Particle:
+            return Carrot::Particle::getBindingDescription();
         default:
             throw std::runtime_error("Invalid vertex format!");
     }
@@ -56,6 +61,9 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getAttributeDescription
 
         case VertexFormat::SimpleVertex:
             return Carrot::SimpleVertex::getAttributeDescriptions();
+
+        case VertexFormat::Particle:
+            return Carrot::Particle::getAttributeDescriptions();
         default:
             throw std::runtime_error("Invalid vertex format!");
     }

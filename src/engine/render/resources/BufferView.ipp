@@ -7,5 +7,7 @@
 template<typename T>
 T* Carrot::BufferView::map() {
     // TODO: proper segmentation
-    return getBuffer().map<T>();
+    auto* pData = getBuffer().map<uint8_t>();
+    pData += start;
+    return reinterpret_cast<T*>(pData);
 }

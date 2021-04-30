@@ -757,7 +757,7 @@ void Carrot::Engine::updateSkyboxCommands() {
         write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
         write.pImageInfo = &image;
         write.dstBinding = 0;
-        write.dstSet = skyboxPipeline->getDescriptorSets()[i];
+        write.dstSet = skyboxPipeline->getDescriptorSets0()[i];
     }
     vkDriver.getLogicalDevice().updateDescriptorSets(writes, {});
 

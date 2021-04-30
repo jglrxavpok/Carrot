@@ -96,6 +96,7 @@ namespace Carrot {
         /// Creates an array describing the different attributes of a Vertex
         static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
     };
+
 }
 
 

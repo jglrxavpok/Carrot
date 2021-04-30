@@ -1,0 +1,220 @@
+//
+// Created by jglrxavpok on 29/04/2021.
+//
+
+#include "ComputePipeline.h"
+#include "engine/render/resources/ResourceAllocator.h"
+
+Carrot::ComputePipelineBuilder::ComputePipelineBuilder(Carrot::Engine& engine): engine(engine) {
+
+}
+
+Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, vk::DescriptorBufferInfo&& info, uint32_t count) {
+    ComputeBinding binding{};
+    binding.type = type;
+    binding.count = count;
+    binding.setID = setID;
+    binding.bindingID = bindingID;
+    binding.bufferInfo = std::make_unique<vk::DescriptorBufferInfo>();
+    *binding.bufferInfo = info;
+    bindings.emplace_back(std::move(binding));
+    return *this;
+}
+
+unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
+    std::map<uint32_t, vector<ComputeBinding>> bindingsPerSet{};
+    for(const auto& b : bindings) {
+        bindingsPerSet[b.setID].push_back(b);
+    }
+    return std::make_unique<ComputePipeline>(engine, shaderFilename, bindingsPerSet);
+}
+
+Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, std::string filename, const std::map<uint32_t, vector<ComputeBinding>>& bindings):
+        engine(engine), dispatchBuffer(engine.getResourceAllocator().allocateBuffer(sizeof(vk::DispatchIndirectCommand),
+                                                                                    vk::BufferUsageFlagBits::eIndirectBuffer,
+                                                                                    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
+    auto& computeCommandPool = engine.getComputeCommandPool();
+
+    // command buffers which will be sent to the compute queue
+    commandBuffer = engine.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+            .commandPool = computeCommandPool,
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = 1,
+    })[0];
+
+    // TODO: specialisation
+    auto specialization = vk::SpecializationInfo{};
+
+    uint32_t totalBindingCount = 0;
+    uint32_t dynamicBindingCount = 0;
+    uint32_t storageBufferCount = 0;
+    uint32_t storageBufferDynamicCount = 0;
+
+    // descriptor layouts used by pipeline
+    descriptorLayouts.clear();
+    for (const auto& [setID, bindingList] : bindings) {
+        std::vector<vk::DescriptorSetLayoutBinding> layoutBindings{};
+        for(const auto& binding : bindingList) {
+            switch (binding.type) {
+                case vk::DescriptorType::eStorageBufferDynamic:
+                    dynamicBindingCount++;
+                    storageBufferDynamicCount++;
+                    break;
+
+                case vk::DescriptorType::eStorageBuffer:
+                    storageBufferCount++;
+                    break;
+
+                default:
+                    throw std::runtime_error("Unsupported binding type: "+std::to_string(static_cast<uint32_t>(binding.type)));
+            }
+
+            layoutBindings.push_back(vk::DescriptorSetLayoutBinding {
+                    .binding = binding.bindingID,
+                    .descriptorType = binding.type,
+                    .descriptorCount = binding.count,
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
+            });
+
+            totalBindingCount++;
+        }
+
+
+        descriptorLayouts[setID] = std::move(engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+            .pBindings = layoutBindings.data()
+        }));
+    }
+
+    vector<uint32_t> dynamicOffsets;
+    dynamicOffsets.resize(dynamicBindingCount, 0);
+
+    vector<vk::DescriptorPoolSize> descriptorSizes{};
+    if(storageBufferCount != 0) {
+        descriptorSizes.emplace_back(vk::DescriptorPoolSize {
+                .type = vk::DescriptorType::eStorageBuffer,
+                .descriptorCount = storageBufferCount,
+        });
+    }
+
+    if(storageBufferDynamicCount != 0) {
+        descriptorSizes.emplace_back(vk::DescriptorPoolSize {
+                .type = vk::DescriptorType::eStorageBufferDynamic,
+                .descriptorCount = storageBufferDynamicCount,
+        });
+    }
+
+    descriptorSets.clear();
+    descriptorPool = std::move(engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .maxSets = engine.getSwapchainImageCount(),
+            .poolSizeCount = static_cast<uint32_t>(descriptorSizes.size()),
+            .pPoolSizes = descriptorSizes.data(),
+    }));
+
+    descriptorSets.clear();
+    std::vector<vk::DescriptorSet> descriptorSetsFlat{};
+    for(const auto& [setID, layout] : descriptorLayouts) {
+        descriptorSets[setID] = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *descriptorPool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &(*layout)
+        })[0];
+
+        descriptorSetsFlat.push_back(descriptorSets[setID]);
+    }
+
+    vector<vk::WriteDescriptorSet> writes{totalBindingCount};
+    vector<vk::DescriptorBufferInfo> bufferInfo{storageBufferCount+storageBufferDynamicCount};
+
+    uint32_t bufferIndex = 0;
+    uint32_t writeIndex = 0;
+    for (const auto& [setID, bindingList] : bindings) {
+        for(const auto& binding : bindingList) {
+            switch (binding.type) {
+                case vk::DescriptorType::eStorageBufferDynamic:
+                case vk::DescriptorType::eStorageBuffer:
+                case vk::DescriptorType::eUniformBufferDynamic:
+                case vk::DescriptorType::eUniformBuffer: {
+                    auto& buf = bufferInfo[bufferIndex++];
+                    buf = *binding.bufferInfo;
+                    // only count = 1 is supported yet
+                    //  would need additional allocation
+                    assert(binding.count == 1);
+                    writes[writeIndex++] = vk::WriteDescriptorSet {
+                            .dstSet = descriptorSets[setID],
+                            .dstBinding = binding.bindingID,
+                            .descriptorCount = binding.count,
+                            .descriptorType = binding.type,
+                            .pBufferInfo = &buf,
+                    };
+                } break;
+
+                default:
+                    throw std::runtime_error("Unsupported binding type: "+std::to_string(static_cast<uint32_t>(binding.type)));
+            }
+        }
+    }
+    engine.getLogicalDevice().updateDescriptorSets(writes, {});
+
+    auto computeStage = ShaderModule(engine.getVulkanDriver(), filename);
+
+    // create the pipeline
+    std::vector<vk::DescriptorSetLayout> setLayouts{};
+    for(const auto& [setID, layout] : descriptorLayouts) {
+        setLayouts.push_back(*layout);
+    }
+
+    computePipelineLayout = engine.getLogicalDevice().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo {
+            .setLayoutCount = static_cast<uint32_t>(setLayouts.size()),
+            .pSetLayouts = setLayouts.data(),
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = nullptr,
+    }, engine.getAllocator());
+
+    computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
+            .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
+            .layout = *computePipelineLayout,
+    }, engine.getAllocator());
+
+    finishedFence = engine.getLogicalDevice().createFenceUnique(vk::FenceCreateInfo {
+        .flags = vk::FenceCreateFlagBits::eSignaled
+    });
+
+    dispatchSizes = dispatchBuffer.map<vk::DispatchIndirectCommand>();
+
+    {
+        commandBuffer.begin(vk::CommandBufferBeginInfo {});
+
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, descriptorSetsFlat, dynamicOffsets);
+        commandBuffer.dispatchIndirect(dispatchBuffer.getVulkanBuffer(), dispatchBuffer.getStart());
+        commandBuffer.end();
+    }
+}
+
+void Carrot::ComputePipeline::waitForCompletion() {
+    engine.getLogicalDevice().waitForFences(*finishedFence, true, UINT64_MAX);
+}
+
+void Carrot::ComputePipeline::onSwapchainImageCountChange(size_t newCount) {
+    SwapchainAware::onSwapchainImageCountChange(newCount);
+}
+
+void Carrot::ComputePipeline::onSwapchainSizeChange(int newWidth, int newHeight) {}
+
+void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const {
+    dispatchSizes->x = groupCountX;
+    dispatchSizes->y = groupCountY;
+    dispatchSizes->z = groupCountZ;
+
+    engine.getLogicalDevice().resetFences(*finishedFence);
+    engine.getComputeQueue().submit(vk::SubmitInfo {
+            .waitSemaphoreCount = 0,
+            .pWaitSemaphores = nullptr,
+            .pWaitDstStageMask = nullptr,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &commandBuffer,
+            .signalSemaphoreCount = 0,
+            .pSignalSemaphores = nullptr,
+    }, *finishedFence);
+}

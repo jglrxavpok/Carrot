@@ -63,6 +63,8 @@ namespace Carrot {
 
         void unmap();
 
+        void flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length);
+
         ~Buffer();
 
         void setDebugNames(const string& name) override;
