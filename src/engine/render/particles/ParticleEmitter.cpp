@@ -21,13 +21,13 @@ void Carrot::ParticleEmitter::tick(double deltaTime) {
             break;
         assert(particle->life < 0.0f);
         particle->id = spawnedParticles;
-        particle->life = 2.0f;
+        particle->life = Carrot::RNG::randomFloat(1.0f, 3.0f);
         particle->size = 1.0f;
         particle->position = position;
         particle->velocity = {
                 Carrot::RNG::randomFloat(-0.5f, 0.5f),
                 Carrot::RNG::randomFloat(-0.5f, 0.5f),
-                Carrot::RNG::randomFloat(0.5f, 2.0f),
+                Carrot::RNG::randomFloat(1.0f, 2.5f),
         };
 
         spawnedParticles++;

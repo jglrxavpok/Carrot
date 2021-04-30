@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 #include "draw_data.glsl"
+#include "includes/gbuffer.glsl"
 
 layout(constant_id = 0) const uint MAX_TEXTURES = 16;
 layout(constant_id = 1) const uint MAX_MATERIALS = 16;
@@ -27,6 +28,7 @@ layout(location = 4) in vec3 viewNormal;
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec3 outViewPosition;
 layout(location = 2) out vec3 outNormal;
+layout(location = 3) out uint intProperty;
 
 void main() {
     DrawData instanceDrawData = drawData[0]; // TODO: instancing
@@ -41,4 +43,5 @@ void main() {
     outColor = vec4(texColor.rgb * fragColor, 1.0);
     outViewPosition = viewPosition;
     outNormal = viewNormal;
+    intProperty = IntPropertiesRayTracedLighting;
 }

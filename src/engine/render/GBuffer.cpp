@@ -38,6 +38,9 @@ void Carrot::GBuffer::generateImages() {
     viewNormalImages.resize(renderer.getSwapchainImageCount());
     viewNormalImageViews.resize(renderer.getSwapchainImageCount());
 
+    intPropertiesImages.resize(renderer.getSwapchainImageCount());
+    intPropertiesImageViews.resize(renderer.getSwapchainImageCount());
+
     for(size_t index = 0; index < renderer.getSwapchainImageCount(); index++) {
         // Albedo
         auto swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
@@ -73,13 +76,21 @@ void Carrot::GBuffer::generateImages() {
                                                           vk::Format::eR32G32B32A32Sfloat));
 
         viewNormalImageViews[index] = std::move(viewNormalImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
+
+        // Bitfield for per-pixel properties
+        intPropertiesImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+                                                          vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                          vk::Format::eR32Uint));
+
+        intPropertiesImageViews[index] = std::move(intPropertiesImages[index]->createImageView(vk::Format::eR32Uint));
     }
 }
 
 void Carrot::GBuffer::loadResolvePipeline() {
     gResolvePipeline = renderer.getOrCreatePipeline("gResolve");
 
-    const size_t imageCount = 7/*albedo+depth+viewPosition+normal+lighting+ui*/;
+    const size_t imageCount = 8/*albedo+depth+viewPosition+normal+lighting+ui+intProperties*/;
     vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount() * imageCount};
     vector<vk::DescriptorImageInfo> imageInfo{renderer.getSwapchainImageCount() * imageCount};
     for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
@@ -139,47 +150,61 @@ void Carrot::GBuffer::loadResolvePipeline() {
         writeViewNormal.dstArrayElement = 0;
         writeViewNormal.dstBinding = 3;
 
+        // bitfield
+        auto& intPropertiesInfo = imageInfo[i*imageCount+4];
+        intPropertiesInfo.imageView = *intPropertiesImageViews[i];
+        intPropertiesInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        intPropertiesInfo.sampler = renderer.getVulkanDriver().getNearestSampler();
+
+        auto& writeIntProperties = writes[i*imageCount+4];
+        writeIntProperties.descriptorCount = 1;
+        writeIntProperties.descriptorType = vk::DescriptorType::eInputAttachment;
+        writeIntProperties.pImageInfo = &intPropertiesInfo;
+        writeIntProperties.dstSet = gResolvePipeline->getDescriptorSets0()[i];
+        writeIntProperties.dstArrayElement = 0;
+        writeIntProperties.dstBinding = 4;
+
         // raytraced lighting
-        auto& lightingNfo = imageInfo[i*imageCount+4];
+        auto& lightingNfo = imageInfo[i*imageCount+5];
         lightingNfo.imageView = *raytracer.getLightingImageViews()[i];
         lightingNfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         lightingNfo.sampler = nullptr;
 
-        auto& writeLighting = writes[i*imageCount+4];
+        auto& writeLighting = writes[i*imageCount+5];
         writeLighting.descriptorCount = 1;
         writeLighting.descriptorType = vk::DescriptorType::eSampledImage;
         writeLighting.pImageInfo = &lightingNfo;
         writeLighting.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeLighting.dstArrayElement = 0;
-        writeLighting.dstBinding = 4;
+        writeLighting.dstBinding = 5;
 
         // ui
-        auto& uiInfo = imageInfo[i*imageCount+5];
+        auto& uiInfo = imageInfo[i*imageCount+6];
         uiInfo.imageView = *renderer.getUIImageViews()[i];
         uiInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         uiInfo.sampler = nullptr;
 
-        auto& writeUI = writes[i*imageCount+5];
+        auto& writeUI = writes[i*imageCount+6];
         writeUI.descriptorCount = 1;
         writeUI.descriptorType = vk::DescriptorType::eSampledImage;
         writeUI.pImageInfo = &uiInfo;
         writeUI.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeUI.dstArrayElement = 0;
-        writeUI.dstBinding = 5;
+        writeUI.dstBinding = 6;
 
         // skybox
-        auto& skyboxInfo = imageInfo[i*imageCount+6];
+        auto& skyboxInfo = imageInfo[i*imageCount+7];
         skyboxInfo.imageView = *renderer.getSkyboxImageViews()[i];
         skyboxInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         skyboxInfo.sampler = nullptr;
 
-        auto& writeSkybox = writes[i*imageCount+6];
+        auto& writeSkybox = writes[i*imageCount+7];
         writeSkybox.descriptorCount = 1;
         writeSkybox.descriptorType = vk::DescriptorType::eSampledImage;
         writeSkybox.pImageInfo = &skyboxInfo;
         writeSkybox.dstSet = gResolvePipeline->getDescriptorSets0()[i];
         writeSkybox.dstArrayElement = 0;
-        writeSkybox.dstBinding = 9;
+        writeSkybox.dstBinding = 10;
     }
     renderer.getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
 }
@@ -205,6 +230,7 @@ void Carrot::GBuffer::addFramebufferAttachments(uint32_t frameIndex, vector<vk::
     attachments.push_back(*albedoImageViews[frameIndex]);
     attachments.push_back(*viewPositionImageViews[frameIndex]);
     attachments.push_back(*viewNormalImageViews[frameIndex]);
+    attachments.push_back(*intPropertiesImageViews[frameIndex]);
 }
 
 vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
@@ -323,17 +349,42 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
+    vk::AttachmentDescription gBufferIntPropertiesAttachment {
+            .format = vk::Format::eR32Uint,
+            .samples = vk::SampleCountFlagBits::e1,
+
+            .loadOp = vk::AttachmentLoadOp::eClear,
+            .storeOp = vk::AttachmentStoreOp::eStore,
+
+            .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+            .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::AttachmentReference gBufferIntPropertiesOutputAttachmentRef{
+            .attachment = 5,
+            .layout = vk::ImageLayout::eColorAttachmentOptimal,
+    };
+
+    vk::AttachmentReference gBufferIntPropertiesInputAttachmentRef{
+            .attachment = 5,
+            .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
     vk::AttachmentReference outputs[] = {
             gBufferColorOutputAttachmentRef,
             gBufferViewPositionOutputAttachmentRef,
             gBufferNormalOutputAttachmentRef,
+            gBufferIntPropertiesOutputAttachmentRef,
     };
 
     vk::SubpassDescription gBufferSubpass {
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
             .inputAttachmentCount = 0,
 
-            .colorAttachmentCount = 3,
+            .colorAttachmentCount = sizeof(outputs) / sizeof(vk::AttachmentReference),
             // index in this array is used by `layout(location = 0)` inside shaders
             .pColorAttachments = outputs,
             .pDepthStencilAttachment = &depthAttachmentRef,
@@ -346,6 +397,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             depthInputAttachmentRef,
             gBufferViewPositionInputAttachmentRef,
             gBufferNormalInputAttachmentRef,
+            gBufferIntPropertiesInputAttachmentRef,
     };
 
     vk::SubpassDescription gResolveSubpass {
@@ -400,6 +452,7 @@ vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {
             gBufferColorAttachment,
             gBufferViewPositionAttachment,
             gBufferNormalAttachment,
+            gBufferIntPropertiesAttachment,
     };
 
     vk::RenderPassCreateInfo renderPassInfo{

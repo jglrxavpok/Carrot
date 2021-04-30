@@ -88,7 +88,7 @@ void Carrot::ParticleSystem::updateParticles(double deltaTime) {
     updateParticlesCompute->waitForCompletion();
 
     // remove dead particles
-    auto end = std::remove_if(particlePool, particlePoolEnd, [](const auto& p) { return p.life < 0.0f; });
+    auto end = std::remove_if(particlePool, particlePool+usedParticleCount, [](const auto& p) { return p.life < 0.0f; });
     auto count = std::distance(particlePool, end);
     usedParticleCount = count;
     oldParticleCount = count;

@@ -27,6 +27,9 @@ namespace Carrot {
         vector<vk::UniqueImageView> depthStencilImageViews{};
         vector<vk::UniqueImageView> depthOnlyImageViews{};
 
+        vector<unique_ptr<Image>> intPropertiesImages{};
+        vector<vk::UniqueImageView> intPropertiesImageViews{};
+
         mutable shared_ptr<Pipeline> gResolvePipeline = nullptr;
         unique_ptr<Mesh> screenQuadMesh = nullptr;
 

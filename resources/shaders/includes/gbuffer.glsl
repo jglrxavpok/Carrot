@@ -1,0 +1,1 @@
+#define IntPropertiesRayTracedLighting (1u << 0u)

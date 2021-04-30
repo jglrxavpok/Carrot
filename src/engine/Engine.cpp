@@ -206,6 +206,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 .depth = 1.0f,
                 .stencil = 0
         };
+        vk::ClearValue clearIntProperties = vk::ClearColorValue();
 
         vk::ClearValue clearValues[] = {
                 clearColor, // final presented color
@@ -214,6 +215,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 positionClear, // gbuffer view position
                 positionClear, // gbuffer view normal,
                 lightingClear, // raytraced lighting colors
+                clearIntProperties,
         };
 
         vk::ClearValue imguiClearValues[] = {
@@ -369,6 +371,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ImGui::RadioButton("Raytracing", gIndex, 4);
             ImGui::RadioButton("UI", gIndex, 5);
             ImGui::RadioButton("Skybox", gIndex, 6);
+            ImGui::RadioButton("Int Properties", gIndex, 7);
         }
         ImGui::End();
 

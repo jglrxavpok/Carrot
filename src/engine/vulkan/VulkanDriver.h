@@ -189,6 +189,7 @@ namespace Carrot {
         vk::UniqueImageView& getDefaultImageView();
 
         const vk::Sampler& getLinearSampler() { return *linearRepeatSampler; };
+        const vk::Sampler& getNearestSampler() { return *nearestRepeatSampler; };
 
         /// Find the best available format for the depth texture
         vk::Format findDepthFormat();

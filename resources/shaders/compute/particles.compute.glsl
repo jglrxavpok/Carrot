@@ -1,6 +1,6 @@
 #version 450
 
-#include "../particles.glsl"
+#include "../includes/particles.glsl"
 
 // particle index inside buffer
 layout (local_size_x = 1024) in;

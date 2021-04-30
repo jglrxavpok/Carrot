@@ -108,7 +108,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
     vector<vk::PipelineColorBlendAttachmentState> colorBlendingStates =
             {
-            static_cast<size_t>(type == Type::Particles || type == Type::GBuffer ? 3 : 1),
+            static_cast<size_t>(type == Type::Particles || type == Type::GBuffer ? 4 : 1),
             colorBlendAttachment
             };
 
