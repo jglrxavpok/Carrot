@@ -32,7 +32,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/GBuffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
-#include "game/Game.h"
+#include "engine/CarrotGame.h"
 #include "stb_image_write.h"
 #include "LoadingScreen.h"
 
@@ -548,10 +548,6 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
         materials[name] = make_shared<Material>(*this, name);
     }
     return materials[name];
-}
-
-void Carrot::Engine::initGame() {
-    game = make_unique<Game::Game>(*this);
 }
 
 void Carrot::Engine::createCamera() {

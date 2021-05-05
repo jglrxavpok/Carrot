@@ -12,6 +12,7 @@
 #include "engine/render/InstanceData.h"
 #include "engine/render/animation/AnimatedInstances.h"
 #include "engine/render/particles/Particles.h"
+#include "engine/CarrotGame.h"
 
 namespace Carrot {
     class Engine;
@@ -20,9 +21,8 @@ namespace Carrot {
 namespace Game {
     using namespace Carrot;
 
-    class Game: public SwapchainAware {
-    private:
-        Engine& engine;
+    class Game: public CarrotGame {
+    protected:
         unique_ptr<Model> mapModel = nullptr;
         unique_ptr<Model> model = nullptr;
         unique_ptr<Buffer> mapInstanceBuffer = nullptr;
@@ -36,15 +36,15 @@ namespace Game {
     public:
         explicit Game(Engine& engine);
 
-        void onFrame(uint32_t frameIndex);
+        void onFrame(uint32_t frameIndex) override;
 
-        void tick(double frameTime);
+        void tick(double frameTime) override;
 
-        void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands);
+        void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) override;
 
-        void onMouseMove(double dx, double dy);
+        void onMouseMove(double dx, double dy) override;
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages);
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 

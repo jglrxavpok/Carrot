@@ -191,6 +191,11 @@ set(EXTERNAL_SOURCES
         thirdparty/imgui/imgui_demo.cpp
         thirdparty/imgui/imgui_widgets.cpp
         thirdparty/imgui/imgui_tables.cpp
+
+        thirdparty/imgui-node-editor/crude_json.cpp
+        thirdparty/imgui-node-editor/imgui_canvas.cpp
+        thirdparty/imgui-node-editor/imgui_node_editor.cpp
+        thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
         )
 
 include_directories(src/)
@@ -199,11 +204,22 @@ include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
 include_directories(thirdparty/imgui/)
 include_directories(thirdparty/dr_libs/)
+include_directories(thirdparty/imgui-node-editor/)
 
 set(GAME-SOURCES
         src/main.cpp
 
         src/game/Game.cpp
+        )
+
+set(TOOLS-SOURCES
+        src/tools/ParticleEditor.cpp
+        src/tools/EditorGraph.cpp
+        src/tools/EditorNode.cpp
+
+
+
+        src/tools/ToolsEntryPoint.cpp
         )
 
 set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
@@ -219,6 +235,9 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
+
+add_executable(Carrot-Tools ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
+target_link_libraries(Carrot-Tools ${ALL_LIBS})
 
 link_directories(OpenAL_BINARY_DIR)
 add_executable(Carrot-TestAudio ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Audio.cpp)

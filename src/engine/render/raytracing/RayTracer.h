@@ -36,6 +36,8 @@ namespace Carrot {
         size_t vertexBufferIndex = 0;
         size_t indexBufferIndex = 0;
 
+        bool hasStuffToDraw = false;
+
         constexpr uint32_t alignUp(uint32_t value, uint32_t alignment);
 
         void createRTDescriptorSets();

@@ -4,36 +4,29 @@
 #include "engine/audio/OpenAL.hpp"
 #include "engine/audio/Sound.h"
 #include "engine/audio/SoundSource.h"
+#include "engine/CarrotGame.h"
 #include "dr_wav.h"
 
 namespace Game {
-    class Game: public SwapchainAware {
+    class Game: public Carrot::CarrotGame {
     public:
-        explicit Game(Carrot::Engine& engine);
+        explicit Game(Carrot::Engine& engine): Carrot::CarrotGame(engine) {};
 
-        void onFrame(uint32_t frameIndex);
+        void onFrame(uint32_t frameIndex) override {};
 
-        void tick(double frameTime);
+        void tick(double frameTime) override {};
 
-        void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands);
+        void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) override {};
 
-        void onMouseMove(double dx, double dy);
+        void onMouseMove(double dx, double dy) override {};
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages);
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override {};
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(int newWidth, int newHeight) override {};
 
-        void onSwapchainImageCountChange(size_t newCount) override;
+        void onSwapchainImageCountChange(size_t newCount) override {};
     };
 }
-Game::Game::Game(Carrot::Engine& engine) {}
-void Game::Game::onFrame(uint32_t frameIndex) {}
-void Game::Game::tick(double frameTime) {}
-void Game::Game::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {}
-void Game::Game::onMouseMove(double dx, double dy) {}
-void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {}
-void Game::Game::onSwapchainSizeChange(int newWidth, int newHeight) {};
-void Game::Game::onSwapchainImageCountChange(size_t newCount) {};
 
 int main() {
     {
@@ -100,4 +93,8 @@ int main() {
 //    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
     return 0;
+}
+
+void Carrot::Engine::initGame() {
+    game = make_unique<Game::Game>(*this);
 }

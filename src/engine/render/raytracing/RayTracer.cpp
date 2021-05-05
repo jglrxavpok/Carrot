@@ -102,7 +102,9 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
 
     auto extent = renderer.getVulkanDriver().getSwapchainExtent();
     lightingImages[frameIndex]->transitionLayoutInline(commands, vk::Format::eR32G32B32A32Sfloat, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
-    commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
+    if(hasStuffToDraw) {
+        commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
+    }
     lightingImages[frameIndex]->transitionLayoutInline(commands, vk::Format::eR32G32B32A32Sfloat, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
@@ -469,6 +471,9 @@ void Carrot::RayTracer::registerIndexBuffer(const Buffer& indexBuffer, vk::Devic
 }
 
 void Carrot::RayTracer::finishInit() {
+    if(renderer.getASBuilder().getTopLevelAS().as == nullptr)
+        return;
+
     // we need the TLAS to write, but it is not available before a call to buildTopLevelAS()
 
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
@@ -507,6 +512,8 @@ void Carrot::RayTracer::finishInit() {
 
         frameIndex++;
     }
+
+    hasStuffToDraw = true;
 }
 
 Carrot::RaycastedShadowingLightBuffer& Carrot::RayTracer::getLightBuffer() {
@@ -520,6 +527,8 @@ void Carrot::RayTracer::init() {
 }
 
 void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
+    if(!hasStuffToDraw)
+        return;
     // TODO: handle this case
     //  call generateBuffers()
 

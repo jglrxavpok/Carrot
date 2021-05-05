@@ -3,6 +3,7 @@
 #include "engine/Engine.h"
 #include "engine/constants.h"
 #include "stb_image.h"
+#include "game/Game.h"
 
 #ifdef TRACY_ENABLE
 void* operator new(std::size_t count) {
@@ -68,4 +69,8 @@ int main() {
         throw e;
     }*/
     return 0;
+}
+
+void Carrot::Engine::initGame() {
+    game = make_unique<Game::Game>(*this);
 }

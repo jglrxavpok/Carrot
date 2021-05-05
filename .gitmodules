@@ -13,3 +13,6 @@
 [submodule "thirdparty/dr_libs"]
 	path = thirdparty/dr_libs
 	url = https://github.com/mackron/dr_libs/
+[submodule "thirdparty/imgui_node_editor"]
+	path = thirdparty/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor

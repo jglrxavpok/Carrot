@@ -29,11 +29,9 @@ namespace Carrot {
 
 using namespace std;
 
-namespace Game {
-    class Game;
-}
-
 namespace Carrot {
+    class CarrotGame;
+
     class Buffer;
 
     class BufferView;
@@ -156,6 +154,11 @@ namespace Carrot {
 
         void onSwapchainImageCountChange(size_t newCount) override;
 
+        void ungrabCursor() {
+            grabCursor = false;
+            glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -184,7 +187,7 @@ namespace Carrot {
         map<string, shared_ptr<Material>> materials{};
 
         unique_ptr<Camera> camera = nullptr;
-        unique_ptr<Game::Game> game = nullptr;
+        unique_ptr<Carrot::CarrotGame> game = nullptr;
 
         bool framebufferResized = false;
 
