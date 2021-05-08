@@ -205,6 +205,7 @@ include_directories(thirdparty/tracy/)
 include_directories(thirdparty/imgui/)
 include_directories(thirdparty/dr_libs/)
 include_directories(thirdparty/imgui-node-editor/)
+include_directories(thirdparty/stduuid/include)
 
 set(GAME-SOURCES
         src/main.cpp

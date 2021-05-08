@@ -111,6 +111,8 @@ static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
     app->onKeyEvent(key, scancode, action, mods);
+
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
 
 void Carrot::Engine::initWindow() {

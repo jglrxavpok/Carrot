@@ -11,6 +11,7 @@
 #include <rapidjson/filewritestream.h>
 
 #include "engine/io/IO.h"
+#include "engine/utils/JSON.h"
 
 namespace ed = ax::NodeEditor;
 
@@ -49,7 +50,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 rapidjson::Document description;
                 description.Parse(IO::readFileAsText("updateGraph.json").c_str());
 
-                updateGraph.loadFromJSON(description["update_graph"].GetObject());
+                updateGraph.loadFromJSON(description["update_graph"]);
             }
 
             if(ImGui::MenuItem("Save")) {
@@ -71,6 +72,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 document.SetObject();
 
                 document.AddMember("update_graph", updateGraph.toJSON(document), document.GetAllocator());
+                Carrot::JSON::clearReferences();
                 document.Accept(writer);
 
                 fclose(fp);

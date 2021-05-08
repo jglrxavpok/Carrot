@@ -7,6 +7,7 @@
 #include <utility>
 #include "nodes/Arithmetics.hpp"
 #include "nodes/Constants.hpp"
+#include <engine/utils/ImGuiUtils.hpp>
 
 namespace ed = ax::NodeEditor;
 
@@ -19,6 +20,7 @@ Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engin
 
 void Tools::EditorGraph::onFrame(size_t frameIndex) {
     ed::SetCurrentEditor(g_Context);
+    ed::EnableShortcuts(true);
 
     ed::Begin(name.c_str());
 
@@ -27,9 +29,9 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
     }
 
     for(const auto& link : links) {
-        if(auto input = link.inputPin.lock()) {
-            if(auto output = link.outputPin.lock()) {
-                ed::Link(link.id, input->id, output->id);
+        if(auto input = link.to.lock()) {
+            if(auto output = link.from.lock()) {
+                ed::Link(getEditorID(link.id), getEditorID(input->id), getEditorID(output->id));
             }
         }
     }
@@ -40,23 +42,35 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
 
         if(ed::QueryNewLink(&input, &output)) {
             if(input && output) {
-                if(ed::AcceptNewItem()) {
-                    auto& inputPin = id2pin[input.Get()];
-                    auto& outputPin = id2pin[output.Get()];
-                    if(inputPin && outputPin) {
-                        if(canLink(*inputPin, *outputPin)) {
-                            links.push_back(Link {
-                                    .id = uniqueID++,
-                                    .inputPin = inputPin,
-                                    .outputPin = outputPin,
-                            });
-                        }
-                    }
+                auto& pinA = id2pin[id2uuid[input.Get()]];
+                auto& pinB = id2pin[id2uuid[output.Get()]];
+                if(pinA && pinB) {
+                    handleLinkCreation(pinA, pinB);
                 }
             }
         }
     }
     ed::EndCreate();
+
+    if(ed::BeginDelete()) {
+        ed::LinkId linkToDelete;
+        while(ed::QueryDeletedLink(&linkToDelete)) {
+            auto link = std::find_if(links.begin(), links.end(), [&](const auto& link) { return linkToDelete.Get() == uuid2id[link.id]; });
+            if(link != links.end() && ed::AcceptDeletedItem()) {
+                links.erase(link);
+            }
+        }
+
+        ed::NodeId nodeToDelete;
+        while(ed::QueryDeletedNode(&nodeToDelete)) {
+            auto node = id2node.find(id2uuid[nodeToDelete.Get()]);
+            if(node != id2node.end()) {
+                id2node.erase(node);
+            }
+        }
+
+        ed::EndDelete();
+    }
 
     ed::End();
 
@@ -73,31 +87,91 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
         }
         ImGui::EndPopup();
     }
+
+    ed::EnableShortcuts(false);
+}
+
+void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, std::shared_ptr<Tools::Pin> pinB) {
+    if(pinA->getType() != pinB->getType()) {
+        auto inputPin = pinA->getType() == PinType::Input ? pinA : pinB;
+        auto outputPin = pinA->getType() != PinType::Input ? pinA : pinB;
+        auto linkPossibility = canLink(*outputPin, *inputPin);
+
+        if(linkPossibility == LinkPossibility::Possible) {
+            if(ed::AcceptNewItem(ImColor(128, 255, 128), 4.0f)) {
+                links.push_back(Link {
+                        .id = nextID(),
+                        .from = outputPin,
+                        .to = inputPin,
+                });
+            }
+        } else {
+            ed::RejectNewItem(ImColor(255, 128, 128), 1.0f);
+            switch (linkPossibility) {
+                case LinkPossibility::TooManyInputs:
+                    showLabel("Too many inputs!");
+                    break;
+                case LinkPossibility::CyclicalGraph:
+                    showLabel("Cyclical graph!");
+                    break;
+                case LinkPossibility::CannotLinkToSelf:
+                    showLabel("Cannot link to self!");
+                    break;
+            }
+        }
+    } else {
+        showLabel("Cannot link same pin type together!");
+        ed::RejectNewItem(ImColor(255, 128, 128), 1.0f);
+    }
 }
 
 void Tools::EditorGraph::removeNode(Tools::EditorNode& node) {
-    id2node[node.getID().Get()] = nullptr;
+    id2node[node.getID()] = nullptr;
+    id2uuid.erase(uuid2id[node.getID()]);
+    uuid2id.erase(node.getID());
 }
 
-void Tools::EditorGraph::registerPin(ed::PinId id, std::shared_ptr<Tools::Pin> pin) {
-    id2pin[id.Get()] = std::move(pin);
+void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
+    id2pin[pin->id] = std::move(pin);
 }
 
-void Tools::EditorGraph::unregisterPin(ed::PinId id) {
-    id2pin[id.Get()] = nullptr;
+void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
+    id2pin[pin->id] = nullptr;
+    id2uuid.erase(uuid2id[pin->id]);
+    uuid2id.erase(pin->id);
 }
 
-bool Tools::EditorGraph::canLink(Tools::Pin& pinA, Tools::Pin& pinB) {
-    if(pinA.getType() == pinB.getType()) {
-        return false;
+void Tools::EditorGraph::unregisterNode(const Tools::EditorNode& node) {
+    id2pin[node.getID()] = nullptr;
+    id2uuid.erase(uuid2id[node.getID()]);
+    uuid2id.erase(node.getID());
+
+    auto deletePins = [&](const auto& pins) {
+        for (const auto& pin : pins) {
+            unregisterPin(pin);
+        }
+    };
+    deletePins(node.getInputs());
+    deletePins(node.getOutputs());
+}
+
+Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
+    if(from.owner.getID() == to.owner.getID())
+        return LinkPossibility::CannotLinkToSelf;
+    for(const auto& link : links) {
+        if(auto linkTo = link.to.lock()) {
+            if(linkTo.get() == &to) {
+
+                return LinkPossibility::TooManyInputs;
+            }
+        }
     }
-    if(pinA.owner.getID() == pinB.owner.getID())
-        return false;
     // TODO: check cycle
-    return true;
+    return LinkPossibility::Possible;
 }
 
 Tools::EditorGraph::~EditorGraph() {
+    clear();
     ed::DestroyEditor(g_Context);
     g_Context = nullptr;
 }
@@ -115,13 +189,8 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
         }
     }
 
-    for(const auto& [id, node] : id2node) {
-        uniqueID = std::max(uniqueID, node->highestUsedID());
-    }
-    uniqueID++;
-
     auto getPin = [&](const rapidjson::Value& json) -> std::shared_ptr<Pin> {
-        auto node = id2node[json["node_id"].GetInt64()];
+        auto node = id2node[Carrot::fromString(json["node_id"].GetString())];
         if(!node) {
             throw ParseError("Invalid node ID: " + std::to_string(json["node_id"].GetInt64()));
         }
@@ -143,13 +212,22 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
         auto to = getPin(linkJSON["to"]);
         if(from && to) {
             links.push_back(Link {
-                    .id = uniqueID++,
-                    .inputPin = from,
-                    .outputPin = to,
+                    .id = nextID(),
+                    .from = from,
+                    .to = to,
             });
         }
     }
+}
 
+uint32_t Tools::EditorGraph::nextFreeEditorID() {
+    bool alreadyUsed;
+    uint32_t result;
+    do {
+        result = uniqueID++;
+        alreadyUsed = id2uuid.find(result) != id2uuid.end();
+    } while(alreadyUsed);
+    return result;
 }
 
 rapidjson::Value Tools::EditorGraph::toJSON(rapidjson::Document& document) {
@@ -164,12 +242,12 @@ rapidjson::Value Tools::EditorGraph::toJSON(rapidjson::Document& document) {
 
     auto& linkArray = rapidjson::Value().SetArray();
     for(const auto& link : links) {
-        if(auto input = link.inputPin.lock()) {
-            if (auto output = link.outputPin.lock()) {
+        if(auto to = link.to.lock()) {
+            if (auto from = link.from.lock()) {
                 linkArray.PushBack(std::move(rapidjson::Value(rapidjson::kObjectType)
-                                                     .AddMember("from", std::move(input->toJSONReference(document)),
+                                                     .AddMember("from", std::move(from->toJSONReference(document)),
                                                                 document.GetAllocator())
-                                                     .AddMember("to", std::move(output->toJSONReference(document)),
+                                                     .AddMember("to", std::move(to->toJSONReference(document)),
                                                                 document.GetAllocator())
                 ), document.GetAllocator());
             }
@@ -183,5 +261,44 @@ rapidjson::Value Tools::EditorGraph::toJSON(rapidjson::Document& document) {
 void Tools::EditorGraph::clear() {
     id2node.clear();
     id2pin.clear();
+    id2uuid.clear();
+    uuid2id.clear();
     uniqueID = 1;
+}
+
+Carrot::UUID Tools::EditorGraph::nextID() {
+    Carrot::UUID uuid = Carrot::randomUUID();
+    while(uuid2id.find(uuid) != uuid2id.end()) {
+        uuid = Carrot::randomUUID();
+    }
+    reserveID(uuid);
+    return uuid;
+}
+
+uint32_t Tools::EditorGraph::reserveID(const Carrot::UUID& uuid) {
+    uint32_t id = nextFreeEditorID();
+    id2uuid[id] = uuid;
+    uuid2id[uuid] = id;
+    return id;
+}
+
+uint32_t Tools::EditorGraph::getEditorID(const Carrot::UUID& uuid) {
+    return uuid2id[uuid];
+}
+
+void Tools::EditorGraph::showLabel(const std::string& text, ImColor color) {
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetTextLineHeight());
+    auto size = ImGui::CalcTextSize(text.c_str());
+
+    auto padding = ImGui::GetStyle().FramePadding;
+    auto spacing = ImGui::GetStyle().ItemSpacing;
+
+    ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(spacing.x, -spacing.y));
+
+    auto rectMin = ImGui::GetCursorScreenPos() - padding;
+    auto rectMax = ImGui::GetCursorScreenPos() + size + padding;
+
+    auto drawList = ImGui::GetWindowDrawList();
+    drawList->AddRectFilled(rectMin, rectMax, color, size.y * 0.15f);
+    ImGui::TextUnformatted(text.c_str());
 }

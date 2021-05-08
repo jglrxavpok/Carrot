@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 #include "imgui_node_editor.h"
 #include <rapidjson/document.h>
+#include "engine/utils/UUID.h"
 
 namespace Tools {
     namespace ed = ax::NodeEditor;
@@ -23,24 +24,24 @@ namespace Tools {
 
     struct Pin: public std::enable_shared_from_this<Pin> {
         EditorNode& owner;
-        ed::PinId id;
+        uuids::uuid id;
         std::string name;
         uint32_t pinIndex = 0;
 
-        explicit Pin(EditorNode& owner, std::uint32_t pinIndex, ed::PinId id, std::string n): owner(owner), pinIndex(pinIndex), id(id), name(std::move(n)) {}
+        explicit Pin(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): owner(owner), pinIndex(pinIndex), id(id), name(std::move(n)) {}
 
         virtual PinType getType() const = 0;
 
-        rapidjson::Value toJSONReference(rapidjson::Document& document);
+        rapidjson::Value toJSONReference(rapidjson::Document& document) const;
     };
 
     struct Input: public Pin {
-        explicit Input(EditorNode& owner, std::uint32_t pinIndex, ed::PinId id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
+        explicit Input(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
 
         virtual PinType getType() const override { return PinType::Input; };
     };
     struct Output: public Pin {
-        explicit Output(EditorNode& owner, std::uint32_t pinIndex, ed::PinId id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
+        explicit Output(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
 
         virtual PinType getType() const override { return PinType::Output; };
     };
@@ -54,7 +55,7 @@ namespace Tools {
         Output& newOutput(std::string name);
 
     private:
-        ed::NodeId id = 0;
+        uuids::uuid id = Carrot::randomUUID();
         EditorGraph& graph;
         std::string title;
         std::string internalName;
@@ -80,16 +81,15 @@ namespace Tools {
         const std::vector<std::shared_ptr<Output>>& getOutputs() const { return outputs; };
 
     public:
-        const ed::NodeId& getID() { return id; };
-        const std::uint32_t highestUsedID() const;
+        const uuids::uuid& getID() const { return id; };
 
     public:
         virtual void deserialiseFromJSON(const rapidjson::Value& json) {}
 
-        virtual rapidjson::Value serialiseToJSON(rapidjson::Document& doc) {
+        virtual rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const {
             return rapidjson::Value();
         }
-        rapidjson::Value toJSON(rapidjson::Document& doc);
+        rapidjson::Value toJSON(rapidjson::Document& doc) const;
 
     private:
 

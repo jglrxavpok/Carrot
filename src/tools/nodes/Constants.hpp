@@ -28,7 +28,7 @@ namespace Tools {
             ImGui::DragFloat("##Value", &value, 1.0f);
         }
 
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) override {
+        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
                         .AddMember("value", value, doc.GetAllocator())
             );

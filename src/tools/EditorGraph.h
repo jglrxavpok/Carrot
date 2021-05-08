@@ -8,6 +8,7 @@
 #include "imgui_node_editor.h"
 #include "EditorNode.h"
 #include "engine/memory/BidirectionalMap.hpp"
+#include "engine/utils/UUID.h"
 
 namespace Tools {
     namespace ed = ax::NodeEditor;
@@ -20,9 +21,16 @@ namespace Tools {
     };
 
     struct Link {
-        uint32_t id = 0;
-        std::weak_ptr<Pin> inputPin;
-        std::weak_ptr<Pin> outputPin;
+        uuids::uuid id = Carrot::randomUUID();
+        std::weak_ptr<Pin> from;
+        std::weak_ptr<Pin> to;
+    };
+
+    enum class LinkPossibility {
+        Possible,
+        TooManyInputs,
+        CyclicalGraph,
+        CannotLinkToSelf,
     };
 
     template<class T>
@@ -47,20 +55,27 @@ namespace Tools {
         std::map<std::string, std::unique_ptr<NodeInitialiserBase>> nodeLibrary;
         std::map<std::string, std::string> internalName2title;
         ed::Config config{};
+        unordered_map<Carrot::UUID, shared_ptr<Pin>> id2pin;
+        unordered_map<Carrot::UUID, shared_ptr<EditorNode>> id2node;
+        unordered_map<Carrot::UUID, uint32_t> uuid2id;
+        unordered_map<uint32_t, Carrot::UUID> id2uuid;
         uint32_t uniqueID = 1;
-        unordered_map<uint32_t, shared_ptr<Pin>> id2pin;
-        unordered_map<uint32_t, shared_ptr<EditorNode>> id2node;
-
         Carrot::Engine& engine;
         std::string name;
         vector<Link> links;
         ed::EditorContext* g_Context = nullptr;
 
+        uint32_t nextFreeEditorID();
+        void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
+        void handleLinkCreation(std::shared_ptr<Pin> pinA, std::shared_ptr<Pin> pinB);
+
     public:
         explicit EditorGraph(Carrot::Engine& engine, std::string name);
         ~EditorGraph();
 
-        uint32_t nextID() { return uniqueID++; };
+        uuids::uuid nextID();
+        uint32_t reserveID(const Carrot::UUID& id);
+        uint32_t getEditorID(const Carrot::UUID& id);
 
         void onFrame(size_t frameIndex);
 
@@ -68,14 +83,15 @@ namespace Tools {
         template<class T, typename... Args> requires IsNode<T>
         T& newNode(Args&&... args) {
             auto result = make_shared<T>(*this, args...);
-            id2node[result->getID().Get()] = result;
+            id2node[result->getID()] = result;
             return *result;
         }
 
-        void registerPin(ed::PinId id, shared_ptr<Pin> pin);
-        void unregisterPin(ed::PinId id);
+        void registerPin(shared_ptr<Pin> pin);
+        void unregisterPin(shared_ptr<Pin> pin);
+        void unregisterNode(const Tools::EditorNode& node);
 
-        bool canLink(Pin& pinA, Pin& pinB);
+        LinkPossibility canLink(Pin& from, Pin& to);
 
         void removeNode(EditorNode& node);
 

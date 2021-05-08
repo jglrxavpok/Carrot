@@ -7,6 +7,7 @@
 #include <utility>
 #include "imgui_internal.h"
 #include "EditorGraph.h"
+#include "engine/utils/JSON.h"
 
 namespace ed = ax::NodeEditor;
 
@@ -14,18 +15,21 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
 : graph(graph), id(graph.nextID()), title(std::move(title)), internalName(std::move(internalName)) {}
 
 Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string internalName, const rapidjson::Value& json)
-        : graph(graph), id(json["node_id"].GetInt64()), title(std::move(title)), internalName(std::move(internalName)) {
+        : graph(graph), id(Carrot::fromString(json["node_id"].GetString())), title(std::move(title)), internalName(std::move(internalName)) {
     setPosition(ImVec2(json["x"].GetFloat(), json["y"].GetFloat()));
+    graph.reserveID(id);
 }
 
 void Tools::EditorNode::draw() {
-    ed::BeginNode(id);
+    ed::BeginNode(graph.getEditorID(id));
 
-    ImGui::PushID(id.Get());
+    ImGui::PushID(graph.getEditorID(id));
 
     ImGui::BeginVertical("node");
     ImGui::Spring();
+
     ImGui::Text("%s", title.c_str());
+
     ImGui::Spring();
 
     ImGui::BeginHorizontal("content");
@@ -33,8 +37,8 @@ void Tools::EditorNode::draw() {
     ImGui::BeginVertical("inputs");
     ImGui::Spring(0, 15 * 2);
     for (auto& pin : inputs) {
-        ed::BeginPin(pin->id, ed::PinKind::Input);
-        ImGui::BeginHorizontal(pin->id.AsPointer());
+        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
+        ImGui::BeginHorizontal(&pin->id);
         ImGui::Text("> %s", pin->name.c_str());
 
         ImGui::EndHorizontal();
@@ -49,8 +53,8 @@ void Tools::EditorNode::draw() {
     ImGui::BeginVertical("outputs");
     ImGui::Spring(0, 15 * 2);
     for (auto& pin : outputs) {
-        ed::BeginPin(pin->id, ed::PinKind::Output);
-        ImGui::BeginHorizontal(pin->id.AsPointer());
+        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
+        ImGui::BeginHorizontal(&pin->id);
         ImGui::Text("%s >", pin->name.c_str());
 
         ImGui::EndHorizontal();
@@ -66,9 +70,9 @@ void Tools::EditorNode::draw() {
     ed::EndNode();
 
     if(updatePosition) {
-        ed::SetNodePosition(id, position);
+        ed::SetNodePosition(graph.getEditorID(id), position);
     }
-    position = ed::GetNodePosition(id);
+    position = ed::GetNodePosition(graph.getEditorID(id));
 
     updatePosition = false;
 }
@@ -76,14 +80,14 @@ void Tools::EditorNode::draw() {
 Tools::Input& Tools::EditorNode::newInput(std::string name) {
     auto result = make_shared<Input>(*this, inputs.size(), graph.nextID(), name);
     inputs.push_back(result);
-    graph.registerPin(result->id, result);
+    graph.registerPin(result);
     return *result;
 }
 
 Tools::Output& Tools::EditorNode::newOutput(std::string name) {
     auto result = make_shared<Output>(*this, outputs.size(), graph.nextID(), name);
     outputs.push_back(result);
-    graph.registerPin(result->id, result);
+    graph.registerPin(result);
     return *result;
 }
 
@@ -95,18 +99,20 @@ Tools::EditorNode& Tools::EditorNode::setPosition(ImVec2 position) {
 
 Tools::EditorNode::~EditorNode() {
     for(const auto& pin : inputs) {
-        graph.unregisterPin(pin->id);
+        graph.unregisterPin(pin);
     }
     for(const auto& pin : outputs) {
-        graph.unregisterPin(pin->id);
+        graph.unregisterPin(pin);
     }
+    graph.unregisterNode(*this);
 }
 
-rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) {
+rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {
     rapidjson::Value object(rapidjson::kObjectType);
     object.AddMember("x", position.x, doc.GetAllocator());
     object.AddMember("y", position.y, doc.GetAllocator());
-    object.AddMember("node_id", id.Get(), doc.GetAllocator());
+    auto uuidStr = Carrot::toString(id);
+    object.AddMember("node_id", Carrot::JSON::makeRef(uuidStr), doc.GetAllocator());
     object.AddMember("node_type", rapidjson::StringRef(internalName.c_str()), doc.GetAllocator());
 
     auto serialised = serialiseToJSON(doc);
@@ -116,20 +122,9 @@ rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) {
     return object;
 }
 
-const std::uint32_t Tools::EditorNode::highestUsedID() const {
-    auto result = id.Get();
-    for(const auto& i : inputs) {
-        result = std::max(result, i->id.Get());
-    }
-    for(const auto& o : outputs) {
-        result = std::max(result, o->id.Get());
-    }
-    return result;
-}
-
-rapidjson::Value Tools::Pin::toJSONReference(rapidjson::Document& document) {
+rapidjson::Value Tools::Pin::toJSONReference(rapidjson::Document& document) const {
     auto result = rapidjson::Value(rapidjson::kObjectType);
-    result.AddMember("node_id", owner.getID().Get(), document.GetAllocator());
+    result.AddMember("node_id", Carrot::JSON::makeRef(Carrot::toString(owner.getID())), document.GetAllocator());
     result.AddMember("pin_index", pinIndex, document.GetAllocator());
     result.AddMember("pin_type", rapidjson::StringRef(getType() == PinType::Input ? "input" : "output"), document.GetAllocator());
     return std::move(result);
