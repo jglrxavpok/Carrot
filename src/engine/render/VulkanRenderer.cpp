@@ -325,6 +325,8 @@ void Carrot::VulkanRenderer::createSkyboxResources() {
 
         auto view = skyboxImages[i]->createImageView();
         skyboxImageViews[i] = std::move(view);
+
+        skyboxImages[i]->transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 }
 
