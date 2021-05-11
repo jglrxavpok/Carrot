@@ -35,6 +35,9 @@ void Tools::EditorNode::draw() {
     ImGui::BeginHorizontal("content");
 
     ImGui::BeginVertical("inputs");
+    ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
+    ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
+
     ImGui::Spring(0, 15 * 2);
     for (auto& pin : inputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
@@ -51,6 +54,9 @@ void Tools::EditorNode::draw() {
     ImGui::EndVertical();
 
     ImGui::BeginVertical("outputs");
+    ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
+    ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
+
     ImGui::Spring(0, 15 * 2);
     for (auto& pin : outputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
@@ -98,13 +104,7 @@ Tools::EditorNode& Tools::EditorNode::setPosition(ImVec2 position) {
 }
 
 Tools::EditorNode::~EditorNode() {
-    for(const auto& pin : inputs) {
-        graph.unregisterPin(pin);
-    }
-    for(const auto& pin : outputs) {
-        graph.unregisterPin(pin);
-    }
-    graph.unregisterNode(*this);
+
 }
 
 rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {

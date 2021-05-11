@@ -260,8 +260,6 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 .pClearValues = clearValues,
         };
 
-        static bool onlyRaytracing = true;
-
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Skybox pass");
 

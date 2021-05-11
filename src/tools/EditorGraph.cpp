@@ -65,11 +65,16 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
         while(ed::QueryDeletedNode(&nodeToDelete)) {
             auto node = id2node.find(id2uuid[nodeToDelete.Get()]);
             if(node != id2node.end()) {
-                id2node.erase(node);
+                removeNode(*node->second);
             }
         }
 
         ed::EndDelete();
+    }
+
+    if(zoomToContent) {
+        ed::NavigateToContent();
+        zoomToContent = false;
     }
 
     ed::End();
@@ -78,8 +83,19 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
         if (ImGui::BeginMenu("Add node")) {
             for(const auto& [internalName, nodeCreator] : nodeLibrary) {
                 auto title = internalName2title[internalName];
+                auto& init = (*nodeCreator);
                 if(ImGui::MenuItem(title.c_str())) {
-                    (*nodeCreator)(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
+                    auto validity = init.getValidity(*this);
+                    switch(validity) {
+                        case NodeValidity::Possible:
+                            init(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
+                            break;
+
+                        case NodeValidity::TerminalOfSameTypeAlreadyExists:
+                            addTemporaryLabel("Terminal node of same type already exists!");
+                            break;
+                    }
+
                 }
             }
 
@@ -89,6 +105,18 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
     }
 
     ed::EnableShortcuts(false);
+
+    for(const auto& tmpLabel : tmpLabels) {
+        showLabel(tmpLabel.text);
+    }
+}
+
+void Tools::EditorGraph::tick(double deltaTime) {
+    for(auto& l : tmpLabels) {
+        l.remainingTime -= deltaTime;
+    }
+
+    tmpLabels.erase(std::find_if(tmpLabels.begin(), tmpLabels.end(), [&](const auto& l) { return l.remainingTime < 0.0f; }), tmpLabels.end());
 }
 
 void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, std::shared_ptr<Tools::Pin> pinB) {
@@ -125,24 +153,18 @@ void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, st
     }
 }
 
-void Tools::EditorGraph::removeNode(Tools::EditorNode& node) {
-    id2node[node.getID()] = nullptr;
-    id2uuid.erase(uuid2id[node.getID()]);
-    uuid2id.erase(node.getID());
-}
-
 void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
     id2pin[pin->id] = std::move(pin);
 }
 
 void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
-    id2pin[pin->id] = nullptr;
+    id2pin.erase(pin->id);
     id2uuid.erase(uuid2id[pin->id]);
     uuid2id.erase(pin->id);
 }
 
-void Tools::EditorGraph::unregisterNode(const Tools::EditorNode& node) {
-    id2pin[node.getID()] = nullptr;
+void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
+    id2node.erase(node.getID());
     id2uuid.erase(uuid2id[node.getID()]);
     uuid2id.erase(node.getID());
 
@@ -153,6 +175,13 @@ void Tools::EditorGraph::unregisterNode(const Tools::EditorNode& node) {
     };
     deletePins(node.getInputs());
     deletePins(node.getOutputs());
+
+    terminalNodes.erase(
+            std::remove_if(terminalNodes.begin(), terminalNodes.end(), [&](const auto& n) {
+                auto locked = n.lock();
+                return !locked || locked->getID() == node.getID();
+            }),
+            terminalNodes.end());
 }
 
 Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
@@ -218,6 +247,8 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
             });
         }
     }
+
+    zoomToContent = true;
 }
 
 uint32_t Tools::EditorGraph::nextFreeEditorID() {
@@ -263,6 +294,7 @@ void Tools::EditorGraph::clear() {
     id2pin.clear();
     id2uuid.clear();
     uuid2id.clear();
+    terminalNodes.clear();
     uniqueID = 1;
 }
 
@@ -301,4 +333,8 @@ void Tools::EditorGraph::showLabel(const std::string& text, ImColor color) {
     auto drawList = ImGui::GetWindowDrawList();
     drawList->AddRectFilled(rectMin, rectMax, color, size.y * 0.15f);
     ImGui::TextUnformatted(text.c_str());
+}
+
+void Tools::EditorGraph::addTemporaryLabel(const string& text) {
+    tmpLabels.emplace_back(std::move(TemporaryLabel(text)));
 }

@@ -39,7 +39,9 @@ Tools::Tools::Tools(Carrot::Engine& engine): Carrot::CarrotGame(engine), particl
 void Tools::Tools::onFrame(uint32_t frameIndex) {
     particleEditor.onFrame(frameIndex);
 }
-void Tools::Tools::tick(double frameTime) {}
+void Tools::Tools::tick(double frameTime) {
+    particleEditor.tick(frameTime);
+}
 void Tools::Tools::recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) {}
 void Tools::Tools::onMouseMove(double dx, double dy) {}
 void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {}
@@ -53,7 +55,6 @@ int main() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     NakedPtr<GLFWwindow> window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-
 
     int w, h, n;
     auto* icon32Pixels = stbi_load("resources/icon32.png", &w, &h, &n, 4);

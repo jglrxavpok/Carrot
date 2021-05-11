@@ -18,6 +18,8 @@ namespace ed = ax::NodeEditor;
 Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor") {
     addCommonNodes(updateGraph);
     addCommonNodes(renderGraph);
+
+    updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
 }
 
 void Tools::ParticleEditor::addCommonNodes(Tools::EditorGraph& graph) {
@@ -101,6 +103,11 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     ImGui::SetNextWindowPos(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2,menuBarHeight));
     ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
     updateRenderGraph(frameIndex);
+}
+
+void Tools::ParticleEditor::tick(double deltaTime) {
+    updateGraph.tick(deltaTime);
+    renderGraph.tick(deltaTime);
 }
 
 Tools::ParticleEditor::~ParticleEditor() {

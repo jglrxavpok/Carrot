@@ -217,6 +217,7 @@ set(TOOLS-SOURCES
         src/tools/ParticleEditor.cpp
         src/tools/EditorGraph.cpp
         src/tools/EditorNode.cpp
+        src/tools/nodes/TerminalNodes.cpp
 
 
 

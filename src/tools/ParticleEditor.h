@@ -25,6 +25,7 @@ namespace Tools {
         explicit ParticleEditor(Carrot::Engine& engine);
 
         void onFrame(size_t frameIndex);
+        void tick(double deltaTime);
 
         ~ParticleEditor();
     };
