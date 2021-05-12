@@ -34,5 +34,9 @@ namespace Tools {
             );
         }
 
+        shared_ptr<Carrot::Expression> toExpression() const override {
+            return std::make_shared<Carrot::ConstantExpression>(value);
+        }
+
     };
 }

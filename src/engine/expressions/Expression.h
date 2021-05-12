@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <type_traits>
+#include <string>
 
 namespace Carrot {
     class Expression: public std::enable_shared_from_this<Expression> {
@@ -15,5 +16,7 @@ namespace Carrot {
 
     public:
         virtual float evaluate() const = 0;
+
+        virtual std::string toString() const = 0;
     };
 }

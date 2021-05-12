@@ -17,6 +17,11 @@ namespace Tools {
             init();
         }
 
+        shared_ptr<Carrot::Expression> toExpression() const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::AddExpression>(inputExprs[0], inputExprs[1]);
+        }
+
     private:
         void init() {
             newInput("Base");
@@ -34,6 +39,11 @@ namespace Tools {
 
         explicit SubNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Subtract", "sub", json) {
             init();
+        }
+
+        shared_ptr<Carrot::Expression> toExpression() const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::SubExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:
@@ -55,6 +65,11 @@ namespace Tools {
             init();
         }
 
+        shared_ptr<Carrot::Expression> toExpression() const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::MultExpression>(inputExprs[0], inputExprs[1]);
+        }
+
     private:
         void init() {
             newInput("Base");
@@ -72,6 +87,11 @@ namespace Tools {
 
         explicit DivNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Divide", "div", json) {
             init();
+        }
+
+        shared_ptr<Carrot::Expression> toExpression() const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::DivExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:

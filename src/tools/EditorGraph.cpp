@@ -8,6 +8,7 @@
 #include "nodes/Arithmetics.hpp"
 #include "nodes/Constants.hpp"
 #include <engine/utils/ImGuiUtils.hpp>
+#include <engine/utils/Containers.h>
 
 namespace ed = ax::NodeEditor;
 
@@ -55,9 +56,9 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
     if(ed::BeginDelete()) {
         ed::LinkId linkToDelete;
         while(ed::QueryDeletedLink(&linkToDelete)) {
-            auto link = std::find_if(links.begin(), links.end(), [&](const auto& link) { return linkToDelete.Get() == uuid2id[link.id]; });
+            auto link = std::find_if(WHOLE_CONTAINER(links), [&](const auto& link) { return linkToDelete.Get() == uuid2id[link.id]; });
             if(link != links.end() && ed::AcceptDeletedItem()) {
-                links.erase(link);
+                removeLink(*link);
             }
         }
 
@@ -127,7 +128,7 @@ void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, st
 
         if(linkPossibility == LinkPossibility::Possible) {
             if(ed::AcceptNewItem(ImColor(128, 255, 128), 4.0f)) {
-                links.push_back(Link {
+                addLink(Link {
                         .id = nextID(),
                         .from = outputPin,
                         .to = inputPin,
@@ -155,6 +156,14 @@ void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, st
 
 void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
     id2pin[pin->id] = std::move(pin);
+}
+
+void Tools::EditorGraph::addLink(Tools::Link link) {
+    links.push_back(link);
+}
+
+void Tools::EditorGraph::removeLink(const Link& link) {
+    Carrot::removeIf(links, [&](const auto& l) { return l.id == link.id; });
 }
 
 void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
@@ -189,14 +198,37 @@ Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin&
         return LinkPossibility::CannotLinkToSelf;
     for(const auto& link : links) {
         if(auto linkTo = link.to.lock()) {
-            if(linkTo.get() == &to) {
-
+            if(linkTo->id == to.id) {
                 return LinkPossibility::TooManyInputs;
             }
         }
     }
     // TODO: check cycle
     return LinkPossibility::Possible;
+}
+
+std::vector<Tools::Link> Tools::EditorGraph::getLinksLeadingTo(const Tools::Pin& to) const {
+    std::vector<Tools::Link> result;
+    for(const auto& link : links) {
+        if(auto linkTo = link.to.lock()) {
+            if(linkTo->id == to.id) {
+                result.push_back(link);
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<Tools::Link> Tools::EditorGraph::getLinksStartingFrom(const Tools::Pin& from) const {
+    std::vector<Tools::Link> result;
+    for(const auto& link : links) {
+        if(auto linkFrom = link.from.lock()) {
+            if(linkFrom->id == from.id) {
+                result.push_back(link);
+            }
+        }
+    }
+    return result;
 }
 
 Tools::EditorGraph::~EditorGraph() {
@@ -221,7 +253,7 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
     auto getPin = [&](const rapidjson::Value& json) -> std::shared_ptr<Pin> {
         auto node = id2node[Carrot::fromString(json["node_id"].GetString())];
         if(!node) {
-            throw ParseError("Invalid node ID: " + std::to_string(json["node_id"].GetInt64()));
+            throw ParseError("Invalid node ID: " + std::string(json["node_id"].GetString()));
         }
 
         uint32_t pinIndex = json["pin_index"].GetInt64();
@@ -337,4 +369,16 @@ void Tools::EditorGraph::showLabel(const std::string& text, ImColor color) {
 
 void Tools::EditorGraph::addTemporaryLabel(const string& text) {
     tmpLabels.emplace_back(std::move(TemporaryLabel(text)));
+}
+
+std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExpressions() const {
+    std::vector<std::shared_ptr<Carrot::Expression>> result;
+
+    for(const auto& terminalNode : terminalNodes) {
+        if(auto node = terminalNode.lock()) {
+            result.push_back(node->toExpression());
+        }
+    }
+
+    return std::move(result);
 }

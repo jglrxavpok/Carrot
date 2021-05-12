@@ -15,12 +15,14 @@ namespace Carrot {
         inline explicit ConstantExpression(float v): value(v) {};
 
         inline float evaluate() const override { return value; };
+
+        inline std::string toString() const override { return std::to_string(value); };
     };
 
     template<typename Op>
     class BinaryOperationExpression: public Expression {
     private:
-        static Op op{};
+        inline static Op op{};
         std::shared_ptr<Expression> left;
         std::shared_ptr<Expression> right;
 
@@ -29,6 +31,10 @@ namespace Carrot {
 
         inline float evaluate() const override {
             return op(left->evaluate(), right->evaluate());
+        }
+
+        inline std::string toString() const override {
+            return left->toString() + " " + typeid(Op).name() + " " + right->toString();
         }
     };
 

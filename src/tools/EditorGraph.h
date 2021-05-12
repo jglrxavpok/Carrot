@@ -118,10 +118,17 @@ namespace Tools {
         void registerPin(shared_ptr<Pin> pin);
         void unregisterPin(shared_ptr<Pin> pin);
         void removeNode(const Tools::EditorNode& node);
+        void clear();
+
+    public:
+        std::vector<Tools::Link> getLinksStartingFrom(const Tools::Pin& from) const;
+        std::vector<Tools::Link> getLinksLeadingTo(const Tools::Pin& to) const;
+
+        void addLink(Tools::Link link);
+        void removeLink(const Tools::Link& link);
 
         LinkPossibility canLink(Pin& from, Pin& to);
 
-        void clear();
 
     public:
         void addToLibrary(const std::string& internalName, const std::string& title, std::unique_ptr<NodeInitialiserBase>&& nodeCreator) {
@@ -163,6 +170,8 @@ namespace Tools {
         void loadFromJSON(const rapidjson::Value& json);
 
         rapidjson::Value toJSON(rapidjson::Document& document);
+
+        std::vector<std::shared_ptr<Carrot::Expression>> generateExpressions() const;
     };
 }
 

@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 01/05/2021.
 //
 
+#include <iostream>
 #include "engine/Engine.h"
 #include "stb_image.h"
 #include "engine/render/raytracing/ASBuilder.h"
@@ -84,9 +85,15 @@ int main() {
 
     // create new scope, as the destructor requires the window to *not* be terminated at its end
     // otherwise this creates a DEP exception when destroying the surface provided by GLFW
-    {
-        Carrot::Engine engine{window};
-        engine.run();
+    try {
+        {
+            Carrot::Engine engine{window};
+            engine.run();
+        }
+    } catch (std::exception& e) {
+        std::cerr << "Caught exception:\n";
+        std::cerr << e.what() << std::endl;
+        throw e;
     }
 
     glfwDestroyWindow(window.get());

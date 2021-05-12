@@ -5,7 +5,6 @@
 #include "TerminalNodes.h"
 
 std::shared_ptr<Carrot::Expression> Tools::TerminalNode::toExpression() const {
-    // TODO
-    return nullptr;
+    return getExpressionsFromInput()[0];
 }
 

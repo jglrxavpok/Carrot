@@ -87,7 +87,15 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
             ImGui::EndMenu();
         }
 
-        if(ImGui::BeginMenu("Placeholder")) {
+        if(ImGui::BeginMenu("Tests")) {
+            if(ImGui::MenuItem("Print tree")) {
+                auto expressions = updateGraph.generateExpressions();
+                for(const auto& expr : expressions) {
+                    std::cout << expr->toString() << '\n';
+                }
+                std::cout << std::endl;
+            }
+
             ImGui::EndMenu();
         }
 

@@ -122,6 +122,26 @@ rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {
     return object;
 }
 
+std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressionsFromInput() const {
+    std::vector<std::shared_ptr<Carrot::Expression>> expressions;
+    size_t inputIndex = 0;
+    for(const auto& input : inputs) {
+        for(const auto& link : graph.getLinksLeadingTo(*input)) {
+            if(auto pinFrom = link.from.lock()) {
+                expressions.push_back(pinFrom->owner.toExpression());
+            }
+        }
+        inputIndex++;
+
+        // no more than one link per input
+        assert(expressions.size() == inputIndex);
+    }
+
+    // no more than one link per input
+    assert(expressions.size() == inputs.size());
+    return std::move(expressions);
+}
+
 rapidjson::Value Tools::Pin::toJSONReference(rapidjson::Document& document) const {
     auto result = rapidjson::Value(rapidjson::kObjectType);
     result.AddMember("node_id", Carrot::JSON::makeRef(Carrot::toString(owner.getID())), document.GetAllocator());

@@ -8,6 +8,7 @@
 #include "imgui_node_editor.h"
 #include <rapidjson/document.h>
 #include "engine/utils/UUID.h"
+#include "engine/expressions/Expressions.h"
 
 namespace Tools {
     namespace ed = ax::NodeEditor;
@@ -54,6 +55,8 @@ namespace Tools {
         Input& newInput(std::string name);
         Output& newOutput(std::string name);
 
+        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput() const;
+
     private:
         uuids::uuid id = Carrot::randomUUID();
         EditorGraph& graph;
@@ -90,6 +93,8 @@ namespace Tools {
             return rapidjson::Value();
         }
         rapidjson::Value toJSON(rapidjson::Document& doc) const;
+
+        virtual std::shared_ptr<Carrot::Expression> toExpression() const = 0;
 
     private:
 

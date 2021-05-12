@@ -7,7 +7,7 @@
 #include <string>
 #include <stdexcept>
 #include "../EditorNode.h"
-#include <engine/expressions/Expression.h>
+#include <engine/expressions/Expressions.h>
 
 namespace Tools {
     enum class TerminalNodeType {
@@ -30,7 +30,7 @@ namespace Tools {
 
     public:
         inline TerminalNodeType getTerminalType() const { return nodeType; };
-        std::shared_ptr<Carrot::Expression> toExpression() const;
+        std::shared_ptr<Carrot::Expression> toExpression() const override;
 
         inline static std::string getTitle(TerminalNodeType type) {
             switch (type) {
