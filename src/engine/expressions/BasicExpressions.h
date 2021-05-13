@@ -19,6 +19,23 @@ namespace Carrot {
         inline std::string toString() const override { return std::to_string(value); };
     };
 
+    class SetVariableExpression: public Expression {
+    private:
+        std::string varName;
+        std::shared_ptr<Expression> value;
+
+    public:
+        inline explicit SetVariableExpression(const std::string& name, std::shared_ptr<Expression> value): varName(std::move(varName)), value(value) {}
+
+        inline float evaluate() const override {
+            return value->evaluate();
+        };
+
+        inline std::string toString() const override {
+            return varName + " = " + value->toString();
+        }
+    };
+
     template<typename Op>
     class BinaryOperationExpression: public Expression {
     private:

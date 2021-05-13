@@ -9,8 +9,9 @@
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
-    auto code = IO::readFile(filename);
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint): Carrot::ShaderModule(driver, IO::readFile(filename), entryPoint) {}
+
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const vector<uint8_t>& code, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
     auto& device = driver.getLogicalDevice();
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),

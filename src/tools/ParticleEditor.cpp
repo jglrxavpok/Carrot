@@ -20,6 +20,7 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
     addCommonNodes(renderGraph);
 
     updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
+    updateGraph.addToLibrary<TerminalNodeType::SetSize>();
 }
 
 void Tools::ParticleEditor::addCommonNodes(Tools::EditorGraph& graph) {

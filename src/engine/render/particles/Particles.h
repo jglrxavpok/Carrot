@@ -11,6 +11,7 @@
 #include <engine/vulkan/includes.h>
 #include <engine/render/resources/BufferView.h>
 #include <engine/render/ComputePipeline.h>
+#include "ParticleBlueprint.h"
 
 namespace Carrot {
     class ParticleSystem;
@@ -34,11 +35,6 @@ namespace Carrot {
     struct ParticleStatistics {
         float deltaTime;
         uint32_t totalCount;
-    };
-
-    /// Defines how a particle inits, updates and renders itself
-    class ParticleBlueprint {
-        // TODO
     };
 
     class ParticleEmitter {

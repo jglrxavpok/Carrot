@@ -21,8 +21,9 @@ add_subdirectory(thirdparty/assimp)
 
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
-        GIT_TAG             2020-09-17)
+        GIT_TAG             2021-01-15)
 FetchContent_MakeAvailable(spirv_cross)
+add_subdirectory(thirdparty/glslang)
 
 FetchContent_Declare(openal-soft
         GIT_REPOSITORY      https://github.com/kcat/openal-soft.git
@@ -40,6 +41,7 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
             COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             MAIN_DEPENDENCY ${FULL_INPUT}
+
     )
 endfunction()
 
@@ -113,6 +115,7 @@ set(ENGINE-SOURCES
 
         src/engine/render/particles/ParticleSystem.cpp
         src/engine/render/particles/ParticleEmitter.cpp
+        src/engine/render/particles/ParticleBlueprint.cpp
 
         src/engine/render/ComputePipeline.cpp
         )
@@ -225,7 +228,7 @@ set(TOOLS-SOURCES
         )
 
 set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
-set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp OpenAL)
+set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp OpenAL SPIRV)
 
 add_executable(Carrot ${ALL_SOURCES})
 target_link_libraries(Carrot ${ALL_LIBS})

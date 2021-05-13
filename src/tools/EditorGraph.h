@@ -5,6 +5,7 @@
 #pragma once
 
 #include "engine/Engine.h"
+#include "engine/utils/Containers.h"
 #include "imgui_node_editor.h"
 #include "EditorNode.h"
 #include "engine/memory/BidirectionalMap.hpp"
@@ -148,7 +149,7 @@ namespace Tools {
                 };
 
                 inline NodeValidity getValidity(EditorGraph& graph) const override {
-                    auto terminalOfSameType = std::find_if(graph.terminalNodes.begin(), graph.terminalNodes.begin(), [&](const auto& n) {
+                    auto terminalOfSameType = std::find_if(WHOLE_CONTAINER(graph.terminalNodes), [&](const auto& n) {
                         auto locked = n.lock();
                         return locked != nullptr && locked->getTerminalType() == NodeType;
                     });

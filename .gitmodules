@@ -19,3 +19,6 @@
 [submodule "thirdparty/imgui_node_editor"]
 	path = thirdparty/stduuid
 	url = https://github.com/mariusbancila/stduuid
+[submodule "thirdparty/glslang"]
+	path = thirdparty/glslang
+	url = https://github.com/KhronosGroup/glslang

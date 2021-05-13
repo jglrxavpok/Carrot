@@ -41,6 +41,7 @@ namespace Carrot {
 
     public:
         explicit ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const vector<uint8_t>& code, const string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
