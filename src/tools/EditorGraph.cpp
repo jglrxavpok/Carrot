@@ -5,6 +5,7 @@
 #include "EditorGraph.h"
 
 #include <utility>
+#include <queue>
 #include "nodes/Arithmetics.hpp"
 #include "nodes/Constants.hpp"
 #include <engine/utils/ImGuiUtils.hpp>
@@ -66,7 +67,7 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
         while(ed::QueryDeletedNode(&nodeToDelete)) {
             auto node = id2node.find(id2uuid[nodeToDelete.Get()]);
             if(node != id2node.end()) {
-                removeNode(*node->second);
+                removeNode(*(node->second));
             }
         }
 
@@ -167,16 +168,22 @@ void Tools::EditorGraph::removeLink(const Link& link) {
 }
 
 void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
+    if(pin->getType() == PinType::Input) {
+        for(const auto& l : getLinksLeadingTo(*pin)) {
+            removeLink(l);
+        }
+    } else {
+        for(const auto& l : getLinksStartingFrom(*pin)) {
+            removeLink(l);
+        }
+    }
+
     id2pin.erase(pin->id);
     id2uuid.erase(uuid2id[pin->id]);
     uuid2id.erase(pin->id);
 }
 
 void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
-    id2node.erase(node.getID());
-    id2uuid.erase(uuid2id[node.getID()]);
-    uuid2id.erase(node.getID());
-
     auto deletePins = [&](const auto& pins) {
         for (const auto& pin : pins) {
             unregisterPin(pin);
@@ -191,6 +198,10 @@ void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
                 return !locked || locked->getID() == node.getID();
             }),
             terminalNodes.end());
+
+    id2node.erase(node.getID());
+    id2uuid.erase(uuid2id[node.getID()]);
+    uuid2id.erase(node.getID());
 }
 
 Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
@@ -203,7 +214,27 @@ Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin&
             }
         }
     }
-    // TODO: check cycle
+    // check cycle
+    std::queue<Carrot::UUID> queued;
+    queued.push(from.owner.getID());
+    while(!queued.empty()) {
+        auto nodeID = queued.back();
+        queued.pop();
+
+        auto& node = id2node[nodeID];
+
+        for(const auto& input : node->getInputs()) {
+            auto linkLeadingToInput = getLinksLeadingTo(*input);
+            for(const auto& link : linkLeadingToInput) {
+                if(auto locked = link.from.lock()) {
+                    if(locked->owner.getID() == to.owner.getID())
+                        return LinkPossibility::CyclicalGraph;
+
+                    queued.push(locked->owner.getID());
+                }
+            }
+        }
+    }
     return LinkPossibility::Possible;
 }
 
