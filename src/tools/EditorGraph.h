@@ -11,6 +11,7 @@
 #include "engine/memory/BidirectionalMap.hpp"
 #include "engine/utils/UUID.h"
 #include "nodes/TerminalNodes.h"
+#include "nodes/VariableNodes.h"
 #include <utility>
 
 namespace Tools {
@@ -162,6 +163,20 @@ namespace Tools {
             addToLibrary(TerminalNode::getInternalName(NodeType), TerminalNode::getTitle(NodeType), std::move(make_unique<TerminalNodeInit>()));
         }
 
+        template<VariableNodeType NodeType>
+        void addVariableToLibrary() {
+            struct VariableNodeInit: public NodeInitialiser<VariableNode> {
+                inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
+                    return graph.newNode<VariableNode>(NodeType, json);
+                };
+
+                inline EditorNode& operator()(EditorGraph& graph) override {
+                    return graph.newNode<VariableNode>(NodeType);
+                };
+            };
+            addToLibrary(VariableNode::getInternalName(NodeType), VariableNode::getTitle(NodeType), std::move(make_unique<VariableNodeInit>()));
+        }
+
         template<typename NodeType> requires Tools::IsNode<NodeType>
         void addToLibrary(const std::string& internalName, const std::string& title) {
             addToLibrary(internalName, title, std::move(make_unique<NodeInitialiser<NodeType>>()));
@@ -183,6 +198,16 @@ inline Tools::EditorNode& Tools::NodeInitialiser<Tools::TerminalNode>::operator(
 
 template<>
 inline Tools::EditorNode& Tools::NodeInitialiser<Tools::TerminalNode>::operator()(Tools::EditorGraph& graph) {
+    throw std::runtime_error("SHOULD NOT HAPPEN");
+}
+
+template<>
+inline Tools::EditorNode& Tools::NodeInitialiser<Tools::VariableNode>::operator()(Tools::EditorGraph& graph, const rapidjson::Value& json) {
+    throw std::runtime_error("SHOULD NOT HAPPEN");
+}
+
+template<>
+inline Tools::EditorNode& Tools::NodeInitialiser<Tools::VariableNode>::operator()(Tools::EditorGraph& graph) {
     throw std::runtime_error("SHOULD NOT HAPPEN");
 }
 

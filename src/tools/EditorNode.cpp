@@ -126,10 +126,16 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressio
     std::vector<std::shared_ptr<Carrot::Expression>> expressions;
     size_t inputIndex = 0;
     for(const auto& input : inputs) {
+        bool foundOne = false;
         for(const auto& link : graph.getLinksLeadingTo(*input)) {
             if(auto pinFrom = link.from.lock()) {
                 expressions.push_back(pinFrom->owner.toExpression());
+                foundOne = true;
             }
+        }
+
+        if(!foundOne) {
+            expressions.push_back(nullptr);
         }
         inputIndex++;
 

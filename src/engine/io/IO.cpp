@@ -43,3 +43,8 @@ std::string IO::readFileAsText(const std::string& filename) {
     }
     return std::move(contents);
 }
+
+void IO::writeFile(const std::string& filename, void* ptr, size_t length) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    file.write(static_cast<const char *>(ptr), length);
+}

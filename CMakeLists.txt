@@ -37,11 +37,11 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/compute"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/includes"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
             COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
             MAIN_DEPENDENCY ${FULL_INPUT}
-
     )
 endfunction()
 
@@ -56,7 +56,6 @@ copy_resources(pipelines)
 copy_resources(materials)
 copy_resources(sounds)
 copy_resources(musics)
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/vk_layer_settings.txt" DESTINATION "${CMAKE_BINARY_DIR}/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon64.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
@@ -222,13 +221,15 @@ set(TOOLS-SOURCES
         src/tools/EditorNode.cpp
         src/tools/nodes/TerminalNodes.cpp
 
+        src/tools/generators/ParticleShaderGenerator.cpp
+
 
 
         src/tools/ToolsEntryPoint.cpp
         )
 
 set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
-set(ALL_LIBS Vulkan::Vulkan spirv-cross-core glfw glm assimp::assimp OpenAL SPIRV)
+set(ALL_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV)
 
 add_executable(Carrot ${ALL_SOURCES})
 target_link_libraries(Carrot ${ALL_LIBS})
@@ -241,7 +242,7 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
 
-add_executable(Carrot-Tools ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
+add_executable(Carrot-Tools ${ENGINE-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
 target_link_libraries(Carrot-Tools ${ALL_LIBS})
 
 link_directories(OpenAL_BINARY_DIR)

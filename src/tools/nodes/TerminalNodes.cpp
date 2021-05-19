@@ -5,6 +5,6 @@
 #include "TerminalNodes.h"
 
 std::shared_ptr<Carrot::Expression> Tools::TerminalNode::toExpression() const {
-    return make_shared<Carrot::SetVariableExpression>(getInternalName(nodeType), getExpressionsFromInput()[0]);
+    return make_shared<Carrot::SetVariableExpression>(getInternalName(nodeType), std::make_shared<Carrot::CompoundExpression>(getExpressionsFromInput()));
 }
 

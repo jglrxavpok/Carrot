@@ -12,4 +12,6 @@ namespace IO {
 
     /// Reads the content of a file as a string
     std::string readFileAsText(const std::string& filename);
+
+    void writeFile(const std::string& filename, void* ptr, size_t length);
 }

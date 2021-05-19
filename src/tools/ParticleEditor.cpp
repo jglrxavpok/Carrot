@@ -9,9 +9,14 @@
 #include <fstream>
 #include <rapidjson/writer.h>
 #include <rapidjson/filewritestream.h>
+#include <filesystem>
+#include <cstdlib>
 
 #include "engine/io/IO.h"
 #include "engine/utils/JSON.h"
+#include "tools/generators/ParticleShaderGenerator.h"
+
+#include <spirv_glsl.hpp>
 
 namespace ed = ax::NodeEditor;
 
@@ -21,6 +26,19 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
 
     updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
     updateGraph.addToLibrary<TerminalNodeType::SetSize>();
+
+    updateGraph.addVariableToLibrary<VariableNodeType::GetSize>();
+    updateGraph.addVariableToLibrary<VariableNodeType::GetLife>();
+    updateGraph.addVariableToLibrary<VariableNodeType::GetParticleID>();
+    updateGraph.addVariableToLibrary<VariableNodeType::GetVelocity>();
+    updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
+
+    if(std::filesystem::exists("updateGraph.json")) {
+        rapidjson::Document description;
+        description.Parse(IO::readFileAsText("updateGraph.json").c_str());
+
+        updateGraph.loadFromJSON(description["update_graph"]);
+    }
 }
 
 void Tools::ParticleEditor::addCommonNodes(Tools::EditorGraph& graph) {
@@ -95,6 +113,19 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                     std::cout << expr->toString() << '\n';
                 }
                 std::cout << std::endl;
+            }
+
+            if(ImGui::MenuItem("Test SPIR-V generation")) {
+                auto expressions = updateGraph.generateExpressions();
+                ParticleShaderGenerator generator{};
+
+                auto result = generator.compileToSPIRV(expressions);
+                IO::writeFile("test-shader.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
+
+                std::system("spirv-dis test-shader.spv > test-disassembly.txt");
+
+                spirv_cross::CompilerGLSL compiler(result);
+                std::cout << compiler.compile() << std::endl;
             }
 
             ImGui::EndMenu();
