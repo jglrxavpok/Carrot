@@ -11,7 +11,8 @@ namespace Tools {
         GetVelocity,
         GetSize,
         GetLife,
-        GetParticleID,
+        GetParticleIndex,
+        GetEmissionID,
         GetDeltaTime,
         GetPosition,
         // TODO
@@ -46,8 +47,10 @@ namespace Tools {
                     return "Get Size";
                 case VariableNodeType::GetLife:
                     return "Get Life";
-                case VariableNodeType::GetParticleID:
-                    return "Get ParticleID";
+                case VariableNodeType::GetParticleIndex:
+                    return "Get ParticleIndex";
+                case VariableNodeType::GetEmissionID:
+                    return "Get EmissionID";
                 case VariableNodeType::GetDeltaTime:
                     return "Get DeltaTime";
                 case VariableNodeType::GetPosition:
@@ -64,8 +67,10 @@ namespace Tools {
                     return "get_size";
                 case VariableNodeType::GetLife:
                     return "get_life";
-                case VariableNodeType::GetParticleID:
-                    return "get_particle_id";
+                case VariableNodeType::GetEmissionID:
+                    return "get_emission_id";
+                case VariableNodeType::GetParticleIndex:
+                    return "get_particle_index";
                 case VariableNodeType::GetDeltaTime:
                     return "get_delta_time";
                 case VariableNodeType::GetPosition:

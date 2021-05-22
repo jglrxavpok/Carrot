@@ -13,8 +13,13 @@
 
 namespace Tools {
     enum class TerminalNodeType {
+        // Compute
         SetVelocity,
         SetSize,
+
+        // Fragment
+        SetOutputColor,
+
         // TODO
     };
 
@@ -42,6 +47,8 @@ namespace Tools {
                     return "Set Velocity";
                 case TerminalNodeType::SetSize:
                     return "Set Size";
+                case TerminalNodeType::SetOutputColor:
+                    return "Set Output Color";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
@@ -52,12 +59,16 @@ namespace Tools {
                     return "set_velocity";
                 case TerminalNodeType::SetSize:
                     return "set_size";
+                case TerminalNodeType::SetOutputColor:
+                    return "set_output_color";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
 
         inline static uint32_t getDimensionCount(TerminalNodeType type) {
             switch (type) {
+                case TerminalNodeType::SetOutputColor:
+                    return 4;
                 case TerminalNodeType::SetVelocity:
                     return 3;
                 case TerminalNodeType::SetSize:
@@ -71,11 +82,24 @@ namespace Tools {
             "X", "Y", "Z", "W"
         };
 
+        inline static const char* COLOR_DIMENSION_NAMES[] = {
+            "R", "G", "B", "A"
+        };
+
         void init() {
+            const char** names = DIMENSION_NAMES;
+            switch(nodeType) {
+                case TerminalNodeType::SetOutputColor:
+                    names = COLOR_DIMENSION_NAMES;
+                    break;
+
+                default:
+                    break;
+            }
             dimensions = getDimensionCount(nodeType);
             assert(dimensions <= 4);
             for(int i = 0; i < dimensions; i++) {
-                newInput(DIMENSION_NAMES[i]);
+                newInput(names[i]);
             }
         }
     };

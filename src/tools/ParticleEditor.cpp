@@ -27,18 +27,18 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
     updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
     updateGraph.addToLibrary<TerminalNodeType::SetSize>();
 
-    updateGraph.addVariableToLibrary<VariableNodeType::GetSize>();
-    updateGraph.addVariableToLibrary<VariableNodeType::GetLife>();
-    updateGraph.addVariableToLibrary<VariableNodeType::GetParticleID>();
-    updateGraph.addVariableToLibrary<VariableNodeType::GetVelocity>();
     updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
-    updateGraph.addVariableToLibrary<VariableNodeType::GetPosition>();
 
-    if(std::filesystem::exists("updateGraph.json")) {
+
+    renderGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
+
+
+    if(std::filesystem::exists("particleGraphs.json")) {
         rapidjson::Document description;
-        description.Parse(IO::readFileAsText("updateGraph.json").c_str());
+        description.Parse(IO::readFileAsText("particleGraphs.json").c_str());
 
         updateGraph.loadFromJSON(description["update_graph"]);
+        renderGraph.loadFromJSON(description["render_graph"]);
     }
 }
 
@@ -49,6 +49,13 @@ void Tools::ParticleEditor::addCommonNodes(Tools::EditorGraph& graph) {
     graph.addToLibrary<MultNode>("mult", "Multiply");
     graph.addToLibrary<DivNode>("div", "Divide");
     graph.addToLibrary<ModNode>("mod", "Modulus");
+
+    graph.addVariableToLibrary<VariableNodeType::GetSize>();
+    graph.addVariableToLibrary<VariableNodeType::GetLife>();
+    graph.addVariableToLibrary<VariableNodeType::GetParticleIndex>();
+    graph.addVariableToLibrary<VariableNodeType::GetEmissionID>();
+    graph.addVariableToLibrary<VariableNodeType::GetVelocity>();
+    graph.addVariableToLibrary<VariableNodeType::GetPosition>();
 }
 
 void Tools::ParticleEditor::updateUpdateGraph(size_t frameIndex) {
@@ -78,13 +85,13 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
             if(ImGui::MenuItem("Save")) {
                 struct Stream {
-                    std::ofstream of {"updateGraph.json"};
+                    std::ofstream of {"particleGraphs.json"};
                     typedef char Ch;
                     void Put (Ch ch) {of.put (ch);}
                     void Flush() {}
                 } stream;
 
-                FILE* fp = fopen("updateGraph.json", "wb"); // non-Windows use "w"
+                FILE* fp = fopen("particleGraphs.json", "wb"); // non-Windows use "w"
 
                 char writeBuffer[65536];
                 rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
@@ -95,6 +102,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 document.SetObject();
 
                 document.AddMember("update_graph", updateGraph.toJSON(document), document.GetAllocator());
+                document.AddMember("render_graph", renderGraph.toJSON(document), document.GetAllocator());
                 Carrot::JSON::clearReferences();
                 document.Accept(writer);
 
@@ -110,7 +118,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
         if(ImGui::BeginMenu("Tests")) {
             if(ImGui::MenuItem("Print tree")) {
-                auto expressions = updateGraph.generateExpressions();
+                auto expressions = renderGraph.generateExpressions();
                 for(const auto& expr : expressions) {
                     std::cout << expr->toString() << '\n';
                 }
@@ -118,13 +126,13 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
             }
 
             if(ImGui::MenuItem("Test SPIR-V generation")) {
-                auto expressions = updateGraph.generateExpressions();
-                ParticleShaderGenerator generator("ParticleEditor"); // TODO: use project name
+                auto expressions = renderGraph.generateExpressions();
+                ParticleShaderGenerator generator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
 
                 auto result = generator.compileToSPIRV(expressions);
-                IO::writeFile("test-shader.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
+                IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
 
-                std::system("spirv-dis test-shader.spv > test-disassembly.txt");
+                std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
 
                 spirv_cross::CompilerGLSL compiler(result);
 

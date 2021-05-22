@@ -10,13 +10,23 @@
 #include <SPIRV/SpvBuilder.h>
 
 namespace Tools {
+    enum class ParticleShaderMode {
+        Fragment,
+        Compute,
+    };
+
     class ParticleShaderGenerator {
     private:
         std::string projectName;
+        ParticleShaderMode shaderMode;
 
     public:
-        explicit ParticleShaderGenerator(const std::string& projectName);
+        explicit ParticleShaderGenerator(ParticleShaderMode shaderMode, const std::string& projectName);
 
         std::vector<uint32_t> compileToSPIRV(const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+
+    private:
+        void generateCompute(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+        void generateFragment(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
     };
 }
