@@ -407,7 +407,7 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExp
 
     for(const auto& terminalNode : terminalNodes) {
         if(auto node = terminalNode.lock()) {
-            result.push_back(node->toExpression());
+            result.push_back(node->toExpression(0));
         }
     }
 

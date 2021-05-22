@@ -12,9 +12,10 @@
 namespace Tools {
     class ParticleShaderGenerator {
     private:
+        std::string projectName;
 
     public:
-        explicit ParticleShaderGenerator();
+        explicit ParticleShaderGenerator(const std::string& projectName);
 
         std::vector<uint32_t> compileToSPIRV(const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
     };

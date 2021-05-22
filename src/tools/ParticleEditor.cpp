@@ -32,6 +32,7 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
     updateGraph.addVariableToLibrary<VariableNodeType::GetParticleID>();
     updateGraph.addVariableToLibrary<VariableNodeType::GetVelocity>();
     updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
+    updateGraph.addVariableToLibrary<VariableNodeType::GetPosition>();
 
     if(std::filesystem::exists("updateGraph.json")) {
         rapidjson::Document description;
@@ -47,6 +48,7 @@ void Tools::ParticleEditor::addCommonNodes(Tools::EditorGraph& graph) {
     graph.addToLibrary<SubNode>("sub", "Subtract");
     graph.addToLibrary<MultNode>("mult", "Multiply");
     graph.addToLibrary<DivNode>("div", "Divide");
+    graph.addToLibrary<ModNode>("mod", "Modulus");
 }
 
 void Tools::ParticleEditor::updateUpdateGraph(size_t frameIndex) {
@@ -117,7 +119,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
             if(ImGui::MenuItem("Test SPIR-V generation")) {
                 auto expressions = updateGraph.generateExpressions();
-                ParticleShaderGenerator generator{};
+                ParticleShaderGenerator generator("ParticleEditor"); // TODO: use project name
 
                 auto result = generator.compileToSPIRV(expressions);
                 IO::writeFile("test-shader.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
@@ -125,6 +127,12 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 std::system("spirv-dis test-shader.spv > test-disassembly.txt");
 
                 spirv_cross::CompilerGLSL compiler(result);
+
+                spirv_cross::CompilerGLSL::Options options;
+                options.version = 450;
+                options.vulkan_semantics = true;
+                compiler.set_common_options(options);
+
                 std::cout << compiler.compile() << std::endl;
             }
 

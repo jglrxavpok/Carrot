@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "tools/EditorNode.h"
+
 namespace Tools {
     enum class VariableNodeType {
         GetVelocity,
@@ -11,6 +13,7 @@ namespace Tools {
         GetLife,
         GetParticleID,
         GetDeltaTime,
+        GetPosition,
         // TODO
     };
 
@@ -31,8 +34,8 @@ namespace Tools {
     public:
         inline VariableNodeType getTerminalType() const { return nodeType; };
 
-        inline std::shared_ptr<Carrot::Expression> toExpression() const {
-            return make_shared<Carrot::GetVariableExpression>(getInternalName(nodeType));
+        inline std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const {
+            return make_shared<Carrot::GetVariableExpression>(getInternalName(nodeType), outputIndex);
         };
 
         inline static std::string getTitle(VariableNodeType type) {
@@ -47,6 +50,8 @@ namespace Tools {
                     return "Get ParticleID";
                 case VariableNodeType::GetDeltaTime:
                     return "Get DeltaTime";
+                case VariableNodeType::GetPosition:
+                    return "Get Position";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
@@ -63,6 +68,8 @@ namespace Tools {
                     return "get_particle_id";
                 case VariableNodeType::GetDeltaTime:
                     return "get_delta_time";
+                case VariableNodeType::GetPosition:
+                    return "get_position";
             }
             throw std::runtime_error("Unsupported terminal node type");
         }
@@ -70,6 +77,7 @@ namespace Tools {
         inline static uint32_t getDimensionCount(VariableNodeType type) {
             switch (type) {
                 case VariableNodeType::GetVelocity:
+                case VariableNodeType::GetPosition:
                     return 3;
                 default:
                     return 1;

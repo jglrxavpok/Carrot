@@ -117,6 +117,8 @@ set(ENGINE-SOURCES
         src/engine/render/particles/ParticleBlueprint.cpp
 
         src/engine/render/ComputePipeline.cpp
+
+        src/engine/expressions/Expressions.cpp
         )
 
 set(VERTEX_SHADERS

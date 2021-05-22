@@ -17,15 +17,15 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression() const override {
+        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::AddExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:
         void init() {
-            newInput("Base");
-            newInput("Append");
+            newInput("Op 1");
+            newInput("Op 2");
 
             newOutput("Result");
         }
@@ -41,15 +41,15 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression() const override {
+        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::SubExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:
         void init() {
-            newInput("Base");
-            newInput("Append");
+            newInput("Op 1");
+            newInput("Op 2");
 
             newOutput("Result");
         }
@@ -65,15 +65,15 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression() const override {
+        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::MultExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:
         void init() {
-            newInput("Base");
-            newInput("Append");
+            newInput("Op 1");
+            newInput("Op 2");
 
             newOutput("Result");
         }
@@ -89,15 +89,39 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression() const override {
+        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::DivExpression>(inputExprs[0], inputExprs[1]);
         }
 
     private:
         void init() {
-            newInput("Base");
-            newInput("Append");
+            newInput("Op 1");
+            newInput("Op 2");
+
+            newOutput("Result");
+        }
+    };
+
+    class ModNode: public EditorNode {
+    public:
+        explicit ModNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Modulus", "mod") {
+            init();
+        }
+
+        explicit ModNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Modulus", "mod", json) {
+            init();
+        }
+
+        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::ModExpression>(inputExprs[0], inputExprs[1]);
+        }
+
+    private:
+        void init() {
+            newInput("Op 1");
+            newInput("Op 2");
 
             newOutput("Result");
         }

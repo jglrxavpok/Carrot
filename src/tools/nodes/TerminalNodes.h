@@ -34,7 +34,7 @@ namespace Tools {
 
     public:
         inline TerminalNodeType getTerminalType() const { return nodeType; };
-        std::shared_ptr<Carrot::Expression> toExpression() const override;
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override;
 
         inline static std::string getTitle(TerminalNodeType type) {
             switch (type) {

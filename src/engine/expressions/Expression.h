@@ -9,10 +9,15 @@
 #include <string>
 
 namespace Carrot {
+    class ExpressionVisitor;
+
     class Expression: public std::enable_shared_from_this<Expression> {
     public:
         Expression() = default;
         virtual ~Expression() = default;
+
+    public:
+        virtual void visit(ExpressionVisitor& visitor) = 0;
 
     public:
         virtual float evaluate() const = 0;

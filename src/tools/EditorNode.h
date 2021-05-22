@@ -94,7 +94,7 @@ namespace Tools {
         }
         rapidjson::Value toJSON(rapidjson::Document& doc) const;
 
-        virtual std::shared_ptr<Carrot::Expression> toExpression() const = 0;
+        virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const = 0;
 
     private:
 

@@ -129,7 +129,7 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressio
         bool foundOne = false;
         for(const auto& link : graph.getLinksLeadingTo(*input)) {
             if(auto pinFrom = link.from.lock()) {
-                expressions.push_back(pinFrom->owner.toExpression());
+                expressions.push_back(pinFrom->owner.toExpression(pinFrom->pinIndex));
                 foundOne = true;
             }
         }
