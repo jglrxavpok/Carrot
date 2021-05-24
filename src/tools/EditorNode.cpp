@@ -38,11 +38,10 @@ void Tools::EditorNode::draw() {
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-    ImGui::Spring(0, 15 * 2);
     for (auto& pin : inputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
         ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("> %s", pin->name.c_str());
+        ImGui::Text("> %s (%s)", pin->name.c_str(), pin->getExpressionType().name().c_str());
 
         ImGui::EndHorizontal();
         ed::EndPin();
@@ -53,21 +52,26 @@ void Tools::EditorNode::draw() {
     renderCenter();
     ImGui::EndVertical();
 
+    if(inputs.empty()) {
+        ImGui::Spring(1);
+    }
     ImGui::BeginVertical("outputs");
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-    ImGui::Spring(0, 15 * 2);
     for (auto& pin : outputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
         ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("%s >", pin->name.c_str());
+        ImGui::Text("%s (%s) >", pin->name.c_str(), pin->getExpressionType().name().c_str());
 
         ImGui::EndHorizontal();
         ed::EndPin();
     }
     ImGui::EndVertical();
 
+    if(outputs.empty()) {
+        ImGui::Spring(1);
+    }
 
     ImGui::EndHorizontal();
     ImGui::EndVertical();
@@ -83,15 +87,15 @@ void Tools::EditorNode::draw() {
     updatePosition = false;
 }
 
-Tools::Input& Tools::EditorNode::newInput(std::string name) {
-    auto result = make_shared<Input>(*this, inputs.size(), graph.nextID(), name);
+Tools::Input& Tools::EditorNode::newInput(std::string name, Carrot::ExpressionType type) {
+    auto result = make_shared<Input>(*this, type, inputs.size(), graph.nextID(), name);
     inputs.push_back(result);
     graph.registerPin(result);
     return *result;
 }
 
-Tools::Output& Tools::EditorNode::newOutput(std::string name) {
-    auto result = make_shared<Output>(*this, outputs.size(), graph.nextID(), name);
+Tools::Output& Tools::EditorNode::newOutput(std::string name, Carrot::ExpressionType type) {
+    auto result = make_shared<Output>(*this, type, outputs.size(), graph.nextID(), name);
     outputs.push_back(result);
     graph.registerPin(result);
     return *result;

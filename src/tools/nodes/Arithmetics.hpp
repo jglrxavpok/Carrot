@@ -24,10 +24,10 @@ namespace Tools {
 
     private:
         void init() {
-            newInput("Op 1");
-            newInput("Op 2");
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
 
-            newOutput("Result");
+            newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
 
@@ -48,10 +48,10 @@ namespace Tools {
 
     private:
         void init() {
-            newInput("Op 1");
-            newInput("Op 2");
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
 
-            newOutput("Result");
+            newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
 
@@ -72,10 +72,10 @@ namespace Tools {
 
     private:
         void init() {
-            newInput("Op 1");
-            newInput("Op 2");
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
 
-            newOutput("Result");
+            newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
 
@@ -96,10 +96,10 @@ namespace Tools {
 
     private:
         void init() {
-            newInput("Op 1");
-            newInput("Op 2");
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
 
-            newOutput("Result");
+            newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
 
@@ -120,10 +120,10 @@ namespace Tools {
 
     private:
         void init() {
-            newInput("Op 1");
-            newInput("Op 2");
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
 
-            newOutput("Result");
+            newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
 }

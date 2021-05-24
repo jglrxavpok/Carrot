@@ -8,35 +8,65 @@
 #include <stdexcept>
 #include <functional>
 #include <vector>
+#include <cassert>
 
 namespace Carrot {
     class ConstantExpression: public Expression {
     private:
-        float value = 0.0f;
+        union ConstantValue {
+            float asFloat;
+            bool asBool;
+            int asInt;
+        } value;
+
+        ExpressionType type = ExpressionTypes::Float;
 
     public:
-        inline explicit ConstantExpression(float v): value(v) {};
+        inline explicit ConstantExpression(float v) {
+            value.asFloat = v;
+            type = ExpressionTypes::Float;
+        };
 
-        inline float evaluate() const override { return value; };
+        inline explicit ConstantExpression(int v) {
+            value.asInt = v;
+            type = ExpressionTypes::Int;
+        };
 
-        inline float getValue() const { return value; };
+        inline explicit ConstantExpression(bool v) {
+            value.asBool = v;
+            type = ExpressionTypes::Bool;
+        };
+
+        ExpressionType getType() override {
+            return type;
+        };
+
+        inline ConstantValue getValue() const { return value; };
 
         void visit(ExpressionVisitor& visitor) override;
 
-        inline std::string toString() const override { return std::to_string(value); };
+        inline std::string toString() const override {
+            if(type == ExpressionTypes::Float) {
+                return std::to_string(value.asFloat);
+            }
+            if(type == ExpressionTypes::Int) {
+                return std::to_string(value.asInt);
+            }
+            if(type == ExpressionTypes::Bool) {
+                return std::to_string(value.asBool);
+            }
+            return "UNKNOWN TYPE";
+        };
     };
 
     class GetVariableExpression: public Expression {
     private:
         std::string varName;
         std::uint32_t subIndex = 0;
+        ExpressionType variableType;
 
     public:
-        inline explicit GetVariableExpression(const std::string& name, std::uint32_t subIndex = 0): varName(std::move(name)), subIndex(subIndex) {}
-
-        inline float evaluate() const override {
-            return 0.0f; // TODO: pull from some database, or throw?
-        };
+        inline explicit GetVariableExpression(ExpressionType variableType, const std::string& name, std::uint32_t subIndex = 0): variableType(variableType), varName(std::move(name)), subIndex(subIndex) {}
 
         inline std::string toString() const override {
             return varName + "(" + std::to_string(subIndex) + ")";
@@ -45,6 +75,8 @@ namespace Carrot {
         void visit(ExpressionVisitor& visitor) override;
 
     public:
+        ExpressionType getType() override { return variableType; };
+
         inline const std::string& getVariableName() const { return varName; };
         inline std::uint32_t getSubIndex() const { return subIndex; };
     };
@@ -58,10 +90,6 @@ namespace Carrot {
     public:
         inline explicit SetVariableExpression(const std::string& name, std::shared_ptr<Expression> value, std::uint32_t subIndex = 0): varName(std::move(name)), value(value), subIndex(subIndex) {}
 
-        inline float evaluate() const override {
-            return value->evaluate();
-        };
-
         inline std::string toString() const override {
             return varName + "(" + std::to_string(subIndex) + ") = " + value->toString();
         }
@@ -69,6 +97,8 @@ namespace Carrot {
         void visit(ExpressionVisitor& visitor) override;
 
     public:
+        ExpressionType getType() override { return ExpressionTypes::Void; };
+
         inline const std::string& getVariableName() const { return varName; };
         inline std::shared_ptr<Expression> getValue() const { return value; };
         inline std::uint32_t getSubIndex() const { return subIndex; };
@@ -81,9 +111,7 @@ namespace Carrot {
     public:
         inline explicit CompoundExpression(const std::vector<std::shared_ptr<Expression>>& value): value(value) {}
 
-        inline float evaluate() const override {
-            throw std::runtime_error("Not made for direct evaluation.");
-        };
+        ExpressionType getType() override { return ExpressionTypes::Void; };
 
         inline std::string toString() const override {
             std::string contents;
@@ -111,11 +139,11 @@ namespace Carrot {
         std::shared_ptr<Expression> right;
 
     public:
-        inline explicit BinaryOperationExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right): Expression(), left(left), right(right) {};
+        inline explicit BinaryOperationExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right): Expression(), left(left), right(right) {
+            assert(left->getType() == right->getType());
+        };
 
-        inline float evaluate() const override {
-            return op(left->evaluate(), right->evaluate());
-        }
+        ExpressionType getType() override { return left->getType(); };
 
         inline std::string toString() const override {
             return left->toString() + " " + typeid(Op).name() + " " + right->toString();
@@ -132,10 +160,11 @@ namespace Carrot {
     using MultExpression = BinaryOperationExpression<std::multiplies<float>>;
     using DivExpression = BinaryOperationExpression<std::divides<float>>;
 
-    struct sfmod {
+    struct fmodstruct {
         float operator()(const float& x, const float& y) const {
             return fmod(x, y);
         }
     };
-    using ModExpression = BinaryOperationExpression<sfmod>;
+
+    using ModExpression = BinaryOperationExpression<fmodstruct>;
 }

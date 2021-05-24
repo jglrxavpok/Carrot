@@ -18,6 +18,9 @@ Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engin
     g_Context = ed::CreateEditor(&config);
 
     ed::SetCurrentEditor(g_Context);
+
+    rootMenu = std::make_unique<NodeLibraryMenu>("<root>");
+    currentMenu = rootMenu.get();
 }
 
 void Tools::EditorGraph::onFrame(size_t frameIndex) {
@@ -83,23 +86,7 @@ void Tools::EditorGraph::onFrame(size_t frameIndex) {
 
     if(ImGui::BeginPopupContextWindow("##popup")) {
         if (ImGui::BeginMenu("Add node")) {
-            for(const auto& [internalName, nodeCreator] : nodeLibrary) {
-                auto title = internalName2title[internalName];
-                auto& init = (*nodeCreator);
-                if(ImGui::MenuItem(title.c_str())) {
-                    auto validity = init.getValidity(*this);
-                    switch(validity) {
-                        case NodeValidity::Possible:
-                            init(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
-                            break;
-
-                        case NodeValidity::TerminalOfSameTypeAlreadyExists:
-                            addTemporaryLabel("Terminal node of same type already exists!");
-                            break;
-                    }
-
-                }
-            }
+            recurseDrawNodeLibraryMenus(*rootMenu);
 
             ImGui::EndMenu();
         }
@@ -146,6 +133,9 @@ void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, st
                     break;
                 case LinkPossibility::CannotLinkToSelf:
                     showLabel("Cannot link to self!");
+                    break;
+                case LinkPossibility::IncompatibleTypes:
+                    showLabel("Incompatible types!");
                     break;
             }
         }
@@ -207,6 +197,9 @@ void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
 Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
     if(from.owner.getID() == to.owner.getID())
         return LinkPossibility::CannotLinkToSelf;
+    if(from.getExpressionType() != to.getExpressionType()) {
+        return LinkPossibility::IncompatibleTypes;
+    }
     for(const auto& link : links) {
         if(auto linkTo = link.to.lock()) {
             if(linkTo->id == to.id) {
@@ -412,4 +405,33 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExp
     }
 
     return std::move(result);
+}
+
+void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu) {
+    for(const auto& internalName : menu.getEntries()) {
+        auto& nodeCreator = nodeLibrary[internalName];
+        auto title = internalName2title[internalName];
+        auto& init = (*nodeCreator);
+        if(ImGui::MenuItem(title.c_str())) {
+            auto validity = init.getValidity(*this);
+            switch(validity) {
+                case NodeValidity::Possible:
+                    init(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
+                    break;
+
+                case NodeValidity::TerminalOfSameTypeAlreadyExists:
+                    addTemporaryLabel("Terminal node of same type already exists!");
+                    break;
+            }
+        }
+    }
+
+    for(const auto& submenu : menu.getSubmenus()) {
+        if(ImGui::BeginMenu(submenu.getName().c_str())) {
+            recurseDrawNodeLibraryMenus(submenu);
+
+            ImGui::EndMenu();
+        }
+    }
+
 }

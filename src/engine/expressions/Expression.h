@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 #include <string>
+#include "ExpressionType.h"
 
 namespace Carrot {
     class ExpressionVisitor;
@@ -20,7 +21,7 @@ namespace Carrot {
         virtual void visit(ExpressionVisitor& visitor) = 0;
 
     public:
-        virtual float evaluate() const = 0;
+        virtual ExpressionType getType() = 0;
 
         virtual std::string toString() const = 0;
     };

@@ -35,6 +35,7 @@ namespace Tools {
         TooManyInputs,
         CyclicalGraph,
         CannotLinkToSelf,
+        IncompatibleTypes,
     };
 
     enum class NodeValidity {
@@ -70,6 +71,44 @@ namespace Tools {
         inline explicit TemporaryLabel(const std::string& text): text(std::move(text)) {};
     };
 
+    class NodeLibraryMenu {
+    public:
+        explicit NodeLibraryMenu(std::string name, NodeLibraryMenu* parent = nullptr): name(std::move(name)), parent(parent) {}
+
+        NodeLibraryMenu& newChild(const std::string& name) {
+            submenus.emplace_back(NodeLibraryMenu(name, this));
+            return submenus.back();
+        }
+
+        void addEntry(const std::string& name) {
+            entries.push_back(name);
+        }
+
+        const std::string& getName() const {
+            return name;
+        }
+
+        const std::vector<std::string>& getEntries() const {
+            return entries;
+        }
+
+        const std::list<NodeLibraryMenu>& getSubmenus() const {
+            return submenus;
+        }
+
+        NodeLibraryMenu* getParent() const {
+            return parent;
+        }
+
+    private:
+        NodeLibraryMenu* parent = nullptr;
+        std::string name;
+        std::list<NodeLibraryMenu> submenus;
+        std::vector<std::string> entries;
+    };
+
+    class NodeLibraryMenu;
+
     class EditorGraph {
     private:
         std::map<std::string, std::unique_ptr<NodeInitialiserBase>> nodeLibrary;
@@ -87,6 +126,8 @@ namespace Tools {
         vector<TemporaryLabel> tmpLabels;
         bool zoomToContent = false;
         ed::EditorContext* g_Context = nullptr;
+        std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
+        NodeLibraryMenu* currentMenu = nullptr;
 
         uint32_t nextFreeEditorID();
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
@@ -105,6 +146,8 @@ namespace Tools {
 
     public:
         void addTemporaryLabel(const std::string& text);
+
+        void recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu);
 
     public:
         template<class T, typename... Args> requires IsNode<T>
@@ -136,6 +179,7 @@ namespace Tools {
         void addToLibrary(const std::string& internalName, const std::string& title, std::unique_ptr<NodeInitialiserBase>&& nodeCreator) {
             nodeLibrary[internalName] = std::move(nodeCreator);
             internalName2title[internalName] = title;
+            currentMenu->addEntry(internalName);
         }
 
         template<TerminalNodeType NodeType>
@@ -188,6 +232,23 @@ namespace Tools {
         rapidjson::Value toJSON(rapidjson::Document& document);
 
         std::vector<std::shared_ptr<Carrot::Expression>> generateExpressions() const;
+
+        friend class NodeLibraryMenuScope;
+    };
+
+    class NodeLibraryMenuScope {
+    public:
+        explicit NodeLibraryMenuScope(std::string name, EditorGraph* graph): graph(graph), menu(graph->currentMenu->newChild(name)) {
+            graph->currentMenu = &menu;
+        }
+
+        ~NodeLibraryMenuScope() {
+            graph->currentMenu = menu.getParent();
+        }
+
+    private:
+        NodeLibraryMenu& menu;
+        EditorGraph* graph;
     };
 }
 

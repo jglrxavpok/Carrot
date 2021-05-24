@@ -34,6 +34,18 @@ namespace Carrot {
         VISIT(Compound);
         VISIT(Mod);
 
+        VISIT(Less);
+        VISIT(LessOrEquals);
+        VISIT(Greater);
+        VISIT(GreaterOrEquals);
+        VISIT(Equals);
+        VISIT(NotEquals);
+
+        VISIT(Or);
+        VISIT(And);
+        VISIT(Xor);
+        VISIT(BoolNegate);
+
 #undef VISIT
 
         virtual ~ExpressionVisitor() = default;

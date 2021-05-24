@@ -19,7 +19,9 @@ namespace Tools {
         void updateUpdateGraph(size_t frameIndex);
         void updateRenderGraph(size_t frameIndex);
 
-        void addCommonNodes(Tools::EditorGraph& graph);
+        void addCommonInputs(Tools::EditorGraph& graph);
+        void addCommonOperators(Tools::EditorGraph& graph);
+        void addCommonLogic(Tools::EditorGraph& graph);
 
     public:
         explicit ParticleEditor(Carrot::Engine& engine);

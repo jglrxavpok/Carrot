@@ -28,21 +28,23 @@ namespace Tools {
         uuids::uuid id;
         std::string name;
         uint32_t pinIndex = 0;
+        Carrot::ExpressionType expressionType;
 
-        explicit Pin(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): owner(owner), pinIndex(pinIndex), id(id), name(std::move(n)) {}
+        explicit Pin(EditorNode& owner, Carrot::ExpressionType exprType, std::uint32_t pinIndex, uuids::uuid id, std::string n): owner(owner), expressionType(exprType), pinIndex(pinIndex), id(id), name(std::move(n)) {}
 
         virtual PinType getType() const = 0;
+        Carrot::ExpressionType getExpressionType() { return expressionType; };
 
         rapidjson::Value toJSONReference(rapidjson::Document& document) const;
     };
 
     struct Input: public Pin {
-        explicit Input(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
+        explicit Input(EditorNode& owner, Carrot::ExpressionType exprType, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, exprType, pinIndex, id, std::move(n)) {}
 
         virtual PinType getType() const override { return PinType::Input; };
     };
     struct Output: public Pin {
-        explicit Output(EditorNode& owner, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, pinIndex, id, std::move(n)) {}
+        explicit Output(EditorNode& owner, Carrot::ExpressionType exprType, std::uint32_t pinIndex, uuids::uuid id, std::string n): Pin(owner, exprType, pinIndex, id, std::move(n)) {}
 
         virtual PinType getType() const override { return PinType::Output; };
     };
@@ -52,8 +54,8 @@ namespace Tools {
         std::vector<shared_ptr<Input>> inputs;
         std::vector<shared_ptr<Output>> outputs;
 
-        Input& newInput(std::string name);
-        Output& newOutput(std::string name);
+        Input& newInput(std::string name, Carrot::ExpressionType type);
+        Output& newOutput(std::string name, Carrot::ExpressionType type);
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput() const;
 
