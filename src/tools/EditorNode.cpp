@@ -41,7 +41,9 @@ void Tools::EditorNode::draw() {
     for (auto& pin : inputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
         ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("> %s (%s)", pin->name.c_str(), pin->getExpressionType().name().c_str());
+        ImGui::Text("> %s", pin->name.c_str());
+        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+        ImGui::Image(icon, ImVec2(10,10));
 
         ImGui::EndHorizontal();
         ed::EndPin();
@@ -62,7 +64,10 @@ void Tools::EditorNode::draw() {
     for (auto& pin : outputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
         ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("%s (%s) >", pin->name.c_str(), pin->getExpressionType().name().c_str());
+
+        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+        ImGui::Image(icon, ImVec2(10,10));
+        ImGui::Text("%s >", pin->name.c_str());
 
         ImGui::EndHorizontal();
         ed::EndPin();

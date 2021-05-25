@@ -51,6 +51,7 @@ function(copy_resources TYPE)
 endfunction()
 
 copy_resources(textures)
+copy_resources(textures/icons)
 copy_resources(models)
 copy_resources(pipelines)
 copy_resources(materials)

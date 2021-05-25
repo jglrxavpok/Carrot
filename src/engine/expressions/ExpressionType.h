@@ -15,6 +15,10 @@ namespace Carrot {
             return internalID == other.internalID;
         };
 
+        auto operator<=>(const ExpressionType& other) const {
+            return internalID <=> other.internalID;
+        };
+
         std::string name() const {
             return typeName;
         }
@@ -23,6 +27,8 @@ namespace Carrot {
         static std::uint32_t ids;
         std::uint32_t internalID = 0;
         std::string typeName;
+
+        friend struct std::hash<Carrot::ExpressionType>;
     };
 
     namespace ExpressionTypes {
@@ -30,5 +36,24 @@ namespace Carrot {
         inline ExpressionType Int{"Int"};
         inline ExpressionType Float{"Float"};
         inline ExpressionType Bool{"Bool"};
+    };
+}
+
+namespace std {
+    template <>
+    struct hash<Carrot::ExpressionType>
+    {
+        std::size_t operator()(const Carrot::ExpressionType& k) const
+        {
+            using std::size_t;
+            using std::hash;
+            using std::string;
+
+            // Compute individual hash values for first,
+            // second and third and combine them using XOR
+            // and bit shifting:
+
+            return hash<std::uint32_t>()(k.internalID);
+        }
     };
 }

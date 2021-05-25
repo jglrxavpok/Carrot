@@ -109,6 +109,25 @@ namespace Tools {
 
     class NodeLibraryMenu;
 
+    struct ImGuiTextures {
+        struct {
+            std::unique_ptr<Carrot::Image> empty = nullptr;
+            std::unordered_map<Carrot::ExpressionType, std::unique_ptr<Carrot::Image>> expressionTypes;
+        } imageStorage;
+
+        struct {
+            vk::UniqueImageView empty;
+            std::unordered_map<Carrot::ExpressionType, vk::UniqueImageView> expressionTypes;
+        } imageViewStorage;
+
+        ImTextureID empty;
+        std::unordered_map<Carrot::ExpressionType, ImTextureID> expressionTypes;
+
+        ImTextureID getExpressionType(const Carrot::ExpressionType& type) {
+            return expressionTypes[type];
+        }
+    };
+
     class EditorGraph {
     private:
         std::map<std::string, std::unique_ptr<NodeInitialiserBase>> nodeLibrary;
@@ -128,6 +147,7 @@ namespace Tools {
         ed::EditorContext* g_Context = nullptr;
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
         NodeLibraryMenu* currentMenu = nullptr;
+        ImGuiTextures imguiTextures;
 
         uint32_t nextFreeEditorID();
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
@@ -148,6 +168,8 @@ namespace Tools {
         void addTemporaryLabel(const std::string& text);
 
         void recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu);
+
+        ImGuiTextures& getImGuiTextures() { return imguiTextures; };
 
     public:
         template<class T, typename... Args> requires IsNode<T>
