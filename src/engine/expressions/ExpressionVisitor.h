@@ -46,6 +46,14 @@ namespace Carrot {
         VISIT(Xor);
         VISIT(BoolNegate);
 
+        VISIT(Sin);
+        VISIT(Cos);
+        VISIT(Tan);
+        VISIT(Exp);
+        VISIT(Abs);
+        VISIT(Sqrt);
+        VISIT(Log);
+
 #undef VISIT
 
         virtual ~ExpressionVisitor() = default;

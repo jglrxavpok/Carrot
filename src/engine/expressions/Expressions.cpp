@@ -34,6 +34,14 @@ namespace Carrot {
     VISIT_T(Xor);
     VISIT(BoolNegate);
 
+    VISIT_T(Sin);
+    VISIT_T(Cos);
+    VISIT_T(Tan);
+    VISIT_T(Exp);
+    VISIT_T(Abs);
+    VISIT_T(Sqrt);
+    VISIT_T(Log);
+
 #undef VISIT
 #undef VISIT_T
 

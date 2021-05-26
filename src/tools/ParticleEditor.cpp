@@ -6,6 +6,7 @@
 #include "nodes/Arithmetics.hpp"
 #include "nodes/Constants.hpp"
 #include "nodes/Logics.hpp"
+#include "nodes/BuiltinFunctions.h"
 #include <iostream>
 #include <fstream>
 #include <rapidjson/writer.h>
@@ -36,20 +37,32 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
     }
 
     {
+        NodeLibraryMenuScope s1("Functions", &updateGraph);
+        NodeLibraryMenuScope s2("Functions", &renderGraph);
+        addCommonMath(updateGraph);
+        addCommonMath(renderGraph);
+    }
+
+    {
         NodeLibraryMenuScope s1("Inputs", &updateGraph);
         NodeLibraryMenuScope s2("Inputs", &renderGraph);
         addCommonInputs(updateGraph);
         addCommonInputs(renderGraph);
+    }
+
+    {
+        NodeLibraryMenuScope s1("Update Inputs", &updateGraph);
+        NodeLibraryMenuScope s2("Render Inputs", &renderGraph);
         updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
 
         renderGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
     }
     {
-        NodeLibraryMenuScope s1("Outputs", &updateGraph);
-        NodeLibraryMenuScope s2("Outputs", &renderGraph);
+        NodeLibraryMenuScope s1("Update Outputs", &updateGraph);
         updateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
         updateGraph.addToLibrary<TerminalNodeType::SetSize>();
 
+        NodeLibraryMenuScope s2("Render Outputs", &renderGraph);
         renderGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
         renderGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
     }
@@ -80,6 +93,14 @@ void Tools::ParticleEditor::addCommonOperators(Tools::EditorGraph& graph) {
     graph.addToLibrary<MultNode>("mult", "Multiply");
     graph.addToLibrary<DivNode>("div", "Divide");
     graph.addToLibrary<ModNode>("mod", "Modulus");
+}
+
+void Tools::ParticleEditor::addCommonMath(Tools::EditorGraph& graph) {
+    graph.addToLibrary<CosNode>("cos", "Cos");
+    graph.addToLibrary<SinNode>("sin", "Sin");
+    graph.addToLibrary<TanNode>("tan", "Tan");
+    graph.addToLibrary<ExpNode>("exp", "Exp");
+    graph.addToLibrary<AbsNode>("abs", "Abs");
 }
 
 void Tools::ParticleEditor::addCommonLogic(Tools::EditorGraph& graph) {

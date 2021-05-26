@@ -19,8 +19,9 @@ void main() {
     }
     // TODO
     vec4 c = vec4(0.0);
-    c.b = mod(particleIndex / 100.0, 1.0);
-    c.a = 1.0;
+    c.b = mod(sin(particleIndex) / 100.0, 1.0);
+    c.a = abs(particleIndex);
+    c.r = exp(particleIndex);
     outColor = c;
     outIntProperties = 0;
 }

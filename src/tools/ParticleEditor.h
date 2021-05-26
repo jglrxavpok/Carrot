@@ -22,6 +22,7 @@ namespace Tools {
         void addCommonInputs(Tools::EditorGraph& graph);
         void addCommonOperators(Tools::EditorGraph& graph);
         void addCommonLogic(Tools::EditorGraph& graph);
+        void addCommonMath(Tools::EditorGraph& graph);
 
     public:
         explicit ParticleEditor(Carrot::Engine& engine);

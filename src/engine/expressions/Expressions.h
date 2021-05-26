@@ -5,3 +5,4 @@
 #include "Expression.h"
 #include "BasicExpressions.h"
 #include "LogicExpressions.h"
+#include "BuiltinFunctions.h"

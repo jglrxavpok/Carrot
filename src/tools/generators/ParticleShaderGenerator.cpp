@@ -8,11 +8,13 @@
 #include <utility>
 #include "tools/nodes/VariableNodes.h"
 #include "tools/nodes/TerminalNodes.h"
+#include "SPIRV/GLSL.std.450.h"
 
 namespace Tools {
     using namespace spv;
 
     struct Variables {
+        Id glslImport;
 
         Id position;
         Id life;
@@ -231,11 +233,57 @@ namespace Tools {
             types.push(Carrot::ExpressionTypes::Bool);
         }
 
+        void visitBoolNegate(Carrot::BoolNegateExpression& expression) override {
+            auto prevResult = popID();
+            auto prevResultType = popType();
+            assert(prevResultType == Carrot::ExpressionTypes::Bool);
+            auto negated = builder.createUnaryOp(spv::OpLogicalNot, builder.makeBoolType(), prevResult);
+            ids.push(negated);
+            types.push(Carrot::ExpressionTypes::Bool);
+        }
+
+        void visitSin(Carrot::SinExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Sin);
+        }
+
+        void visitCos(Carrot::CosExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Cos);
+        }
+
+        void visitTan(Carrot::TanExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Tan);
+        }
+
+        void visitExp(Carrot::ExpExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Exp);
+        }
+
+        void visitAbs(Carrot::AbsExpression& expression) override {
+            visitGLSLFunction(GLSLstd450FAbs);
+        }
+
+        void visitSqrt(Carrot::SqrtExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Sqrt);
+        }
+
+        void visitLog(Carrot::LogExpression& expression) override {
+            visitGLSLFunction(GLSLstd450Log);
+        }
+
     private:
         spv::Builder& builder;
         std::stack<Id> ids;
         std::stack<Carrot::ExpressionType> types;
         Variables vars;
+
+        void visitGLSLFunction(GLSLstd450 function) {
+            auto operand = popID();
+            auto operandType = popType();
+            assert(operandType == Carrot::ExpressionTypes::Float);
+            auto result = builder.createTriOp(spv::OpExtInst, builder.makeFloatType(32), vars.glslImport, function, operand);
+            ids.push(result);
+            types.push(Carrot::ExpressionTypes::Float);
+        }
 
         void visitBinOp(spv::Op op, std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) {
             visit(left);
@@ -319,7 +367,7 @@ namespace Tools {
         builder.setSource(spv::SourceLanguageGLSL, 450);
         builder.setSourceFile(projectName);
         builder.addCapability(spv::CapabilityShader);
-        builder.import("GLSL.std.450");
+        auto glslImport = builder.import("GLSL.std.450");
         builder.setMemoryModel(spv::AddressingModelLogical, spv::MemoryModelGLSL450);
 
         auto uint32Type = builder.makeUintType(32);
@@ -379,11 +427,11 @@ namespace Tools {
 
         switch(shaderMode) {
             case ParticleShaderMode::Compute:
-                generateCompute(builder, descriptorSet, expressions);
+                generateCompute(builder, glslImport, descriptorSet, expressions);
                 break;
 
             case ParticleShaderMode::Fragment:
-                generateFragment(builder, descriptorSet, expressions);
+                generateFragment(builder, glslImport, descriptorSet, expressions);
                 break;
         }
 
@@ -397,7 +445,7 @@ namespace Tools {
         return std::move(output);
     }
 
-    void ParticleShaderGenerator::generateFragment(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
+    void ParticleShaderGenerator::generateFragment(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         spv::Block* functionBlock;
         Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, &functionBlock);
 
@@ -469,6 +517,7 @@ layout(location = 0) in flat uint particleIndex;
 
         // user-specific code
         Variables vars{};
+        vars.glslImport = glslImport;
         vars.shaderMode = shaderMode;
         vars.fragment.particleColor = varFinalColor;
         vars.fragment.fragmentPosition = varFragmentPosition;
@@ -501,7 +550,7 @@ layout(location = 0) in flat uint particleIndex;
         builder.addExecutionMode(mainFunction, spv::ExecutionModeOriginUpperLeft);
     }
 
-    void ParticleShaderGenerator::generateCompute(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
+    void ParticleShaderGenerator::generateCompute(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         spv::Block* functionBlock;
         Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, &functionBlock);
 
@@ -593,6 +642,7 @@ layout(location = 0) in flat uint particleIndex;
 
         // user-specific code
         Variables vars{};
+        vars.glslImport = glslImport;
         vars.shaderMode = shaderMode;
         vars.compute.deltaTime = dt;
         vars.emissionID = emissionID;
