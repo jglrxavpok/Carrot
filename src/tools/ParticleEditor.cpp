@@ -7,6 +7,7 @@
 #include "nodes/Constants.hpp"
 #include "nodes/Logics.hpp"
 #include "nodes/BuiltinFunctions.h"
+#include "nodes/Template.h"
 #include <iostream>
 #include <fstream>
 #include <rapidjson/writer.h>
@@ -22,40 +23,60 @@
 
 namespace ed = ax::NodeEditor;
 
-Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor") {
+Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), templateGraph(engine, "TemplateEditor"), updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor") {
     {
         NodeLibraryMenuScope s1("Operators", &updateGraph);
         NodeLibraryMenuScope s2("Operators", &renderGraph);
+        NodeLibraryMenuScope s3("Operators", &templateGraph);
         addCommonOperators(updateGraph);
         addCommonOperators(renderGraph);
+        addCommonOperators(templateGraph);
     }
     {
         NodeLibraryMenuScope s1("Logic", &updateGraph);
         NodeLibraryMenuScope s2("Logic", &renderGraph);
+        NodeLibraryMenuScope s3("Logic", &templateGraph);
         addCommonLogic(updateGraph);
         addCommonLogic(renderGraph);
+        addCommonLogic(templateGraph);
     }
 
     {
         NodeLibraryMenuScope s1("Functions", &updateGraph);
         NodeLibraryMenuScope s2("Functions", &renderGraph);
+        NodeLibraryMenuScope s3("Functions", &templateGraph);
         addCommonMath(updateGraph);
         addCommonMath(renderGraph);
+        addCommonMath(templateGraph);
     }
 
     {
         NodeLibraryMenuScope s1("Inputs", &updateGraph);
         NodeLibraryMenuScope s2("Inputs", &renderGraph);
+        NodeLibraryMenuScope s3("Inputs", &templateGraph);
         addCommonInputs(updateGraph);
         addCommonInputs(renderGraph);
+        addCommonInputs(templateGraph);
+    }
+
+    {
+        NodeLibraryMenuScope s("Named Inputs", &templateGraph);
+        // TODO
+    }
+    {
+        NodeLibraryMenuScope s("Named Outputs", &templateGraph);
+        // TODO
     }
 
     {
         NodeLibraryMenuScope s1("Update Inputs", &updateGraph);
         NodeLibraryMenuScope s2("Render Inputs", &renderGraph);
+        NodeLibraryMenuScope s3("Update/Render Inputs", &templateGraph);
         updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
+        templateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
 
         renderGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
+        templateGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
     }
     {
         NodeLibraryMenuScope s1("Update Outputs", &updateGraph);
@@ -65,6 +86,12 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
         NodeLibraryMenuScope s2("Render Outputs", &renderGraph);
         renderGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
         renderGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
+
+        NodeLibraryMenuScope s3("Render/Update Outputs", &templateGraph);
+        templateGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
+        templateGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
+        templateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
+        templateGraph.addToLibrary<TerminalNodeType::SetSize>();
     }
 
     if(std::filesystem::exists("particleGraphs.json")) {
@@ -74,6 +101,8 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), u
         updateGraph.loadFromJSON(description["update_graph"]);
         renderGraph.loadFromJSON(description["render_graph"]);
     }
+
+    templateGraph.newNode<TemplateNode>("test");
 }
 
 void Tools::ParticleEditor::addCommonInputs(Tools::EditorGraph& graph) {
@@ -219,6 +248,33 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     ImGui::SetNextWindowPos(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2,menuBarHeight));
     ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
     updateRenderGraph(frameIndex);
+
+    bool editingTemplate = true; // TODO: move to member
+    if(editingTemplate) {
+        if(ImGui::Begin("Template editor")) {
+            if(ImGui::BeginMenuBar()) {
+                if(ImGui::BeginMenu("File##template")) {
+                    if(ImGui::MenuItem("New##template")) {
+                        // TODO
+                    }
+                    if(ImGui::MenuItem("Open##template")) {
+                        // TODO
+                    }
+                    if(ImGui::MenuItem("Save##template")) {
+                        // TODO
+                    }
+                    if(ImGui::MenuItem("Save as...##template")) {
+                        // TODO
+                    }
+
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
+            templateGraph.onFrame(frameIndex);
+        }
+        ImGui::End();
+    }
 }
 
 void Tools::ParticleEditor::tick(double deltaTime) {

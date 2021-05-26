@@ -4,6 +4,8 @@
 
 #pragma once
 #include <cstdint>
+#include <stdexcept>
+#include <string>
 
 namespace Carrot {
 
@@ -24,7 +26,7 @@ namespace Carrot {
         }
 
     private:
-        static std::uint32_t ids;
+        static std::atomic<std::uint32_t> ids;
         std::uint32_t internalID = 0;
         std::string typeName;
 
@@ -32,10 +34,26 @@ namespace Carrot {
     };
 
     namespace ExpressionTypes {
-        inline ExpressionType Void{"Void"};
-        inline ExpressionType Int{"Int"};
-        inline ExpressionType Float{"Float"};
-        inline ExpressionType Bool{"Bool"};
+        inline ExpressionType Void{"void"};
+        inline ExpressionType Int{"int"};
+        inline ExpressionType Float{"float"};
+        inline ExpressionType Bool{"bool"};
+
+        inline ExpressionType fromName(const std::string& name) {
+            if(name == "void")
+                return Void;
+
+            if(name == "int")
+                return Int;
+
+            if(name == "float")
+                return Float;
+
+            if(name == "bool")
+                return Bool;
+
+            throw std::runtime_error("Unknown expression type name: " + name);
+        }
     };
 }
 

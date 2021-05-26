@@ -45,5 +45,5 @@ namespace Carrot {
 #undef VISIT
 #undef VISIT_T
 
-    std::uint32_t ExpressionType::ids = 0;
+    std::atomic<std::uint32_t> ExpressionType::ids = 0;
 }

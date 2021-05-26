@@ -5,6 +5,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <filesystem>
 
 namespace IO {
     /// Reads the contents of a file as a list of bytes

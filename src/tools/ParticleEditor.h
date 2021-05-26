@@ -15,6 +15,7 @@ namespace Tools {
         Carrot::Engine& engine;
         EditorGraph updateGraph;
         EditorGraph renderGraph;
+        EditorGraph templateGraph;
 
         void updateUpdateGraph(size_t frameIndex);
         void updateRenderGraph(size_t frameIndex);

@@ -5,7 +5,6 @@
 #include "IO.h"
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 
 std::vector<uint8_t> IO::readFile(const std::string& filename) {
     if(!std::filesystem::exists(filename))

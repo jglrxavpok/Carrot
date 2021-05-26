@@ -58,12 +58,12 @@ namespace Tools {
         Output& newOutput(std::string name, Carrot::ExpressionType type);
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput() const;
+        std::string title;
+        std::string internalName;
 
     private:
         uuids::uuid id = Carrot::randomUUID();
         EditorGraph& graph;
-        std::string title;
-        std::string internalName;
         bool updatePosition = true;
         ImVec2 position{};
 
@@ -89,8 +89,6 @@ namespace Tools {
         const uuids::uuid& getID() const { return id; };
 
     public:
-        virtual void deserialiseFromJSON(const rapidjson::Value& json) {}
-
         virtual rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const {
             return rapidjson::Value();
         }

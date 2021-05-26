@@ -26,7 +26,7 @@ namespace Tools {
         std::vector<uint32_t> compileToSPIRV(const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
 
     private:
-        void generateCompute(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
-        void generateFragment(spv::Builder& builder, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+        void generateCompute(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
+        void generateFragment(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions);
     };
 }
