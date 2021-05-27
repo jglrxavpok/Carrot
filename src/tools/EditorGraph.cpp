@@ -172,10 +172,12 @@ void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
 
 void Tools::EditorGraph::addLink(Tools::Link link) {
     links.push_back(link);
+    hasUnsavedChanges = true;
 }
 
 void Tools::EditorGraph::removeLink(const Link& link) {
     Carrot::removeIf(links, [&](const auto& l) { return l.id == link.id; });
+    hasUnsavedChanges = true;
 }
 
 void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
@@ -213,6 +215,8 @@ void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
     id2node.erase(node.getID());
     id2uuid.erase(uuid2id[node.getID()]);
     uuid2id.erase(node.getID());
+
+    hasUnsavedChanges = true;
 }
 
 Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
@@ -326,6 +330,7 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
     }
 
     zoomToContent = true;
+    hasUnsavedChanges = false;
 }
 
 uint32_t Tools::EditorGraph::nextFreeEditorID() {
@@ -373,6 +378,7 @@ void Tools::EditorGraph::clear() {
     uuid2id.clear();
     terminalNodes.clear();
     uniqueID = 1;
+    hasUnsavedChanges = false;
 }
 
 Carrot::UUID Tools::EditorGraph::nextID() {
@@ -426,6 +432,14 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExp
     }
 
     return std::move(result);
+}
+
+void Tools::EditorGraph::resetChangeFlag() {
+    hasUnsavedChanges = false;
+}
+
+bool Tools::EditorGraph::hasChanges() const {
+    return hasUnsavedChanges;
 }
 
 void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu) {

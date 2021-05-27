@@ -8,6 +8,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/CarrotGame.h"
 #include "ParticleEditor.h"
+#include <nfd.h>
 
 namespace Tools {
     class Tools: public Carrot::CarrotGame {
@@ -35,6 +36,7 @@ namespace Tools {
 
 Tools::Tools::Tools(Carrot::Engine& engine): Carrot::CarrotGame(engine), particleEditor(engine) {
     engine.ungrabCursor();
+    NFD_Init();
 }
 
 void Tools::Tools::onFrame(uint32_t frameIndex) {

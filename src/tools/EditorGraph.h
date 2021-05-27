@@ -148,6 +148,7 @@ namespace Tools {
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
         NodeLibraryMenu* currentMenu = nullptr;
         ImGuiTextures imguiTextures;
+        bool hasUnsavedChanges = false;
 
         uint32_t nextFreeEditorID();
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
@@ -179,6 +180,7 @@ namespace Tools {
             if constexpr (std::is_base_of_v<Tools::TerminalNode, T>) {
                 terminalNodes.push_back(result);
             }
+            hasUnsavedChanges = true;
             return *result;
         }
 
@@ -247,6 +249,10 @@ namespace Tools {
         void addToLibrary(const std::string& internalName, const std::string& title) {
             addToLibrary(internalName, title, std::move(make_unique<NodeInitialiser<NodeType>>()));
         }
+
+    public:
+        void resetChangeFlag();
+        bool hasChanges() const;
 
     public:
         void loadFromJSON(const rapidjson::Value& json);

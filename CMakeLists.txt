@@ -19,6 +19,8 @@ set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
 set(ASSIMP_BUILD_GLTF_EXPORTER CACHE BOOL OFF)
 add_subdirectory(thirdparty/assimp)
 
+add_subdirectory(thirdparty/nativefiledialog-extended)
+
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
         GIT_TAG             2021-01-15)
@@ -221,6 +223,7 @@ set(GAME-SOURCES
 
 set(TOOLS-SOURCES
         src/tools/ParticleEditor.cpp
+        src/tools/EditorSettings.cpp
         src/tools/EditorGraph.cpp
         src/tools/EditorNode.cpp
         src/tools/nodes/TerminalNodes.cpp
@@ -233,7 +236,7 @@ set(TOOLS-SOURCES
         )
 
 set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
-set(ALL_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV)
+set(ALL_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd)
 
 add_executable(Carrot ${ALL_SOURCES})
 target_link_libraries(Carrot ${ALL_LIBS})

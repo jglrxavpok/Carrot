@@ -34,7 +34,7 @@ namespace Carrot {
     }
 
     inline UUID randomUUID() {
-        static Generator generator;
+        Generator generator;
         return generator();
     }
 
