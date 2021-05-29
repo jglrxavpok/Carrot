@@ -62,7 +62,7 @@ void Tools::EditorSettings::save() {
 }
 
 void Tools::EditorSettings::addToRecentProjects(std::filesystem::path toAdd) {
-    recentProjects.erase(std::find(WHOLE_CONTAINER(recentProjects), toAdd));
+    Carrot::removeIf(recentProjects, [&](const auto& a) { return a == toAdd; });
     recentProjects.push_front(toAdd);
 
     save();

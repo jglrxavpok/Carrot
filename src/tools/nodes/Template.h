@@ -5,13 +5,15 @@
 #pragma once
 #include "../EditorNode.h"
 #include "engine/io/IO.h"
+#include "engine/utils/JSON.h"
 #include <filesystem>
 
 namespace Tools {
     class TemplateParseError: public std::exception {
     public:
-        explicit TemplateParseError(const std::string& message, const std::string& templateName, const char* file, const char* function, int line) {
-            fullMessage = "Error in template '" + templateName + "': " + file + ", in " + function + " (line " + std::to_string(line) + ")";
+        explicit TemplateParseError(const std::string& message, const std::string& templateName, const char* file, const char* function, int line, std::string condition) {
+            fullMessage = "Error in template '" + templateName + "': " + file + ", in " + function + " (line " + std::to_string(line) + ")\n"
+                          "Condition is: " + condition;
         }
 
         const char *what() const override {
@@ -24,20 +26,23 @@ namespace Tools {
 
     /// User-defined black box
     class TemplateNode: public EditorNode {
+#define THROW_IF(condition, message) if(condition) throw TemplateParseError(message, templateName, __FILE__, __FUNCTION__, __LINE__, #condition);
     public:
         explicit TemplateNode(Tools::EditorGraph& graph, const std::string& name): EditorNode(graph, name, "template"), templateName(name) {
             load();
         }
 
         explicit TemplateNode(Tools::EditorGraph& graph, const rapidjson::Value& json): EditorNode(graph, "tmp-template", "template", json) {
-            templateName = json["template_name"].GetString();
+            THROW_IF(!json.HasMember("extra"), "Missing 'extra' member inside json object!");
+            templateName = json["extra"]["template_name"].GetString();
             load();
         }
 
     public:
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
-            // TODO
-            return EditorNode::serialiseToJSON(doc);
+            return std::move(rapidjson::Value(rapidjson::kObjectType)
+                                     .AddMember("template_name", Carrot::JSON::makeRef(templateName), doc.GetAllocator())
+            );
         }
 
         shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
@@ -49,8 +54,6 @@ namespace Tools {
                 "resources/node_templates/", // default builtin templates
                 "user/node_templates/", // user defined templates (TODO: move elsewhere?)
         };
-
-#define THROW_IF(condition, message) if(condition) throw TemplateParseError(message, templateName, __FILE__, __FUNCTION__, __LINE__);
 
         void load() {
             rapidjson::Document description;

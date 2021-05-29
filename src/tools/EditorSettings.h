@@ -14,7 +14,9 @@ namespace Tools {
     public:
         static constexpr uint64_t MaxRecentFiles = 10;
 
-        explicit EditorSettings(const std::string& name): settingsFile(name + ".json") {}
+        explicit EditorSettings(const std::string& name): name(name), settingsFile(name + ".json"), recentProjects(0) {}
+
+        const std::string& getName() const { return name; };
 
     public:
         void load();
@@ -27,6 +29,7 @@ namespace Tools {
         std::list<std::filesystem::path> recentProjects;
         std::optional<std::filesystem::path> currentProject;
     private:
+        std::string name;
         std::filesystem::path settingsFile;
     };
 }

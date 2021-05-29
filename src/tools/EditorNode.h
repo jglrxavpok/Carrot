@@ -60,10 +60,10 @@ namespace Tools {
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput() const;
         std::string title;
         std::string internalName;
+        EditorGraph& graph;
 
     private:
         uuids::uuid id = Carrot::randomUUID();
-        EditorGraph& graph;
         bool updatePosition = true;
         ImVec2 position{};
 

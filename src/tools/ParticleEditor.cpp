@@ -26,7 +26,10 @@ namespace ed = ax::NodeEditor;
 
 std::filesystem::path Tools::ParticleEditor::EmptyProject = "";
 
-Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), settings("particle_editor"), templateGraph(engine, "TemplateEditor"), updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor") {
+Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
+: Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
+updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
+{
     settings.load();
     settings.save();
 
@@ -37,56 +40,47 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), s
     {
         NodeLibraryMenuScope s1("Operators", &updateGraph);
         NodeLibraryMenuScope s2("Operators", &renderGraph);
-        NodeLibraryMenuScope s3("Operators", &templateGraph);
+        NodeLibraryMenuScope s3("Operators", &templateEditor.getGraph());
         addCommonOperators(updateGraph);
         addCommonOperators(renderGraph);
-        addCommonOperators(templateGraph);
+        addCommonOperators(templateEditor.getGraph());
     }
     {
         NodeLibraryMenuScope s1("Logic", &updateGraph);
         NodeLibraryMenuScope s2("Logic", &renderGraph);
-        NodeLibraryMenuScope s3("Logic", &templateGraph);
+        NodeLibraryMenuScope s3("Logic", &templateEditor.getGraph());
         addCommonLogic(updateGraph);
         addCommonLogic(renderGraph);
-        addCommonLogic(templateGraph);
+        addCommonLogic(templateEditor.getGraph());
     }
 
     {
         NodeLibraryMenuScope s1("Functions", &updateGraph);
         NodeLibraryMenuScope s2("Functions", &renderGraph);
-        NodeLibraryMenuScope s3("Functions", &templateGraph);
+        NodeLibraryMenuScope s3("Functions", &templateEditor.getGraph());
         addCommonMath(updateGraph);
         addCommonMath(renderGraph);
-        addCommonMath(templateGraph);
+        addCommonMath(templateEditor.getGraph());
     }
 
     {
         NodeLibraryMenuScope s1("Inputs", &updateGraph);
         NodeLibraryMenuScope s2("Inputs", &renderGraph);
-        NodeLibraryMenuScope s3("Inputs", &templateGraph);
+        NodeLibraryMenuScope s3("Inputs", &templateEditor.getGraph());
         addCommonInputs(updateGraph);
         addCommonInputs(renderGraph);
-        addCommonInputs(templateGraph);
-    }
-
-    {
-        NodeLibraryMenuScope s("Named Inputs", &templateGraph);
-        // TODO
-    }
-    {
-        NodeLibraryMenuScope s("Named Outputs", &templateGraph);
-        // TODO
+        addCommonInputs(templateEditor.getGraph());
     }
 
     {
         NodeLibraryMenuScope s1("Update Inputs", &updateGraph);
         NodeLibraryMenuScope s2("Render Inputs", &renderGraph);
-        NodeLibraryMenuScope s3("Update/Render Inputs", &templateGraph);
+        NodeLibraryMenuScope s3("Update/Render Inputs", &templateEditor.getGraph());
         updateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
-        templateGraph.addVariableToLibrary<VariableNodeType::GetDeltaTime>();
+        templateEditor.getGraph().addVariableToLibrary<VariableNodeType::GetDeltaTime>();
 
         renderGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
-        templateGraph.addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
+        templateEditor.getGraph().addVariableToLibrary<VariableNodeType::GetFragmentPosition>();
     }
     {
         NodeLibraryMenuScope s1("Update Outputs", &updateGraph);
@@ -97,19 +91,23 @@ Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine): engine(engine), s
         renderGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
         renderGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
 
-        NodeLibraryMenuScope s3("Render/Update Outputs", &templateGraph);
-        templateGraph.addToLibrary<TerminalNodeType::SetOutputColor>();
-        templateGraph.addToLibrary<TerminalNodeType::DiscardPixel>();
-        templateGraph.addToLibrary<TerminalNodeType::SetVelocity>();
-        templateGraph.addToLibrary<TerminalNodeType::SetSize>();
+        NodeLibraryMenuScope s3("Render/Update Outputs", &templateEditor.getGraph());
+        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetOutputColor>();
+        templateEditor.getGraph().addToLibrary<TerminalNodeType::DiscardPixel>();
+        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetVelocity>();
+        templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
     }
 
-    templateGraph.newNode<TemplateNode>("test");
+    ProjectMenuHolder::attachSettings(settings);
 
     if(settings.currentProject) {
-        fileToOpen = settings.currentProject.value();
-        performLoad();
+        performLoad(settings.currentProject.value());
     }
+
+    std::filesystem::path testPath = "resources/node_templates/test.json";
+    templateEditor.performLoad(testPath);
+
+    templateEditor.open();
 }
 
 void Tools::ParticleEditor::addCommonInputs(Tools::EditorGraph& graph) {
@@ -189,98 +187,11 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
     renderGraph.resetChangeFlag();
 }
 
-bool Tools::ParticleEditor::triggerSaveAs(std::filesystem::path& path) {
-    nfdchar_t* savePath;
-
-    // prepare filters for the dialog
-    nfdfilteritem_t filterItem[1] = {{"Particle Project", "json"}};
-
-    // show the dialog
-    nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, "UntitledParticle.json");
-    if (result == NFD_OKAY) {
-        saveToFile(savePath);
-        path = savePath;
-        // remember to free the memory (since NFD_OKAY is returned)
-        NFD_FreePath(savePath);
-        return true;
-    } else if (result == NFD_CANCEL) {
-        return false;
-    } else {
-        std::string msg = "Error: ";
-        msg += NFD_GetError();
-        throw std::runtime_error(msg);
-    }
-}
-
-bool Tools::ParticleEditor::triggerSave() {
-    if(settings.currentProject) {
-        saveToFile(settings.currentProject.value());
-        return true;
-    } else {
-        std::optional<std::filesystem::path> prevProject = settings.currentProject;
-        settings.currentProject = "";
-        bool result = triggerSaveAs(settings.currentProject.value());
-        if(!result) {
-            settings.currentProject = prevProject;
-        }
-        return result;
-    }
-}
-
 void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     float menuBarHeight = 0;
     if(ImGui::BeginMainMenuBar()) {
         if(ImGui::BeginMenu("Project")) {
-            if(ImGui::MenuItem("New##particleEditor")) {
-                scheduleLoad(EmptyProject);
-            }
-            if(ImGui::MenuItem("Open##particleEditor")) {
-                nfdchar_t* outPath;
-
-                // prepare filters for the dialog
-                nfdfilteritem_t filterItem[1] = {{"Particle Project", "json"}};
-
-                // show the dialog
-                nfdresult_t result = NFD_OpenDialog(&outPath, filterItem, 1, nullptr);
-                if (result == NFD_OKAY) {
-                    scheduleLoad(outPath);
-                    // remember to free the memory (since NFD_OKAY is returned)
-                    NFD_FreePath(outPath);
-                } else if (result == NFD_CANCEL) {
-                    // no-op
-                } else {
-                    std::string msg = "Error: ";
-                    msg += NFD_GetError();
-                    throw std::runtime_error(msg);
-                }
-            }
-            if(ImGui::BeginMenu("Open Recent##particleEditor", !settings.recentProjects.empty())) {
-                auto recentProjectsCopy = settings.recentProjects;
-                for(const auto& project : recentProjectsCopy) {
-                    if(ImGui::MenuItem(project.string().c_str())) {
-                        scheduleLoad(project);
-                    }
-                }
-
-                ImGui::EndMenu();
-            }
-
-            if(ImGui::MenuItem("Save##particleEditor")) {
-                if(triggerSave()) {
-                    settings.addToRecentProjects(settings.currentProject.value());
-                }
-            }
-
-            if(ImGui::MenuItem("Save as...##particleEditor")) {
-                std::optional<std::filesystem::path> prevProject = settings.currentProject;
-                settings.currentProject = "";
-                bool result = triggerSaveAs(settings.currentProject.value());
-                if(!result) {
-                    settings.currentProject = prevProject;
-                } else {
-                    settings.addToRecentProjects(settings.currentProject.value());
-                }
-            }
+            drawProjectMenu();
 
             ImGui::EndMenu();
         }
@@ -329,64 +240,9 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
     updateRenderGraph(frameIndex);
 
-    bool editingTemplate = true; // TODO: move to member
-    if(editingTemplate) {
-        if(ImGui::Begin("Template editor", nullptr, ImGuiWindowFlags_MenuBar)) {
-            if(ImGui::BeginMenuBar()) {
-                if(ImGui::BeginMenu("File##template")) {
-                    if(ImGui::MenuItem("New##template")) {
-                        // TODO
-                    }
-                    if(ImGui::MenuItem("Open##template")) {
-                        // TODO
-                    }
-                    if(ImGui::MenuItem("Save##template")) {
-                        // TODO
-                    }
-                    if(ImGui::MenuItem("Save as...##template")) {
-                        // TODO
-                    }
+    templateEditor.onFrame(frameIndex);
 
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenuBar();
-            }
-
-            ImGui::Text("hiii");
-
-            templateGraph.onFrame(frameIndex);
-        }
-        ImGui::End();
-    }
-
-    if(tryingToOpenFile) {
-        ImGui::OpenPopup("Unsaved changes");
-    }
-    if(ImGui::BeginPopupModal("Unsaved changes")) {
-        ImGui::Text("You currently have unsaved changes!");
-        ImGui::Text("Do you still want to continue?");
-
-        if(ImGui::Button("Save")) {
-            if(triggerSave()) {
-                performLoad();
-            }
-            tryingToOpenFile = false;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if(ImGui::Button("Don't save")) {
-            performLoad();
-            tryingToOpenFile = false;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if(ImGui::Button("Cancel")) {
-            fileToOpen = "";
-            tryingToOpenFile = false;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
+    ProjectMenuHolder::onFrame(frameIndex);
 }
 
 void Tools::ParticleEditor::tick(double deltaTime) {
@@ -399,7 +255,7 @@ void Tools::ParticleEditor::tick(double deltaTime) {
 Tools::ParticleEditor::~ParticleEditor() {
 }
 
-void Tools::ParticleEditor::performLoad() {
+void Tools::ParticleEditor::performLoad(std::filesystem::path fileToOpen) {
     if(fileToOpen == EmptyProject) {
         updateGraph.clear();
         renderGraph.clear();
@@ -418,18 +274,12 @@ void Tools::ParticleEditor::performLoad() {
     hasUnsavedChanges = false;
 }
 
-void Tools::ParticleEditor::scheduleLoad(std::filesystem::path path) {
-    fileToOpen = path;
-    if(hasUnsavedChanges) {
-        ImGui::OpenPopup("Unsaved changes");
-        tryingToOpenFile = true;
-    } else {
-        performLoad();
-    }
-}
-
 void Tools::ParticleEditor::clear() {
     updateGraph.clear();
     renderGraph.clear();
     hasUnsavedChanges = false;
+}
+
+bool Tools::ParticleEditor::showUnsavedChangesPopup() {
+    return hasUnsavedChanges;
 }
