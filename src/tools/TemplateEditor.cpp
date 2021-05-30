@@ -3,8 +3,6 @@
 //
 
 #include "TemplateEditor.h"
-#include <engine/io/IO.h>
-#include <engine/utils/JSON.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/filewritestream.h>
 #include "nodes/NamedIO.h"
@@ -43,6 +41,11 @@ void Tools::TemplateEditor::onFrame(size_t frameIndex) {
             title = titleImGuiBuffer;
             hasUnsavedChanges = true;
         }
+        ImGui::SameLine();
+        if(ImGui::InputTextWithHint("Template location", "Location/in/menu", menuLocationImGuiBuffer, sizeof(menuLocationImGuiBuffer))) {
+            menuLocation = menuLocationImGuiBuffer;
+            hasUnsavedChanges = true;
+        }
 
         graph.onFrame(frameIndex);
     }
@@ -68,7 +71,9 @@ void Tools::TemplateEditor::performLoad(filesystem::path fileToOpen) {
     description.Parse(IO::readFileAsText(fileToOpen.string()).c_str());
 
     title = description["title"].GetString();
+    menuLocation = description["menu_location"].GetString();
     strcpy_s(titleImGuiBuffer, title.c_str());
+    strcpy_s(menuLocationImGuiBuffer, menuLocation.c_str());
 
     if(description.HasMember("graph")) {
         graph.loadFromJSON(description["graph"]);
@@ -95,6 +100,7 @@ void Tools::TemplateEditor::saveToFile(std::filesystem::path path) {
 
     document.AddMember("title", Carrot::JSON::makeRef(title), document.GetAllocator());
     document.AddMember("graph", graph.toJSON(document), document.GetAllocator());
+    document.AddMember("menu_location", Carrot::JSON::makeRef(menuLocation), document.GetAllocator());
 
     rapidjson::Value inputs;
     inputs.SetArray();

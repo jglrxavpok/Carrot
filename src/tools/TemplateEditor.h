@@ -34,6 +34,8 @@ namespace Tools {
         bool isOpen = false;
         bool hasUnsavedChanges = false;
 
+        std::string menuLocation;
+        char menuLocationImGuiBuffer[128];
         std::string title;
         char titleImGuiBuffer[128];
         Carrot::Engine& engine;

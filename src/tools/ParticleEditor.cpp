@@ -98,6 +98,10 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
         templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
     }
 
+    // TODO: graph.addTemplatesToLibrary();
+    renderGraph.addTemplateSupport();
+    updateGraph.addTemplateSupport();
+
     struct TestTemplateInit: public NodeInitialiserBase {
         inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
             return graph.newNode<TemplateNode>(json);
@@ -112,7 +116,7 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
         };
     };
 
-    updateGraph.addToLibrary("test_template", "Test template", std::make_unique<TestTemplateInit>());
+    updateGraph.addToLibrary("test_template", "Templates", std::make_unique<TestTemplateInit>());
 
     ProjectMenuHolder::attachSettings(settings);
 

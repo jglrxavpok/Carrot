@@ -12,6 +12,7 @@
 #include "engine/utils/UUID.h"
 #include "nodes/TerminalNodes.h"
 #include "nodes/VariableNodes.h"
+#include "nodes/Template.h"
 #include <utility>
 
 namespace Tools {
@@ -154,6 +155,21 @@ namespace Tools {
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
         void handleLinkCreation(std::shared_ptr<Pin> pinA, std::shared_ptr<Pin> pinB);
 
+    private:
+        struct TemplateInit: public NodeInitialiserBase {
+            inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
+                return graph.newNode<TemplateNode>(json);
+            };
+
+            EditorNode& operator()(EditorGraph& graph) override {
+                throw std::runtime_error("not allowed");
+            };
+
+            NodeValidity getValidity(EditorGraph& graph) const override {
+                return NodeValidity::Possible;
+            };
+        };
+
     public:
         explicit EditorGraph(Carrot::Engine& engine, std::string name);
         ~EditorGraph();
@@ -202,9 +218,17 @@ namespace Tools {
 
     public:
         void addToLibrary(const std::string& internalName, const std::string& title, std::unique_ptr<NodeInitialiserBase>&& nodeCreator) {
+            addToLibraryNoMenu(internalName, title, std::move(nodeCreator));
+            currentMenu->addEntry(internalName);
+        }
+
+        void addToLibraryNoMenu(const std::string& internalName, const std::string& title, std::unique_ptr<NodeInitialiserBase>&& nodeCreator) {
             nodeLibrary[internalName] = std::move(nodeCreator);
             internalName2title[internalName] = title;
-            currentMenu->addEntry(internalName);
+        }
+
+        void addTemplateSupport() {
+            addToLibraryNoMenu("template", "Templates", std::make_unique<TemplateInit>());
         }
 
         template<TerminalNodeType NodeType>
