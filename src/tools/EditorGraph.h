@@ -192,6 +192,7 @@ namespace Tools {
     public:
         std::vector<Tools::Link> getLinksStartingFrom(const Tools::Pin& from) const;
         std::vector<Tools::Link> getLinksLeadingTo(const Tools::Pin& to) const;
+        const unordered_map<Carrot::UUID, shared_ptr<EditorNode>>& getNodes() { return id2node; };
 
         void addLink(Tools::Link link);
         void removeLink(const Tools::Link& link);

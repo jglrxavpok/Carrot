@@ -98,6 +98,22 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
         templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
     }
 
+    struct TestTemplateInit: public NodeInitialiserBase {
+        inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
+            return graph.newNode<TemplateNode>(json);
+        };
+
+        EditorNode& operator()(EditorGraph& graph) override {
+            return graph.newNode<TemplateNode>("vec2length");
+        };
+
+        NodeValidity getValidity(EditorGraph& graph) const override {
+            return NodeValidity::Possible;
+        };
+    };
+
+    updateGraph.addToLibrary("test_template", "Test template", std::make_unique<TestTemplateInit>());
+
     ProjectMenuHolder::attachSettings(settings);
 
     if(settings.currentProject) {
@@ -135,6 +151,8 @@ void Tools::ParticleEditor::addCommonMath(Tools::EditorGraph& graph) {
     graph.addToLibrary<TanNode>("tan", "Tan");
     graph.addToLibrary<ExpNode>("exp", "Exp");
     graph.addToLibrary<AbsNode>("abs", "Abs");
+    graph.addToLibrary<LogNode>("log", "Log");
+    graph.addToLibrary<SqrtNode>("sqrt", "Sqrt");
 }
 
 void Tools::ParticleEditor::addCommonLogic(Tools::EditorGraph& graph) {
@@ -152,17 +170,11 @@ void Tools::ParticleEditor::addCommonLogic(Tools::EditorGraph& graph) {
 }
 
 void Tools::ParticleEditor::updateUpdateGraph(size_t frameIndex) {
-    if(ImGui::Begin("Update Window", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-        updateGraph.onFrame(frameIndex);
-    }
-    ImGui::End();
+    updateGraph.onFrame(frameIndex);
 }
 
 void Tools::ParticleEditor::updateRenderGraph(size_t frameIndex) {
-    if(ImGui::Begin("Render Window", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-        renderGraph.onFrame(frameIndex);
-    }
-    ImGui::End();
+    renderGraph.onFrame(frameIndex);
 }
 
 void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
@@ -232,13 +244,22 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     }
 
     ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight));
-    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
+    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
+    if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+        if(ImGui::BeginTabBar("ParticleEditorTabs")) {
+            if(ImGui::BeginTabItem("Update##tab particle editor")) {
+                updateUpdateGraph(frameIndex);
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("Render##tab particle editor")) {
+                updateRenderGraph(frameIndex);
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
 
-    updateUpdateGraph(frameIndex);
-
-    ImGui::SetNextWindowPos(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2,menuBarHeight));
-    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width/2, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
-    updateRenderGraph(frameIndex);
 
     templateEditor.onFrame(frameIndex);
 

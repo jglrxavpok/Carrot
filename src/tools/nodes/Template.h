@@ -73,16 +73,32 @@ namespace Tools {
             for(const auto& input : inputArray) {
                 THROW_IF(!input.HasMember("name"), "Missing 'name' member inside input");
                 THROW_IF(!input.HasMember("type"), "Missing 'type' member inside input");
+                THROW_IF(!input.HasMember("dimensions"), "Missing 'dimensions' member inside input");
                 auto type = Carrot::ExpressionTypes::fromName(input["type"].GetString());
-                newInput(input["name"].GetString(), type);
+                uint32_t dimensions = input["dimensions"].GetInt64();
+                if(dimensions == 1) {
+                    newInput(input["name"].GetString(), type);
+                } else {
+                    for (int i = 0; i < dimensions; ++i) {
+                        newInput(std::string(input["name"].GetString()) + "[" + std::to_string(i) + "]", type);
+                    }
+                }
             }
 
             auto outputArray = description["outputs"].GetArray();
             for(const auto& output : outputArray) {
                 THROW_IF(!output.HasMember("name"), "Missing 'name' member inside output");
                 THROW_IF(!output.HasMember("type"), "Missing 'type' member inside output");
+                THROW_IF(!output.HasMember("dimensions"), "Missing 'dimensions' member inside output");
                 auto type = Carrot::ExpressionTypes::fromName(output["type"].GetString());
-                newOutput(output["name"].GetString(), type);
+                uint32_t dimensions = output["dimensions"].GetInt64();
+                if(dimensions == 1) {
+                    newOutput(output["name"].GetString(), type);
+                } else {
+                    for (int i = 0; i < dimensions; ++i) {
+                        newOutput(std::string(output["name"].GetString()) + "[" + std::to_string(i) + "]", type);
+                    }
+                }
             }
         }
 

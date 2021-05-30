@@ -95,6 +95,32 @@ void Tools::TemplateEditor::saveToFile(std::filesystem::path path) {
 
     document.AddMember("title", Carrot::JSON::makeRef(title), document.GetAllocator());
     document.AddMember("graph", graph.toJSON(document), document.GetAllocator());
+
+    rapidjson::Value inputs;
+    inputs.SetArray();
+
+    rapidjson::Value outputs;
+    outputs.SetArray();
+
+    for(const auto& [id, node] : graph.getNodes()) {
+        if(auto namedInput = dynamic_pointer_cast<NamedInputNode>(node)) {
+            inputs.PushBack(rapidjson::Value(rapidjson::kObjectType)
+                                    .AddMember("name", Carrot::JSON::makeRef(namedInput->getIOName()), document.GetAllocator())
+                                    .AddMember("type", Carrot::JSON::makeRef(namedInput->getType().name()), document.GetAllocator())
+                                    .AddMember("dimensions", namedInput->getDimensionCount(), document.GetAllocator())
+                    , document.GetAllocator());
+        }
+        if(auto namedOutput = dynamic_pointer_cast<NamedOutputNode>(node)) {
+            outputs.PushBack(rapidjson::Value(rapidjson::kObjectType)
+                                     .AddMember("name", Carrot::JSON::makeRef(namedOutput->getIOName()), document.GetAllocator())
+                                     .AddMember("type", Carrot::JSON::makeRef(namedOutput->getType().name()), document.GetAllocator())
+                                     .AddMember("dimensions", namedOutput->getDimensionCount(), document.GetAllocator())
+                    , document.GetAllocator());
+        }
+    }
+    document.AddMember("inputs", inputs, document.GetAllocator());
+    document.AddMember("outputs", outputs, document.GetAllocator());
+
     document.Accept(writer);
     fclose(fp);
 

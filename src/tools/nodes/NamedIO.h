@@ -27,6 +27,11 @@ namespace Tools {
         }
 
     public:
+        Carrot::ExpressionType getType() { return type; }
+        std::string getIOName() { return name; }
+        uint32_t getDimensionCount() { return dimensions; };
+
+    public:
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
                                      .AddMember("name", Carrot::JSON::makeRef(name), doc.GetAllocator())
@@ -123,6 +128,8 @@ namespace Tools {
                     newInput("Pin #"+std::to_string(i+1), type);
                 }
             }
+
+            strcpy_s(nameImGuiBuffer, name.c_str());
         }
 
     private:
