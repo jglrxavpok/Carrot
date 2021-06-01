@@ -26,6 +26,12 @@ namespace Tools {
 
     /// User-defined black box
     class TemplateNode: public EditorNode {
+    public:
+        inline static std::array<std::string, 2> Paths = {
+                "resources/node_templates", // default builtin templates
+                "user/node_templates", // user defined templates (TODO: move elsewhere?)
+        };
+
 #define THROW_IF(condition, message) if(condition) throw TemplateParseError(message, templateName, __FILE__, __FUNCTION__, __LINE__, #condition);
     public:
         explicit TemplateNode(Tools::EditorGraph& graph, const std::string& name): EditorNode(graph, name, "template"), templateName(name) {
@@ -50,16 +56,11 @@ namespace Tools {
         }
 
     private:
-        inline static std::array<std::string, 2> Paths = {
-                "resources/node_templates/", // default builtin templates
-                "user/node_templates/", // user defined templates (TODO: move elsewhere?)
-        };
-
         void load() {
             rapidjson::Document description;
             for(const auto& pathPrefix : Paths) {
                 if(std::filesystem::exists(pathPrefix)) {
-                    description.Parse(IO::readFileAsText(pathPrefix + templateName + ".json").c_str());
+                    description.Parse(IO::readFileAsText(pathPrefix + "/" + templateName + ".json").c_str());
                     break;
                 }
             }

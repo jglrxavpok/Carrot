@@ -10,6 +10,9 @@
 #include "nodes/Constants.hpp"
 #include <engine/utils/ImGuiUtils.hpp>
 #include <engine/utils/Containers.h>
+#include <filesystem>
+#include <iostream>
+#include <engine/utils/stringmanip.h>
 
 namespace ed = ax::NodeEditor;
 
@@ -440,6 +443,66 @@ void Tools::EditorGraph::resetChangeFlag() {
 
 bool Tools::EditorGraph::hasChanges() const {
     return hasUnsavedChanges;
+}
+
+void Tools::EditorGraph::addTemplatesToLibrary() {
+    namespace fs = std::filesystem;
+
+    struct TemplateInit: public NodeInitialiserBase {
+        explicit TemplateInit(std::string id): id(std::move(id)) {}
+
+        std::string id;
+
+        inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
+            throw std::runtime_error("SHOULD NOT BE CALLED");
+        };
+
+        EditorNode& operator()(EditorGraph& graph) override {
+            return graph.newNode<TemplateNode>(id);
+        };
+
+        NodeValidity getValidity(EditorGraph& graph) const override {
+            return NodeValidity::Possible;
+        };
+    };
+
+    auto previousMenu = currentMenu;
+    for(const auto& folder : TemplateNode::Paths) {
+        if(!fs::exists(folder))
+            continue;
+
+        for(const auto& file : fs::directory_iterator(folder)) {
+            auto path = fs::path(file);
+            if(path.has_extension() && path.extension() == ".json") {
+                auto templateName = path.stem();
+
+                rapidjson::Document description;
+                description.Parse(IO::readFileAsText(path.string()).c_str());
+
+                std::string title = description["title"].GetString();
+                std::string menuLocation = description["menu_location"].GetString();
+
+                NodeLibraryMenu* menu = rootMenu.get();
+                for(const auto& part : Carrot::splitString(menuLocation, "/")) {
+                    bool found = false;
+                    for(auto& submenu : menu->getSubmenus()) {
+                        if(submenu.getName() == part) {
+                            menu = &submenu;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if(!found) {
+                        menu = &menu->newChild(part);
+                    }
+                }
+                currentMenu = menu;
+                addToLibrary("template_internal_name_dont_save_"+templateName.string(), title, std::make_unique<TemplateInit>(templateName.string()));
+            }
+        }
+    }
+    currentMenu = previousMenu;
 }
 
 void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu) {

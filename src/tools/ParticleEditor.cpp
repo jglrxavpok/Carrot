@@ -98,7 +98,8 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
         templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
     }
 
-    // TODO: graph.addTemplatesToLibrary();
+    renderGraph.addTemplatesToLibrary();
+    updateGraph.addTemplatesToLibrary();
     renderGraph.addTemplateSupport();
     updateGraph.addTemplateSupport();
 
@@ -124,7 +125,7 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
         performLoad(settings.currentProject.value());
     }
 
-    std::filesystem::path testPath = "resources/node_templates/test.json";
+    std::filesystem::path testPath = "resources/node_templates/vec2length.json";
     templateEditor.performLoad(testPath);
 
     templateEditor.open();

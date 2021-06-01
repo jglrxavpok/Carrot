@@ -97,6 +97,10 @@ namespace Tools {
             return submenus;
         }
 
+        std::list<NodeLibraryMenu>& getSubmenus() {
+            return submenus;
+        }
+
         NodeLibraryMenu* getParent() const {
             return parent;
         }
@@ -230,6 +234,8 @@ namespace Tools {
         void addTemplateSupport() {
             addToLibraryNoMenu("template", "Templates", std::make_unique<TemplateInit>());
         }
+
+        void addTemplatesToLibrary();
 
         template<TerminalNodeType NodeType>
         void addToLibrary() {
