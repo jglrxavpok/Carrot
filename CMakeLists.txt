@@ -123,6 +123,10 @@ set(ENGINE-SOURCES
         src/engine/render/ComputePipeline.cpp
 
         src/engine/expressions/Expressions.cpp
+        src/engine/console/Console.cpp
+
+        src/engine/console/RuntimeOption.cpp
+
         )
 
 set(VERTEX_SHADERS

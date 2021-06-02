@@ -49,5 +49,11 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        vector<vk::UniqueImageView>& getIntPropertiesImageViews() { return intPropertiesImageViews; }
+        vector<vk::UniqueImageView>& getDepthImageViews() { return depthOnlyImageViews; }
+        vector<vk::UniqueImageView>& getNormalImageViews() { return viewNormalImageViews; }
+        vector<vk::UniqueImageView>& getPositionImageViews() { return viewPositionImageViews; }
+        vector<vk::UniqueImageView>& getAlbedoImageViews() { return albedoImageViews; }
     };
 }

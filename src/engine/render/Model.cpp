@@ -12,6 +12,7 @@
 #include "engine/render/resources/Pipeline.h"
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
+#include <engine/io/Logging.hpp>
 
 Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
     Assimp::Importer importer{};
@@ -21,7 +22,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         throw runtime_error("Failed to load model "+filename);
     }
 
-    cout << "Loading model " << filename << endl;
+    Carrot::Log::info("Loading model %s", filename.c_str());
 
     map<uint32_t, shared_ptr<Material>> materialMap{};
     for(size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {

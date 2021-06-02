@@ -159,6 +159,14 @@ namespace Carrot {
             glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
 
+        bool hasPreviousFrame() const {
+            return frames > 0;
+        }
+
+        uint32_t getPreviousFrameIndex() const {
+            return lastFrameIndex;
+        }
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -169,6 +177,7 @@ namespace Carrot {
         VulkanDriver vkDriver;
         VulkanRenderer renderer;
         uint32_t lastFrameIndex = 0;
+        uint32_t frames = 0;
 
         unique_ptr<ResourceAllocator> resourceAllocator;
 
@@ -197,6 +206,19 @@ namespace Carrot {
         shared_ptr<Pipeline> skyboxPipeline = nullptr;
         unique_ptr<Mesh> skyboxMesh = nullptr;
 
+        struct ImGuiTextures {
+            ImTextureID allChannels = nullptr;
+            ImTextureID albedo = nullptr;
+            ImTextureID position = nullptr;
+            ImTextureID normal = nullptr;
+            ImTextureID depth = nullptr;
+            ImTextureID raytracing = nullptr;
+            ImTextureID ui = nullptr;
+            ImTextureID intProperties = nullptr;
+        };
+
+        std::vector<ImGuiTextures> imguiTextures;
+
         /// Init engine
         void init();
 
@@ -205,6 +227,9 @@ namespace Carrot {
 
         /// Init Vulkan for rendering
         void initVulkan();
+
+        /// Init ingame console
+        void initConsole();
 
         /// Create the primary command buffers for rendering
         void recordMainCommandBuffer(size_t frameIndex);
@@ -239,6 +264,7 @@ namespace Carrot {
 
         void updateSkyboxCommands();
 
+        void updateImGuiTextures(size_t swapchainLength);
     };
 }
 

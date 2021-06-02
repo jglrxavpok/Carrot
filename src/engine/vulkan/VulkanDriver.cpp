@@ -8,6 +8,7 @@
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
+#include "engine/io/Logging.hpp"
 #include <iostream>
 #include <map>
 #include <set>
@@ -20,11 +21,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
 
-    if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-        std::cerr << "Validation layer: " << pCallbackData->pMessage << '\n';
+    if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+        Carrot::Log::info("Validation layer: %s", pCallbackData->pMessage);
     }
     if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-//        std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+        Carrot::Log::error("Validation layer: %s", pCallbackData->pMessage);
     }
 
     return VK_FALSE;
@@ -149,11 +150,10 @@ void Carrot::VulkanDriver::createInstance() {
     const std::vector<vk::ExtensionProperties> extensions = vk::enumerateInstanceExtensionProperties(nullptr);
 
     for(const auto& ext : requiredExtensions) {
-        std::cout << "Required extension: " << ext << ", present = ";
         bool found = std::find_if(extensions.begin(), extensions.end(), [&](const vk::ExtensionProperties& props) {
             return strcmp(props.extensionName, ext) == 0;
         }) != extensions.end();
-        std::cout << std::to_string(found) << std::endl;
+        Carrot::Log::info("Required extension: %s, present = %d", ext, found);
     }
 
     instance = vk::createInstanceUnique(createInfo, allocator);

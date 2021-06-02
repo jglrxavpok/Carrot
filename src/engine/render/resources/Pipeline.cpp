@@ -12,8 +12,7 @@
 #include "engine/render/Material.h"
 #include "Vertex.h"
 #include "engine/render/DebugBufferObject.h"
-
-#include <iostream>
+#include <engine/io/Logging.hpp>
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const string& pipelineName): driver(driver), renderPass(renderPass) {
     rapidjson::Document description;
@@ -194,7 +193,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
             if("MAX_TEXTURES" == constants.name) {
                 maxTextureID = constants.value.GetUint64();
             }
-            cout << "Specializing constant " << constants.name.GetString() << " to value " << constants.value.GetUint64() << endl;
+            Carrot::Log::info("Specializing constant %s to value %llu", constants.name.GetString(), constants.value.GetUint64());
             specializations.push_back(Specialization {
                     .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
                     .size = sizeof(uint32_t),

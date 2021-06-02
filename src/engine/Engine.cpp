@@ -35,8 +35,12 @@
 #include "engine/CarrotGame.h"
 #include "stb_image_write.h"
 #include "LoadingScreen.h"
+#include "engine/console/RuntimeOption.hpp"
+#include "engine/console/Console.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
+static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
 
 Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(window), renderer(vkDriver) {
     init();
@@ -49,10 +53,14 @@ void Carrot::Engine::init() {
     // quickly render something on screen
     LoadingScreen screen{*this};
     initVulkan();
+    initConsole();
+}
+
+void Carrot::Engine::initConsole() {
+    Console::registerCommands();
 }
 
 void Carrot::Engine::run() {
-
     size_t currentFrame = 0;
 
 
@@ -81,10 +89,12 @@ void Carrot::Engine::run() {
             lag -= timeBetweenUpdates;
         }
 
-        if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
-            ImGui::Text("%f FPS", currentFPS);
+        if(showFPS) {
+            if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
+                ImGui::Text("%f FPS", currentFPS);
+            }
+            ImGui::End();
         }
-        ImGui::End();
 
         drawFrame(currentFrame);
 
@@ -128,6 +138,8 @@ void Carrot::Engine::initWindow() {
 
 void Carrot::Engine::initVulkan() {
     resourceAllocator = make_unique<ResourceAllocator>(vkDriver);
+
+    updateImGuiTextures(getSwapchainImageCount());
 
     createTracyContexts();
 
@@ -241,6 +253,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
             mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
+            Console::renderToImGui(*this);
             ImGui::Render();
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), mainCommandBuffers[i]);
             mainCommandBuffers[i].endRenderPass();
@@ -359,21 +372,34 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         imageIndex = nextImage.value;
 
         static DebugBufferObject debug{};
-        if(ImGui::Begin("GBuffer View"))
-        {
-            auto* gIndex = reinterpret_cast<int32_t*>(&debug.gChannel);
+        static int32_t gIndex = -1;
+        if(hasPreviousFrame()) {
+            ImTextureID textureToDisplay = nullptr;
+            if(ImGui::Begin("GBuffer View")) {
+                ImGui::RadioButton("All channels", &gIndex, -1);
+                ImGui::RadioButton("Albedo", &gIndex, 0);
+                ImGui::RadioButton("Position", &gIndex, 1);
+                ImGui::RadioButton("Normals", &gIndex, 2);
+                ImGui::RadioButton("Depth", &gIndex, 3);
+                ImGui::RadioButton("Raytracing", &gIndex, 4);
+                ImGui::RadioButton("UI", &gIndex, 5);
+                ImGui::RadioButton("Int Properties", &gIndex, 6);
 
-            ImGui::RadioButton("All channels", gIndex, -1);
-            ImGui::RadioButton("Albedo", gIndex, 0);
-            ImGui::RadioButton("Position", gIndex, 1);
-            ImGui::RadioButton("Normals", gIndex, 2);
-            ImGui::RadioButton("Depth", gIndex, 3);
-            ImGui::RadioButton("Raytracing", gIndex, 4);
-            ImGui::RadioButton("UI", gIndex, 5);
-            ImGui::RadioButton("Skybox", gIndex, 6);
-            ImGui::RadioButton("Int Properties", gIndex, 7);
+                if(gIndex == -1) textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
+                if(gIndex == 0) textureToDisplay = imguiTextures[lastFrameIndex].albedo;
+                if(gIndex == 1) textureToDisplay = imguiTextures[lastFrameIndex].position;
+                if(gIndex == 2) textureToDisplay = imguiTextures[lastFrameIndex].normal;
+                if(gIndex == 3) textureToDisplay = imguiTextures[lastFrameIndex].depth;
+                if(gIndex == 4) textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
+                if(gIndex == 5) textureToDisplay = imguiTextures[lastFrameIndex].ui;
+                if(gIndex == 6) textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
+                if(textureToDisplay) {
+                    auto size = ImGui::GetWindowSize();
+                    ImGui::Image(textureToDisplay, ImVec2(size.x, size.y - ImGui::GetCursorPosY()));
+                }
+            }
+            ImGui::End();
         }
-        ImGui::End();
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
@@ -446,6 +472,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
         recreateSwapchain();
     }
+    frames++;
 }
 
 void Carrot::Engine::createSynchronizationObjects() {
@@ -573,6 +600,10 @@ Carrot::Camera& Carrot::Engine::getCamera() {
 }
 
 void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
+    if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
+        Console::toggleVisibility();
+    }
+
     if(key == GLFW_KEY_ESCAPE) {
         running = false;
     }
@@ -585,6 +616,7 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         grabCursor = !grabCursor;
         glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     }
+
 
     // TODO: pass input to game
 }
@@ -802,6 +834,8 @@ void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     createSynchronizationObjects();
 
     game->onSwapchainImageCountChange(newCount);
+
+    updateImGuiTextures(newCount);
 }
 
 void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
@@ -825,4 +859,36 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
     }
 
     game->onSwapchainSizeChange(newWidth, newHeight);
+
+    updateImGuiTextures(getSwapchainImageCount());
+}
+
+void Carrot::Engine::updateImGuiTextures(size_t swapchainLength) {
+    imguiTextures.resize(swapchainLength);
+    for (int i = 0; i < swapchainLength; ++i) {
+        auto& textures = imguiTextures[i];
+        textures.allChannels = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *vkDriver.getSwapchainImageViews()[i],
+                                                           static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.albedo = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getAlbedoImageViews()[i],
+                                                           static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.position = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getPositionImageViews()[i],
+                                                      static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.normal = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getNormalImageViews()[i],
+                                                        static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.depth = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getDepthImageViews()[i],
+                                                      static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.intProperties = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getIntPropertiesImageViews()[i],
+                                                     static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.raytracing = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getRayTracer().getLightingImageViews()[i],
+                                                             static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+
+        textures.ui = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *renderer.getUIImageViews()[i],
+                                                          static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+    }
 }

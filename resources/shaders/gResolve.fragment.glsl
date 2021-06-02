@@ -34,59 +34,22 @@ const vec3 sunDirection = vec3(1,1,1);
 void main() {
     vec4 outColorWorld;
 
-    if(debug.showSingleGChannel >= 0) {
-        switch(debug.showSingleGChannel) {
-            case 0:
-                outColorWorld = subpassLoad(albedo);
-            break;
+    const vec3 nSunDirection = normalize(sunDirection);
+    vec4 fragmentColor = subpassLoad(albedo);
+    vec3 normal = (cbo.inverseView * subpassLoad(viewNormals)).xyz;
+    vec3 lighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
+    vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
-            case 1:
-                outColorWorld = vec4(subpassLoad(viewPos).rgb, 1.0);
-            break;
-
-            case 2:
-                outColorWorld = vec4(subpassLoad(viewNormals).rgb, 1.0);
-            break;
-
-            case 3:
-                outColorWorld = subpassLoad(depth);
-            break;
-
-            case 4:
-                outColorWorld = texture(sampler2D(rayTracedLighting, linearSampler), uv);
-            break;
-
-            case 5:
-                outColorWorld = vec4(0.0,0.0,0.0,1.0);
-            break;
-
-            case 6:
-                outColorWorld = texture(sampler2D(skyboxTexture, linearSampler), uv);
-            break;
-
-            case 7:
-                outColorWorld = vec4(vec3(texture(intPropertiesInput, uv).r), 1.0);
-            break;
-        }
-
-    } else {
-        const vec3 nSunDirection = normalize(sunDirection);
-        vec4 fragmentColor = subpassLoad(albedo);
-        vec3 normal = (cbo.inverseView * subpassLoad(viewNormals)).xyz;
-        vec3 lighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
-        vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
-
-        uint intProperties = texture(intPropertiesInput, uv).r;
-        float currDepth = subpassLoad(depth).r;
-        if(currDepth < 1.0) {
-            if((intProperties & IntPropertiesRayTracedLighting) == IntPropertiesRayTracedLighting) {
-                outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
-            } else {
-                outColorWorld = fragmentColor;
-            }
+    uint intProperties = texture(intPropertiesInput, uv).r;
+    float currDepth = subpassLoad(depth).r;
+    if(currDepth < 1.0) {
+        if((intProperties & IntPropertiesRayTracedLighting) == IntPropertiesRayTracedLighting) {
+            outColorWorld = vec4(fragmentColor.rgb*lighting, fragmentColor.a);
         } else {
-            outColorWorld = vec4(skyboxRGB, fragmentColor.a);
+            outColorWorld = fragmentColor;
         }
+    } else {
+        outColorWorld = vec4(skyboxRGB, fragmentColor.a);
     }
 
     vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
