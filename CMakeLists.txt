@@ -126,6 +126,7 @@ set(ENGINE-SOURCES
         src/engine/console/Console.cpp
 
         src/engine/console/RuntimeOption.cpp
+        src/engine/console/AutocompleteField.cpp
 
         )
 
@@ -203,6 +204,7 @@ set(EXTERNAL_SOURCES
         thirdparty/imgui/imgui_demo.cpp
         thirdparty/imgui/imgui_widgets.cpp
         thirdparty/imgui/imgui_tables.cpp
+        thirdparty/imgui/misc/cpp/imgui_stdlib.cpp
 
         thirdparty/imgui-node-editor/crude_json.cpp
         thirdparty/imgui-node-editor/imgui_canvas.cpp
@@ -215,6 +217,7 @@ include_directories(thirdparty/stb/)
 include_directories(thirdparty/rapidjson/include)
 include_directories(thirdparty/tracy/)
 include_directories(thirdparty/imgui/)
+include_directories(thirdparty/imgui/misc/cpp)
 include_directories(thirdparty/dr_libs/)
 include_directories(thirdparty/imgui-node-editor/)
 include_directories(thirdparty/stduuid/include)

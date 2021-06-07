@@ -5,22 +5,40 @@
 #include "Console.h"
 #include "imgui.h"
 #include "RuntimeOption.hpp"
-#include <string>
-#include <functional>
-#include <map>
+#include "engine/io/Logging.hpp"
+#include "engine/utils/stringmanip.h"
 #include <utility>
 
-namespace Carrot::Console {
-    using CommandCallback = std::function<void(Carrot::Engine& engine)>; // TODO: support for arguments
+namespace Carrot {
 
-    static bool visible = false;
-    static std::map<std::string, CommandCallback> commands;
+    static char commandBuffer[512] = { '\0' };
 
-    void registerCommand(const std::string& name, CommandCallback callback) {
+    Console::Console(): autocompleteField(
+            // callback
+            [this](const std::string& command) {
+                auto it = commands.find(command);
+                if(it != commands.end()) {
+                    Carrot::Log::info("Executing command: %s", command.c_str());
+                    it->second(*engine);
+                } else {
+                    Carrot::Log::error("Invalid command: %s", command.c_str());
+                }
+            },
+
+            // suggestions
+            [this](std::vector<std::string>& out, const std::string& currentInput) {
+                for(const auto& [str, _] : commands) {
+                    if(Carrot::toLowerCase(str).find(Carrot::toLowerCase(currentInput)) != std::string::npos) {
+                        out.emplace_back(str);
+                    }
+                }
+            }) {}
+
+    void Console::registerCommand(const std::string& name, CommandCallback callback) {
         commands[name] = std::move(callback);
     }
 
-    void registerCommands() {
+    void Console::registerCommands() {
         for(auto& option : Carrot::RuntimeOption::getAllOptions()) {
             auto activate = [option](auto& engine) {
                 option->setValue(true);
@@ -33,20 +51,27 @@ namespace Carrot::Console {
         }
     }
 
-    void renderToImGui(Carrot::Engine& engine) {
+    void Console::renderToImGui(Carrot::Engine& engine) {
+        this->engine = &engine;
         if(!visible)
             return;
-        if(ImGui::Begin("Console")) {
-            for(const auto& [command, action] : commands) {
-                if(ImGui::Selectable(command.c_str())) {
-                    action(engine);
-                }
-            }
+
+        ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags();
+
+        if(ImGui::Begin("Console", nullptr, flags)) {
+            autocompleteField.drawField();
         }
         ImGui::End();
+
+        autocompleteField.drawAutocompleteSuggestions();
     }
 
-    void toggleVisibility() {
+    void Console::toggleVisibility() {
         visible = !visible;
+    }
+
+    Console& Console::instance() {
+        static Console instance;
+        return instance;
     }
 }

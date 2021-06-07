@@ -10,4 +10,7 @@ using namespace std;
 
 namespace Carrot {
     vector<string> splitString(const string& toSplit, const string& delimiter);
+
+    std::string toLowerCase(const string& str);
+    std::string toUpperCase(const string& str);
 }

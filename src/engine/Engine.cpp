@@ -57,7 +57,7 @@ void Carrot::Engine::init() {
 }
 
 void Carrot::Engine::initConsole() {
-    Console::registerCommands();
+    Console::instance().registerCommands();
 }
 
 void Carrot::Engine::run() {
@@ -253,7 +253,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
             mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
-            Console::renderToImGui(*this);
+            Console::instance().renderToImGui(*this);
             ImGui::Render();
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), mainCommandBuffers[i]);
             mainCommandBuffers[i].endRenderPass();
@@ -385,6 +385,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 ImGui::RadioButton("UI", &gIndex, 5);
                 ImGui::RadioButton("Int Properties", &gIndex, 6);
 
+                // TODO: transition images to shader readonly before draw, transition back to previous state after rendering
                 if(gIndex == -1) textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
                 if(gIndex == 0) textureToDisplay = imguiTextures[lastFrameIndex].albedo;
                 if(gIndex == 1) textureToDisplay = imguiTextures[lastFrameIndex].position;
@@ -601,7 +602,7 @@ Carrot::Camera& Carrot::Engine::getCamera() {
 
 void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
     if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
-        Console::toggleVisibility();
+        Console::instance().toggleVisibility();
     }
 
     if(key == GLFW_KEY_ESCAPE) {

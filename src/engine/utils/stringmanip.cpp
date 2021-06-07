@@ -3,6 +3,7 @@
 //
 
 #include "stringmanip.h"
+#include <cctype>
 
 vector<string> Carrot::splitString(const string& toSplit, const string& delimiter) {
     vector<string> parts{};
@@ -18,4 +19,20 @@ vector<string> Carrot::splitString(const string& toSplit, const string& delimite
         }
     }
     return parts;
+}
+
+std::string Carrot::toLowerCase(const string& str) {
+    std::string result = str;
+    for(auto& c : result) {
+        c = std::tolower(c);
+    }
+    return result;
+}
+
+std::string Carrot::toUpperCase(const string& str) {
+    std::string result = str;
+    for(auto& c : result) {
+        c = std::toupper(c);
+    }
+    return result;
 }
