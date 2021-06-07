@@ -1,5 +1,6 @@
 //
 // Created by jglrxavpok on 06/06/2021.
+// based on https://gist.github.com/harold-b/7dcc02557c2b15d76c61fde1186e31d0
 //
 
 #pragma once
