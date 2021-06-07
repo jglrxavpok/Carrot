@@ -10,6 +10,7 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <list>
 
 namespace Carrot::Log {
     class LogError: public std::exception {
@@ -24,12 +25,25 @@ namespace Carrot::Log {
         std::string message;
     };
 
-    inline void log(std::string severity, const std::string& message, std::ostream& out = std::cout) {
+    struct LogMessage {
+        std::string severity;
+        std::uint64_t timestamp;
+        std::string message;
+    };
+
+    std::list<LogMessage>& getMessages();
+
+    inline void log(const std::string& severity, const std::string& message, std::ostream& out = std::cout) {
         // TODO: write to file?
         const auto currentTime = std::chrono::system_clock::now();
 
-        const auto timet = std::chrono::system_clock::to_time_t(currentTime);
-        out << "[" << severity << "] (" << std::put_time(std::localtime(&timet), "%F %T") << ") " << message << '\n';
+        out << "[" << severity << "] (T " << currentTime.time_since_epoch().count() << ") " << message << '\n';
+
+        getMessages().emplace_back(LogMessage {
+            .severity = severity,
+            .timestamp = static_cast<uint64_t>(currentTime.time_since_epoch().count()),
+            .message = message,
+        });
     }
 
     inline void info(const std::string& message) {

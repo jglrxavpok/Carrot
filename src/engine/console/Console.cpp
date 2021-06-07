@@ -4,6 +4,7 @@
 
 #include "Console.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "RuntimeOption.hpp"
 #include "engine/io/Logging.hpp"
 #include "engine/utils/stringmanip.h"
@@ -59,6 +60,33 @@ namespace Carrot {
         ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags();
 
         if(ImGui::Begin("Console", nullptr, flags)) {
+            if(ImGui::BeginChild("Messages", ImVec2( 0, -ImGui::GetTextLineHeightWithSpacing() * 1.5f))) {
+                auto tableFlags = ImGuiTableFlags_::ImGuiTableFlags_ScrollX
+                        | ImGuiTableFlags_::ImGuiTableFlags_ScrollY
+                        | ImGuiTableFlags_::ImGuiTableFlags_Borders
+                  // TODO     | ImGuiTableFlags_::ImGuiTableFlags_Sortable
+                        | ImGuiTableFlags_::ImGuiTableFlags_Reorderable
+                        | ImGuiTableFlags_::ImGuiTableFlags_SizingFixedFit
+                        ;
+                if(ImGui::BeginTable("Messages table", 3, tableFlags)) {
+                    ImGui::TableSetupColumn("Severity");
+                    ImGui::TableSetupColumn("Timestamp");
+                    ImGui::TableSetupColumn("Message");
+                    ImGui::TableHeadersRow();
+                    for(const auto& message : Carrot::Log::getMessages()) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", message.severity.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%llu", message.timestamp);
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", message.message.c_str());
+                    }
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::EndChild();
+
             autocompleteField.drawField();
         }
         ImGui::End();

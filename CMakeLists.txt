@@ -67,6 +67,7 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAK
 
 set(ENGINE-SOURCES
         src/engine/io/IO.cpp
+        src/engine/io/Logging.cpp
         src/engine/memory/NakedPtr.hpp
         src/engine/Engine.cpp
         src/engine/render/resources/Mesh.cpp
