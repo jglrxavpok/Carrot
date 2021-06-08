@@ -57,9 +57,9 @@ namespace Carrot {
         if(!visible)
             return;
 
-        ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags();
+        ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags() | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse;
 
-        if(ImGui::Begin("Console", nullptr, flags)) {
+        if(ImGui::Begin("Console", &visible, flags)) {
             if(ImGui::BeginChild("Messages", ImVec2( 0, -ImGui::GetTextLineHeightWithSpacing() * 1.5f))) {
                 auto tableFlags = ImGuiTableFlags_::ImGuiTableFlags_ScrollX
                         | ImGuiTableFlags_::ImGuiTableFlags_ScrollY
@@ -76,11 +76,22 @@ namespace Carrot {
                     for(const auto& message : Carrot::Log::getMessages()) {
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();
-                        ImGui::Text("%s", message.severity.c_str());
+                        ImColor color = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
+                        switch(message.severity) {
+                            case Log::Severity::Warning:
+                                color = ImColor(1.0f, 1.0f, 0.0f, 1.0f);
+                                break;
+                            case Log::Severity::Error:
+                                color = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
+                                break;
+                        }
+                        ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, color.Value);
+                        ImGui::Text("%s", Carrot::Log::getSeverityString(message.severity));
                         ImGui::TableNextColumn();
                         ImGui::Text("%llu", message.timestamp);
                         ImGui::TableNextColumn();
                         ImGui::Text("%s", message.message.c_str());
+                        ImGui::PopStyleColor();
                     }
                     ImGui::EndTable();
                 }
