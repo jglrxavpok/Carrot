@@ -7,7 +7,9 @@
 
 namespace Carrot {
 #define VISIT(Type) \
-    void Type ## Expression::visit(ExpressionVisitor& visitor) { visitor.visit ## Type(*this); }
+    std::any Type ## Expression::visit(BaseExpressionVisitor& visitor) {    \
+        return visitor._visit ## Type(*this);                                \
+    }
 
 #define VISIT_T(Type) \
     template<> VISIT(Type)
@@ -41,6 +43,10 @@ namespace Carrot {
     VISIT_T(Abs);
     VISIT_T(Sqrt);
     VISIT_T(Log);
+
+    VISIT(Placeholder);
+    VISIT(Once);
+    VISIT(Prefixed);
 
 #undef VISIT
 #undef VISIT_T

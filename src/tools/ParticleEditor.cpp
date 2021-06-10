@@ -103,22 +103,6 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
     renderGraph.addTemplateSupport();
     updateGraph.addTemplateSupport();
 
-    struct TestTemplateInit: public NodeInitialiserBase {
-        inline EditorNode& operator()(EditorGraph& graph, const rapidjson::Value& json) override {
-            return graph.newNode<TemplateNode>(json);
-        };
-
-        EditorNode& operator()(EditorGraph& graph) override {
-            return graph.newNode<TemplateNode>("vec2length");
-        };
-
-        NodeValidity getValidity(EditorGraph& graph) const override {
-            return NodeValidity::Possible;
-        };
-    };
-
-    updateGraph.addToLibrary("test_template", "Templates", std::make_unique<TestTemplateInit>());
-
     ProjectMenuHolder::attachSettings(settings);
 
     if(settings.currentProject) {
@@ -215,7 +199,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
         if(ImGui::BeginMenu("Tests")) {
             if(ImGui::MenuItem("Print tree")) {
-                auto expressions = renderGraph.generateExpressions();
+                auto expressions = renderGraph.generateExpressionsFromTerminalNodes();
                 for(const auto& expr : expressions) {
                     std::cout << expr->toString() << '\n';
                 }
@@ -223,8 +207,8 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
             }
 
             if(ImGui::MenuItem("Test SPIR-V generation")) {
-                auto expressions = renderGraph.generateExpressions();
-                ParticleShaderGenerator generator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
+                auto expressions = updateGraph.generateExpressionsFromTerminalNodes();
+                ParticleShaderGenerator generator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
 
                 auto result = generator.compileToSPIRV(expressions);
                 IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));

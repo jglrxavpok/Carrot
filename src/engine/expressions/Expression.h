@@ -4,13 +4,14 @@
 
 #pragma once
 
+#include <any>
 #include <memory>
 #include <type_traits>
 #include <string>
 #include "ExpressionType.h"
 
 namespace Carrot {
-    class ExpressionVisitor;
+    class BaseExpressionVisitor;
 
     class Expression: public std::enable_shared_from_this<Expression> {
     public:
@@ -18,7 +19,7 @@ namespace Carrot {
         virtual ~Expression() = default;
 
     public:
-        virtual void visit(ExpressionVisitor& visitor) = 0;
+        virtual std::any visit(BaseExpressionVisitor& visitor) = 0;
 
     public:
         virtual ExpressionType getType() = 0;

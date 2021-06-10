@@ -286,11 +286,16 @@ namespace Tools {
         bool hasChanges() const;
 
     public:
+        Carrot::Engine& getEngine() {
+            return engine;
+        }
+
+    public:
         void loadFromJSON(const rapidjson::Value& json);
 
         rapidjson::Value toJSON(rapidjson::Document& document);
 
-        std::vector<std::shared_ptr<Carrot::Expression>> generateExpressions() const;
+        std::vector<std::shared_ptr<Carrot::Expression>> generateExpressionsFromTerminalNodes() const;
 
         friend class NodeLibraryMenuScope;
     };

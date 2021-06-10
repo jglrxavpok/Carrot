@@ -26,11 +26,6 @@ namespace Tools {
         void updateUpdateGraph(size_t frameIndex);
         void updateRenderGraph(size_t frameIndex);
 
-        void addCommonInputs(Tools::EditorGraph& graph);
-        void addCommonOperators(Tools::EditorGraph& graph);
-        void addCommonLogic(Tools::EditorGraph& graph);
-        void addCommonMath(Tools::EditorGraph& graph);
-
     public:
         void clear();
         bool showUnsavedChangesPopup() override;
@@ -46,5 +41,12 @@ namespace Tools {
         void tick(double deltaTime);
 
         ~ParticleEditor();
+
+    public:
+        static void addCommonInputs(Tools::EditorGraph& graph);
+        static void addCommonOperators(Tools::EditorGraph& graph);
+        static void addCommonLogic(Tools::EditorGraph& graph);
+        static void addCommonMath(Tools::EditorGraph& graph);
+
     };
 }

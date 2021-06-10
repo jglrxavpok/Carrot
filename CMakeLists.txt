@@ -237,6 +237,7 @@ set(TOOLS-SOURCES
         src/tools/TemplateEditor.cpp
         src/tools/nodes/TerminalNodes.cpp
         src/tools/nodes/NodeEditorUtils.cpp
+        src/tools/nodes/Template.cpp
 
         src/tools/generators/ParticleShaderGenerator.cpp
 

@@ -243,31 +243,55 @@ namespace Tools {
         }
 
         void visitSin(Carrot::SinExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Sin);
         }
 
         void visitCos(Carrot::CosExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Cos);
         }
 
         void visitTan(Carrot::TanExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Tan);
         }
 
         void visitExp(Carrot::ExpExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Exp);
         }
 
         void visitAbs(Carrot::AbsExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450FAbs);
         }
 
         void visitSqrt(Carrot::SqrtExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Sqrt);
         }
 
         void visitLog(Carrot::LogExpression& expression) override {
+            visit(expression.getOperand());
             visitGLSLFunction(GLSLstd450Log);
+        }
+
+        void visitPlaceholder(Carrot::PlaceholderExpression& expression) override {
+            throw std::runtime_error("Cannot accept placeholder expression!");
+        }
+
+        void visitPrefixed(Carrot::PrefixedExpression& expression) override {
+            visit(expression.getPrefix());
+            visit(expression.getExpression());
+        }
+
+        void visitOnce(Carrot::OnceExpression& expression) override {
+            if(alreadyVisited.contains(expression.getUUID())) {
+                return;
+            }
+            alreadyVisited.insert(expression.getUUID());
+            visit(expression.getExpressionToExecute());
         }
 
     private:
@@ -275,6 +299,7 @@ namespace Tools {
         std::stack<Id> ids;
         std::stack<Carrot::ExpressionType> types;
         Variables vars;
+        std::unordered_set<Carrot::UUID> alreadyVisited;
 
         void visitGLSLFunction(GLSLstd450 function) {
             auto operand = popID();

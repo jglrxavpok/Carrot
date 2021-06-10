@@ -6,6 +6,7 @@
 #include "../EditorNode.h"
 #include "engine/io/IO.h"
 #include "engine/utils/JSON.h"
+#include "engine/Engine.h"
 #include <filesystem>
 
 namespace Tools {
@@ -51,11 +52,11 @@ namespace Tools {
             );
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
-            throw "TODO";
-        }
+        shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override;
 
     private:
+        void loadInternalGraph(const rapidjson::Value& graphJson);
+
         void load() {
             rapidjson::Document description;
             for(const auto& pathPrefix : Paths) {
@@ -64,6 +65,9 @@ namespace Tools {
                     break;
                 }
             }
+
+            inputPinIndices.clear();
+            outputPinIndices.clear();
 
             THROW_IF(!description.HasMember("title"), "Missing 'title' member");
             THROW_IF(!description.HasMember("inputs"), "Missing 'inputs' member");
@@ -77,11 +81,14 @@ namespace Tools {
                 THROW_IF(!input.HasMember("dimensions"), "Missing 'dimensions' member inside input");
                 auto type = Carrot::ExpressionTypes::fromName(input["type"].GetString());
                 uint32_t dimensions = input["dimensions"].GetInt64();
+                std::string name = input["name"].GetString();
                 if(dimensions == 1) {
-                    newInput(input["name"].GetString(), type);
+                    newInput(name, type);
+                    inputPinIndices[name].push_back(inputs.size());
                 } else {
                     for (int i = 0; i < dimensions; ++i) {
-                        newInput(std::string(input["name"].GetString()) + "[" + std::to_string(i) + "]", type);
+                        inputPinIndices[name].push_back(inputs.size());
+                        newInput(name + "[" + std::to_string(i) + "]", type);
                     }
                 }
             }
@@ -93,17 +100,25 @@ namespace Tools {
                 THROW_IF(!output.HasMember("dimensions"), "Missing 'dimensions' member inside output");
                 auto type = Carrot::ExpressionTypes::fromName(output["type"].GetString());
                 uint32_t dimensions = output["dimensions"].GetInt64();
+                std::string name = output["name"].GetString();
                 if(dimensions == 1) {
-                    newOutput(output["name"].GetString(), type);
+                    outputPinIndices[name].push_back(outputs.size());
+                    newOutput(name, type);
                 } else {
                     for (int i = 0; i < dimensions; ++i) {
-                        newOutput(std::string(output["name"].GetString()) + "[" + std::to_string(i) + "]", type);
+                        outputPinIndices[name].push_back(outputs.size());
+                        newOutput(name + "[" + std::to_string(i) + "]", type);
                     }
                 }
             }
+
+            loadInternalGraph(description["graph"]);
         }
 
     private:
         std::string templateName;
+        std::unordered_map<std::string, std::vector<std::size_t>> inputPinIndices;
+        std::unordered_map<std::string, std::vector<std::size_t>> outputPinIndices;
+        std::unique_ptr<EditorGraph> internalGraph = nullptr;
     };
 }

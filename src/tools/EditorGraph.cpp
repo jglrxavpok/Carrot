@@ -425,7 +425,7 @@ void Tools::EditorGraph::addTemporaryLabel(const string& text) {
     tmpLabels.emplace_back(std::move(TemporaryLabel(text)));
 }
 
-std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExpressions() const {
+std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExpressionsFromTerminalNodes() const {
     std::vector<std::shared_ptr<Carrot::Expression>> result;
 
     for(const auto& terminalNode : terminalNodes) {

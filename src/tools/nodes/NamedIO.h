@@ -10,7 +10,11 @@
 #include "NodeEditorUtils.h"
 
 namespace Tools {
-    /// User-defined black box
+    struct NamedInputPlaceholderData {
+        std::string name;
+        std::uint32_t index;
+    };
+
     template<bool isInput>
     class NamedIONode: public EditorNode {
     public:
@@ -27,9 +31,9 @@ namespace Tools {
         }
 
     public:
-        Carrot::ExpressionType getType() { return type; }
-        std::string getIOName() { return name; }
-        uint32_t getDimensionCount() { return dimensions; };
+        Carrot::ExpressionType getType() const { return type; }
+        const std::string& getIOName() const { return name; }
+        uint32_t getDimensionCount() const { return dimensions; };
 
     public:
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
@@ -41,7 +45,14 @@ namespace Tools {
         }
 
         shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
-            throw std::runtime_error("Not allowed to convert an named IO to an expression");
+            if constexpr (isInput) {
+                auto placeholderData = std::make_shared<NamedInputPlaceholderData>();
+                placeholderData->name = getIOName();
+                placeholderData->index = outputIndex;
+                return std::make_shared<Carrot::PlaceholderExpression>(placeholderData, getType());
+            } else {
+                return getExpressionsFromInput()[outputIndex];
+            }
         }
 
         void renderCenter() override {

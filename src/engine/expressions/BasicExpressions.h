@@ -43,7 +43,7 @@ namespace Carrot {
 
         inline ConstantValue getValue() const { return value; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
 
         inline std::string toString() const override {
             if(type == ExpressionTypes::Float) {
@@ -72,7 +72,7 @@ namespace Carrot {
             return varName + "(" + std::to_string(subIndex) + ")";
         }
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
 
     public:
         ExpressionType getType() override { return variableType; };
@@ -94,7 +94,7 @@ namespace Carrot {
             return varName + "(" + std::to_string(subIndex) + ") = " + value->toString();
         }
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
 
     public:
         ExpressionType getType() override { return ExpressionTypes::Void; };
@@ -125,7 +125,7 @@ namespace Carrot {
             return "{" + contents + "}";
         }
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
 
     public:
         inline std::vector<std::shared_ptr<Expression>>& getSubExpressions() { return value; };
@@ -152,7 +152,7 @@ namespace Carrot {
         inline std::shared_ptr<Expression> getOperand1() const { return left; };
         inline std::shared_ptr<Expression> getOperand2() const { return right; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
     };
 
     using AddExpression = BinaryOperationExpression<std::plus<float>>;
@@ -167,4 +167,23 @@ namespace Carrot {
     };
 
     using ModExpression = BinaryOperationExpression<fmodstruct>;
+
+    class PlaceholderExpression: public Expression {
+    public:
+        inline explicit PlaceholderExpression(std::shared_ptr<void> data, Carrot::ExpressionType type): Expression(), data(data), type(type) {}
+
+        ExpressionType getType() override { return type; }
+
+        inline std::string toString() const override {
+            return "<PLACEHOLDER>";
+        }
+
+        inline std::shared_ptr<void> getData() const { return data; }
+
+        std::any visit(BaseExpressionVisitor& visitor) override;
+
+    private:
+        std::shared_ptr<void> data;
+        Carrot::ExpressionType type;
+    };
 }

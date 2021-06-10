@@ -28,7 +28,7 @@ namespace Carrot {
         inline std::shared_ptr<Expression> getOperand1() const { return left; };
         inline std::shared_ptr<Expression> getOperand2() const { return right; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
     };
 
     using LessExpression = BinaryComparisonExpression<std::less<float>>;
@@ -60,7 +60,7 @@ namespace Carrot {
         inline std::shared_ptr<Expression> getOperand1() const { return left; };
         inline std::shared_ptr<Expression> getOperand2() const { return right; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
     };
 
     struct sbxor {
@@ -90,6 +90,6 @@ namespace Carrot {
 
         inline std::shared_ptr<Expression> getOperand() const { return operand; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
     };
 }

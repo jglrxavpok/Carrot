@@ -23,7 +23,7 @@ namespace Carrot {
 
         std::shared_ptr<Expression> getOperand() const { return operand; };
 
-        void visit(ExpressionVisitor& visitor) override;
+        std::any visit(BaseExpressionVisitor& visitor) override;
     };
 
     namespace __BuiltingFunctionNames {
