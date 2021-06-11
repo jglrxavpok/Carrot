@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 #include "engine/render/resources/BufferView.h"
 #include <string>
+#include "engine/io/Resource.h"
 
 namespace Carrot {
     struct ComputeBinding {
@@ -35,7 +36,7 @@ namespace Carrot {
         mutable vk::DispatchIndirectCommand* dispatchSizes = nullptr;
 
     public:
-        explicit ComputePipeline(Carrot::Engine& engine, std::string filename, const std::map<uint32_t, vector<ComputeBinding>>& bindings);
+        explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, vector<ComputeBinding>>& bindings);
 
         void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const;
 
@@ -49,13 +50,13 @@ namespace Carrot {
     class ComputePipelineBuilder {
     private:
         Carrot::Engine& engine;
-        std::string shaderFilename = "";
+        IO::Resource shaderResource;
         vector<ComputeBinding> bindings;
 
     public:
         explicit ComputePipelineBuilder(Carrot::Engine& engine);
 
-        ComputePipelineBuilder& shader(std::string filename) { shaderFilename = filename; return *this; };
+        ComputePipelineBuilder& shader(IO::Resource shader) { shaderResource = shader; return *this; };
         ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, vk::DescriptorBufferInfo&& info, uint32_t count = 1);
 
         std::unique_ptr<ComputePipeline> build();

@@ -11,6 +11,8 @@
 #include <map>
 #include <engine/render/shaders/Specialization.h>
 #include <engine/render/NamedBinding.h>
+#include <engine/io/Resource.h>
+#include <span>
 
 using namespace std;
 
@@ -40,8 +42,8 @@ namespace Carrot {
                            const map<string, uint32_t>& constants);
 
     public:
-        explicit ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint = "main");
-        explicit ShaderModule(Carrot::VulkanDriver& driver, const vector<uint8_t>& code, const string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource resource, const string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 

@@ -12,7 +12,7 @@
 
 Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): engine(engine) {
     rapidjson::Document description;
-    description.Parse(IO::readFileAsText("resources/materials/"+materialName+".json").c_str());
+    description.Parse(Carrot::IO::readFileAsText("resources/materials/"+materialName+".json").c_str());
 
     string textureName = description["texture"].GetString();
     string pipelineName = description["pipeline"].GetString();

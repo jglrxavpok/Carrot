@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <functional>
 
-namespace IO {
+namespace Carrot::IO {
     /// Reads the contents of a file as a list of bytes
     std::vector<uint8_t> readFile(const std::string& filename);
 

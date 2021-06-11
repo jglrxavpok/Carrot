@@ -6,49 +6,51 @@
 #include <fstream>
 #include <iostream>
 
-std::vector<uint8_t> IO::readFile(const std::string& filename) {
-    if(!std::filesystem::exists(filename))
-        throw std::runtime_error("File does not exist: " + filename);
+namespace Carrot::IO {
+    std::vector<uint8_t> readFile(const std::string& filename) {
+        if (!std::filesystem::exists(filename))
+            throw std::runtime_error("File does not exist: " + filename);
 
-    // start at end of file to get length directly
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        // start at end of file to get length directly
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-    size_t filesize = static_cast<size_t>(file.tellg());
+        size_t filesize = static_cast<size_t>(file.tellg());
 
-    std::vector<uint8_t> contents(filesize);
-    file.seekg(0);
+        std::vector<uint8_t> contents(filesize);
+        file.seekg(0);
 
-    file.read(reinterpret_cast<char*>(contents.data()), filesize);
+        file.read(reinterpret_cast<char *>(contents.data()), filesize);
 
-    file.close();
+        file.close();
 
-    return contents;
-}
-
-std::string IO::readFileAsText(const std::string& filename) {
-    if(!std::filesystem::exists(filename))
-        throw std::runtime_error("File does not exist: " + filename);
-
-    std::ifstream file(filename, std::ios::in);
-
-    std::string contents;
-
-    std::string line;
-    while(getline(file, line)) {
-        if(!contents.empty()) {
-            contents += '\n';
-        }
-        contents += line;
+        return contents;
     }
-    return std::move(contents);
-}
 
-void IO::writeFile(const std::string& filename, void* ptr, size_t length) {
-    std::ofstream file(filename, std::ios::out | std::ios::binary);
-    file.write(static_cast<const char *>(ptr), length);
-}
+    std::string readFileAsText(const std::string& filename) {
+        if (!std::filesystem::exists(filename))
+            throw std::runtime_error("File does not exist: " + filename);
 
-void IO::writeFile(const std::string& filename, IO::WriteToFileFunction function) {
-    std::ofstream file(filename, std::ios::out | std::ios::binary);
-    function(file);
+        std::ifstream file(filename, std::ios::in);
+
+        std::string contents;
+
+        std::string line;
+        while (getline(file, line)) {
+            if (!contents.empty()) {
+                contents += '\n';
+            }
+            contents += line;
+        }
+        return std::move(contents);
+    }
+
+    void writeFile(const std::string& filename, void *ptr, size_t length) {
+        std::ofstream file(filename, std::ios::out | std::ios::binary);
+        file.write(static_cast<const char *>(ptr), length);
+    }
+
+    void writeFile(const std::string& filename, IO::WriteToFileFunction function) {
+        std::ofstream file(filename, std::ios::out | std::ios::binary);
+        function(file);
+    }
 }

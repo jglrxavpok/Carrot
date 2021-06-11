@@ -9,9 +9,23 @@
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const string& filename, const string& entryPoint): Carrot::ShaderModule(driver, IO::readFile(filename), entryPoint) {}
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const string& entryPoint)
+        : driver(driver), entryPoint(entryPoint) {
+    auto code = file.readAll();
+    auto& device = driver.getLogicalDevice();
+    vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
+            .codeSize = static_cast<uint32_t>(file.getSize()),
+            .pCode = reinterpret_cast<const uint32_t*>(code.get()),
+    }, driver.getAllocationCallbacks());
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const vector<uint8_t>& code, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
+    spirv_cross::Parser parser{reinterpret_cast<const uint32_t*>(code.get()), file.getSize()/sizeof(uint32_t)};
+    parser.parse();
+    parsedCode = parser.get_parsed_ir();
+
+    compiler = make_unique<spirv_cross::Compiler>(parsedCode);
+}
+
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
     auto& device = driver.getLogicalDevice();
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),

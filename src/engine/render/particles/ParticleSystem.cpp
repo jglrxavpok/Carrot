@@ -9,6 +9,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/BufferView.h"
+#include "engine/io/Resource.h"
 
 #define DEBUG_PARTICLES 1
 

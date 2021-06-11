@@ -69,6 +69,8 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAK
 set(ENGINE-SOURCES
         src/engine/io/IO.cpp
         src/engine/io/Logging.cpp
+        src/engine/io/FileHandle.cpp
+        src/engine/io/Resource.cpp
         src/engine/memory/NakedPtr.hpp
         src/engine/Engine.cpp
         src/engine/render/resources/Mesh.cpp
@@ -266,7 +268,9 @@ target_link_libraries(Carrot-Tools ${ALL_LIBS})
 
 link_directories(OpenAL_BINARY_DIR)
 add_executable(Carrot-TestAudio ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Audio.cpp)
+add_executable(Carrot-TestResources ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Resources.cpp)
 target_link_libraries(Carrot-TestAudio ${ALL_LIBS})
+target_link_libraries(Carrot-TestResources ${ALL_LIBS})
 
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES

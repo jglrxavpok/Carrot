@@ -26,10 +26,10 @@ unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
     for(const auto& b : bindings) {
         bindingsPerSet[b.setID].push_back(b);
     }
-    return std::make_unique<ComputePipeline>(engine, shaderFilename, bindingsPerSet);
+    return std::make_unique<ComputePipeline>(engine, shaderResource, bindingsPerSet);
 }
 
-Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, std::string filename, const std::map<uint32_t, vector<ComputeBinding>>& bindings):
+Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, vector<ComputeBinding>>& bindings):
         engine(engine), dispatchBuffer(engine.getResourceAllocator().allocateBuffer(sizeof(vk::DispatchIndirectCommand),
                                                                                     vk::BufferUsageFlagBits::eIndirectBuffer,
                                                                                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
@@ -156,7 +156,7 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, std::string fil
     }
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 
-    auto computeStage = ShaderModule(engine.getVulkanDriver(), filename);
+    auto computeStage = ShaderModule(engine.getVulkanDriver(), shaderResource);
 
     // create the pipeline
     std::vector<vk::DescriptorSetLayout> setLayouts{};
