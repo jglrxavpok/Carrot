@@ -6,6 +6,7 @@
 
 #include <SPIRV/SpvBuilder.h>
 #include <vector>
+#include <iostream>
 #include <memory>
 #include <engine/expressions/Expressions.h>
 
@@ -14,14 +15,18 @@ namespace Carrot {
 
     /// Defines how a particle inits, updates and renders itself
     class ParticleBlueprint {
-    private:
-        std::vector<std::shared_ptr<Carrot::SetVariableExpression>> updateActions;
-        std::vector<std::shared_ptr<Carrot::SetVariableExpression>> renderActions;
-
     public:
-        void evaluateUpdateOnCPU(Particle* particle) const;
+        static constexpr char Magic[] = "carrot particle";
 
-        std::vector<uint8_t> compileUpdateToSpirV() const;
-        std::vector<uint8_t> compileRenderToSpirV() const;
+        explicit ParticleBlueprint(const std::string& filename);
+        explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode);
+
+        friend std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
+    private:
+        std::uint32_t version = 0;
+        std::vector<std::uint32_t> computeShaderCode;
+        std::vector<std::uint32_t> fragmentShaderCode;
     };
+
+    std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
 }

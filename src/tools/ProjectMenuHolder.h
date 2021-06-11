@@ -111,7 +111,7 @@ namespace Tools {
             }
         }
 
-        bool triggerSaveAs(std::filesystem::path path) {
+        bool triggerSaveAs(std::filesystem::path& path) {
             nfdchar_t* savePath;
 
             // prepare filters for the dialog

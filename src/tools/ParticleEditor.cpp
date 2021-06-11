@@ -18,6 +18,7 @@
 #include "engine/io/IO.h"
 #include "engine/utils/JSON.h"
 #include "tools/generators/ParticleShaderGenerator.h"
+#include "engine/render/particles/ParticleBlueprint.h"
 
 #include <spirv_glsl.hpp>
 #include <nfd.h>
@@ -207,13 +208,25 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
             }
 
             if(ImGui::MenuItem("Test SPIR-V generation")) {
-                auto expressions = updateGraph.generateExpressionsFromTerminalNodes();
-                ParticleShaderGenerator generator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
+                auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
+                auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
+                ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
+                ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
 
-                auto result = generator.compileToSPIRV(expressions);
-                IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
+                auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
+                auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
 
-                std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
+                Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
+                // TODO: let user decide output file
+                IO::writeFile("test-particle.particle", [&](std::ostream& out) {
+                   out << blueprint;
+                });
+
+                Carrot::ParticleBlueprint loadTest("test-particle.particle");
+//                IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
+
+                /* can be useful for debugging:
+                 std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
 
                 spirv_cross::CompilerGLSL compiler(result);
 
@@ -222,7 +235,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 options.vulkan_semantics = true;
                 compiler.set_common_options(options);
 
-                std::cout << compiler.compile() << std::endl;
+                std::cout << compiler.compile() << std::endl;*/
             }
 
             ImGui::EndMenu();

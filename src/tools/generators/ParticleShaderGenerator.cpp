@@ -75,7 +75,7 @@ namespace Tools {
                 ids.push(vars.particleIndex);
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetEmissionID)) {
-                ids.push(builder.createLoad(vars.emissionID, spv::NoPrecision));
+                ids.push(vars.emissionID);
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetPosition)) {
                 auto access = builder.createAccessChain(spv::StorageClassStorageBuffer, vars.position,

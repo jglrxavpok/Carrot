@@ -145,8 +145,8 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     world.tick(0);
     world.onFrame(0);
 
-    blueprint = make_unique<ParticleBlueprint>();
-    particles = make_unique<ParticleSystem>(engine, *blueprint, 1000ul);
+    blueprint = make_unique<ParticleBlueprint>("resources/particles/test.particle");
+    particles = make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
     auto emitter = particles->createEmitter();
 
     float f = sqrt(maxInstanceCount) * spacing / 2.0f;

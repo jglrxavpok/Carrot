@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <functional>
 
 namespace IO {
     /// Reads the contents of a file as a list of bytes
@@ -15,4 +16,8 @@ namespace IO {
     std::string readFileAsText(const std::string& filename);
 
     void writeFile(const std::string& filename, void* ptr, size_t length);
+
+    using WriteToFileFunction = std::function<void(std::ofstream& out)>;
+
+    void writeFile(const std::string& filename, WriteToFileFunction function);
 }

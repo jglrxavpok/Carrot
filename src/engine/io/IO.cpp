@@ -47,3 +47,8 @@ void IO::writeFile(const std::string& filename, void* ptr, size_t length) {
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(static_cast<const char *>(ptr), length);
 }
+
+void IO::writeFile(const std::string& filename, IO::WriteToFileFunction function) {
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    function(file);
+}
