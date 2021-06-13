@@ -218,7 +218,7 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
                 Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
                 // TODO: let user decide output file
-                IO::writeFile("test-particle.particle", [&](std::ostream& out) {
+                Carrot::IO::writeFile("test-particle.particle", [&](std::ostream& out) {
                    out << blueprint;
                 });
 
@@ -227,8 +227,8 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
 
                 /* can be useful for debugging:
                  std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
-
-                spirv_cross::CompilerGLSL compiler(result);
+*/
+               /* spirv_cross::CompilerGLSL compiler(blueprint.getComputeShader());
 
                 spirv_cross::CompilerGLSL::Options options;
                 options.version = 450;
@@ -287,7 +287,7 @@ void Tools::ParticleEditor::performLoad(std::filesystem::path fileToOpen) {
         return;
     }
     rapidjson::Document description;
-    description.Parse(IO::readFileAsText(fileToOpen.string()).c_str());
+    description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
 
     updateGraph.loadFromJSON(description["update_graph"]);
     renderGraph.loadFromJSON(description["render_graph"]);

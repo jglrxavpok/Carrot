@@ -61,7 +61,7 @@ namespace Tools {
             rapidjson::Document description;
             for(const auto& pathPrefix : Paths) {
                 if(std::filesystem::exists(pathPrefix)) {
-                    description.Parse(IO::readFileAsText(pathPrefix + "/" + templateName + ".json").c_str());
+                    description.Parse(Carrot::IO::readFileAsText(pathPrefix + "/" + templateName + ".json").c_str());
                     break;
                 }
             }

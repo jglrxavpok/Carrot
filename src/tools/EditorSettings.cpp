@@ -22,7 +22,7 @@ void Tools::EditorSettings::load() {
     }
 
     rapidjson::Document description;
-    description.Parse(IO::readFileAsText(settingsFile.string()).c_str());
+    description.Parse(Carrot::IO::readFileAsText(settingsFile.string()).c_str());
 
     auto projects = description["recent_projects"].GetArray();
     for(const auto& project : projects) {

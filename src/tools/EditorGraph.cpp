@@ -477,7 +477,7 @@ void Tools::EditorGraph::addTemplatesToLibrary() {
                 auto templateName = path.stem();
 
                 rapidjson::Document description;
-                description.Parse(IO::readFileAsText(path.string()).c_str());
+                description.Parse(Carrot::IO::readFileAsText(path.string()).c_str());
 
                 std::string title = description["title"].GetString();
                 std::string menuLocation = description["menu_location"].GetString();

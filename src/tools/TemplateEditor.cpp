@@ -68,7 +68,7 @@ void Tools::TemplateEditor::performLoad(filesystem::path fileToOpen) {
         return;
     }
     rapidjson::Document description;
-    description.Parse(IO::readFileAsText(fileToOpen.string()).c_str());
+    description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
 
     title = description["title"].GetString();
     menuLocation = description["menu_location"].GetString();

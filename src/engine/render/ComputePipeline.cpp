@@ -9,7 +9,7 @@ Carrot::ComputePipelineBuilder::ComputePipelineBuilder(Carrot::Engine& engine): 
 
 }
 
-Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, vk::DescriptorBufferInfo&& info, uint32_t count) {
+Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo info, uint32_t count) {
     ComputeBinding binding{};
     binding.type = type;
     binding.count = count;

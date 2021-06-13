@@ -4,6 +4,8 @@
 
 #include "ParticleBlueprint.h"
 #include "engine/io/IO.h"
+#include "engine/io/Resource.h"
+#include "engine/render/ComputePipeline.h"
 
 struct Header {
     char magic[16];
@@ -54,4 +56,12 @@ std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBluepr
     out.write(reinterpret_cast<const char *>(blueprint.computeShaderCode.data()), blueprint.computeShaderCode.size() * sizeof(uint32_t));
     out.write(reinterpret_cast<const char *>(blueprint.fragmentShaderCode.data()), blueprint.fragmentShaderCode.size() * sizeof(uint32_t));
     return out;
+}
+
+std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statisticsBuffer) {
+    return ComputePipelineBuilder(engine)
+            .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer)
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 1, particleBuffer)
+            .build();
 }

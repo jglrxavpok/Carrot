@@ -45,12 +45,7 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
 
     std::fill(particlePool, particlePoolEnd, Particle{});
 
-    auto computeBuilder = ComputePipelineBuilder(engine)
-            .shader("resources/shaders/compute/particles.compute.glsl.spv")
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer.asBufferInfo())
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 1, particleBuffer.asBufferInfo())
-            ;
-    updateParticlesCompute = computeBuilder.build();
+    updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
 
     statistics = statisticsBuffer.map<ParticleStatistics>();
 }

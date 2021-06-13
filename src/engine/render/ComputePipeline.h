@@ -57,7 +57,7 @@ namespace Carrot {
         explicit ComputePipelineBuilder(Carrot::Engine& engine);
 
         ComputePipelineBuilder& shader(IO::Resource shader) { shaderResource = shader; return *this; };
-        ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, vk::DescriptorBufferInfo&& info, uint32_t count = 1);
+        ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo info, uint32_t count = 1);
 
         std::unique_ptr<ComputePipeline> build();
     };

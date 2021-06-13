@@ -24,6 +24,12 @@ namespace Carrot::IO {
         this->data.raw = container;
     }
 
+    Resource::Resource(const std::span<std::uint8_t>& data): data(true) {
+        auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
+        std::memcpy(container->data(), data.data(), data.size());
+        this->data.raw = container;
+    }
+
     Resource::Resource(const Resource& toCopy): data(toCopy.data.isRawData) {
         if(data.isRawData) {
             data.raw = toCopy.data.raw;
