@@ -6,6 +6,7 @@
 #include "engine/io/IO.h"
 #include "engine/io/Resource.h"
 #include "engine/render/ComputePipeline.h"
+#include "engine/render/GBuffer.h"
 
 struct Header {
     char magic[16];
@@ -58,10 +59,23 @@ std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBluepr
     return out;
 }
 
-std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statisticsBuffer) {
+std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statisticsBuffer) const {
     return ComputePipelineBuilder(engine)
             .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer)
             .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 1, particleBuffer)
             .build();
+}
+
+std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipeline(Carrot::Engine& engine) const {
+    Carrot::PipelineDescription desc;
+
+    desc.subpassIndex = 0;
+    desc.vertexFormat = VertexFormat::Particle;
+    desc.materialStorageBufferBindingIndex = -1;
+    desc.texturesBindingIndex = -1;
+    desc.vertexShader = "resources/shaders/particles.vertex.glsl.spv";
+    desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
+
+    return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), engine.getRenderer().getGRenderPass(), desc);
 }

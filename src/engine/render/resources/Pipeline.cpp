@@ -14,36 +14,28 @@
 #include "engine/render/DebugBufferObject.h"
 #include <engine/io/Logging.hpp>
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const string& pipelineName): driver(driver), renderPass(renderPass) {
-    rapidjson::Document description;
-    description.Parse(IO::readFileAsText("resources/pipelines/"+pipelineName+".json").c_str());
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription):
+    Carrot::Pipeline::Pipeline(driver, renderPass, PipelineDescription(pipelineDescription)) {
 
+}
+
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const PipelineDescription description): driver(driver), renderPass(renderPass), description(description) {
     auto& device = driver.getLogicalDevice();
     stages = make_unique<Carrot::ShaderStages>(driver,
-                                               vector<string> {
-                                                     description["vertexShader"].GetString(),
-                                                     description["fragmentShader"].GetString()
-                                             });
+                                                std::vector<Carrot::IO::Resource> {
+                                                    description.vertexShader,
+                                                    description.fragmentShader
+                                                },
+                                               std::vector<vk::ShaderStageFlagBits> {
+                                                    vk::ShaderStageFlagBits::eVertex,
+                                                    vk::ShaderStageFlagBits::eFragment
+                                                }
+                                                );
 
-    string typeStr = description["type"].GetString();
-    type = getPipelineType(typeStr);
+    descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
 
-    if(description.HasMember("subpassIndex")) {
-        subpassIndex = description["subpassIndex"].GetUint64();
-    }
-
-    if(description.HasMember("constants")) {
-        for(const auto& constant : description["constants"].GetObject()) {
-            constants[constant.name.GetString()] = constant.value.GetUint64();
-        }
-    }
-    descriptorSetLayout0 = stages->createDescriptorSetLayout0(constants);
-
-    string vertexFormatStr = description["vertexFormat"].GetString();
-    vertexFormat = Carrot::getVertexFormat(vertexFormatStr);
-
-    vector<vk::VertexInputBindingDescription> descriptions = Carrot::getBindingDescriptions(vertexFormat);
-    vector<vk::VertexInputAttributeDescription> attributes = Carrot::getAttributeDescriptions(vertexFormat);
+    vector<vk::VertexInputBindingDescription> descriptions = Carrot::getBindingDescriptions(description.vertexFormat);
+    vector<vk::VertexInputAttributeDescription> attributes = Carrot::getAttributeDescriptions(description.vertexFormat);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
             .vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size()),
@@ -54,9 +46,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
     };
 
     vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-    if(description.HasMember("topology")) {
-        // TODO
-    }
+
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
             .topology = topology,
@@ -71,7 +61,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
             .polygonMode = vk::PolygonMode::eFill,
 
-            .cullMode = type == Type::Skybox ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eFront,
+            .cullMode = description.type == PipelineType::Skybox ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eFront,
             .frontFace = vk::FrontFace::eClockwise,
 
             // TODO: change for shadow maps
@@ -92,8 +82,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
             .alphaToOneEnable = false,
     };
     vk::PipelineDepthStencilStateCreateInfo depthStencil {
-            .depthTestEnable = type != Type::GResolve,
-            .depthWriteEnable = type != Type::GResolve && type != Type::Skybox,
+            .depthTestEnable = description.type != PipelineType::GResolve,
+            .depthWriteEnable = description.type != PipelineType::GResolve && description.type != PipelineType::Skybox,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
@@ -107,7 +97,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
     vector<vk::PipelineColorBlendAttachmentState> colorBlendingStates =
             {
-            static_cast<size_t>(type == Type::Particles || type == Type::GBuffer ? 4 : 1),
+            static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
             colorBlendAttachment
             };
 
@@ -124,7 +114,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
     vector<vk::DescriptorSetLayout> layouts{};
     layouts.push_back(*descriptorSetLayout0);
-    if(vertexFormat == VertexFormat::SkinnedVertex) {
+    if(description.vertexFormat == VertexFormat::SkinnedVertex) {
         vk::DescriptorSetLayoutBinding binding {
                 .binding = 0,
                 .descriptorType = vk::DescriptorType::eStorageBuffer,
@@ -185,22 +175,21 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
     vector<Specialization> specializations{};
     vector<uint32_t> specializationData{}; // TODO: support something else than uint32
-    if(description.HasMember("constants")) {
-        for(const auto& constants : description["constants"].GetObject()) {
-            if("MAX_MATERIALS" == constants.name) {
-                maxMaterialID = constants.value.GetUint64();
-            }
-            if("MAX_TEXTURES" == constants.name) {
-                maxTextureID = constants.value.GetUint64();
-            }
-            Carrot::Log::info("Specializing constant %s to value %llu", constants.name.GetString(), constants.value.GetUint64());
-            specializations.push_back(Specialization {
-                    .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
-                    .size = sizeof(uint32_t),
-                    .constantID = static_cast<uint32_t>(specializations.size()), // TODO: Map name to index
-            });
-            specializationData.push_back(static_cast<uint32_t>(constants.value.GetUint64()));
+
+    for(const auto& [constantName, constantValue] : description.constants) {
+        if("MAX_MATERIALS" == constantName) {
+            maxMaterialID = constantValue;
         }
+        if("MAX_TEXTURES" == constantName) {
+            maxTextureID = constantValue;
+        }
+        Carrot::Log::info("Specializing constant %s to value %llu", constantName, constantValue);
+        specializations.push_back(Specialization {
+                .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
+                .size = sizeof(uint32_t),
+                .constantID = static_cast<uint32_t>(specializations.size()), // TODO: Map name to index
+        });
+        specializationData.push_back(static_cast<uint32_t>(constantValue));
     }
 
     uint32_t totalDataSize = 0;
@@ -232,12 +221,12 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
 
             .layout = *layout,
             .renderPass = renderPass,
-            .subpass = static_cast<uint32_t>(subpassIndex),
+            .subpass = static_cast<uint32_t>(description.subpassIndex),
     };
 
     vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, driver.getAllocationCallbacks());
 
-    if(type == Type::GBuffer) {
+    if(description.type == PipelineType::GBuffer) {
         materialStorageBuffer = make_unique<Buffer>(driver,
                                                     sizeof(MaterialData)*maxMaterialID,
                                                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
@@ -248,19 +237,14 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
         materialStorageBuffer->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0), zeroes));
     }
 
-    if(description.HasMember("texturesBindingIndex"))
-        texturesBindingIndex = description["texturesBindingIndex"].GetUint64();
-    if(description.HasMember("materialStorageBufferBindingIndex"))
-        materialsBindingIndex = description["materialStorageBufferBindingIndex"].GetUint64();
-
     recreateDescriptorPool(driver.getSwapchainImageCount());
 }
 
 void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
     commands.bindPipeline(bindPoint, *vkPipeline);
-    if(type == Type::GBuffer) {
+    if(description.type == PipelineType::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
-    } else if(type == Type::Blit) {
+    } else if(description.type == PipelineType::Blit) {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {});
     } else {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
@@ -287,7 +271,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindingsSet0(stage, bindings, constants);
+        module->addBindingsSet0(stage, bindings, description.constants);
     }
 
     for(const auto& binding : bindings) {
@@ -313,7 +297,7 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     descriptorSets0 = allocateDescriptorSets0();
 
-    if(type == Type::GBuffer) {
+    if(description.type == PipelineType::GBuffer) {
         for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
             vk::DescriptorBufferInfo storageBufferInfo{
                     .buffer = materialStorageBuffer->getVulkanBuffer(),
@@ -325,12 +309,12 @@ void Carrot::Pipeline::allocateDescriptorSets() {
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
             writes[0].pBufferInfo = &storageBufferInfo;
-            writes[0].dstBinding = materialsBindingIndex;
+            writes[0].dstBinding = description.materialStorageBufferBindingIndex;
 
             writes[1].dstSet = descriptorSets0[imageIndex];
             writes[1].descriptorCount = maxTextureID;
             writes[1].descriptorType = vk::DescriptorType::eSampledImage;
-            writes[1].dstBinding = texturesBindingIndex;
+            writes[1].dstBinding = description.texturesBindingIndex;
 
             vector<vk::DescriptorImageInfo> imageInfoStructs {maxTextureID};
             writes[1].pImageInfo = imageInfoStructs.data();
@@ -357,7 +341,7 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
 
     vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindingsSet0(stage, bindings, constants);
+        module->addBindingsSet0(stage, bindings, description.constants);
     }
 
     // allocate default values
@@ -456,7 +440,7 @@ void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView
     };
     vk::WriteDescriptorSet write {
             .dstSet = descriptorSets0[imageIndex],
-            .dstBinding = texturesBindingIndex,
+            .dstBinding = static_cast<std::uint32_t>(description.texturesBindingIndex),
             .dstArrayElement = id,
             .descriptorCount = 1,
             .descriptorType = vk::DescriptorType::eSampledImage,
@@ -478,22 +462,22 @@ void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
 }
 
 Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
-    return vertexFormat;
+    return description.vertexFormat;
 }
 
-Carrot::Pipeline::Type Carrot::Pipeline::getPipelineType(const string& name) {
+Carrot::PipelineType Carrot::Pipeline::getPipelineType(const string& name) {
     if(name == "gResolve") {
-        return Type::GResolve;
+        return PipelineType::GResolve;
     } else if(name == "gbuffer") {
-        return Type::GBuffer;
+        return PipelineType::GBuffer;
     } else if(name == "blit") {
-        return Type::Blit;
+        return PipelineType::Blit;
     } else if(name == "skybox") {
-        return Type::Skybox;
+        return PipelineType::Skybox;
     } else if(name == "particles") {
-        return Type::Particles;
+        return PipelineType::Particles;
     }
-    return Type::Unknown;
+    return PipelineType::Unknown;
 }
 
 void Carrot::Pipeline::onSwapchainImageCountChange(size_t newCount) {
@@ -510,4 +494,26 @@ void Carrot::Pipeline::onSwapchainImageCountChange(size_t newCount) {
 
 void Carrot::Pipeline::onSwapchainSizeChange(int newWidth, int newHeight) {
 
+}
+
+Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource jsonFile) {
+    rapidjson::Document json;
+    json.Parse(jsonFile.readText().c_str());
+
+    if(json.HasMember("texturesBindingIndex"))
+        texturesBindingIndex = json["texturesBindingIndex"].GetUint64();
+    if(json.HasMember("materialStorageBufferBindingIndex"))
+        materialStorageBufferBindingIndex = json["materialStorageBufferBindingIndex"].GetUint64();
+
+    subpassIndex = json["subpassIndex"].GetUint64();
+    vertexShader = json["vertexShader"].GetString();
+    fragmentShader = json["fragmentShader"].GetString();
+    vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());
+    type = Pipeline::getPipelineType(json["type"].GetString());
+
+    if(json.HasMember("constants")) {
+        for(const auto& constant : json["constants"].GetObject()) {
+            constants[std::string(constant.name.GetString())] = static_cast<std::uint32_t>(constant.value.GetUint64());
+        }
+    }
 }

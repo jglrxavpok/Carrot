@@ -123,6 +123,15 @@ namespace Carrot::IO {
         return read(getSize());
     }
 
+    std::string Resource::readText() const {
+        auto buffer = readAll();
+        const char* str = reinterpret_cast<const char *>(buffer.get());
+        std::string result;
+        result.resize(getSize()+1, '\0');
+        std::memcpy(result.data(), str, getSize());
+        return result;
+    }
+
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {
     }
 

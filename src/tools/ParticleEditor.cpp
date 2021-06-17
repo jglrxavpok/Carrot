@@ -223,19 +223,21 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
                 });
 
                 Carrot::ParticleBlueprint loadTest("test-particle.particle");
-//                IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
 
-                /* can be useful for debugging:
+                auto& result = blueprint.getFragmentShader();
+                Carrot::IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
+
+                /* can be useful for debugging:*/
                  std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
-*/
-               /* spirv_cross::CompilerGLSL compiler(blueprint.getComputeShader());
+
+                spirv_cross::CompilerGLSL compiler(result);
 
                 spirv_cross::CompilerGLSL::Options options;
                 options.version = 450;
                 options.vulkan_semantics = true;
                 compiler.set_common_options(options);
 
-                std::cout << compiler.compile() << std::endl;*/
+                std::cout << compiler.compile() << std::endl;
             }
 
             ImGui::EndMenu();

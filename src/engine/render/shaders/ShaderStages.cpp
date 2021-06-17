@@ -5,7 +5,7 @@
 #include "ShaderStages.h"
 
 Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const vector<string>& filenames): driver(driver) {
-    for(const string& filename : filenames) {
+    for(const auto& filename: filenames) {
         auto stage = static_cast<vk::ShaderStageFlagBits>(0);
         if(filename.ends_with(".vertex.glsl.spv")) {
             stage = vk::ShaderStageFlagBits::eVertex;
@@ -23,6 +23,12 @@ Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const vector<st
             stage = vk::ShaderStageFlagBits::eRaygenKHR;
         }
         stages.emplace_back(make_pair(stage, move(make_unique<ShaderModule>(driver, filename))));
+    }
+}
+
+Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const vector<Carrot::IO::Resource>& resources, const vector<vk::ShaderStageFlagBits>& stages): driver(driver) {
+    for(size_t i = 0; i < resources.size(); i++) {
+        this->stages.emplace_back(make_pair(stages[i], move(make_unique<ShaderModule>(driver, resources[i]))));
     }
 }
 

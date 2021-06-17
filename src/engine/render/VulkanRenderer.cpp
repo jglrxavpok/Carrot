@@ -25,7 +25,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
 shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name) {
     auto it = pipelines.find(name);
     if(it == pipelines.end()) {
-        pipelines[name] = make_shared<Pipeline>(driver, *gRenderPass, name);
+        pipelines[name] = make_shared<Pipeline>(driver, *gRenderPass, "resources/pipelines/"+name+".json");
     }
     return pipelines[name];
 }

@@ -36,6 +36,8 @@ namespace Carrot::IO {
         void readAll(void* buffer) const;
         std::unique_ptr<uint8_t[]> readAll() const;
 
+        std::string readText() const;
+
     public:
         void writeToFile(const std::string& filename, uint64_t offset = 0) const;
         void writeToFile(FileHandle& file, uint64_t offset = 0) const;

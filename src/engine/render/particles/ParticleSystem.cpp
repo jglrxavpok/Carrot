@@ -40,7 +40,7 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
     particlePool = particleBuffer.map<Particle>();
     particlePoolEnd = particlePool + maxParticleCount;
 
-    renderingPipeline = engine.getRenderer().getOrCreatePipeline("particles");
+    renderingPipeline = blueprint.buildRenderingPipeline(engine);
     onSwapchainImageCountChange(engine.getSwapchainImageCount());
 
     std::fill(particlePool, particlePoolEnd, Particle{});

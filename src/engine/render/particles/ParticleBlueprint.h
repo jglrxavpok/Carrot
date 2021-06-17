@@ -28,7 +28,8 @@ namespace Carrot {
         friend std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
 
     public:
-        std::unique_ptr<ComputePipeline> buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statsBuffer);
+        std::unique_ptr<ComputePipeline> buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statsBuffer) const;
+        std::unique_ptr<Pipeline> buildRenderingPipeline(Carrot::Engine& engine) const;
 
     public:
         const std::vector<std::uint32_t>& getComputeShader() const { return computeShaderCode; }

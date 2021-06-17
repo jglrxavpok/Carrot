@@ -766,7 +766,7 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
                                                            vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor,
                                                            vk::ImageViewType::eCube, 6
                                                            );
-        skyboxPipeline = make_shared<Pipeline>(vkDriver, renderer.getSkyboxRenderPass(), "skybox");
+        skyboxPipeline = make_shared<Pipeline>(vkDriver, renderer.getSkyboxRenderPass(), "resources/pipelines/skybox.json");
         skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
 
         updateSkyboxCommands();
