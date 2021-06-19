@@ -25,65 +25,50 @@ Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& ra
 }
 
 void Carrot::GBuffer::generateImages() {
-    albedoImages.resize(renderer.getSwapchainImageCount());
-    albedoImageViews.resize(renderer.getSwapchainImageCount());
-
-    depthImages.resize(renderer.getSwapchainImageCount());
-    depthStencilImageViews.resize(renderer.getSwapchainImageCount());
-    depthOnlyImageViews.resize(renderer.getSwapchainImageCount());
-
-    viewPositionImages.resize(renderer.getSwapchainImageCount());
-    viewPositionImageViews.resize(renderer.getSwapchainImageCount());
-
-    viewNormalImages.resize(renderer.getSwapchainImageCount());
-    viewNormalImageViews.resize(renderer.getSwapchainImageCount());
-
-    intPropertiesImages.resize(renderer.getSwapchainImageCount());
-    intPropertiesImageViews.resize(renderer.getSwapchainImageCount());
+    albedoTextures.resize(renderer.getSwapchainImageCount());
+    depthStencilTextures.resize(renderer.getSwapchainImageCount());
+    viewPositionTextures.resize(renderer.getSwapchainImageCount());
+    viewNormalTextures.resize(renderer.getSwapchainImageCount());
+    intPropertiesTextures.resize(renderer.getSwapchainImageCount());
 
     for(size_t index = 0; index < renderer.getSwapchainImageCount(); index++) {
         // Albedo
         auto swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
-        albedoImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+        albedoTextures[index] = move(make_unique<Render::Texture>(renderer.getVulkanDriver(),
                                                       vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                       vk::Format::eR8G8B8A8Unorm));
 
-        auto view = albedoImages[index]->createImageView();
-        albedoImageViews[index] = std::move(view);
 
         // Depth
-        depthImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+        depthStencilTextures[index] = move(make_unique<Render::Texture>(renderer.getVulkanDriver(),
                                                      vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                     vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                     vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                      renderer.getVulkanDriver().getDepthFormat()));
 
-        depthStencilImageViews[index] = move(renderer.getVulkanDriver().createImageView(depthImages[index]->getVulkanImage(), renderer.getVulkanDriver().getDepthFormat(), vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil));
-        depthOnlyImageViews[index] = move(renderer.getVulkanDriver().createImageView(depthImages[index]->getVulkanImage(), renderer.getVulkanDriver().getDepthFormat(), vk::ImageAspectFlagBits::eDepth));
-
         // View-space positions
-        viewPositionImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+        viewPositionTextures[index] = move(make_unique<Render::Texture>(renderer.getVulkanDriver(),
                                                             vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                             vk::Format::eR32G32B32A32Sfloat));
 
-        viewPositionImageViews[index] = std::move(viewPositionImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
-
         // View-space normals
-        viewNormalImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+        viewNormalTextures[index] = move(make_unique<Render::Texture>(renderer.getVulkanDriver(),
                                                           vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                           vk::Format::eR32G32B32A32Sfloat));
 
-        viewNormalImageViews[index] = std::move(viewNormalImages[index]->createImageView(vk::Format::eR32G32B32A32Sfloat));
-
         // Bitfield for per-pixel properties
-        intPropertiesImages[index] = move(make_unique<Image>(renderer.getVulkanDriver(),
+        intPropertiesTextures[index] = move(make_unique<Render::Texture>(renderer.getVulkanDriver(),
                                                           vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
-                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+                                                          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
                                                           vk::Format::eR32Uint));
 
-        intPropertiesImageViews[index] = std::move(intPropertiesImages[index]->createImageView(vk::Format::eR32Uint));
+        albedoTextures[index]->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        depthStencilTextures[index]->assumeLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+        viewPositionTextures[index]->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        viewNormalTextures[index]->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        intPropertiesTextures[index]->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
     }
 }
 
@@ -96,7 +81,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
     for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
         // albedo
         auto& albedoInfo = imageInfo[i*imageCount];
-        albedoInfo.imageView = *albedoImageViews[i];
+        albedoInfo.imageView = albedoTextures[i]->getView();
         albedoInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         albedoInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
@@ -110,7 +95,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // depth
         auto& depthInfo = imageInfo[i*imageCount+1];
-        depthInfo.imageView = *depthOnlyImageViews[i];
+        depthInfo.imageView = depthStencilTextures[i]->getView(vk::ImageAspectFlagBits::eDepth);
         depthInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         depthInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
@@ -124,7 +109,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // view-space positions
         auto& viewPositionInfo = imageInfo[i*imageCount+2];
-        viewPositionInfo.imageView = *viewPositionImageViews[i];
+        viewPositionInfo.imageView = viewPositionTextures[i]->getView();
         viewPositionInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         viewPositionInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
@@ -138,7 +123,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // normals
         auto& viewNormalInfo = imageInfo[i*imageCount+3];
-        viewNormalInfo.imageView = *viewNormalImageViews[i];
+        viewNormalInfo.imageView = viewNormalTextures[i]->getView();
         viewNormalInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         viewNormalInfo.sampler = renderer.getVulkanDriver().getLinearSampler();
 
@@ -152,7 +137,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // bitfield
         auto& intPropertiesInfo = imageInfo[i*imageCount+4];
-        intPropertiesInfo.imageView = *intPropertiesImageViews[i];
+        intPropertiesInfo.imageView = intPropertiesTextures[i]->getView();
         intPropertiesInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         intPropertiesInfo.sampler = renderer.getVulkanDriver().getNearestSampler();
 
@@ -166,7 +151,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // raytraced lighting
         auto& lightingNfo = imageInfo[i*imageCount+5];
-        lightingNfo.imageView = *raytracer.getLightingImageViews()[i];
+        lightingNfo.imageView = raytracer.getLightingTextures()[i]->getView();
         lightingNfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         lightingNfo.sampler = nullptr;
 
@@ -180,7 +165,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // ui
         auto& uiInfo = imageInfo[i*imageCount+6];
-        uiInfo.imageView = *renderer.getUIImageViews()[i];
+        uiInfo.imageView = renderer.getUITextures()[i]->getView();
         uiInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         uiInfo.sampler = nullptr;
 
@@ -194,7 +179,7 @@ void Carrot::GBuffer::loadResolvePipeline() {
 
         // skybox
         auto& skyboxInfo = imageInfo[i*imageCount+7];
-        skyboxInfo.imageView = *renderer.getSkyboxImageViews()[i];
+        skyboxInfo.imageView = renderer.getSkyboxTextures()[i]->getView();
         skyboxInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         skyboxInfo.sampler = nullptr;
 
@@ -226,11 +211,11 @@ void Carrot::GBuffer::recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& 
 }
 
 void Carrot::GBuffer::addFramebufferAttachments(uint32_t frameIndex, vector<vk::ImageView>& attachments) {
-    attachments.push_back(*depthOnlyImageViews[frameIndex]);
-    attachments.push_back(*albedoImageViews[frameIndex]);
-    attachments.push_back(*viewPositionImageViews[frameIndex]);
-    attachments.push_back(*viewNormalImageViews[frameIndex]);
-    attachments.push_back(*intPropertiesImageViews[frameIndex]);
+    attachments.push_back(depthStencilTextures[frameIndex]->getView(vk::ImageAspectFlagBits::eDepth));
+    attachments.push_back(albedoTextures[frameIndex]->getView());
+    attachments.push_back(viewPositionTextures[frameIndex]->getView());
+    attachments.push_back(viewNormalTextures[frameIndex]->getView());
+    attachments.push_back(intPropertiesTextures[frameIndex]->getView());
 }
 
 vk::UniqueRenderPass Carrot::GBuffer::createRenderPass() {

@@ -80,6 +80,7 @@ set(ENGINE-SOURCES
         src/engine/render/resources/BufferView.cpp
         src/engine/render/resources/Image.cpp
         src/engine/render/resources/ResourceAllocator.cpp
+        src/engine/render/resources/Texture.cpp
         src/engine/render/Material.cpp
         src/engine/render/shaders/ShaderModule.cpp
         src/engine/render/shaders/ShaderStages.cpp

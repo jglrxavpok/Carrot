@@ -8,6 +8,7 @@
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
+#include "engine/render/resources/Texture.h"
 #include "engine/io/Logging.hpp"
 #include <iostream>
 #include <map>
@@ -508,12 +509,11 @@ std::set<uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() 
 }
 
 void Carrot::VulkanDriver::createDefaultTexture() {
-    defaultImage = Image::fromFile(*this, "resources/textures/default.png");
-    defaultImageView = move(defaultImage->createImageView());
+    defaultTexture = std::make_unique<Carrot::Render::Texture>(*this, "resources/textures/default.png");
 }
 
-vk::UniqueHandle<vk::ImageView, vk::DispatchLoaderDynamic>& Carrot::VulkanDriver::getDefaultImageView() {
-    return defaultImageView;
+Carrot::Render::Texture& Carrot::VulkanDriver::getDefaultTexture() {
+    return *defaultTexture;
 }
 
 vk::SurfaceFormatKHR Carrot::VulkanDriver::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {

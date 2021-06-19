@@ -32,6 +32,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/GBuffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
+#include "engine/render/resources/Texture.h"
 #include "engine/CarrotGame.h"
 #include "stb_image_write.h"
 #include "LoadingScreen.h"
@@ -259,7 +260,9 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             mainCommandBuffers[i].endRenderPass();
         }
 
-        renderer.getUIImages()[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+        auto& uiTexture = renderer.getUITextures()[i];
+        uiTexture->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        uiTexture->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eShaderReadOnlyOptimal);
 
         vk::RenderPassBeginInfo gRenderPassInfo {
                 .renderPass = renderer.getGRenderPass(),
@@ -295,13 +298,13 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                         .pClearValues = skyboxClear,
                 };
 
-                renderer.getSkyboxImages()[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eColorAttachmentOptimal);
+                renderer.getSkyboxTextures()[i]->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eColorAttachmentOptimal);
 
                 mainCommandBuffers[i].beginRenderPass(skyboxRenderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
                 mainCommandBuffers[i].executeCommands(skyboxCommandBuffers[i]);
                 mainCommandBuffers[i].endRenderPass();
 
-                renderer.getSkyboxImages()[i]->transitionLayoutInline(mainCommandBuffers[i], vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.getSkyboxTextures()[i]->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eShaderReadOnlyOptimal);
             }
         }
 
@@ -374,7 +377,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         static DebugBufferObject debug{};
         static int32_t gIndex = -1;
         if(hasPreviousFrame()) {
-            ImTextureID textureToDisplay = nullptr;
+            Render::Texture* textureToDisplay = nullptr;
             if(ImGui::Begin("GBuffer View")) {
                 ImGui::RadioButton("All channels", &gIndex, -1);
                 ImGui::RadioButton("Albedo", &gIndex, 0);
@@ -386,17 +389,50 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 ImGui::RadioButton("Int Properties", &gIndex, 6);
 
                 // TODO: transition images to shader readonly before draw, transition back to previous state after rendering
-                if(gIndex == -1) textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
-                if(gIndex == 0) textureToDisplay = imguiTextures[lastFrameIndex].albedo;
-                if(gIndex == 1) textureToDisplay = imguiTextures[lastFrameIndex].position;
-                if(gIndex == 2) textureToDisplay = imguiTextures[lastFrameIndex].normal;
-                if(gIndex == 3) textureToDisplay = imguiTextures[lastFrameIndex].depth;
-                if(gIndex == 4) textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
-                if(gIndex == 5) textureToDisplay = imguiTextures[lastFrameIndex].ui;
-                if(gIndex == 6) textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
+                vk::Format format = vk::Format::eR32G32B32A32Sfloat;
+                if(gIndex == -1) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
+                }
+                if(gIndex == 0) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].albedo;
+                    format = vk::Format::eR8G8B8A8Unorm;
+                }
+                if(gIndex == 1) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].position;
+                }
+                if(gIndex == 2) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].normal;
+                }
+                if(gIndex == 3) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].depth;
+                    format = vkDriver.getDepthFormat();
+                }
+                if(gIndex == 4) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
+                }
+                if(gIndex == 5) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].ui;
+                    format = vk::Format::eR8G8B8A8Unorm;
+                }
+                if(gIndex == 6) {
+                    textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
+                    format = vk::Format::eR32Sfloat;
+                }
                 if(textureToDisplay) {
+                    static vk::ImageLayout layout = vk::ImageLayout::eUndefined;
                     auto size = ImGui::GetWindowSize();
-                    ImGui::Image(textureToDisplay, ImVec2(size.x, size.y - ImGui::GetCursorPosY()));
+                    renderer.beforeFrameCommand([&](vk::CommandBuffer& cmds) {
+                        layout = textureToDisplay->getCurrentImageLayout();
+                        textureToDisplay->transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    });
+                    renderer.afterFrameCommand([&](vk::CommandBuffer& cmds) {
+                        textureToDisplay->transitionInline(cmds, layout);
+                    });
+                    vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+                    if(textureToDisplay == imguiTextures[lastFrameIndex].depth) {
+                        aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+                    }
+                    ImGui::Image(textureToDisplay->getImguiID(format, aspect), ImVec2(size.x, size.y - ImGui::GetCursorPosY()));
                 }
             }
             ImGui::End();
@@ -440,9 +476,12 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 .pSignalSemaphores = signalSemaphores,
         };
 
+        renderer.preFrame();
 
         getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
         getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
+
+        renderer.postFrame();
 
         vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
 
@@ -679,8 +718,8 @@ void Carrot::Engine::takeScreenshot() {
             .z = 1,
     };
     performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
-        Image::transition(lastImage, commands, vkDriver.getSwapchainImageFormat(), vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
-        screenshotImage.transitionLayoutInline(commands, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+        Image::transition(lastImage, commands, vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
+        screenshotImage.transitionLayoutInline(commands, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
         commands.blitImage(lastImage, vk::ImageLayout::eTransferSrcOptimal, screenshotImage.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, vk::ImageBlit {
                 .srcSubresource = {
@@ -758,9 +797,9 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     };
     currentSkybox = type;
     if(type != Carrot::Skybox::Type::None) {
-        loadedSkyboxTexture = Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+        loadedSkyboxTexture = std::make_unique<Carrot::Render::Texture>(vkDriver, Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
             return Skybox::getTexturePath(type, dir);
-        });
+        }));
         loadedSkyboxTexture->name("Current loaded skybox");
         loadedSkyboxTextureView = vkDriver.createImageView(loadedSkyboxTexture->getVulkanImage(),
                                                            vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor,
@@ -868,28 +907,20 @@ void Carrot::Engine::updateImGuiTextures(size_t swapchainLength) {
     imguiTextures.resize(swapchainLength);
     for (int i = 0; i < swapchainLength; ++i) {
         auto& textures = imguiTextures[i];
-        textures.allChannels = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *vkDriver.getSwapchainImageViews()[i],
-                                                           static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.allChannels = nullptr; // TODO: final texture (which is NOT swapchain image) //&vkDriver.getSwapchainImageTextures()[i];
 
-        textures.albedo = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getAlbedoImageViews()[i],
-                                                           static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.albedo = getGBuffer().getAlbedoTextures()[i].get();
 
-        textures.position = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getPositionImageViews()[i],
-                                                      static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.position = getGBuffer().getPositionTextures()[i].get();
 
-        textures.normal = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getNormalImageViews()[i],
-                                                        static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.normal = getGBuffer().getNormalTextures()[i].get();
 
-        textures.depth = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getDepthImageViews()[i],
-                                                      static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.depth = getGBuffer().getDepthStencilTextures()[i].get();
 
-        textures.intProperties = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getGBuffer().getIntPropertiesImageViews()[i],
-                                                     static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.intProperties = getGBuffer().getIntPropertiesTextures()[i].get();
 
-        textures.raytracing = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *getRayTracer().getLightingImageViews()[i],
-                                                             static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.raytracing = getRayTracer().getLightingTextures()[i].get();
 
-        textures.ui = ImGui_ImplVulkan_AddTexture(vkDriver.getLinearSampler(), *renderer.getUIImageViews()[i],
-                                                          static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
+        textures.ui = renderer.getUITextures()[i].get();
     }
 }

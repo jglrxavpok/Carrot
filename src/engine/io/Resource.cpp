@@ -12,22 +12,26 @@ namespace Carrot::IO {
 
     Resource::Resource(const char *const filename): data(false) {
         data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
+        name(filename);
     }
 
     Resource::Resource(const std::string filename): data(false) {
         data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
+        name(filename);
     }
 
     Resource::Resource(const std::vector<std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
         this->data.raw = container;
+        name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
     Resource::Resource(const std::span<std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
         this->data.raw = container;
+        name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
     Resource::Resource(const Resource& toCopy): data(toCopy.data.isRawData) {
@@ -36,6 +40,7 @@ namespace Carrot::IO {
         } else {
             data.fileHandle = toCopy.data.fileHandle->copyReadable();
         }
+        name(toCopy.filename);
     }
 
     Resource& Resource::operator=(const Resource& toCopy) {
@@ -130,6 +135,14 @@ namespace Carrot::IO {
         result.resize(getSize()+1, '\0');
         std::memcpy(result.data(), str, getSize());
         return result;
+    }
+
+    void Resource::name(const std::string& name) {
+        filename = name;
+    }
+
+    const std::string& Resource::getName() const {
+        return filename;
     }
 
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {

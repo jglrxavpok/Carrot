@@ -6,9 +6,10 @@
 
 #include <memory>
 #include <map>
+#include <functional>
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/resources/Pipeline.h"
-#include "engine/render/resources/Image.h"
+#include "engine/render/resources/Texture.h"
 #include "engine/vulkan/SwapchainAware.h"
 
 namespace Carrot {
@@ -16,20 +17,17 @@ namespace Carrot {
     class ASBuilder;
     class RayTracer;
 
+    using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
+
     class VulkanRenderer: public SwapchainAware {
     private:
         VulkanDriver& driver;
 
-        // TODO: abstraction over textures
         map<string, shared_ptr<Pipeline>> pipelines{};
-        map<string, unique_ptr<Image>> textureImages{};
-        map<string, vk::UniqueImageView> textureImageViews{};
+        map<string, unique_ptr<Render::Texture>> textures{};
 
-        vector<unique_ptr<Image>> uiImages{};
-        vector<vk::UniqueImageView> uiImageViews{};
-
-        vector<unique_ptr<Image>> skyboxImages{};
-        vector<vk::UniqueImageView> skyboxImageViews{};
+        vector<unique_ptr<Render::Texture>> uiTextures{};
+        vector<unique_ptr<Render::Texture>> skyboxTextures{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 
@@ -43,6 +41,9 @@ namespace Carrot {
         unique_ptr<RayTracer> raytracer = nullptr;
         unique_ptr<ASBuilder> asBuilder = nullptr;
         unique_ptr<GBuffer> gBuffer = nullptr;
+
+        std::list<CommandBufferConsumer> beforeFrameCommands;
+        std::list<CommandBufferConsumer> afterFrameCommands;
 
         void createUIResources();
 
@@ -63,8 +64,7 @@ namespace Carrot {
 
         shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
 
-        unique_ptr<Image>& getOrCreateTexture(const string& textureName);
-        vk::UniqueImageView& getOrCreateTextureView(const string& textureName);
+        unique_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
 
         void recreateDescriptorPools(size_t frameCount);
 
@@ -74,6 +74,14 @@ namespace Carrot {
         /// Create the framebuffers to render to
         void createFramebuffers();
 
+    public:
+        void beforeFrameCommand(const CommandBufferConsumer& command);
+        void afterFrameCommand(const CommandBufferConsumer& command);
+
+        void preFrame();
+        void postFrame();
+
+    public:
         size_t getSwapchainImageCount() { return driver.getSwapchainImageCount(); };
         VulkanDriver& getVulkanDriver() { return driver; };
 
@@ -90,14 +98,13 @@ namespace Carrot {
         vk::RenderPass& getImguiRenderPass() { return *imguiRenderPass; };
         vk::RenderPass& getSkyboxRenderPass() { return *skyboxRenderPass; };
 
-        vector<unique_ptr<Image>>& getUIImages() { return uiImages; };
-        vector<vk::UniqueImageView>& getUIImageViews() { return uiImageViews; };
+        vector<unique_ptr<Render::Texture>>& getUITextures() { return uiTextures; };
 
-        vector<unique_ptr<Image>>& getSkyboxImages() { return skyboxImages; };
-        vector<vk::UniqueImageView>& getSkyboxImageViews() { return skyboxImageViews; };
+        vector<unique_ptr<Render::Texture>>& getSkyboxTextures() { return skyboxTextures; };
 
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
 
+    public:
         void createSkyboxResources();
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;

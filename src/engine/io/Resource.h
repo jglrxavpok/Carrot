@@ -28,6 +28,7 @@ namespace Carrot::IO {
 
     public:
         uint64_t getSize() const;
+        const std::string& getName() const;
 
     public:
         void write(const std::span<uint8_t> toWrite, uint64_t offset = 0);
@@ -41,6 +42,9 @@ namespace Carrot::IO {
     public:
         void writeToFile(const std::string& filename, uint64_t offset = 0) const;
         void writeToFile(FileHandle& file, uint64_t offset = 0) const;
+
+    public:
+        void name(const std::string& name);
 
     public:
         Resource& operator=(const Resource& toCopy);
@@ -64,5 +68,7 @@ namespace Carrot::IO {
 
             ~Data();
         } data;
+
+        std::string filename;
     };
 }

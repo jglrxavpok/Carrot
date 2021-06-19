@@ -88,7 +88,7 @@ namespace Carrot {
     public:
         MaterialID reserveMaterialSlot(const Material& material);
 
-        TextureID reserveTextureSlot(const vk::UniqueImageView& textureView);
+        TextureID reserveTextureSlot(const vk::ImageView& textureView);
 
         void updateMaterial(const Material& material);
         void updateMaterial(const Material& material, MaterialID materialID);

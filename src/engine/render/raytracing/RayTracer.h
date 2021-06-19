@@ -8,6 +8,7 @@
 #include "engine/render/VulkanRenderer.h"
 #include "engine/RenderPasses.h"
 #include "engine/render/lighting/Lights.h"
+#include "engine/render/resources/Texture.h"
 
 namespace Carrot {
     /// Class responsible for creating acceleration structures and updating them, creating the shader binding table and
@@ -17,8 +18,7 @@ namespace Carrot {
     private:
         VulkanRenderer& renderer;
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
-        vector<unique_ptr<Image>> lightingImages{};
-        vector<vk::UniqueImageView> lightingImageViews{};
+        vector<unique_ptr<Render::Texture>> lightingTextures{};
 
         vk::UniqueDescriptorPool rtDescriptorPool;
         vk::UniqueDescriptorPool sceneDescriptorPool;
@@ -58,7 +58,7 @@ namespace Carrot {
 
         void onSwapchainRecreation();
 
-        vector<vk::UniqueImageView>& getLightingImageViews();
+        vector<unique_ptr<Render::Texture>>& getLightingTextures();
 
         void createDescriptorSets();
 

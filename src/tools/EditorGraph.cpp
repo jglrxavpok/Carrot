@@ -25,26 +25,8 @@ Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engin
     rootMenu = std::make_unique<NodeLibraryMenu>("<root>");
     currentMenu = rootMenu.get();
 
-    imguiTextures.imageStorage.expressionTypes[Carrot::ExpressionTypes::Bool] = Carrot::Image::fromFile(engine.getVulkanDriver(), "resources/textures/icons/boolean.png");
-    imguiTextures.imageStorage.expressionTypes[Carrot::ExpressionTypes::Float] = Carrot::Image::fromFile(engine.getVulkanDriver(), "resources/textures/icons/float.png");
-
-    auto store = [&](const Carrot::ExpressionType& type)
-    {
-        imguiTextures.imageViewStorage.expressionTypes[type] = std::move(imguiTextures.imageStorage.expressionTypes[type]->createImageView());
-    };
-
-    auto addTexture = [&](const Carrot::ExpressionType& type)
-    {
-        store(type);
-        ImTextureID id = ImGui_ImplVulkan_AddTexture(engine.getVulkanDriver().getNearestSampler(),
-                                            *imguiTextures.imageViewStorage.expressionTypes[type],
-                                                    static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
-
-        imguiTextures.expressionTypes[type] = id;
-    };
-
-    addTexture(Carrot::ExpressionTypes::Bool);
-    addTexture(Carrot::ExpressionTypes::Float);
+    imguiTextures.expressionTypes[Carrot::ExpressionTypes::Bool] = std::make_unique<Carrot::Render::Texture>(engine.getVulkanDriver(), "resources/textures/icons/boolean.png");
+    imguiTextures.expressionTypes[Carrot::ExpressionTypes::Float] = std::make_unique<Carrot::Render::Texture>(engine.getVulkanDriver(), "resources/textures/icons/float.png");
 }
 
 void Tools::EditorGraph::onFrame(size_t frameIndex) {

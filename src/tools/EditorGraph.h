@@ -115,21 +115,11 @@ namespace Tools {
     class NodeLibraryMenu;
 
     struct ImGuiTextures {
-        struct {
-            std::unique_ptr<Carrot::Image> empty = nullptr;
-            std::unordered_map<Carrot::ExpressionType, std::unique_ptr<Carrot::Image>> expressionTypes;
-        } imageStorage;
-
-        struct {
-            vk::UniqueImageView empty;
-            std::unordered_map<Carrot::ExpressionType, vk::UniqueImageView> expressionTypes;
-        } imageViewStorage;
-
-        ImTextureID empty;
-        std::unordered_map<Carrot::ExpressionType, ImTextureID> expressionTypes;
+        std::unique_ptr<Carrot::Render::Texture> empty = nullptr;
+        std::unordered_map<Carrot::ExpressionType, std::unique_ptr<Carrot::Render::Texture>> expressionTypes;
 
         ImTextureID getExpressionType(const Carrot::ExpressionType& type) {
-            return expressionTypes[type];
+            return expressionTypes[type]->getImguiID();
         }
     };
 

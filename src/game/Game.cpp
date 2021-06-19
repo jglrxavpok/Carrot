@@ -145,7 +145,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     world.tick(0);
     world.onFrame(0);
 
-    blueprint = make_unique<ParticleBlueprint>("resources/particles/test.particle");
+    blueprint = make_unique<ParticleBlueprint>("resources/particles/testspiral.particle");
     particles = make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
     auto emitter = particles->createEmitter();
 

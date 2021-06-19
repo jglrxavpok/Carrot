@@ -8,7 +8,7 @@
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, uint32_t layerCount):
-        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount) {
+        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), format(format) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
@@ -88,13 +88,15 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data, uint32_t layer, uin
     transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const string &filename) {
+std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource) {
     int width;
     int height;
     int channels;
-    stbi_uc* pixels = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+    auto buffer = resource.readAll();
+    stbi_uc* pixels = stbi_load_from_memory(buffer.get(), resource.getSize(), &width, &height, &channels, STBI_rgb_alpha);
     if(!pixels) {
-        throw runtime_error("Failed to load image "+filename);
+        throw runtime_error("Failed to load image "+resource.getName());
     }
 
     auto image = make_unique<Carrot::Image>(device,
@@ -118,11 +120,11 @@ const vk::Extent3D& Carrot::Image::getSize() const {
     return size;
 }
 
-void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    transition(*vkImage, commands, format, oldLayout, newLayout, layerCount);
+void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands,vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+    transition(*vkImage, commands, oldLayout, newLayout, layerCount);
 }
 
-void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount) {
+void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount) {
     vk::ImageMemoryBarrier barrier {
             .oldLayout = oldLayout,
             .newLayout = newLayout,
@@ -206,7 +208,7 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
         queue = driver.getGraphicsQueue();
     }
     driver.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
-        transitionLayoutInline(commands, format, oldLayout, newLayout);
+        transitionLayoutInline(commands, oldLayout, newLayout);
     });
 }
 
@@ -266,4 +268,8 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
     stbi_image_free(pixelsNX);
 
     return image;
+}
+
+vk::Format Carrot::Image::getFormat() const {
+    return format;
 }

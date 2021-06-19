@@ -30,30 +30,19 @@ shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const s
     return pipelines[name];
 }
 
-unique_ptr<Carrot::Image>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {
-    auto it = textureImages.find(textureName);
-    if(it == textureImages.end()) {
-        auto texture = Image::fromFile(driver, "resources/textures/" + textureName);
-        texture->name(textureName);
-        textureImages[textureName] = move(texture);
+unique_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {
+    auto it = textures.find(textureName);
+    if(it == textures.end()) {
+        auto texture = std::make_unique<Carrot::Render::Texture>(driver, "resources/textures/" + textureName);
+        textures[textureName] = move(texture);
     }
-    return textureImages[textureName];
+    return textures[textureName];
 }
 
 void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {
     for(const auto& [name, pipeline] : pipelines) {
         pipeline->recreateDescriptorPool(frameCount);
     }
-}
-
-vk::UniqueImageView& Carrot::VulkanRenderer::getOrCreateTextureView(const string& textureName) {
-    auto it = textureImageViews.find(textureName);
-    if(it == textureImageViews.end()) {
-        auto& texture = getOrCreateTexture(textureName);
-        auto textureView = texture->createImageView();
-        textureImageViews[textureName] = move(textureView);
-    }
-    return textureImageViews[textureName];
 }
 
 void Carrot::VulkanRenderer::createUIResources() {
@@ -226,7 +215,7 @@ void Carrot::VulkanRenderer::createFramebuffers() {
         swapchainFramebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(swapchainFramebufferInfo, driver.getAllocationCallbacks()));
 
         vk::ImageView imguiAttachment[] = {
-                *uiImageViews[i]
+                uiTextures[i]->getView()
         };
         vk::FramebufferCreateInfo imguiFramebufferInfo {
                 .renderPass = *imguiRenderPass,
@@ -239,7 +228,7 @@ void Carrot::VulkanRenderer::createFramebuffers() {
         imguiFramebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(imguiFramebufferInfo, driver.getAllocationCallbacks()));
 
         vk::ImageView skyboxAttachment[] = {
-                *skyboxImageViews[i]
+                skyboxTextures[i]->getView()
         };
         vk::FramebufferCreateInfo skyboxFramebufferInfo {
                 .renderPass = *skyboxRenderPass,
@@ -315,32 +304,25 @@ void Carrot::VulkanRenderer::initImgui() {
 }
 
 void Carrot::VulkanRenderer::createSkyboxResources() {
-    skyboxImages.resize(getSwapchainImageCount());
-    skyboxImageViews.resize(getSwapchainImageCount());
+    skyboxTextures.resize(getSwapchainImageCount());
     for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        skyboxImages[i] = move(make_unique<Image>(driver,
+        skyboxTextures[i] = move(make_unique<Render::Texture>(driver,
                                               vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
                                               vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
                                               vk::Format::eR8G8B8A8Unorm));
 
-        auto view = skyboxImages[i]->createImageView();
-        skyboxImageViews[i] = std::move(view);
-
-        skyboxImages[i]->transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
+        skyboxTextures[i]->transitionNow(vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 }
 
 void Carrot::VulkanRenderer::createUIImages() {
-    uiImages.resize(getSwapchainImageCount());
-    uiImageViews.resize(getSwapchainImageCount());
+    uiTextures.resize(getSwapchainImageCount());
     for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        uiImages[i] = move(make_unique<Image>(driver,
+        uiTextures[i] = move(make_unique<Render::Texture>(driver,
                                               vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
                                               vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
                                               vk::Format::eR8G8B8A8Unorm));
 
-        auto view = uiImages[i]->createImageView();
-        uiImageViews[i] = std::move(view);
     }
 }
 
@@ -363,4 +345,33 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainSizeChange(newWidth, newHeight);
     }
+}
+
+// TODO: thread safety
+void Carrot::VulkanRenderer::preFrame() {
+    if(beforeFrameCommands.empty())
+        return;
+    driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
+        for (const auto& action : beforeFrameCommands) {
+            action(cmds);
+        }
+    });
+    beforeFrameCommands.clear();
+}
+void Carrot::VulkanRenderer::postFrame() {
+    if(afterFrameCommands.empty())
+        return;
+    driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
+        for (const auto& action : afterFrameCommands) {
+            action(cmds);
+        }
+    });
+    afterFrameCommands.clear();
+}
+
+void Carrot::VulkanRenderer::beforeFrameCommand(const CommandBufferConsumer& command) {
+    beforeFrameCommands.push_back(command);
+}
+void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& command) {
+    afterFrameCommands.push_back(command);
 }

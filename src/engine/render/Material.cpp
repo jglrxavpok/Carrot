@@ -26,7 +26,7 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
 
     if(description.HasMember("texture")) {
         string textureName = description["texture"].GetString();
-        textureID = renderingPipeline->reserveTextureSlot(engine.getRenderer().getOrCreateTextureView(textureName));
+        textureID = renderingPipeline->reserveTextureSlot(engine.getRenderer().getOrCreateTexture(textureName)->getView());
     }
     if(description.HasMember("ignoreInstanceColor")) {
         ignoreInstanceColor = description["ignoreInstanceColor"].GetBool();

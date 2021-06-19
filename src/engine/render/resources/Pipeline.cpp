@@ -183,7 +183,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderP
         if("MAX_TEXTURES" == constantName) {
             maxTextureID = constantValue;
         }
-        Carrot::Log::info("Specializing constant %s to value %llu", constantName, constantValue);
+        Carrot::Log::info("Specializing constant %s to value %lu", constantName.c_str(), constantValue);
         specializations.push_back(Specialization {
                 .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
                 .size = sizeof(uint32_t),
@@ -321,7 +321,7 @@ void Carrot::Pipeline::allocateDescriptorSets() {
 
             for(TextureID textureID = 0; textureID < maxTextureID; textureID++) {
                 auto& info = imageInfoStructs[textureID];
-                info.imageView = *driver.getDefaultImageView();
+                info.imageView = driver.getDefaultTexture().getView();
                 info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
             }
 
@@ -420,15 +420,15 @@ Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material&
     return id;
 }
 
-Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::UniqueImageView& textureView) {
+Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::ImageView& textureView) {
     if(textureID >= maxTextureID) {
         throw runtime_error("Max texture id is " + to_string(maxTextureID));
     }
     TextureID id = textureID++;
-    reservedTextures[id] = *textureView;
+    reservedTextures[id] = textureView;
 
     for(size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
-        updateTextureReservation(*textureView, id, imageIndex);
+        updateTextureReservation(textureView, id, imageIndex);
     }
     return id;
 }

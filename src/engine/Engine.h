@@ -29,6 +29,10 @@ namespace Carrot {
 
 using namespace std;
 
+namespace Carrot::Render {
+    class Texture;
+}
+
 namespace Carrot {
     class CarrotGame;
 
@@ -207,14 +211,14 @@ namespace Carrot {
         unique_ptr<Mesh> skyboxMesh = nullptr;
 
         struct ImGuiTextures {
-            ImTextureID allChannels = nullptr;
-            ImTextureID albedo = nullptr;
-            ImTextureID position = nullptr;
-            ImTextureID normal = nullptr;
-            ImTextureID depth = nullptr;
-            ImTextureID raytracing = nullptr;
-            ImTextureID ui = nullptr;
-            ImTextureID intProperties = nullptr;
+            Render::Texture* allChannels = nullptr;
+            Render::Texture* albedo = nullptr;
+            Render::Texture* position = nullptr;
+            Render::Texture* normal = nullptr;
+            Render::Texture* depth = nullptr;
+            Render::Texture* raytracing = nullptr;
+            Render::Texture* ui = nullptr;
+            Render::Texture* intProperties = nullptr;
         };
 
         std::vector<ImGuiTextures> imguiTextures;

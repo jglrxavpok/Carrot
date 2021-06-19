@@ -20,20 +20,17 @@ Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(rendere
 }
 
 void Carrot::RayTracer::generateImages() {
-    lightingImages.clear();
-    lightingImageViews.clear();
+    lightingTextures.clear();
     // output images
     for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
-        auto image = make_unique<Image>(renderer.getVulkanDriver(),
+        auto texture = make_unique<Carrot::Render::Texture>(renderer.getVulkanDriver(),
                                         vk::Extent3D{renderer.getVulkanDriver().getSwapchainExtent().width, renderer.getVulkanDriver().getSwapchainExtent().height, 1},
                                         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
                                         vk::Format::eR32G32B32A32Sfloat);
 
-        image->transitionLayout(vk::Format::eR32G32B32A32Sfloat, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+        texture->transitionNow(vk::ImageLayout::eGeneral);
 
-        auto view = image->createImageView(vk::Format::eR32G32B32A32Sfloat);
-        lightingImages.emplace_back(move(image));
-        lightingImageViews.emplace_back(move(view));
+        lightingTextures.emplace_back(move(texture));
     }
 }
 
@@ -101,15 +98,15 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
     };
 
     auto extent = renderer.getVulkanDriver().getSwapchainExtent();
-    lightingImages[frameIndex]->transitionLayoutInline(commands, vk::Format::eR32G32B32A32Sfloat, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+    lightingTextures[frameIndex]->transitionInline(commands, vk::ImageLayout::eGeneral);
     if(hasStuffToDraw) {
         commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
     }
-    lightingImages[frameIndex]->transitionLayoutInline(commands, vk::Format::eR32G32B32A32Sfloat, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
+    lightingTextures[frameIndex]->transitionInline(commands, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-vector<vk::UniqueImageView>& Carrot::RayTracer::getLightingImageViews() {
-    return lightingImageViews;
+vector<std::unique_ptr<Carrot::Render::Texture>>& Carrot::RayTracer::getLightingTextures() {
+    return lightingTextures;
 }
 
 vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
@@ -487,7 +484,7 @@ void Carrot::RayTracer::finishInit() {
         };
 
         vk::DescriptorImageInfo writeImage {
-                .imageView = *this->lightingImageViews[frameIndex],
+                .imageView = this->lightingTextures[frameIndex]->getView(),
                 .imageLayout = vk::ImageLayout::eGeneral,
         };
 

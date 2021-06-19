@@ -14,6 +14,10 @@
 #include "engine/memory/ThreadLocal.hpp"
 
 namespace Carrot {
+    namespace Render {
+        class Texture;
+    };
+
     using namespace std;
 
     class Image;
@@ -57,8 +61,7 @@ namespace Carrot {
         ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
         ThreadLocal<vk::UniqueCommandPool> computeCommandPool;
 
-        std::unique_ptr<Image> defaultImage = nullptr;
-        vk::UniqueImageView defaultImageView{};
+        std::unique_ptr<Render::Texture> defaultTexture = nullptr;
 
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
@@ -186,7 +189,7 @@ namespace Carrot {
 
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
-        vk::UniqueImageView& getDefaultImageView();
+        Render::Texture& getDefaultTexture();
 
         const vk::Sampler& getLinearSampler() { return *linearRepeatSampler; };
         const vk::Sampler& getNearestSampler() { return *nearestRepeatSampler; };

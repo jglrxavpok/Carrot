@@ -8,27 +8,22 @@
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/raytracing/RayTracer.h"
+#include "engine/render/resources/Texture.h"
 
 namespace Carrot {
     class GBuffer: public SwapchainAware {
     private:
         VulkanRenderer& renderer;
         RayTracer& raytracer;
-        vector<unique_ptr<Image>> viewPositionImages{};
-        vector<vk::UniqueImageView> viewPositionImageViews{};
+        vector<unique_ptr<Render::Texture>> viewPositionTextures{};
 
-        vector<unique_ptr<Image>> albedoImages{};
-        vector<vk::UniqueImageView> albedoImageViews{};
+        vector<unique_ptr<Render::Texture>> albedoTextures{};
 
-        vector<unique_ptr<Image>> viewNormalImages{};
-        vector<vk::UniqueImageView> viewNormalImageViews{};
+        vector<unique_ptr<Render::Texture>> viewNormalTextures{};
 
-        vector<unique_ptr<Image>> depthImages{};
-        vector<vk::UniqueImageView> depthStencilImageViews{};
-        vector<vk::UniqueImageView> depthOnlyImageViews{};
+        vector<unique_ptr<Render::Texture>> depthStencilTextures{};
 
-        vector<unique_ptr<Image>> intPropertiesImages{};
-        vector<vk::UniqueImageView> intPropertiesImageViews{};
+        vector<unique_ptr<Render::Texture>> intPropertiesTextures{};
 
         mutable shared_ptr<Pipeline> gResolvePipeline = nullptr;
         unique_ptr<Mesh> screenQuadMesh = nullptr;
@@ -50,10 +45,10 @@ namespace Carrot {
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
-        vector<vk::UniqueImageView>& getIntPropertiesImageViews() { return intPropertiesImageViews; }
-        vector<vk::UniqueImageView>& getDepthImageViews() { return depthOnlyImageViews; }
-        vector<vk::UniqueImageView>& getNormalImageViews() { return viewNormalImageViews; }
-        vector<vk::UniqueImageView>& getPositionImageViews() { return viewPositionImageViews; }
-        vector<vk::UniqueImageView>& getAlbedoImageViews() { return albedoImageViews; }
+        vector<std::unique_ptr<Render::Texture>>& getIntPropertiesTextures() { return intPropertiesTextures; }
+        vector<std::unique_ptr<Render::Texture>>& getDepthStencilTextures() { return depthStencilTextures; }
+        vector<std::unique_ptr<Render::Texture>>& getNormalTextures() { return viewNormalTextures; }
+        vector<std::unique_ptr<Render::Texture>>& getPositionTextures() { return viewPositionTextures; }
+        vector<std::unique_ptr<Render::Texture>>& getAlbedoTextures() { return albedoTextures; }
     };
 }

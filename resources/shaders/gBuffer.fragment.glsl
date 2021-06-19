@@ -26,8 +26,8 @@ layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 viewNormal;
 
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec3 outViewPosition;
-layout(location = 2) out vec3 outNormal;
+layout(location = 1) out vec4 outViewPosition;
+layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
 
 void main() {
@@ -41,7 +41,7 @@ void main() {
         discard;
     }
     outColor = vec4(texColor.rgb * fragColor, 1.0);
-    outViewPosition = viewPosition;
-    outNormal = viewNormal;
+    outViewPosition = vec4(viewPosition, 1.0);
+    outNormal = vec4(viewNormal, 1.0);
     intProperty = IntPropertiesRayTracedLighting;
 }
