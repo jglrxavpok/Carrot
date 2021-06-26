@@ -611,27 +611,20 @@ void Carrot::VulkanDriver::createSwapChain() {
 
     swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, getAllocationCallbacks());
 
-    const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
-    swapchainImages.clear();
-    for(const auto& image : swapchainDeviceImages) {
-        swapchainImages.push_back(image);
-    }
-
     this->swapchainImageFormat = surfaceFormat.format;
     this->swapchainExtent = swapchainExtent;
 
-    depthFormat = findDepthFormat();
-
-    createSwapChainImageViews();
-}
-
-void Carrot::VulkanDriver::createSwapChainImageViews() {
-    swapchainImageViews.resize(swapchainImages.size());
-
-    for(size_t index = 0; index < swapchainImages.size(); index++) {
-        auto view = createImageView(swapchainImages[index], swapchainImageFormat);
-        swapchainImageViews[index] = std::move(view);
+    const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
+    swapchainTextures.clear();
+    for(const auto& image : swapchainDeviceImages) {
+        swapchainTextures.emplace_back(std::make_shared<Carrot::Render::Texture>(*this, image, vk::Extent3D {
+            .width = swapchainExtent.width,
+            .height = swapchainExtent.height,
+            .depth = 1,
+        }, swapchainImageFormat));
     }
+
+    depthFormat = findDepthFormat();
 }
 
 vk::Format Carrot::VulkanDriver::findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
@@ -663,7 +656,7 @@ Carrot::VulkanDriver::~VulkanDriver() {
 }
 
 void Carrot::VulkanDriver::cleanupSwapchain() {
-    swapchainImageViews.clear();
+    swapchainTextures.clear();
     swapchain.reset();
 }
 

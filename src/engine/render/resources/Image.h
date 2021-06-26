@@ -19,8 +19,38 @@ namespace Carrot {
     private:
         Carrot::VulkanDriver& driver;
         vk::Extent3D size{};
-        vk::UniqueImage vkImage;
-        vk::UniqueDeviceMemory memory;
+
+        struct ImageData {
+            bool ownsImage = false;
+
+            //union {
+                struct {
+                    vk::UniqueImage vkImage = {};
+                    vk::UniqueDeviceMemory memory = {};
+                } asOwned;
+
+                struct {
+                    vk::Image vkImage = nullptr;
+                } asView;
+            //};
+
+            explicit ImageData(bool owns): ownsImage(owns) {
+                if(owns) {
+                    asOwned = {};
+                } else {
+                    asView = {};
+                }
+            }
+
+            ~ImageData() {
+                if(ownsImage) {
+                    asOwned.memory.reset();
+                    asOwned.vkImage.reset();
+                }
+            }
+
+        } imageData;
+
         uint32_t layerCount = 1;
         vk::Format format = vk::Format::eUndefined;
 
@@ -35,7 +65,13 @@ namespace Carrot {
                        vk::ImageType type = vk::ImageType::e2D,
                        uint32_t layerCount = 1);
 
+        explicit Image(Carrot::VulkanDriver& driver, vk::Image toView,
+                       vk::Extent3D extent,
+                       vk::Format format,
+                       std::uint32_t layerCount = 1);
+
         const vk::Image& getVulkanImage() const;
+        const vk::DeviceMemory& getMemory() const;
         const vk::Extent3D& getSize() const;
         vk::Format getFormat() const;
 

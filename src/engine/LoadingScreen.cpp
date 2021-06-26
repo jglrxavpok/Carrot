@@ -54,10 +54,11 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     auto imageIndex = device.acquireNextImageKHR(engine.getVulkanDriver().getSwapchain(), UINT64_MAX, *imageAvailable, nullptr).value;
 
+    auto swapchainView = engine.getVulkanDriver().getSwapchainTextures()[imageIndex]->getView();
     vk::UniqueFramebuffer framebuffer = device.createFramebufferUnique(vk::FramebufferCreateInfo {
         .renderPass = *blitRenderPass,
         .attachmentCount = 1,
-        .pAttachments = &(*engine.getVulkanDriver().getSwapchainImageViews()[imageIndex]),
+        .pAttachments = &swapchainView,
 
         .width = driver.getSwapchainExtent().width,
         .height = driver.getSwapchainExtent().height,

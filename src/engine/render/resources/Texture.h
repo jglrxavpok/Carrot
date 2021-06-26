@@ -15,6 +15,9 @@ namespace Carrot::Render {
 
     class Texture {
     public:
+        using Ptr = std::unique_ptr<Texture>;
+        using Ref = std::shared_ptr<Texture>;
+
         // copies are not allowed
         Texture(const Texture&) = delete;
 
@@ -36,6 +39,13 @@ namespace Carrot::Render {
 
         /// Create texture from a given file
         explicit Texture(Carrot::VulkanDriver& driver, const Resource& resource, FileFormat format = FileFormat::PNG);
+
+        /// Wrap vk::Image into a Texture
+        explicit Texture(Carrot::VulkanDriver& driver,
+                         vk::Image image,
+                         vk::Extent3D extent,
+                         vk::Format format,
+                         uint32_t layerCount = 1);
 
     public:
         Carrot::Image& getImage();

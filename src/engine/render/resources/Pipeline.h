@@ -43,7 +43,7 @@ namespace Carrot {
 
     private:
         Carrot::VulkanDriver& driver;
-        vk::RenderPass& renderPass;
+        const vk::RenderPass& renderPass;
         vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
         /// can be nullptr, used for animations
         vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
@@ -69,8 +69,8 @@ namespace Carrot {
         void updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex);
 
     public:
-        explicit Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription);
-        explicit Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const PipelineDescription description);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const PipelineDescription description);
 
         void bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 

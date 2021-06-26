@@ -14,12 +14,12 @@
 #include "engine/render/DebugBufferObject.h"
 #include <engine/io/Logging.hpp>
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription):
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription):
     Carrot::Pipeline::Pipeline(driver, renderPass, PipelineDescription(pipelineDescription)) {
 
 }
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, vk::RenderPass& renderPass, const PipelineDescription description): driver(driver), renderPass(renderPass), description(description) {
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const PipelineDescription description): driver(driver), renderPass(renderPass), description(description) {
     auto& device = driver.getLogicalDevice();
     stages = make_unique<Carrot::ShaderStages>(driver,
                                                 std::vector<Carrot::IO::Resource> {

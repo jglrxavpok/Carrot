@@ -198,7 +198,7 @@ void Carrot::VulkanRenderer::createFramebuffers() {
 
     for (size_t i = 0; i < driver.getSwapchainImageCount(); ++i) {
         vector<vk::ImageView> attachments = {
-                *driver.getSwapchainImageViews()[i],
+                driver.getSwapchainTextures()[i]->getView(),
         };
 
         gBuffer->addFramebufferAttachments(i, attachments);

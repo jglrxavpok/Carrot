@@ -38,12 +38,22 @@
 #include "LoadingScreen.h"
 #include "engine/console/RuntimeOption.hpp"
 #include "engine/console/Console.h"
+#include "engine/render/RenderGraph.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
 
-Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(window), renderer(vkDriver) {
+Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(window), renderer(vkDriver), screenQuad(std::make_unique<Mesh>(vkDriver, vector<ScreenSpaceVertex>{
+                                                                                                                                   { { -1, -1} },
+                                                                                                                                   { { 1, -1} },
+                                                                                                                                   { { 1, 1} },
+                                                                                                                                   { { -1, 1} },
+                                                                                                                           },
+                                                                                                                           vector<uint32_t>{
+                                                                                                                                   2,1,0,
+                                                                                                                                   3,2,0,
+                                                                                                                           })) {
     init();
 }
 
@@ -54,6 +64,50 @@ void Carrot::Engine::init() {
     // quickly render something on screen
     LoadingScreen screen{*this};
     initVulkan();
+
+    struct PresentPassData {
+        Render::FrameResource output;
+    };
+
+    Render::GraphBuilder mainGraph(vkDriver);
+    auto& testTexture = renderer.getOrCreateTexture("default.png");
+
+    auto fullscreenBlit = [=](const vk::RenderPass& pass, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBlit, vk::CommandBuffer& cmds) {
+        static auto pipeline = std::make_unique<Pipeline>(vkDriver, pass, "resources/pipelines/blit.json");
+        vk::DescriptorImageInfo imageInfo {
+                .sampler = vkDriver.getLinearSampler(),
+                .imageView = textureToBlit.getView(),
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        };
+
+        auto& set = pipeline->getDescriptorSets0()[frame.frameIndex];
+        vk::WriteDescriptorSet writeLoadingImage {
+                .dstSet = set,
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eSampledImage,
+                .pImageInfo = &imageInfo,
+        };
+        vkDriver.getLogicalDevice().updateDescriptorSets(writeLoadingImage, {});
+
+        pipeline->bind(frame.frameIndex, cmds);
+        screenQuad->bind(cmds);
+        screenQuad->draw(cmds);
+    };
+
+    mainGraph.addPass<PresentPassData>("present",
+           [&](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+               data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
+           },
+           [=, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
+               fullscreenBlit(pass.getRenderPass(), frame, *tex, buffer);
+               // TODO: transition to presentation layout
+           }
+    );
+
+    testGraph = std::move(mainGraph.compile());
+
     initConsole();
 }
 
@@ -206,7 +260,16 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             .pInheritanceInfo = nullptr,
     };
 
+    ImGui::Render();
+
     mainCommandBuffers[i].begin(beginInfo);
+
+
+    testGraph->execute(Carrot::Render::FrameData {
+        .frameIndex = i,
+    }, mainCommandBuffers[i]);
+
+    /*
     {
         PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
 
@@ -322,7 +385,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             mainCommandBuffers[i].endRenderPass();
         }
     }
-
+*/
     mainCommandBuffers[i].end();
 }
 
@@ -449,11 +512,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         ZoneScopedN("Update uniform buffer");
         updateUniformBuffer(imageIndex);
     }
-
-/*    if(imagesInFlight[imageIndex] != nullptr) {
-        getLogicalDevice().waitForFences(*imagesInFlight[imageIndex], true, UINT64_MAX);
-    }
-    imagesInFlight[imageIndex] = inFlightFences[currentFrame];*/
 
     {
         ZoneScopedN("Present");
@@ -691,7 +749,7 @@ void Carrot::Engine::takeScreenshot() {
     }
     auto screenshotPath = screenshotFolder / (to_string(currentTime) + ".png");
 
-    auto lastImage = vkDriver.getSwapchainImages()[lastFrameIndex];
+    auto& lastImage = vkDriver.getSwapchainTextures()[lastFrameIndex];
 
     auto& swapchainExtent = vkDriver.getSwapchainExtent();
     auto screenshotImage = Image(vkDriver,
@@ -718,10 +776,11 @@ void Carrot::Engine::takeScreenshot() {
             .z = 1,
     };
     performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
-        Image::transition(lastImage, commands, vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
+        lastImage->assumeLayout(vk::ImageLayout::ePresentSrcKHR);
+        lastImage->transitionInline(commands, vk::ImageLayout::eTransferSrcOptimal);
         screenshotImage.transitionLayoutInline(commands, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-        commands.blitImage(lastImage, vk::ImageLayout::eTransferSrcOptimal, screenshotImage.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, vk::ImageBlit {
+        commands.blitImage(lastImage->getImage().getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, screenshotImage.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, vk::ImageBlit {
                 .srcSubresource = {
                         .aspectMask = vk::ImageAspectFlagBits::eColor,
                         .mipLevel = 0,
@@ -797,9 +856,9 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     };
     currentSkybox = type;
     if(type != Carrot::Skybox::Type::None) {
-        loadedSkyboxTexture = std::make_unique<Carrot::Render::Texture>(vkDriver, Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+        loadedSkyboxTexture = Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
             return Skybox::getTexturePath(type, dir);
-        }));
+        });
         loadedSkyboxTexture->name("Current loaded skybox");
         loadedSkyboxTextureView = vkDriver.createImageView(loadedSkyboxTexture->getVulkanImage(),
                                                            vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor,

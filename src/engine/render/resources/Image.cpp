@@ -5,10 +5,11 @@
 #include "Image.h"
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
+#include "engine/utils/Assert.h"
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, uint32_t layerCount):
-        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), format(format) {
+        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), format(format), imageData(true) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
@@ -35,22 +36,31 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
         createInfo.queueFamilyIndexCount = static_cast<uint32_t>(familyList.size());
         createInfo.pQueueFamilyIndices = familyList.data();
     }
-    vkImage = driver.getLogicalDevice().createImageUnique(createInfo, driver.getAllocationCallbacks());
+    imageData.asOwned.vkImage = driver.getLogicalDevice().createImageUnique(createInfo, driver.getAllocationCallbacks());
 
     // allocate memory to use image
-    vk::MemoryRequirements requirements = driver.getLogicalDevice().getImageMemoryRequirements(*vkImage);
+    vk::MemoryRequirements requirements = driver.getLogicalDevice().getImageMemoryRequirements(getVulkanImage());
     vk::MemoryAllocateInfo allocationInfo{
         .allocationSize = requirements.size,
         .memoryTypeIndex = driver.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
-    memory = driver.getLogicalDevice().allocateMemoryUnique(allocationInfo, driver.getAllocationCallbacks());
+    imageData.asOwned.memory = driver.getLogicalDevice().allocateMemoryUnique(allocationInfo, driver.getAllocationCallbacks());
 
     // bind memory to image
-    driver.getLogicalDevice().bindImageMemory(*vkImage, *memory, 0);
+    driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getMemory(), 0);
+}
+
+Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount)
+: driver(driver), imageData(false), format(format), layerCount(layerCount), size(extent) {
+    imageData.asView.vkImage = toView;
 }
 
 const vk::Image& Carrot::Image::getVulkanImage() const {
-    return *vkImage;
+    if(imageData.ownsImage) {
+        return *imageData.asOwned.vkImage;
+    } else {
+        return imageData.asView.vkImage;
+    }
 }
 
 void Carrot::Image::stageUpload(const vector<uint8_t> &data, uint32_t layer, uint32_t layerCount) {
@@ -80,7 +90,7 @@ void Carrot::Image::stageUpload(const vector<uint8_t> &data, uint32_t layer, uin
                 },
                 .imageExtent = size,
         };
-        commands.copyBufferToImage(stagingBuffer.getVulkanBuffer(), *vkImage,
+        commands.copyBufferToImage(stagingBuffer.getVulkanBuffer(), getVulkanImage(),
                                    vk::ImageLayout::eTransferDstOptimal, region);
     });
 
@@ -121,7 +131,7 @@ const vk::Extent3D& Carrot::Image::getSize() const {
 }
 
 void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands,vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    transition(*vkImage, commands, oldLayout, newLayout, layerCount);
+    transition(getVulkanImage(), commands, oldLayout, newLayout, layerCount);
 }
 
 void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount) {
@@ -213,12 +223,14 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
 }
 
 vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect) {
-    return std::move(driver.createImageView(*vkImage, imageFormat, aspect));
+    return std::move(driver.createImageView(getVulkanImage(), imageFormat, aspect));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {
-    nameSingle(driver, name, *vkImage);
-    nameSingle(driver, name + " Memory", *memory);
+    nameSingle(driver, name, getVulkanImage());
+    if(imageData.ownsImage) {
+        nameSingle(driver, name + " Memory", getMemory());
+    }
 }
 
 std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier) {
@@ -272,4 +284,9 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
 
 vk::Format Carrot::Image::getFormat() const {
     return format;
+}
+
+const vk::DeviceMemory& Carrot::Image::getMemory() const {
+    runtimeAssert(imageData.ownsImage, "Cannot access memory of not-owned image.")
+    return *imageData.asOwned.memory;
 }

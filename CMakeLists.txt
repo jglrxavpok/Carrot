@@ -125,6 +125,9 @@ set(ENGINE-SOURCES
         src/engine/render/particles/ParticleEmitter.cpp
         src/engine/render/particles/ParticleBlueprint.cpp
 
+        src/engine/render/RenderGraph.cpp
+        src/engine/render/RenderPass.cpp
+
         src/engine/render/ComputePipeline.cpp
 
         src/engine/expressions/Expressions.cpp

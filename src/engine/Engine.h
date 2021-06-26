@@ -31,6 +31,7 @@ using namespace std;
 
 namespace Carrot::Render {
     class Texture;
+    class Graph;
 }
 
 namespace Carrot {
@@ -210,6 +211,8 @@ namespace Carrot {
         shared_ptr<Pipeline> skyboxPipeline = nullptr;
         unique_ptr<Mesh> skyboxMesh = nullptr;
 
+        unique_ptr<Mesh> screenQuad = nullptr;
+
         struct ImGuiTextures {
             Render::Texture* allChannels = nullptr;
             Render::Texture* albedo = nullptr;
@@ -222,6 +225,8 @@ namespace Carrot {
         };
 
         std::vector<ImGuiTextures> imguiTextures;
+
+        std::unique_ptr<Render::Graph> testGraph = nullptr;
 
         /// Init engine
         void init();

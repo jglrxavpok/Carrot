@@ -61,7 +61,7 @@ namespace Carrot {
         ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
         ThreadLocal<vk::UniqueCommandPool> computeCommandPool;
 
-        std::unique_ptr<Render::Texture> defaultTexture = nullptr;
+        std::shared_ptr<Render::Texture> defaultTexture = nullptr;
 
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
@@ -69,9 +69,8 @@ namespace Carrot {
         vk::UniqueSwapchainKHR swapchain{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
-        vector<vk::Image> swapchainImages{}; // not unique because deleted with swapchain
         vk::Extent2D swapchainExtent{};
-        vector<vk::UniqueImageView> swapchainImageViews{};
+        vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
         vector<shared_ptr<Buffer>> cameraUniformBuffers{};
         vector<shared_ptr<Buffer>> debugUniformBuffers{};
@@ -129,9 +128,6 @@ namespace Carrot {
 
         /// Choose resolution of swap chain images
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-
-        /// Create the image views used by the swapchain
-        void createSwapChainImageViews();
 
     public:
         VulkanDriver(NakedPtr<GLFWwindow> window);
@@ -203,10 +199,9 @@ namespace Carrot {
 
         const vk::Extent2D& getSwapchainExtent() const { return swapchainExtent; };
 
-        vector<vk::Image>& getSwapchainImages() { return swapchainImages; };
-        vector<vk::UniqueImageView>& getSwapchainImageViews() { return swapchainImageViews; };
+        vector<std::shared_ptr<Render::Texture>>& getSwapchainTextures() { return swapchainTextures; };
 
-        size_t getSwapchainImageCount() const { return swapchainImages.size(); };
+        size_t getSwapchainImageCount() const { return swapchainTextures.size(); };
 
         vk::Format getSwapchainImageFormat() const { return swapchainImageFormat; };
 

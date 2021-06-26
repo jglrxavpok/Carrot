@@ -32,6 +32,11 @@ namespace Carrot::Render {
         imageFormat = image->getFormat();
     }
 
+    Texture::Texture(VulkanDriver& driver, vk::Image image, vk::Extent3D extent, vk::Format format, uint32_t layerCount)
+    : driver(driver), image(std::make_unique<Carrot::Image>(driver, image, extent, format, layerCount)) {
+        imageFormat = this->image->getFormat();
+    }
+
     Carrot::Image& Texture::getImage() {
         runtimeAssert(image, "Texture not initialized!");
         return *image;
