@@ -9,6 +9,7 @@
 #include <iostream>
 #include <rapidjson/document.h>
 #include <engine/io/IO.h>
+#include <engine/render/GBuffer.h>
 
 Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): engine(engine) {
     rapidjson::Document description;
@@ -16,10 +17,13 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
 
     string textureName = description["texture"].GetString();
     string pipelineName = description["pipeline"].GetString();
-    pipeline = engine.getRenderer().getOrCreatePipeline(pipelineName);
+
+    // TODO: different render passes
+    auto& renderPass = engine.getRenderer().getGRenderPass();
+    pipeline = engine.getRenderer().getOrCreatePipeline(renderPass, pipelineName);
 
     if(description.HasMember("renderingPipeline")) {
-        renderingPipeline = engine.getRenderer().getOrCreatePipeline(description["renderingPipeline"].GetString());
+        renderingPipeline = engine.getRenderer().getOrCreatePipeline(renderPass, description["renderingPipeline"].GetString());
     } else {
         renderingPipeline = pipeline;
     }

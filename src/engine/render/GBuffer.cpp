@@ -73,7 +73,7 @@ void Carrot::GBuffer::generateImages() {
 }
 
 void Carrot::GBuffer::loadResolvePipeline() {
-    gResolvePipeline = renderer.getOrCreatePipeline("gResolve");
+    gResolvePipeline = renderer.getOrCreatePipeline(renderer.getGRenderPass(), "gResolve");
 
     const size_t imageCount = 8/*albedo+depth+viewPosition+normal+lighting+ui+intProperties*/;
     vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount() * imageCount};

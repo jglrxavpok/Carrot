@@ -11,11 +11,13 @@ namespace Carrot::Render {
         swapchainImage.height = driver.getSwapchainExtent().height;
         swapchainImage.depth = 1;
         swapchainImage.format = driver.getSwapchainImageFormat();
+        swapchainImage.isSwapchain = true;
+        resources.emplace_back(&swapchainImage);
     }
 
-    FrameResource& GraphBuilder::read(const FrameResource& toRead) {
+    FrameResource& GraphBuilder::read(const FrameResource& toRead, vk::ImageLayout expectedLayout) {
         resources.emplace_back(&toRead);
-        currentPass->addInput(resources.back());
+        currentPass->addInput(resources.back(), expectedLayout);
         return resources.back();
     }
 
@@ -25,9 +27,26 @@ namespace Carrot::Render {
         return resources.back();
     }
 
+    void GraphBuilder::present(const FrameResource& resourceToPresent) {
+        currentPass->present(resourceToPresent);
+    }
+
+    FrameResource& GraphBuilder::createRenderTarget(vk::Format format, vk::Extent3D size, vk::AttachmentLoadOp loadOp,
+                                                    vk::ClearValue clearValue) {
+        auto& r = resources.emplace_back();
+        r.format = format;
+        r.width = size.width;
+        r.height = size.height;
+        r.depth = size.depth;
+        r.isSwapchain = false;
+        currentPass->addOutput(r, loadOp, clearValue);
+        return r;
+    }
+
     std::unique_ptr<Graph> GraphBuilder::compile() {
         auto result = std::make_unique<Graph>();
 
+        result->textures.resize(driver.getSwapchainImageCount());
         for(const auto& [name, pass] : passes) {
             result->passes[name] = std::move(pass->compile(driver, *result));
         }
@@ -40,7 +59,7 @@ namespace Carrot::Render {
     }
 
     Graph::Graph() {
-        // TODO
+
     }
 
     void Graph::execute(const FrameData& data, vk::CommandBuffer& cmds) {
@@ -55,27 +74,47 @@ namespace Carrot::Render {
         return *it->second;
     }
 
+    Texture& Graph::getTexture(const Carrot::UUID& id, size_t frameIndex) const {
+        auto it = textures[frameIndex].find(id);
+        runtimeAssert(it != textures[frameIndex].end(), "Did not create texture correctly?");
+        return *it->second;
+    }
+
+    Texture& Graph::getTexture(const FrameResource& resource, size_t frameIndex) const {
+        return getTexture(resource.rootID, frameIndex);
+    }
+
     Render::Texture& Graph::getOrCreateTexture(VulkanDriver& driver, const FrameResource& resource, size_t frameIndex) {
-        // TODO: proper caching and aliasing
-        // TODO: proper allocation
+        // TODO: aliasing
         if(textures.empty()) {
             textures.resize(driver.getSwapchainImageCount());
+        }
 
-            /*vk::Extent3D extent {
+        auto it = textures[frameIndex].find(resource.rootID);
+        if(it == textures[frameIndex].end()) {
+            vk::Extent3D size {
                 .width = resource.width,
                 .height = resource.height,
                 .depth = resource.depth,
             };
-            textures[0] = std::make_unique<Texture>(driver,
-                                                    extent,
+            auto format = resource.format;
 
+            // TODO: find correct usages automatically
+            auto usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eInputAttachment;
+            Texture::Ref texture;
 
-
-                    )*/
-            for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
-                textures[i].emplace_back(driver.getSwapchainTextures()[i]);
+            if(resource.isSwapchain) {
+                texture = driver.getSwapchainTextures()[frameIndex];
+            } else {
+                texture = std::make_shared<Texture>(driver,
+                                          size,
+                                          usage,
+                                          format
+                );
             }
+            textures[frameIndex][resource.rootID] = std::move(texture);
         }
-        return *textures[frameIndex][0]; // TODO
+
+        return getTexture(resource, frameIndex);
     }
 }

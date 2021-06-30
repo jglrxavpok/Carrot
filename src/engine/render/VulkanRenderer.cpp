@@ -22,12 +22,13 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
     gBuffer->loadResolvePipeline();
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name) {
-    auto it = pipelines.find(name);
+shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const vk::RenderPass& renderPass, const string& name) {
+    auto key = std::make_pair(renderPass, name);
+    auto it = pipelines.find(key);
     if(it == pipelines.end()) {
-        pipelines[name] = make_shared<Pipeline>(driver, *gRenderPass, "resources/pipelines/"+name+".json");
+        pipelines[key] = make_shared<Pipeline>(driver, renderPass, "resources/pipelines/"+name+".json");
     }
-    return pipelines[name];
+    return pipelines[key];
 }
 
 unique_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {

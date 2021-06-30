@@ -23,7 +23,7 @@ namespace Carrot {
     private:
         VulkanDriver& driver;
 
-        map<string, shared_ptr<Pipeline>> pipelines{};
+        map<std::pair<vk::RenderPass, string>, shared_ptr<Pipeline>> pipelines{};
         map<string, unique_ptr<Render::Texture>> textures{};
 
         vector<unique_ptr<Render::Texture>> uiTextures{};
@@ -62,7 +62,8 @@ namespace Carrot {
     public:
         explicit VulkanRenderer(VulkanDriver& driver);
 
-        shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
+        /// Each render pass will get a different pipeline instance
+        shared_ptr<Pipeline> getOrCreatePipeline(const vk::RenderPass& renderPass, const string& name);
 
         unique_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
 

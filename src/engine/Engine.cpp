@@ -66,14 +66,19 @@ void Carrot::Engine::init() {
     initVulkan();
 
     struct PresentPassData {
+        Render::FrameResource input;
+        Render::FrameResource output;
+    };
+
+    struct TempPassData {
         Render::FrameResource output;
     };
 
     Render::GraphBuilder mainGraph(vkDriver);
     auto& testTexture = renderer.getOrCreateTexture("default.png");
 
-    auto fullscreenBlit = [=](const vk::RenderPass& pass, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBlit, vk::CommandBuffer& cmds) {
-        static auto pipeline = std::make_unique<Pipeline>(vkDriver, pass, "resources/pipelines/blit.json");
+    auto fullscreenBlit = [this](const vk::RenderPass& pass, const Carrot::Render::FrameData& frame, Carrot::Render::Texture& textureToBlit, vk::CommandBuffer& cmds) {
+        auto pipeline = renderer.getOrCreatePipeline(pass, "blit");
         vk::DescriptorImageInfo imageInfo {
                 .sampler = vkDriver.getLinearSampler(),
                 .imageView = textureToBlit.getView(),
@@ -96,13 +101,30 @@ void Carrot::Engine::init() {
         screenQuad->draw(cmds);
     };
 
-    mainGraph.addPass<PresentPassData>("present",
-           [&](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-               data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
+    auto& tmpPass = mainGraph.addPass<TempPassData>("tmp",
+           [this](Render::GraphBuilder& builder, Render::Pass<TempPassData>& pass, TempPassData& data) {
+                vk::Extent3D size {
+                    .width = vkDriver.getSwapchainExtent().width,
+                    .height = vkDriver.getSwapchainExtent().height,
+                    .depth = 1,
+                };
+                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
            },
-           [=, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
+           [fullscreenBlit, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const TempPassData& data, vk::CommandBuffer& buffer) {
                fullscreenBlit(pass.getRenderPass(), frame, *tex, buffer);
-               // TODO: transition to presentation layout
+           }
+    );
+
+    mainGraph.addPass<PresentPassData>("present",
+           [prevPassData = tmpPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+                data.input = builder.read(prevPassData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
+                builder.present(data.output);
+           },
+           [fullscreenBlit](const Render::CompiledPass& pass, const Render::FrameData& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
+                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameIndex);
+                inputTexture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+                fullscreenBlit(pass.getRenderPass(), frame, inputTexture, buffer);
            }
     );
 

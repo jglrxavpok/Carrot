@@ -8,6 +8,7 @@
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/FrameData.h"
 #include "engine/render/resources/Texture.h"
+#include "engine/utils/UUID.h"
 
 namespace Carrot::Render {
 
@@ -18,14 +19,24 @@ namespace Carrot::Render {
 
     using CompiledPassCallback = std::function<void(const CompiledPass&, const FrameData&, vk::CommandBuffer&)>;
 
+    struct ImageTransition {
+        Carrot::UUID resourceID;
+        vk::ImageLayout from;
+        vk::ImageLayout to;
+
+        explicit ImageTransition(Carrot::UUID resourceID, vk::ImageLayout from, vk::ImageLayout to): resourceID(resourceID), from(from), to(to) {}
+    };
+
     class CompiledPass {
     public:
         explicit CompiledPass(
                 Carrot::VulkanDriver& driver,
+                Graph& graph,
                 std::vector<vk::UniqueFramebuffer>&& framebuffers,
                 vk::UniqueRenderPass&& renderPass,
                 const std::vector<vk::ClearValue>& clearValues,
-                const CompiledPassCallback& renderingCode
+                const CompiledPassCallback& renderingCode,
+                std::vector<ImageTransition>&& prePassTransitions
                 );
 
     public:
@@ -33,13 +44,17 @@ namespace Carrot::Render {
 
         const vk::RenderPass& getRenderPass() const { return *renderPass; }
 
+        Graph& getGraph() { return graph; }
+
+        const Graph& getGraph() const { return graph; }
+
     private:
         Carrot::VulkanDriver& driver;
+        Graph& graph;
         std::vector<vk::UniqueFramebuffer> framebuffers;
         vk::UniqueRenderPass renderPass;
-
         std::vector<vk::ClearValue> clearValues;
-
+        std::vector<ImageTransition> prePassTransitions;
         CompiledPassCallback renderingCode;
     };
 
@@ -50,8 +65,9 @@ namespace Carrot::Render {
         virtual CompiledPassCallback generateCallback() = 0;
 
     public:
-        void addInput(const FrameResource& resource);
+        void addInput(const FrameResource& resource, vk::ImageLayout expectedLayout);
         void addOutput(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue);
+        void present(const FrameResource& toPresent);
 
     public:
         std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Graph& graph);
@@ -59,8 +75,9 @@ namespace Carrot::Render {
     protected:
         struct Input {
             const FrameResource* resource = nullptr;
+            vk::ImageLayout expectedLayout = vk::ImageLayout::eUndefined;
 
-            Input(const FrameResource* resource): resource(resource) {}
+            Input(const FrameResource* resource, vk::ImageLayout expectedLayout): resource(resource), expectedLayout(expectedLayout) {}
         };
 
         struct Output {
@@ -73,6 +90,7 @@ namespace Carrot::Render {
 
         std::list<Input> inputs;
         std::list<Output> outputs;
+        std::unordered_map<Carrot::UUID, vk::ImageLayout> finalLayouts;
     };
 
     template<typename Data>
@@ -90,9 +108,13 @@ namespace Carrot::Render {
             };
         }
 
+        const Data& getData() const { return data; }
+
     private:
         ExecutePassCallback<Data> executeCallback;
         Data data;
+
+        friend class GraphBuilder;
     };
 
 }
