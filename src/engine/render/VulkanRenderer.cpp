@@ -6,6 +6,7 @@
 #include "GBuffer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
+#include "engine/utils/Assert.h"
 #include "imgui.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
@@ -375,4 +376,53 @@ void Carrot::VulkanRenderer::beforeFrameCommand(const CommandBufferConsumer& com
 }
 void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& command) {
     afterFrameCommands.push_back(command);
+}
+
+void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
+    runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.frameIndex];
+
+    vk::DescriptorImageInfo samplerInfo {
+            .sampler = samplerToBind,
+    };
+
+    vk::WriteDescriptorSet write {
+            .dstSet = descriptorSet,
+            .dstBinding = bindingID,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eSampler,
+            .pImageInfo = &samplerInfo,
+    };
+    driver.getLogicalDevice().updateDescriptorSets(write, {});
+}
+
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect) {
+    bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect);
+}
+
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect) {
+    runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.frameIndex];
+
+    vk::DescriptorImageInfo imageInfo {
+        .sampler = sampler,
+        .imageView = textureToBind.getView(aspect),
+        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eSampledImage;
+
+    if(sampler) {
+        descType = vk::DescriptorType::eCombinedImageSampler;
+    }
+    vk::WriteDescriptorSet writeTexture {
+            .dstSet = descriptorSet,
+            .dstBinding = bindingID,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = descType,
+            .pImageInfo = &imageInfo,
+    };
+    driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
 }

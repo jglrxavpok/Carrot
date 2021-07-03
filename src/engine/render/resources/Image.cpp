@@ -130,11 +130,11 @@ const vk::Extent3D& Carrot::Image::getSize() const {
     return size;
 }
 
-void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands,vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
-    transition(getVulkanImage(), commands, oldLayout, newLayout, layerCount);
+void Carrot::Image::transitionLayoutInline(vk::CommandBuffer& commands,vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect) {
+    transition(getVulkanImage(), commands, oldLayout, newLayout, layerCount, aspect);
 }
 
-void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount) {
+void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount, vk::ImageAspectFlags aspect) {
     vk::ImageMemoryBarrier barrier {
             .oldLayout = oldLayout,
             .newLayout = newLayout,
@@ -146,7 +146,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
             .image = image,
 
             .subresourceRange = {
-                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .aspectMask = aspect,
                     .baseMipLevel = 0,
                     .levelCount = 1,
                     .baseArrayLayer = 0,
@@ -157,47 +157,64 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
     auto sourceStage = static_cast<vk::PipelineStageFlags>(0);
     auto destinationStage = static_cast<vk::PipelineStageFlags>(0);
 
-    if(oldLayout == vk::ImageLayout::eUndefined) {
-        barrier.srcAccessMask = static_cast<vk::AccessFlagBits>(0);
-        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    bool oldLayoutHandled = true;
+    bool newLayoutHandled = true;
+    switch(oldLayout) {
+        case vk::ImageLayout::eUndefined: {
+            barrier.srcAccessMask = static_cast<vk::AccessFlagBits>(0);
+            sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        } break;
+
+        case vk::ImageLayout::eGeneral: {
+            barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
+            sourceStage = vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+        } break;
+
+        case vk::ImageLayout::eTransferDstOptimal: {
+            barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
+            sourceStage = vk::PipelineStageFlagBits::eTransfer;
+        } break;
+
+        case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+        case vk::ImageLayout::eDepthAttachmentOptimal:
+        case vk::ImageLayout::eStencilAttachmentOptimal:
+        case vk::ImageLayout::eShaderReadOnlyOptimal:
+        case vk::ImageLayout::eColorAttachmentOptimal: {
+            barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
+            sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
+        } break;
+
+        default:
+            oldLayoutHandled = false;
+            break;
     }
 
-    if(oldLayout == vk::ImageLayout::eGeneral) {
-        barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
-        sourceStage = vk::PipelineStageFlagBits::eRayTracingShaderKHR;
+    switch(newLayout) {
+        case vk::ImageLayout::eTransferDstOptimal: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
+            destinationStage = vk::PipelineStageFlagBits::eTransfer;
+        } break;
+
+        case vk::ImageLayout::eShaderReadOnlyOptimal: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+        } break;
+        case vk::ImageLayout::eColorAttachmentOptimal: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        } break;
+
+        case vk::ImageLayout::eGeneral: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        } break;
+
+        default:
+            newLayoutHandled = false;
+            break;
     }
 
-    if(oldLayout == vk::ImageLayout::eTransferDstOptimal) {
-        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
-        sourceStage = vk::PipelineStageFlagBits::eTransfer;
-    }
-    if(oldLayout == vk::ImageLayout::eColorAttachmentOptimal) {
-        barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
-        sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
-    }
-    if(oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
-        sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
-    }
-
-    if(newLayout == vk::ImageLayout::eTransferDstOptimal) {
-        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite; // write must be done
-        destinationStage = vk::PipelineStageFlagBits::eTransfer;
-    }
-
-    if(newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-        barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; // shader must be able to read
-        destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-    }
-    if(newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
-        barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite; // shader must be able to read
-        destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    }
-
-    if(newLayout == vk::ImageLayout::eGeneral) {
-        barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
-        destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
-    }
+    assert(oldLayoutHandled && newLayoutHandled);
 
     commands.pipelineBarrier(sourceStage,
                              destinationStage,

@@ -19,7 +19,7 @@ namespace Carrot {
 
         virtual void tick(double frameTime) = 0;
 
-        virtual void recordGBufferPass(uint32_t frameIndex, vk::CommandBuffer& commands) = 0;
+        virtual void recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) = 0;
 
         virtual void onMouseMove(double dx, double dy) = 0;
 

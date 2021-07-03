@@ -203,7 +203,7 @@ void Carrot::GBuffer::recordResolvePass(uint32_t frameIndex, vk::CommandBuffer& 
     commandBuffer.begin(beginInfo);
     {
         renderer.getVulkanDriver().updateViewportAndScissor(commandBuffer);
-        gResolvePipeline->bind(frameIndex, commandBuffer);
+        gResolvePipeline->bind(renderer.getGRenderPass(), frameIndex, commandBuffer);
         screenQuadMesh->bind(commandBuffer);
         screenQuadMesh->draw(commandBuffer);
     }
@@ -460,4 +460,90 @@ void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
 void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
     generateImages();
     loadResolvePipeline();
+}
+
+Carrot::Render::Pass<Carrot::GBuffer::GBufferData>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::FrameData&, vk::CommandBuffer&)> callback) {
+    using namespace Carrot::Render;
+    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+    vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+    vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
+            .depth = 1.0f,
+            .stencil = 0
+    };
+    vk::ClearValue clearIntProperties = vk::ClearColorValue();
+    auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
+    return graph.addPass<Carrot::GBuffer::GBufferData>("gbuffer",
+           [&](GraphBuilder& graph, Pass<GBufferData>& pass, GBufferData& data)
+           {
+
+                data.albedo = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                       vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                       vk::AttachmentLoadOp::eClear,
+                                                       clearColor,
+                                                       vk::ImageLayout::eColorAttachmentOptimal);
+
+                data.depthStencil = graph.createRenderTarget(renderer.getVulkanDriver().getDepthFormat(),
+                                                             vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                             vk::AttachmentLoadOp::eClear,
+                                                             clearDepth,
+                                                             vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+                data.positions = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                          vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                          vk::AttachmentLoadOp::eClear,
+                                                          positionClear,
+                                                          vk::ImageLayout::eColorAttachmentOptimal);
+
+                data.normals = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                        vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                        vk::AttachmentLoadOp::eClear,
+                                                        positionClear,
+                                                        vk::ImageLayout::eColorAttachmentOptimal);
+
+                data.flags = graph.createRenderTarget(vk::Format::eR32Uint,
+                                                      vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                      vk::AttachmentLoadOp::eClear,
+                                                      clearIntProperties,
+                                                      vk::ImageLayout::eColorAttachmentOptimal);
+           },
+           [callback](const Render::CompiledPass& pass, const Render::FrameData& frame, const GBufferData& data, vk::CommandBuffer& buffer){
+                callback(pass, frame, buffer);
+           }
+    );
+}
+
+Carrot::Render::Pass<Carrot::GBuffer::GResolveData>& Carrot::GBuffer::addGResolvePass(const Carrot::GBuffer::GBufferData& data, Carrot::Render::GraphBuilder& graph) {
+    using namespace Carrot::Render;
+    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+    auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
+    return graph.addPass<Carrot::GBuffer::GResolveData>("gresolve",
+           [&](GraphBuilder& graph, Pass<GResolveData>& pass, GResolveData& resolveData)
+           {
+                resolveData.positions = graph.read(data.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.normals = graph.read(data.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.albedo = graph.read(data.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.depthStencil = graph.read(data.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                resolveData.flags = graph.read(data.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                        vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
+                                                        vk::AttachmentLoadOp::eClear,
+                                                        clearColor,
+                                                        vk::ImageLayout::eColorAttachmentOptimal);
+           },
+           [this](const Render::CompiledPass& pass, const Render::FrameData& frame, const GResolveData& data, vk::CommandBuffer& buffer) {
+                auto resolvePipeline = renderer.getOrCreatePipeline(pass.getRenderPass(), "gResolve-rendergraph");
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.frameIndex), 0, 0, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.frameIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.positions, frame.frameIndex), 0, 2, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.frameIndex), 0, 3, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.frameIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
+                // TODO: 5 - raytracing result
+                // TODO: 6 - ImGui
+                // TODO: 7 - Skybox
+
+               resolvePipeline->bind(pass.getRenderPass(), frame.frameIndex, buffer);
+               screenQuadMesh->bind(buffer);
+               screenQuadMesh->draw(buffer);
+           }
+    );
 }

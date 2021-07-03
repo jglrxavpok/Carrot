@@ -9,6 +9,7 @@
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/render/resources/Texture.h"
+#include "engine/render/RenderGraph.h"
 
 namespace Carrot {
     class GBuffer: public SwapchainAware {
@@ -50,5 +51,27 @@ namespace Carrot {
         vector<std::unique_ptr<Render::Texture>>& getNormalTextures() { return viewNormalTextures; }
         vector<std::unique_ptr<Render::Texture>>& getPositionTextures() { return viewPositionTextures; }
         vector<std::unique_ptr<Render::Texture>>& getAlbedoTextures() { return albedoTextures; }
+
+    public: // Render::Graph reimpl
+        struct GBufferData {
+            Render::FrameResource positions;
+            Render::FrameResource normals;
+            Render::FrameResource albedo;
+            Render::FrameResource depthStencil;
+            Render::FrameResource flags;
+        };
+
+        struct GResolveData {
+            Render::FrameResource positions;
+            Render::FrameResource normals;
+            Render::FrameResource albedo;
+            Render::FrameResource depthStencil;
+            Render::FrameResource flags;
+
+            Render::FrameResource resolved;
+        };
+
+        Render::Pass<GBufferData>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::FrameData&, vk::CommandBuffer&)> callback);
+        Render::Pass<GResolveData>& addGResolvePass(const GBufferData& data, Render::GraphBuilder& graph);
     };
 }

@@ -152,6 +152,7 @@ set(FRAGMENT_SHADERS
         resources/shaders/gResolve.fragment.glsl
         resources/shaders/skybox.fragment.glsl
         resources/shaders/particles.fragment.glsl
+        resources/shaders/gResolve-rendergraph.fragment.glsl
         )
 
 set(COMPUTE_SHADERS

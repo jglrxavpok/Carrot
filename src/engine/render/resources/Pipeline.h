@@ -42,13 +42,45 @@ namespace Carrot {
     class Pipeline: public SwapchainAware {
 
     private:
+        struct {
+            vector<vk::VertexInputBindingDescription> vertexBindingDescriptions;
+            vector<vk::VertexInputAttributeDescription> vertexAttributes;
+
+            vk::PipelineVertexInputStateCreateInfo vertexInput;
+            vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+
+            vk::PipelineRasterizationStateCreateInfo rasterizer;
+            vk::PipelineMultisampleStateCreateInfo multisampling;
+
+            vk::PipelineDepthStencilStateCreateInfo depthStencil;
+            std::vector<vk::PipelineColorBlendAttachmentState> colorBlendAttachments;
+
+            vk::PipelineColorBlendStateCreateInfo colorBlending;
+            std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreation;
+
+            vk::DynamicState dynamicStates[2] = {
+                    vk::DynamicState::eScissor,
+                    vk::DynamicState::eViewport,
+            };
+            vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
+
+            vk::Viewport viewport;
+            vk::Rect2D scissor;
+            vk::PipelineViewportStateCreateInfo viewportState;
+
+            std::vector<uint32_t> specializationData{}; // TODO: support something else than uint32
+            std::vector<vk::SpecializationMapEntry> specializationEntries;
+            vk::SpecializationInfo specialization;
+
+            vk::GraphicsPipelineCreateInfo pipelineInfo;
+        } pipelineTemplate;
+
         Carrot::VulkanDriver& driver;
         const vk::RenderPass& renderPass;
         vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
         /// can be nullptr, used for animations
         vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
         vk::UniquePipelineLayout layout{};
-        vk::UniquePipeline vkPipeline{};
         vk::UniqueDescriptorPool descriptorPool{};
         unique_ptr<ShaderStages> stages = nullptr;
         vector<vk::DescriptorSet> descriptorSets0{};
@@ -61,6 +93,7 @@ namespace Carrot {
         PipelineDescription description;
         unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
         unordered_map<TextureID, vk::ImageView> reservedTextures{};
+        mutable unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
 
         vector<vk::DescriptorSet> allocateDescriptorSets0();
 
@@ -68,11 +101,13 @@ namespace Carrot {
 
         void updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex);
 
+        vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
+
     public:
         explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const PipelineDescription description);
 
-        void bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
+        void bind(vk::RenderPass pass, uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
         void bindDescriptorSets(vk::CommandBuffer& commands, const vector<vk::DescriptorSet>& descriptors, const vector<uint32_t>& dynamicOffsets, uint32_t firstSet = 0) const;
 

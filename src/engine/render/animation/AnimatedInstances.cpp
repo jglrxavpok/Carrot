@@ -324,8 +324,8 @@ void Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
     });
 }
 
-void Carrot::AnimatedInstances::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& commands, size_t indirectDrawCount) {
+void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, size_t frameIndex, vk::CommandBuffer& commands, size_t indirectDrawCount) {
     TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render units");
     commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
-    model->indirectDraw(frameIndex, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
+    model->indirectDraw(pass, frameIndex, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
 }

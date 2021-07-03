@@ -12,6 +12,8 @@
 #include "engine/render/Material.h"
 #include "Vertex.h"
 #include "engine/render/DebugBufferObject.h"
+#include "Mesh.h"
+#include "Mesh.ipp"
 #include <engine/io/Logging.hpp>
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription):
@@ -34,26 +36,26 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
 
     descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
 
-    vector<vk::VertexInputBindingDescription> descriptions = Carrot::getBindingDescriptions(description.vertexFormat);
-    vector<vk::VertexInputAttributeDescription> attributes = Carrot::getAttributeDescriptions(description.vertexFormat);
+    pipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
+    pipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
 
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
-            .vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size()),
-            .pVertexBindingDescriptions = descriptions.data(),
+    pipelineTemplate.vertexInput = {
+            .vertexBindingDescriptionCount = static_cast<uint32_t>(pipelineTemplate.vertexBindingDescriptions.size()),
+            .pVertexBindingDescriptions = pipelineTemplate.vertexBindingDescriptions.data(),
 
-            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size()),
-            .pVertexAttributeDescriptions = attributes.data(),
+            .vertexAttributeDescriptionCount = static_cast<uint32_t>(pipelineTemplate.vertexAttributes.size()),
+            .pVertexAttributeDescriptions = pipelineTemplate.vertexAttributes.data(),
     };
 
     vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 
 
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+    pipelineTemplate.inputAssembly = {
             .topology = topology,
             .primitiveRestartEnable = false,
     };
 
-    vk::PipelineRasterizationStateCreateInfo rasterizer{
+    pipelineTemplate.rasterizer = {
             // TODO: change for shadow maps
             .depthClampEnable = false,
 
@@ -73,7 +75,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
             .lineWidth = 1.0f,
     };
 
-    vk::PipelineMultisampleStateCreateInfo multisampling{
+    pipelineTemplate.multisampling = {
             .rasterizationSamples = vk::SampleCountFlagBits::e1,
             .sampleShadingEnable = false,
             .minSampleShading = 1.0f,
@@ -81,30 +83,27 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
             .alphaToCoverageEnable = false,
             .alphaToOneEnable = false,
     };
-    vk::PipelineDepthStencilStateCreateInfo depthStencil {
+    pipelineTemplate.depthStencil = {
             .depthTestEnable = description.type != PipelineType::GResolve,
             .depthWriteEnable = description.type != PipelineType::GResolve && description.type != PipelineType::Skybox,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
 
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-            // TODO: blending
-            .blendEnable = false,
+    pipelineTemplate.colorBlendAttachments = {
+            static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
+            {
+                    // TODO: blending
+                    .blendEnable = false,
 
-            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            }
     };
 
-    vector<vk::PipelineColorBlendAttachmentState> colorBlendingStates =
-            {
-            static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
-            colorBlendAttachment
-            };
-
-    vk::PipelineColorBlendStateCreateInfo colorBlending{
+    pipelineTemplate.colorBlending = vk::PipelineColorBlendStateCreateInfo {
             .logicOpEnable = false,
-            .attachmentCount = static_cast<uint32_t>(colorBlendingStates.size()),
-            .pAttachments = colorBlendingStates.data(),
+            .attachmentCount = static_cast<uint32_t>(pipelineTemplate.colorBlendAttachments.size()),
+            .pAttachments = pipelineTemplate.colorBlendAttachments.data(),
     };
 
     vector<vk::PushConstantRange> pushConstants{};
@@ -138,16 +137,12 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
 
     layout = device.createPipelineLayoutUnique(pipelineLayoutCreateInfo, driver.getAllocationCallbacks());
 
-    vk::DynamicState dynamicStates[] = {
-            vk::DynamicState::eScissor,
-            vk::DynamicState::eViewport,
-    };
-    vk::PipelineDynamicStateCreateInfo dynamicStateInfo {
+    pipelineTemplate.dynamicStateInfo = {
             .dynamicStateCount = 2,
-            .pDynamicStates = dynamicStates,
+            .pDynamicStates = pipelineTemplate.dynamicStates,
     };
 
-    vk::Viewport viewport {
+    pipelineTemplate.viewport = vk::Viewport {
         .x = 0.0f,
         .y = 0.0f,
         .width = static_cast<float>(driver.getSwapchainExtent().width),
@@ -157,7 +152,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
         .maxDepth = 1.0f,
     };
 
-    vk::Rect2D scissor {
+    pipelineTemplate.scissor = vk::Rect2D {
         .offset = {0,0},
         .extent = {
                 .width = driver.getSwapchainExtent().width,
@@ -165,16 +160,15 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
         }
     };
 
-    vk::PipelineViewportStateCreateInfo viewportState {
+    pipelineTemplate.viewportState = vk::PipelineViewportStateCreateInfo {
         .viewportCount = 1,
-        .pViewports = &viewport,
+        .pViewports = &pipelineTemplate.viewport,
 
         .scissorCount = 1,
-        .pScissors = &scissor,
+        .pScissors = &pipelineTemplate.scissor,
     };
 
     vector<Specialization> specializations{};
-    vector<uint32_t> specializationData{}; // TODO: support something else than uint32
 
     for(const auto& [constantName, constantValue] : description.constants) {
         if("MAX_MATERIALS" == constantName) {
@@ -189,7 +183,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
                 .size = sizeof(uint32_t),
                 .constantID = static_cast<uint32_t>(specializations.size()), // TODO: Map name to index
         });
-        specializationData.push_back(static_cast<uint32_t>(constantValue));
+        pipelineTemplate.specializationData.push_back(static_cast<uint32_t>(constantValue));
     }
 
     uint32_t totalDataSize = 0;
@@ -198,33 +192,32 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
         entries.emplace_back(spec.convertToEntry());
         totalDataSize += spec.size;
     }
-    vk::SpecializationInfo specialization {
-            .mapEntryCount = static_cast<uint32_t>(entries.size()),
-            .pMapEntries = entries.data(),
+    pipelineTemplate.specializationEntries = entries;
+    pipelineTemplate.specialization = {
+            .mapEntryCount = static_cast<uint32_t>(pipelineTemplate.specializationEntries.size()),
+            .pMapEntries = pipelineTemplate.specializationEntries.data(),
             .dataSize = totalDataSize,
-            .pData = specializationData.data(),
+            .pData = pipelineTemplate.specializationData.data(),
     };
 
-    auto shaderStageCreation = stages->createPipelineShaderStages(&specialization);
-    vk::GraphicsPipelineCreateInfo pipelineInfo{
-            .stageCount = static_cast<uint32_t>(shaderStageCreation.size()),
-            .pStages = shaderStageCreation.data(),
+    pipelineTemplate.shaderStageCreation = stages->createPipelineShaderStages(&pipelineTemplate.specialization);
+    pipelineTemplate.pipelineInfo = {
+            .stageCount = static_cast<uint32_t>(pipelineTemplate.shaderStageCreation.size()),
+            .pStages = pipelineTemplate.shaderStageCreation.data(),
 
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pDepthStencilState = &depthStencil,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicStateInfo,
+            .pVertexInputState = &pipelineTemplate.vertexInput,
+            .pInputAssemblyState = &pipelineTemplate.inputAssembly,
+            .pViewportState = &pipelineTemplate.viewportState,
+            .pRasterizationState = &pipelineTemplate.rasterizer,
+            .pMultisampleState = &pipelineTemplate.multisampling,
+            .pDepthStencilState = &pipelineTemplate.depthStencil,
+            .pColorBlendState = &pipelineTemplate.colorBlending,
+            .pDynamicState = &pipelineTemplate.dynamicStateInfo,
 
             .layout = *layout,
             .renderPass = renderPass,
             .subpass = static_cast<uint32_t>(description.subpassIndex),
     };
-
-    vkPipeline = device.createGraphicsPipelineUnique(nullptr, pipelineInfo, driver.getAllocationCallbacks());
 
     if(description.type == PipelineType::GBuffer) {
         materialStorageBuffer = make_unique<Buffer>(driver,
@@ -238,10 +231,23 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
     }
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
+
+    // TODO: remove renderPass from constructor
+    getOrCreatePipelineForRenderPass(renderPass);
 }
 
-void Carrot::Pipeline::bind(uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
-    commands.bindPipeline(bindPoint, *vkPipeline);
+vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass pass) const {
+    auto it = vkPipelines.find(pass);
+    if(it == vkPipelines.end()) {
+        vk::GraphicsPipelineCreateInfo info = pipelineTemplate.pipelineInfo;
+        info.renderPass = pass;
+        vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, driver.getAllocationCallbacks()));
+    }
+    return *vkPipelines[pass];
+}
+
+void Carrot::Pipeline::bind(vk::RenderPass pass, uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
+    commands.bindPipeline(bindPoint, getOrCreatePipelineForRenderPass(pass));
     if(description.type == PipelineType::GBuffer) {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
     } else if(description.type == PipelineType::Blit) {

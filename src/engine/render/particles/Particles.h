@@ -111,7 +111,7 @@ namespace Carrot {
 
         void onFrame(size_t frameIndex);
 
-        void gBufferRender(size_t frameIndex, vk::CommandBuffer& commands) const;
+        void gBufferRender(vk::RenderPass pass, size_t frameIndex, vk::CommandBuffer& commands) const;
 
         void onSwapchainImageCountChange(size_t newCount) override;
 

@@ -96,7 +96,7 @@ void Carrot::Engine::init() {
         };
         vkDriver.getLogicalDevice().updateDescriptorSets(writeLoadingImage, {});
 
-        pipeline->bind(frame.frameIndex, cmds);
+        pipeline->bind(pass, frame.frameIndex, cmds);
         screenQuad->bind(cmds);
         screenQuad->draw(cmds);
     };
@@ -108,22 +108,29 @@ void Carrot::Engine::init() {
                     .height = vkDriver.getSwapchainExtent().height,
                     .depth = 1,
                 };
-                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
+                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eColorAttachmentOptimal);
            },
-           [fullscreenBlit, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const TempPassData& data, vk::CommandBuffer& buffer) {
+           [this, fullscreenBlit, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const TempPassData& data, vk::CommandBuffer& buffer) {
                fullscreenBlit(pass.getRenderPass(), frame, *tex, buffer);
+               // TODO: make raytracing compatible with RenderGraph
+               // TODO: make compute shaders compatible with RenderGraph
+               //getRayTracer().recordCommands(frame.frameIndex, buffer);
            }
     );
 
+    auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::FrameData& frame, vk::CommandBuffer& cmds) {
+        game->recordGBufferPass(pass.getRenderPass(), frame.frameIndex, cmds);
+    });
+    auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), mainGraph);
+
     mainGraph.addPass<PresentPassData>("present",
-           [prevPassData = tmpPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-                data.input = builder.read(prevPassData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}));
+           [prevPassData = gresolvePass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+                data.input = builder.read(prevPassData.resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                 builder.present(data.output);
            },
            [fullscreenBlit](const Render::CompiledPass& pass, const Render::FrameData& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
                 auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameIndex);
-                inputTexture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
                 fullscreenBlit(pass.getRenderPass(), frame, inputTexture, buffer);
            }
     );
@@ -270,7 +277,7 @@ void Carrot::Engine::recordGBufferPass(size_t frameIndex, vk::CommandBuffer& gBu
     {
         vkDriver.updateViewportAndScissor(gBufferCommandBuffer);
 
-        this->game->recordGBufferPass(frameIndex, gBufferCommandBuffer);
+        this->game->recordGBufferPass(renderer.getGRenderPass(), frameIndex, gBufferCommandBuffer);
     }
     gBufferCommandBuffer.end();
 }
@@ -928,7 +935,7 @@ void Carrot::Engine::updateSkyboxCommands() {
         });
 
         vkDriver.updateViewportAndScissor(cmds);
-        skyboxPipeline->bind(i, cmds);
+        skyboxPipeline->bind(renderer.getSkyboxRenderPass(), i, cmds);
         skyboxMesh->bind(cmds);
         skyboxMesh->draw(cmds);
 

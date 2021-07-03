@@ -162,10 +162,10 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 }
 
-void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount) {
+void Carrot::Model::draw(vk::RenderPass pass, const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
-        material->bindForRender(imageIndex, commands);
+        material->bindForRender(pass, imageIndex, commands);
         if(!animations.empty()) {
             material->getRenderingPipeline().bindDescriptorSets(commands, {animationDescriptorSets[imageIndex]}, {}, 1);
         }
@@ -177,10 +177,10 @@ void Carrot::Model::draw(const uint32_t imageIndex, vk::CommandBuffer& commands,
     }
 }
 
-void Carrot::Model::indirectDraw(const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const map<MeshID, shared_ptr<Carrot::Buffer>>& indirectDrawCommands, uint32_t drawCount) {
+void Carrot::Model::indirectDraw(vk::RenderPass pass, const uint32_t imageIndex, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const map<MeshID, shared_ptr<Carrot::Buffer>>& indirectDrawCommands, uint32_t drawCount) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
-        material->bindForRender(imageIndex, commands);
+        material->bindForRender(pass, imageIndex, commands);
 
         for(const auto& mesh : meshes[material.get()]) {
             mesh->bindForIndirect(commands);

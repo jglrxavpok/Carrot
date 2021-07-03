@@ -23,8 +23,9 @@ namespace Carrot::Render {
         Carrot::UUID resourceID;
         vk::ImageLayout from;
         vk::ImageLayout to;
+        vk::ImageAspectFlags aspect;
 
-        explicit ImageTransition(Carrot::UUID resourceID, vk::ImageLayout from, vk::ImageLayout to): resourceID(resourceID), from(from), to(to) {}
+        explicit ImageTransition(Carrot::UUID resourceID, vk::ImageLayout from, vk::ImageLayout to, vk::ImageAspectFlags aspect): resourceID(resourceID), from(from), to(to), aspect(aspect) {}
     };
 
     class CompiledPass {
@@ -65,8 +66,8 @@ namespace Carrot::Render {
         virtual CompiledPassCallback generateCallback() = 0;
 
     public:
-        void addInput(const FrameResource& resource, vk::ImageLayout expectedLayout);
-        void addOutput(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue);
+        void addInput(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
+        void addOutput(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout);
         void present(const FrameResource& toPresent);
 
     public:
@@ -76,21 +77,25 @@ namespace Carrot::Render {
         struct Input {
             const FrameResource* resource = nullptr;
             vk::ImageLayout expectedLayout = vk::ImageLayout::eUndefined;
+            vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
 
-            Input(const FrameResource* resource, vk::ImageLayout expectedLayout): resource(resource), expectedLayout(expectedLayout) {}
+            Input(const FrameResource* resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect): resource(resource), expectedLayout(expectedLayout), aspect(aspect) {}
         };
 
         struct Output {
             const FrameResource* resource = nullptr;
             vk::AttachmentLoadOp loadOp;
             vk::ClearValue clearValue;
+            vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
 
-            Output(const FrameResource* resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue): resource(resource), loadOp(loadOp), clearValue(clearValue) {}
+            Output(const FrameResource* resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
         };
 
         std::list<Input> inputs;
         std::list<Output> outputs;
         std::unordered_map<Carrot::UUID, vk::ImageLayout> finalLayouts;
+
+        friend class GraphBuilder;
     };
 
     template<typename Data>

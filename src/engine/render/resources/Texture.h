@@ -62,8 +62,8 @@ namespace Carrot::Render {
         vk::ImageView getView(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
 
     public:
-        void transitionNow(vk::ImageLayout newLayout);
-        void transitionInline(vk::CommandBuffer& commands, vk::ImageLayout newLayout);
+        void transitionNow(vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
+        void transitionInline(vk::CommandBuffer& commands, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
         /// Changes the internal tracked layout. Can be used if layout changes without a call to "transitionNow" or "transitionInline"
         void assumeLayout(vk::ImageLayout newLayout);

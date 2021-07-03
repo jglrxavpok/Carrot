@@ -11,6 +11,7 @@
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/vulkan/SwapchainAware.h"
+#include "engine/render/FrameData.h"
 
 namespace Carrot {
     class GBuffer;
@@ -111,5 +112,10 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
+
+    public:
+        void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
+        void bindTexture(Pipeline& pipeline, const Render::FrameData& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
+        void bindTexture(Pipeline& pipeline, const Render::FrameData& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
     };
 }

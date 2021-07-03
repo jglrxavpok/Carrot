@@ -82,9 +82,9 @@ namespace Carrot {
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 
         /// Transition the layout of this image from one layout to another, inside of a given command buffer
-        void transitionLayoutInline(vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+        void transitionLayoutInline(vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
-        static void transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount = 1);
+        static void transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount = 1, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
         /// Creates a ImageView pointing to this image
         vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);

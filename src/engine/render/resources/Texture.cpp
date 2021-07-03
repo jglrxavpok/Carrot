@@ -47,18 +47,18 @@ namespace Carrot::Render {
         return *image;
     }
 
-    void Texture::transitionNow(vk::ImageLayout newLayout) {
+    void Texture::transitionNow(vk::ImageLayout newLayout, vk::ImageAspectFlags aspect) {
         driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-            transitionInline(cmds, newLayout);
+            transitionInline(cmds, newLayout, aspect);
         });
     }
 
-    void Texture::transitionInline(vk::CommandBuffer& commands, vk::ImageLayout newLayout) {
+    void Texture::transitionInline(vk::CommandBuffer& commands, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect) {
         runtimeAssert(image, "Texture not initialized!");
         if(currentLayout == newLayout)
             return;
 
-        image->transitionLayoutInline(commands, currentLayout, newLayout);
+        image->transitionLayoutInline(commands, currentLayout, newLayout, aspect);
         currentLayout = newLayout;
     }
 

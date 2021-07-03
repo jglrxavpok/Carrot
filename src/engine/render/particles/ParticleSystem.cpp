@@ -107,8 +107,8 @@ Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
     return particle;
 }
 
-void Carrot::ParticleSystem::gBufferRender(size_t frameIndex, vk::CommandBuffer& commands) const {
-    renderingPipeline->bind(frameIndex, commands);
+void Carrot::ParticleSystem::gBufferRender(vk::RenderPass pass, size_t frameIndex, vk::CommandBuffer& commands) const {
+    renderingPipeline->bind(pass, frameIndex, commands);
     commands.drawIndirect(drawCommandBuffer.getVulkanBuffer(), drawCommandBuffer.getStart(), 1, sizeof(vk::DrawIndexedIndirectCommand));
 }
 

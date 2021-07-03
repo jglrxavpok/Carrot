@@ -128,7 +128,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .pClearValues = &color,
     }, vk::SubpassContents::eInline);
 
-    pipeline.bind(0, cmds);
+    pipeline.bind(*blitRenderPass, 0, cmds);
     quad.bind(cmds);
     quad.draw(cmds);
 

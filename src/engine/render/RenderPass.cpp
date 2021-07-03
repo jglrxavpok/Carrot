@@ -30,7 +30,7 @@ void Carrot::Render::CompiledPass::execute(const FrameData& data, vk::CommandBuf
     for(const auto& transition : prePassTransitions) {
         auto& tex = graph.getTexture(transition.resourceID, data.frameIndex);
         tex.assumeLayout(transition.from);
-        tex.transitionInline(cmds, transition.to);
+        tex.transitionInline(cmds, transition.to, transition.aspect);
     }
 
     cmds.beginRenderPass(vk::RenderPassBeginInfo {
@@ -50,14 +50,14 @@ void Carrot::Render::CompiledPass::execute(const FrameData& data, vk::CommandBuf
     cmds.endRenderPass();
 }
 
-void Carrot::Render::PassBase::addInput(const Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout) {
-    inputs.emplace_back(&resource, expectedLayout);
+void Carrot::Render::PassBase::addInput(const Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
+    inputs.emplace_back(&resource, expectedLayout, aspect);
 }
 
 void Carrot::Render::PassBase::addOutput(const Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
-                                         vk::ClearValue clearValue) {
-    outputs.emplace_back(&resource, loadOp, clearValue);
-    finalLayouts[resource.id] = vk::ImageLayout::eColorAttachmentOptimal;
+                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout) {
+    outputs.emplace_back(&resource, loadOp, clearValue, aspect);
+    finalLayouts[resource.id] = layout;
 }
 
 void Carrot::Render::PassBase::present(const FrameResource& toPresent) {
@@ -71,14 +71,14 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     std::vector<vk::AttachmentDescription> attachments;
     std::vector<vk::AttachmentReference> inputAttachments;
     std::vector<vk::AttachmentReference> outputAttachments;
-    vk::AttachmentReference* depthAttachmentRef = nullptr;
+    std::unique_ptr<vk::AttachmentReference> depthAttachmentRef = nullptr;
 
     std::vector<ImageTransition> prePassTransitions;
     for(const auto& input : inputs) {
         auto initialLayout = graph.getFinalLayouts()[input.resource->parentID]; // input is not the resource itself, but a new instance returned by read()
         assert(initialLayout != vk::ImageLayout::eUndefined);
         if(initialLayout != input.expectedLayout) {
-            prePassTransitions.emplace_back(input.resource->parentID, initialLayout, input.expectedLayout);
+            prePassTransitions.emplace_back(input.resource->parentID, initialLayout, input.expectedLayout, input.aspect);
         }
     }
 
@@ -109,13 +109,26 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         };
         attachments.push_back(attachment);
 
-        outputAttachments.push_back(vk::AttachmentReference {
-            .attachment = static_cast<uint32_t>(attachments.size()-1),
-            .layout = vk::ImageLayout::eColorAttachmentOptimal, // TODO: customisable
-        });
-
         if(output.loadOp == vk::AttachmentLoadOp::eClear) {
             clearValues.push_back(output.clearValue);
+        }
+
+        if(finalLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal
+        || finalLayout == vk::ImageLayout::eDepthAttachmentOptimal
+        || finalLayout == vk::ImageLayout::eStencilAttachmentOptimal) {
+            runtimeAssert(!depthAttachmentRef, "Only one depth-stencil is allowed at once.");
+            depthAttachmentRef = std::make_unique<vk::AttachmentReference>(vk::AttachmentReference{
+                   .attachment = static_cast<uint32_t>(attachments.size()-1),
+                   .layout = finalLayout,
+            });
+        } else {
+            if(finalLayout == vk::ImageLayout::ePresentSrcKHR) {
+                finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
+            }
+            outputAttachments.push_back(vk::AttachmentReference {
+                    .attachment = static_cast<uint32_t>(attachments.size()-1),
+                    .layout = finalLayout,
+            });
         }
     }
 
@@ -127,7 +140,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             .colorAttachmentCount = static_cast<uint32_t>(outputAttachments.size()),
             // index in this array is used by `layout(location = 0)` inside shaders
             .pColorAttachments = outputAttachments.data(),
-            .pDepthStencilAttachment = depthAttachmentRef,
+            .pDepthStencilAttachment = depthAttachmentRef.get(),
 
             .preserveAttachmentCount = 0,
     };
@@ -164,7 +177,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         // TODO: inputs
         for(const auto& output : outputs) {
             auto& texture = graph.getOrCreateTexture(driver, *output.resource, i);
-            frameImageViews.push_back(texture.getView());
+            frameImageViews.push_back(texture.getView(output.aspect));
         }
 
 
