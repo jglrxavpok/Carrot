@@ -483,26 +483,13 @@ void Carrot::RayTracer::finishInit() {
                 .pAccelerationStructures = &renderer.getASBuilder().getTopLevelAS().as->getVulkanAS(),
         };
 
-        vk::DescriptorImageInfo writeImage {
-                .imageView = this->lightingTextures[frameIndex]->getView(),
-                .imageLayout = vk::ImageLayout::eGeneral,
-        };
-
-        array<vk::WriteDescriptorSet, 2> writes = {
+        array<vk::WriteDescriptorSet, 1> writes = {
                 vk::WriteDescriptorSet {
                         .pNext = &writeAS,
                         .dstSet = set,
                         .dstBinding = 0,
                         .descriptorCount = 1,
                         .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
-                },
-
-                vk::WriteDescriptorSet {
-                        .dstSet = set,
-                        .dstBinding = 1,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eStorageImage,
-                        .pImageInfo = &writeImage,
                 },
         };
         device.updateDescriptorSets(writes, {});

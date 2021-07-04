@@ -70,10 +70,6 @@ void Carrot::Engine::init() {
         Render::FrameResource output;
     };
 
-    struct TempPassData {
-        Render::FrameResource output;
-    };
-
     Render::GraphBuilder mainGraph(vkDriver);
     auto& testTexture = renderer.getOrCreateTexture("default.png");
 
@@ -101,27 +97,47 @@ void Carrot::Engine::init() {
         screenQuad->draw(cmds);
     };
 
-    auto& tmpPass = mainGraph.addPass<TempPassData>("tmp",
-           [this](Render::GraphBuilder& builder, Render::Pass<TempPassData>& pass, TempPassData& data) {
+    auto& rtPass = mainGraph.addPass<GBuffer::RaytracingPassData>("tmp",
+           [this](Render::GraphBuilder& builder, Render::Pass<GBuffer::RaytracingPassData>& pass, GBuffer::RaytracingPassData& data) {
+                pass.rasterized = false;
                 vk::Extent3D size {
                     .width = vkDriver.getSwapchainExtent().width,
                     .height = vkDriver.getSwapchainExtent().height,
                     .depth = 1,
                 };
-                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eColorAttachmentOptimal);
+                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
            },
-           [this, fullscreenBlit, tex = testTexture.get()](const Render::CompiledPass& pass, const Render::FrameData& frame, const TempPassData& data, vk::CommandBuffer& buffer) {
-               fullscreenBlit(pass.getRenderPass(), frame, *tex, buffer);
-               // TODO: make raytracing compatible with RenderGraph
-               // TODO: make compute shaders compatible with RenderGraph
-               //getRayTracer().recordCommands(frame.frameIndex, buffer);
+           [this](const Render::CompiledPass& pass, const Render::FrameData& frame, const GBuffer::RaytracingPassData& data, vk::CommandBuffer& buffer) {
+                auto& set = renderer.getRayTracer().getRTDescriptorSets()[frame.frameIndex];
+                auto& texture = pass.getGraph().getTexture(data.output, frame.frameIndex);
+                texture.assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+                texture.transitionInline(buffer, vk::ImageLayout::eGeneral);
+                vk::DescriptorImageInfo writeImage {
+                    .imageView = texture.getView(),
+                    .imageLayout = vk::ImageLayout::eGeneral,
+                };
+                vk::WriteDescriptorSet updateSet {
+                    .dstSet = set,
+                    .dstBinding = 1,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eStorageImage,
+                    .pImageInfo = &writeImage,
+                };
+                vkDriver.getLogicalDevice().updateDescriptorSets(updateSet, {});
+
+                getRayTracer().recordCommands(frame.frameIndex, buffer);
+
+                // TODO: make raytracing compatible with RenderGraph
+                // TODO: make compute shaders compatible with RenderGraph
            }
     );
+
+    auto& imguiPass = renderer.addImGuiPass(mainGraph);
 
     auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::FrameData& frame, vk::CommandBuffer& cmds) {
         game->recordGBufferPass(pass.getRenderPass(), frame.frameIndex, cmds);
     });
-    auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), mainGraph);
+    auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), mainGraph);
 
     mainGraph.addPass<PresentPassData>("present",
            [prevPassData = gresolvePass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
@@ -164,8 +180,7 @@ void Carrot::Engine::run() {
             running = false;
         }
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
+        renderer.newFrame();
         ImGui::NewFrame();
 
         while(lag >= timeBetweenUpdates) {
@@ -289,10 +304,10 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             .pInheritanceInfo = nullptr,
     };
 
+    Console::instance().renderToImGui(*this);
     ImGui::Render();
 
     mainCommandBuffers[i].begin(beginInfo);
-
 
     testGraph->execute(Carrot::Render::FrameData {
         .frameIndex = i,
@@ -346,8 +361,6 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         {
             TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
             mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
-            Console::instance().renderToImGui(*this);
-            ImGui::Render();
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), mainCommandBuffers[i]);
             mainCommandBuffers[i].endRenderPass();
         }
@@ -946,6 +959,7 @@ void Carrot::Engine::updateSkyboxCommands() {
 void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     vkDriver.onSwapchainImageCountChange(newCount);
 
+    // TODO: rebuild graphs
     // TODO: multi-threading (command pools are threadlocal)
     vkDriver.getLogicalDevice().resetCommandPool(getGraphicsCommandPool());
     allocateGraphicsCommandBuffers();

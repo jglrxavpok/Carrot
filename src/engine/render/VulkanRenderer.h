@@ -12,6 +12,9 @@
 #include "engine/render/resources/Texture.h"
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/FrameData.h"
+#include "engine/render/RenderGraph.h"
+#include "backends/imgui_impl_vulkan.h"
+#include "backends/imgui_impl_glfw.h"
 
 namespace Carrot {
     class GBuffer;
@@ -19,6 +22,11 @@ namespace Carrot {
     class RayTracer;
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
+
+    struct ImGuiPassData {
+        bool firstFrame = true;
+        Render::FrameResource output;
+    };
 
     class VulkanRenderer: public SwapchainAware {
     private:
@@ -46,6 +54,9 @@ namespace Carrot {
         std::list<CommandBufferConsumer> beforeFrameCommands;
         std::list<CommandBufferConsumer> afterFrameCommands;
 
+        ImGui_ImplVulkan_InitInfo imguiInitInfo;
+        bool imguiIsInitialized = false;
+
         void createUIResources();
 
         /// Create the pipeline responsible for lighting via the gbuffer
@@ -54,7 +65,8 @@ namespace Carrot {
         /// Create the object responsible of raytracing operations and subpasses
         void createRayTracer();
 
-        void initImgui();
+        void initImGui();
+        void initImGuiPass(const vk::RenderPass& renderPass);
 
         void createSkyboxRenderPass();
 
@@ -80,6 +92,8 @@ namespace Carrot {
         void beforeFrameCommand(const CommandBufferConsumer& command);
         void afterFrameCommand(const CommandBufferConsumer& command);
 
+        /// Call at start of frame (sets ups ImGui stuff)
+        void newFrame();
         void preFrame();
         void postFrame();
 
@@ -112,6 +126,9 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
+
+    public:
+        Render::Pass<ImGuiPassData>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);

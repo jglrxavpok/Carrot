@@ -83,8 +83,9 @@ namespace Carrot::Render {
 
     public:
         template<typename Data>
-        Pass<Data>& addPass(const std::string& name, const SetupPassCallback<Data>& setup, const ExecutePassCallback<Data>& execute) {
-            auto& pair = passes.emplace_back(name, std::move(std::make_unique<Render::Pass<Data>>(execute)));
+        Pass<Data>& addPass(const std::string& name, const SetupPassCallback<Data>& setup, const ExecutePassCallback<Data>& execute,
+                            const PostCompileCallback<Data>& postCompile = [](CompiledPass&, Data&){}) {
+            auto& pair = passes.emplace_back(name, std::move(std::make_unique<Render::Pass<Data>>(execute, postCompile)));
             currentPass = pair.second.get();
             auto* pass = static_cast<Render::Pass<Data>*>(currentPass);
             setup(*this, *pass, pass->data);

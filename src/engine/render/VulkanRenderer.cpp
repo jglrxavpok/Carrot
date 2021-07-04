@@ -8,8 +8,6 @@
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/utils/Assert.h"
 #include "imgui.h"
-#include "backends/imgui_impl_vulkan.h"
-#include "backends/imgui_impl_glfw.h"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
     createRayTracer();
@@ -19,7 +17,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
     createRenderPasses();
     createFramebuffers();
 
-    initImgui();
+    initImGui();
     gBuffer->loadResolvePipeline();
 }
 
@@ -262,7 +260,7 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
-void Carrot::VulkanRenderer::initImgui() {
+void Carrot::VulkanRenderer::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -275,15 +273,21 @@ void Carrot::VulkanRenderer::initImgui() {
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForVulkan(driver.getWindow().get(), true);
-    ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = driver.getInstance();
-    init_info.PhysicalDevice = driver.getPhysicalDevice();
-    init_info.Device = driver.getLogicalDevice();
-    init_info.QueueFamily = driver.getQueueFamilies().graphicsFamily.value();
-    init_info.Queue = driver.getGraphicsQueue();
-    init_info.PipelineCache = nullptr;
-    init_info.DescriptorPool = *imguiDescriptorPool;
-    init_info.Allocator = nullptr;
+    imguiInitInfo = {};
+    imguiInitInfo.Instance = driver.getInstance();
+    imguiInitInfo.PhysicalDevice = driver.getPhysicalDevice();
+    imguiInitInfo.Device = driver.getLogicalDevice();
+    imguiInitInfo.QueueFamily = driver.getQueueFamilies().graphicsFamily.value();
+    imguiInitInfo.Queue = driver.getGraphicsQueue();
+    imguiInitInfo.PipelineCache = nullptr;
+    imguiInitInfo.DescriptorPool = *imguiDescriptorPool;
+    imguiInitInfo.Allocator = nullptr;
+}
+
+void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
+    if(imguiIsInitialized) {
+       ImGui_ImplVulkan_Shutdown();
+    }
 
     SwapChainSupportDetails swapChainSupport = driver.querySwapChainSupport(driver.getPhysicalDevice());
 
@@ -294,10 +298,10 @@ void Carrot::VulkanRenderer::initImgui() {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
-    init_info.MinImageCount = swapChainSupport.capabilities.minImageCount;
-    init_info.ImageCount = imageCount;
-    init_info.CheckVkResultFn = check_vk_result;
-    ImGui_ImplVulkan_Init(&init_info, *imguiRenderPass);
+    imguiInitInfo.MinImageCount = swapChainSupport.capabilities.minImageCount;
+    imguiInitInfo.ImageCount = imageCount;
+    imguiInitInfo.CheckVkResultFn = check_vk_result;
+    ImGui_ImplVulkan_Init(&imguiInitInfo, renderPass);
 
     // Upload fonts
     driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& buffer) {
@@ -425,4 +429,24 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
             .pImageInfo = &imageInfo,
     };
     driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+}
+
+Carrot::Render::Pass<Carrot::ImGuiPassData>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {
+    return graph.addPass<Carrot::ImGuiPassData>("imgui",
+    [this](Render::GraphBuilder& graph, Render::Pass<Carrot::ImGuiPassData>& pass, Carrot::ImGuiPassData& data) {
+        vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+        data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1}, vk::AttachmentLoadOp::eClear, uiClear);
+    },
+    [this](const Render::CompiledPass& pass, const Render::FrameData& frame, Carrot::ImGuiPassData& data, vk::CommandBuffer& cmds) {
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+    },
+    [this](Render::CompiledPass& pass, Carrot::ImGuiPassData& data)
+    {
+        initImGuiPass(pass.getRenderPass());
+    });
+}
+
+void Carrot::VulkanRenderer::newFrame() {
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
 }

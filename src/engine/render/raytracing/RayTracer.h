@@ -77,5 +77,8 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    public:
+        vector<vk::DescriptorSet>& getRTDescriptorSets() { return rtDescriptorSets; }
     };
 }

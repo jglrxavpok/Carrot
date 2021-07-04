@@ -30,6 +30,8 @@ namespace Carrot::Render {
 
     class CompiledPass {
     public:
+
+        /// Constructor for rasterized passes
         explicit CompiledPass(
                 Carrot::VulkanDriver& driver,
                 Graph& graph,
@@ -38,12 +40,23 @@ namespace Carrot::Render {
                 const std::vector<vk::ClearValue>& clearValues,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions
-                );
+        );
+
+        /// Constructor for non-rasterized passes
+        explicit CompiledPass(
+                Carrot::VulkanDriver& driver,
+                Graph& graph,
+                const CompiledPassCallback& renderingCode,
+                std::vector<ImageTransition>&& prePassTransitions
+        );
 
     public:
         void execute(const FrameData& data, vk::CommandBuffer& cmds) const;
 
-        const vk::RenderPass& getRenderPass() const { return *renderPass; }
+        const vk::RenderPass& getRenderPass() const {
+            assert(rasterized); // Only rasterized passes have a render pass
+            return *renderPass;
+        }
 
         Graph& getGraph() { return graph; }
 
@@ -52,6 +65,7 @@ namespace Carrot::Render {
     private:
         Carrot::VulkanDriver& driver;
         Graph& graph;
+        bool rasterized;
         std::vector<vk::UniqueFramebuffer> framebuffers;
         vk::UniqueRenderPass renderPass;
         std::vector<vk::ClearValue> clearValues;
@@ -59,11 +73,16 @@ namespace Carrot::Render {
         CompiledPassCallback renderingCode;
     };
 
+    template<typename> class Pass;
+
+    template<typename Data>
+    using PostCompileCallback = std::function<void(CompiledPass&, Data&)>;
+
     class PassBase {
     public:
-        virtual ~PassBase() = default;
+        bool rasterized = true;
 
-        virtual CompiledPassCallback generateCallback() = 0;
+        virtual ~PassBase() = default;
 
     public:
         void addInput(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
@@ -95,28 +114,38 @@ namespace Carrot::Render {
         std::list<Output> outputs;
         std::unordered_map<Carrot::UUID, vk::ImageLayout> finalLayouts;
 
+    protected:
+        virtual CompiledPassCallback generateCallback() = 0;
+        virtual void postCompile(CompiledPass& pass) = 0;
+
         friend class GraphBuilder;
     };
 
     template<typename Data>
-    using ExecutePassCallback = std::function<void(const CompiledPass&, const FrameData&, const Data&, vk::CommandBuffer&)>;
+    using ExecutePassCallback = std::function<void(const CompiledPass&, const FrameData&, Data&, vk::CommandBuffer&)>;
 
     template<typename Data>
     class Pass: public PassBase {
     public:
-        explicit Pass(const ExecutePassCallback<Data>& callback): executeCallback(callback) {};
+
+        explicit Pass(const ExecutePassCallback<Data>& callback, const PostCompileCallback<Data>& postCompileCallback): executeCallback(callback), postCompileCallback(postCompileCallback) {};
 
         CompiledPassCallback generateCallback() override {
             return [executeCallback = executeCallback, data = data](const CompiledPass& pass, const FrameData& frameData, vk::CommandBuffer& cmds)
-            {
+            mutable {
                 executeCallback(pass, frameData, data, cmds);
             };
+        }
+
+        void postCompile(CompiledPass& pass) override {
+            postCompileCallback(pass, data);
         }
 
         const Data& getData() const { return data; }
 
     private:
         ExecutePassCallback<Data> executeCallback;
+        PostCompileCallback<Data> postCompileCallback;
         Data data;
 
         friend class GraphBuilder;

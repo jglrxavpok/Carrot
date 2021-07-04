@@ -32,13 +32,13 @@ layout(location = 0) out vec4 outColor;
 const vec3 sunDirection = vec3(1,1,1);
 
 void main() {
-    /*vec4 outColorWorld;
+    vec4 outColorWorld;
 
     const vec3 nSunDirection = normalize(sunDirection);
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
     vec3 normal = (cbo.inverseView * texture(sampler2D(viewNormals, linearSampler), uv)).xyz;
     vec3 lighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
-    vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
+    vec3 skyboxRGB = vec3(1.0, 1.0, 1.0);//TODO: texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
     uint intProperties = texture(intPropertiesInput, uv).r;
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
@@ -55,6 +55,5 @@ void main() {
     vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
     float alpha01 = (1 - outColorUI.a)*outColorWorld.a + outColorUI.a;
     vec4 renderedColor = vec4(((1-outColorUI.a) * outColorWorld.a * outColorWorld.rgb + outColorUI.a*outColorUI.rgb) / alpha01, 1.0);
-    outColor = vec4(renderedColor.rgb, 1.0);*/
-    outColor = texture(sampler2D(albedo, linearSampler), uv);
+    outColor = vec4(renderedColor.rgb, 1.0);
 }

@@ -165,7 +165,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .pResults = nullptr,
     };
 
-    engine.getPresentQueue().presentKHR(presentInfo);
+    static_cast<void>(engine.getPresentQueue().presentKHR(presentInfo));
     engine.getPresentQueue().waitIdle();
     device.freeCommandBuffers(engine.getGraphicsCommandPool(), cmds);
 }

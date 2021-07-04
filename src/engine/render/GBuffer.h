@@ -67,11 +67,17 @@ namespace Carrot {
             Render::FrameResource albedo;
             Render::FrameResource depthStencil;
             Render::FrameResource flags;
+            Render::FrameResource raytracing;
+            Render::FrameResource ui;
 
             Render::FrameResource resolved;
         };
 
+        struct RaytracingPassData {
+            Render::FrameResource output;
+        };
+
         Render::Pass<GBufferData>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::FrameData&, vk::CommandBuffer&)> callback);
-        Render::Pass<GResolveData>& addGResolvePass(const GBufferData& data, Render::GraphBuilder& graph);
+        Render::Pass<GResolveData>& addGResolvePass(const GBufferData& data, const RaytracingPassData& rtData, const ImGuiPassData& imguiData, Render::GraphBuilder& graph);
     };
 }
