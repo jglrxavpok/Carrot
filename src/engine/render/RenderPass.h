@@ -125,15 +125,20 @@ namespace Carrot::Render {
     using ExecutePassCallback = std::function<void(const CompiledPass&, const FrameData&, Data&, vk::CommandBuffer&)>;
 
     template<typename Data>
+    using PassConditionCallback = std::function<bool(const CompiledPass&, const FrameData&, const Data&)>;
+
+    template<typename Data>
     class Pass: public PassBase {
     public:
 
         explicit Pass(const ExecutePassCallback<Data>& callback, const PostCompileCallback<Data>& postCompileCallback): executeCallback(callback), postCompileCallback(postCompileCallback) {};
 
         CompiledPassCallback generateCallback() override {
-            return [executeCallback = executeCallback, data = data](const CompiledPass& pass, const FrameData& frameData, vk::CommandBuffer& cmds)
+            return [executeCallback = executeCallback, data = data, condition = condition](const CompiledPass& pass, const FrameData& frameData, vk::CommandBuffer& cmds)
             mutable {
-                executeCallback(pass, frameData, data, cmds);
+                if(condition(pass, frameData, data)) {
+                    executeCallback(pass, frameData, data, cmds);
+                }
             };
         }
 
@@ -143,9 +148,14 @@ namespace Carrot::Render {
 
         const Data& getData() const { return data; }
 
+        void setCondition(const PassConditionCallback<Data>& condition) {
+            this->condition = condition;
+        }
+
     private:
         ExecutePassCallback<Data> executeCallback;
         PostCompileCallback<Data> postCompileCallback;
+        PassConditionCallback<Data> condition = [](const CompiledPass&, const FrameData&, const Data&) { return true; };
         Data data;
 
         friend class GraphBuilder;

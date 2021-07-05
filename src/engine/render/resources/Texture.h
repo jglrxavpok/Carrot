@@ -13,7 +13,7 @@
 namespace Carrot::Render {
     using namespace Carrot::IO;
 
-    class Texture {
+    class Texture: public DebugNameable {
     public:
         using Ptr = std::unique_ptr<Texture>;
         using Ref = std::shared_ptr<Texture>;
@@ -47,6 +47,12 @@ namespace Carrot::Render {
                          vk::Format format,
                          uint32_t layerCount = 1);
 
+        /// Wrap Carrot::Image into a Texture. DOES NOT own the image
+        explicit Texture(const Carrot::Image& image);
+
+        /// Create a texture from a Carrot::Image unique_ptr. Owns the image
+        explicit Texture(std::unique_ptr<Carrot::Image>&& image);
+
     public:
         Carrot::Image& getImage();
         const Carrot::Image& getImage() const;
@@ -59,7 +65,7 @@ namespace Carrot::Render {
     public:
         /// Gets or create the view with the given aspect
         vk::ImageView getView(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
-        vk::ImageView getView(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
+        vk::ImageView getView(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D) const;
 
     public:
         void transitionNow(vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
@@ -71,6 +77,9 @@ namespace Carrot::Render {
     public:
         ImTextureID getImguiID(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
         ImTextureID getImguiID(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
+
+    protected:
+        void setDebugNames(const string& name) override;
 
     private:
         using FormatAspectPair = std::pair<vk::Format, vk::ImageAspectFlags>;

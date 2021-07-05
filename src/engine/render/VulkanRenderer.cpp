@@ -401,17 +401,17 @@ void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carro
     driver.getLogicalDevice().updateDescriptorSets(write, {});
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect) {
-    bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect);
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
+    bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect, viewType);
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect) {
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
     runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.frameIndex];
 
     vk::DescriptorImageInfo imageInfo {
         .sampler = sampler,
-        .imageView = textureToBind.getView(aspect),
+        .imageView = textureToBind.getView(textureToBind.getImage().getFormat(), aspect, viewType),
         .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 

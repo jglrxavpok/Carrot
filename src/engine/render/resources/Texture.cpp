@@ -37,6 +37,15 @@ namespace Carrot::Render {
         imageFormat = this->image->getFormat();
     }
 
+    Texture::Texture(const Carrot::Image& image): Texture(image.getDriver(), image.getVulkanImage(), image.getSize(), image.getFormat(), image.getLayerCount()) {
+
+    }
+
+    Texture::Texture(std::unique_ptr<Carrot::Image>&& image): driver(image->getDriver()), image(std::move(image)) {
+        imageFormat = getImage().getFormat();
+        currentLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    }
+
     Carrot::Image& Texture::getImage() {
         runtimeAssert(image, "Texture not initialized!");
         return *image;
@@ -90,11 +99,11 @@ namespace Carrot::Render {
         return getView(imageFormat, aspect);
     }
 
-    vk::ImageView Texture::getView(vk::Format format, vk::ImageAspectFlags aspect) const {
+    vk::ImageView Texture::getView(vk::Format format, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) const {
         auto& view = views[{format, aspect}];
 
         if(!view) {
-            view = image->createImageView(format, aspect);
+            view = image->createImageView(format, aspect, viewType, image->getLayerCount());
         }
 
         return *view;
@@ -108,5 +117,9 @@ namespace Carrot::Render {
         imageFormat = toMove.imageFormat;
         imguiID = toMove.imguiID;
         return *this;
+    }
+
+    void Texture::setDebugNames(const string& name) {
+        image->name(name);
     }
 }

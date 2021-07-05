@@ -515,12 +515,13 @@ Carrot::Render::Pass<Carrot::GBuffer::GBufferData>& Carrot::GBuffer::addGBufferP
 Carrot::Render::Pass<Carrot::GBuffer::GResolveData>& Carrot::GBuffer::addGResolvePass(const Carrot::GBuffer::GBufferData& data,
                                                                                       const Carrot::GBuffer::RaytracingPassData& rtData,
                                                                                       const Carrot::ImGuiPassData& imguiData,
+                                                                                      const Carrot::Render::FrameResource& skyboxOutput,
                                                                                       Carrot::Render::GraphBuilder& graph) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
     auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
     return graph.addPass<Carrot::GBuffer::GResolveData>("gresolve",
-           [&](GraphBuilder& graph, Pass<GResolveData>& pass, GResolveData& resolveData)
+           [&, skyboxOutput = skyboxOutput](GraphBuilder& graph, Pass<GResolveData>& pass, GResolveData& resolveData)
            {
                 resolveData.positions = graph.read(data.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.normals = graph.read(data.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -529,6 +530,7 @@ Carrot::Render::Pass<Carrot::GBuffer::GResolveData>& Carrot::GBuffer::addGResolv
                 resolveData.flags = graph.read(data.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.raytracing = graph.read(rtData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.ui = graph.read(imguiData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
                                                         vk::Extent3D{swapchainExtent.width, swapchainExtent.height, 1},
                                                         vk::AttachmentLoadOp::eClear,
@@ -544,11 +546,12 @@ Carrot::Render::Pass<Carrot::GBuffer::GResolveData>& Carrot::GBuffer::addGResolv
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.frameIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.raytracing, frame.frameIndex), 0, 5, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.ui, frame.frameIndex), 0, 6, nullptr);
-                // TODO: 7 - Skybox
 
-               resolvePipeline->bind(pass.getRenderPass(), frame.frameIndex, buffer);
-               screenQuadMesh->bind(buffer);
-               screenQuadMesh->draw(buffer);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.frameIndex), 0, 10, nullptr);
+
+                resolvePipeline->bind(pass.getRenderPass(), frame.frameIndex, buffer);
+                screenQuadMesh->bind(buffer);
+                screenQuadMesh->draw(buffer);
            }
     );
 }

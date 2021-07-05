@@ -74,6 +74,8 @@ namespace Carrot {
         const vk::DeviceMemory& getMemory() const;
         const vk::Extent3D& getSize() const;
         vk::Format getFormat() const;
+        std::uint32_t getLayerCount() const { return layerCount; }
+        VulkanDriver& getDriver() const { return driver; }
 
         /// Stage a upload to this image, and wait for the upload to finish.
         void stageUpload(const vector<uint8_t>& data, uint32_t layer = 0, uint32_t layerCount = 1);
@@ -87,7 +89,7 @@ namespace Carrot {
         static void transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount = 1, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
         /// Creates a ImageView pointing to this image
-        vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
+        vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t layerCount = 1);
 
         /// Create and fill an Image from a given image file
         static unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);

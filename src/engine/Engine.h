@@ -206,7 +206,7 @@ namespace Carrot {
         bool framebufferResized = false;
 
         Skybox::Type currentSkybox = Skybox::Type::None;
-        unique_ptr<Image> loadedSkyboxTexture = nullptr;
+        unique_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
         vk::UniqueImageView loadedSkyboxTextureView{};
         shared_ptr<Pipeline> skyboxPipeline = nullptr;
         unique_ptr<Mesh> skyboxMesh = nullptr;

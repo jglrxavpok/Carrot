@@ -239,8 +239,8 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
     });
 }
 
-vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect) {
-    return std::move(driver.createImageView(getVulkanImage(), imageFormat, aspect));
+vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t layerCount) {
+    return std::move(driver.createImageView(getVulkanImage(), imageFormat, aspect, viewType, layerCount));
 }
 
 void Carrot::Image::setDebugNames(const string& name) {

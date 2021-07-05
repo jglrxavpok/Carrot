@@ -132,12 +132,36 @@ void Carrot::Engine::init() {
            }
     );
 
+    struct SkyboxPassData {
+        Render::FrameResource output;
+    };
+
+    auto& skyboxPass = mainGraph.addPass<SkyboxPassData>("skybox",
+        [this](Render::GraphBuilder& builder, Render::Pass<SkyboxPassData>& pass, SkyboxPassData& data) {
+            auto& swapchainExtent = vkDriver.getSwapchainExtent();
+            data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                     vk::Extent3D{ swapchainExtent.width, swapchainExtent.height, 1 },
+                                                     vk::AttachmentLoadOp::eClear,
+                                                     vk::ClearColorValue(std::array{0,0,0,1})
+                                                     );
+        },
+        [this](const Render::CompiledPass& pass, const Render::FrameData& frame, const SkyboxPassData& data, vk::CommandBuffer& buffer) {
+            renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+            skyboxPipeline->bind(pass.getRenderPass(), frame.frameIndex, buffer);
+            skyboxMesh->bind(buffer);
+            skyboxMesh->draw(buffer);
+        }
+    );
+    skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::FrameData& frame, const SkyboxPassData& data) {
+        return currentSkybox != Skybox::Type::None;
+    });
+
     auto& imguiPass = renderer.addImGuiPass(mainGraph);
 
     auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::FrameData& frame, vk::CommandBuffer& cmds) {
         game->recordGBufferPass(pass.getRenderPass(), frame.frameIndex, cmds);
     });
-    auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), mainGraph);
+    auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), skyboxPass.getData().output, mainGraph);
 
     mainGraph.addPass<PresentPassData>("present",
            [prevPassData = gresolvePass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
@@ -898,9 +922,9 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     };
     currentSkybox = type;
     if(type != Carrot::Skybox::Type::None) {
-        loadedSkyboxTexture = Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+        loadedSkyboxTexture = std::make_unique<Render::Texture>(Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
             return Skybox::getTexturePath(type, dir);
-        });
+        }));
         loadedSkyboxTexture->name("Current loaded skybox");
         loadedSkyboxTextureView = vkDriver.createImageView(loadedSkyboxTexture->getVulkanImage(),
                                                            vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor,
