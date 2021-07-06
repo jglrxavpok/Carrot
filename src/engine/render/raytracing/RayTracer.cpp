@@ -15,23 +15,7 @@ Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(rendere
     auto properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
     rayTracingProperties = properties.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
 
-    generateImages();
     generateBuffers();
-}
-
-void Carrot::RayTracer::generateImages() {
-    lightingTextures.clear();
-    // output images
-    for(size_t i = 0; i < renderer.getSwapchainImageCount(); i++) {
-        auto texture = make_unique<Carrot::Render::Texture>(renderer.getVulkanDriver(),
-                                        vk::Extent3D{renderer.getVulkanDriver().getSwapchainExtent().width, renderer.getVulkanDriver().getSwapchainExtent().height, 1},
-                                        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
-                                        vk::Format::eR32G32B32A32Sfloat);
-
-        texture->transitionNow(vk::ImageLayout::eGeneral);
-
-        lightingTextures.emplace_back(move(texture));
-    }
 }
 
 void Carrot::RayTracer::generateBuffers() {
@@ -55,7 +39,6 @@ void Carrot::RayTracer::generateBuffers() {
 }
 
 void Carrot::RayTracer::onSwapchainRecreation() {
-    generateImages();
     init();
     finishInit();
 /*    createRTDescriptorSets();
@@ -98,15 +81,9 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
     };
 
     auto extent = renderer.getVulkanDriver().getSwapchainExtent();
-    lightingTextures[frameIndex]->transitionInline(commands, vk::ImageLayout::eGeneral);
     if(hasStuffToDraw) {
         commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
     }
-    lightingTextures[frameIndex]->transitionInline(commands, vk::ImageLayout::eShaderReadOnlyOptimal);
-}
-
-vector<std::unique_ptr<Carrot::Render::Texture>>& Carrot::RayTracer::getLightingTextures() {
-    return lightingTextures;
 }
 
 vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
@@ -540,7 +517,5 @@ void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
 }
 
 void Carrot::RayTracer::onSwapchainSizeChange(int newWidth, int newHeight) {
-    generateImages();
-
     finishInit();
 }

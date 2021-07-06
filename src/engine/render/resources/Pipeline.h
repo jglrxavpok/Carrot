@@ -76,7 +76,6 @@ namespace Carrot {
         } pipelineTemplate;
 
         Carrot::VulkanDriver& driver;
-        const vk::RenderPass& renderPass;
         vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
         /// can be nullptr, used for animations
         vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
@@ -104,8 +103,8 @@ namespace Carrot {
         vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
 
     public:
-        explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription);
-        explicit Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const PipelineDescription description);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
 
         void bind(vk::RenderPass pass, uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 

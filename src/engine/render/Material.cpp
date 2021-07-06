@@ -18,12 +18,10 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     string textureName = description["texture"].GetString();
     string pipelineName = description["pipeline"].GetString();
 
-    // TODO: different render passes
-    auto& renderPass = engine.getRenderer().getGRenderPass();
-    pipeline = engine.getRenderer().getOrCreatePipeline(renderPass, pipelineName);
+    pipeline = engine.getRenderer().getOrCreatePipeline(pipelineName);
 
     if(description.HasMember("renderingPipeline")) {
-        renderingPipeline = engine.getRenderer().getOrCreatePipeline(renderPass, description["renderingPipeline"].GetString());
+        renderingPipeline = engine.getRenderer().getOrCreatePipeline(description["renderingPipeline"].GetString());
     } else {
         renderingPipeline = pipeline;
     }

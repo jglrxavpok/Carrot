@@ -12,20 +12,16 @@
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
     createRayTracer();
     createUIResources();
-    createSkyboxResources();
     createGBuffer();
-    createRenderPasses();
-    createFramebuffers();
 
     initImGui();
-    gBuffer->loadResolvePipeline();
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const vk::RenderPass& renderPass, const string& name) {
-    auto key = std::make_pair(renderPass, name);
+shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name) {
+    auto key = name;
     auto it = pipelines.find(key);
     if(it == pipelines.end()) {
-        pipelines[key] = make_shared<Pipeline>(driver, renderPass, "resources/pipelines/"+name+".json");
+        pipelines[key] = make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
     }
     return pipelines[key];
 }
@@ -66,180 +62,6 @@ void Carrot::VulkanRenderer::createUIResources() {
     pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
     imguiDescriptorPool = driver.getLogicalDevice().createDescriptorPoolUnique(pool_info, driver.getAllocationCallbacks());
-
-    createUIImages();
-}
-
-void Carrot::VulkanRenderer::createRenderPasses() {
-    gRenderPass = gBuffer->createRenderPass();
-
-    vk::AttachmentDescription attachments[] = {
-            {
-                    .format = vk::Format::eR8G8B8A8Unorm,
-                    .samples = vk::SampleCountFlagBits::e1,
-                    .loadOp = vk::AttachmentLoadOp::eClear,
-                    .storeOp = vk::AttachmentStoreOp::eStore,
-                    .initialLayout = vk::ImageLayout::eUndefined,
-                    .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
-            }
-    };
-
-    vk::SubpassDependency dependencies[] = {
-            {
-                    .srcSubpass = VK_SUBPASS_EXTERNAL,
-                    .dstSubpass = 0,
-
-                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    // TODO: .srcAccessMask = 0,
-
-                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-            }
-    };
-
-    vk::AttachmentReference colorAttachment = {
-            .attachment = 0,
-            .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-    vk::SubpassDescription subpasses[] = {
-            {
-                    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-                    .inputAttachmentCount = 0,
-                    .pInputAttachments = nullptr,
-
-                    .colorAttachmentCount = 1,
-                    // index in this array is used by `layout(location = 0)` inside shaders
-                    .pColorAttachments = &colorAttachment,
-                    .pDepthStencilAttachment = nullptr,
-
-                    .preserveAttachmentCount = 0,
-            }
-    };
-
-    vk::RenderPassCreateInfo singleColorWriteRenderPassInfo {
-            .attachmentCount = 1,
-            .pAttachments = attachments,
-            .subpassCount = 1,
-            .pSubpasses = subpasses,
-            .dependencyCount = 1,
-            .pDependencies = dependencies,
-    };
-    imguiRenderPass = driver.getLogicalDevice().createRenderPassUnique(singleColorWriteRenderPassInfo);
-
-    createSkyboxRenderPass();
-}
-
-void Carrot::VulkanRenderer::createSkyboxRenderPass() {
-    vk::AttachmentDescription attachments[] = {
-            {
-                    .format = vk::Format::eR8G8B8A8Unorm,
-                    .samples = vk::SampleCountFlagBits::e1,
-                    .loadOp = vk::AttachmentLoadOp::eClear,
-                    .storeOp = vk::AttachmentStoreOp::eStore,
-                    .initialLayout = vk::ImageLayout::eUndefined,
-                    .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
-            }
-    };
-
-    vk::SubpassDependency dependencies[] = {
-            {
-                    .srcSubpass = VK_SUBPASS_EXTERNAL,
-                    .dstSubpass = 0,
-
-                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    // TODO: .srcAccessMask = 0,
-
-                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                                    vk::PipelineStageFlagBits::eEarlyFragmentTests,
-                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-            }
-    };
-
-    vk::AttachmentReference colorAttachment = {
-            .attachment = 0,
-            .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-    vk::SubpassDescription subpasses[] = {
-            {
-                    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-                    .inputAttachmentCount = 0,
-                    .pInputAttachments = nullptr,
-
-                    .colorAttachmentCount = 1,
-                    // index in this array is used by `layout(location = 0)` inside shaders
-                    .pColorAttachments = &colorAttachment,
-                    .pDepthStencilAttachment = nullptr,
-
-                    .preserveAttachmentCount = 0,
-            }
-    };
-
-    vk::RenderPassCreateInfo singleColorWriteRenderPassInfo {
-            .attachmentCount = 1,
-            .pAttachments = attachments,
-            .subpassCount = 1,
-            .pSubpasses = subpasses,
-            .dependencyCount = 1,
-            .pDependencies = dependencies,
-    };
-
-    skyboxRenderPass = driver.getLogicalDevice().createRenderPassUnique(singleColorWriteRenderPassInfo);
-}
-
-void Carrot::VulkanRenderer::createFramebuffers() {
-    swapchainFramebuffers.resize(driver.getSwapchainImageCount());
-    imguiFramebuffers.resize(driver.getSwapchainImageCount());
-    skyboxFramebuffers.resize(driver.getSwapchainImageCount());
-
-    for (size_t i = 0; i < driver.getSwapchainImageCount(); ++i) {
-        vector<vk::ImageView> attachments = {
-                driver.getSwapchainTextures()[i]->getView(),
-        };
-
-        gBuffer->addFramebufferAttachments(i, attachments);
-
-        vk::FramebufferCreateInfo swapchainFramebufferInfo {
-                .renderPass = *gRenderPass,
-                .attachmentCount = static_cast<uint32_t>(attachments.size()),
-                .pAttachments = attachments.data(),
-                .width = driver.getSwapchainExtent().width,
-                .height = driver.getSwapchainExtent().height,
-                .layers = 1,
-        };
-
-        swapchainFramebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(swapchainFramebufferInfo, driver.getAllocationCallbacks()));
-
-        vk::ImageView imguiAttachment[] = {
-                uiTextures[i]->getView()
-        };
-        vk::FramebufferCreateInfo imguiFramebufferInfo {
-                .renderPass = *imguiRenderPass,
-                .attachmentCount = 1,
-                .pAttachments = imguiAttachment,
-                .width = driver.getSwapchainExtent().width,
-                .height = driver.getSwapchainExtent().height,
-                .layers = 1,
-        };
-        imguiFramebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(imguiFramebufferInfo, driver.getAllocationCallbacks()));
-
-        vk::ImageView skyboxAttachment[] = {
-                skyboxTextures[i]->getView()
-        };
-        vk::FramebufferCreateInfo skyboxFramebufferInfo {
-                .renderPass = *skyboxRenderPass,
-                .attachmentCount = 1,
-                .pAttachments = skyboxAttachment,
-                .width = driver.getSwapchainExtent().width,
-                .height = driver.getSwapchainExtent().height,
-                .layers = 1,
-        };
-        skyboxFramebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(skyboxFramebufferInfo, driver.getAllocationCallbacks()));
-    }
 }
 
 void Carrot::VulkanRenderer::createGBuffer() {
@@ -309,29 +131,6 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
     });
 }
 
-void Carrot::VulkanRenderer::createSkyboxResources() {
-    skyboxTextures.resize(getSwapchainImageCount());
-    for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        skyboxTextures[i] = move(make_unique<Render::Texture>(driver,
-                                              vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
-                                              vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                                              vk::Format::eR8G8B8A8Unorm));
-
-        skyboxTextures[i]->transitionNow(vk::ImageLayout::eShaderReadOnlyOptimal);
-    }
-}
-
-void Carrot::VulkanRenderer::createUIImages() {
-    uiTextures.resize(getSwapchainImageCount());
-    for (int i = 0; i < getSwapchainImageCount(); ++i) {
-        uiTextures[i] = move(make_unique<Render::Texture>(driver,
-                                              vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1},
-                                              vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-                                              vk::Format::eR8G8B8A8Unorm));
-
-    }
-}
-
 void Carrot::VulkanRenderer::onSwapchainImageCountChange(size_t newCount) {
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
@@ -341,12 +140,8 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(size_t newCount) {
 }
 
 void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
-    createUIImages();
-    createSkyboxResources();
     raytracer->onSwapchainSizeChange(newWidth, newHeight);
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
-    createRenderPasses();
-    createFramebuffers();
 
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainSizeChange(newWidth, newHeight);
@@ -431,16 +226,16 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
 }
 
-Carrot::Render::Pass<Carrot::ImGuiPassData>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {
-    return graph.addPass<Carrot::ImGuiPassData>("imgui",
-    [this](Render::GraphBuilder& graph, Render::Pass<Carrot::ImGuiPassData>& pass, Carrot::ImGuiPassData& data) {
+Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {
+    return graph.addPass<Carrot::Render::PassData::ImGui>("imgui",
+    [this](Render::GraphBuilder& graph, Render::Pass<Carrot::Render::PassData::ImGui>& pass, Carrot::Render::PassData::ImGui& data) {
         vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
         data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1}, vk::AttachmentLoadOp::eClear, uiClear);
     },
-    [this](const Render::CompiledPass& pass, const Render::FrameData& frame, Carrot::ImGuiPassData& data, vk::CommandBuffer& cmds) {
+    [this](const Render::CompiledPass& pass, const Render::FrameData& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
     },
-    [this](Render::CompiledPass& pass, Carrot::ImGuiPassData& data)
+    [this](Render::CompiledPass& pass, Carrot::Render::PassData::ImGui& data)
     {
         initImGuiPass(pass.getRenderPass());
     });

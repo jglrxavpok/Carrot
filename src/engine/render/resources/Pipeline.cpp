@@ -16,12 +16,12 @@
 #include "Mesh.ipp"
 #include <engine/io/Logging.hpp>
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const Carrot::IO::Resource pipelineDescription):
-    Carrot::Pipeline::Pipeline(driver, renderPass, PipelineDescription(pipelineDescription)) {
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
+    Carrot::Pipeline::Pipeline(driver, PipelineDescription(pipelineDescription)) {
 
 }
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& renderPass, const PipelineDescription description): driver(driver), renderPass(renderPass), description(description) {
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description): driver(driver), description(description) {
     auto& device = driver.getLogicalDevice();
     stages = make_unique<Carrot::ShaderStages>(driver,
                                                 std::vector<Carrot::IO::Resource> {
@@ -201,7 +201,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
     };
 
     pipelineTemplate.shaderStageCreation = stages->createPipelineShaderStages(&pipelineTemplate.specialization);
-    pipelineTemplate.pipelineInfo = {
+    pipelineTemplate.pipelineInfo = vk::GraphicsPipelineCreateInfo {
             .stageCount = static_cast<uint32_t>(pipelineTemplate.shaderStageCreation.size()),
             .pStages = pipelineTemplate.shaderStageCreation.data(),
 
@@ -215,7 +215,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
             .pDynamicState = &pipelineTemplate.dynamicStateInfo,
 
             .layout = *layout,
-            .renderPass = renderPass,
+            .renderPass = {}, // will be filled in getOrCreatePipelineForRenderPass
             .subpass = static_cast<uint32_t>(description.subpassIndex),
     };
 
@@ -231,9 +231,6 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const vk::RenderPass& r
     }
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
-
-    // TODO: remove renderPass from constructor
-    getOrCreatePipelineForRenderPass(renderPass);
 }
 
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass pass) const {
@@ -252,6 +249,8 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, uint32_t imageIndex, vk::Comman
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
     } else if(description.type == PipelineType::Blit) {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {});
+    } else if(description.type == PipelineType::Skybox) {
+        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0});
     } else {
         bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
     }

@@ -18,7 +18,6 @@ namespace Carrot {
     private:
         VulkanRenderer& renderer;
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
-        vector<unique_ptr<Render::Texture>> lightingTextures{};
 
         vk::UniqueDescriptorPool rtDescriptorPool;
         vk::UniqueDescriptorPool sceneDescriptorPool;
@@ -45,7 +44,6 @@ namespace Carrot {
 
         void registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index);
 
-        void generateImages();
         void generateBuffers();
 
     public:

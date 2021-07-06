@@ -23,29 +23,14 @@ namespace Carrot {
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
-    struct ImGuiPassData {
-        bool firstFrame = true;
-        Render::FrameResource output;
-    };
-
     class VulkanRenderer: public SwapchainAware {
     private:
         VulkanDriver& driver;
 
-        map<std::pair<vk::RenderPass, string>, shared_ptr<Pipeline>> pipelines{};
+        map<std::string, shared_ptr<Pipeline>> pipelines{};
         map<string, unique_ptr<Render::Texture>> textures{};
 
-        vector<unique_ptr<Render::Texture>> uiTextures{};
-        vector<unique_ptr<Render::Texture>> skyboxTextures{};
-
         vk::UniqueDescriptorPool imguiDescriptorPool{};
-
-        vk::UniqueRenderPass gRenderPass{};
-        vk::UniqueRenderPass imguiRenderPass{};
-        vk::UniqueRenderPass skyboxRenderPass{};
-        vector<vk::UniqueFramebuffer> imguiFramebuffers{};
-        vector<vk::UniqueFramebuffer> skyboxFramebuffers{};
-        vector<vk::UniqueFramebuffer> swapchainFramebuffers{};
 
         unique_ptr<RayTracer> raytracer = nullptr;
         unique_ptr<ASBuilder> asBuilder = nullptr;
@@ -68,25 +53,15 @@ namespace Carrot {
         void initImGui();
         void initImGuiPass(const vk::RenderPass& renderPass);
 
-        void createSkyboxRenderPass();
-
-        void createUIImages();
-
     public:
         explicit VulkanRenderer(VulkanDriver& driver);
 
         /// Each render pass will get a different pipeline instance
-        shared_ptr<Pipeline> getOrCreatePipeline(const vk::RenderPass& renderPass, const string& name);
+        shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
 
         unique_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
 
         void recreateDescriptorPools(size_t frameCount);
-
-        /// Create the render pass
-        void createRenderPasses();
-
-        /// Create the framebuffers to render to
-        void createFramebuffers();
 
     public:
         void beforeFrameCommand(const CommandBufferConsumer& command);
@@ -106,29 +81,15 @@ namespace Carrot {
 
         GBuffer& getGBuffer() { return *gBuffer; };
 
-        vector<vk::UniqueFramebuffer>& getSwapchainFramebuffers() { return swapchainFramebuffers; };
-        vector<vk::UniqueFramebuffer>& getImguiFramebuffers() { return imguiFramebuffers; };
-        vector<vk::UniqueFramebuffer>& getSkyboxFramebuffers() { return skyboxFramebuffers; };
-
-        vk::RenderPass& getGRenderPass() { return *gRenderPass; };
-        vk::RenderPass& getImguiRenderPass() { return *imguiRenderPass; };
-        vk::RenderPass& getSkyboxRenderPass() { return *skyboxRenderPass; };
-
-        vector<unique_ptr<Render::Texture>>& getUITextures() { return uiTextures; };
-
-        vector<unique_ptr<Render::Texture>>& getSkyboxTextures() { return skyboxTextures; };
-
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
 
     public:
-        void createSkyboxResources();
-
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
 
     public:
-        Render::Pass<ImGuiPassData>& addImGuiPass(Render::GraphBuilder& graph);
+        Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);

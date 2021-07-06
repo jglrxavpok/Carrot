@@ -226,6 +226,7 @@ namespace Carrot {
 
         std::vector<ImGuiTextures> imguiTextures;
 
+        Carrot::Render::PassData::GResolve gResolvePassData;
         std::unique_ptr<Render::Graph> testGraph = nullptr;
 
         /// Init engine
@@ -270,8 +271,6 @@ namespace Carrot {
         void createTracyContexts();
 
         void allocateGraphicsCommandBuffers();
-
-        void updateSkyboxCommands();
 
         void updateImGuiTextures(size_t swapchainLength);
     };

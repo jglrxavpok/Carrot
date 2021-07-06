@@ -77,5 +77,5 @@ std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipel
     desc.vertexShader = "resources/shaders/particles.vertex.glsl.spv";
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
 
-    return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), engine.getRenderer().getGRenderPass(), desc);
+    return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), desc);
 }
