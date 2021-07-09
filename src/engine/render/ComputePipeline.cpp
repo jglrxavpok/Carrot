@@ -4,6 +4,7 @@
 
 #include "ComputePipeline.h"
 #include "engine/render/resources/ResourceAllocator.h"
+#include "engine/utils/Macros.h"
 
 Carrot::ComputePipelineBuilder::ComputePipelineBuilder(Carrot::Engine& engine): engine(engine) {
 
@@ -193,7 +194,7 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
 }
 
 void Carrot::ComputePipeline::waitForCompletion() {
-    engine.getLogicalDevice().waitForFences(*finishedFence, true, UINT64_MAX);
+    DISCARD(engine.getLogicalDevice().waitForFences(*finishedFence, true, UINT64_MAX));
 }
 
 void Carrot::ComputePipeline::onSwapchainImageCountChange(size_t newCount) {

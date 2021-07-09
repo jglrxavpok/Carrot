@@ -5,12 +5,10 @@
 #include "RenderGraph.h"
 #include "engine/utils/Assert.h"
 #include "engine/io/Logging.hpp"
+#include "engine/utils/Macros.h"
 
 namespace Carrot::Render {
     GraphBuilder::GraphBuilder(VulkanDriver& driver): driver(driver) {
-        swapchainImage.width = driver.getSwapchainExtent().width;
-        swapchainImage.height = driver.getSwapchainExtent().height;
-        swapchainImage.depth = 1;
         swapchainImage.format = driver.getSwapchainImageFormat();
         swapchainImage.isSwapchain = true;
         resources.emplace_back(&swapchainImage);
@@ -37,13 +35,11 @@ namespace Carrot::Render {
         currentPass->present(resourceToPresent);
     }
 
-    FrameResource& GraphBuilder::createRenderTarget(vk::Format format, vk::Extent3D size, vk::AttachmentLoadOp loadOp,
+    FrameResource& GraphBuilder::createRenderTarget(vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
                                                     vk::ClearValue clearValue, vk::ImageLayout layout) {
         auto& r = resources.emplace_back();
         r.format = format;
-        r.width = size.width;
-        r.height = size.height;
-        r.depth = size.depth;
+        r.size = size;
         r.isSwapchain = false;
         currentPass->finalLayouts[r.id] = layout;
 
@@ -68,7 +64,7 @@ namespace Carrot::Render {
                 break;
 
             default:
-                Carrot::Log::warn("Resource %llu x %llu x %llu of format %llu has layout %llu which is not yet fully supported.", r.width, r.height, r.depth, r.format, layout);
+                Carrot::Log::warn("Resource %llu x %llu x %llu of format %llu has layout %llu which is not yet fully supported.", r.size.width, r.size.height, r.size.depth, r.format, layout);
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
         }
@@ -78,7 +74,7 @@ namespace Carrot::Render {
     }
 
     std::unique_ptr<Graph> GraphBuilder::compile() {
-        auto result = std::make_unique<Graph>(textureUsages);
+        auto result = std::make_unique<Graph>(driver, textureUsages);
 
         result->textures.resize(driver.getSwapchainImageCount());
         for(const auto& [name, pass] : passes) {
@@ -100,11 +96,11 @@ namespace Carrot::Render {
         return static_cast<vk::ImageUsageFlagBits>(0);
     }
 
-    Graph::Graph(std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages): textureUsages(std::move(textureUsages)) {
+    Graph::Graph(VulkanDriver& driver, std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages): driver(driver), textureUsages(std::move(textureUsages)) {
 
     }
 
-    void Graph::execute(const FrameData& data, vk::CommandBuffer& cmds) {
+    void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
         for(const auto* pass : sortedPasses) {
             pass->execute(data, cmds);
         }
@@ -126,7 +122,7 @@ namespace Carrot::Render {
         return getTexture(resource.rootID, frameIndex);
     }
 
-    Render::Texture& Graph::getOrCreateTexture(VulkanDriver& driver, const FrameResource& resource, size_t frameIndex) {
+    Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex) {
         // TODO: aliasing
         if(textures.empty()) {
             textures.resize(driver.getSwapchainImageCount());
@@ -134,11 +130,21 @@ namespace Carrot::Render {
 
         auto it = textures[frameIndex].find(resource.rootID);
         if(it == textures[frameIndex].end()) {
-            vk::Extent3D size {
-                .width = resource.width,
-                .height = resource.height,
-                .depth = resource.depth,
-            };
+            vk::Extent3D size;
+            auto& swapchainExtent = driver.getSwapchainExtent();
+            switch(resource.size.type) {
+                case TextureSize::Type::SwapchainProportional: {
+                    size.width = static_cast<std::uint32_t>(resource.size.width * swapchainExtent.width);
+                    size.height = static_cast<std::uint32_t>(resource.size.height * swapchainExtent.height);
+                    size.depth = static_cast<std::uint32_t>(resource.size.depth * 1);
+                } break;
+
+                case TextureSize::Type::Fixed: {
+                    size.width = static_cast<std::uint32_t>(resource.size.width);
+                    size.height = static_cast<std::uint32_t>(resource.size.height);
+                    size.depth = static_cast<std::uint32_t>(resource.size.depth);
+                } break;
+            }
             auto format = resource.format;
 
             auto usage = textureUsages[resource.rootID];
@@ -154,8 +160,23 @@ namespace Carrot::Render {
                 );
             }
             textures[frameIndex][resource.rootID] = std::move(texture);
+        } else {
+            throw std::runtime_error("Texture already exists");
         }
 
         return getTexture(resource, frameIndex);
+    }
+
+    void Graph::onSwapchainImageCountChange(size_t newCount) {
+        for(auto& [n, pass] : passes) {
+            pass->onSwapchainImageCountChange(newCount);
+        }
+    }
+
+    void Graph::onSwapchainSizeChange(int newWidth, int newHeight) {
+        textures.clear();
+        for(auto& [n, pass] : passes) {
+            pass->onSwapchainSizeChange(newWidth, newHeight);
+        }
     }
 }

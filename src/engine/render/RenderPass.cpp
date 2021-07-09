@@ -7,46 +7,49 @@
 #include <utility>
 #include "RenderGraph.h"
 #include "engine/utils/Assert.h"
+#include "engine/utils/Macros.h"
 
 Carrot::Render::CompiledPass::CompiledPass(
-        Carrot::VulkanDriver& driver,
         Carrot::Render::Graph& graph,
-        std::vector<vk::UniqueFramebuffer>&& framebuffers,
         vk::UniqueRenderPass&& renderPass,
         const std::vector<vk::ClearValue>& clearValues,
         const CompiledPassCallback& renderingCode,
-        std::vector<ImageTransition>&& prePassTransitions
+        std::vector<ImageTransition>&& prePassTransitions,
+        InitCallback initCallback
         ):
-        driver(driver),
         graph(graph),
-        framebuffers(std::move(framebuffers)),
+        framebuffers(),
         renderPass(std::move(renderPass)),
         clearValues(clearValues),
         renderingCode(renderingCode),
-        prePassTransitions(prePassTransitions)
+        prePassTransitions(prePassTransitions),
+        initCallback(std::move(initCallback))
         {
             rasterized = true;
+            framebuffers = std::move(this->initCallback(*this));
         }
 
 Carrot::Render::CompiledPass::CompiledPass(
-        Carrot::VulkanDriver& driver,
         Carrot::Render::Graph& graph,
         const CompiledPassCallback& renderingCode,
-        std::vector<ImageTransition>&& prePassTransitions
+        std::vector<ImageTransition>&& prePassTransitions,
+        InitCallback initCallback
         ):
-        driver(driver),
         graph(graph),
         framebuffers(),
         renderPass(),
         renderingCode(renderingCode),
-        prePassTransitions(prePassTransitions)
+        prePassTransitions(prePassTransitions),
+        initCallback(std::move(initCallback))
         {
             rasterized = false;
+            auto fb = this->initCallback(*this);
+            runtimeAssert(fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
         }
 
-void Carrot::Render::CompiledPass::execute(const FrameData& data, vk::CommandBuffer& cmds) const {
+void Carrot::Render::CompiledPass::execute(const Render::Context& data, vk::CommandBuffer& cmds) const {
     for(const auto& transition : prePassTransitions) {
-        auto& tex = graph.getTexture(transition.resourceID, data.frameIndex);
+        auto& tex = graph.getTexture(transition.resourceID, data.swapchainIndex);
         tex.assumeLayout(transition.from);
         tex.transitionInline(cmds, transition.to, transition.aspect);
     }
@@ -54,15 +57,15 @@ void Carrot::Render::CompiledPass::execute(const FrameData& data, vk::CommandBuf
     if(rasterized) {
         cmds.beginRenderPass(vk::RenderPassBeginInfo {
                 .renderPass = *renderPass,
-                .framebuffer = *framebuffers[data.frameIndex],
+                .framebuffer = *framebuffers[data.swapchainIndex],
                 .renderArea = {
                         .offset = vk::Offset2D{0, 0},
-                        .extent = driver.getSwapchainExtent()
+                        .extent = getVulkanDriver().getSwapchainExtent()
                 },
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues = clearValues.data(),
         }, vk::SubpassContents::eInline);
-        driver.updateViewportAndScissor(cmds);
+        getVulkanDriver().updateViewportAndScissor(cmds);
     }
 
     renderingCode(*this, data, cmds);
@@ -73,12 +76,12 @@ void Carrot::Render::CompiledPass::execute(const FrameData& data, vk::CommandBuf
 }
 
 void Carrot::Render::PassBase::addInput(const Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
-    inputs.emplace_back(&resource, expectedLayout, aspect);
+    inputs.emplace_back(resource, expectedLayout, aspect);
 }
 
 void Carrot::Render::PassBase::addOutput(const Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
                                          vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout) {
-    outputs.emplace_back(&resource, loadOp, clearValue, aspect);
+    outputs.emplace_back(resource, loadOp, clearValue, aspect);
     finalLayouts[resource.id] = layout;
 }
 
@@ -89,7 +92,6 @@ void Carrot::Render::PassBase::present(const FrameResource& toPresent) {
 
 std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, Carrot::Render::Graph& graph) {
     // TODO: input and output can be the same attachment (subpasses)
-    std::vector<std::vector<vk::ImageView>> attachmentImageViews(driver.getSwapchainImageCount()); // [frameIndex][attachmentIndex], one per swapchain image
     std::vector<vk::AttachmentDescription> attachments;
     std::vector<vk::AttachmentReference> inputAttachments;
     std::vector<vk::AttachmentReference> outputAttachments;
@@ -97,10 +99,10 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
     std::vector<ImageTransition> prePassTransitions;
     for(const auto& input : inputs) {
-        auto initialLayout = graph.getFinalLayouts()[input.resource->parentID]; // input is not the resource itself, but a new instance returned by read()
+        auto initialLayout = graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
         assert(initialLayout != vk::ImageLayout::eUndefined);
         if(initialLayout != input.expectedLayout) {
-            prePassTransitions.emplace_back(input.resource->parentID, initialLayout, input.expectedLayout, input.aspect);
+            prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.expectedLayout, input.aspect);
         }
     }
 
@@ -108,17 +110,17 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     for(const auto& output : outputs) {
 
         auto initialLayout = vk::ImageLayout::eUndefined;
-        auto finalLayout = finalLayouts[output.resource->id];
-        graph.getFinalLayouts()[output.resource->id] = finalLayout;
+        auto finalLayout = finalLayouts[output.resource.id];
+        graph.getFinalLayouts()[output.resource.id] = finalLayout;
         assert(finalLayout != vk::ImageLayout::eUndefined);
 
-        if(output.resource->id != output.resource->parentID) {
-            initialLayout = graph.getFinalLayouts()[output.resource->parentID];
+        if(output.resource.id != output.resource.parentID) {
+            initialLayout = graph.getFinalLayouts()[output.resource.parentID];
         }
 
         if(rasterized) {
             vk::AttachmentDescription attachment {
-                    .format = output.resource->format,
+                    .format = output.resource.format,
                     .samples = vk::SampleCountFlagBits::e1,
 
                     .loadOp = output.loadOp,
@@ -195,43 +197,62 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 .pDependencies = &mainDependency,
         });
 
-        std::vector<vk::UniqueFramebuffer> framebuffers(driver.getSwapchainImageCount());
-        for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
-            auto& frameImageViews = attachmentImageViews[i];
+        auto init = [outputs = outputs](CompiledPass& pass) {
+            auto& graph = pass.getGraph();
+            auto& driver = pass.getVulkanDriver();
+            std::vector<std::vector<vk::ImageView>> attachmentImageViews(driver.getSwapchainImageCount()); // [frameIndex][attachmentIndex], one per swapchain image
+            std::vector<vk::UniqueFramebuffer> framebuffers(driver.getSwapchainImageCount());
+            for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
+                auto& frameImageViews = attachmentImageViews[i];
 
-            // TODO: inputs
-            for (const auto& output : outputs) {
-                auto& texture = graph.getOrCreateTexture(driver, *output.resource, i);
-                frameImageViews.push_back(texture.getView(output.aspect));
+                // TODO: inputs
+                for (const auto& output : outputs) {
+                    auto& texture = graph.createTexture(output.resource, i);
+                    frameImageViews.push_back(texture.getView(output.aspect));
+                }
+
+
+                vk::FramebufferCreateInfo framebufferInfo{
+                        .renderPass = pass.getRenderPass(),
+                        .attachmentCount = static_cast<uint32_t>(frameImageViews.size()),
+                        .pAttachments = frameImageViews.data(),
+                        .width = driver.getSwapchainExtent().width,
+                        .height = driver.getSwapchainExtent().height,
+                        .layers = 1,
+                };
+
+                framebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(framebufferInfo,
+                                                                                              driver.getAllocationCallbacks()));
             }
-
-
-            vk::FramebufferCreateInfo framebufferInfo{
-                    .renderPass = *renderPass,
-                    .attachmentCount = static_cast<uint32_t>(frameImageViews.size()),
-                    .pAttachments = frameImageViews.data(),
-                    .width = driver.getSwapchainExtent().width,
-                    .height = driver.getSwapchainExtent().height,
-                    .layers = 1,
-            };
-
-            framebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(framebufferInfo,
-                                                                                          driver.getAllocationCallbacks()));
-        }
-
-        result = make_unique<CompiledPass>(driver, graph, std::move(framebuffers), std::move(renderPass), clearValues,
-                                         generateCallback(), std::move(prePassTransitions));
+            return framebuffers;
+        };
+        result = std::make_unique<CompiledPass>(graph, std::move(renderPass), clearValues,
+                                         generateCallback(), std::move(prePassTransitions), init);
     } else {
-        for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
-            auto& frameImageViews = attachmentImageViews[i];
-
-            // TODO: inputs
-            for (const auto& output : outputs) {
-                graph.getOrCreateTexture(driver, *output.resource, i); // force create textures
+        auto init = [outputs = outputs](CompiledPass& pass) {
+            for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
+                auto& graph = pass.getGraph();
+                for (const auto& output : outputs) {
+                    graph.createTexture(output.resource, i); // force create textures
+                }
             }
-        }
-        result = make_unique<CompiledPass>(driver, graph, generateCallback(), std::move(prePassTransitions));
+            return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
+        };
+        result = make_unique<CompiledPass>(graph, generateCallback(), std::move(prePassTransitions), init);
     }
     postCompile(*result);
     return result;
+}
+
+void Carrot::Render::CompiledPass::onSwapchainImageCountChange(size_t newCount) {
+
+}
+
+void Carrot::Render::CompiledPass::onSwapchainSizeChange(int newWidth, int newHeight) {
+    framebuffers.clear();
+    framebuffers = std::move(initCallback(*this));
+}
+
+Carrot::VulkanDriver& Carrot::Render::CompiledPass::getVulkanDriver() const {
+    return graph.getVulkanDriver();
 }

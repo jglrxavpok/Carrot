@@ -5,31 +5,39 @@
 #pragma once
 #include "engine/vulkan/VulkanDriver.h"
 #include "RenderPass.h"
-#include "FrameData.h"
+#include "RenderContext.h"
 #include <list>
 #include "engine/utils/UUID.h"
 #include "RenderPassData.h"
 
 namespace Carrot::Render {
-    class Graph {
+    class Graph: public SwapchainAware {
     public:
-        explicit Graph(std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages);
+        explicit Graph(VulkanDriver& driver, std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages);
 
-        void execute(const FrameData& data, vk::CommandBuffer& cmds);
+        void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
     public:
         Render::CompiledPass& getPass(const std::string& name);
 
-        Render::Texture& getOrCreateTexture(VulkanDriver& driver, const FrameResource& resource, size_t frameIndex);
+        Render::Texture& createTexture(const FrameResource& resource, size_t frameIndex);
         Render::Texture& getTexture(const Carrot::UUID& resourceID, size_t frameIndex) const;
         Render::Texture& getTexture(const FrameResource& resource, size_t frameIndex) const;
 
         std::unordered_map<Carrot::UUID, vk::ImageLayout>& getFinalLayouts() { return finalLayouts; }
 
+        VulkanDriver& getVulkanDriver() { return driver; }
+
+    public:
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
     private:
+        Carrot::VulkanDriver& driver;
         std::unordered_map<std::string, std::unique_ptr<Render::CompiledPass>> passes;
         std::vector<Render::CompiledPass*> sortedPasses;
-        std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;
+        std::vector<std::unordered_map<Carrot::UUID, std::shared_ptr<Carrot::Render::Texture>>> textures;
         std::unordered_map<Carrot::UUID, vk::ImageLayout> finalLayouts;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages;
 
@@ -48,7 +56,7 @@ namespace Carrot::Render {
         template<typename Data>
         Pass<Data>& addPass(const std::string& name, const SetupPassCallback<Data>& setup, const ExecutePassCallback<Data>& execute,
                             const PostCompileCallback<Data>& postCompile = [](CompiledPass&, Data&){}) {
-            auto& pair = passes.emplace_back(name, std::move(std::make_unique<Render::Pass<Data>>(execute, postCompile)));
+            auto& pair = passes.emplace_back(name, std::move(std::make_unique<Render::Pass<Data>>(driver, execute, postCompile)));
             currentPass = pair.second.get();
             auto* pass = static_cast<Render::Pass<Data>*>(currentPass);
             setup(*this, *pass, pass->data);
@@ -71,7 +79,7 @@ namespace Carrot::Render {
         FrameResource& read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
         FrameResource& write(const FrameResource& toWrite, vk::AttachmentLoadOp loadOp, vk::ImageLayout layout, vk::ImageAspectFlags aspect);
         FrameResource& write(const FrameResource& toWrite, vk::AttachmentLoadOp loadOp, vk::ImageLayout layout, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
-        FrameResource& createRenderTarget(vk::Format format, vk::Extent3D size, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
+        FrameResource& createRenderTarget(vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(const FrameResource& toPresent);
 
     private:
@@ -89,4 +97,5 @@ namespace Carrot::Render {
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages;
         Render::PassBase* currentPass = nullptr;
     };
+
 }

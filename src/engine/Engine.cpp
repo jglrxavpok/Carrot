@@ -73,7 +73,7 @@ void Carrot::Engine::init() {
     Render::GraphBuilder mainGraph(vkDriver);
     auto& testTexture = renderer.getOrCreateTexture("default.png");
 
-    auto fullscreenBlit = [this](const vk::RenderPass& pass, const Carrot::Render::FrameData& frame, Carrot::Render::Texture& textureToBlit, vk::CommandBuffer& cmds) {
+    auto fullscreenBlit = [this](const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, vk::CommandBuffer& cmds) {
         auto pipeline = renderer.getOrCreatePipeline("blit");
         vk::DescriptorImageInfo imageInfo {
                 .sampler = vkDriver.getLinearSampler(),
@@ -81,7 +81,7 @@ void Carrot::Engine::init() {
                 .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
         };
 
-        auto& set = pipeline->getDescriptorSets0()[frame.frameIndex];
+        auto& set = pipeline->getDescriptorSets0()[frame.swapchainIndex];
         vk::WriteDescriptorSet writeLoadingImage {
                 .dstSet = set,
                 .dstBinding = 0,
@@ -92,7 +92,7 @@ void Carrot::Engine::init() {
         };
         vkDriver.getLogicalDevice().updateDescriptorSets(writeLoadingImage, {});
 
-        pipeline->bind(pass, frame.frameIndex, cmds);
+        pipeline->bind(pass, frame.swapchainIndex, cmds);
         screenQuad->bind(cmds);
         screenQuad->draw(cmds);
     };
@@ -100,16 +100,11 @@ void Carrot::Engine::init() {
     auto& rtPass = mainGraph.addPass<Carrot::Render::PassData::Raytracing>("tmp",
            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Raytracing>& pass, Carrot::Render::PassData::Raytracing& data) {
                 pass.rasterized = false;
-                vk::Extent3D size {
-                    .width = vkDriver.getSwapchainExtent().width,
-                    .height = vkDriver.getSwapchainExtent().height,
-                    .depth = 1,
-                };
-                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
+                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, {}, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
            },
-           [this](const Render::CompiledPass& pass, const Render::FrameData& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
-                auto& set = renderer.getRayTracer().getRTDescriptorSets()[frame.frameIndex];
-                auto& texture = pass.getGraph().getTexture(data.output, frame.frameIndex);
+           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
+                auto& set = renderer.getRayTracer().getRTDescriptorSets()[frame.swapchainIndex];
+                auto& texture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                 texture.assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
                 texture.transitionInline(buffer, vk::ImageLayout::eGeneral);
                 vk::DescriptorImageInfo writeImage {
@@ -125,7 +120,7 @@ void Carrot::Engine::init() {
                 };
                 vkDriver.getLogicalDevice().updateDescriptorSets(updateSet, {});
 
-                getRayTracer().recordCommands(frame.frameIndex, buffer);
+                getRayTracer().recordCommands(frame.swapchainIndex, buffer);
 
                 // TODO: make raytracing compatible with RenderGraph
                 // TODO: make compute shaders compatible with RenderGraph
@@ -136,26 +131,26 @@ void Carrot::Engine::init() {
         [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
             auto& swapchainExtent = vkDriver.getSwapchainExtent();
             data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                     vk::Extent3D{ swapchainExtent.width, swapchainExtent.height, 1 },
+                                                     {},
                                                      vk::AttachmentLoadOp::eClear,
                                                      vk::ClearColorValue(std::array{0,0,0,1})
                                                      );
         },
-        [this](const Render::CompiledPass& pass, const Render::FrameData& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
+        [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
             renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
-            skyboxPipeline->bind(pass.getRenderPass(), frame.frameIndex, buffer);
+            skyboxPipeline->bind(pass.getRenderPass(), frame.swapchainIndex, buffer);
             skyboxMesh->bind(buffer);
             skyboxMesh->draw(buffer);
         }
     );
-    skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::FrameData& frame, const Carrot::Render::PassData::Skybox& data) {
+    skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data) {
         return currentSkybox != Skybox::Type::None;
     });
 
     auto& imguiPass = renderer.addImGuiPass(mainGraph);
 
-    auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::FrameData& frame, vk::CommandBuffer& cmds) {
-        game->recordGBufferPass(pass.getRenderPass(), frame.frameIndex, cmds);
+    auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+        game->recordGBufferPass(pass.getRenderPass(), frame.swapchainIndex, cmds);
     });
     auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), skyboxPass.getData().output, mainGraph);
 
@@ -166,13 +161,13 @@ void Carrot::Engine::init() {
                 data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                 builder.present(data.output);
            },
-           [fullscreenBlit](const Render::CompiledPass& pass, const Render::FrameData& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
-                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.frameIndex);
+           [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
+                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                 fullscreenBlit(pass.getRenderPass(), frame, inputTexture, buffer);
            }
     );
 
-    testGraph = std::move(mainGraph.compile());
+    globalFrameGraph = std::move(mainGraph.compile());
     updateImGuiTextures(getSwapchainImageCount());
 
     initConsole();
@@ -295,125 +290,12 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
 
     mainCommandBuffers[i].begin(beginInfo);
 
-    testGraph->execute(Carrot::Render::FrameData {
-        .frameIndex = i,
+    globalFrameGraph->execute(Carrot::Render::Context {
+        .frameCount = frames,
+        .swapchainIndex = i,
+        .lastSwapchainIndex = lastFrameIndex,
     }, mainCommandBuffers[i]);
 
-    /*
-    {
-        PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
-
-        TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render frame");
-        vkDriver.updateViewportAndScissor(mainCommandBuffers[i]);
-
-        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
-        vk::ClearValue lightingClear = vk::ClearColorValue(std::array{1.0f,1.0f,1.0f,1.0f});
-        vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-        vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-        vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
-                .depth = 1.0f,
-                .stencil = 0
-        };
-        vk::ClearValue clearIntProperties = vk::ClearColorValue();
-
-        vk::ClearValue clearValues[] = {
-                clearColor, // final presented color
-                clearDepth,
-                clearColor, // gbuffer color
-                positionClear, // gbuffer view position
-                positionClear, // gbuffer view normal,
-                lightingClear, // raytraced lighting colors
-                clearIntProperties,
-        };
-
-        vk::ClearValue imguiClearValues[] = {
-                uiClear, // UI contents
-        };
-
-        vk::RenderPassBeginInfo imguiRenderPassInfo {
-                .renderPass = renderer.getImguiRenderPass(),
-                .framebuffer = *renderer.getImguiFramebuffers()[i],
-                .renderArea = {
-                        .offset = vk::Offset2D{0, 0},
-                        .extent = vkDriver.getSwapchainExtent()
-                },
-
-                .clearValueCount = 1,
-                .pClearValues = imguiClearValues,
-        };
-
-        getRayTracer().recordCommands(i, mainCommandBuffers[i]);
-
-        {
-            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "UI pass");
-            mainCommandBuffers[i].beginRenderPass(imguiRenderPassInfo, vk::SubpassContents::eInline);
-            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), mainCommandBuffers[i]);
-            mainCommandBuffers[i].endRenderPass();
-        }
-
-        auto& uiTexture = renderer.getUITextures()[i];
-        uiTexture->assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
-        uiTexture->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eShaderReadOnlyOptimal);
-
-        vk::RenderPassBeginInfo gRenderPassInfo {
-                .renderPass = renderer.getGRenderPass(),
-                .framebuffer = *renderer.getSwapchainFramebuffers()[i],
-                .renderArea = {
-                        .offset = vk::Offset2D{0, 0},
-                        .extent = vkDriver.getSwapchainExtent()
-                },
-
-                .clearValueCount = 6,
-                .pClearValues = clearValues,
-        };
-
-        {
-            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Skybox pass");
-
-            // TODO: custom framebuffer, custom render pass
-            if(currentSkybox != Skybox::Type::None) {
-                vk::ClearValue skyboxClear[] = {
-                    clearColor,
-                    clearDepth,
-                };
-
-                vk::RenderPassBeginInfo skyboxRenderPassInfo {
-                        .renderPass = renderer.getSkyboxRenderPass(),
-                        .framebuffer = *renderer.getSkyboxFramebuffers()[i],
-                        .renderArea = {
-                                .offset = vk::Offset2D{0, 0},
-                                .extent = vkDriver.getSwapchainExtent()
-                        },
-
-                        .clearValueCount = 2,
-                        .pClearValues = skyboxClear,
-                };
-
-                renderer.getSkyboxTextures()[i]->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eColorAttachmentOptimal);
-
-                mainCommandBuffers[i].beginRenderPass(skyboxRenderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
-                mainCommandBuffers[i].executeCommands(skyboxCommandBuffers[i]);
-                mainCommandBuffers[i].endRenderPass();
-
-                renderer.getSkyboxTextures()[i]->transitionInline(mainCommandBuffers[i], vk::ImageLayout::eShaderReadOnlyOptimal);
-            }
-        }
-
-        {
-            TracyVulkanZone(*tracyCtx[i], mainCommandBuffers[i], "Render pass 0");
-
-            mainCommandBuffers[i].beginRenderPass(gRenderPassInfo, vk::SubpassContents::eSecondaryCommandBuffers);
-
-            mainCommandBuffers[i].executeCommands(gBufferCommandBuffers[i]);
-
-            mainCommandBuffers[i].nextSubpass(vk::SubpassContents::eSecondaryCommandBuffers);
-
-            mainCommandBuffers[i].executeCommands(gResolveCommandBuffers[i]);
-
-            mainCommandBuffers[i].endRenderPass();
-        }
-    }
-*/
     mainCommandBuffers[i].end();
 }
 
@@ -479,7 +361,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 ImGui::RadioButton("UI", &gIndex, 5);
                 ImGui::RadioButton("Int Properties", &gIndex, 6);
 
-                // TODO: transition images to shader readonly before draw, transition back to previous state after rendering
                 vk::Format format = vk::Format::eR32G32B32A32Sfloat;
                 if(gIndex == -1) {
                     textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
@@ -584,7 +465,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         };
 
         try {
-            result = getPresentQueue().presentKHR(presentInfo);
+            result = getPresentQueue().presentKHR(&presentInfo);
         } catch(vk::OutOfDateKHRError const &e) {
             result = vk::Result::eErrorOutOfDateKHR;
         }
@@ -908,6 +789,7 @@ void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     allocateGraphicsCommandBuffers();
 
     renderer.onSwapchainImageCountChange(newCount);
+    globalFrameGraph->onSwapchainImageCountChange(newCount);
 
     if(skyboxPipeline) {
         skyboxPipeline->onSwapchainImageCountChange(newCount);
@@ -927,6 +809,7 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
     vkDriver.onSwapchainSizeChange(newWidth, newHeight);
 
     renderer.onSwapchainSizeChange(newWidth, newHeight);
+    globalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
 
     if(skyboxPipeline) {
         skyboxPipeline->onSwapchainSizeChange(newWidth, newHeight);
@@ -937,8 +820,6 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
 
     game->onSwapchainSizeChange(newWidth, newHeight);
 
-    // TODO: update render graph
-
     updateImGuiTextures(getSwapchainImageCount());
 }
 
@@ -946,21 +827,21 @@ void Carrot::Engine::updateImGuiTextures(size_t swapchainLength) {
     imguiTextures.resize(swapchainLength);
     for (int i = 0; i < swapchainLength; ++i) {
         auto& textures = imguiTextures[i];
-        textures.allChannels = &testGraph->getTexture(gResolvePassData.resolved, i);
+        textures.allChannels = &globalFrameGraph->getTexture(gResolvePassData.resolved, i);
 
-        textures.albedo = &testGraph->getTexture(gResolvePassData.albedo, i);
+        textures.albedo = &globalFrameGraph->getTexture(gResolvePassData.albedo, i);
 
-        textures.position = &testGraph->getTexture(gResolvePassData.positions, i);
+        textures.position = &globalFrameGraph->getTexture(gResolvePassData.positions, i);
 
-        textures.normal = &testGraph->getTexture(gResolvePassData.normals, i);
+        textures.normal = &globalFrameGraph->getTexture(gResolvePassData.normals, i);
 
-        textures.depth = &testGraph->getTexture(gResolvePassData.depthStencil, i);
+        textures.depth = &globalFrameGraph->getTexture(gResolvePassData.depthStencil, i);
 
-        textures.intProperties = &testGraph->getTexture(gResolvePassData.flags, i);
+        textures.intProperties = &globalFrameGraph->getTexture(gResolvePassData.flags, i);
 
-        textures.raytracing = &testGraph->getTexture(gResolvePassData.raytracing, i);
+        textures.raytracing = &globalFrameGraph->getTexture(gResolvePassData.raytracing, i);
 
-        textures.ui = &testGraph->getTexture(gResolvePassData.ui, i);
+        textures.ui = &globalFrameGraph->getTexture(gResolvePassData.ui, i);
 
     }
 }

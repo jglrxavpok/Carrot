@@ -177,9 +177,9 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
     afterFrameCommands.push_back(command);
 }
 
-void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
+void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
     runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
-    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.frameIndex];
+    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo samplerInfo {
             .sampler = samplerToBind,
@@ -196,13 +196,13 @@ void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carro
     driver.getLogicalDevice().updateDescriptorSets(write, {});
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
     bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect, viewType);
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::FrameData& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
     runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
-    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.frameIndex];
+    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
         .sampler = sampler,
@@ -230,9 +230,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
     return graph.addPass<Carrot::Render::PassData::ImGui>("imgui",
     [this](Render::GraphBuilder& graph, Render::Pass<Carrot::Render::PassData::ImGui>& pass, Carrot::Render::PassData::ImGui& data) {
         vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-        data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, vk::Extent3D{driver.getSwapchainExtent().width, driver.getSwapchainExtent().height, 1}, vk::AttachmentLoadOp::eClear, uiClear);
+        data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, {}, vk::AttachmentLoadOp::eClear, uiClear);
     },
-    [this](const Render::CompiledPass& pass, const Render::FrameData& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
+    [this](const Render::CompiledPass& pass, const Render::Context& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
     },
     [this](Render::CompiledPass& pass, Carrot::Render::PassData::ImGui& data)

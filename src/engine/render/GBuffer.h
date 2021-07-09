@@ -11,6 +11,7 @@
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
 
+// TODO: Delete this class and move methods to renderer
 namespace Carrot {
     class GBuffer: public SwapchainAware {
     private:
@@ -26,7 +27,7 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     public: // Render::Graph reimpl
-        Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::FrameData&, vk::CommandBuffer&)> callback);
+        Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> callback);
         Render::Pass<Carrot::Render::PassData::GResolve>& addGResolvePass(const Carrot::Render::PassData::GBuffer& data, const Carrot::Render::PassData::Raytracing& rtData, const Carrot::Render::PassData::ImGui& imguiData, const Render::FrameResource& skyboxOutput, Render::GraphBuilder& graph);
     };
 }

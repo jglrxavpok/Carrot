@@ -8,6 +8,42 @@
 #include "engine/utils/UUID.h"
 
 namespace Carrot::Render {
+    struct TextureSize {
+        enum class Type {
+            SwapchainProportional,
+            Fixed,
+        } type = Type::SwapchainProportional;
+
+        double width = 1.0;
+        double height = 1.0;
+        double depth = 1.0;
+
+        TextureSize() = default;
+        TextureSize(const TextureSize&) = default;
+
+        TextureSize(const vk::Extent3D& extent) {
+            type = Type::Fixed;
+            width = extent.width;
+            height = extent.height;
+            depth = extent.depth;
+        }
+
+        TextureSize(const vk::Extent2D& extent) {
+            type = Type::Fixed;
+            width = extent.width;
+            height = extent.height;
+            depth = 1.0;
+        }
+
+        TextureSize& operator=(const TextureSize& toCopy) {
+            type = toCopy.type;
+            width = toCopy.width;
+            height = toCopy.height;
+            depth = toCopy.depth;
+            return *this;
+        }
+    };
+
     class FrameResource: public std::enable_shared_from_this<FrameResource> {
     public:
         FrameResource() {
@@ -19,26 +55,20 @@ namespace Carrot::Render {
             rootID = toCopy.rootID;
             parentID = toCopy.parentID;
             id = toCopy.id;
-            width = toCopy.width;
-            height = toCopy.height;
-            depth = toCopy.depth;
+            size = toCopy.size;
             format = toCopy.format;
             isSwapchain = toCopy.isSwapchain;
         }
 
         explicit FrameResource(const FrameResource* parent) {
-            width = parent->width;
-            height = parent->height;
-            depth = parent->depth;
+            size = parent->size;
             format = parent->format;
             isSwapchain = parent->isSwapchain;
             rootID = parent->rootID;
             parentID = parent->id;
         };
 
-        std::uint32_t width = -1;
-        std::uint32_t height = -1;
-        std::uint32_t depth = 1;
+        TextureSize size;
         vk::Format format = vk::Format::eUndefined;
         bool isSwapchain = false;
         Carrot::UUID id = Carrot::randomUUID();

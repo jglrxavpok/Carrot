@@ -227,7 +227,7 @@ namespace Carrot {
         std::vector<ImGuiTextures> imguiTextures;
 
         Carrot::Render::PassData::GResolve gResolvePassData;
-        std::unique_ptr<Render::Graph> testGraph = nullptr;
+        std::unique_ptr<Render::Graph> globalFrameGraph = nullptr;
 
         /// Init engine
         void init();
@@ -243,10 +243,6 @@ namespace Carrot {
 
         /// Create the primary command buffers for rendering
         void recordMainCommandBuffer(size_t frameIndex);
-
-        void recordSecondaryCommandBuffers(size_t frameIndex);
-
-        void recordGBufferPass(size_t frameIndex, vk::CommandBuffer& commandBuffer);
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(size_t currentFrame);
