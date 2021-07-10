@@ -10,6 +10,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/io/Logging.hpp"
+#include "engine/render/TextureRepository.h"
 #include <iostream>
 #include <map>
 #include <set>
@@ -84,6 +85,8 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window),
 
     createSwapChain();
     createUniformBuffers();
+
+    textureRepository = std::make_unique<Render::TextureRepository>(*this);
 }
 
 
@@ -717,8 +720,9 @@ bool Carrot::QueueFamilies::isComplete() const {
 
 void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
     /*re-*/ createUniformBuffers();
+    textureRepository->onSwapchainImageCountChange(newCount);
 }
 
 void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
-
+    textureRepository->onSwapchainSizeChange(newWidth, newHeight);
 }

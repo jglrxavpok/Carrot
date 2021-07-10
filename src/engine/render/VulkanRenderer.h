@@ -20,6 +20,7 @@ namespace Carrot {
     class GBuffer;
     class ASBuilder;
     class RayTracer;
+    class Mesh;
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
@@ -41,6 +42,8 @@ namespace Carrot {
 
         ImGui_ImplVulkan_InitInfo imguiInitInfo;
         bool imguiIsInitialized = false;
+        unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
+        std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
 
         void createUIResources();
 
@@ -83,6 +86,8 @@ namespace Carrot {
 
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
 
+        Mesh& getFullscreenQuad() { return *fullscreenQuad; }
+
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
@@ -93,7 +98,12 @@ namespace Carrot {
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
-        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D);
-        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D);
+        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
+        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
+
+        template<typename ConstantBlock>
+        void pushConstantBlock(Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
     };
 }
+
+#include "VulkanRenderer.ipp"

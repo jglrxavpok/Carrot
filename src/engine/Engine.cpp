@@ -53,7 +53,8 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window): window(window), vkDriver(wi
                                                                                                                            vector<uint32_t>{
                                                                                                                                    2,1,0,
                                                                                                                                    3,2,0,
-                                                                                                                           })) {
+                                                                                                                           })),
+    composer(vkDriver) {
     init();
 }
 
@@ -155,9 +156,13 @@ void Carrot::Engine::init() {
     auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), skyboxPass.getData().output, mainGraph);
 
     gResolvePassData = gresolvePass.getData();
+
+    composer.add(gResolvePassData.resolved);
+    auto& composerPass = composer.appendPass(mainGraph);
+
     mainGraph.addPass<PresentPassData>("present",
-           [prevPassData = gresolvePass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-                data.input = builder.read(prevPassData.resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
+           [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+                data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                 builder.present(data.output);
            },
@@ -290,11 +295,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
 
     mainCommandBuffers[i].begin(beginInfo);
 
-    globalFrameGraph->execute(Carrot::Render::Context {
-        .frameCount = frames,
-        .swapchainIndex = i,
-        .lastSwapchainIndex = lastFrameIndex,
-    }, mainCommandBuffers[i]);
+    globalFrameGraph->execute(newRenderContext(i), mainCommandBuffers[i]);
 
     mainCommandBuffers[i].end();
 }
@@ -844,4 +845,14 @@ void Carrot::Engine::updateImGuiTextures(size_t swapchainLength) {
         textures.ui = &globalFrameGraph->getTexture(gResolvePassData.ui, i);
 
     }
+}
+
+Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex) {
+    return Carrot::Render::Context {
+            .renderer = renderer,
+            .eye = Render::Eye::NoVR,
+            .frameCount = frames,
+            .swapchainIndex = swapchainFrameIndex,
+            .lastSwapchainIndex = lastFrameIndex,
+    };
 }

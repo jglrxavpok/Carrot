@@ -26,6 +26,7 @@ namespace Carrot {
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/VulkanRenderer.h"
 #include "render/Skybox.hpp"
+#include "render/Composer.h"
 
 using namespace std;
 
@@ -172,6 +173,10 @@ namespace Carrot {
             return lastFrameIndex;
         }
 
+        Render::Composer& getMainComposer() { return composer; }
+
+        Render::Context newRenderContext(std::size_t swapchainFrameIndex);
+
     private:
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -228,6 +233,8 @@ namespace Carrot {
 
         Carrot::Render::PassData::GResolve gResolvePassData;
         std::unique_ptr<Render::Graph> globalFrameGraph = nullptr;
+
+        Render::Composer composer;
 
         /// Init engine
         void init();

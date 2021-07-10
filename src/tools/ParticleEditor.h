@@ -13,13 +13,15 @@
 #include "ProjectMenuHolder.h"
 
 namespace Tools {
-    class ParticleEditor: public ProjectMenuHolder {
+    class ParticleEditor: public SwapchainAware, public ProjectMenuHolder {
     private:
         Carrot::Engine& engine;
         EditorSettings settings;
         EditorGraph updateGraph;
         EditorGraph renderGraph;
         TemplateEditor templateEditor;
+        std::unique_ptr<Carrot::Render::Graph> previewRenderGraph = nullptr;
+        std::unique_ptr<Carrot::Render::GraphBuilder> previewRenderGraphBuilder = nullptr;
 
         bool hasUnsavedChanges = false;
 
@@ -47,6 +49,11 @@ namespace Tools {
         static void addCommonOperators(Tools::EditorGraph& graph);
         static void addCommonLogic(Tools::EditorGraph& graph);
         static void addCommonMath(Tools::EditorGraph& graph);
+
+    public:
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     };
 }

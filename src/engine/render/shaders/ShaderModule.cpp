@@ -8,6 +8,7 @@
 #include <spirv_cross/spirv_parser.hpp>
 #include <iostream>
 #include "engine/render/NamedBinding.h"
+#include "engine/utils/Macros.h"
 
 Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const string& entryPoint)
         : driver(driver), entryPoint(entryPoint) {
@@ -126,15 +127,54 @@ void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
     }
 }
 
+static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& type) {
+    switch(type.basetype) {
+        case spirv_cross::SPIRType::Struct: {
+            std::uint32_t size = 0;
+            for(const auto& t : type.member_types) {
+                auto& memberType = compiler.get_type(t);
+                size += computeTypeSize(compiler, memberType);
+            }
+            return size;
+        }
+
+        case spirv_cross::SPIRType::Float:
+        case spirv_cross::SPIRType::UInt:
+            return 4;
+
+        case spirv_cross::SPIRType::UInt64:
+            return 8;
+
+        default:
+            TODO
+    }
+}
+
 void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const {
     const auto resources = compiler->get_shader_resources();
 
     // TODO: other types than uint32_t
+    std::uint32_t offset = 0;
     for(const auto& pushConstant : resources.push_constant_buffers) {
-        pushConstants.emplace_back(vk::PushConstantRange {
-            .stageFlags = stage,
-            .offset = static_cast<uint32_t>(pushConstants.size()*sizeof(uint32_t)),
-            .size = sizeof(uint32_t),
-        });
+        const auto& resourceType = compiler->get_type(pushConstant.type_id);
+
+        bool alreadyPresent = false;
+        std::uint32_t size = computeTypeSize(*compiler, resourceType);
+        for(auto& range : pushConstants) {
+            if(range.offset == offset && range.size == size) {
+                range.stageFlags |= stage;
+                alreadyPresent = true;
+                break;
+            }
+        }
+
+        if(!alreadyPresent) {
+            pushConstants.emplace_back(vk::PushConstantRange {
+                    .stageFlags = stage,
+                    .offset = offset,
+                    .size = size,
+            });
+        }
+        offset += size;
     }
 }

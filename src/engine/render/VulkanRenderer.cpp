@@ -10,6 +10,18 @@
 #include "imgui.h"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
+    fullscreenQuad = make_unique<Mesh>(driver,
+                                       vector<ScreenSpaceVertex>{
+                                               { { -1, -1} },
+                                               { { 1, -1} },
+                                               { { 1, 1} },
+                                               { { -1, 1} },
+                                       },
+                                       vector<uint32_t>{
+                                               2,1,0,
+                                               3,2,0,
+                                       });
+
     createRayTracer();
     createUIResources();
     createGBuffer();
@@ -18,7 +30,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
 }
 
 shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name) {
-    auto key = name;
+    auto& key = name;
     auto it = pipelines.find(key);
     if(it == pipelines.end()) {
         pipelines[key] = make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
@@ -73,8 +85,7 @@ void Carrot::VulkanRenderer::createRayTracer() {
     asBuilder = make_unique<ASBuilder>(*this);
 }
 
-static void check_vk_result(VkResult err)
-{
+static void imguiCheckVkResult(VkResult err) {
     if (err == 0)
         return;
     fprintf(stderr, "[vulkan-imgui] Error: VkResult = %d\n", err);
@@ -122,7 +133,7 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
 
     imguiInitInfo.MinImageCount = swapChainSupport.capabilities.minImageCount;
     imguiInitInfo.ImageCount = imageCount;
-    imguiInitInfo.CheckVkResultFn = check_vk_result;
+    imguiInitInfo.CheckVkResultFn = imguiCheckVkResult;
     ImGui_ImplVulkan_Init(&imguiInitInfo, renderPass);
 
     // Upload fonts
@@ -168,6 +179,7 @@ void Carrot::VulkanRenderer::postFrame() {
         }
     });
     afterFrameCommands.clear();
+    pushConstants.clear();
 }
 
 void Carrot::VulkanRenderer::beforeFrameCommand(const CommandBufferConsumer& command) {
@@ -196,11 +208,11 @@ void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carro
     driver.getLogicalDevice().updateDescriptorSets(write, {});
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
-    bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect, viewType);
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
+    bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect, viewType, arrayIndex);
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) {
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
     runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
@@ -218,7 +230,7 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     vk::WriteDescriptorSet writeTexture {
             .dstSet = descriptorSet,
             .dstBinding = bindingID,
-            .dstArrayElement = 0,
+            .dstArrayElement = arrayIndex,
             .descriptorCount = 1,
             .descriptorType = descType,
             .pImageInfo = &imageInfo,

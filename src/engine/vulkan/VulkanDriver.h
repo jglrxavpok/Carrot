@@ -16,6 +16,7 @@
 namespace Carrot {
     namespace Render {
         class Texture;
+        class TextureRepository;
     };
 
     using namespace std;
@@ -74,6 +75,7 @@ namespace Carrot {
 
         vector<shared_ptr<Buffer>> cameraUniformBuffers{};
         vector<shared_ptr<Buffer>> debugUniformBuffers{};
+        std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
         /// Create Vulkan instance
         void createInstance();
@@ -220,6 +222,8 @@ namespace Carrot {
         NakedPtr<GLFWwindow>& getWindow() { return window; };
 
         vk::Format getDepthFormat() { return depthFormat; };
+
+        Render::TextureRepository& getTextureRepository() { return *textureRepository; };
 
         void updateViewportAndScissor(vk::CommandBuffer& commands);
 

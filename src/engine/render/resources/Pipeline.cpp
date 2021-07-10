@@ -84,8 +84,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .alphaToOneEnable = false,
     };
     pipelineTemplate.depthStencil = {
-            .depthTestEnable = description.type != PipelineType::GResolve,
-            .depthWriteEnable = description.type != PipelineType::GResolve && description.type != PipelineType::Skybox,
+            .depthTestEnable = description.depthTest,//description.type != PipelineType::GResolve,
+            .depthWriteEnable = description.depthWrite,//description.type != PipelineType::GResolve && description.type != PipelineType::Skybox,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
@@ -515,6 +515,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     fragmentShader = json["fragmentShader"].GetString();
     vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());
     type = Pipeline::getPipelineType(json["type"].GetString());
+
+    depthWrite = json["depthWrite"].GetBool();
+    depthTest = json["depthTest"].GetBool();
 
     if(json.HasMember("constants")) {
         for(const auto& constant : json["constants"].GetObject()) {

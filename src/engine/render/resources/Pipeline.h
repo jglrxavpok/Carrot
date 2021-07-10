@@ -35,6 +35,9 @@ namespace Carrot {
         std::uint64_t materialStorageBufferBindingIndex = -1;
         std::uint64_t subpassIndex = -1;
 
+        bool depthTest = true;
+        bool depthWrite = true;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };

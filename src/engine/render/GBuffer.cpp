@@ -5,17 +5,7 @@
 #include "GBuffer.h"
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
-    screenQuadMesh = make_unique<Mesh>(renderer.getVulkanDriver(),
-                                       vector<ScreenSpaceVertex>{
-                                               { { -1, -1} },
-                                               { { 1, -1} },
-                                               { { 1, 1} },
-                                               { { -1, 1} },
-                                       },
-                                       vector<uint32_t>{
-                                               2,1,0,
-                                               3,2,0,
-                                       });
+
 }
 
 void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
@@ -114,8 +104,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 10, nullptr);
 
                 resolvePipeline->bind(pass.getRenderPass(), frame.swapchainIndex, buffer);
-                screenQuadMesh->bind(buffer);
-                screenQuadMesh->draw(buffer);
+                auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                screenQuadMesh.bind(buffer);
+                screenQuadMesh.draw(buffer);
            }
     );
 }

@@ -95,9 +95,9 @@ namespace Carrot::Render {
         virtual ~PassBase() = default;
 
     public:
-        void addInput(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
-        void addOutput(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout);
-        void present(const FrameResource& toPresent);
+        void addInput(FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
+        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout);
+        void present(FrameResource& toPresent);
 
     public:
         std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Graph& graph);

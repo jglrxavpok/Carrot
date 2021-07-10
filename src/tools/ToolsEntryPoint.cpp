@@ -48,8 +48,14 @@ void Tools::Tools::tick(double frameTime) {
 void Tools::Tools::recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) {}
 void Tools::Tools::onMouseMove(double dx, double dy) {}
 void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {}
-void Tools::Tools::onSwapchainSizeChange(int newWidth, int newHeight) {};
-void Tools::Tools::onSwapchainImageCountChange(size_t newCount) {};
+
+void Tools::Tools::onSwapchainSizeChange(int newWidth, int newHeight) {
+    particleEditor.onSwapchainSizeChange(newWidth, newHeight);
+}
+
+void Tools::Tools::onSwapchainImageCountChange(size_t newCount) {
+    particleEditor.onSwapchainImageCountChange(newCount);
+}
 
 int main() {
     glfwInit();

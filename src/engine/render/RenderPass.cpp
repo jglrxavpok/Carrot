@@ -5,6 +5,7 @@
 #include "RenderPass.h"
 
 #include <utility>
+#include <engine/utils/Containers.h>
 #include "RenderGraph.h"
 #include "engine/utils/Assert.h"
 #include "engine/utils/Macros.h"
@@ -75,19 +76,27 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& data, vk::Comm
     }
 }
 
-void Carrot::Render::PassBase::addInput(const Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
+void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
     inputs.emplace_back(resource, expectedLayout, aspect);
+    inputs.back().resource.updateLayout(expectedLayout);
+    resource.updateLayout(expectedLayout);
 }
 
-void Carrot::Render::PassBase::addOutput(const Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
+void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
                                          vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout) {
     outputs.emplace_back(resource, loadOp, clearValue, aspect);
+    outputs.back().resource.updateLayout(layout);
+    resource.updateLayout(layout);
     finalLayouts[resource.id] = layout;
 }
 
-void Carrot::Render::PassBase::present(const FrameResource& toPresent) {
-    runtimeAssert(finalLayouts.find(toPresent.id) != finalLayouts.end(), "Presentable resource must be in outputs of this render pass!");
-    finalLayouts[toPresent.id] = vk::ImageLayout::ePresentSrcKHR;
+void Carrot::Render::PassBase::present(FrameResource& toPresent) {
+    auto output = std::find_if(WHOLE_CONTAINER(outputs), [&](const auto& o) { return o.resource.rootID == toPresent.rootID; });
+    runtimeAssert(output != outputs.end(), "Presentable resource must be in outputs of this render pass!");
+
+    // not using updateLayout to keep previousLayout value
+    toPresent.layout = vk::ImageLayout::ePresentSrcKHR;
+    output->resource.layout = vk::ImageLayout::ePresentSrcKHR;
 }
 
 std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, Carrot::Render::Graph& graph) {
@@ -99,10 +108,10 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
     std::vector<ImageTransition> prePassTransitions;
     for(const auto& input : inputs) {
-        auto initialLayout = graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
+        auto initialLayout = input.resource.previousLayout;//graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
         assert(initialLayout != vk::ImageLayout::eUndefined);
-        if(initialLayout != input.expectedLayout) {
-            prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.expectedLayout, input.aspect);
+        if(initialLayout != input.resource.layout) {
+            prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.resource.layout, input.aspect);
         }
     }
 
@@ -110,12 +119,11 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     for(const auto& output : outputs) {
 
         auto initialLayout = vk::ImageLayout::eUndefined;
-        auto finalLayout = finalLayouts[output.resource.id];
-        graph.getFinalLayouts()[output.resource.id] = finalLayout;
+        auto finalLayout = output.resource.layout;//finalLayouts[output.resource.id];
         assert(finalLayout != vk::ImageLayout::eUndefined);
 
-        if(output.resource.id != output.resource.parentID) {
-            initialLayout = graph.getFinalLayouts()[output.resource.parentID];
+        /*if(output.resource.id != output.resource.parentID) */{
+            initialLayout = output.resource.previousLayout;//graph.getFinalLayouts()[output.resource.parentID];
         }
 
         if(rasterized) {
@@ -233,7 +241,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
-                    graph.createTexture(output.resource, i); // force create textures
+                    DISCARD(graph.createTexture(output.resource, i)); // force create textures
                 }
             }
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes

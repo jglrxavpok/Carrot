@@ -17,7 +17,6 @@ namespace Carrot {
     private:
         VulkanRenderer& renderer;
         RayTracer& raytracer;
-        unique_ptr<Mesh> screenQuadMesh = nullptr;
 
     public:
         explicit GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer);

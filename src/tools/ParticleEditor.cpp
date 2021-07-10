@@ -19,6 +19,7 @@
 #include "engine/utils/JSON.h"
 #include "tools/generators/ParticleShaderGenerator.h"
 #include "engine/render/particles/ParticleBlueprint.h"
+#include "engine/render/RenderGraph.h"
 
 #include <spirv_glsl.hpp>
 #include <nfd.h>
@@ -29,8 +30,32 @@ std::filesystem::path Tools::ParticleEditor::EmptyProject = "";
 
 Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
 : Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
-updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor")
+updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph()
 {
+    previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver());
+    struct TmpPass {
+        Carrot::Render::FrameResource color;
+    };
+
+    auto& tmpPass = previewRenderGraphBuilder->addPass<TmpPass>("tmp-test",
+    [this](Carrot::Render::GraphBuilder& builder, Carrot::Render::Pass<TmpPass>& pass, TmpPass& data) {
+        vk::ClearValue clearColor = vk::ClearColorValue(std::array{1.0f,0.0f,0.0f,1.0f});
+        data.color = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                {},
+                                                vk::AttachmentLoadOp::eClear,
+                                                clearColor,
+                                                vk::ImageLayout::eColorAttachmentOptimal);
+
+    },
+    [](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
+        // TODO
+    });
+
+    auto& composer = engine.getMainComposer();
+    composer.add(tmpPass.getData().color, 0.5, 1.0, 0.5, 1.0, 0.5);
+
+    previewRenderGraph = previewRenderGraphBuilder->compile();
+
     settings.load();
     settings.save();
 
@@ -268,6 +293,10 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     templateEditor.onFrame(frameIndex);
 
     ProjectMenuHolder::onFrame(frameIndex);
+
+    engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+        previewRenderGraph->execute(engine.newRenderContext(frameIndex), cmds);
+    });
 }
 
 void Tools::ParticleEditor::tick(double deltaTime) {
@@ -307,4 +336,12 @@ void Tools::ParticleEditor::clear() {
 
 bool Tools::ParticleEditor::showUnsavedChangesPopup() {
     return hasUnsavedChanges;
+}
+
+void Tools::ParticleEditor::onSwapchainImageCountChange(size_t newCount) {
+    previewRenderGraph->onSwapchainImageCountChange(newCount);
+}
+
+void Tools::ParticleEditor::onSwapchainSizeChange(int newWidth, int newHeight) {
+    previewRenderGraph->onSwapchainSizeChange(newWidth, newHeight);
 }

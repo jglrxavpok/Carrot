@@ -4,6 +4,10 @@
 
 #pragma once
 
+namespace Carrot {
+    class VulkanRenderer;
+}
+
 namespace Carrot::Render {
     enum class Eye {
         LeftEye,
@@ -12,6 +16,7 @@ namespace Carrot::Render {
     };
 
     struct Context {
+        VulkanRenderer& renderer;
         Eye eye = Eye::NoVR;
         size_t frameCount = -1;
         size_t swapchainIndex = -1;

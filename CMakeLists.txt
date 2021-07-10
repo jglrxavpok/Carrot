@@ -127,6 +127,8 @@ set(ENGINE-SOURCES
 
         src/engine/render/RenderGraph.cpp
         src/engine/render/RenderPass.cpp
+        src/engine/render/Composer.cpp
+        src/engine/render/TextureRepository.cpp
 
         src/engine/render/ComputePipeline.cpp
 
@@ -144,6 +146,7 @@ set(VERTEX_SHADERS
         resources/shaders/screenQuad.vertex.glsl
         resources/shaders/skybox.vertex.glsl
         resources/shaders/particles.vertex.glsl
+        resources/shaders/screenQuad-transformed.vertex.glsl
         )
 
 set(FRAGMENT_SHADERS
@@ -153,6 +156,7 @@ set(FRAGMENT_SHADERS
         resources/shaders/skybox.fragment.glsl
         resources/shaders/particles.fragment.glsl
         resources/shaders/gResolve-rendergraph.fragment.glsl
+        resources/shaders/composer-blit.fragment.glsl
         )
 
 set(COMPUTE_SHADERS

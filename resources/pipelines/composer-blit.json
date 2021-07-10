@@ -1,0 +1,13 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "ScreenSpace",
+  "constants": {
+    "MAX_TEXTURES": 16
+  },
+  "depthWrite": true,
+  "depthTest": true,
+  "vertexShader": "resources/shaders/screenQuad-transformed.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/composer-blit.fragment.glsl.spv",
+  "texturesBindingIndex": 1
+}

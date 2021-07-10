@@ -6,6 +6,8 @@
     "MAX_TEXTURES": 16,
     "MAX_MATERIALS": 16
   },
+  "depthWrite": true,
+  "depthTest": true,
   "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/gBuffer.fragment.glsl.spv",
   "materialStorageBufferBindingIndex": 3,

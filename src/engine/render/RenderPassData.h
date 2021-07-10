@@ -8,6 +8,8 @@
 #include "engine/utils/UUID.h"
 
 namespace Carrot::Render {
+    class GraphBuilder;
+
     struct TextureSize {
         enum class Type {
             SwapchainProportional,
@@ -58,6 +60,9 @@ namespace Carrot::Render {
             size = toCopy.size;
             format = toCopy.format;
             isSwapchain = toCopy.isSwapchain;
+            owner = toCopy.owner;
+            previousLayout = toCopy.previousLayout;
+            layout = toCopy.layout;
         }
 
         explicit FrameResource(const FrameResource* parent) {
@@ -66,7 +71,17 @@ namespace Carrot::Render {
             isSwapchain = parent->isSwapchain;
             rootID = parent->rootID;
             parentID = parent->id;
+            owner = parent->owner;
+            previousLayout = parent->previousLayout;
+            layout = parent->layout;
         };
+
+        void updateLayout(vk::ImageLayout newLayout) {
+            if(newLayout == layout)
+                return;
+            previousLayout = layout;
+            layout = newLayout;
+        }
 
         TextureSize size;
         vk::Format format = vk::Format::eUndefined;
@@ -74,6 +89,9 @@ namespace Carrot::Render {
         Carrot::UUID id = Carrot::randomUUID();
         Carrot::UUID rootID = Carrot::randomUUID();
         Carrot::UUID parentID = Carrot::randomUUID();
+        GraphBuilder* owner = nullptr;
+        vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+        vk::ImageLayout previousLayout = vk::ImageLayout::eUndefined;
     };
 
 
