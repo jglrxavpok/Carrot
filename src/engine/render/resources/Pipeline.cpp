@@ -128,6 +128,13 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         layouts.push_back(*descriptorSetLayout1);
     }
 
+    if(description.reserveSet2ForCamera) {
+        while(layouts.size() < 2) {
+            layouts.push_back(driver.getEmptyDescriptorSetLayout());
+        }
+        layouts.push_back(driver.getMainCameraDescriptorSetLayout());
+    }
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
             .setLayoutCount = static_cast<uint32_t>(layouts.size()),
             .pSetLayouts = layouts.data(),
@@ -243,16 +250,18 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
     return *vkPipelines[pass];
 }
 
-void Carrot::Pipeline::bind(vk::RenderPass pass, uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
+void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
     commands.bindPipeline(bindPoint, getOrCreatePipelineForRenderPass(pass));
-    if(description.type == PipelineType::GBuffer) {
-        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
-    } else if(description.type == PipelineType::Blit) {
-        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {});
-    } else if(description.type == PipelineType::Skybox) {
-        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0});
+    if(description.reserveSet2ForCamera && description.vertexFormat != VertexFormat::SkinnedVertex) {
+        bindDescriptorSets(commands, {driver.getEmptyDescriptorSet()}, {}, 1);
+        renderContext.renderer.bindCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
+    }
+    if(description.type == PipelineType::Blit || description.type == PipelineType::Skybox) {
+        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+    } else if(description.type == PipelineType::GBuffer) {
+        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
     } else {
-        bindDescriptorSets(commands, {descriptorSets0[imageIndex]}, {0, 0});
+        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
     }
 }
 
@@ -375,8 +384,9 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                         buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
                         buffer.range = sizeof(DebugBufferObject);
                     } else {
-                        buffer.buffer = driver.getCameraUniformBuffers()[i]->getVulkanBuffer();
-                        buffer.range = sizeof(CameraBufferObject); // TODO: customizable
+                        // TODO
+                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
+                        buffer.range = sizeof(DebugBufferObject);
                     }
                     buffer.offset = 0;
                     write.pBufferInfo = buffers.data()+writeIndex;
@@ -518,6 +528,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
 
     depthWrite = json["depthWrite"].GetBool();
     depthTest = json["depthTest"].GetBool();
+    if(json.HasMember("reserveSet2ForCamera")) {
+        reserveSet2ForCamera = json["reserveSet2ForCamera"].GetBool();
+    }
 
     if(json.HasMember("constants")) {
         for(const auto& constant : json["constants"].GetObject()) {

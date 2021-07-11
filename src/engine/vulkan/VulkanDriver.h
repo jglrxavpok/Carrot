@@ -12,11 +12,14 @@
 #include <GLFW/glfw3.h>
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/memory/ThreadLocal.hpp"
+#include "engine/Configuration.h"
 
 namespace Carrot {
     namespace Render {
         class Texture;
         class TextureRepository;
+        class Context;
+        enum class Eye;
     };
 
     using namespace std;
@@ -41,6 +44,7 @@ namespace Carrot {
 
     class VulkanDriver: public SwapchainAware {
     private:
+        Configuration config;
         const vk::AllocationCallbacks* allocator = nullptr;
 
         NakedPtr<GLFWwindow> window = nullptr;
@@ -73,7 +77,14 @@ namespace Carrot {
         vk::Extent2D swapchainExtent{};
         vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
-        vector<shared_ptr<Buffer>> cameraUniformBuffers{};
+        vk::UniqueDescriptorPool emptyDescriptorSetPool{};
+        vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
+        vk::DescriptorSet emptyDescriptorSet{};
+
+        unordered_map<Render::Eye, vector<shared_ptr<Buffer>>> cameraUniformBuffers{};
+        vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
+        vk::UniqueDescriptorPool cameraDescriptorSetsPool{};
+        unordered_map<Render::Eye, vector<vk::DescriptorSet>> cameraDescriptorSets{};
         vector<shared_ptr<Buffer>> debugUniformBuffers{};
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
@@ -118,6 +129,8 @@ namespace Carrot {
 
         void createDefaultTexture();
 
+        void prepareCameraSets();
+
         /// Choose best surface format from the list of given formats
         /// \param formats
         /// \return
@@ -132,7 +145,7 @@ namespace Carrot {
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
-        VulkanDriver(NakedPtr<GLFWwindow> window);
+        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config);
 
         ~VulkanDriver();
 
@@ -217,7 +230,7 @@ namespace Carrot {
         void createUniformBuffers();
 
         vector<shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
-        vector<shared_ptr<Buffer>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
+        unordered_map<Render::Eye, vector<shared_ptr<Buffer>>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
 
         NakedPtr<GLFWwindow>& getWindow() { return window; };
 
@@ -225,6 +238,15 @@ namespace Carrot {
 
         Render::TextureRepository& getTextureRepository() { return *textureRepository; };
 
+        const Configuration& getConfiguration() { return config; }
+
+        vk::DescriptorSet& getMainCameraDescriptorSet(const Render::Context& context);
+        vk::DescriptorSetLayout& getMainCameraDescriptorSetLayout();
+
+        vk::DescriptorSet& getEmptyDescriptorSet() { return emptyDescriptorSet; }
+        vk::DescriptorSetLayout& getEmptyDescriptorSetLayout() { return *emptyDescriptorSetLayout; }
+
+    public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands);
 
         void fetchNewFramebufferSize();

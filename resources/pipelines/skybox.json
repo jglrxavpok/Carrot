@@ -4,6 +4,7 @@
   "vertexFormat": "SimpleVertex",
   "vertexShader": "resources/shaders/skybox.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/skybox.fragment.glsl.spv",
+  "reserveSet2ForCamera": true,
   "depthWrite": false,
   "depthTest": true
 }

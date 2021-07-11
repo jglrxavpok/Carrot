@@ -27,8 +27,9 @@ namespace Carrot {
     class VulkanRenderer: public SwapchainAware {
     private:
         VulkanDriver& driver;
+        Configuration config;
 
-        map<std::string, shared_ptr<Pipeline>> pipelines{};
+        map<std::pair<std::string, std::uint64_t>, shared_ptr<Pipeline>> pipelines{};
         map<string, unique_ptr<Render::Texture>> textures{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
@@ -57,10 +58,17 @@ namespace Carrot {
         void initImGuiPass(const vk::RenderPass& renderPass);
 
     public:
-        explicit VulkanRenderer(VulkanDriver& driver);
+        static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
 
-        /// Each render pass will get a different pipeline instance
-        shared_ptr<Pipeline> getOrCreatePipeline(const string& name);
+        explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
+
+        /// Gets or creates the pipeline with the given name (see resources/pipelines).
+        /// Instance offset can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
+        shared_ptr<Pipeline> getOrCreatePipeline(const string& name, std::uint64_t instanceOffset = 0);
+
+        /// Gets or creates the pipeline with the given name (see resources/pipelines).
+        /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
+        shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const string& name, const vk::RenderPass& pass);
 
         unique_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
 
@@ -88,6 +96,8 @@ namespace Carrot {
 
         Mesh& getFullscreenQuad() { return *fullscreenQuad; }
 
+        const Configuration& getConfiguration() { return config; }
+
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
@@ -103,6 +113,7 @@ namespace Carrot {
 
         template<typename ConstantBlock>
         void pushConstantBlock(Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
+        void bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
     };
 }
 

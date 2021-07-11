@@ -9,7 +9,7 @@
 #include "engine/utils/Assert.h"
 #include "imgui.h"
 
-Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
+Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     fullscreenQuad = make_unique<Mesh>(driver,
                                        vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
@@ -29,8 +29,12 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver): driver(driver) {
     initImGui();
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name) {
-    auto& key = name;
+shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const string& name, const vk::RenderPass& renderPass) {
+    return getOrCreatePipeline(name, reinterpret_cast<std::uint64_t>((void*) &renderPass));
+}
+
+shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name, std::uint64_t instanceOffset) {
+    auto key = std::make_pair(name, instanceOffset);
     auto it = pipelines.find(key);
     if(it == pipelines.end()) {
         pipelines[key] = make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
@@ -171,14 +175,14 @@ void Carrot::VulkanRenderer::preFrame() {
     beforeFrameCommands.clear();
 }
 void Carrot::VulkanRenderer::postFrame() {
-    if(afterFrameCommands.empty())
-        return;
-    driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
-        for (const auto& action : afterFrameCommands) {
-            action(cmds);
-        }
-    });
-    afterFrameCommands.clear();
+    if(!afterFrameCommands.empty()) {
+        driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
+            for (const auto& action : afterFrameCommands) {
+                action(cmds);
+            }
+        });
+        afterFrameCommands.clear();
+    }
     pushConstants.clear();
 }
 
@@ -256,4 +260,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
 void Carrot::VulkanRenderer::newFrame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+}
+
+void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
+    auto& cameraSet = driver.getMainCameraDescriptorSet(data);
+    cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
 }

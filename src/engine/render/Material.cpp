@@ -36,8 +36,8 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     id = renderingPipeline->reserveMaterialSlot(*this);
 }
 
-void Carrot::Material::bindForRender(vk::RenderPass pass, const uint32_t imageIndex, vk::CommandBuffer& commands) const {
-    renderingPipeline->bind(pass, imageIndex, commands);
+void Carrot::Material::bindForRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
+    renderingPipeline->bind(pass, renderContext, commands);
     vector<DrawData> data{1};
     data[0].materialIndex = id;
     commands.pushConstants<DrawData>(renderingPipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<uint32_t>(0), data);

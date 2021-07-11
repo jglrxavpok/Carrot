@@ -22,7 +22,7 @@ namespace Tools {
 
         void tick(double frameTime) override;
 
-        void recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) override;
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
 
         void onMouseMove(double dx, double dy) override;
 
@@ -45,7 +45,7 @@ void Tools::Tools::onFrame(uint32_t frameIndex) {
 void Tools::Tools::tick(double frameTime) {
     particleEditor.tick(frameTime);
 }
-void Tools::Tools::recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) {}
+void Tools::Tools::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {}
 void Tools::Tools::onMouseMove(double dx, double dy) {}
 void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {}
 

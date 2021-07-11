@@ -76,6 +76,7 @@ std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipel
     desc.texturesBindingIndex = -1;
     desc.vertexShader = "resources/shaders/particles.vertex.glsl.spv";
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
+    desc.reserveSet2ForCamera = true;
 
     return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), desc);
 }

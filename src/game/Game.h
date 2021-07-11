@@ -40,7 +40,7 @@ namespace Game {
 
         void tick(double frameTime) override;
 
-        void recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) override;
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
 
         void onMouseMove(double dx, double dy) override;
 

@@ -75,7 +75,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
     auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
-           [&, skyboxOutput = skyboxOutput](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
+           [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {
                 resolveData.positions = graph.read(data.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.normals = graph.read(data.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -92,7 +92,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                                                         vk::ImageLayout::eColorAttachmentOptimal);
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GResolve& data, vk::CommandBuffer& buffer) {
-                auto resolvePipeline = renderer.getOrCreatePipeline("gResolve-rendergraph");
+                auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline("gResolve-rendergraph", pass.getRenderPass());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.positions, frame.swapchainIndex), 0, 2, nullptr);
@@ -103,7 +103,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
 
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 10, nullptr);
 
-                resolvePipeline->bind(pass.getRenderPass(), frame.swapchainIndex, buffer);
+                resolvePipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
                 screenQuadMesh.bind(buffer);
                 screenQuadMesh.draw(buffer);

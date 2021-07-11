@@ -61,7 +61,7 @@ namespace Carrot {
 #pragma region RenderingUpdate
         void onFrame(size_t frameIndex);
 
-        void recordGBufferPass(vk::RenderPass pass, size_t frameIndex, vk::CommandBuffer& commands, size_t instanceCount);
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t instanceCount);
 #pragma endregion RenderingUpdate
     };
 }

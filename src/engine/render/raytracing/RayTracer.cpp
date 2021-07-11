@@ -46,7 +46,7 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 //    updateDescriptorSets();
 }
 
-void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands) {
+void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     // TODO: proper size
     vector<SceneElement> sceneElements(301);
     auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
@@ -58,12 +58,16 @@ void Carrot::RayTracer::recordCommands(uint32_t frameIndex, vk::CommandBuffer& c
             sceneElements[i].transformIT = glm::transpose(glm::inverse(topLevel[i].transform));
         }
     }
-    sceneBuffers[frameIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
+    sceneBuffers[renderContext.swapchainIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
 
-    lightVkBuffers[frameIndex]->directUpload(lightBuffer.get(), lightBuffer->getStructSize());
+    lightVkBuffers[renderContext.swapchainIndex]->directUpload(lightBuffer.get(), lightBuffer->getStructSize());
 
+}
+
+void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
-    commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[frameIndex], sceneDescriptorSets[frameIndex]}, {0});
+    renderer.bindCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
+    commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[renderContext.eye][renderContext.swapchainIndex], sceneDescriptorSets[renderContext.swapchainIndex]}, {});
     // TODO: scene data
     // TODO: push constants
 
@@ -111,7 +115,7 @@ void Carrot::RayTracer::createRTDescriptorSets() {
     };
     rtDescriptorPool = device.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = static_cast<uint32_t>(renderer.getSwapchainImageCount()),
+            .maxSets = static_cast<uint32_t>(renderer.getSwapchainImageCount()) * (renderer.getConfiguration().runInVR ? 2 : 1),
             .poolSizeCount = rtSizes.size(),
             .pPoolSizes = rtSizes.data()
     }, renderer.getVulkanDriver().getAllocationCallbacks());
@@ -138,11 +142,24 @@ void Carrot::RayTracer::createRTDescriptorSets() {
 
     vector<vk::DescriptorSetLayout> rtLayouts = {renderer.getSwapchainImageCount(), *rtDescriptorLayout};
 
-    rtDescriptorSets = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-            .descriptorPool = *rtDescriptorPool,
-            .descriptorSetCount = static_cast<uint32_t>(renderer.getSwapchainImageCount()),
-            .pSetLayouts = rtLayouts.data(),
-    });
+    if(renderer.getConfiguration().runInVR) {
+        rtDescriptorSets[Render::Eye::LeftEye] = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *rtDescriptorPool,
+                .descriptorSetCount = static_cast<uint32_t>(renderer.getSwapchainImageCount()),
+                .pSetLayouts = rtLayouts.data(),
+        });
+        rtDescriptorSets[Render::Eye::RightEye] = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *rtDescriptorPool,
+                .descriptorSetCount = static_cast<uint32_t>(renderer.getSwapchainImageCount()),
+                .pSetLayouts = rtLayouts.data(),
+        });
+    } else {
+        rtDescriptorSets[Render::Eye::NoVR] = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *rtDescriptorPool,
+                .descriptorSetCount = static_cast<uint32_t>(renderer.getSwapchainImageCount()),
+                .pSetLayouts = rtLayouts.data(),
+        });
+    }
 }
 
 void Carrot::RayTracer::createSceneDescriptorSets() {
@@ -187,14 +204,6 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
     }, renderer.getVulkanDriver().getAllocationCallbacks());
 
     vector<vk::DescriptorSetLayoutBinding> sceneBindings = {
-            // Camera
-            vk::DescriptorSetLayoutBinding {
-                    .binding = 0,
-                    .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-                    .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
-            },
-
             // Scene Elements
             vk::DescriptorSetLayoutBinding {
                     .binding = 1,
@@ -244,12 +253,6 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
     // write data to descriptor sets
     std::size_t frameIndex = 0;
     for (const auto& set : sceneDescriptorSets) {
-        vk::DescriptorBufferInfo writeCamera {
-                .buffer = renderer.getVulkanDriver().getCameraUniformBuffers()[frameIndex]->getVulkanBuffer(),
-                .offset = 0,
-                .range = sizeof(CameraBufferObject),
-        };
-
         vk::DescriptorBufferInfo writeScene {
                 .buffer = sceneBuffers[frameIndex]->getVulkanBuffer(),
                 .offset = 0,
@@ -263,14 +266,6 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
         };
 
         vector<vk::WriteDescriptorSet> writes = {
-                vk::WriteDescriptorSet {
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-                        .pBufferInfo = &writeCamera,
-                },
-
                 vk::WriteDescriptorSet {
                         .dstSet = set,
                         .dstBinding = 1,
@@ -358,6 +353,7 @@ void Carrot::RayTracer::createPipeline() {
     vector<vk::DescriptorSetLayout> setLayouts = {
             *rtDescriptorLayout,
             *sceneDescriptorLayout,
+            renderer.getVulkanDriver().getMainCameraDescriptorSetLayout(),
     };
     pipelineLayoutCreateInfo.setLayoutCount = setLayouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
@@ -453,25 +449,24 @@ void Carrot::RayTracer::finishInit() {
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
     // write data to descriptor sets
-    std::size_t frameIndex = 0;
-    for (const auto& set : rtDescriptorSets) {
-        vk::WriteDescriptorSetAccelerationStructureKHR writeAS {
-                .accelerationStructureCount = 1,
-                .pAccelerationStructures = &renderer.getASBuilder().getTopLevelAS().as->getVulkanAS(),
-        };
+    for(const auto& [eye, sets] : rtDescriptorSets) {
+        for(const auto& set : sets) {
+            vk::WriteDescriptorSetAccelerationStructureKHR writeAS {
+                    .accelerationStructureCount = 1,
+                    .pAccelerationStructures = &renderer.getASBuilder().getTopLevelAS().as->getVulkanAS(),
+            };
 
-        array<vk::WriteDescriptorSet, 1> writes = {
-                vk::WriteDescriptorSet {
-                        .pNext = &writeAS,
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
-                },
-        };
-        device.updateDescriptorSets(writes, {});
-
-        frameIndex++;
+            array<vk::WriteDescriptorSet, 1> writes = {
+                    vk::WriteDescriptorSet {
+                            .pNext = &writeAS,
+                            .dstSet = set,
+                            .dstBinding = 0,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
+                    },
+            };
+            device.updateDescriptorSets(writes, {});
+        }
     }
 
     hasStuffToDraw = true;
@@ -494,26 +489,6 @@ void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
     //  call generateBuffers()
 
     // TODO: replace with proper handling
-    //  update camera
-    std::size_t frameIndex = 0;
-    for (const auto& set : sceneDescriptorSets) {
-        vk::DescriptorBufferInfo writeCamera{
-                .buffer = renderer.getVulkanDriver().getCameraUniformBuffers()[frameIndex]->getVulkanBuffer(),
-                .offset = 0,
-                .range = sizeof(CameraBufferObject),
-        };
-
-        vector<vk::WriteDescriptorSet> writes = {
-                vk::WriteDescriptorSet {
-                        .dstSet = set,
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-                        .pBufferInfo = &writeCamera,
-                },
-        };
-        renderer.getLogicalDevice().updateDescriptorSets(writes, {});
-    }
 }
 
 void Carrot::RayTracer::onSwapchainSizeChange(int newWidth, int newHeight) {

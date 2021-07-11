@@ -4,6 +4,7 @@
   "vertexFormat": "ScreenSpace",
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/gResolve.fragment.glsl.spv",
+  "reserveSet2ForCamera": true,
   "depthWrite": false,
   "depthTest": false
 }

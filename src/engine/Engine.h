@@ -27,6 +27,7 @@ namespace Carrot {
 #include "engine/render/VulkanRenderer.h"
 #include "render/Skybox.hpp"
 #include "render/Composer.h"
+#include "engine/Configuration.h"
 
 using namespace std;
 
@@ -68,7 +69,7 @@ namespace Carrot {
         vector<unique_ptr<TracyVulkanContext>> tracyCtx{};
 
         /// Init the engine with the given GLFW window. Will immediately load Vulkan resources
-        explicit Engine(NakedPtr<GLFWwindow> window);
+        explicit Engine(NakedPtr<GLFWwindow> window, Configuration config = {});
 
         /// Launch the engine loop
         void run();
@@ -127,8 +128,6 @@ namespace Carrot {
 
         uint32_t getSwapchainImageCount();
 
-        vector<shared_ptr<Buffer>>& getCameraUniformBuffers();
-
         vector<shared_ptr<Buffer>>& getDebugUniformBuffers();
 
         shared_ptr<Material> getOrCreateMaterial(const string& name);
@@ -173,11 +172,14 @@ namespace Carrot {
             return lastFrameIndex;
         }
 
-        Render::Composer& getMainComposer() { return composer; }
+        Render::Composer& getMainComposer(Render::Eye eye = Render::Eye::NoVR) { return *composers[eye]; }
 
-        Render::Context newRenderContext(std::size_t swapchainFrameIndex);
+        Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Eye eye = Render::Eye::NoVR);
+
+        const Configuration& getConfiguration() const { return config; }
 
     private:
+        Configuration config;
         double mouseX = 0.0;
         double mouseY = 0.0;
         float currentFPS = 0.0f;
@@ -212,8 +214,6 @@ namespace Carrot {
 
         Skybox::Type currentSkybox = Skybox::Type::None;
         unique_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
-        vk::UniqueImageView loadedSkyboxTextureView{};
-        shared_ptr<Pipeline> skyboxPipeline = nullptr;
         unique_ptr<Mesh> skyboxMesh = nullptr;
 
         unique_ptr<Mesh> screenQuad = nullptr;
@@ -233,8 +233,10 @@ namespace Carrot {
 
         Carrot::Render::PassData::GResolve gResolvePassData;
         std::unique_ptr<Render::Graph> globalFrameGraph = nullptr;
+        std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
+        std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
-        Render::Composer composer;
+        unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
 
         /// Init engine
         void init();

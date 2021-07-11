@@ -4,6 +4,7 @@
 #include "engine/constants.h"
 #include "stb_image.h"
 #include "game/Game.h"
+#include "engine/Configuration.h"
 
 #ifdef TRACY_ENABLE
 void* operator new(std::size_t count) {
@@ -58,7 +59,11 @@ int main() {
         // create new scope, as the destructor requires the window to *not* be terminated at its end
         // otherwise this creates a DEP exception when destroying the surface provided by GLFW
         {
-            Carrot::Engine engine{window};
+            Carrot::Configuration config;
+#ifdef VR
+            config.runInVR = true;
+#endif
+            Carrot::Engine engine{window, config};
             engine.run();
         }
 

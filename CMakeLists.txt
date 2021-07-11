@@ -272,6 +272,10 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
 
+add_executable(Carrot-VR ${ALL_SOURCES})
+target_compile_definitions(Carrot-VR PRIVATE VR=1)
+target_link_libraries(Carrot-VR ${ALL_LIBS})
+
 add_executable(Carrot-Tools ${ENGINE-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
 target_link_libraries(Carrot-Tools ${ALL_LIBS})
 

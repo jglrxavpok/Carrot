@@ -4,7 +4,7 @@
 const uint MAX_KEYFRAMES = 140;
 const uint MAX_BONES = 20;
 
-layout(set = 0, binding = 0) uniform CameraBufferObject {
+layout(set = 2, binding = 0) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;

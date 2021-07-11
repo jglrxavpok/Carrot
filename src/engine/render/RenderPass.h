@@ -36,6 +36,7 @@ namespace Carrot::Render {
         /// Constructor for rasterized passes
         explicit CompiledPass(
                 Graph& graph,
+                std::string name,
                 vk::UniqueRenderPass&& renderPass,
                 const std::vector<vk::ClearValue>& clearValues,
                 const CompiledPassCallback& renderingCode,
@@ -46,6 +47,7 @@ namespace Carrot::Render {
         /// Constructor for non-rasterized passes
         explicit CompiledPass(
                 Graph& graph,
+                std::string name,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback
@@ -79,6 +81,7 @@ namespace Carrot::Render {
         std::vector<ImageTransition> prePassTransitions;
         CompiledPassCallback renderingCode;
         InitCallback initCallback;
+        std::string name;
     };
 
     template<typename> class Pass;
@@ -90,7 +93,7 @@ namespace Carrot::Render {
     public:
         bool rasterized = true;
 
-        explicit PassBase(VulkanDriver& driver): driver(driver) {}
+        explicit PassBase(VulkanDriver& driver, std::string name): driver(driver), name(std::move(name)) {}
 
         virtual ~PassBase() = default;
 
@@ -126,6 +129,8 @@ namespace Carrot::Render {
         std::unordered_map<Carrot::UUID, vk::ImageLayout> finalLayouts;
 
     protected:
+        std::string name;
+
         virtual CompiledPassCallback generateCallback() = 0;
         virtual void postCompile(CompiledPass& pass) = 0;
 
@@ -142,7 +147,7 @@ namespace Carrot::Render {
     class Pass: public PassBase {
     public:
 
-        explicit Pass(VulkanDriver& driver, const ExecutePassCallback<Data>& callback, const PostCompileCallback<Data>& postCompileCallback): PassBase(driver), executeCallback(callback), postCompileCallback(postCompileCallback) {};
+        explicit Pass(VulkanDriver& driver, const std::string& name, const ExecutePassCallback<Data>& callback, const PostCompileCallback<Data>& postCompileCallback): PassBase(driver, name), executeCallback(callback), postCompileCallback(postCompileCallback) {};
 
         CompiledPassCallback generateCallback() override {
             return [executeCallback = executeCallback, data = data, condition = condition](const CompiledPass& pass, const Render::Context& frameData, vk::CommandBuffer& cmds)

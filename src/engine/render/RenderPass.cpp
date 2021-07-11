@@ -12,6 +12,7 @@
 
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
+        std::string name,
         vk::UniqueRenderPass&& renderPass,
         const std::vector<vk::ClearValue>& clearValues,
         const CompiledPassCallback& renderingCode,
@@ -24,7 +25,8 @@ Carrot::Render::CompiledPass::CompiledPass(
         clearValues(clearValues),
         renderingCode(renderingCode),
         prePassTransitions(prePassTransitions),
-        initCallback(std::move(initCallback))
+        initCallback(std::move(initCallback)),
+        name(std::move(name))
         {
             rasterized = true;
             framebuffers = std::move(this->initCallback(*this));
@@ -32,6 +34,7 @@ Carrot::Render::CompiledPass::CompiledPass(
 
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
+        std::string name,
         const CompiledPassCallback& renderingCode,
         std::vector<ImageTransition>&& prePassTransitions,
         InitCallback initCallback
@@ -41,7 +44,8 @@ Carrot::Render::CompiledPass::CompiledPass(
         renderPass(),
         renderingCode(renderingCode),
         prePassTransitions(prePassTransitions),
-        initCallback(std::move(initCallback))
+        initCallback(std::move(initCallback)),
+        name(std::move(name))
         {
             rasterized = false;
             auto fb = this->initCallback(*this);
@@ -110,8 +114,11 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     for(const auto& input : inputs) {
         auto initialLayout = input.resource.previousLayout;//graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
         assert(initialLayout != vk::ImageLayout::eUndefined);
-        if(initialLayout != input.resource.layout) {
-            prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.resource.layout, input.aspect);
+        if(initialLayout != input.expectedLayout) {
+            auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resourceID == input.resource.rootID; });
+            if(it == prePassTransitions.end()) {
+                prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.resource.layout, input.aspect);
+            }
         }
     }
 
@@ -234,7 +241,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             }
             return framebuffers;
         };
-        result = std::make_unique<CompiledPass>(graph, std::move(renderPass), clearValues,
+        result = std::make_unique<CompiledPass>(graph, name, std::move(renderPass), clearValues,
                                          generateCallback(), std::move(prePassTransitions), init);
     } else {
         auto init = [outputs = outputs](CompiledPass& pass) {
@@ -246,7 +253,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             }
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
-        result = make_unique<CompiledPass>(graph, generateCallback(), std::move(prePassTransitions), init);
+        result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init);
     }
     postCompile(*result);
     return result;

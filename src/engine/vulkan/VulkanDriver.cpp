@@ -11,6 +11,8 @@
 #include "engine/render/resources/Texture.h"
 #include "engine/io/Logging.hpp"
 #include "engine/render/TextureRepository.h"
+#include "engine/utils/Macros.h"
+#include "engine/render/resources/BufferView.h"
 #include <iostream>
 #include <map>
 #include <set>
@@ -34,10 +36,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window),
+Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config): window(window),
     graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
     computeCommandPool([&]() { return createComputeCommandPool(); }),
-    transferCommandPool([&]() { return createTransferCommandPool(); })
+    transferCommandPool([&]() { return createTransferCommandPool(); }),
+    config(config)
 
 {
 
@@ -86,9 +89,27 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window): window(window),
     createSwapChain();
     createUniformBuffers();
 
-    textureRepository = std::make_unique<Render::TextureRepository>(*this);
-}
+    vk::DescriptorPoolSize emptySize {
+        .descriptorCount = 0,
+    };
+    emptyDescriptorSetPool = device->createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .maxSets = 1,
+            .poolSizeCount = 1,
+            .pPoolSizes = &emptySize,
+    });
+    emptyDescriptorSetLayout = device->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+        .bindingCount = 0,
+    });
+    emptyDescriptorSet = device->allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+        .descriptorPool = *emptyDescriptorSetPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &(*emptyDescriptorSetLayout),
+    })[0];
 
+    textureRepository = std::make_unique<Render::TextureRepository>(*this);
+
+    prepareCameraSets();
+}
 
 bool Carrot::VulkanDriver::checkValidationLayerSupport() {
     const std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
@@ -665,15 +686,36 @@ void Carrot::VulkanDriver::cleanupSwapchain() {
 
 void Carrot::VulkanDriver::createUniformBuffers() {
     vk::DeviceSize bufferSize = sizeof(Carrot::CameraBufferObject);
-    cameraUniformBuffers.resize(getSwapchainImageCount(), nullptr);
+    if(config.runInVR) {
+        cameraUniformBuffers[Carrot::Render::Eye::LeftEye].resize(getSwapchainImageCount(), nullptr);
+        cameraUniformBuffers[Carrot::Render::Eye::RightEye].resize(getSwapchainImageCount(), nullptr);
 
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        cameraUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
-                bufferSize,
-                vk::BufferUsageFlagBits::eUniformBuffer,
-                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                createGraphicsAndTransferFamiliesSet());
+        for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+            cameraUniformBuffers[Carrot::Render::Eye::LeftEye][i] = make_unique<Carrot::Buffer>(*this,
+                                                                                                 bufferSize,
+                                                                                                 vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                                                 createGraphicsAndTransferFamiliesSet());
+            cameraUniformBuffers[Carrot::Render::Eye::RightEye][i] = make_unique<Carrot::Buffer>(*this,
+                                                                  bufferSize,
+                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                  vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                  createGraphicsAndTransferFamiliesSet());
+        }
+
+    } else {
+        cameraUniformBuffers[Carrot::Render::Eye::NoVR].resize(getSwapchainImageCount(), nullptr);
+
+        for(size_t i = 0; i < getSwapchainImageCount(); i++) {
+            cameraUniformBuffers[Carrot::Render::Eye::NoVR][i] = make_unique<Carrot::Buffer>(*this,
+                                                                  bufferSize,
+                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                  vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                  createGraphicsAndTransferFamiliesSet());
+        }
+
     }
+
 
     vk::DeviceSize debugBufferSize = sizeof(Carrot::DebugBufferObject);
     debugUniformBuffers.resize(getSwapchainImageCount(), nullptr);
@@ -720,9 +762,81 @@ bool Carrot::QueueFamilies::isComplete() const {
 
 void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
     /*re-*/ createUniformBuffers();
+    prepareCameraSets();
     textureRepository->onSwapchainImageCountChange(newCount);
 }
 
 void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
     textureRepository->onSwapchainSizeChange(newWidth, newHeight);
+}
+
+vk::DescriptorSet& Carrot::VulkanDriver::getMainCameraDescriptorSet(const Render::Context& context) {
+    return cameraDescriptorSets[context.eye][context.swapchainIndex];
+}
+
+vk::DescriptorSetLayout& Carrot::VulkanDriver::getMainCameraDescriptorSetLayout() {
+    return *cameraDescriptorSetLayout;
+}
+
+void Carrot::VulkanDriver::prepareCameraSets() {
+    vk::DescriptorSetLayoutBinding cameraBinding {
+            .binding = 0,
+            .descriptorType = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+    };
+    cameraDescriptorSetLayout = device->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = 1,
+            .pBindings = &cameraBinding,
+    });
+
+    vk::DescriptorPoolSize poolSize {
+        .type = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+    };
+    cameraDescriptorSetsPool = device->createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount() * (config.runInVR ? 2 : 1)),
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+    });
+
+    auto writeCameraBuffers = [&](const std::vector<vk::DescriptorSet>& sets, const std::vector<std::shared_ptr<Carrot::Buffer>>& uniformBuffers) {
+        assert(sets.size() == uniformBuffers.size());
+        for (int i = 0; i < sets.size(); i++) {
+            vk::DescriptorBufferInfo cameraBuffer = uniformBuffers[i]->getWholeView().asBufferInfo();
+            vk::WriteDescriptorSet write {
+                    .dstSet = sets[i],
+                    .dstBinding = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .pBufferInfo = &cameraBuffer,
+            };
+
+            device->updateDescriptorSets(write, {});
+        }
+    };
+
+    std::vector<vk::DescriptorSetLayout> layouts {getSwapchainImageCount(), *cameraDescriptorSetLayout};
+    if(config.runInVR) {
+        cameraDescriptorSets[Carrot::Render::Eye::LeftEye] = device->allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *cameraDescriptorSetsPool,
+                .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+                .pSetLayouts = layouts.data(),
+        });
+        cameraDescriptorSets[Carrot::Render::Eye::RightEye] = device->allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *cameraDescriptorSetsPool,
+                .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+                .pSetLayouts = layouts.data(),
+        });
+        writeCameraBuffers(cameraDescriptorSets[Carrot::Render::Eye::LeftEye], cameraUniformBuffers[Carrot::Render::Eye::LeftEye]);
+        writeCameraBuffers(cameraDescriptorSets[Carrot::Render::Eye::RightEye], cameraUniformBuffers[Carrot::Render::Eye::RightEye]);
+    } else {
+        cameraDescriptorSets[Carrot::Render::Eye::NoVR] = device->allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+                .descriptorPool = *cameraDescriptorSetsPool,
+                .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+                .pSetLayouts = layouts.data(),
+        });
+        writeCameraBuffers(cameraDescriptorSets[Carrot::Render::Eye::NoVR], cameraUniformBuffers[Carrot::Render::Eye::NoVR]);
+    }
 }

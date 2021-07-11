@@ -206,7 +206,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
 
         case vk::ImageLayout::eGeneral: {
             barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
-            destinationStage = vk::PipelineStageFlagBits::eTopOfPipe;
+            destinationStage = vk::PipelineStageFlagBits::eAllCommands;
         } break;
 
         default:

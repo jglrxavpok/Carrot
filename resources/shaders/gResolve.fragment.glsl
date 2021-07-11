@@ -12,18 +12,18 @@ layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
 layout(set = 0, binding = 6) uniform texture2D uiRendered;
 layout(set = 0, binding = 7) uniform sampler linearSampler;
 
-layout(set = 0, binding = 8) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
-
 layout(set = 0, binding = 9) uniform Debug {
     #include "debugparams.glsl"
 } debug;
 
 layout(set = 0, binding = 10) uniform texture2D skyboxTexture;
+
+layout(set = 2, binding = 0) uniform CameraBufferObject {
+    mat4 projection;
+    mat4 view;
+    mat4 inverseView;
+    mat4 inverseProjection;
+} cbo;
 
 layout(location = 0) in vec2 uv;
 

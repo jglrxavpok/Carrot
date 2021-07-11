@@ -23,7 +23,7 @@ namespace Carrot {
         vk::UniqueDescriptorPool sceneDescriptorPool;
         vk::UniqueDescriptorSetLayout rtDescriptorLayout;
         vk::UniqueDescriptorSetLayout sceneDescriptorLayout;
-        vector<vk::DescriptorSet> rtDescriptorSets;
+        std::unordered_map<Render::Eye, vector<vk::DescriptorSet>> rtDescriptorSets;
         vector<vk::DescriptorSet> sceneDescriptorSets;
         vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
         vk::UniquePipelineLayout pipelineLayout;
@@ -52,11 +52,10 @@ namespace Carrot {
 
         explicit RayTracer(VulkanRenderer& renderer);
 
-        void recordCommands(uint32_t frameIndex, vk::CommandBuffer& commands);
+        void recordCommands(Render::Context renderContext, vk::CommandBuffer& commands);
+        void onFrame(Render::Context renderContext);
 
         void onSwapchainRecreation();
-
-        vector<unique_ptr<Render::Texture>>& getLightingTextures();
 
         void createDescriptorSets();
 
@@ -77,6 +76,6 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     public:
-        vector<vk::DescriptorSet>& getRTDescriptorSets() { return rtDescriptorSets; }
+        std::unordered_map<Render::Eye, vector<vk::DescriptorSet>>& getRTDescriptorSets() { return rtDescriptorSets; }
     };
 }

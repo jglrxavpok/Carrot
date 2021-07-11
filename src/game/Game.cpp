@@ -186,17 +186,17 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     particles->onFrame(frameIndex);
 }
 
-void Game::Game::recordGBufferPass(vk::RenderPass pass, uint32_t frameIndex, vk::CommandBuffer& commands) {
+void Game::Game::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     {
-        TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render map");
-        mapModel->draw(pass, frameIndex, commands, *mapInstanceBuffer, 1);
+        TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render map");
+        mapModel->draw(pass, renderContext, commands, *mapInstanceBuffer, 1);
     }
 
     {
-        animatedUnits->recordGBufferPass(pass, frameIndex, commands, maxInstanceCount);
+        animatedUnits->recordGBufferPass(pass, renderContext, commands, maxInstanceCount);
     }
 
-    particles->gBufferRender(pass, frameIndex, commands);
+    particles->gBufferRender(pass, renderContext, commands);
 }
 
 float yaw = 0.0f;

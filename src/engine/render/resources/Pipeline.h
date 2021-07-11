@@ -37,6 +37,7 @@ namespace Carrot {
 
         bool depthTest = true;
         bool depthWrite = true;
+        bool reserveSet2ForCamera = false; // descriptor set 0 is for the camera. Can be used to switch camera information without changing other sets (VR)
 
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
@@ -109,7 +110,7 @@ namespace Carrot {
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
 
-        void bind(vk::RenderPass pass, uint32_t imageIndex, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
+        void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
         void bindDescriptorSets(vk::CommandBuffer& commands, const vector<vk::DescriptorSet>& descriptors, const vector<uint32_t>& dynamicOffsets, uint32_t firstSet = 0) const;
 
