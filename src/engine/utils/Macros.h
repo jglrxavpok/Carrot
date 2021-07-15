@@ -4,6 +4,7 @@
 
 #pragma once
 #include <stdexcept>
+#include "Assert.h"
 
 namespace Carrot::Exceptions {
     class TodoException: public std::exception {

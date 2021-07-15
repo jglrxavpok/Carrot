@@ -49,10 +49,6 @@ namespace Carrot::Render {
     enum class ImageOrigin {
         SurfaceSwapchain, // image is part of window swapchain
         Created, // image is created by the engine
-
-#ifdef ENABLE_VR
-        SurfaceXRSwapchain, // image is part of XR device swapchain
-#endif
     };
 
     class FrameResource: public std::enable_shared_from_this<FrameResource> {

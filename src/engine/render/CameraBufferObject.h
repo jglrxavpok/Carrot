@@ -24,7 +24,7 @@ namespace Carrot {
         alignas(16) glm::mat4 inverseProjection;
 
         void update(Camera& camera) {
-            view = glm::lookAt(camera.position, camera.target, camera.getUp());
+            view = camera.computeViewMatrix();
             inverseView = glm::inverse(view);
             projection = camera.getProjectionMatrix();
             inverseProjection = glm::inverse(projection);

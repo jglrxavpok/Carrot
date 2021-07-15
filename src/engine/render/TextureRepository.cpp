@@ -63,15 +63,6 @@ namespace Carrot::Render {
                     );
                     break;
 
-#ifdef ENABLE_VR
-                case Render::ImageOrigin::SurfaceXRSwapchain:
-                    // TODO: handle cases when XR swapchain and Vulkan swapchain don't have the same image count
-                    //  if this is even possible?
-                    assert(driver.getSwapchainImageCount() == vrSession->getSwapchainTextures().size());
-                    texture = vrSession->getSwapchainTextures()[frameIndex];
-                    break;
-#endif
-
                 default:
                     TODO
                     break;

@@ -27,7 +27,7 @@
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
 
-constexpr static int maxInstanceCount = 100; // TODO: change
+constexpr static int maxInstanceCount = 10; // TODO: change
 
 static vector<size_t> blasIndices{};
 
@@ -203,21 +203,23 @@ float yaw = 0.0f;
 float pitch = 0.0f;
 
 void Game::Game::onMouseMove(double dx, double dy) {
-    if( ! engine.grabbingCursor())
-        return;
+    if(!engine.getConfiguration().runInVR) {
+        if( ! engine.grabbingCursor())
+            return;
 
-    auto& camera = engine.getCamera();
-    yaw -= dx * 0.01f;
-    pitch -= dy * 0.01f;
+        auto& camera = engine.getCamera();
+        yaw -= dx * 0.01f;
+        pitch -= dy * 0.01f;
 
-    const float distanceFromCenter = 5.0f;
-    float cosYaw = cos(yaw);
-    float sinYaw = sin(yaw);
+        const float distanceFromCenter = 5.0f;
+        float cosYaw = cos(yaw);
+        float sinYaw = sin(yaw);
 
-    float cosPitch = cos(pitch);
-    float sinPitch = sin(pitch);
-    camera.position = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
-    camera.position += camera.target;
+        float cosPitch = cos(pitch);
+        float sinPitch = sin(pitch);
+        camera.getPositionRef() = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
+        camera.getPositionRef() += camera.getTarget();
+    }
 }
 
 void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
@@ -230,7 +232,7 @@ void Game::Game::tick(double frameTime) {
     world.tick(frameTime);
 
     totalTime += frameTime*10.0f;
-    animatedUnits->getInstance(99).color = {
+    animatedUnits->getInstance(9).color = {
             glm::sin(totalTime)/2.0f+0.5f,
             glm::cos(totalTime)/2.0f+0.5f,
             glm::cos(totalTime)*glm::sin(totalTime)/2.0f+0.5f,

@@ -343,9 +343,6 @@ void Carrot::Engine::initWindow() {
 
     glfwSetCursorPosCallback(window.get(), mouseMove);
     glfwSetKeyCallback(window.get(), keyCallback);
-
-    glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    grabCursor = true;
 }
 
 void Carrot::Engine::initVulkan() {
@@ -353,7 +350,7 @@ void Carrot::Engine::initVulkan() {
 
     createTracyContexts();
 
-    createCamera();
+    createCameras();
 
     getRayTracer().init();
 
@@ -415,15 +412,17 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
-    static CameraBufferObject cbo{};
-
     if(config.runInVR) {
-        cbo.update(*camera);
-        // TODO: different cameras
-        vkDriver.getCameraUniformBuffers()[Render::Eye::LeftEye][imageIndex]->directUpload(&cbo, sizeof(cbo));
-        vkDriver.getCameraUniformBuffers()[Render::Eye::RightEye][imageIndex]->directUpload(&cbo, sizeof(cbo));
+        static CameraBufferObject leftCBO{};
+        static CameraBufferObject rightCBO{};
+        leftCBO.update(*cameras[Render::Eye::LeftEye]);
+        rightCBO.update(*cameras[Render::Eye::RightEye]);
+
+        vkDriver.getCameraUniformBuffers()[Render::Eye::LeftEye][imageIndex]->directUpload(&leftCBO, sizeof(leftCBO));
+        vkDriver.getCameraUniformBuffers()[Render::Eye::RightEye][imageIndex]->directUpload(&rightCBO, sizeof(rightCBO));
     } else {
-        cbo.update(*camera);
+        static CameraBufferObject cbo{};
+        cbo.update(*cameras[Render::Eye::NoVR]);
         vkDriver.getCameraUniformBuffers()[Render::Eye::NoVR][imageIndex]->directUpload(&cbo, sizeof(cbo));
     }
 }
@@ -530,6 +529,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     {
         ZoneScopedN("Present");
+
         vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[currentFrame]};
         vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
         vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
@@ -554,6 +554,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
         getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
 
+#ifdef ENABLE_VR
+        vrSession->present(newRenderContext(imageIndex));
+#endif
+
         renderer.postFrame();
 
         vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
@@ -573,10 +577,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         } catch(vk::OutOfDateKHRError const &e) {
             result = vk::Result::eErrorOutOfDateKHR;
         }
-
-#ifdef ENABLE_VR
-        vrSession->present(newRenderContext(imageIndex));
-#endif
     }
 
 
@@ -690,12 +690,18 @@ shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& n
     return materials[name];
 }
 
-void Carrot::Engine::createCamera() {
+void Carrot::Engine::createCameras() {
     auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
 
-    camera = make_unique<Camera>(45.0f, vkDriver.getSwapchainExtent().width / (float) vkDriver.getSwapchainExtent().height, 0.1f, 1000.0f);
-    camera->position = glm::vec3(center.x, center.y + 1, 5.0f);
-    camera->target = center;
+    if(config.runInVR) {
+        cameras[Render::Eye::LeftEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
+        cameras[Render::Eye::RightEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
+    } else {
+        auto camera = make_unique<Camera>(45.0f, vkDriver.getSwapchainExtent().width / (float) vkDriver.getSwapchainExtent().height, 0.1f, 1000.0f);
+        camera->getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
+        camera->getTargetRef() = center;
+        cameras[Render::Eye::NoVR] = std::move(camera);
+    }
 }
 
 void Carrot::Engine::onMouseMove(double xpos, double ypos) {
@@ -709,7 +715,12 @@ void Carrot::Engine::onMouseMove(double xpos, double ypos) {
 }
 
 Carrot::Camera& Carrot::Engine::getCamera() {
-    return *camera;
+    return getCamera(Carrot::Render::Eye::NoVR);
+}
+
+Carrot::Camera& Carrot::Engine::getCamera(Carrot::Render::Eye eye) {
+    assert(cameras.find(eye) != cameras.end());
+    return *cameras[eye];
 }
 
 void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {

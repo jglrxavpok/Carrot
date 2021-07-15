@@ -10,6 +10,8 @@
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/TextureRepository.h"
+#include "engine/render/Camera.h"
+#include "engine/utils/conversions.h"
 
 namespace Carrot::VR {
     Session::Session(Interface& vr): vr(vr) {
@@ -87,7 +89,7 @@ namespace Carrot::VR {
         swapchainInfo.faceCount = 1;
         swapchainInfo.format = static_cast<int64_t>(swapchainFormat);
         swapchainInfo.createFlags = xr::SwapchainCreateFlagBits::ProtectedContent;
-        swapchainInfo.usageFlags = xr::SwapchainUsageFlagBits::ColorAttachment;
+        swapchainInfo.usageFlags = xr::SwapchainUsageFlagBits::TransferDst;
         xrSwapchain = xrSession->createSwapchainUnique(swapchainInfo);
 
         xrSwapchainImages = xrSwapchain->enumerateSwapchainImagesToVector<xr::SwapchainImageVulkanKHR>();
@@ -101,11 +103,6 @@ namespace Carrot::VR {
                     swapchainFormat
             );
         }
-
-        swapchainResource.size = fullSwapchainSize;
-        swapchainResource.format = swapchainFormat;
-        swapchainResource.imageOrigin = Render::ImageOrigin::SurfaceXRSwapchain;
-        swapchainResource.owner = nullptr;
     }
 
     void Session::stateChanged(xr::Time time, xr::SessionState state) {
@@ -136,6 +133,17 @@ namespace Carrot::VR {
         locateInfo.displayTime = predictedEndTime;
         locateInfo.space = *xrSpace;
         xrViews = xrSession->locateViewsToVector(locateInfo, reinterpret_cast<XrViewState*>(&viewState));
+
+        auto updateCamera = [&](Carrot::Render::Eye eye, xr::View& view) {
+            glm::vec3 translation{0.0f};
+            auto& camera = getEngine().getCamera(eye);
+            auto tmp = Carrot::toGlm(view.pose);
+            camera.getViewMatrixRef() = glm::inverse(tmp);// * glm::translate({}, translation);
+            camera.getProjectionMatrixRef() = Carrot::toGlm(view.fov);
+        };
+
+        updateCamera(Carrot::Render::Eye::LeftEye, xrViews[0]);
+        updateCamera(Carrot::Render::Eye::RightEye, xrViews[1]);
     }
 
     void Session::endFrame() {
@@ -206,10 +214,12 @@ namespace Carrot::VR {
                 texture.assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
                 texture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
                 cmds.blitImage(texture.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, xrSwapchainTexture.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
-                xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
+                xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal); // OpenXR & Vulkan complain if this is not done? eTransferSrcOptimal makes more sense to me
+                //xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
                 texture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal);
             };
 
+            // TODO: use pre-allocated command buffer instead of single-use
             vr.getEngine().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 blit(cmds, leftEye, 0);
                 blit(cmds, rightEye, 1);
@@ -217,6 +227,10 @@ namespace Carrot::VR {
         }
 
         endFrame();
+    }
+
+    Carrot::Engine& Session::getEngine() {
+        return vr.getEngine();
     }
 
     Session::~Session() {

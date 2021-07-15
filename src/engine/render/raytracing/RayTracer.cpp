@@ -10,6 +10,8 @@
 #include "SceneElement.h"
 #include <iostream>
 
+constexpr int maxInstances = 31;
+
 Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     // init raytracing
     auto properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
@@ -22,7 +24,7 @@ void Carrot::RayTracer::generateBuffers() {
     sceneBuffers.resize(renderer.getSwapchainImageCount());
     for (int i = 0; i < renderer.getSwapchainImageCount(); ++i) {
         sceneBuffers[i] = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                              sizeof(SceneElement)*301/* TODO: proper size for scene description*/,
+                                              sizeof(SceneElement)*maxInstances/* TODO: proper size for scene description*/,
                                               vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
@@ -48,10 +50,10 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     // TODO: proper size
-    vector<SceneElement> sceneElements(301);
+    vector<SceneElement> sceneElements(maxInstances);
     auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
     size_t maxInstance = topLevel.size();
-    for (int i = 0; i < 301; ++i) {
+    for (int i = 0; i < maxInstances; ++i) {
         sceneElements[i].mappedIndex = i;
         if(i < maxInstance) {
             sceneElements[i].transform = glm::inverse(topLevel[i].transform);
@@ -181,13 +183,13 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             // Vertex buffers
             vk::DescriptorPoolSize {
                     .type = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 301 /* TODO: proper size */,
+                    .descriptorCount = maxInstances /* TODO: proper size */,
             },
 
             // Index buffers
             vk::DescriptorPoolSize {
                     .type = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 301 /* TODO: proper size */,
+                    .descriptorCount = maxInstances /* TODO: proper size */,
             },
 
             // Light buffer
@@ -216,7 +218,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             vk::DescriptorSetLayoutBinding {
                     .binding = 2,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 301, /* TODO: proper size */
+                    .descriptorCount = maxInstances, /* TODO: proper size */
                     .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
             },
 
@@ -224,7 +226,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             vk::DescriptorSetLayoutBinding {
                     .binding = 3,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 301, /* TODO: proper size */
+                    .descriptorCount = maxInstances, /* TODO: proper size */
                     .stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
             },
 
@@ -256,7 +258,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
         vk::DescriptorBufferInfo writeScene {
                 .buffer = sceneBuffers[frameIndex]->getVulkanBuffer(),
                 .offset = 0,
-                .range = sizeof(SceneElement)*301/* TODO: get scene description */,
+                .range = sizeof(SceneElement)*maxInstances/* TODO: get scene description */,
         };
 
         vk::DescriptorBufferInfo writeLights {

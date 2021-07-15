@@ -10,6 +10,10 @@
 #include "engine/render/RenderGraph.h"
 #include <memory>
 
+namespace Carrot {
+    class Engine;
+}
+
 namespace Carrot::VR {
     class Interface;
 
@@ -28,12 +32,12 @@ namespace Carrot::VR {
         void endFrame();
 
     public:
-        std::vector<Carrot::Render::Texture::Ref>& getSwapchainTextures() { return xrSwapchainTextures; }
         void setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye);
         void present(const Render::Context& context);
 
     private:
         xr::Session& getXRSession() { return *xrSession; }
+        Carrot::Engine& getEngine();
 
     private:
         void stateChanged(xr::Time time, xr::SessionState state);
@@ -49,7 +53,6 @@ namespace Carrot::VR {
         xr::CompositionLayerProjectionView xrProjectionViews[2];
 
     private: // swapchain
-        Render::FrameResource swapchainResource;
         vk::Extent3D fullSwapchainSize;
         vk::Extent3D eyeRenderSize;
         vk::Format swapchainFormat = vk::Format::eUndefined;

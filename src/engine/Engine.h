@@ -142,6 +142,7 @@ namespace Carrot {
         /// Creates a set with the graphics and transfer family indices
         set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
+        Camera& getCamera(Carrot::Render::Eye eye);
         Camera& getCamera();
 
         vk::PhysicalDevice& getPhysicalDevice();
@@ -221,7 +222,7 @@ namespace Carrot {
 
         map<string, shared_ptr<Material>> materials{};
 
-        unique_ptr<Camera> camera = nullptr;
+        unordered_map<Render::Eye, unique_ptr<Camera>> cameras{};
         unique_ptr<Carrot::CarrotGame> game = nullptr;
 
         bool framebufferResized = false;
@@ -285,7 +286,7 @@ namespace Carrot {
 
         void initGame();
 
-        void createCamera();
+        void createCameras();
 
         void createTracyContexts();
 

@@ -49,6 +49,7 @@ namespace Carrot::VR {
 
         friend class Session;
     };
+
 }
 
 #endif
