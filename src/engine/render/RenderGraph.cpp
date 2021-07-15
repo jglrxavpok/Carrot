@@ -11,7 +11,7 @@
 namespace Carrot::Render {
     GraphBuilder::GraphBuilder(VulkanDriver& driver): driver(driver) {
         swapchainImage.format = driver.getSwapchainImageFormat();
-        swapchainImage.isSwapchain = true;
+        swapchainImage.imageOrigin = ImageOrigin::SurfaceSwapchain;
         swapchainImage.owner = this;
         resources.emplace_back(&swapchainImage);
     }
@@ -31,7 +31,7 @@ namespace Carrot::Render {
     FrameResource& GraphBuilder::write(const FrameResource& toWrite, vk::AttachmentLoadOp loadOp, vk::ImageLayout layout, vk::ClearValue clearValue, vk::ImageAspectFlags aspect) {
         assert(currentPass);
         if(toWrite.owner != this) {
-            TODO
+          //  TODO?
         }
         resources.emplace_back(&toWrite);
         currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout);
@@ -49,7 +49,7 @@ namespace Carrot::Render {
         r.owner = this;
         r.format = format;
         r.size = size;
-        r.isSwapchain = false;
+        r.imageOrigin = ImageOrigin::Created;
         r.updateLayout(layout);
         currentPass->finalLayouts[r.id] = layout;
 
@@ -87,12 +87,12 @@ namespace Carrot::Render {
         auto result = std::make_unique<Graph>(driver);
 
         for(const auto& [name, pass] : passes) {
-            result->passes[name] = std::move(pass->compile(driver, *result));
+            result->passes.emplace_back(name, std::move(pass->compile(driver, *result)));
         }
 
         // TODO: actually sort
-        for(const auto& [name, _] : passes) {
-            result->sortedPasses.push_back(result->passes[name].get());
+        for(auto& [name, pass] : result->passes) {
+            result->sortedPasses.push_back(pass.get());
         }
         return result;
     }
@@ -105,12 +105,6 @@ namespace Carrot::Render {
         for(const auto* pass : sortedPasses) {
             pass->execute(data, cmds);
         }
-    }
-
-    CompiledPass& Graph::getPass(const string& name) {
-        auto it = passes.find(name);
-        runtimeAssert(it != passes.end(), "Could not find pass with given name");
-        return *it->second;
     }
 
     Texture& Graph::getTexture(const FrameResource& resource, size_t frameIndex) const {

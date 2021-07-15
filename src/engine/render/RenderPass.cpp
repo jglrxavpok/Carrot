@@ -220,10 +220,15 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
                 auto& frameImageViews = attachmentImageViews[i];
 
+                std::uint32_t maxWidth = 0;
+                std::uint32_t maxHeight = 0;
                 // TODO: inputs
                 for (const auto& output : outputs) {
                     auto& texture = graph.createTexture(output.resource, i);
                     frameImageViews.push_back(texture.getView(output.aspect));
+
+                    maxWidth = std::max(texture.getSize().width, maxWidth);
+                    maxHeight = std::max(texture.getSize().height, maxHeight);
                 }
 
 
@@ -231,8 +236,8 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                         .renderPass = pass.getRenderPass(),
                         .attachmentCount = static_cast<uint32_t>(frameImageViews.size()),
                         .pAttachments = frameImageViews.data(),
-                        .width = driver.getSwapchainExtent().width,
-                        .height = driver.getSwapchainExtent().height,
+                        .width = maxWidth,
+                        .height = maxHeight,
                         .layers = 1,
                 };
 

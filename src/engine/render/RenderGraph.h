@@ -18,8 +18,6 @@ namespace Carrot::Render {
         void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
     public:
-        Render::CompiledPass& getPass(const std::string& name);
-
         [[nodiscard]] Render::Texture& createTexture(const FrameResource& resource, size_t frameIndex);
         [[nodiscard]] Render::Texture& getTexture(const Carrot::UUID& resourceID, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getTexture(const FrameResource& resource, size_t frameIndex) const;
@@ -33,7 +31,7 @@ namespace Carrot::Render {
 
     private:
         Carrot::VulkanDriver& driver;
-        std::unordered_map<std::string, std::unique_ptr<Render::CompiledPass>> passes;
+        std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;
         std::vector<Render::CompiledPass*> sortedPasses;
 
         friend class GraphBuilder;

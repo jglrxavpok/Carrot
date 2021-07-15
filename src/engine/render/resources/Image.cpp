@@ -179,6 +179,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         case vk::ImageLayout::eDepthAttachmentOptimal:
         case vk::ImageLayout::eStencilAttachmentOptimal:
         case vk::ImageLayout::eShaderReadOnlyOptimal:
+        case vk::ImageLayout::eTransferSrcOptimal:
         case vk::ImageLayout::eColorAttachmentOptimal: {
             barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done
             sourceStage = vk::PipelineStageFlagBits::eFragmentShader;
@@ -207,6 +208,11 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         case vk::ImageLayout::eGeneral: {
             barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite; // shader must be able to read
             destinationStage = vk::PipelineStageFlagBits::eAllCommands;
+        } break;
+
+        case vk::ImageLayout::eTransferSrcOptimal: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eTransfer;
         } break;
 
         default:

@@ -8,6 +8,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(ARCH "x64")
 
+set(OPENXR-INCLUDE-DIR thirdparty/OpenXR-SDK-Source/build/win64/include)
+set(OPENXR-LOADER-LIB openxr_loaderd)
+set(OPENXR-LOADER-LIB-LOCATION "thirdparty/OpenXR-SDK-Source/build/win64/src/loader/Debug/${OPENXR-LOADER-LIB}.lib")
+
 include(FetchContent)
 find_package(Vulkan REQUIRED)
 find_package(Aftermath)
@@ -65,6 +69,9 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon32.png" DESTINATION "${CMAK
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon64.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/${OPENXR-LOADER-LIB-LOCATION}" DESTINATION "${CMAKE_BINARY_DIR}/")
 
 set(ENGINE-SOURCES
         src/engine/io/IO.cpp
@@ -258,6 +265,12 @@ set(TOOLS-SOURCES
         src/tools/ToolsEntryPoint.cpp
         )
 
+set(VR_SOURCES
+        src/engine/vr/Session.cpp
+        src/engine/vr/VRInterface.cpp
+
+        )
+
 set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
 set(ALL_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd)
 
@@ -272,9 +285,12 @@ target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
 add_executable(Carrot-NoTracy ${ALL_SOURCES})
 target_link_libraries(Carrot-NoTracy ${ALL_LIBS})
 
-add_executable(Carrot-VR ${ALL_SOURCES})
-target_compile_definitions(Carrot-VR PRIVATE VR=1)
-target_link_libraries(Carrot-VR ${ALL_LIBS})
+add_executable(Carrot-VR ${ALL_SOURCES} ${VR_SOURCES})
+
+target_include_directories(Carrot-VR PRIVATE ${OPENXR-INCLUDE-DIR})
+target_include_directories(Carrot-VR PRIVATE thirdparty/openxr-hpp/include/)
+target_compile_definitions(Carrot-VR PRIVATE ENABLE_VR=1)
+target_link_libraries(Carrot-VR ${ALL_LIBS} ${OPENXR-LOADER-LIB})
 
 add_executable(Carrot-Tools ${ENGINE-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
 target_link_libraries(Carrot-Tools ${ALL_LIBS})

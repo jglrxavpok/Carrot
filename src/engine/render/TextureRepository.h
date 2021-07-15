@@ -9,6 +9,12 @@
 #include "engine/render/RenderPassData.h"
 #include "engine/utils/UUID.h"
 
+#ifdef ENABLE_VR
+namespace Carrot::VR {
+    class Session;
+}
+#endif
+
 namespace Carrot::Render {
     class TextureRepository: public SwapchainAware {
     public:
@@ -25,10 +31,19 @@ namespace Carrot::Render {
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
+#ifdef ENABLE_VR
+    public:
+        void setXRSession(VR::Session* session);
+#endif
+
     private:
         VulkanDriver& driver;
         std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> usages;
+
+#ifdef ENABLE_VR
+        VR::Session* vrSession = nullptr;
+#endif
     };
 }
 

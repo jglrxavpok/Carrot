@@ -22,6 +22,11 @@ namespace Carrot {
         enum class Eye;
     };
 
+    namespace VR {
+        class Interface;
+        class Session;
+    }
+
     using namespace std;
 
     class Image;
@@ -51,11 +56,17 @@ namespace Carrot {
         int framebufferWidth;
         int framebufferHeight;
 
+#ifdef ENABLE_VR
+        VR::Interface& vrInterface;
+#endif
+
         vk::UniqueInstance instance;
         vk::UniqueDebugUtilsMessengerEXT callback{};
         vk::PhysicalDevice physicalDevice{};
         vk::UniqueDevice device{};
         QueueFamilies queueFamilies{};
+
+        std::uint32_t graphicsQueueIndex = -1;
         vk::Queue graphicsQueue{};
         vk::Queue presentQueue{};
         vk::Queue transferQueue{};
@@ -145,7 +156,11 @@ namespace Carrot {
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
-        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config);
+        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config
+        #ifdef ENABLE_VR
+                , Carrot::VR::Interface& vrInterface
+        #endif
+        );
 
         ~VulkanDriver();
 
@@ -165,6 +180,7 @@ namespace Carrot {
         vk::Queue& getPresentQueue() { return presentQueue; };
         vk::Queue& getTransferQueue() { return transferQueue; };
         vk::Queue& getGraphicsQueue() { return graphicsQueue; };
+        std::uint32_t getGraphicsQueueIndex() { return graphicsQueueIndex; };
         vk::Queue& getComputeQueue() { return computeQueue; };
 
         vk::SurfaceKHR getSurface() { return surface; };

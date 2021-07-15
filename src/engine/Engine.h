@@ -31,11 +31,6 @@ namespace Carrot {
 
 using namespace std;
 
-namespace Carrot::Render {
-    class Texture;
-    class Graph;
-}
-
 namespace Carrot {
     class CarrotGame;
 
@@ -62,6 +57,18 @@ namespace Carrot {
     class RayTracer;
 
     class ResourceAllocator;
+
+    namespace Render {
+        class Texture;
+        class Graph;
+    };
+
+#ifdef ENABLE_VR
+    namespace VR {
+        class Interface;
+        class Session;
+    }
+#endif
 
     /// Base class interfacing with Vulkan
     class Engine: public SwapchainAware {
@@ -176,6 +183,7 @@ namespace Carrot {
 
         Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Eye eye = Render::Eye::NoVR);
 
+    public:
         const Configuration& getConfiguration() const { return config; }
 
     private:
@@ -186,6 +194,12 @@ namespace Carrot {
         bool running = true;
         bool grabCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
+
+#ifdef ENABLE_VR
+        std::unique_ptr<VR::Interface> vrInterface = nullptr;
+        std::unique_ptr<VR::Session> vrSession = nullptr;
+#endif
+
         VulkanDriver vkDriver;
         VulkanRenderer renderer;
         uint32_t lastFrameIndex = 0;

@@ -17,6 +17,10 @@
 #include <map>
 #include <set>
 
+#ifdef ENABLE_VR
+#include "engine/vr/VRInterface.h"
+#endif
+
 using namespace std;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -36,7 +40,15 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config): window(window),
+Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config
+#ifdef ENABLE_VR
+    , Carrot::VR::Interface& vrInterface
+#endif
+):
+#ifdef ENABLE_VR
+    vrInterface(vrInterface),
+#endif
+    window(window),
     graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
     computeCommandPool([&]() { return createComputeCommandPool(); }),
     transferCommandPool([&]() { return createTransferCommandPool(); }),
@@ -131,11 +143,12 @@ void Carrot::VulkanDriver::createInstance() {
         throw std::runtime_error("Could not find validation layer.");
     }
 
-    vk::ApplicationInfo appInfo{
-            .pApplicationName = WINDOW_TITLE,
-            .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
-            .engineVersion = VK_MAKE_VERSION(0, 1, 0),
-            .apiVersion = VK_API_VERSION_1_2,
+    vk::ApplicationInfo appInfo {
+            .pApplicationName = config.applicationName.c_str(),
+            .applicationVersion = config.applicationVersion,
+            .pEngineName = config.engineName,
+            .engineVersion  = config.engineVersion,
+            .apiVersion = config.vulkanApiVersion,
     };
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions();
@@ -181,7 +194,15 @@ void Carrot::VulkanDriver::createInstance() {
         Carrot::Log::info("Required extension: %s, present = %d", ext, found);
     }
 
-    instance = vk::createInstanceUnique(createInfo, allocator);
+    if(config.runInVR) {
+#ifdef ENABLE_VR
+        instance = vrInterface.createVulkanInstance(createInfo, allocator);
+#else
+        throw std::runtime_exception("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
+#endif
+    } else {
+        instance = vk::createInstanceUnique(createInfo, allocator);
+    }
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 }
@@ -217,19 +238,27 @@ void Carrot::VulkanDriver::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& 
 }
 
 void Carrot::VulkanDriver::pickPhysicalDevice() {
-    const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
-
-    std::multimap<int, vk::PhysicalDevice> candidates;
-    for(const auto& physicalDevice : devices) {
-        int score = ratePhysicalDevice(physicalDevice);
-        candidates.insert(std::make_pair(score, physicalDevice));
-    }
-
-    if(candidates.rbegin()->first > 0) { // can best candidate run this app?
-        physicalDevice = candidates.rbegin()->second;
+#ifdef ENABLE_VR
+    if(config.runInVR) {
+        physicalDevice = vrInterface.getVulkanPhysicalDevice();
     } else {
-        throw std::runtime_error("No GPU can support this application.");
+#endif
+        const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
+
+        std::multimap<int, vk::PhysicalDevice> candidates;
+        for (const auto& physicalDevice : devices) {
+            int score = ratePhysicalDevice(physicalDevice);
+            candidates.insert(std::make_pair(score, physicalDevice));
+        }
+
+        if (candidates.rbegin()->first > 0) { // can best candidate run this app?
+            physicalDevice = candidates.rbegin()->second;
+        } else {
+            throw std::runtime_error("No GPU can support this application.");
+        }
+#ifdef ENABLE_VR
     }
+#endif
 }
 
 int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
@@ -411,13 +440,25 @@ void Carrot::VulkanDriver::createLogicalDevice() {
         createInfo.enabledLayerCount = 0;
     }
 
-    device = physicalDevice.createDeviceUnique(createInfo, allocator);
+    if(config.runInVR) {
+#ifdef ENABLE_VR
+        device = vrInterface.createVulkanDevice(createInfo, allocator);
+#else
+        throw std::runtime_exception("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
+#endif
+    } else {
+        device = physicalDevice.createDeviceUnique(createInfo, allocator);
+    }
+
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
     transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
     graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), 0);
-    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), 0);
+
+    graphicsQueueIndex = 0;
+    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), graphicsQueueIndex);
+
     presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
 }
 

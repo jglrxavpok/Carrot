@@ -46,6 +46,15 @@ namespace Carrot::Render {
         }
     };
 
+    enum class ImageOrigin {
+        SurfaceSwapchain, // image is part of window swapchain
+        Created, // image is created by the engine
+
+#ifdef ENABLE_VR
+        SurfaceXRSwapchain, // image is part of XR device swapchain
+#endif
+    };
+
     class FrameResource: public std::enable_shared_from_this<FrameResource> {
     public:
         FrameResource() {
@@ -59,7 +68,7 @@ namespace Carrot::Render {
             id = toCopy.id;
             size = toCopy.size;
             format = toCopy.format;
-            isSwapchain = toCopy.isSwapchain;
+            imageOrigin = toCopy.imageOrigin;
             owner = toCopy.owner;
             previousLayout = toCopy.previousLayout;
             layout = toCopy.layout;
@@ -68,7 +77,7 @@ namespace Carrot::Render {
         explicit FrameResource(const FrameResource* parent) {
             size = parent->size;
             format = parent->format;
-            isSwapchain = parent->isSwapchain;
+            imageOrigin = parent->imageOrigin;
             rootID = parent->rootID;
             parentID = parent->id;
             owner = parent->owner;
@@ -85,7 +94,7 @@ namespace Carrot::Render {
 
         TextureSize size;
         vk::Format format = vk::Format::eUndefined;
-        bool isSwapchain = false;
+        ImageOrigin imageOrigin = ImageOrigin::Created;
         Carrot::UUID id = Carrot::randomUUID();
         Carrot::UUID rootID = Carrot::randomUUID();
         Carrot::UUID parentID = Carrot::randomUUID();

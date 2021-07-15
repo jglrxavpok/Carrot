@@ -39,12 +39,26 @@
 #include "engine/console/RuntimeOption.hpp"
 #include "engine/console/Console.h"
 #include "engine/render/RenderGraph.h"
+#include "engine/render/TextureRepository.h"
+
+#ifdef ENABLE_VR
+#include "vr/VRInterface.h"
+#endif
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
 
-Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): window(window), vkDriver(window, config), renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver, vector<ScreenSpaceVertex>{
+Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): window(window),
+#ifdef ENABLE_VR
+vrInterface(std::make_unique<VR::Interface>(*this)),
+#endif
+vkDriver(window, config
+#ifdef ENABLE_VR
+    , *vrInterface
+#endif
+),
+renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver, vector<ScreenSpaceVertex>{
                                                                                                                                    { { -1, -1} },
                                                                                                                                    { { 1, -1} },
                                                                                                                                    { { 1, 1} },
@@ -54,7 +68,18 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): windo
                                                                                                                                    2,1,0,
                                                                                                                                    3,2,0,
                                                                                                                            })),
-    config(config) {
+    config(config)
+    {
+#ifndef ENABLE_VR
+    if(config.runInVR) {
+        //Carrot::crash("");
+        throw std::runtime_error("Tried to launch engine in VR, but ENABLE_VR was not defined during compilation.");
+    }
+#else
+    vrSession = vrInterface->createSession();
+    vkDriver.getTextureRepository().setXRSession(vrSession.get());
+#endif
+
     if(config.runInVR) {
         composers[Render::Eye::LeftEye] = std::make_unique<Render::Composer>(vkDriver);
         composers[Render::Eye::RightEye] = std::make_unique<Render::Composer>(vkDriver);
@@ -81,7 +106,7 @@ void Carrot::Engine::init() {
     auto& testTexture = renderer.getOrCreateTexture("default.png");
 
     auto fullscreenBlit = [this](const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
-        auto pipeline = renderer.getOrCreatePipeline("blit", reinterpret_cast<std::uint64_t>((void*) &pass));
+        auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("blit", pass);
         vk::DescriptorImageInfo imageInfo {
                 .sampler = vkDriver.getLinearSampler(),
                 .imageView = textureToBlit.getView(),
@@ -199,7 +224,7 @@ void Carrot::Engine::init() {
     if(config.runInVR) {
         Render::GraphBuilder leftEyeGraph(vkDriver);
         Render::GraphBuilder rightEyeGraph(vkDriver);
-        Render::GraphBuilder companionWindowGraph(vkDriver);
+        Render::GraphBuilder mainGraph(vkDriver);
         Render::Composer companionComposer(vkDriver);
 
         auto leftEyeFinalPass = fillGraphBuilder(leftEyeGraph, false, Render::Eye::LeftEye);
@@ -208,25 +233,29 @@ void Carrot::Engine::init() {
         companionComposer.add(leftEyeFinalPass.getData().color, -1.0, 0.0);
         companionComposer.add(rightEyeFinalPass.getData().color, 0.0, 1.0);
 
+#ifdef ENABLE_VR
+        vrSession->setEyeTexturesToPresent(leftEyeFinalPass.getData().color, rightEyeFinalPass.getData().color);
+#endif
+
         leftEyeGlobalFrameGraph = std::move(leftEyeGraph.compile());
         rightEyeGlobalFrameGraph = std::move(rightEyeGraph.compile());
 
-        auto& composerPass = companionComposer.appendPass(companionWindowGraph);
+        auto& composerPass = companionComposer.appendPass(mainGraph);
 
-        companionWindowGraph.addPass<PresentPassData>("present",
-               [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+        mainGraph.addPass<PresentPassData>("present",
+                                           [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
                    data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
                    data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                    builder.present(data.output);
                },
-               [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
+                                           [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
                    auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                    auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                    fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, buffer);
                }
         );
 
-        globalFrameGraph = std::move(companionWindowGraph.compile());
+        globalFrameGraph = std::move(mainGraph.compile());
     } else {
         Render::GraphBuilder mainGraph(vkDriver);
 
@@ -259,6 +288,7 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
 
         glfwPollEvents();
+        vrInterface->pollEvents();
         if(glfwWindowShouldClose(window.get())) {
             running = false;
         }
@@ -359,7 +389,6 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     if(config.runInVR) {
         leftEyeGlobalFrameGraph->execute(newRenderContext(i, Render::Eye::LeftEye), mainCommandBuffers[i]);
         rightEyeGlobalFrameGraph->execute(newRenderContext(i, Render::Eye::RightEye), mainCommandBuffers[i]);
-        // TODO: submit to HMD
     }
     globalFrameGraph->execute(newRenderContext(i), mainCommandBuffers[i]);
 
@@ -544,6 +573,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         } catch(vk::OutOfDateKHRError const &e) {
             result = vk::Result::eErrorOutOfDateKHR;
         }
+
+#ifdef ENABLE_VR
+        vrSession->present(newRenderContext(imageIndex));
+#endif
     }
 
 

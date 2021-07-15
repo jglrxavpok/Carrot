@@ -25,3 +25,9 @@
 [submodule "thirdparty/nativefiledialog-extended"]
 	path = thirdparty/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended
+[submodule "thirdparty/OpenXR-SDK"]
+	path = thirdparty/OpenXR-SDK
+	url = https://github.com/KhronosGroup/OpenXR-SDK
+[submodule "thirdparty/OpenXR-Hpp"]
+	path = thirdparty/OpenXR-Hpp
+	url = https://github.com/KhronosGroup/OpenXR-Hpp

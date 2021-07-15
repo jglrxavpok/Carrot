@@ -13,5 +13,10 @@ Don't expect support.
 ## Last screenshot
 ![Last screenshot](./screenshot.png)
 
+# Building
+VR requires building manually thirdparty/OpenXR-SDK-Source
+
+Use `XR_API_LAYER_PATH=<path to Carrot>\thirdparty\OpenXR-SDK-Source\build\win64\src\api_layers` as an environnement variable to enable api layers. Change win64 by your platform if necessary.
+
 # Credits
 * Splash screen & logo by *Benjamin "beb" Er-Raach*

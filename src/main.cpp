@@ -60,7 +60,7 @@ int main() {
         // otherwise this creates a DEP exception when destroying the surface provided by GLFW
         {
             Carrot::Configuration config;
-#ifdef VR
+#ifdef ENABLE_VR
             config.runInVR = true;
 #endif
             Carrot::Engine engine{window, config};

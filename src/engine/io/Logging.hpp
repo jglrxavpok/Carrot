@@ -73,6 +73,11 @@ namespace Carrot::Log {
         });
     }
 
+    inline void flush() {
+        std::cout.flush();
+        std::cerr.flush();
+    }
+
     inline void info(const std::string& message) {
         log(Severity::Info, message);
     }

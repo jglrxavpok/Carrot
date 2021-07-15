@@ -4,6 +4,11 @@
 
 #include "TextureRepository.h"
 #include "engine/utils/Assert.h"
+#include "engine/utils/Macros.h"
+
+#ifdef ENABLE_VR
+#include "engine/vr/Session.h"
+#endif
 
 namespace Carrot::Render {
     Texture& TextureRepository::get(const FrameResource& texture, size_t swapchainIndex) {
@@ -45,14 +50,31 @@ namespace Carrot::Render {
 
             Texture::Ref texture;
 
-            if(resource.isSwapchain) {
-                texture = driver.getSwapchainTextures()[frameIndex];
-            } else {
-                texture = std::make_shared<Texture>(driver,
-                                                    size,
-                                                    textureUsages,
-                                                    format
-                );
+            switch(resource.imageOrigin) {
+                case Render::ImageOrigin::SurfaceSwapchain:
+                    texture = driver.getSwapchainTextures()[frameIndex];
+                    break;
+
+                case Render::ImageOrigin::Created:
+                    texture = std::make_shared<Texture>(driver,
+                                                        size,
+                                                        textureUsages,
+                                                        format
+                    );
+                    break;
+
+#ifdef ENABLE_VR
+                case Render::ImageOrigin::SurfaceXRSwapchain:
+                    // TODO: handle cases when XR swapchain and Vulkan swapchain don't have the same image count
+                    //  if this is even possible?
+                    assert(driver.getSwapchainImageCount() == vrSession->getSwapchainTextures().size());
+                    texture = vrSession->getSwapchainTextures()[frameIndex];
+                    break;
+#endif
+
+                default:
+                    TODO
+                    break;
             }
             textures[frameIndex][resource.rootID] = std::move(texture);
         } else {
@@ -72,5 +94,10 @@ namespace Carrot::Render {
 
     vk::ImageUsageFlags& TextureRepository::getUsages(const UUID& id) {
         return usages[id];
+    }
+
+    void TextureRepository::setXRSession(VR::Session *session) {
+        assert(session != nullptr);
+        vrSession = session;
     }
 }
