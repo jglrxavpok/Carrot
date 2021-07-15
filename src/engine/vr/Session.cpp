@@ -114,7 +114,7 @@ namespace Carrot::VR {
         }
     }
 
-    void Session::waitFrame() {
+    void Session::xrWaitFrame() {
         xr::FrameState state = xrSession->waitFrame({});
         shouldRender = (bool)state.shouldRender;
         predictedEndTime = state.predictedDisplayTime;
@@ -125,7 +125,7 @@ namespace Carrot::VR {
         xrSwapchain->waitSwapchainImage(waitInfo);
     }
 
-    void Session::beginFrame() {
+    void Session::xrBeginFrame() {
         xrSession->beginFrame({});
         xr::ViewState viewState;
         xr::ViewLocateInfo locateInfo;
@@ -138,7 +138,9 @@ namespace Carrot::VR {
             glm::vec3 translation{0.0f};
             auto& camera = getEngine().getCamera(eye);
             auto tmp = Carrot::toGlm(view.pose);
-            camera.getViewMatrixRef() = glm::inverse(tmp);// * glm::translate({}, translation);
+            // used to align with engine orientation
+            glm::mat4 correctOrientation = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+            camera.getViewMatrixRef() = glm::inverse(tmp) * correctOrientation;// * glm::translate({}, translation);
             camera.getProjectionMatrixRef() = Carrot::toGlm(view.fov);
         };
 
@@ -146,7 +148,7 @@ namespace Carrot::VR {
         updateCamera(Carrot::Render::Eye::RightEye, xrViews[1]);
     }
 
-    void Session::endFrame() {
+    void Session::xrEndFrame() {
         xrSwapchain->releaseSwapchainImage({});
 
         auto updateView = [&](std::uint32_t index) {
@@ -190,11 +192,16 @@ namespace Carrot::VR {
         repo.getUsages(rightEye.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
     }
 
-    void Session::present(const Render::Context& regularRenderContext) {
+    void Session::beginFrame() {
         if(!isReadyForRendering())
             return;
-        waitFrame();
-        beginFrame();
+        xrWaitFrame();
+        xrBeginFrame();
+    }
+
+    void Session::finishFrameAndPresent(const Render::Context& regularRenderContext) {
+        if(!isReadyForRendering())
+            return;
         Render::Context vrContext = vr.getEngine().newRenderContext(xrSwapchainIndex);
 
         if(shouldRenderToSwapchain()) {
@@ -226,7 +233,7 @@ namespace Carrot::VR {
             });
         }
 
-        endFrame();
+        xrEndFrame();
     }
 
     Carrot::Engine& Session::getEngine() {

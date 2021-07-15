@@ -437,7 +437,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
         getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
 
-
         auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
         result = nextImage.result;
 
@@ -448,6 +447,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             throw std::runtime_error("Failed to acquire swap chain image");
         }
         imageIndex = nextImage.value;
+
+        vrSession->beginFrame();
 
         static DebugBufferObject debug{};
         static int32_t gIndex = -1;
@@ -555,7 +556,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
 
 #ifdef ENABLE_VR
-        vrSession->present(newRenderContext(imageIndex));
+        vrSession->finishFrameAndPresent(newRenderContext(imageIndex));
 #endif
 
         renderer.postFrame();

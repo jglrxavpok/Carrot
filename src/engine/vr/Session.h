@@ -27,19 +27,21 @@ namespace Carrot::VR {
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }
 
-        void waitFrame();
-        void beginFrame();
-        void endFrame();
-
     public:
         void setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye);
-        void present(const Render::Context& context);
+
+        void beginFrame();
+        void finishFrameAndPresent(const Render::Context& context);
 
     private:
         xr::Session& getXRSession() { return *xrSession; }
         Carrot::Engine& getEngine();
 
     private:
+        void xrWaitFrame();
+        void xrBeginFrame();
+        void xrEndFrame();
+
         void stateChanged(xr::Time time, xr::SessionState state);
 
     private:
