@@ -77,8 +77,8 @@ namespace Carrot::VR {
         assert(viewConfigs.size() == 2);
         assert(viewConfigs[0].recommendedImageRectHeight == viewConfigs[1].recommendedImageRectHeight);
 
-        fullSwapchainSize = vk::Extent3D { viewConfigs[0].maxImageRectWidth * 2, viewConfigs[1].maxImageRectHeight, 1 };
-        eyeRenderSize = vk::Extent3D { viewConfigs[0].maxImageRectWidth, viewConfigs[1].maxImageRectHeight, 1 };
+        fullSwapchainSize = vk::Extent2D { viewConfigs[0].maxImageRectWidth * 2, viewConfigs[1].maxImageRectHeight };
+        eyeRenderSize = vk::Extent2D { viewConfigs[0].maxImageRectWidth, viewConfigs[1].maxImageRectHeight };
 
         xr::SwapchainCreateInfo swapchainInfo;
         swapchainInfo.width = fullSwapchainSize.width;
@@ -99,7 +99,7 @@ namespace Carrot::VR {
             xrSwapchainTextures[i] = std::make_shared<Carrot::Render::Texture>(
                     vr.getEngine().getVulkanDriver(),
                     xrSwapchainImages[i].image,
-                    fullSwapchainSize,
+                    vk::Extent3D { fullSwapchainSize.width, fullSwapchainSize.height, 1 },
                     swapchainFormat
             );
         }

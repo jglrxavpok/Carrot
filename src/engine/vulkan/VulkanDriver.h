@@ -85,7 +85,7 @@ namespace Carrot {
         vk::UniqueSwapchainKHR swapchain{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
-        vk::Extent2D swapchainExtent{};
+        vk::Extent2D windowFramebufferExtent{};
         vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
         vk::UniqueDescriptorPool emptyDescriptorSetPool{};
@@ -228,7 +228,8 @@ namespace Carrot {
         vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling,
                                        vk::FormatFeatureFlags features);
 
-        const vk::Extent2D& getSwapchainExtent() const { return swapchainExtent; };
+        const vk::Extent2D& getWindowFramebufferExtent() const { return windowFramebufferExtent; };
+        const vk::Extent2D& getFinalRenderSize() const;
 
         vector<std::shared_ptr<Render::Texture>>& getSwapchainTextures() { return swapchainTextures; };
 

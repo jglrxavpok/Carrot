@@ -32,7 +32,7 @@ namespace Carrot::Render {
         auto it = textures[frameIndex].find(resource.rootID);
         if(it == textures[frameIndex].end()) {
             vk::Extent3D size;
-            auto& swapchainExtent = driver.getSwapchainExtent();
+            auto& swapchainExtent = driver.getFinalRenderSize();
             switch(resource.size.type) {
                 case TextureSize::Type::SwapchainProportional: {
                     size.width = static_cast<std::uint32_t>(resource.size.width * swapchainExtent.width);

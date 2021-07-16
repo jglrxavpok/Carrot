@@ -25,7 +25,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
             .stencil = 0
     };
     vk::ClearValue clearIntProperties = vk::ClearColorValue();
-    auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
     return graph.addPass<Carrot::Render::PassData::GBuffer>("gbuffer",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
            {
@@ -73,7 +72,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                                                                                       Carrot::Render::GraphBuilder& graph) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
-    auto& swapchainExtent = renderer.getVulkanDriver().getSwapchainExtent();
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {

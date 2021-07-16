@@ -26,6 +26,7 @@ namespace Carrot::VR {
     public:
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }
+        const vk::Extent2D& getEyeRenderSize() const { return eyeRenderSize; }
 
     public:
         void setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye);
@@ -55,8 +56,8 @@ namespace Carrot::VR {
         xr::CompositionLayerProjectionView xrProjectionViews[2];
 
     private: // swapchain
-        vk::Extent3D fullSwapchainSize;
-        vk::Extent3D eyeRenderSize;
+        vk::Extent2D fullSwapchainSize;
+        vk::Extent2D eyeRenderSize;
         vk::Format swapchainFormat = vk::Format::eUndefined;
         xr::UniqueSwapchain xrSwapchain;
         std::vector<xr::SwapchainImageVulkanKHR> xrSwapchainImages;

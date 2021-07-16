@@ -648,7 +648,7 @@ void Carrot::VulkanDriver::createSwapChain() {
             .imageColorSpace = surfaceFormat.colorSpace,
             .imageExtent = swapchainExtent,
             .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment, // used for rendering
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst, // used for rendering or blit
 
             .preTransform = swapChainSupport.capabilities.currentTransform,
 
@@ -681,7 +681,7 @@ void Carrot::VulkanDriver::createSwapChain() {
     swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, getAllocationCallbacks());
 
     this->swapchainImageFormat = surfaceFormat.format;
-    this->swapchainExtent = swapchainExtent;
+    this->windowFramebufferExtent = swapchainExtent;
 
     const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
     swapchainTextures.clear();
@@ -778,8 +778,8 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands)
     commands.setViewport(0, vk::Viewport{
             .x = 0.0f,
             .y = 0.0f,
-            .width = static_cast<float>(framebufferWidth),
-            .height = static_cast<float>(framebufferHeight),
+            .width = static_cast<float>(getFinalRenderSize().width),
+            .height = static_cast<float>(getFinalRenderSize().height),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
     });
@@ -787,8 +787,8 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands)
     commands.setScissor(0, vk::Rect2D {
             .offset = {0,0},
             .extent = {
-                    static_cast<uint32_t>(framebufferWidth),
-                    static_cast<uint32_t>(framebufferHeight),
+                    static_cast<uint32_t>(getFinalRenderSize().width),
+                    static_cast<uint32_t>(getFinalRenderSize().height),
             },
     });
 }
@@ -883,5 +883,18 @@ void Carrot::VulkanDriver::prepareCameraSets() {
                 .pSetLayouts = layouts.data(),
         });
         writeCameraBuffers(cameraDescriptorSets[Carrot::Render::Eye::NoVR], cameraUniformBuffers[Carrot::Render::Eye::NoVR]);
+    }
+}
+
+const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize() const {
+    if(config.runInVR) {
+#ifdef ENABLE_VR
+        auto& vrSession = vrInterface.getEngine().getVRSession();
+        return vrSession.getEyeRenderSize();
+#else
+        throw std::runtime_error("Cannot get VR final render size when engine is not compiled with ENABLE_VR");
+#endif
+    } else {
+        return getWindowFramebufferExtent();
     }
 }

@@ -152,8 +152,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     pipelineTemplate.viewport = vk::Viewport {
         .x = 0.0f,
         .y = 0.0f,
-        .width = static_cast<float>(driver.getSwapchainExtent().width),
-        .height = static_cast<float>(driver.getSwapchainExtent().height),
+        .width = static_cast<float>(driver.getFinalRenderSize().width),
+        .height = static_cast<float>(driver.getFinalRenderSize().height),
 
         .minDepth = 0.0f,
         .maxDepth = 1.0f,
@@ -162,8 +162,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     pipelineTemplate.scissor = vk::Rect2D {
         .offset = {0,0},
         .extent = {
-                .width = driver.getSwapchainExtent().width,
-                .height = driver.getSwapchainExtent().height,
+                .width = driver.getFinalRenderSize().width,
+                .height = driver.getFinalRenderSize().height,
         }
     };
 

@@ -6,6 +6,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
 #include "engine/utils/Assert.h"
+#include "engine/io/Logging.hpp"
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, uint32_t layerCount):
@@ -219,12 +220,26 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
             destinationStage = vk::PipelineStageFlagBits::eTransfer;
         } break;
 
+        case vk::ImageLayout::ePresentSrcKHR: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eTransfer;
+        } break;
+
         default:
             newLayoutHandled = false;
             break;
     }
 
+#if 0
     assert(oldLayoutHandled && newLayoutHandled);
+#else
+    if(!oldLayoutHandled) {
+        Carrot::Log::error("Unhandled old layout: %s", to_string(oldLayout).c_str());
+    }
+    if(!newLayoutHandled) {
+        Carrot::Log::error("Unhandled new layout: %s", to_string(newLayout).c_str());
+    }
+#endif
 
     commands.pipelineBarrier(sourceStage,
                              destinationStage,

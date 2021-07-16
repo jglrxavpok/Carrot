@@ -273,7 +273,8 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     }
 
     ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight));
-    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getSwapchainExtent().width, engine.getVulkanDriver().getSwapchainExtent().height-menuBarHeight));
+    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize().width,
+                                    engine.getVulkanDriver().getFinalRenderSize().height - menuBarHeight));
     if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
         if(ImGui::BeginTabBar("ParticleEditorTabs")) {
             if(ImGui::BeginTabItem("Update##tab particle editor")) {

@@ -266,3 +266,19 @@ void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, cons
     auto& cameraSet = driver.getMainCameraDescriptorSet(data);
     cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
 }
+
+void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset, vk::Offset3D dstOffset) {
+    assert(source.getImage().getLayerCount() == destination.getImage().getLayerCount());
+
+    source.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
+    destination.transitionInline(cmds, vk::ImageLayout::eTransferDstOptimal);
+
+    vk::ImageBlit blitInfo;
+    blitInfo.dstSubresource.aspectMask = blitInfo.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    blitInfo.dstSubresource.layerCount = blitInfo.srcSubresource.layerCount = source.getImage().getLayerCount();
+    blitInfo.dstOffsets[0] = dstOffset;
+    blitInfo.dstOffsets[1] = vk::Offset3D{ (int32_t)(dstOffset.x + destination.getSize().width), (int32_t)(dstOffset.y + destination.getSize().height), (int32_t)(dstOffset.z + destination.getSize().depth) };
+    blitInfo.srcOffsets[1] = vk::Offset3D{ (int32_t)(srcOffset.x + source.getSize().width), (int32_t)(srcOffset.y + source.getSize().height), (int32_t)(srcOffset.z + source.getSize().depth) };
+
+    cmds.blitImage(source.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, destination.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
+}

@@ -174,7 +174,6 @@ void Carrot::Engine::init() {
 
         auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
-               auto& swapchainExtent = vkDriver.getSwapchainExtent();
                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
                                                         {},
                                                         vk::AttachmentLoadOp::eClear,
@@ -208,15 +207,19 @@ void Carrot::Engine::init() {
 
         if(shouldPresentToSwapchain) {
             mainGraph.addPass<PresentPassData>("present",
+
                [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-                   data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
-                   data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                   builder.present(data.output);
+                    pass.rasterized = false;
+                    data.input = builder.read(prevPassData.color, vk::ImageLayout::eTransferSrcOptimal);
+                    data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                },
-               [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
-                   auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
-                   auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                   fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, buffer);
+               [](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
+                    auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
+                    auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+
+                    swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
+                    frame.renderer.blit(inputTexture, swapchainTexture, cmds);
+                    swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
                }
             );
         }
@@ -246,15 +249,18 @@ void Carrot::Engine::init() {
 
         mainGraph.addPass<PresentPassData>("present",
                                            [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-                   data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
-                   data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                   builder.present(data.output);
-               },
-                                           [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& buffer) {
-                   auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
-                   auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                   fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, buffer);
-               }
+                                               pass.rasterized = false;
+                                               data.input = builder.read(prevPassData.color, vk::ImageLayout::eTransferSrcOptimal);
+                                               data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
+                                           },
+                                           [](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
+                                               auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
+                                               auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+
+                                               swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
+                                               frame.renderer.blit(inputTexture, swapchainTexture, cmds);
+                                               swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
+                                           }
         );
 
         globalFrameGraph = std::move(mainGraph.compile());
@@ -640,7 +646,7 @@ void Carrot::Engine::recreateSwapchain() {
     if(previousImageCount != vkDriver.getSwapchainImageCount()) {
         onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
     }
-    onSwapchainSizeChange(vkDriver.getSwapchainExtent().width, vkDriver.getSwapchainExtent().height);
+    onSwapchainSizeChange(vkDriver.getFinalRenderSize().width, vkDriver.getFinalRenderSize().height);
 }
 
 void Carrot::Engine::onWindowResize() {
@@ -710,7 +716,7 @@ void Carrot::Engine::createCameras() {
         cameras[Render::Eye::LeftEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
         cameras[Render::Eye::RightEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
     } else {
-        auto camera = make_unique<Camera>(45.0f, vkDriver.getSwapchainExtent().width / (float) vkDriver.getSwapchainExtent().height, 0.1f, 1000.0f);
+        auto camera = make_unique<Camera>(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
         camera->getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
         camera->getTargetRef() = center;
         cameras[Render::Eye::NoVR] = std::move(camera);
@@ -790,7 +796,7 @@ void Carrot::Engine::takeScreenshot() {
 
     auto& lastImage = vkDriver.getSwapchainTextures()[lastFrameIndex];
 
-    auto& swapchainExtent = vkDriver.getSwapchainExtent();
+    auto& swapchainExtent = vkDriver.getFinalRenderSize();
     auto screenshotImage = Image(vkDriver,
                                  {swapchainExtent.width, swapchainExtent.height, 1},
                                  vk::ImageUsageFlagBits::eTransferDst,

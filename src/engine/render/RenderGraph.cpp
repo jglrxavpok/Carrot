@@ -20,7 +20,15 @@ namespace Carrot::Render {
         assert(currentPass);
         resources.emplace_back(&toRead);
         currentPass->addInput(resources.back(), expectedLayout, aspect);
-        driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        switch(expectedLayout) {
+            case vk::ImageLayout::eTransferSrcOptimal:
+                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+                break;
+
+            default:
+                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                break;
+        }
         return resources.back();
     }
 
@@ -32,6 +40,14 @@ namespace Carrot::Render {
         assert(currentPass);
         if(toWrite.owner != this) {
           //  TODO?
+        }
+        switch(layout) {
+            case vk::ImageLayout::eTransferDstOptimal:
+                driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                break;
+
+            default:
+                break;
         }
         resources.emplace_back(&toWrite);
         currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout);

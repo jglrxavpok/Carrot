@@ -9,6 +9,7 @@
 #include "RenderGraph.h"
 #include "engine/utils/Assert.h"
 #include "engine/utils/Macros.h"
+#include "engine/io/Logging.hpp"
 
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
@@ -68,7 +69,7 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& data, vk::Comm
                 .framebuffer = *framebuffers[data.swapchainIndex],
                 .renderArea = {
                         .offset = vk::Offset2D{0, 0},
-                        .extent = getVulkanDriver().getSwapchainExtent()
+                        .extent = getVulkanDriver().getFinalRenderSize()
                 },
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues = clearValues.data(),
@@ -233,6 +234,8 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                     maxWidth = std::max(texture.getSize().width, maxWidth);
                     maxHeight = std::max(texture.getSize().height, maxHeight);
                 }
+
+                Carrot::Log::info("Creating framebuffer of size %lux%lu", maxWidth, maxHeight);
 
 
                 vk::FramebufferCreateInfo framebufferInfo{

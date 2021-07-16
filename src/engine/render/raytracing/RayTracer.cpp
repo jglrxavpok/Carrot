@@ -86,7 +86,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
         Stride { 0u, 0u, 0u }, // callable
     };
 
-    auto extent = renderer.getVulkanDriver().getSwapchainExtent();
+    auto extent = renderer.getVulkanDriver().getFinalRenderSize();
     if(hasStuffToDraw) {
         commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
     }
@@ -359,6 +359,10 @@ void Carrot::RayTracer::createPipeline() {
     };
     pipelineLayoutCreateInfo.setLayoutCount = setLayouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
+
+    std::vector<vk::PushConstantRange> pushConstants;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstants.size();
+    pipelineLayoutCreateInfo.pPushConstantRanges = pushConstants.data();
 
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
