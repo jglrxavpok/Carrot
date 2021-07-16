@@ -17,7 +17,8 @@ Carrot::Render::CompiledPass::CompiledPass(
         const std::vector<vk::ClearValue>& clearValues,
         const CompiledPassCallback& renderingCode,
         std::vector<ImageTransition>&& prePassTransitions,
-        InitCallback initCallback
+        InitCallback initCallback,
+        SwapchainRecreationCallback swapchainCallback
         ):
         graph(graph),
         framebuffers(),
@@ -26,10 +27,11 @@ Carrot::Render::CompiledPass::CompiledPass(
         renderingCode(renderingCode),
         prePassTransitions(prePassTransitions),
         initCallback(std::move(initCallback)),
+        swapchainRecreationCallback(std::move(swapchainCallback)),
         name(std::move(name))
         {
             rasterized = true;
-            framebuffers = std::move(this->initCallback(*this));
+            createFramebuffers();
         }
 
 Carrot::Render::CompiledPass::CompiledPass(
@@ -37,7 +39,8 @@ Carrot::Render::CompiledPass::CompiledPass(
         std::string name,
         const CompiledPassCallback& renderingCode,
         std::vector<ImageTransition>&& prePassTransitions,
-        InitCallback initCallback
+        InitCallback initCallback,
+        SwapchainRecreationCallback swapchainCallback
         ):
         graph(graph),
         framebuffers(),
@@ -45,11 +48,11 @@ Carrot::Render::CompiledPass::CompiledPass(
         renderingCode(renderingCode),
         prePassTransitions(prePassTransitions),
         initCallback(std::move(initCallback)),
+        swapchainRecreationCallback(std::move(swapchainCallback)),
         name(std::move(name))
         {
             rasterized = false;
-            auto fb = this->initCallback(*this);
-            runtimeAssert(fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
+            createFramebuffers();
         }
 
 void Carrot::Render::CompiledPass::execute(const Render::Context& data, vk::CommandBuffer& cmds) const {
@@ -247,7 +250,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             return framebuffers;
         };
         result = std::make_unique<CompiledPass>(graph, name, std::move(renderPass), clearValues,
-                                         generateCallback(), std::move(prePassTransitions), init);
+                                         generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback());
     } else {
         auto init = [outputs = outputs](CompiledPass& pass) {
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
@@ -258,10 +261,18 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             }
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
-        result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init);
+        result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback());
     }
     postCompile(*result);
     return result;
+}
+
+void Carrot::Render::CompiledPass::createFramebuffers(){
+    framebuffers.clear();
+    auto fb = this->initCallback(*this);
+    runtimeAssert(rasterized || fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
+    framebuffers = std::move(fb);
+    swapchainRecreationCallback(*this);
 }
 
 void Carrot::Render::CompiledPass::onSwapchainImageCountChange(size_t newCount) {
@@ -269,8 +280,7 @@ void Carrot::Render::CompiledPass::onSwapchainImageCountChange(size_t newCount) 
 }
 
 void Carrot::Render::CompiledPass::onSwapchainSizeChange(int newWidth, int newHeight) {
-    framebuffers.clear();
-    framebuffers = std::move(initCallback(*this));
+    createFramebuffers();
 }
 
 Carrot::VulkanDriver& Carrot::Render::CompiledPass::getVulkanDriver() const {

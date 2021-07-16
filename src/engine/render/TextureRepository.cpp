@@ -87,8 +87,10 @@ namespace Carrot::Render {
         return usages[id];
     }
 
+#ifdef ENABLE_VR
     void TextureRepository::setXRSession(VR::Session *session) {
         assert(session != nullptr);
         vrSession = session;
     }
+#endif
 }

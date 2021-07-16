@@ -19,6 +19,7 @@ namespace Carrot::Render {
     class Graph;
 
     using CompiledPassCallback = std::function<void(const CompiledPass&, const Render::Context&, vk::CommandBuffer&)>;
+    using SwapchainRecreationCallback = std::function<void(const CompiledPass&)>;
 
     struct ImageTransition {
         Carrot::UUID resourceID;
@@ -41,7 +42,8 @@ namespace Carrot::Render {
                 const std::vector<vk::ClearValue>& clearValues,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
-                InitCallback initCallback
+                InitCallback initCallback,
+                SwapchainRecreationCallback swapchainCallback
         );
 
         /// Constructor for non-rasterized passes
@@ -50,7 +52,8 @@ namespace Carrot::Render {
                 std::string name,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
-                InitCallback initCallback
+                InitCallback initCallback,
+                SwapchainRecreationCallback swapchainCallback
         );
 
     public:
@@ -73,6 +76,9 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     private:
+        void createFramebuffers();
+
+    private:
         Graph& graph;
         bool rasterized;
         std::vector<vk::UniqueFramebuffer> framebuffers;
@@ -81,6 +87,7 @@ namespace Carrot::Render {
         std::vector<ImageTransition> prePassTransitions;
         CompiledPassCallback renderingCode;
         InitCallback initCallback;
+        SwapchainRecreationCallback swapchainRecreationCallback;
         std::string name;
     };
 
@@ -132,6 +139,7 @@ namespace Carrot::Render {
         std::string name;
 
         virtual CompiledPassCallback generateCallback() = 0;
+        virtual SwapchainRecreationCallback generateSwapchainCallback() = 0;
         virtual void postCompile(CompiledPass& pass) = 0;
 
         friend class GraphBuilder;
@@ -144,10 +152,19 @@ namespace Carrot::Render {
     using PassConditionCallback = std::function<bool(const CompiledPass&, const Render::Context&, const Data&)>;
 
     template<typename Data>
+    using SwapchainRecreationCallbackWithData = std::function<void(const CompiledPass&, const Data&)>;
+
+    template<typename Data>
     class Pass: public PassBase {
     public:
 
-        explicit Pass(VulkanDriver& driver, const std::string& name, const ExecutePassCallback<Data>& callback, const PostCompileCallback<Data>& postCompileCallback): PassBase(driver, name), executeCallback(callback), postCompileCallback(postCompileCallback) {};
+        explicit Pass(VulkanDriver& driver,
+                      const std::string& name,
+                      const ExecutePassCallback<Data>& callback,
+                      const PostCompileCallback<Data>& postCompileCallback):
+                      PassBase(driver, name),
+                      executeCallback(callback),
+                      postCompileCallback(postCompileCallback) {};
 
         CompiledPassCallback generateCallback() override {
             return [executeCallback = executeCallback, data = data, condition = condition](const CompiledPass& pass, const Render::Context& frameData, vk::CommandBuffer& cmds)
@@ -155,6 +172,12 @@ namespace Carrot::Render {
                 if(condition(pass, frameData, data)) {
                     executeCallback(pass, frameData, data, cmds);
                 }
+            };
+        }
+
+        SwapchainRecreationCallback generateSwapchainCallback() override {
+            return [swapchainCallback = swapchainRecreationCallback, data = data](const CompiledPass& pass) {
+                return swapchainCallback(pass, data);
             };
         }
 
@@ -168,9 +191,14 @@ namespace Carrot::Render {
             this->condition = condition;
         }
 
+        void setSwapchainRecreation(const SwapchainRecreationCallbackWithData<Data>& swapchainRecreationCallback) {
+            this->swapchainRecreationCallback = swapchainRecreationCallback;
+        }
+
     private:
         ExecutePassCallback<Data> executeCallback;
         PostCompileCallback<Data> postCompileCallback;
+        SwapchainRecreationCallbackWithData<Data> swapchainRecreationCallback = [](const CompiledPass&, const Data&) {};
         PassConditionCallback<Data> condition = [](const CompiledPass&, const Render::Context&, const Data&) { return true; };
         Data data;
 

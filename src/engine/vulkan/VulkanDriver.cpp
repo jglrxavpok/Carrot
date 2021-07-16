@@ -198,7 +198,7 @@ void Carrot::VulkanDriver::createInstance() {
 #ifdef ENABLE_VR
         instance = vrInterface.createVulkanInstance(createInfo, allocator);
 #else
-        throw std::runtime_exception("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
+        throw std::runtime_error("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
 #endif
     } else {
         instance = vk::createInstanceUnique(createInfo, allocator);
@@ -448,7 +448,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 #ifdef ENABLE_VR
         device = vrInterface.createVulkanDevice(createInfo, allocator);
 #else
-        throw std::runtime_exception("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
+        throw std::runtime_error("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
 #endif
     } else {
         device = physicalDevice.createDeviceUnique(createInfo, allocator);

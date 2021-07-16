@@ -147,28 +147,30 @@ void Carrot::Engine::init() {
 
                // TODO: make raytracing compatible with RenderGraph
                // TODO: make compute shaders compatible with RenderGraph
-           },
-           [this, eye = eye](const Render::CompiledPass& pass, const Carrot::Render::PassData::Raytracing& data) {
-               for (int swapchainIndex = 0; swapchainIndex < getSwapchainImageCount(); ++swapchainIndex) {
-                   auto& set = renderer.getRayTracer().getRTDescriptorSets()[eye][swapchainIndex];
-                   auto& texture = pass.getGraph().getTexture(data.output, swapchainIndex);
-                   texture.assumeLayout(vk::ImageLayout::eUndefined);
-                   texture.transitionNow(vk::ImageLayout::eGeneral);
-                   vk::DescriptorImageInfo writeImage {
-                           .imageView = texture.getView(),
-                           .imageLayout = vk::ImageLayout::eGeneral,
-                   };
-                   vk::WriteDescriptorSet updateSet {
-                           .dstSet = set,
-                           .dstBinding = 1,
-                           .descriptorCount = 1,
-                           .descriptorType = vk::DescriptorType::eStorageImage,
-                           .pImageInfo = &writeImage,
-                   };
-                   vkDriver.getLogicalDevice().updateDescriptorSets(updateSet, {});
-               }
            }
         );
+
+        rtPass.setSwapchainRecreation(
+                [this, eye = eye](const Render::CompiledPass& pass, const Carrot::Render::PassData::Raytracing& data) {
+                    for (int swapchainIndex = 0; swapchainIndex < getSwapchainImageCount(); ++swapchainIndex) {
+                        auto& set = renderer.getRayTracer().getRTDescriptorSets()[eye][swapchainIndex];
+                        auto& texture = pass.getGraph().getTexture(data.output, swapchainIndex);
+                        texture.assumeLayout(vk::ImageLayout::eUndefined);
+                        texture.transitionNow(vk::ImageLayout::eGeneral);
+                        vk::DescriptorImageInfo writeImage {
+                                .imageView = texture.getView(),
+                                .imageLayout = vk::ImageLayout::eGeneral,
+                        };
+                        vk::WriteDescriptorSet updateSet {
+                                .dstSet = set,
+                                .dstBinding = 1,
+                                .descriptorCount = 1,
+                                .descriptorType = vk::DescriptorType::eStorageImage,
+                                .pImageInfo = &writeImage,
+                        };
+                        vkDriver.getLogicalDevice().updateDescriptorSets(updateSet, {});
+                    }
+        });
 
         auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
@@ -288,7 +290,11 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
 
         glfwPollEvents();
-        vrInterface->pollEvents();
+#ifdef ENABLE_VR
+        if(config.runInVR) {
+            vrInterface->pollEvents();
+        }
+#endif
         if(glfwWindowShouldClose(window.get())) {
             running = false;
         }
@@ -448,7 +454,11 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
         imageIndex = nextImage.value;
 
-        vrSession->beginFrame();
+#ifdef ENABLE_VR
+        if(config.runInVR) {
+            vrSession->beginFrame();
+        }
+#endif
 
         static DebugBufferObject debug{};
         static int32_t gIndex = -1;
@@ -556,7 +566,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
 
 #ifdef ENABLE_VR
-        vrSession->finishFrameAndPresent(newRenderContext(imageIndex));
+        if(config.runInVR) {
+            vrSession->finishFrameAndPresent(newRenderContext(imageIndex));
+        }
 #endif
 
         renderer.postFrame();
