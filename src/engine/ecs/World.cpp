@@ -4,6 +4,7 @@
 
 #include "World.h"
 #include "systems/System.h"
+#include "engine/vulkan/CustomTracyVulkan.h"
 
 Carrot::World::EasyEntity Carrot::World::newEntity() {
     auto newID = freeEntityID++;
@@ -52,12 +53,19 @@ void Carrot::World::tick(double dt) {
 }
 
 void Carrot::World::onFrame(size_t frameIndex) {
-    for(const auto& logic : logicSystems) {
-        logic->onFrame(frameIndex);
+    ZoneScoped;
+    {
+        ZoneScopedN("Logic");
+        for(const auto& logic : logicSystems) {
+            logic->onFrame(frameIndex);
+        }
     }
 
-    for(const auto& render : renderSystems) {
-        render->onFrame(frameIndex);
+    {
+        ZoneScopedN("Prepare render");
+        for(const auto& render : renderSystems) {
+            render->onFrame(frameIndex);
+        }
     }
 }
 

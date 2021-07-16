@@ -49,6 +49,7 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 }
 
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
+    ZoneScoped;
     // TODO: proper size
     vector<SceneElement> sceneElements(maxInstances);
     auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
@@ -67,6 +68,7 @@ void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
 }
 
 void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScoped;
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
     renderer.bindCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
     commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[renderContext.eye][renderContext.swapchainIndex], sceneDescriptorSets[renderContext.swapchainIndex]}, {});

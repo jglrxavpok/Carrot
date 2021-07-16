@@ -21,6 +21,7 @@ namespace Carrot {
     class ASBuilder;
     class RayTracer;
     class Mesh;
+    class Engine;
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
@@ -97,6 +98,8 @@ namespace Carrot {
         Mesh& getFullscreenQuad() { return *fullscreenQuad; }
 
         const Configuration& getConfiguration() { return config; }
+
+        Engine& getEngine();
 
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;

@@ -160,33 +160,30 @@ void Game::Game::onFrame(uint32_t frameIndex) {
 
     animatedUnits->onFrame(frameIndex);
 
-/*    map<Unit::Type, glm::vec3> centers{};
-    map<Unit::Type, uint32_t> counts{};
-
-    for(const auto& unit : units) {
-        glm::vec3& currentCenter = centers[unit->getType()];
-        counts[unit->getType()]++;
-        currentCenter += unit->getPosition();
-    }
-    centers[Unit::Type::Red] /= counts[Unit::Type::Red];
-    centers[Unit::Type::Green] /= counts[Unit::Type::Green];
-    centers[Unit::Type::Blue] /= counts[Unit::Type::Blue];
-*/
     world.onFrame(frameIndex);
-   // TracyPlot("onFrame delta time", dt*1000);
 
-
+    // TODO: make it so waiting for the GPU is not necessary
     // ensure skinning is done
-    engine.getComputeQueue().waitIdle();
+    {
+        ZoneScopedN("Wait for compute queue");
+        engine.getComputeQueue().waitIdle();
+    }
 
-    // TODO: proper indexing
-    engine.getASBuilder().updateBottomLevelAS(blasIndices);
-    engine.getASBuilder().updateTopLevelAS();
+    {
+        ZoneScopedN("Update Raytracing AS");
+        // TODO: proper indexing
+        engine.getASBuilder().updateBottomLevelAS(blasIndices);
+        engine.getASBuilder().updateTopLevelAS();
+    }
 
-    particles->onFrame(frameIndex);
+    {
+        ZoneScopedN("Prepare particles rendering");
+        particles->onFrame(frameIndex);
+    }
 }
 
 void Game::Game::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScopedN("CPU recordGBufferPass");
     {
         TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render map");
         mapModel->draw(pass, renderContext, commands, *mapInstanceBuffer, 1);

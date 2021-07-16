@@ -311,6 +311,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 }
 
 void Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
+    ZoneScoped;
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
     engine.getComputeQueue().submit(vk::SubmitInfo {
@@ -325,7 +326,7 @@ void Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
 }
 
 void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t indirectDrawCount) {
-    TracyVulkanZone(*engine.tracyCtx[frameIndex], commands, "Render units");
+    TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render units");
     commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
     model->indirectDraw(pass, renderContext, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
 }

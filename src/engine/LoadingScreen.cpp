@@ -101,6 +101,8 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     };
     cmds.begin(beginInfo);
 
+    PrepareVulkanTracy(engine.tracyCtx[imageIndex], cmds);
+
     auto quad = Mesh(driver,
                                        vector<ScreenSpaceVertex>{
                                                { { -1, -1} },

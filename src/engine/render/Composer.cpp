@@ -48,6 +48,7 @@ namespace Carrot::Render {
                                                            vk::ImageLayout::eDepthStencilAttachmentOptimal);
         },
         [](const Render::CompiledPass& pass, const Render::Context& frame, const ComposerPassData& data, vk::CommandBuffer& cmds) {
+            ZoneScopedN("CPU RenderGraph Composer");
             auto& renderer = frame.renderer;
             auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("composer-blit", pass.getRenderPass());
             auto& screenQuad = renderer.getFullscreenQuad();

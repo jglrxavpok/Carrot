@@ -249,6 +249,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
         data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, {}, vk::AttachmentLoadOp::eClear, uiClear);
     },
     [this](const Render::CompiledPass& pass, const Render::Context& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
+        ZoneScopedN("CPU RenderGraph ImGui");
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
     },
     [this](Render::CompiledPass& pass, Carrot::Render::PassData::ImGui& data)
@@ -281,4 +282,8 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
     blitInfo.srcOffsets[1] = vk::Offset3D{ (int32_t)(srcOffset.x + source.getSize().width), (int32_t)(srcOffset.y + source.getSize().height), (int32_t)(srcOffset.z + source.getSize().depth) };
 
     cmds.blitImage(source.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, destination.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
+}
+
+Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
+    return driver.getEngine();
 }

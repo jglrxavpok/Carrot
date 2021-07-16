@@ -184,10 +184,11 @@ namespace Carrot {
 
         Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Eye eye = Render::Eye::NoVR);
 
+        std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
+
 #ifdef ENABLE_VR
         VR::Session& getVRSession() { return *vrSession; }
 #endif
-
 
     public:
         const Configuration& getConfiguration() const { return config; }
@@ -210,6 +211,7 @@ namespace Carrot {
         VulkanRenderer renderer;
         uint32_t lastFrameIndex = 0;
         uint32_t frames = 0;
+        std::uint32_t swapchainImageIndexRightNow = 0;
 
         unique_ptr<ResourceAllocator> resourceAllocator;
 

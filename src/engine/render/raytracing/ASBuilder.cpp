@@ -302,8 +302,13 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
 
-
     renderer.getVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
+        PrepareVulkanTracy2(renderer.getEngine(), commands);
+
+        TracyVulkanZone2(renderer.getEngine(), commands, "Update BLASes");
+
+        std::vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfoList{blasIndices.size()};
+        std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> buildRangeList{blasIndices.size()};
         for (int i = 0; i < blasIndices.size(); ++i) {
             auto blasIndex = blasIndices[i];
             auto& blas = bottomLevelGeometries[blasIndex];
@@ -350,8 +355,12 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
                 blas.cachedBuildRanges = pBuildRanges;
             }
 
-            commands.buildAccelerationStructuresKHR(*blas.cachedBuildInfo, blas.cachedBuildRanges);
+           // commands.buildAccelerationStructuresKHR(*blas.cachedBuildInfo, blas.cachedBuildRanges);
+            buildInfoList[i] = *blas.cachedBuildInfo;
+            assert(blas.cachedBuildRanges.size() == 1);
+            buildRangeList[i] = blas.cachedBuildRanges[0];
         }
+        commands.buildAccelerationStructuresKHR(buildInfoList, buildRangeList);
     });
 }
 

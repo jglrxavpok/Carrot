@@ -31,6 +31,7 @@ namespace Carrot {
 
     class Image;
     class Buffer;
+    class Engine;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -55,6 +56,7 @@ namespace Carrot {
         NakedPtr<GLFWwindow> window = nullptr;
         int framebufferWidth;
         int framebufferHeight;
+        Engine* engine = nullptr;
 
 #ifdef ENABLE_VR
         VR::Interface& vrInterface;
@@ -156,7 +158,7 @@ namespace Carrot {
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
-        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config
+        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config, Engine* engine
         #ifdef ENABLE_VR
                 , Carrot::VR::Interface& vrInterface
         #endif
@@ -262,6 +264,8 @@ namespace Carrot {
 
         vk::DescriptorSet& getEmptyDescriptorSet() { return emptyDescriptorSet; }
         vk::DescriptorSetLayout& getEmptyDescriptorSetLayout() { return *emptyDescriptorSetLayout; }
+
+        Engine& getEngine();
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands);

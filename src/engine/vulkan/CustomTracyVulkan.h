@@ -7,6 +7,8 @@
 #include "engine/vulkan/includes.h"
 #ifdef TRACY_ENABLE
 
+//#define TRACY_VULKAN_ENABLE
+
 #include <Tracy.hpp>
 #include <client/TracyProfiler.hpp>
 #include <iostream>
@@ -70,25 +72,42 @@ public:
     ~TracyVulkanScope();
 };
 
+#ifdef TRACY_VULKAN_ENABLE
 #define TracyVulkanNamedZone(context, commandBuffer, name, varname) \
     static constexpr tracy::SourceLocationData TracyConcat(__tracy_gpu_source_location,__LINE__) { name, __FUNCTION__,  __FILE__, (uint32_t)__LINE__, 0 }; \
     TracyVulkanScope varname( context, commandBuffer, name, &TracyConcat(__tracy_gpu_source_location,__LINE__));
 
 #define TracyVulkanZone(context, commandBuffer, name) TracyVulkanNamedZone(context, commandBuffer, name, ____tracy_vulkan_zone)
+#define TracyVulkanZone2(engine, commandBuffer, name) TracyVulkanNamedZone(*((engine).tracyCtx[(engine).getSwapchainImageIndexRightNow()]), commandBuffer, name, ____tracy_vulkan_zone)
 #define PrepareVulkanTracy(context, commandBuffer) context->prepareForTracing(commandBuffer)
+#define PrepareVulkanTracy2(engine, commandBuffer) ((engine).tracyCtx[(engine).getSwapchainImageIndexRightNow()])->prepareForTracing(commandBuffer)
 #define TracyVulkanCollect(context) context->collect()
 
 #else
-struct TracyVulkanContext {
+
+#define TracyVulkanZone(context, commandBuffer, name)
+#define TracyVulkanZone2(engine, commandBuffer, name)
+#define TracyVulkanNamedZone(context, commandBuffer, name)
+#define PrepareVulkanTracy(context, commandBuffer)
+#define PrepareVulkanTracy2(engine, commandBuffer)
+#define TracyVulkanCollect(context)
+#endif
+
+#else
+
+class TracyVulkanContext {
     explicit TracyVulkanContext(vk::PhysicalDevice& physicalDevice, vk::Device& device, vk::Queue& queue, uint32_t queueFamilyIndex, vk::AllocationCallbacks* allocator = nullptr) {}
 };
-#define TracyVulkanZone(context, commandBuffer, name)
-#define TracyVulkanNamedZone(context, commandBuffer, name)
 #define TracyVulkanContext(physicalDevice, device, queue, queueIndex) ((void*)0)
+
+#define TracyVulkanZone(context, commandBuffer, name)
+#define TracyVulkanZone2(engine, commandBuffer, name)
+#define TracyVulkanNamedZone(context, commandBuffer, name)
 #define FrameMark
 #define ZoneScoped
 #define ZoneScopedN
 #define ZoneNamedN(varname, name, active)
 #define PrepareVulkanTracy(context, commandBuffer)
+#define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
 #endif

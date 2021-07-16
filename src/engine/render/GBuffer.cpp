@@ -90,6 +90,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                                                         vk::ImageLayout::eColorAttachmentOptimal);
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GResolve& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph GResolve");
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline("gResolve-rendergraph", pass.getRenderPass());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);

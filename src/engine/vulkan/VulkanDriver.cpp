@@ -40,7 +40,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config
+Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config, Carrot::Engine* engine
 #ifdef ENABLE_VR
     , Carrot::VR::Interface& vrInterface
 #endif
@@ -52,7 +52,8 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration co
     graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
     computeCommandPool([&]() { return createComputeCommandPool(); }),
     transferCommandPool([&]() { return createTransferCommandPool(); }),
-    config(config)
+    config(std::move(config)),
+    engine(engine)
 
 {
 
@@ -897,4 +898,8 @@ const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize() const {
     } else {
         return getWindowFramebufferExtent();
     }
+}
+
+Carrot::Engine& Carrot::VulkanDriver::getEngine() {
+    return *engine;
 }

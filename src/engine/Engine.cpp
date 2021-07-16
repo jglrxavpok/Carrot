@@ -53,7 +53,7 @@ Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): windo
 #ifdef ENABLE_VR
 vrInterface(std::make_unique<VR::Interface>(*this)),
 #endif
-vkDriver(window, config
+vkDriver(window, config, this
 #ifdef ENABLE_VR
     , *vrInterface
 #endif
@@ -94,6 +94,8 @@ void Carrot::Engine::init() {
     initWindow();
 
     allocateGraphicsCommandBuffers();
+    createTracyContexts();
+
     // quickly render something on screen
     LoadingScreen screen{*this};
     initVulkan();
@@ -138,6 +140,7 @@ void Carrot::Engine::init() {
                data.output.previousLayout = vk::ImageLayout::eGeneral;
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph Raytracing");
                 auto& texture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                 texture.assumeLayout(vk::ImageLayout::eUndefined);
                 texture.transitionInline(buffer, vk::ImageLayout::eGeneral);
@@ -181,6 +184,7 @@ void Carrot::Engine::init() {
                );
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph skybox");
                 auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
                 renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame, buffer);
                 renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
@@ -196,6 +200,7 @@ void Carrot::Engine::init() {
         auto& imguiPass = renderer.addImGuiPass(mainGraph);
 
         auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+            ZoneScopedN("CPU RenderGraph GPass");
             game->recordGBufferPass(pass.getRenderPass(), frame, cmds);
         });
         auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), imguiPass.getData(), skyboxPass.getData().output, mainGraph);
@@ -214,6 +219,7 @@ void Carrot::Engine::init() {
                     data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                },
                [](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
+                    ZoneScopedN("CPU RenderGraph present");
                     auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                     auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
 
@@ -254,6 +260,7 @@ void Carrot::Engine::init() {
                                                data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eTransferDstOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                                            },
                                            [](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
+                                               ZoneScopedN("CPU RenderGraph present");
                                                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                                                auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
 
@@ -360,8 +367,6 @@ void Carrot::Engine::initWindow() {
 void Carrot::Engine::initVulkan() {
     resourceAllocator = make_unique<ResourceAllocator>(vkDriver);
 
-    createTracyContexts();
-
     createCameras();
 
     getRayTracer().init();
@@ -394,6 +399,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     ImGui::Render();
 
     mainCommandBuffers[i].begin(beginInfo);
+    PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
 
     if(config.runInVR) {
         leftEyeGlobalFrameGraph->execute(newRenderContext(i, Render::Eye::LeftEye), mainCommandBuffers[i]);
@@ -449,93 +455,101 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
         getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
 
-        auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX, *imageAvailableSemaphore[currentFrame], nullptr);
+        TracyVulkanCollect(tracyCtx[lastFrameIndex]);
+
+        auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX,
+                                                                *imageAvailableSemaphore[currentFrame], nullptr);
         result = nextImage.result;
 
-        if(result == vk::Result::eErrorOutOfDateKHR) {
+        if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapchain();
             return;
-        } else if(result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+        } else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
             throw std::runtime_error("Failed to acquire swap chain image");
         }
         imageIndex = nextImage.value;
+        swapchainImageIndexRightNow = imageIndex;
 
 #ifdef ENABLE_VR
         if(config.runInVR) {
             vrSession->beginFrame();
         }
 #endif
+    }
+    static DebugBufferObject debug{};
+    static int32_t gIndex = -1;
+    if(hasPreviousFrame()) {
+        Render::Texture* textureToDisplay = nullptr;
+        if(ImGui::Begin("GBuffer View")) {
+            ImGui::RadioButton("All channels", &gIndex, -1);
+            ImGui::RadioButton("Albedo", &gIndex, 0);
+            ImGui::RadioButton("Position", &gIndex, 1);
+            ImGui::RadioButton("Normals", &gIndex, 2);
+            ImGui::RadioButton("Depth", &gIndex, 3);
+            ImGui::RadioButton("Raytracing", &gIndex, 4);
+            ImGui::RadioButton("UI", &gIndex, 5);
+            ImGui::RadioButton("Int Properties", &gIndex, 6);
 
-        static DebugBufferObject debug{};
-        static int32_t gIndex = -1;
-        if(hasPreviousFrame()) {
-            Render::Texture* textureToDisplay = nullptr;
-            if(ImGui::Begin("GBuffer View")) {
-                ImGui::RadioButton("All channels", &gIndex, -1);
-                ImGui::RadioButton("Albedo", &gIndex, 0);
-                ImGui::RadioButton("Position", &gIndex, 1);
-                ImGui::RadioButton("Normals", &gIndex, 2);
-                ImGui::RadioButton("Depth", &gIndex, 3);
-                ImGui::RadioButton("Raytracing", &gIndex, 4);
-                ImGui::RadioButton("UI", &gIndex, 5);
-                ImGui::RadioButton("Int Properties", &gIndex, 6);
-
-                vk::Format format = vk::Format::eR32G32B32A32Sfloat;
-                if(gIndex == -1) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
-                    format = vk::Format::eR8G8B8A8Unorm;
-                }
-                if(gIndex == 0) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].albedo;
-                    format = vk::Format::eR8G8B8A8Unorm;
-                }
-                if(gIndex == 1) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].position;
-                }
-                if(gIndex == 2) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].normal;
-                }
-                if(gIndex == 3) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].depth;
-                    format = vkDriver.getDepthFormat();
-                }
-                if(gIndex == 4) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
-                    format = vk::Format::eR8G8B8A8Unorm;
-                }
-                if(gIndex == 5) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].ui;
-                    format = vk::Format::eR8G8B8A8Unorm;
-                }
-                if(gIndex == 6) {
-                    textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
-                    format = vk::Format::eR32Sfloat;
-                }
-                if(textureToDisplay) {
-                    static vk::ImageLayout layout = vk::ImageLayout::eUndefined;
-                    auto size = ImGui::GetWindowSize();
-                    renderer.beforeFrameCommand([&](vk::CommandBuffer& cmds) {
-                        layout = textureToDisplay->getCurrentImageLayout();
-                        textureToDisplay->transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
-                    });
-                    renderer.afterFrameCommand([&](vk::CommandBuffer& cmds) {
-                        textureToDisplay->transitionInline(cmds, layout);
-                    });
-                    vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
-                    if(textureToDisplay == imguiTextures[lastFrameIndex].depth) {
-                        aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-                    }
-                    ImGui::Image(textureToDisplay->getImguiID(format, aspect), ImVec2(size.x, size.y - ImGui::GetCursorPosY()));
-                }
+            vk::Format format = vk::Format::eR32G32B32A32Sfloat;
+            if(gIndex == -1) {
+                textureToDisplay = imguiTextures[lastFrameIndex].allChannels;
+                format = vk::Format::eR8G8B8A8Unorm;
             }
-            ImGui::End();
+            if(gIndex == 0) {
+                textureToDisplay = imguiTextures[lastFrameIndex].albedo;
+                format = vk::Format::eR8G8B8A8Unorm;
+            }
+            if(gIndex == 1) {
+                textureToDisplay = imguiTextures[lastFrameIndex].position;
+            }
+            if(gIndex == 2) {
+                textureToDisplay = imguiTextures[lastFrameIndex].normal;
+            }
+            if(gIndex == 3) {
+                textureToDisplay = imguiTextures[lastFrameIndex].depth;
+                format = vkDriver.getDepthFormat();
+            }
+            if(gIndex == 4) {
+                textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
+                format = vk::Format::eR8G8B8A8Unorm;
+            }
+            if(gIndex == 5) {
+                textureToDisplay = imguiTextures[lastFrameIndex].ui;
+                format = vk::Format::eR8G8B8A8Unorm;
+            }
+            if(gIndex == 6) {
+                textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
+                format = vk::Format::eR32Sfloat;
+            }
+            if(textureToDisplay) {
+                static vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+                auto size = ImGui::GetWindowSize();
+                renderer.beforeFrameCommand([&](vk::CommandBuffer& cmds) {
+                    layout = textureToDisplay->getCurrentImageLayout();
+                    textureToDisplay->transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
+                });
+                renderer.afterFrameCommand([&](vk::CommandBuffer& cmds) {
+                    textureToDisplay->transitionInline(cmds, layout);
+                });
+                vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+                if(textureToDisplay == imguiTextures[lastFrameIndex].depth) {
+                    aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+                }
+                ImGui::Image(textureToDisplay->getImguiID(format, aspect), ImVec2(size.x, size.y - ImGui::GetCursorPosY()));
+            }
         }
+        ImGui::End();
+    }
 
+    {
+        ZoneScopedN("Prepare frame");
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
         getRayTracer().onFrame(newRenderContext(imageIndex));
         game->onFrame(imageIndex);
-
+    }
+    {
+        ZoneScopedN("Record main command buffer");
         recordMainCommandBuffer(imageIndex);
     }
 
@@ -566,7 +580,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 .pSignalSemaphores = signalSemaphores,
         };
 
-        renderer.preFrame();
+        {
+            ZoneScopedN("Renderer Pre-Frame actions");
+            renderer.preFrame();
+        }
 
         getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
         getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
@@ -577,7 +594,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
 #endif
 
-        renderer.postFrame();
+        {
+            ZoneScopedN("Renderer Post-Frame actions");
+            renderer.postFrame();
+        }
 
         vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
 
@@ -596,11 +616,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         } catch(vk::OutOfDateKHRError const &e) {
             result = vk::Result::eErrorOutOfDateKHR;
         }
-    }
-
-
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        TracyVulkanCollect(tracyCtx[i]);
     }
 
     lastFrameIndex = imageIndex;
