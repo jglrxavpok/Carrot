@@ -4,8 +4,8 @@
 #pragma once
 #ifdef ENABLE_VR
 
-#include "engine/vr/includes.h"
 #include "engine/vulkan/includes.h"
+#include "engine/vr/includes.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
 #include <memory>
@@ -31,8 +31,8 @@ namespace Carrot::VR {
     public:
         void setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye);
 
-        void beginFrame();
-        void finishFrameAndPresent(const Render::Context& context);
+        void startFrame();
+        void present(const Render::Context& context);
 
     private:
         xr::Session& getXRSession() { return *xrSession; }
@@ -40,7 +40,7 @@ namespace Carrot::VR {
 
     private:
         void xrWaitFrame();
-        void xrBeginFrame();
+        xr::Result xrBeginFrame();
         void xrEndFrame();
 
         void stateChanged(xr::Time time, xr::SessionState state);
@@ -66,6 +66,11 @@ namespace Carrot::VR {
 
         Render::FrameResource leftEye;
         Render::FrameResource rightEye;
+
+    private: // pre-record blit
+        vk::UniqueCommandPool blitCommandPool;
+        std::vector<vk::CommandBuffer> blitCommandBuffers;
+        std::vector<vk::UniqueFence> renderFences;
 
         friend class Interface;
     };

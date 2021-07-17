@@ -28,6 +28,7 @@ namespace Carrot {
 #include "render/Skybox.hpp"
 #include "render/Composer.h"
 #include "engine/Configuration.h"
+#include "engine/tasks/PresentThread.h"
 
 using namespace std;
 
@@ -208,6 +209,7 @@ namespace Carrot {
 #endif
 
         VulkanDriver vkDriver;
+        PresentThread presentThread;
         VulkanRenderer renderer;
         uint32_t lastFrameIndex = 0;
         uint32_t frames = 0;

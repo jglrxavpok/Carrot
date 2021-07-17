@@ -103,6 +103,20 @@ namespace Carrot::VR {
                     swapchainFormat
             );
         }
+
+        auto& driver = vr.getEngine().getVulkanDriver();
+        blitCommandPool = driver.getLogicalDevice().createCommandPoolUnique(vk::CommandPoolCreateInfo {
+                .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                .queueFamilyIndex = driver.getQueueFamilies().graphicsFamily.value(),
+        });
+
+        renderFences.resize(xrSwapchainTextures.size());
+
+        for(int i = 0; i < xrSwapchainTextures.size(); i++) {
+            renderFences[i] = std::move(driver.getLogicalDevice().createFenceUnique(vk::FenceCreateInfo {
+                .flags = vk::FenceCreateFlagBits::eSignaled,
+            }));
+        }
     }
 
     void Session::stateChanged(xr::Time time, xr::SessionState state) {
@@ -115,24 +129,20 @@ namespace Carrot::VR {
     }
 
     void Session::xrWaitFrame() {
+        ZoneScopedN("VR Wait frame");
         xr::FrameState state = xrSession->waitFrame({});
         shouldRender = (bool)state.shouldRender;
         predictedEndTime = state.predictedDisplayTime;
 
-        xrSwapchainIndex = xrSwapchain->acquireSwapchainImage({});
-        xr::SwapchainImageWaitInfo waitInfo;
-        waitInfo.timeout = xr::Duration::infinite();
-        xrSwapchain->waitSwapchainImage(waitInfo);
-    }
-
-    void Session::xrBeginFrame() {
-        xrSession->beginFrame({});
         xr::ViewState viewState;
         xr::ViewLocateInfo locateInfo;
         locateInfo.viewConfigurationType = xr::ViewConfigurationType::PrimaryStereo;
         locateInfo.displayTime = predictedEndTime;
         locateInfo.space = *xrSpace;
-        xrViews = xrSession->locateViewsToVector(locateInfo, reinterpret_cast<XrViewState*>(&viewState));
+        {
+            ZoneScopedN("Get views");
+            xrViews = xrSession->locateViewsToVector(locateInfo, reinterpret_cast<XrViewState*>(&viewState));
+        }
 
         auto updateCamera = [&](Carrot::Render::Eye eye, xr::View& view) {
             glm::vec3 translation{0.0f};
@@ -148,7 +158,13 @@ namespace Carrot::VR {
         updateCamera(Carrot::Render::Eye::RightEye, xrViews[1]);
     }
 
+    xr::Result Session::xrBeginFrame() {
+        ZoneScopedN("xrSession->beginFrame({})");
+        return xrSession->beginFrame({});
+    }
+
     void Session::xrEndFrame() {
+        ZoneScopedN("VR End Frame");
         xrSwapchain->releaseSwapchainImage({});
 
         auto updateView = [&](std::uint32_t index) {
@@ -177,6 +193,7 @@ namespace Carrot::VR {
         xr::FrameEndInfo frameEndInfo;
         frameEndInfo.displayTime = predictedEndTime;
         frameEndInfo.environmentBlendMode = xr::EnvironmentBlendMode::Opaque;
+
         frameEndInfo.layerCount = 1;
         frameEndInfo.layers = layers;
 
@@ -192,45 +209,85 @@ namespace Carrot::VR {
         repo.getUsages(rightEye.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
     }
 
-    void Session::beginFrame() {
+    void Session::startFrame() {
         if(!isReadyForRendering())
             return;
         xrWaitFrame();
-        xrBeginFrame();
     }
 
-    void Session::finishFrameAndPresent(const Render::Context& regularRenderContext) {
+    void Session::present(const Render::Context& regularRenderContext) {
         if(!isReadyForRendering())
             return;
-        Render::Context vrContext = vr.getEngine().newRenderContext(xrSwapchainIndex);
+        auto result = xrBeginFrame();
+        if(result == xr::Result::FrameDiscarded) {
+            return;
+        }
+
+        {
+            ZoneScopedN("VR Acquire swapchain");
+            xrSwapchainIndex = xrSwapchain->acquireSwapchainImage({});
+        }
+        {
+            ZoneScopedN("VR Wait swapchain");
+            xr::SwapchainImageWaitInfo waitInfo;
+            waitInfo.timeout = xr::Duration::infinite();
+            xrSwapchain->waitSwapchainImage(waitInfo);
+        }
 
         if(shouldRenderToSwapchain()) {
-            auto blit = [&](vk::CommandBuffer& cmds, const Render::FrameResource& eyeTexture, std::uint32_t index) {
-                auto& texture = vr.getEngine().getVulkanDriver().getTextureRepository().get(eyeTexture, regularRenderContext.swapchainIndex);
-                vk::ImageBlit blitInfo;
-                blitInfo.dstSubresource.aspectMask = blitInfo.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-                blitInfo.dstSubresource.layerCount = blitInfo.srcSubresource.layerCount = 1;
-                blitInfo.dstOffsets[0] = vk::Offset3D{ (int32_t)(eyeRenderSize.width * index), 0, 0 };
-                blitInfo.dstOffsets[1] = vk::Offset3D{ (int32_t)(eyeRenderSize.width * (index+1)), (int32_t)eyeRenderSize.height, 1 };
-                blitInfo.srcOffsets[1] = vk::Offset3D{ static_cast<int32_t>(texture.getSize().width), static_cast<int32_t>(texture.getSize().height), 1 };
+            auto& fence = *renderFences[xrSwapchainIndex];
+            auto& device = getEngine().getVulkanDriver().getLogicalDevice();
+            DISCARD(device.waitForFences(fence, true, UINT64_MAX));
+            device.resetFences(fence);
 
-                auto& xrSwapchainTexture = *xrSwapchainTextures[vrContext.swapchainIndex];
-                xrSwapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
-                xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferDstOptimal);
+            auto& driver = vr.getEngine().getVulkanDriver();
 
-                texture.assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-                texture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
-                cmds.blitImage(texture.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, xrSwapchainTexture.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
-                xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal); // OpenXR & Vulkan complain if this is not done? eTransferSrcOptimal makes more sense to me
-                //xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
-                texture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal);
-            };
+            if(blitCommandBuffers.empty()) {
+                ZoneScopedN("VR Blit to swapchain");
+                // records command buffers
 
-            // TODO: use pre-allocated command buffer instead of single-use
-            vr.getEngine().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-                blit(cmds, leftEye, 0);
-                blit(cmds, rightEye, 1);
-            });
+                blitCommandBuffers = driver.getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+                        .commandPool = *blitCommandPool,
+                        .level = vk::CommandBufferLevel::ePrimary,
+                        .commandBufferCount = static_cast<uint32_t>(xrSwapchainTextures.size()),
+                });
+
+                auto blit = [&](vk::CommandBuffer& cmds, const Render::FrameResource& eyeTexture, std::uint32_t index, std::uint32_t swapchainIndex) {
+                    auto& texture = vr.getEngine().getVulkanDriver().getTextureRepository().get(eyeTexture, swapchainIndex);
+                    vk::ImageBlit blitInfo;
+                    blitInfo.dstSubresource.aspectMask = blitInfo.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+                    blitInfo.dstSubresource.layerCount = blitInfo.srcSubresource.layerCount = 1;
+                    blitInfo.dstOffsets[0] = vk::Offset3D{ (int32_t)(eyeRenderSize.width * index), 0, 0 };
+                    blitInfo.dstOffsets[1] = vk::Offset3D{ (int32_t)(eyeRenderSize.width * (index+1)), (int32_t)eyeRenderSize.height, 1 };
+                    blitInfo.srcOffsets[1] = vk::Offset3D{ static_cast<int32_t>(texture.getSize().width), static_cast<int32_t>(texture.getSize().height), 1 };
+
+                    auto& xrSwapchainTexture = *xrSwapchainTextures[swapchainIndex];
+                    xrSwapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
+                    xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferDstOptimal);
+
+                    texture.assumeLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+                    texture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
+                    cmds.blitImage(texture.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, xrSwapchainTexture.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
+                    xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal); // OpenXR & Vulkan complain if this is not done? eTransferSrcOptimal makes more sense to me
+                    //xrSwapchainTexture.transitionInline(cmds, vk::ImageLayout::eTransferSrcOptimal);
+                    texture.transitionInline(cmds, vk::ImageLayout::eColorAttachmentOptimal);
+                };
+                for(int i = 0; i < xrSwapchainTextures.size(); i++) {
+                    auto& cmds = blitCommandBuffers[i];
+                    DISCARD(cmds.begin(vk::CommandBufferBeginInfo {
+                    }));
+                    blit(cmds, leftEye, 0, i);
+                    blit(cmds, rightEye, 1, i);
+                    cmds.end();
+                }
+            }
+
+
+            ZoneScopedN("Submit");
+            vr.getEngine().getGraphicsQueue().submit(vk::SubmitInfo {
+                    .commandBufferCount = 1,
+                    .pCommandBuffers = &blitCommandBuffers[xrSwapchainIndex],
+            }, *renderFences[xrSwapchainIndex]);
         }
 
         xrEndFrame();

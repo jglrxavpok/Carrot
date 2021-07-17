@@ -145,6 +145,8 @@ set(ENGINE-SOURCES
         src/engine/console/RuntimeOption.cpp
         src/engine/console/AutocompleteField.cpp
 
+        src/engine/tasks/PresentThread.cpp
+
         )
 
 set(VERTEX_SHADERS
@@ -286,11 +288,17 @@ target_link_libraries(Carrot-Tracy ${ALL_LIBS})
 target_compile_definitions(Carrot-Tracy PRIVATE TRACY_ENABLE=1)
 
 add_executable(Carrot-VR ${ALL_SOURCES} ${VR_SOURCES})
-
 target_include_directories(Carrot-VR PRIVATE ${OPENXR-INCLUDE-DIR})
 target_include_directories(Carrot-VR PRIVATE thirdparty/openxr-hpp/include/)
 target_compile_definitions(Carrot-VR PRIVATE ENABLE_VR=1)
+#target_compile_definitions(Carrot-VR PRIVATE TRACY_ENABLE=1)
 target_link_libraries(Carrot-VR ${ALL_LIBS} ${OPENXR-LOADER-LIB})
+
+add_executable(Carrot-VR-DebugGPU ${ALL_SOURCES} ${VR_SOURCES})
+target_include_directories(Carrot-VR-DebugGPU PRIVATE ${OPENXR-INCLUDE-DIR})
+target_include_directories(Carrot-VR-DebugGPU PRIVATE thirdparty/openxr-hpp/include/)
+target_compile_definitions(Carrot-VR-DebugGPU PRIVATE ENABLE_VR=1 TRACY_ENABLE=1)
+target_link_libraries(Carrot-VR-DebugGPU ${ALL_LIBS} ${OPENXR-LOADER-LIB})
 
 add_executable(Carrot-Tools ${ENGINE-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
 target_link_libraries(Carrot-Tools ${ALL_LIBS})

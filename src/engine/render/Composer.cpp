@@ -26,6 +26,7 @@ namespace Carrot::Render {
     Pass<ComposerPassData>& Composer::appendPass(GraphBuilder& renderGraph) {
         return renderGraph.addPass<ComposerPassData>("composer",
         [this](Render::GraphBuilder& builder, Render::Pass<ComposerPassData>& pass, ComposerPassData& data) {
+            pass.prerecordable = true;
             vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
             vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
                     .depth = 1.0f,

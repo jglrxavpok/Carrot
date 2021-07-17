@@ -40,6 +40,7 @@
 #include "engine/console/Console.h"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
+#include "engine/utils/Macros.h"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -68,6 +69,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver, vector<S
                                                                                                                                    2,1,0,
                                                                                                                                    3,2,0,
                                                                                                                            })),
+    presentThread(vkDriver),
     config(config)
     {
 #ifndef ENABLE_VR
@@ -298,13 +300,13 @@ void Carrot::Engine::run() {
         auto frameStartTime = chrono::steady_clock::now();
         chrono::duration<float> timeElapsed = frameStartTime-previous;
         currentFPS = 1.0f / timeElapsed.count();
-        previous = frameStartTime;
-
         lag += timeElapsed;
+        previous = frameStartTime;
 
         glfwPollEvents();
 #ifdef ENABLE_VR
         if(config.runInVR) {
+            ZoneScopedN("VR poll events");
             vrInterface->pollEvents();
         }
 #endif
@@ -315,9 +317,14 @@ void Carrot::Engine::run() {
         renderer.newFrame();
         ImGui::NewFrame();
 
-        while(lag >= timeBetweenUpdates) {
-            tick(timeBetweenUpdates.count());
-            lag -= timeBetweenUpdates;
+        {
+            ZoneScopedN("Tick");
+            TracyPlot("Tick lag", lag.count());
+            TracyPlot("Estimated FPS", currentFPS);
+            while(lag >= timeBetweenUpdates) {
+                tick(timeBetweenUpdates.count());
+                lag -= timeBetweenUpdates;
+            }
         }
 
         if(showFPS) {
@@ -452,29 +459,30 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     uint32_t imageIndex;
     {
         ZoneNamedN(__acquire, "Acquire image", true);
-        static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
-        getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
+
+        {
+            ZoneNamedN(__fences, "Wait fences", true);
+            static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
+            getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
+        }
 
         TracyVulkanCollect(tracyCtx[lastFrameIndex]);
 
-        auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX,
-                                                                *imageAvailableSemaphore[currentFrame], nullptr);
-        result = nextImage.result;
+        {
+            ZoneScopedN("acquireNextImageKHR");
+            auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX,
+                                                                    *imageAvailableSemaphore[currentFrame], nullptr);
+            result = nextImage.result;
 
-        if (result == vk::Result::eErrorOutOfDateKHR) {
-            recreateSwapchain();
-            return;
-        } else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
-            throw std::runtime_error("Failed to acquire swap chain image");
+            if (result == vk::Result::eErrorOutOfDateKHR) {
+                recreateSwapchain();
+                return;
+            } else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+                throw std::runtime_error("Failed to acquire swap chain image");
+            }
+            imageIndex = nextImage.value;
+            swapchainImageIndexRightNow = imageIndex;
         }
-        imageIndex = nextImage.value;
-        swapchainImageIndexRightNow = imageIndex;
-
-#ifdef ENABLE_VR
-        if(config.runInVR) {
-            vrSession->beginFrame();
-        }
-#endif
     }
     static DebugBufferObject debug{};
     static int32_t gIndex = -1;
@@ -543,6 +551,14 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     {
         ZoneScopedN("Prepare frame");
+
+#ifdef ENABLE_VR
+        if(config.runInVR) {
+            ZoneScopedN("VR start frame");
+            vrSession->startFrame();
+        }
+#endif
+
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
         getRayTracer().onFrame(newRenderContext(imageIndex));
@@ -567,7 +583,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         game->changeGraphicsWaitSemaphores(imageIndex, waitSemaphores, waitStages);
 
-        vk::SubmitInfo submitInfo {
+        vk::SubmitInfo submitInfo{
                 .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
                 .pWaitSemaphores = waitSemaphores.data(),
 
@@ -585,12 +601,40 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             renderer.preFrame();
         }
 
-        getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
-        getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
+        {
+            ZoneScopedN("Reset in flight fences");
+            getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
+        }
+        {
+            ZoneScopedN("Submit to graphics queue");
+            //presentThread.present(currentFrame, signalSemaphores[0], submitInfo, *inFlightFences[currentFrame]);
+
+
+            getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
+            vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
+
+            vk::PresentInfoKHR presentInfo{
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = signalSemaphores,
+
+                    .swapchainCount = 1,
+                    .pSwapchains = swapchains,
+                    .pImageIndices = &imageIndex,
+                    .pResults = nullptr,
+            };
+
+            {
+                ZoneScopedN("PresentKHR");
+                DISCARD(vkDriver.getPresentQueue().presentKHR(&presentInfo));
+            }
+        }
 
 #ifdef ENABLE_VR
         if(config.runInVR) {
-            vrSession->finishFrameAndPresent(newRenderContext(imageIndex));
+            {
+                ZoneScopedN("VR render");
+                vrSession->present(newRenderContext(imageIndex));
+            }
         }
 #endif
 
@@ -598,29 +642,11 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ZoneScopedN("Renderer Post-Frame actions");
             renderer.postFrame();
         }
-
-        vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
-
-        vk::PresentInfoKHR presentInfo{
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = signalSemaphores,
-
-                .swapchainCount = 1,
-                .pSwapchains = swapchains,
-                .pImageIndices = &imageIndex,
-                .pResults = nullptr,
-        };
-
-        try {
-            result = getPresentQueue().presentKHR(&presentInfo);
-        } catch(vk::OutOfDateKHRError const &e) {
-            result = vk::Result::eErrorOutOfDateKHR;
-        }
     }
 
     lastFrameIndex = imageIndex;
 
-    if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
+    if(framebufferResized) {
         recreateSwapchain();
     }
     frames++;
@@ -794,6 +820,7 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 }
 
 void Carrot::Engine::tick(double deltaTime) {
+    ZoneScoped;
     game->tick(deltaTime);
 }
 

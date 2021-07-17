@@ -166,7 +166,7 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     // ensure skinning is done
     {
         ZoneScopedN("Wait for compute queue");
-        engine.getComputeQueue().waitIdle();
+      //  engine.getComputeQueue().waitIdle();
     }
 
     {
@@ -226,7 +226,10 @@ void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Se
 
 static float totalTime = 0.0f;
 void Game::Game::tick(double frameTime) {
-    world.tick(frameTime);
+    {
+        ZoneScopedN("World tick");
+        world.tick(frameTime);
+    }
 
     totalTime += frameTime*10.0f;
     animatedUnits->getInstance(9).color = {
@@ -236,7 +239,10 @@ void Game::Game::tick(double frameTime) {
             1.0f,
     };
 
-    particles->tick(frameTime);
+    {
+        ZoneScopedN("Particles tick");
+        particles->tick(frameTime);
+    }
 }
 
 void Game::Game::onSwapchainSizeChange(int newWidth, int newHeight) {

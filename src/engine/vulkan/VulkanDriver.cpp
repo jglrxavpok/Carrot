@@ -459,10 +459,11 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
     transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
-    graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), 0);
 
     graphicsQueueIndex = 0;
-    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), graphicsQueueIndex);
+    graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), graphicsQueueIndex);
+
+    computeQueue = device->getQueue(queueFamilies.computeFamily.value(), 0);
 
     presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
 }

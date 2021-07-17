@@ -27,7 +27,7 @@ namespace Carrot::VR {
 
     Interface::Interface(Engine& engine): engine(engine) {
         std::vector<const char*> apiLayers {
-                "XR_APILAYER_LUNARG_core_validation"
+                //"XR_APILAYER_LUNARG_core_validation"
         };
         std::vector<const char*> extensions {
                 XR_EXT_DEBUG_UTILS_EXTENSION_NAME,

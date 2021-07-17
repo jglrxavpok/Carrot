@@ -43,7 +43,8 @@ namespace Carrot::Render {
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
-                SwapchainRecreationCallback swapchainCallback
+                SwapchainRecreationCallback swapchainCallback,
+                bool prerecordable
         );
 
         /// Constructor for non-rasterized passes
@@ -53,11 +54,12 @@ namespace Carrot::Render {
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
-                SwapchainRecreationCallback swapchainCallback
+                SwapchainRecreationCallback swapchainCallback,
+                bool prerecordable
         );
 
     public:
-        void execute(const Render::Context& data, vk::CommandBuffer& cmds) const;
+        void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
         const vk::RenderPass& getRenderPass() const {
             assert(rasterized); // Only rasterized passes have a render pass
@@ -77,10 +79,14 @@ namespace Carrot::Render {
 
     private:
         void createFramebuffers();
+        void createCommandPool();
+        void createCommandBuffers(Render::Eye eye);
+        void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
 
     private:
         Graph& graph;
-        bool rasterized;
+        bool rasterized = true;
+        bool prerecordable = false;
         std::vector<vk::UniqueFramebuffer> framebuffers;
         vk::UniqueRenderPass renderPass;
         std::vector<vk::ClearValue> clearValues;
@@ -89,6 +95,10 @@ namespace Carrot::Render {
         InitCallback initCallback;
         SwapchainRecreationCallback swapchainRecreationCallback;
         std::string name;
+
+    private: // Pre-recording
+        vk::UniqueCommandPool commandPool;
+        std::vector<vk::CommandBuffer> commandBuffers;
     };
 
     template<typename> class Pass;
@@ -99,6 +109,7 @@ namespace Carrot::Render {
     class PassBase {
     public:
         bool rasterized = true;
+        bool prerecordable = false;
 
         explicit PassBase(VulkanDriver& driver, std::string name): driver(driver), name(std::move(name)) {}
 

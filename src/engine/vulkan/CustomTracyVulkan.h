@@ -91,11 +91,13 @@ public:
 #define PrepareVulkanTracy(context, commandBuffer)
 #define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
+
 #endif
 
 #else
 
 class TracyVulkanContext {
+public:
     explicit TracyVulkanContext(vk::PhysicalDevice& physicalDevice, vk::Device& device, vk::Queue& queue, uint32_t queueFamilyIndex, vk::AllocationCallbacks* allocator = nullptr) {}
 };
 #define TracyVulkanContext(physicalDevice, device, queue, queueIndex) ((void*)0)
@@ -110,4 +112,5 @@ class TracyVulkanContext {
 #define PrepareVulkanTracy(context, commandBuffer)
 #define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
+#define TracyPlot
 #endif

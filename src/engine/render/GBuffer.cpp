@@ -75,6 +75,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {
+                pass.prerecordable = true;
                 resolveData.positions = graph.read(data.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.normals = graph.read(data.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.albedo = graph.read(data.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);

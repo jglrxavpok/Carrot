@@ -7,6 +7,7 @@
 #include "engine/io/Logging.hpp"
 #include "engine/utils/Macros.h"
 #include "engine/render/TextureRepository.h"
+#include "engine/vulkan/CustomTracyVulkan.h"
 
 namespace Carrot::Render {
     GraphBuilder::GraphBuilder(VulkanDriver& driver): driver(driver) {
@@ -118,7 +119,8 @@ namespace Carrot::Render {
     }
 
     void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
-        for(const auto* pass : sortedPasses) {
+        ZoneScoped;
+        for(auto* pass : sortedPasses) {
             pass->execute(data, cmds);
         }
     }
