@@ -43,6 +43,17 @@ namespace Carrot {
         unique_ptr<Buffer> instancesBuffer{};
         TLAS tlas{};
 
+    private: // reuse between builds
+        vk::CommandBuffer tlasBuildCommands{};
+        std::size_t lastInstanceCount = 0;
+        vk::DeviceAddress instanceBufferAddress = 0;
+
+        std::unique_ptr<Carrot::Buffer> scratchBuffer = nullptr;
+        std::size_t lastScratchSize = 0;
+        vk::DeviceAddress scratchBufferAddress = 0;
+
+    private:
+
         vk::AccelerationStructureInstanceKHR convertToVulkanInstance(const InstanceInput& instance);
 
         void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
@@ -72,8 +83,6 @@ namespace Carrot {
 
         TLAS& getTopLevelAS();
 
-        const vector<GeometryInput>& getBottomLevelGeometries() const;
-        vector<GeometryInput>& getBottomLevelGeometries();
         vector<InstanceInput>& getTopLevelInstances();
     };
 }

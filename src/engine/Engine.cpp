@@ -135,48 +135,7 @@ void Carrot::Engine::init() {
     };
 
     auto fillGraphBuilder = [&](Render::GraphBuilder& mainGraph, bool shouldPresentToSwapchain, Render::Eye eye = Render::Eye::NoVR) {
-        auto& rtPass = mainGraph.addPass<Carrot::Render::PassData::Raytracing>("raytracing",
-           [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Raytracing>& pass, Carrot::Render::PassData::Raytracing& data) {
-               pass.rasterized = false;
-               data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, {}, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
-               data.output.layout = vk::ImageLayout::eGeneral;
-               data.output.previousLayout = vk::ImageLayout::eGeneral;
-           },
-           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph Raytracing");
-                auto& texture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                texture.assumeLayout(vk::ImageLayout::eUndefined);
-                texture.transitionInline(buffer, vk::ImageLayout::eGeneral);
-
-                // TODO: layout transitions
-                getRayTracer().recordCommands(frame, buffer);
-
-               // TODO: make raytracing compatible with RenderGraph
-               // TODO: make compute shaders compatible with RenderGraph
-           }
-        );
-
-        rtPass.setSwapchainRecreation(
-                [this, eye = eye](const Render::CompiledPass& pass, const Carrot::Render::PassData::Raytracing& data) {
-                    for (int swapchainIndex = 0; swapchainIndex < getSwapchainImageCount(); ++swapchainIndex) {
-                        auto& set = renderer.getRayTracer().getRTDescriptorSets()[eye][swapchainIndex];
-                        auto& texture = pass.getGraph().getTexture(data.output, swapchainIndex);
-                        texture.assumeLayout(vk::ImageLayout::eUndefined);
-                        texture.transitionNow(vk::ImageLayout::eGeneral);
-                        vk::DescriptorImageInfo writeImage {
-                                .imageView = texture.getView(),
-                                .imageLayout = vk::ImageLayout::eGeneral,
-                        };
-                        vk::WriteDescriptorSet updateSet {
-                                .dstSet = set,
-                                .dstBinding = 1,
-                                .descriptorCount = 1,
-                                .descriptorType = vk::DescriptorType::eStorageImage,
-                                .pImageInfo = &writeImage,
-                        };
-                        vkDriver.getLogicalDevice().updateDescriptorSets(updateSet, {});
-                    }
-        });
+        auto& rtPass = getRayTracer().appendRTPass(mainGraph, eye);
 
         auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {

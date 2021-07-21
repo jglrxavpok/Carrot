@@ -9,6 +9,7 @@
 #include "engine/RenderPasses.h"
 #include "engine/render/lighting/Lights.h"
 #include "engine/render/resources/Texture.h"
+#include "engine/render/RenderGraph.h"
 
 namespace Carrot {
     /// Class responsible for creating acceleration structures and updating them, creating the shader binding table and
@@ -74,6 +75,8 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        Carrot::Render::Pass<Carrot::Render::PassData::Raytracing>& appendRTPass(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye);
 
     public:
         std::unordered_map<Render::Eye, vector<vk::DescriptorSet>>& getRTDescriptorSets() { return rtDescriptorSets; }

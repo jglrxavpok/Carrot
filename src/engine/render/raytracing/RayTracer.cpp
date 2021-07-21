@@ -12,6 +12,8 @@
 
 constexpr int maxInstances = 301;
 
+static constexpr float ResolutionScale = 0.5f;
+
 Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     // init raytracing
     auto properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
@@ -90,7 +92,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
 
     auto extent = renderer.getVulkanDriver().getFinalRenderSize();
     if(hasStuffToDraw) {
-        commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], extent.width, extent.height, 1);
+        commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], static_cast<std::uint32_t>(extent.width * ResolutionScale), static_cast<std::uint32_t>(extent.height * ResolutionScale), 1);
     }
 }
 
@@ -501,4 +503,53 @@ void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
 
 void Carrot::RayTracer::onSwapchainSizeChange(int newWidth, int newHeight) {
     finishInit();
+}
+
+Carrot::Render::Pass<Carrot::Render::PassData::Raytracing>& Carrot::RayTracer::appendRTPass(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye) {
+    auto& rtPass = mainGraph.addPass<Carrot::Render::PassData::Raytracing>("raytracing",
+                                                                   [](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Raytracing>& pass, Carrot::Render::PassData::Raytracing& data) {
+                                                                       pass.rasterized = false;
+                                                                       Carrot::Render::TextureSize size;
+                                                                       size.width = ResolutionScale;
+                                                                       size.height = ResolutionScale;
+                                                                       data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
+                                                                       data.output.layout = vk::ImageLayout::eGeneral;
+                                                                       data.output.previousLayout = vk::ImageLayout::eGeneral;
+                                                                   },
+                                                                   [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
+                                                                       ZoneScopedN("CPU RenderGraph Raytracing");
+                                                                       auto& texture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+                                                                       texture.assumeLayout(vk::ImageLayout::eUndefined);
+                                                                       texture.transitionInline(buffer, vk::ImageLayout::eGeneral);
+
+                                                                       // TODO: layout transitions
+                                                                       recordCommands(frame, buffer);
+
+                                                                       // TODO: make raytracing compatible with RenderGraph
+                                                                       // TODO: make compute shaders compatible with RenderGraph
+                                                                   }
+    );
+
+    rtPass.setSwapchainRecreation(
+            [this, eye = eye](const Render::CompiledPass& pass, const Carrot::Render::PassData::Raytracing& data) {
+                for (int swapchainIndex = 0; swapchainIndex < renderer.getSwapchainImageCount(); ++swapchainIndex) {
+                    auto& set = getRTDescriptorSets()[eye][swapchainIndex];
+                    auto& texture = pass.getGraph().getTexture(data.output, swapchainIndex);
+                    texture.assumeLayout(vk::ImageLayout::eUndefined);
+                    texture.transitionNow(vk::ImageLayout::eGeneral);
+                    vk::DescriptorImageInfo writeImage {
+                            .imageView = texture.getView(),
+                            .imageLayout = vk::ImageLayout::eGeneral,
+                    };
+                    vk::WriteDescriptorSet updateSet {
+                            .dstSet = set,
+                            .dstBinding = 1,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eStorageImage,
+                            .pImageInfo = &writeImage,
+                    };
+                    renderer.getLogicalDevice().updateDescriptorSets(updateSet, {});
+                }
+            });
+    return rtPass;
 }

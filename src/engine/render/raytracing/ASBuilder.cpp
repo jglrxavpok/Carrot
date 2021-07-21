@@ -203,16 +203,21 @@ vk::AccelerationStructureInstanceKHR Carrot::ASBuilder::convertToVulkanInstance(
 void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
-    vk::CommandBuffer buildCommand = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = 1,
-    })[0];
+    if(!tlasBuildCommands) {
+        tlasBuildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+                .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = 1,
+        })[0];
+    }
+    vk::CommandBuffer& buildCommand = tlasBuildCommands;
+    buildCommand.reset();
 
     vector<vk::AccelerationStructureInstanceKHR> instances{};
     instances.reserve(topLevelInstances.size());
 
     for(size_t i = 0; i < topLevelInstances.size(); i++) {
+        // TODO: maybe avoid this conversion each frame
         instances.push_back(convertToVulkanInstance(topLevelInstances[i]));
     }
 
@@ -220,24 +225,26 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
     });
     // upload instances to the device
-    instancesBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                          instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
-                                          vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
-                                          vk::MemoryPropertyFlagBits::eDeviceLocal
-                                          );
+    if(!instancesBuffer || lastInstanceCount < instances.size()) {
+        instancesBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
+                                              instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
+                                              vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
+                                              vk::MemoryPropertyFlagBits::eDeviceLocal
+        );
 
-    instancesBuffer->setDebugNames("TLAS Instances");
+        instancesBuffer->setDebugNames("TLAS Instances");
+        lastInstanceCount = instances.size();
+
+        instanceBufferAddress = renderer.getLogicalDevice().getBufferAddress({
+            .buffer = instancesBuffer->getVulkanBuffer(),
+        });
+    }
     instancesBuffer->stageUploadWithOffsets(make_pair(0ull, instances));
-
-    vk::BufferDeviceAddressInfo bufferInfo {
-        .buffer = instancesBuffer->getVulkanBuffer()
-    };
-    auto instanceAddress = renderer.getLogicalDevice().getBufferAddress(bufferInfo);
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesVk {
         .arrayOfPointers = false,
     };
-    instancesVk.data.deviceAddress = instanceAddress;
+    instancesVk.data.deviceAddress = instanceBufferAddress;
 
     vk::AccelerationStructureGeometryKHR topASGeometry {
         .geometryType = vk::GeometryTypeKHR::eInstances,
@@ -264,18 +271,22 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     }
 
     // Allocate scratch memory
-    auto scratchBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                             sizeInfo.buildScratchSize,
-                                             vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
-                                             vk::MemoryPropertyFlagBits::eDeviceLocal
-                                             );
+    if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) {
+        scratchBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
+                                                 sizeInfo.buildScratchSize,
+                                                 vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                                 vk::MemoryPropertyFlagBits::eDeviceLocal
+        );
+        lastScratchSize = sizeInfo.buildScratchSize;
+        scratchBufferAddress = renderer.getLogicalDevice().getBufferAddress({
+            .buffer = scratchBuffer->getVulkanBuffer(),
+        });
+    }
 
-    bufferInfo.buffer = scratchBuffer->getVulkanBuffer();
-    auto scratchAddress = renderer.getLogicalDevice().getBufferAddress(bufferInfo);
 
     buildInfo.srcAccelerationStructure = update ? tlas.as->getVulkanAS() : nullptr;
     buildInfo.dstAccelerationStructure = tlas.as->getVulkanAS();
-    buildInfo.scratchData.deviceAddress = scratchAddress;
+    buildInfo.scratchData.deviceAddress = scratchBufferAddress;
 
     // one build offset per instance
     vk::AccelerationStructureBuildRangeInfoKHR buildOffsetInfo {
@@ -289,9 +300,8 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
        .commandBufferCount = 1,
        .pCommandBuffers = &buildCommand,
     });
+    // TODO: remove wait (use semaphore)
     renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
-
-    device.freeCommandBuffers(renderer.getVulkanDriver().getThreadGraphicsCommandPool(), buildCommand);
 }
 
 Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
