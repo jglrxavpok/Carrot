@@ -21,7 +21,7 @@ void Carrot::SystemUpdateAnimatedModelInstance::tick(double dt) {
         if(auto entity = e.lock()) {
             auto* model = world.getComponent<AnimatedModelInstance>(entity);
 
-            model->instanceData.animationTime += static_cast<float>(dt);
+            model->instanceData.animationTime += dt;
         }
     }
 }
@@ -30,6 +30,6 @@ void Carrot::SystemUpdateAnimatedModelInstance::onEntityAdded(Entity_WeakPtr e) 
     if(auto entity = e.lock()) {
         auto* model = world.getComponent<AnimatedModelInstance>(entity);
         model->instanceData.animationIndex = rand() % 2;
-        model->instanceData.animationTime = rand() / 10.0f;
+        //model->instanceData.animationTime = rand() / 10.0f;
     }
 }

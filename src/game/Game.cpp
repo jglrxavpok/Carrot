@@ -27,11 +27,12 @@
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
 
-constexpr static int maxInstanceCount = 10; // TODO: change
+constexpr static int maxInstanceCount = 100; // TODO: change
 
 static vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
+    ZoneScoped;
     engine.setSkybox(Skybox::Type::Forest);
 
     world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
@@ -121,7 +122,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
     // TODO: light ID booking system
     auto& light = engine.getRayTracer().getLightBuffer().lights[0];
-    auto& dynLight = world.newEntity()
+    auto dynLight = world.newEntity()
             .addComponent<Transform>()
             .addComponent<RaycastedShadowsLight>(light)
             .addComponent<ForceSinPosition>();
@@ -161,13 +162,6 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     animatedUnits->onFrame(frameIndex);
 
     world.onFrame(frameIndex);
-
-    // TODO: make it so waiting for the GPU is not necessary
-    // ensure skinning is done
-    {
-        ZoneScopedN("Wait for compute queue");
-      //  engine.getComputeQueue().waitIdle();
-    }
 
     {
         ZoneScopedN("Update Raytracing AS");

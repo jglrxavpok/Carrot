@@ -17,6 +17,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<
                                          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
                                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     animatedInstances = instanceBuffer->map<AnimatedInstanceData>();
+    std::fill_n(animatedInstances, maxInstanceCount, AnimatedInstanceData{});
 
     map<MeshID, vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
     auto meshes = model->getMeshes();
@@ -274,7 +275,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         engine.getLogicalDevice().updateDescriptorSets(writes, {});
     }
 
-    auto computeStage = ShaderModule(engine.getVulkanDriver(), "resources/shaders/skinning.compute.glsl.spv");
+    auto computeStage = ShaderModule(engine.getVulkanDriver(), "resources/shaders/compute/skinning.compute.glsl.spv");
 
     // create the pipeline
     vk::DescriptorSetLayout setLayouts[] = {

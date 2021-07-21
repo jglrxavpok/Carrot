@@ -16,6 +16,7 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include "engine/vulkan/CustomTracyVulkan.h"
 
 #ifdef ENABLE_VR
 #include "engine/vr/VRInterface.h"
@@ -56,6 +57,7 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration co
     engine(engine)
 
 {
+    ZoneScoped;
 
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 
@@ -473,6 +475,9 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
 
+    for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {
+        required.insert(ext);
+    }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
         for(const auto& debugExtension : VULKAN_DEBUG_EXTENSIONS) {

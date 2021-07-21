@@ -10,7 +10,7 @@
 #include "SceneElement.h"
 #include <iostream>
 
-constexpr int maxInstances = 31;
+constexpr int maxInstances = 301;
 
 Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     // init raytracing

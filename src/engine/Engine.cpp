@@ -72,6 +72,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver, vector<S
     presentThread(vkDriver),
     config(config)
     {
+    ZoneScoped;
 #ifndef ENABLE_VR
     if(config.runInVR) {
         //Carrot::crash("");
@@ -532,13 +533,13 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             if(textureToDisplay) {
                 static vk::ImageLayout layout = vk::ImageLayout::eUndefined;
                 auto size = ImGui::GetWindowSize();
-                renderer.beforeFrameCommand([&](vk::CommandBuffer& cmds) {
+/*                renderer.beforeFrameCommand([&](vk::CommandBuffer& cmds) {
                     layout = textureToDisplay->getCurrentImageLayout();
                     textureToDisplay->transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
                 });
                 renderer.afterFrameCommand([&](vk::CommandBuffer& cmds) {
                     textureToDisplay->transitionInline(cmds, layout);
-                });
+                });*/
                 vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
                 if(textureToDisplay == imguiTextures[lastFrameIndex].depth) {
                     aspect = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
@@ -943,11 +944,19 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     };
     currentSkybox = type;
     if(type != Carrot::Skybox::Type::None) {
-        loadedSkyboxTexture = std::make_unique<Render::Texture>(Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
-            return Skybox::getTexturePath(type, dir);
-        }));
-        loadedSkyboxTexture->name("Current loaded skybox");
-        skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
+        ZoneScopedN("Prepare skybox texture & mesh");
+        {
+            ZoneScopedN("Load skybox cubemap");
+            loadedSkyboxTexture = std::make_unique<Render::Texture>(Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+                return Skybox::getTexturePath(type, dir);
+            }));
+            loadedSkyboxTexture->name("Current loaded skybox");
+        }
+
+        {
+            ZoneScopedN("Create skybox mesh");
+            skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
+        }
     }
 }
 

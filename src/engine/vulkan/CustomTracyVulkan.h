@@ -113,4 +113,5 @@ public:
 #define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
 #define TracyPlot
+#define TracyMessageL(msg)
 #endif

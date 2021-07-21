@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 3.17)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
+
 list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(ARCH "x64")
+
+if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_definitions(IS_RELEASE_BUILD)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(IS_DEBUG_BUILD)
+endif()
 
 set(OPENXR-INCLUDE-DIR thirdparty/OpenXR-SDK-Source/build/win64/include)
 set(OPENXR-LOADER-LIB openxr_loaderd)
@@ -19,8 +26,28 @@ add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
 set(ASSIMP_BUILD_TESTS CACHE BOOL OFF)
-set(ASSIMP_BUILD_GLTF_IMPORTER CACHE BOOL OFF)
-set(ASSIMP_BUILD_GLTF_EXPORTER CACHE BOOL OFF)
+SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
+SET(ASSIMP_BUILD_FBX_IMPORTER TRUE)
+SET(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
+SET(ASSIMP_BUILD_M3D_IMPORTER TRUE)
+
+SET(ASSIMP_BUILD_M3D_EXPORTER TRUE)
+SET(ASSIMP_BUILD_ASSBIN_EXPORTER TRUE)
+SET(ASSIMP_BUILD_ASSXML_EXPORTER TRUE)
+SET(ASSIMP_BUILD_GLTF_EXPORTER FALSE)
+SET(ASSIMP_BUILD_OBJ_EXPORTER FALSE)
+SET(ASSIMP_BUILD_OPENGEX_EXPORTER FALSE)
+SET(ASSIMP_BUILD_PLY_EXPORTER FALSE)
+SET(ASSIMP_BUILD_3DS_EXPORTER FALSE)
+SET(ASSIMP_BUILD_COLLADA_EXPORTER FALSE)
+SET(ASSIMP_BUILD_FBX_EXPORTER FALSE)
+SET(ASSIMP_BUILD_STL_EXPORTER FALSE)
+SET(ASSIMP_BUILD_X_EXPORTER FALSE)
+SET(ASSIMP_BUILD_X3D_EXPORTER FALSE)
+SET(ASSIMP_BUILD_3MF_EXPORTER FALSE)
+SET(ASSIMP_BUILD_ASSJSON_EXPORTER FALSE)
+SET(ASSIMP_BUILD_STEP_EXPORTER FALSE)
+
 add_subdirectory(thirdparty/assimp)
 
 add_subdirectory(thirdparty/nativefiledialog-extended)
@@ -169,7 +196,7 @@ set(FRAGMENT_SHADERS
         )
 
 set(COMPUTE_SHADERS
-        resources/shaders/skinning.compute.glsl
+        resources/shaders/compute/skinning.compute.glsl
         resources/shaders/compute/particles.compute.glsl
         )
 
@@ -186,38 +213,38 @@ set(RAYHIT_SHADERS
         resources/shaders/rt/raytrace.rchit
         )
 
-set(SHADERS "")
+set(ENGINE-SHADERS "")
 foreach(shader ${VERTEX_SHADERS})
     add_spirv_shader(vertex "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
 foreach(shader ${FRAGMENT_SHADERS})
     add_spirv_shader(fragment "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
 foreach(shader ${COMPUTE_SHADERS})
     add_spirv_shader(compute "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
 foreach(shader ${RAYGEN_SHADERS})
     add_spirv_shader(rgen "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
 foreach(shader ${RAYMISS_SHADERS})
     add_spirv_shader(rmiss "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
 foreach(shader ${RAYHIT_SHADERS})
     add_spirv_shader(rchit "${shader}" "${shader}.spv")
-    set(SHADERS "${SHADERS}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${shader}.spv")
 endforeach()
 
-set(EXTERNAL_SOURCES
+set(THIRDPARTY-SOURCES
         thirdparty/tracy/TracyClient.cpp
         thirdparty/imgui/backends/imgui_impl_vulkan.cpp
         thirdparty/imgui/backends/imgui_impl_glfw.cpp
@@ -273,41 +300,74 @@ set(VR_SOURCES
 
         )
 
-set(ALL_SOURCES ${ENGINE-SOURCES} ${GAME-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES})
-set(ALL_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd)
+set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd)
 
-add_executable(Carrot-Renderdoc ${ALL_SOURCES})
-target_compile_definitions(Carrot-Renderdoc PRIVATE DEBUG_MARKERS=1)
-target_link_libraries(Carrot-Renderdoc ${ALL_LIBS})
+function(make_tracy_target Target)
+    target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
+endfunction()
 
-add_executable(Carrot-Basic ${ALL_SOURCES})
-target_link_libraries(Carrot-Basic ${ALL_LIBS})
+function(make_asan_target Target)
+    if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        #
+        #   Requires manual copy of ASAN dll inside output directory (next to final executable file)
+        #
+        set(ASSIMP_ASAN ON)
+        target_compile_options("${Target}" PRIVATE -fsanitize=address) # /MD will be used implicitly
+        target_link_libraries("${Target}" PRIVATE clang_rt.asan_dynamic-x86_64 clang_rt.asan_dynamic_runtime_thunk-x86_64)
+        target_link_options("${Target}" PRIVATE /wholearchive:clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+    endif()
+endfunction()
 
-add_executable(Carrot-Tracy ${ALL_SOURCES})
-target_link_libraries(Carrot-Tracy ${ALL_LIBS})
-target_compile_definitions(Carrot-Tracy PRIVATE TRACY_ENABLE=1)
+add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
+
+add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
+make_asan_target(Engine-ASAN)
+
+add_library(Engine-Tracy ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+target_link_libraries(Engine-Tracy PUBLIC ${ALL_BASE_LIBS})
+make_tracy_target(Engine-Tracy)
+
+add_library(SampleGame ${GAME-SOURCES})
+target_link_libraries(SampleGame PUBLIC Engine-Base)
+
+add_executable(SampleGame-Basic src/null.cpp)
+target_link_libraries(SampleGame-Basic PUBLIC SampleGame)
+
+add_executable(SampleGame-ASAN ${GAME-SOURCES})
+target_link_libraries(SampleGame-ASAN PUBLIC Engine-ASAN)
+make_asan_target(SampleGame-ASAN)
+
+add_executable(SampleGame-Tracy ${GAME-SOURCES})
+target_link_libraries(SampleGame-Tracy PUBLIC Engine-Tracy)
+make_tracy_target(SampleGame-Tracy)
+
+add_executable(SampleGame-Renderdoc src/null.cpp)
+target_link_libraries(SampleGame-Renderdoc PUBLIC SampleGame)
+target_compile_definitions(SampleGame-Renderdoc PRIVATE DEBUG_MARKERS=1)
 
 add_executable(Carrot-VR ${ALL_SOURCES} ${VR_SOURCES})
 target_include_directories(Carrot-VR PRIVATE ${OPENXR-INCLUDE-DIR})
 target_include_directories(Carrot-VR PRIVATE thirdparty/openxr-hpp/include/)
 target_compile_definitions(Carrot-VR PRIVATE ENABLE_VR=1)
 #target_compile_definitions(Carrot-VR PRIVATE TRACY_ENABLE=1)
-target_link_libraries(Carrot-VR ${ALL_LIBS} ${OPENXR-LOADER-LIB})
+target_link_libraries(Carrot-VR ${ALL_BASE_LIBS} ${OPENXR-LOADER-LIB})
 
 add_executable(Carrot-VR-DebugGPU ${ALL_SOURCES} ${VR_SOURCES})
 target_include_directories(Carrot-VR-DebugGPU PRIVATE ${OPENXR-INCLUDE-DIR})
 target_include_directories(Carrot-VR-DebugGPU PRIVATE thirdparty/openxr-hpp/include/)
 target_compile_definitions(Carrot-VR-DebugGPU PRIVATE ENABLE_VR=1 TRACY_ENABLE=1)
-target_link_libraries(Carrot-VR-DebugGPU ${ALL_LIBS} ${OPENXR-LOADER-LIB})
+target_link_libraries(Carrot-VR-DebugGPU ${ALL_BASE_LIBS} ${OPENXR-LOADER-LIB})
 
-add_executable(Carrot-Tools ${ENGINE-SOURCES} ${SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
-target_link_libraries(Carrot-Tools ${ALL_LIBS})
+add_executable(Carrot-Tools ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${EXTERNAL_SOURCES} ${TOOLS-SOURCES})
+target_link_libraries(Carrot-Tools ${ALL_BASE_LIBS})
 
 link_directories(OpenAL_BINARY_DIR)
 add_executable(Carrot-TestAudio ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Audio.cpp)
 add_executable(Carrot-TestResources ${ENGINE-SOURCES} ${EXTERNAL_SOURCES} tests/Resources.cpp)
-target_link_libraries(Carrot-TestAudio ${ALL_LIBS})
-target_link_libraries(Carrot-TestResources ${ALL_LIBS})
+target_link_libraries(Carrot-TestAudio ${ALL_BASE_LIBS})
+target_link_libraries(Carrot-TestResources ${ALL_BASE_LIBS})
 
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES
@@ -317,7 +377,7 @@ if(AFTERMATH_LIBS)
     target_compile_definitions(Carrot-GPUDebug PRIVATE AFTERMATH_ENABLE=1)
     target_compile_definitions(Carrot-GPUDebug PRIVATE GPU_ASSISTED_VALIDATION=1)
     target_compile_definitions(Carrot-GPUDebug PRIVATE DEBUG_MARKERS=1)
-    target_link_libraries(Carrot-GPUDebug ${ALL_LIBS} ${AFTERMATH_LIBS})
+    target_link_libraries(Carrot-GPUDebug ${ALL_BASE_LIBS} ${AFTERMATH_LIBS})
 else()
     message("Could not find Aftermath SDK")
 endif()

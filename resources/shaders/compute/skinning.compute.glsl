@@ -32,7 +32,7 @@ struct Instance {
     vec4 inInstanceColor;
     mat4 inInstanceTransform;
     uint animationIndex;
-    float animationTime;
+    double animationTime;
 };
 
 struct Keyframe {
@@ -68,7 +68,7 @@ mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
     if(vertex.boneIDs.x < 0)
         return mat4(1.0);
     // TODO: interpolation
-    float timestamp = mod(instance.animationTime, animations[instance.animationIndex].duration);
+    float timestamp = float(mod(instance.animationTime, animations[instance.animationIndex].duration));
     uint keyframeIndex = 0;
     for(uint i = 0; i < animations[instance.animationIndex].keyframeCount-1; i++) {
         if(timestamp <= animations[instance.animationIndex].keyframes[i+1].timestamp) {

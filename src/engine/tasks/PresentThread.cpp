@@ -8,7 +8,7 @@
 
 namespace Carrot {
     PresentThread::PresentThread(VulkanDriver& driver): driver(driver), presentSemaphore(0) {
-        backingThread = std::thread([this]() { threadFunc(); });
+      //  backingThread = std::thread([this]() { threadFunc(); });
     }
 
     void PresentThread::present(std::uint32_t swapchainIndex, const vk::Semaphore& signalSemaphore, const vk::SubmitInfo& submitInfo, const vk::Fence& presentFence) {
@@ -50,6 +50,6 @@ namespace Carrot {
 
     PresentThread::~PresentThread() {
         running = false;
-        backingThread.join();
+      //  backingThread.join();
     }
 }

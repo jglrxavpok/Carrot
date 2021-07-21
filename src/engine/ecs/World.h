@@ -50,7 +50,7 @@ namespace Carrot {
         vector<Entity_Ptr> entitiesToAdd;
         vector<Entity_Ptr> entitiesToRemove;
 
-        unordered_map<Entity_Ptr, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
+        unordered_map<EntityID, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
 
         vector<unique_ptr<System>> logicSystems;
         vector<unique_ptr<System>> renderSystems;

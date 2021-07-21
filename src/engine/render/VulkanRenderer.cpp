@@ -10,6 +10,7 @@
 #include "imgui.h"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
+    ZoneScoped;
     fullscreenQuad = make_unique<Mesh>(driver,
                                        vector<ScreenSpaceVertex>{
                                                { { -1, -1} },

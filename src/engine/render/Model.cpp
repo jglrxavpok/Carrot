@@ -3,6 +3,7 @@
 //
 
 #include "Model.h"
+#include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include "engine/render/resources/Mesh.h"
@@ -15,6 +16,9 @@
 #include <engine/io/Logging.hpp>
 
 Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
+    ZoneScoped;
+    TracyMessageL(filename.c_str());
+
     Assimp::Importer importer{};
     const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
 

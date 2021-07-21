@@ -78,7 +78,7 @@ namespace Carrot {
         VulkanDriver& getDriver() const { return driver; }
 
         /// Stage a upload to this image, and wait for the upload to finish.
-        void stageUpload(const vector<uint8_t>& data, uint32_t layer = 0, uint32_t layerCount = 1);
+        void stageUpload(std::span<uint8_t> data, uint32_t layer = 0, uint32_t layerCount = 1);
 
         /// Transition the layout of this image from one layout to another
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);

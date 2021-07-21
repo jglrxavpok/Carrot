@@ -64,7 +64,7 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
     }
 }
 
-void Carrot::Image::stageUpload(const vector<uint8_t> &data, uint32_t layer, uint32_t layerCount) {
+void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_t layerCount) {
     // create buffer holding data
     auto stagingBuffer = Carrot::Buffer(driver,
                                         static_cast<vk::DeviceSize>(data.size()),
@@ -119,8 +119,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                                         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
                                         vk::Format::eR8G8B8A8Unorm);
 
-    vector<uint8_t> pixelVector{pixels, pixels+(width*height)*4};
-    image->stageUpload(pixelVector);
+    image->stageUpload(std::span<std::uint8_t>{pixels, static_cast<std::size_t>((width*height)*4) });
 
     stbi_image_free(pixels);
 
@@ -307,12 +306,12 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
                                     vk::ImageType::e2D,
                                     6);
 
-    image->stageUpload(vector<uint8_t>{pixelsPX, pixelsPX+imageSize}, 0);
-    image->stageUpload(vector<uint8_t>{pixelsNX, pixelsNX+imageSize}, 1);
-    image->stageUpload(vector<uint8_t>{pixelsPY, pixelsPY+imageSize}, 2);
-    image->stageUpload(vector<uint8_t>{pixelsNY, pixelsNY+imageSize}, 3);
-    image->stageUpload(vector<uint8_t>{pixelsPZ, pixelsPZ+imageSize}, 4);
-    image->stageUpload(vector<uint8_t>{pixelsNZ, pixelsNZ+imageSize}, 5);
+    image->stageUpload(span<uint8_t>{pixelsPX, imageSize}, 0);
+    image->stageUpload(span<uint8_t>{pixelsNX, imageSize}, 1);
+    image->stageUpload(span<uint8_t>{pixelsPY, imageSize}, 2);
+    image->stageUpload(span<uint8_t>{pixelsNY, imageSize}, 3);
+    image->stageUpload(span<uint8_t>{pixelsPZ, imageSize}, 4);
+    image->stageUpload(span<uint8_t>{pixelsNZ, imageSize}, 5);
 
     stbi_image_free(pixelsPZ);
     stbi_image_free(pixelsPY);

@@ -29,7 +29,7 @@ void Carrot::World::tick(double dt) {
     for(const auto& toRemove : entitiesToRemove) {
         auto position = find(entities.begin(), entities.end(), toRemove);
         if(position != entities.end()) { // clear components
-            entityComponents.erase(entityComponents.find(toRemove));
+            entityComponents.erase(entityComponents.find(*toRemove));
         }
     }
     if(!entitiesToRemove.empty()) {
@@ -70,7 +70,7 @@ void Carrot::World::onFrame(size_t frameIndex) {
 }
 
 Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
-    auto componentMapLocation = this->entityComponents.find(entity);
+    auto componentMapLocation = this->entityComponents.find(*entity);
     if(componentMapLocation == this->entityComponents.end()) {
         // no such entity
         return Signature{};
