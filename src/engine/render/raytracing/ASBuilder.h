@@ -53,6 +53,10 @@ namespace Carrot {
         vk::DeviceAddress scratchBufferAddress = 0;
 
     private:
+        std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;
+        std::vector<vk::BufferMemoryBarrier2KHR> topLevelBarriers;
+
+    private:
 
         vk::AccelerationStructureInstanceKHR convertToVulkanInstance(const InstanceInput& instance);
 
@@ -76,10 +80,13 @@ namespace Carrot {
         void addInstance(const InstanceInput input);
 
         void buildBottomLevelAS(bool enableUpdate = true);
-        void buildTopLevelAS(bool update);
+        void buildTopLevelAS(bool update, bool waitForCompletion = false);
 
-        void updateBottomLevelAS(const vector<size_t>& blasIndices);
+        void updateBottomLevelAS(const vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
         void updateTopLevelAS();
+
+        void startFrame();
+        void waitForCompletion(vk::CommandBuffer& cmds);
 
         TLAS& getTopLevelAS();
 

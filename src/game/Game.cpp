@@ -118,7 +118,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     });
 
     as.buildBottomLevelAS();
-    as.buildTopLevelAS(false);
+    as.buildTopLevelAS(false, true);
 
     // TODO: light ID booking system
     auto& light = engine.getRayTracer().getLightBuffer().lights[0];
@@ -159,14 +159,14 @@ void Game::Game::onFrame(uint32_t frameIndex) {
     ZoneScoped;
     // TODO: optimize
 
-    animatedUnits->onFrame(frameIndex);
+    auto& skinningSemaphore = animatedUnits->onFrame(frameIndex);
 
     world.onFrame(frameIndex);
 
     {
         ZoneScopedN("Update Raytracing AS");
         // TODO: proper indexing
-        engine.getASBuilder().updateBottomLevelAS(blasIndices);
+        engine.getASBuilder().updateBottomLevelAS(blasIndices, skinningSemaphore);
         engine.getASBuilder().updateTopLevelAS();
     }
 
@@ -214,8 +214,8 @@ void Game::Game::onMouseMove(double dx, double dy) {
 }
 
 void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
-    semaphores.emplace_back(animatedUnits->getSkinningSemaphore(frameIndex));
-    waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);
+/*    semaphores.emplace_back(animatedUnits->getSkinningSemaphore(frameIndex));
+    waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);*/
 }
 
 static float totalTime = 0.0f;

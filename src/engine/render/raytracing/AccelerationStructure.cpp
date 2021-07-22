@@ -21,3 +21,7 @@ Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& drive
 vk::AccelerationStructureKHR& Carrot::AccelerationStructure::getVulkanAS() {
     return *as;
 }
+
+Carrot::Buffer& Carrot::AccelerationStructure::getBuffer() {
+    return *buffer;
+}

@@ -35,6 +35,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<
         vertexCountPerInstance += meshSize;
     }
 
+    // TODO: swapchainlength-buffering?
     flatVertices = make_unique<Buffer>(engine.getVulkanDriver(),
                                        sizeof(SkinnedVertex) * vertexCountPerInstance,
                                        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
@@ -311,7 +312,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     }
 }
 
-void Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
+vk::Semaphore& Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
     ZoneScoped;
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
@@ -324,6 +325,7 @@ void Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
             .signalSemaphoreCount = 1,
             .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
     });
+    return *skinningSemaphores[frameIndex];
 }
 
 void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t indirectDrawCount) {

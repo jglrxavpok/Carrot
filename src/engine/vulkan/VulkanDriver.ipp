@@ -6,7 +6,7 @@
 
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer) {
+void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, CommandBufferConsumer consumer) {
     // allocate command buffer
     vk::CommandBufferAllocateInfo allocationInfo {
             .commandPool = commandPool,
@@ -33,21 +33,30 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
             .commandBufferCount = 1,
             .pCommandBuffers = &stagingCommands,
     };
+
+    if(waitSemaphore) {
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &waitSemaphore;
+        submitInfo.pWaitDstStageMask = &waitDstFlags;
+    }
     queue.submit(submitInfo, nullptr);
 
-    // wait for execution
-    queue.waitIdle();
+    if(waitFor) {
+        // wait for execution
+        queue.waitIdle();
 
-    // free now-useless command buffers
-    getLogicalDevice().freeCommandBuffers(commandPool, stagingCommands);
+        // free now-useless command buffers
+        getLogicalDevice().freeCommandBuffers(commandPool, stagingCommands);
+    }
+    // TODO: freeCommandBuffer if no wait
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer) {
-    performSingleTimeCommands(getThreadTransferCommandPool(), getTransferQueue(), consumer);
+void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags) {
+    performSingleTimeCommands(getThreadTransferCommandPool(), getTransferQueue(), waitFor, waitSemaphore, waitDstFlags, consumer);
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer) {
-    performSingleTimeCommands(getThreadGraphicsCommandPool(), getGraphicsQueue(), consumer);
+void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags) {
+    performSingleTimeCommands(getThreadGraphicsCommandPool(), getGraphicsQueue(), waitFor, waitSemaphore, waitDstFlags, consumer);
 }

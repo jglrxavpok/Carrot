@@ -258,7 +258,7 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
         commandPool = driver.getThreadGraphicsCommandPool();
         queue = driver.getGraphicsQueue();
     }
-    driver.performSingleTimeCommands(commandPool, queue, [&](vk::CommandBuffer &commands) {
+    driver.performSingleTimeCommands(commandPool, queue, true, {}, static_cast<vk::PipelineStageFlagBits>(0), [&](vk::CommandBuffer &commands) {
         transitionLayoutInline(commands, oldLayout, newLayout);
     });
 }

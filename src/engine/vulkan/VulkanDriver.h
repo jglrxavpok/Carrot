@@ -198,19 +198,19 @@ namespace Carrot {
         vk::CommandPool& getThreadTransferCommandPool() { return *transferCommandPool.get(); };
 
         template<typename CommandBufferConsumer>
-        void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, CommandBufferConsumer consumer);
+        void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, CommandBufferConsumer consumer);
 
         /// Performs a transfer operation on the transfer queue.
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeTransferCommands(CommandBufferConsumer consumer);
+        void performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0));
 
         /// Performs a graphics operation on the graphics queue.
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer);
+        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0));
 
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
                                                           vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor,

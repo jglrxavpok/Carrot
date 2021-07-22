@@ -17,5 +17,7 @@ namespace Carrot {
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
 
         vk::AccelerationStructureKHR& getVulkanAS();
+
+        Buffer& getBuffer();
     };
 }

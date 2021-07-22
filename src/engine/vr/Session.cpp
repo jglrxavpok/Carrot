@@ -134,6 +134,8 @@ namespace Carrot::VR {
         shouldRender = (bool)state.shouldRender;
         predictedEndTime = state.predictedDisplayTime;
 
+        TracyPlot("Display duration (ms)", state.predictedDisplayPeriod.get()/1000000.0);
+
         xr::ViewState viewState;
         xr::ViewLocateInfo locateInfo;
         locateInfo.viewConfigurationType = xr::ViewConfigurationType::PrimaryStereo;
@@ -165,9 +167,13 @@ namespace Carrot::VR {
 
     void Session::xrEndFrame() {
         ZoneScopedN("VR End Frame");
-        xrSwapchain->releaseSwapchainImage({});
+        {
+            ZoneScopedN("Release swapchain");
+            xrSwapchain->releaseSwapchainImage({});
+        }
 
         auto updateView = [&](std::uint32_t index) {
+            ZoneScopedN("Update eye");
             auto& view = xrProjectionViews[index];
             view.pose = xrViews[index].pose;
             view.fov = xrViews[index].fov;
@@ -197,7 +203,10 @@ namespace Carrot::VR {
         frameEndInfo.layerCount = 1;
         frameEndInfo.layers = layers;
 
-        xrSession->endFrame(frameEndInfo);
+        {
+            ZoneScopedN("xrSession->endFrame(frameEndInfo);");
+            xrSession->endFrame(frameEndInfo);
+        }
     }
 
     void Session::setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye) {
@@ -213,15 +222,16 @@ namespace Carrot::VR {
         if(!isReadyForRendering())
             return;
         xrWaitFrame();
+        xrBeginFrame();
     }
 
     void Session::present(const Render::Context& regularRenderContext) {
         if(!isReadyForRendering())
             return;
-        auto result = xrBeginFrame();
+/*        auto result = xrBeginFrame();
         if(result == xr::Result::FrameDiscarded) {
             return;
-        }
+        }*/
 
         {
             ZoneScopedN("VR Acquire swapchain");

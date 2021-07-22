@@ -59,7 +59,7 @@ namespace Carrot {
         vk::Semaphore& getSkinningSemaphore(size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
 
 #pragma region RenderingUpdate
-        void onFrame(size_t frameIndex);
+        vk::Semaphore& onFrame(size_t frameIndex);
 
         void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t instanceCount);
 #pragma endregion RenderingUpdate

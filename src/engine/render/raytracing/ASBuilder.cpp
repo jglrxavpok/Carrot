@@ -200,7 +200,8 @@ vk::AccelerationStructureInstanceKHR Carrot::ASBuilder::convertToVulkanInstance(
     return vkInstance;
 }
 
-void Carrot::ASBuilder::buildTopLevelAS(bool update) {
+void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
+    ZoneScoped;
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
     if(!tlasBuildCommands) {
@@ -216,9 +217,12 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     vector<vk::AccelerationStructureInstanceKHR> instances{};
     instances.reserve(topLevelInstances.size());
 
-    for(size_t i = 0; i < topLevelInstances.size(); i++) {
-        // TODO: maybe avoid this conversion each frame
-        instances.push_back(convertToVulkanInstance(topLevelInstances[i]));
+    {
+        ZoneScopedN("Convert to vulkan instances");
+        for(size_t i = 0; i < topLevelInstances.size(); i++) {
+            // TODO: maybe avoid this conversion each frame
+            instances.push_back(convertToVulkanInstance(topLevelInstances[i]));
+        }
     }
 
     buildCommand.begin(vk::CommandBufferBeginInfo {
@@ -229,7 +233,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
         instancesBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
                                               instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
                                               vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
-                                              vk::MemoryPropertyFlagBits::eDeviceLocal
+                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
 
         instancesBuffer->setDebugNames("TLAS Instances");
@@ -239,7 +243,12 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
             .buffer = instancesBuffer->getVulkanBuffer(),
         });
     }
-    instancesBuffer->stageUploadWithOffsets(make_pair(0ull, instances));
+    {
+        ZoneScopedN("Stage upload");
+        instancesBuffer->directUpload(instances.data(), instances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
+        // TODO: remove wait
+        //instancesBuffer->stageUploadWithOffsets(make_pair(0ull, instances));
+    }
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesVk {
         .arrayOfPointers = false,
@@ -283,7 +292,6 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
         });
     }
 
-
     buildInfo.srcAccelerationStructure = update ? tlas.as->getVulkanAS() : nullptr;
     buildInfo.dstAccelerationStructure = tlas.as->getVulkanAS();
     buildInfo.scratchData.deviceAddress = scratchBufferAddress;
@@ -292,6 +300,27 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
     vk::AccelerationStructureBuildRangeInfoKHR buildOffsetInfo {
         .primitiveCount = static_cast<uint32_t>(instances.size())
     };
+
+    bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
+            .srcStageMask = vk::PipelineStageFlagBits2KHR::e2Transfer,
+            .srcAccessMask = vk::AccessFlagBits2KHR::e2TransferWrite,
+            .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+            .dstAccessMask = vk::AccessFlagBits2KHR::e2MemoryRead,
+
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+
+            // TODO: will need to change with non-dedicated buffers
+            .buffer = instancesBuffer->getVulkanBuffer(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+    });
+    vk::DependencyInfoKHR dependency {
+            .bufferMemoryBarrierCount = static_cast<uint32_t>(bottomLevelBarriers.size()),
+            .pBufferMemoryBarriers = bottomLevelBarriers.data(),
+    };
+    buildCommand.pipelineBarrier2KHR(dependency);
+
     buildCommand.buildAccelerationStructuresKHR(buildInfo, &buildOffsetInfo);
 
     buildCommand.end();
@@ -300,15 +329,46 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update) {
        .commandBufferCount = 1,
        .pCommandBuffers = &buildCommand,
     });
-    // TODO: remove wait (use semaphore)
-    renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
+
+    bottomLevelBarriers.clear();
+    if(waitForCompletion) {
+        renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
+    } else {
+        topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
+                .srcStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                .srcAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureWrite,
+                .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                .dstAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureRead,
+
+                .srcQueueFamilyIndex = 0,
+                .dstQueueFamilyIndex = 0,
+
+                // TODO: will need to change with non-dedicated buffers
+                .buffer = tlas.as->getBuffer().getVulkanBuffer(),
+                .offset = 0,
+                .size = VK_WHOLE_SIZE,
+        });
+    }
+}
+
+void Carrot::ASBuilder::startFrame() {
+    topLevelBarriers.clear();
+}
+
+void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
+    vk::DependencyInfoKHR dependency {
+            .bufferMemoryBarrierCount = static_cast<uint32_t>(topLevelBarriers.size()),
+            .pBufferMemoryBarriers = topLevelBarriers.data(),
+    };
+    cmds.pipelineBarrier2KHR(dependency);
 }
 
 Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
     return tlas;
 }
 
-void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
+void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore) {
+    ZoneScoped;
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
 
@@ -369,13 +429,28 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices) {
             buildInfoList[i] = *blas.cachedBuildInfo;
             assert(blas.cachedBuildRanges.size() == 1);
             buildRangeList[i] = blas.cachedBuildRanges[0];
+
+            bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
+                    .srcStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                    .srcAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureWrite,
+                    .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                    .dstAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureRead,
+
+                    .srcQueueFamilyIndex = 0,
+                    .dstQueueFamilyIndex = 0,
+
+                    // TODO: will need change with non-dedicated buffers
+                    .buffer = blas.as->getBuffer().getVulkanBuffer(),
+                    .offset = 0,
+                    .size = VK_WHOLE_SIZE,
+            });
         }
         commands.buildAccelerationStructuresKHR(buildInfoList, buildRangeList);
-    });
+    }, false /* don't wait for this command to end, we use pipeline barriers */, skinningSemaphore, vk::PipelineStageFlagBits::eComputeShader);
 }
 
 void Carrot::ASBuilder::updateTopLevelAS() {
-    buildTopLevelAS(true);
+    buildTopLevelAS(true, false);
 }
 
 void Carrot::ASBuilder::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {

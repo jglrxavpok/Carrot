@@ -53,6 +53,7 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     ZoneScoped;
     // TODO: proper size
+    renderer.getASBuilder().startFrame();
     vector<SceneElement> sceneElements(maxInstances);
     auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
     size_t maxInstance = topLevel.size();
@@ -92,6 +93,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
 
     auto extent = renderer.getVulkanDriver().getFinalRenderSize();
     if(hasStuffToDraw) {
+        renderer.getEngine().getASBuilder().waitForCompletion(commands);
         commands.traceRaysKHR(&strideAddresses[0], &strideAddresses[1], &strideAddresses[2], &strideAddresses[3], static_cast<std::uint32_t>(extent.width * ResolutionScale), static_cast<std::uint32_t>(extent.height * ResolutionScale), 1);
     }
 }
