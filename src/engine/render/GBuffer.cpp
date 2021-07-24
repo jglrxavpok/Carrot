@@ -67,7 +67,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
 
 Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& data,
                                                                                       const Carrot::Render::PassData::Raytracing& rtData,
-                                                                                      const Carrot::Render::PassData::ImGui& imguiData,
                                                                                       const Carrot::Render::FrameResource& skyboxOutput,
                                                                                       Carrot::Render::GraphBuilder& graph) {
     using namespace Carrot::Render;
@@ -82,7 +81,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 resolveData.depthStencil = graph.read(data.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
                 resolveData.flags = graph.read(data.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.raytracing = graph.read(rtData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.ui = graph.read(imguiData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
                                                         {},
@@ -99,7 +97,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.swapchainIndex), 0, 3, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.raytracing, frame.swapchainIndex), 0, 5, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.ui, frame.swapchainIndex), 0, 6, nullptr);
 
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 10, nullptr);
 

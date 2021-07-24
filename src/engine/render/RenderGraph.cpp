@@ -51,7 +51,7 @@ namespace Carrot::Render {
                 break;
         }
         resources.emplace_back(&toWrite);
-        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout);
+        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false);
         return resources.back();
     }
 
@@ -96,7 +96,7 @@ namespace Carrot::Render {
                 break;
         }
 
-        currentPass->addOutput(r, loadOp, clearValue, aspect, layout);
+        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true);
         return r;
     }
 

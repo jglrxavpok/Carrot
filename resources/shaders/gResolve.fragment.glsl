@@ -9,8 +9,7 @@ layout(input_attachment_index = 2, binding = 2) uniform subpassInput viewPos;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput viewNormals;
 layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
 layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
-layout(set = 0, binding = 6) uniform texture2D uiRendered;
-layout(set = 0, binding = 7) uniform sampler linearSampler;
+layout(set = 0, binding = 6) uniform sampler linearSampler;
 
 layout(set = 0, binding = 9) uniform Debug {
     #include "debugparams.glsl"
@@ -52,8 +51,5 @@ void main() {
         outColorWorld = vec4(skyboxRGB, fragmentColor.a);
     }
 
-    vec4 outColorUI = texture(sampler2D(uiRendered, linearSampler), uv);
-    float alpha01 = (1 - outColorUI.a)*outColorWorld.a + outColorUI.a;
-    vec4 renderedColor = vec4(((1-outColorUI.a) * outColorWorld.a * outColorWorld.rgb + outColorUI.a*outColorUI.rgb) / alpha01, 1.0);
-    outColor = vec4(renderedColor.rgb, 1.0);
+    outColor = outColorWorld;
 }

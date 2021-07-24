@@ -127,7 +127,6 @@ namespace Carrot::Render {
             FrameResource depthStencil;
             FrameResource flags;
             FrameResource raytracing;
-            FrameResource ui;
             FrameResource skybox;
 
             FrameResource resolved;

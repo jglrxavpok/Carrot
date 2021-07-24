@@ -781,22 +781,19 @@ void Carrot::VulkanDriver::createUniformBuffers() {
     }
 }
 
-void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands) {
+void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size) {
     commands.setViewport(0, vk::Viewport{
             .x = 0.0f,
             .y = 0.0f,
-            .width = static_cast<float>(getFinalRenderSize().width),
-            .height = static_cast<float>(getFinalRenderSize().height),
+            .width = static_cast<float>(size.width),
+            .height = static_cast<float>(size.height),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
     });
 
     commands.setScissor(0, vk::Rect2D {
             .offset = {0,0},
-            .extent = {
-                    static_cast<uint32_t>(getFinalRenderSize().width),
-                    static_cast<uint32_t>(getFinalRenderSize().height),
-            },
+            .extent = size,
     });
 }
 

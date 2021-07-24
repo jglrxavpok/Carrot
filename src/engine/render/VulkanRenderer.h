@@ -56,7 +56,6 @@ namespace Carrot {
         void createRayTracer();
 
         void initImGui();
-        void initImGuiPass(const vk::RenderPass& renderPass);
 
     public:
         static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
@@ -107,6 +106,7 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
     public:
+        void initImGuiPass(const vk::RenderPass& renderPass);
         Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:

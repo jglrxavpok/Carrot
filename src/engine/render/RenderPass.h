@@ -32,7 +32,7 @@ namespace Carrot::Render {
 
     class CompiledPass: public SwapchainAware {
     public:
-        using InitCallback = std::function<std::vector<vk::UniqueFramebuffer>(CompiledPass&)>;
+        using InitCallback = std::function<std::vector<vk::UniqueFramebuffer>(CompiledPass&, vk::Extent2D&)>;
 
         /// Constructor for rasterized passes
         explicit CompiledPass(
@@ -95,6 +95,7 @@ namespace Carrot::Render {
         InitCallback initCallback;
         SwapchainRecreationCallback swapchainRecreationCallback;
         std::string name;
+        vk::Extent2D renderSize;
 
     private: // Pre-recording
         vk::UniqueCommandPool commandPool;
@@ -117,7 +118,7 @@ namespace Carrot::Render {
 
     public:
         void addInput(FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
-        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout);
+        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass);
         void present(FrameResource& toPresent);
 
     public:
@@ -137,6 +138,7 @@ namespace Carrot::Render {
             vk::AttachmentLoadOp loadOp;
             vk::ClearValue clearValue;
             vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+            bool isCreatedInThisPass = false;
 
             Output(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
         };

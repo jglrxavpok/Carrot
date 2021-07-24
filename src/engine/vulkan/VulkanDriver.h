@@ -268,7 +268,7 @@ namespace Carrot {
         Engine& getEngine();
 
     public: // swapchain & viewport
-        void updateViewportAndScissor(vk::CommandBuffer& commands);
+        void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
 
         void fetchNewFramebufferSize();
 

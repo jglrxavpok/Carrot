@@ -274,7 +274,7 @@ include_directories(thirdparty/imgui-node-editor/)
 include_directories(thirdparty/stduuid/include)
 
 set(GAME-SOURCES
-        src/main.cpp
+        src/game/main.cpp
 
         src/game/Game.cpp
         )

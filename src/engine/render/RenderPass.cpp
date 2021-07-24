@@ -94,13 +94,13 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
                     .framebuffer = *framebuffers[renderContext.swapchainIndex],
                     .renderArea = {
                             .offset = vk::Offset2D{0, 0},
-                            .extent = getVulkanDriver().getFinalRenderSize()
+                            .extent = renderSize,
                     },
                     .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                     .pClearValues = clearValues.data(),
             }, prerecordable ? vk::SubpassContents::eSecondaryCommandBuffers : vk::SubpassContents::eInline);
             if(!prerecordable) {
-                getVulkanDriver().updateViewportAndScissor(cmds);
+                getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
             }
         }
 
@@ -126,9 +126,10 @@ void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource,
 }
 
 void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
-                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout) {
+                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass) {
     outputs.emplace_back(resource, loadOp, clearValue, aspect);
     outputs.back().resource.updateLayout(layout);
+    outputs.back().isCreatedInThisPass = isCreatedInThisPass;
     resource.updateLayout(layout);
     finalLayouts[resource.id] = layout;
 }
@@ -251,16 +252,17 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 .pDependencies = &mainDependency,
         });
 
-        auto init = [outputs = outputs](CompiledPass& pass) {
+        auto init = [outputs = outputs](CompiledPass& pass, vk::Extent2D& renderSize) {
             auto& graph = pass.getGraph();
             auto& driver = pass.getVulkanDriver();
             std::vector<std::vector<vk::ImageView>> attachmentImageViews(driver.getSwapchainImageCount()); // [frameIndex][attachmentIndex], one per swapchain image
             std::vector<vk::UniqueFramebuffer> framebuffers(driver.getSwapchainImageCount());
+
+            std::uint32_t maxWidth = 0;
+            std::uint32_t maxHeight = 0;
             for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
                 auto& frameImageViews = attachmentImageViews[i];
 
-                std::uint32_t maxWidth = 0;
-                std::uint32_t maxHeight = 0;
                 // TODO: inputs
                 for (const auto& output : outputs) {
                     auto& texture = graph.createTexture(output.resource, i);
@@ -285,18 +287,23 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 framebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(framebufferInfo,
                                                                                               driver.getAllocationCallbacks()));
             }
+            renderSize.width = maxWidth;
+            renderSize.height = maxHeight;
             return framebuffers;
         };
         result = std::make_unique<CompiledPass>(graph, name, std::move(renderPass), clearValues,
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable);
     } else {
-        auto init = [outputs = outputs](CompiledPass& pass) {
+        auto init = [outputs = outputs](CompiledPass& pass, vk::Extent2D& renderSize) {
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
                     DISCARD(graph.createTexture(output.resource, i)); // force create textures
                 }
             }
+            // no render pass = no render size
+            renderSize.width = 0;
+            renderSize.height = 0;
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
         result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable);
@@ -307,7 +314,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
 void Carrot::Render::CompiledPass::createFramebuffers(){
     framebuffers.clear();
-    auto fb = this->initCallback(*this);
+    auto fb = this->initCallback(*this, renderSize);
     runtimeAssert(rasterized || fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
     framebuffers = std::move(fb);
     swapchainRecreationCallback(*this);
@@ -358,7 +365,7 @@ void Carrot::Render::CompiledPass::createCommandBuffers(Render::Eye eye) {
         });
 
         if(rasterized) {
-            getVulkanDriver().updateViewportAndScissor(cmds);
+            getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
         }
         renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(i, eye), cmds);
         cmds.end();

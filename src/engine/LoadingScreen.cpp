@@ -115,7 +115,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
                                                3,2,0,
                                        });
 
-    driver.updateViewportAndScissor(cmds);
+    driver.updateViewportAndScissor(cmds, swapchainExtent);
 
     vk::ClearValue color{std::array{1.0f,1.0f,0.0f,1.0f}};
     cmds.beginRenderPass(vk::RenderPassBeginInfo {
