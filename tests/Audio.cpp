@@ -16,7 +16,7 @@ namespace Game {
 
         void tick(double frameTime) override {};
 
-        void recordGBufferPass(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
 
         void onMouseMove(double dx, double dy) override {};
 
@@ -30,7 +30,7 @@ namespace Game {
 
 int main() {
     {
-        auto coinPCM = IO::readFile("resources/sounds/coin.wav");
+        auto coinPCM = Carrot::IO::readFile("resources/sounds/coin.wav");
 
         auto alDevice = AL::openDefaultDevice();
         auto context = alDevice.createContext();
@@ -96,5 +96,5 @@ int main() {
 }
 
 void Carrot::Engine::initGame() {
-    game = make_unique<Game::Game>(*this);
+    game = std::make_unique<Game::Game>(*this);
 }

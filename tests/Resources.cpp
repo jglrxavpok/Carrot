@@ -15,7 +15,7 @@ namespace Game {
 
         void tick(double frameTime) override {};
 
-        void recordGBufferPass(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
 
         void onMouseMove(double dx, double dy) override {};
 
@@ -33,7 +33,7 @@ int main() {
 
     try {
         Resource resource("resources/shaders/screenQuad.vertex.glsl.spv");
-        runtimeAssert(resource.getSize() == 1648, "");
+        runtimeAssert(resource.getSize() == 1620, "");
 
         auto buffer = resource.readAll();
         auto readWithIfstream = readFile("resources/shaders/screenQuad.vertex.glsl.spv");
