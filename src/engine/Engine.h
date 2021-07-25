@@ -150,7 +150,7 @@ namespace Carrot {
 
         ASBuilder& getASBuilder();
 
-        bool grabbingCursor() const { return grabCursor; };
+        bool isGrabbingCursor() const { return grabbingCursor; };
 
         RayTracer& getRayTracer() { return renderer.getRayTracer(); };
 
@@ -168,8 +168,21 @@ namespace Carrot {
 
         void onSwapchainImageCountChange(size_t newCount) override;
 
+        void toggleCursorGrab() {
+            if(grabbingCursor) {
+                ungrabCursor();
+            } else {
+                grabCursor();
+            }
+        }
+
+        void grabCursor() {
+            grabbingCursor = true;
+            glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+
         void ungrabCursor() {
-            grabCursor = false;
+            grabbingCursor = false;
             glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
 
@@ -191,6 +204,14 @@ namespace Carrot {
         VR::Session& getVRSession() { return *vrSession; }
 #endif
 
+    public: // inputs
+
+        using KeyCallback = std::function<void(int key, int scancode, int action, int mods)>;
+
+        void addGLFWKeyCallback(KeyCallback keyCallback) {
+            keyCallbacks.push_back(keyCallback);
+        }
+
     public:
         const Configuration& getConfiguration() const { return config; }
 
@@ -200,7 +221,7 @@ namespace Carrot {
         double mouseY = 0.0;
         float currentFPS = 0.0f;
         bool running = true;
-        bool grabCursor = false;
+        bool grabbingCursor = false;
         NakedPtr<GLFWwindow> window = nullptr;
 
 #ifdef ENABLE_VR
@@ -261,6 +282,8 @@ namespace Carrot {
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
         unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
+
+        std::vector<KeyCallback> keyCallbacks;
 
         /// Init engine
         void init();

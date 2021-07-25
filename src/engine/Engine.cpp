@@ -41,6 +41,8 @@
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
 #include "engine/utils/Macros.h"
+#include "engine/io/actions/ActionSet.h"
+#include "engine/io/Logging.hpp"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -270,6 +272,7 @@ void Carrot::Engine::run() {
     auto previous = chrono::steady_clock::now();
     auto lag = chrono::duration<float>(0.0f);
     const auto timeBetweenUpdates = chrono::duration<float>(1.0f/60.0f); // 60 Hz
+    bool ticked = false;
     while(running) {
         auto frameStartTime = chrono::steady_clock::now();
         chrono::duration<float> timeElapsed = frameStartTime-previous;
@@ -277,6 +280,7 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
         previous = frameStartTime;
 
+        Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
         glfwPollEvents();
 #ifdef ENABLE_VR
         if(config.runInVR) {
@@ -295,7 +299,9 @@ void Carrot::Engine::run() {
             ZoneScopedN("Tick");
             TracyPlot("Tick lag", lag.count());
             TracyPlot("Estimated FPS", currentFPS);
+            ticked = false;
             while(lag >= timeBetweenUpdates) {
+                ticked = true;
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
             }
@@ -770,10 +776,16 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         takeScreenshot();
     }
 
+    for(auto& callback : keyCallbacks) {
+        callback(key, scancode, action, mods);
+    }
+
+    /*
     if(key == GLFW_KEY_G && action == GLFW_PRESS) {
         grabCursor = !grabCursor;
         glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    }
+    }*/
+
 
 
     // TODO: pass input to game

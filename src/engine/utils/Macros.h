@@ -5,6 +5,7 @@
 #pragma once
 #include <stdexcept>
 #include "Assert.h"
+#include "Containers.h"
 
 namespace Carrot::Exceptions {
     class TodoException: public std::exception {

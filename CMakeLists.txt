@@ -135,7 +135,7 @@ include_directories(thirdparty/imgui/misc/cpp)
 include_directories(thirdparty/dr_libs/)
 include_directories(thirdparty/imgui-node-editor/)
 include_directories(thirdparty/stduuid/include)
-link_directories(OpenAL_BINARY_DIR)
+link_directories(${OpenAL_BINARY_DIR})
 
 add_subdirectory(src/engine)
 add_subdirectory(src/game)

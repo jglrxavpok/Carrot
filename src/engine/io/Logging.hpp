@@ -13,6 +13,7 @@
 #include <list>
 #include <cassert>
 #include <strstream>
+#include "engine/utils/stringmanip.h"
 
 namespace Carrot::Log {
     class LogError: public std::exception {
@@ -60,10 +61,7 @@ namespace Carrot::Log {
 
         const auto timestamp = std::chrono::system_clock::now() - getStartTime();
 
-        int size = std::snprintf(nullptr, 0, "[%s] (T %llu) %s\n", getSeverityString(severity), timestamp.count(), message.c_str()) +1;
-        std::unique_ptr<char[]> buffer = std::make_unique<char[]>(size);
-        std::snprintf(buffer.get(), size, "[%s] (T %llu) %s\n", getSeverityString(severity), timestamp.count(), message.c_str());
-        out << buffer.get();
+        out << Carrot::sprintf("[%s] (T %llu) %s\n", getSeverityString(severity), timestamp.count(), message.c_str());
 //        out << "[" << getSeverityString(severity) << "] (T " << timestamp << ") " << message << '\n';
 
         getMessages().emplace_back(Message {

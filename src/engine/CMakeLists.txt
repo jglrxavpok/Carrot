@@ -5,6 +5,10 @@ set(ENGINE-SOURCES
         ${EngineRoot}io/Logging.cpp
         ${EngineRoot}io/FileHandle.cpp
         ${EngineRoot}io/Resource.cpp
+
+        ${EngineRoot}io/actions/ActionSet.cpp
+
+
         ${EngineRoot}memory/NakedPtr.hpp
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/resources/Mesh.cpp

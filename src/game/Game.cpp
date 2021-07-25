@@ -26,13 +26,26 @@
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
+#include <engine/io/actions/ActionSet.h>
 
 constexpr static int maxInstanceCount = 100; // TODO: change
 
 static vector<size_t> blasIndices{};
 
+static Carrot::IO::ActionSet gameplayActions { "gameplay" };
+static Carrot::IO::BoolInputAction grabMouse { "grab mouse" };
+
 Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     ZoneScoped;
+
+    {
+        ZoneScopedN("Define inputs");
+        grabMouse.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_G));
+
+        gameplayActions.add(grabMouse);
+        gameplayActions.activate();
+    }
+
     engine.setSkybox(Skybox::Type::Forest);
 
     world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
@@ -195,7 +208,7 @@ float pitch = 0.0f;
 
 void Game::Game::onMouseMove(double dx, double dy) {
     if(!engine.getConfiguration().runInVR) {
-        if( ! engine.grabbingCursor())
+        if( ! engine.isGrabbingCursor())
             return;
 
         auto& camera = engine.getCamera();
@@ -220,6 +233,10 @@ void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Se
 
 static float totalTime = 0.0f;
 void Game::Game::tick(double frameTime) {
+    if(grabMouse.wasJustPressed()) {
+        engine.toggleCursorGrab();
+    }
+
     {
         ZoneScopedN("World tick");
         world.tick(frameTime);
