@@ -29,10 +29,13 @@ An action can be bound to multiple physical inputs, the engine will resolve the 
 * Float: Result with the largest absolute value
 * Vec2: Result with the longest length
 
+// TODO: This resolution is not properly implemented everywhere yet. 
+
 ## Resolving type mismatches
 Depending on the physical device, the OpenXR runtime (when running in VR) and suggested bindings, an `Action` of type `FloatInput` could be bound to a physical input which is only a boolean input (a button), and other mismatches can arise.
 
 In the case of a mismatch, the following rules apply:
-* If the action is a boolean input, but the physical input is scalar, the action is considered pressed if the scalar value is > `threshold`. `threshold` is hard-coded to be 0.5 at the moment.
+* If the action is a boolean input, but the physical input is scalar, the action is considered pressed if the scalar value is >= `threshold`. `threshold` is hard-coded to be 0.5 at the moment.
+* If the action is a boolean input, but the physical input is vectorial, the action is considered pressed if the vector length is >= `threshold`. `threshold` is hard-coded to be 0.5 at the moment.
 * If the action is a float input, but the physical input is a button, the action will get the value 1.0 if the button is pressed, 0.0 otherwise.
 * Vec2 cannot be applied to something else than the mouse, a d-pad or a joystick.

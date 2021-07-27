@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include "engine/utils/stringmanip.h"
+#include "engine/io/actions/InputVectors.h"
 
 namespace Carrot::IO {
     enum class ActionType {
@@ -30,16 +31,16 @@ namespace Carrot::IO {
 
 
     public:
-        explicit Action(std::string_view name, std::string_view suggestedBinding = ""): name(name), suggestedBinding(suggestedBinding) {
+        explicit Action(std::string_view name): name(name) {
             std::memset(&state, 0, sizeof(state));
         }
 
         const std::string& getName() const { return name; }
-        const std::string& getSuggestedBinding() const { return suggestedBinding; }
+        const std::vector<std::string>& getSuggestedBindings() const { return suggestedBindings; }
 
     public:
         void suggestBinding(std::string_view binding) {
-            suggestedBinding = binding;
+            suggestedBindings.emplace_back(binding);
         }
 
     public:
@@ -73,7 +74,7 @@ namespace Carrot::IO {
 
     private:
         std::string name;
-        std::string suggestedBinding;
+        std::vector<std::string> suggestedBindings;
         union {
             struct {
                 bool bValue;
@@ -121,8 +122,25 @@ namespace Carrot::IO {
         return Carrot::sprintf("/user/glfw/keyboard/%d", glfwCode);
     }
 
-    // TODO: joystick bindings
-    // TODO: mouse movement bindings
-    // TODO: mouse buttons bindings
+    inline std::string GLFWMouseButtonBinding(int buttonID) {
+        return Carrot::sprintf("/user/glfw/mouse/%d", buttonID);
+    }
+
+    inline std::string GLFWGamepadButtonBinding(int gamepadID, int buttonID) {
+        return Carrot::sprintf("/user/glfw/gamepad/%d/button/%d", gamepadID, buttonID);
+    }
+
+    inline std::string GLFWGamepadAxisBinding(int gamepadID, int axisID) {
+        return Carrot::sprintf("/user/glfw/gamepad/%d/axis/%d", gamepadID, axisID);
+    }
+
+    inline std::string GLFWGamepadVec2Binding(int gamepadID, Carrot::IO::GameInputVectorType vectorType) {
+        return Carrot::sprintf("/user/glfw/gamepad/%d/vec2/%d", gamepadID, vectorType);
+    }
+
+    constexpr const char* GLFWMousePositionBinding = "/user/glfw/mouse/pos";
+    constexpr const char* GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
+    constexpr const char* GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";
+
     // TODO: OpenXR bindings
 }

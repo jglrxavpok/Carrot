@@ -43,14 +43,19 @@ namespace Carrot::IO {
         }
 
     public:
+        const std::vector<BoolInputAction*>& getBoolInputs() const { return boolInputs; }
+        const std::vector<FloatInputAction*>& getFloatInputs() const { return floatInputs; }
+        const std::vector<Vec2InputAction*>& getVec2Inputs() const { return vec2Inputs; }
+
+    public:
         static void updatePrePollAllSets(Carrot::Engine& engine, bool setPreviousValues);
+        static std::vector<ActionSet*>& getSetList();
 
     private:
         void updatePrePoll(bool setPreviousValues);
         void prepareForUse(Carrot::Engine& engine);
 
     private:
-        static std::vector<ActionSet*>& getSetList();
 
         bool readyForUse = false;
         bool isXRSet = false;

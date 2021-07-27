@@ -27,6 +27,7 @@
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
 #include <engine/io/actions/ActionSet.h>
+#include <engine/io/Logging.hpp>
 
 constexpr static int maxInstanceCount = 100; // TODO: change
 
@@ -34,6 +35,13 @@ static vector<size_t> blasIndices{};
 
 static Carrot::IO::ActionSet gameplayActions { "gameplay" };
 static Carrot::IO::BoolInputAction grabMouse { "grab mouse" };
+static Carrot::IO::BoolInputAction leftClickTest { "left click test" };
+static Carrot::IO::BoolInputAction rightClickTest { "right click test" };
+static Carrot::IO::BoolInputAction gamepadButtonTest { "Xbox A test" };
+static Carrot::IO::BoolInputAction gamepadLeftTriggerTest { "Left trigger" };
+static Carrot::IO::BoolInputAction gamepadLeftStickTest { "Left stick" };
+static Carrot::IO::BoolInputAction gamepadRightStickTest { "Right stick" };
+static Carrot::IO::Vec2InputAction cameraMove { "Camera move" };
 
 Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     ZoneScoped;
@@ -41,8 +49,24 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     {
         ZoneScopedN("Define inputs");
         grabMouse.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_G));
+        leftClickTest.suggestBinding(Carrot::IO::GLFWMouseButtonBinding(GLFW_MOUSE_BUTTON_LEFT));
+        rightClickTest.suggestBinding(Carrot::IO::GLFWMouseButtonBinding(GLFW_MOUSE_BUTTON_RIGHT));
+        gamepadButtonTest.suggestBinding(Carrot::IO::GLFWGamepadButtonBinding(GLFW_JOYSTICK_1, GLFW_GAMEPAD_BUTTON_A));
+        gamepadLeftTriggerTest.suggestBinding(Carrot::IO::GLFWGamepadAxisBinding(GLFW_JOYSTICK_1, GLFW_GAMEPAD_AXIS_LEFT_TRIGGER));
+        gamepadLeftStickTest.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(GLFW_JOYSTICK_1, Carrot::IO::GameInputVectorType::LeftStick));
+        gamepadRightStickTest.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(GLFW_JOYSTICK_1, Carrot::IO::GameInputVectorType::RightStick));
+
+        cameraMove.suggestBinding(Carrot::IO::GLFWGrabbedMouseDeltaBinding);
+        cameraMove.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(GLFW_JOYSTICK_1, Carrot::IO::GameInputVectorType::RightStick));
 
         gameplayActions.add(grabMouse);
+        gameplayActions.add(leftClickTest);
+        gameplayActions.add(rightClickTest);
+        gameplayActions.add(gamepadButtonTest);
+        gameplayActions.add(gamepadLeftTriggerTest);
+        gameplayActions.add(gamepadLeftStickTest);
+        gameplayActions.add(gamepadRightStickTest);
+        gameplayActions.add(cameraMove);
         gameplayActions.activate();
     }
 
@@ -206,24 +230,19 @@ void Game::Game::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context 
 float yaw = 0.0f;
 float pitch = 0.0f;
 
-void Game::Game::onMouseMove(double dx, double dy) {
-    if(!engine.getConfiguration().runInVR) {
-        if( ! engine.isGrabbingCursor())
-            return;
+void Game::Game::moveCamera(double dx, double dy) {
+    auto& camera = engine.getCamera();
+    yaw -= dx * 0.1f;// * 0.01f;
+    pitch -= dy * 0.1f;// * 0.01f;
 
-        auto& camera = engine.getCamera();
-        yaw -= dx * 0.01f;
-        pitch -= dy * 0.01f;
+    const float distanceFromCenter = 5.0f;
+    float cosYaw = cos(yaw);
+    float sinYaw = sin(yaw);
 
-        const float distanceFromCenter = 5.0f;
-        float cosYaw = cos(yaw);
-        float sinYaw = sin(yaw);
-
-        float cosPitch = cos(pitch);
-        float sinPitch = sin(pitch);
-        camera.getPositionRef() = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
-        camera.getPositionRef() += camera.getTarget();
-    }
+    float cosPitch = cos(pitch);
+    float sinPitch = sin(pitch);
+    camera.getPositionRef() = glm::vec3{cosYaw * cosPitch, sinYaw * cosPitch, sinPitch} * distanceFromCenter;
+    camera.getPositionRef() += camera.getTarget();
 }
 
 void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
@@ -235,6 +254,32 @@ static float totalTime = 0.0f;
 void Game::Game::tick(double frameTime) {
     if(grabMouse.wasJustPressed()) {
         engine.toggleCursorGrab();
+    }
+    if(leftClickTest.wasJustPressed()) {
+        Carrot::Log::info("left click");
+    }
+    if(rightClickTest.wasJustPressed()) {
+        Carrot::Log::info("right click");
+    }
+    if(gamepadButtonTest.wasJustPressed()) {
+        Carrot::Log::info("gamepad click");
+    }
+    if(gamepadLeftStickTest.wasJustPressed()) {
+        Carrot::Log::info("gamepad left stick non-zero");
+    }
+    if(gamepadRightStickTest.wasJustPressed()) {
+        Carrot::Log::info("gamepad right stick non-zero");
+    }
+    if(gamepadLeftTriggerTest.wasJustPressed()) {
+        Carrot::Log::info("gamepad left trigger pressed");
+    }
+
+    if(!engine.getConfiguration().runInVR) {
+        const auto& cameraMoveVector = cameraMove.getValue();
+        const float deadzone = 0.2f;
+        if(glm::length(cameraMoveVector) > deadzone) {
+            moveCamera(cameraMoveVector.x, cameraMoveVector.y);
+        }
     }
 
     {

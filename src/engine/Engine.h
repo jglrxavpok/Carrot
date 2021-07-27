@@ -29,6 +29,7 @@ namespace Carrot {
 #include "render/Composer.h"
 #include "engine/Configuration.h"
 #include "engine/tasks/PresentThread.h"
+#include "engine/io/actions/InputVectors.h"
 
 using namespace std;
 
@@ -82,12 +83,19 @@ namespace Carrot {
         /// Launch the engine loop
         void run();
 
+
+    public: // GLFW event handling
+
         /// Called by GLFW when the window is resized
         void onWindowResize();
 
-        void onMouseMove(double xpos, double ypos);
+        void onMouseMove(double xpos, double ypos, bool updateOnlyDelta);
 
         void onKeyEvent(int key, int scancode, int action, int mods);
+
+        void onMouseButton(int button, int action, int mods);
+
+    public:
 
         /// Cleanup resources
         ~Engine();
@@ -207,9 +215,43 @@ namespace Carrot {
     public: // inputs
 
         using KeyCallback = std::function<void(int key, int scancode, int action, int mods)>;
+        using GamepadButtonCallback = std::function<void(int joystickID, int button, bool isPressed)>;
+        using GamepadAxisCallback = std::function<void(int joystickID, int axisID, float newValue, float oldValue)>;
+        using GamepadVec2Callback = std::function<void(int joystickID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue)>;
+        using MouseButtonCallback = std::function<void(int button, bool isPressed, int mods)>;
+        using MousePositionCallback = std::function<void(double xpos, double ypos)>;
+        using MouseDeltaCallback = std::function<void(double dx, double dy)>;
 
         void addGLFWKeyCallback(KeyCallback keyCallback) {
             keyCallbacks.push_back(keyCallback);
+        }
+
+        void addGLFWMouseButtonCallback(MouseButtonCallback callback) {
+            mouseButtonCallbacks.push_back(callback);
+        }
+
+        void addGLFWGamepadButtonCallback(GamepadButtonCallback callback) {
+            gamepadButtonCallbacks.push_back(callback);
+        }
+
+        void addGLFWGamepadAxisCallback(GamepadAxisCallback callback) {
+            gamepadAxisCallbacks.push_back(callback);
+        }
+
+        void addGLFWGamepadVec2Callback(GamepadVec2Callback callback) {
+            gamepadVec2Callbacks.push_back(callback);
+        }
+
+        void addGLFWMousePositionCallback(MousePositionCallback callback) {
+            mousePositionCallbacks.push_back(callback);
+        }
+
+        void addGLFWMouseDeltaCallback(MouseDeltaCallback callback) {
+            mouseDeltaCallbacks.push_back(callback);
+        }
+
+        void addGLFWMouseDeltaGrabbedCallback(MouseDeltaCallback callback) {
+            mouseDeltaGrabbedCallbacks.push_back(callback);
         }
 
     public:
@@ -283,8 +325,6 @@ namespace Carrot {
 
         unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
 
-        std::vector<KeyCallback> keyCallbacks;
-
         /// Init engine
         void init();
 
@@ -325,6 +365,27 @@ namespace Carrot {
         void allocateGraphicsCommandBuffers();
 
         void updateImGuiTextures(size_t swapchainLength);
+
+    private:
+        std::unordered_map<int, GLFWgamepadstate> gamepadStates;
+        std::unordered_map<int, GLFWgamepadstate> gamepadStatePreviousFrame;
+        std::vector<KeyCallback> keyCallbacks;
+        std::vector<MouseButtonCallback> mouseButtonCallbacks;
+        std::vector<GamepadButtonCallback> gamepadButtonCallbacks;
+        std::vector<GamepadAxisCallback> gamepadAxisCallbacks;
+        std::vector<GamepadVec2Callback> gamepadVec2Callbacks;
+        std::vector<MousePositionCallback> mousePositionCallbacks;
+        std::vector<MouseDeltaCallback> mouseDeltaCallbacks;
+        std::vector<MouseDeltaCallback> mouseDeltaGrabbedCallbacks;
+
+        /// Poll state of gamepads, GLFW does not (yet) post events for gamepad inputs
+        void pollGamepads();
+
+        void initInputStructures();
+
+        void onGamepadButtonChange(int gamepadID, int buttonID, bool pressed);
+        void onGamepadAxisChange(int gamepadID, int buttonID, float newValue, float oldValue);
+        void onGamepadVec2Change(int gamepadID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
     };
 }
 

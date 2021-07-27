@@ -43,6 +43,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/io/actions/ActionSet.h"
 #include "engine/io/Logging.hpp"
+#include "engine/io/actions/ActionDebug.h"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -51,6 +52,10 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
+static Carrot::RuntimeOption showInputDebug("Debug/Show Inputs", false);
+
+
+static std::unordered_set<int> activeJoysticks{};
 
 Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): window(window),
 #ifdef ENABLE_VR
@@ -259,10 +264,82 @@ void Carrot::Engine::init() {
     updateImGuiTextures(getSwapchainImageCount());
 
     initConsole();
+    initInputStructures();
 }
 
 void Carrot::Engine::initConsole() {
     Console::instance().registerCommands();
+}
+
+void Carrot::Engine::initInputStructures() {
+    for (int joystickID = 0; joystickID <= GLFW_JOYSTICK_LAST; ++joystickID) {
+        if(glfwJoystickPresent(joystickID) && glfwJoystickIsGamepad(joystickID)) {
+            activeJoysticks.insert(joystickID);
+        }
+    }
+}
+
+void Carrot::Engine::pollGamepads() {
+    gamepadStatePreviousFrame = gamepadStates;
+    gamepadStates.clear();
+
+    for(int joystickID : activeJoysticks) {
+        if(glfwJoystickIsGamepad(joystickID)) {
+            bool vec2ToUpdate[static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count)] = { false };
+            bool valid = glfwGetGamepadState(joystickID, &gamepadStates[joystickID]);
+            assert(valid);
+
+            // Update button states
+            auto& prevState = gamepadStatePreviousFrame[joystickID];
+            auto& state = gamepadStates[joystickID];
+            for(int buttonID = 0; buttonID <= GLFW_GAMEPAD_BUTTON_LAST; buttonID++) {
+                if(state.buttons[buttonID] != prevState.buttons[buttonID]) {
+                    onGamepadButtonChange(joystickID, buttonID, state.buttons[buttonID]);
+                }
+            }
+
+            // Update axis states
+            for(int axisID = 0; axisID <= GLFW_GAMEPAD_BUTTON_LAST; axisID++) {
+                if(state.axes[axisID] != prevState.axes[axisID]) {
+                    onGamepadAxisChange(joystickID, axisID, state.axes[axisID], prevState.axes[axisID]);
+
+                    for(auto vec2Type = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2Type < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2Type++) {
+                        if(Carrot::IO::InputVectors[vec2Type].isIn(axisID)) {
+                            vec2ToUpdate[vec2Type] = true;
+                        }
+                    }
+                }
+            }
+
+            // Update vec2 states
+            for(auto vec2Type = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2Type < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2Type++) {
+                if(vec2ToUpdate[vec2Type]) {
+                    auto& input = Carrot::IO::InputVectors[vec2Type];
+                    glm::vec2 current = { state.axes[input.horizontalAxisID], state.axes[input.verticalAxisID] };
+                    glm::vec2 previous = { prevState.axes[input.horizontalAxisID], prevState.axes[input.verticalAxisID] };
+                    onGamepadVec2Change(joystickID, static_cast<Carrot::IO::GameInputVectorType>(vec2Type), current, previous);
+                }
+            }
+        }
+    }
+}
+
+void Carrot::Engine::onGamepadButtonChange(int gamepadID, int buttonID, bool pressed) {
+    for(auto& callback : gamepadButtonCallbacks) {
+        callback(gamepadID, buttonID, pressed);
+    }
+}
+
+void Carrot::Engine::onGamepadAxisChange(int gamepadID, int axisID, float newValue, float oldValue) {
+    for(auto& callback : gamepadAxisCallbacks) {
+        callback(gamepadID, axisID, newValue, oldValue);
+    }
+}
+
+void Carrot::Engine::onGamepadVec2Change(int gamepadID, Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue) {
+    for(auto& callback : gamepadVec2Callbacks) {
+        callback(gamepadID, vecID, newValue, oldValue);
+    }
 }
 
 void Carrot::Engine::run() {
@@ -280,8 +357,11 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
         previous = frameStartTime;
 
+        // Reset input actions based mouse dx/dy
+        onMouseMove(mouseX, mouseY, true);
         Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
         glfwPollEvents();
+        pollGamepads();
 #ifdef ENABLE_VR
         if(config.runInVR) {
             ZoneScopedN("VR poll events");
@@ -294,6 +374,10 @@ void Carrot::Engine::run() {
 
         renderer.newFrame();
         ImGui::NewFrame();
+
+        if(showInputDebug) {
+            Carrot::IO::debugDrawActions();
+        }
 
         {
             ZoneScopedN("Tick");
@@ -333,7 +417,12 @@ static void windowResize(GLFWwindow* window, int width, int height) {
 
 static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
     auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onMouseMove(xpos, ypos);
+    app->onMouseMove(xpos, ypos, false);
+}
+
+static void mouseButton(GLFWwindow* window, int button, int action, int mods) {
+    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
+    app->onMouseButton(button, action, mods);
 }
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -343,12 +432,22 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
     ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
 
+static void joystickCallback(int joystickID, int event) {
+    if(event == GLFW_CONNECTED) {
+        activeJoysticks.insert(joystickID);
+    } else if(event == GLFW_DISCONNECTED) {
+        activeJoysticks.erase(joystickID);
+    }
+}
+
 void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.get(), this);
     glfwSetFramebufferSizeCallback(window.get(), windowResize);
 
     glfwSetCursorPosCallback(window.get(), mouseMove);
+    glfwSetMouseButtonCallback(window.get(), mouseButton);
     glfwSetKeyCallback(window.get(), keyCallback);
+    glfwSetJoystickCallback(joystickCallback);
 }
 
 void Carrot::Engine::initVulkan() {
@@ -744,14 +843,27 @@ void Carrot::Engine::createCameras() {
     }
 }
 
-void Carrot::Engine::onMouseMove(double xpos, double ypos) {
+void Carrot::Engine::onMouseMove(double xpos, double ypos, bool updateOnlyDelta) {
     double dx = xpos-mouseX;
     double dy = ypos-mouseY;
-    if(game) {
-        game->onMouseMove(dx, dy);
+    for(auto& callback : mouseDeltaCallbacks) {
+        callback(dx, dy);
     }
-    mouseX = xpos;
-    mouseY = ypos;
+    if(grabbingCursor) {
+        for(auto& callback : mouseDeltaGrabbedCallbacks) {
+            callback(dx, dy);
+        }
+    }
+    if(!updateOnlyDelta) {
+        for(auto& callback : mousePositionCallbacks) {
+            callback(xpos, ypos);
+        }
+        if(game) {
+            game->onMouseMove(dx, dy);
+        }
+        mouseX = xpos;
+        mouseY = ypos;
+    }
 }
 
 Carrot::Camera& Carrot::Engine::getCamera() {
@@ -761,6 +873,12 @@ Carrot::Camera& Carrot::Engine::getCamera() {
 Carrot::Camera& Carrot::Engine::getCamera(Carrot::Render::Eye eye) {
     assert(cameras.find(eye) != cameras.end());
     return *cameras[eye];
+}
+
+void Carrot::Engine::onMouseButton(int button, int action, int mods) {
+    for(auto& callback : mouseButtonCallbacks) {
+        callback(button, action == GLFW_PRESS || action == GLFW_REPEAT, mods);
+    }
 }
 
 void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {

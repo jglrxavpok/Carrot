@@ -49,5 +49,8 @@ namespace Game {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
+
+    private:
+        void moveCamera(double dx, double dy);
     };
 }
