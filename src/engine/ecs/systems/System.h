@@ -5,6 +5,8 @@
 #pragma once
 #include "engine/ecs/Signature.hpp"
 #include "engine/ecs/EntityTypes.h"
+#include "engine/render/RenderContext.h"
+#include <engine/render/RenderPass.h>
 
 namespace Carrot {
 
@@ -32,6 +34,9 @@ namespace Carrot {
 
         virtual void onFrame(size_t frameIndex) = 0;
         virtual void tick(double dt) {};
+
+        // TODO: provide a way to render even in other passes
+        virtual void gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 
         void onEntitiesAdded(const vector<Entity_Ptr>& entities);
         void onEntitiesRemoved(const vector<Entity_Ptr>& entities);

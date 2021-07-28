@@ -31,7 +31,7 @@ namespace Carrot {
         Configuration config;
 
         map<std::pair<std::string, std::uint64_t>, shared_ptr<Pipeline>> pipelines{};
-        map<string, unique_ptr<Render::Texture>> textures{};
+        map<string, Render::Texture::Ref> textures{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 
@@ -70,7 +70,7 @@ namespace Carrot {
         /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
         shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const string& name, const vk::RenderPass& pass);
 
-        unique_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
+        std::shared_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
 
         void recreateDescriptorPools(size_t frameCount);
 

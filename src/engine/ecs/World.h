@@ -63,6 +63,7 @@ namespace Carrot {
 
         void tick(double dt);
         void onFrame(size_t frameIndex);
+        void recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
 
         EasyEntity newEntity();
 

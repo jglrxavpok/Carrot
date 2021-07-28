@@ -69,6 +69,23 @@ void Carrot::World::onFrame(size_t frameIndex) {
     }
 }
 
+void Carrot::World::recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScoped;
+    {
+        ZoneScopedN("GBuffer Logic");
+        for(const auto& logic : logicSystems) {
+            logic->gBufferRender(pass, renderContext, commands);
+        }
+    }
+
+    {
+        ZoneScopedN("GBuffer render");
+        for(const auto& render : renderSystems) {
+            render->gBufferRender(pass, renderContext, commands);
+        }
+    }
+}
+
 Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
     auto componentMapLocation = this->entityComponents.find(*entity);
     if(componentMapLocation == this->entityComponents.end()) {

@@ -26,6 +26,10 @@ namespace Carrot {
         const glm::vec3& getPosition() const;
 
     public:
+        void setTargetAndPosition(const glm::vec3& target, const glm::vec3& position);
+        void setViewProjection(const glm::mat4& view, const glm::mat4& projection);
+
+    public:
         glm::vec3& getTargetRef();
         glm::vec3& getPositionRef();
 

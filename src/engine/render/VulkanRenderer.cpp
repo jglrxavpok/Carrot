@@ -43,7 +43,7 @@ shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const s
     return pipelines[key];
 }
 
-unique_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {
+std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {
     auto it = textures.find(textureName);
     if(it == textures.end()) {
         auto texture = std::make_unique<Carrot::Render::Texture>(driver, "resources/textures/" + textureName);

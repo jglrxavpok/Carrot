@@ -12,6 +12,7 @@
 namespace Carrot {
     struct Transform: public IdentifiableComponent<Transform> {
         glm::vec3 position{};
+        glm::vec3 scale{1.0f};
         glm::quat rotation{0.0f,0.0f,0.0f,1.0f};
 
         [[nodiscard]] glm::mat4 toTransformMatrix() const;

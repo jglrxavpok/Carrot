@@ -67,4 +67,16 @@ namespace Carrot {
         runtimeAssert(type == ControlType::ViewProjection, "Cannot get PROJECTION matrix on non view-projection cameras!");
         return projectionMatrix;
     }
+
+    void Camera::setTargetAndPosition(const glm::vec3& target, const glm::vec3& position) {
+        type = ControlType::PoseAndLookAt;
+        this->target = target;
+        this->position = position;
+    }
+
+    void Camera::setViewProjection(const glm::mat4& view, const glm::mat4& projection) {
+        type = ControlType::PoseAndLookAt;
+        this->viewMatrix = view;
+        this->projectionMatrix = projection;
+    }
 }

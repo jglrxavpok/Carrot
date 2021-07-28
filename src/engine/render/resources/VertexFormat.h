@@ -14,6 +14,7 @@ namespace Carrot {
         ScreenSpace,
         ComputeSkinnedVertex,
         SimpleVertex,
+        SimpleVertexWithInstanceData,
         Particle,
         Invalid
     };
