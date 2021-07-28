@@ -188,14 +188,17 @@ set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assi
 
 add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
+add_includes(Engine-Base)
 
 add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
+add_includes(Engine-ASAN)
 
 add_library(Engine-Tracy ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Tracy PUBLIC ${ALL_BASE_LIBS})
 make_tracy_target(Engine-Tracy)
+add_includes(Engine-Tracy)
 
 add_library(Engine-VR ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES} ${VR_SOURCES})
 target_include_directories(Engine-VR PUBLIC ${OPENXR-INCLUDE-DIR})
@@ -203,3 +206,4 @@ target_include_directories(Engine-VR PUBLIC ${ProjectRoot}thirdparty/openxr-hpp/
 target_compile_definitions(Engine-VR PUBLIC ENABLE_VR=1)
 target_compile_definitions(Engine-VR PUBLIC TRACY_ENABLE=1)
 target_link_libraries(Engine-VR ${ALL_BASE_LIBS} ${OPENXR-LOADER-LIB-LOCATION})
+add_includes(Engine-VR)
