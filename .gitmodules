@@ -16,7 +16,7 @@
 [submodule "thirdparty/imgui_node_editor"]
 	path = thirdparty/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor
-[submodule "thirdparty/imgui_node_editor"]
+[submodule "thirdparty/stduuid"]
 	path = thirdparty/stduuid
 	url = https://github.com/mariusbancila/stduuid
 [submodule "thirdparty/glslang"]

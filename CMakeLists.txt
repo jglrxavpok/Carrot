@@ -72,7 +72,7 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     # TODO: find why incremental compilation no longer works
     # TODO: (maybe related to previous TODO) move to engine CMake?
     file(RELATIVE_PATH FULL_INPUT "${CMAKE_SOURCE_DIR}" "${INPUT_FILE}")
-    file(RELATIVE_PATH FULL_OUTPUT "${CMAKE_SOURCE_DIR}" "${OUTPUT_FILE}")
+    file(RELATIVE_PATH FULL_OUTPUT "${PROJECT_SOURCE_DIR}" "${OUTPUT_FILE}")
     #set(FULL_OUTPUT "${CMAKE_BINARY_DIR}/${FULL_OUTPUT}")
     set(FULL_INPUT "${CMAKE_SOURCE_DIR}/${FULL_INPUT}")
     set(FULL_OUTPUT "${CMAKE_BINARY_DIR}/${FULL_OUTPUT}")
