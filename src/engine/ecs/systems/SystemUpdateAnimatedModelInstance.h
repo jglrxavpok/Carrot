@@ -12,7 +12,7 @@ namespace Carrot {
     public:
         explicit SystemUpdateAnimatedModelInstance(Carrot::World& world): RenderSystem<Transform, AnimatedModelInstance>(world) {}
 
-        void onFrame(size_t frameIndex) override;
+        void onFrame(Carrot::Render::Context renderContext) override;
 
         void tick(double dt) override;
 

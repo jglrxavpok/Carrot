@@ -5,7 +5,7 @@
 #include <engine/ecs/components/Transform.h>
 #include "SystemUpdateAnimatedModelInstance.h"
 
-void Carrot::SystemUpdateAnimatedModelInstance::onFrame(size_t frameIndex) {
+void Carrot::SystemUpdateAnimatedModelInstance::onFrame(Carrot::Render::Context renderContext) {
     for(const auto& e : entities) {
         if(auto entity = e.lock()) {
             auto* transform = world.getComponent<Transform>(entity);

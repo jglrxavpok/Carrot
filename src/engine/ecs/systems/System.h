@@ -32,7 +32,7 @@ namespace Carrot {
 
         [[nodiscard]] const Signature& getSignature() const;
 
-        virtual void onFrame(size_t frameIndex) = 0;
+        virtual void onFrame(Carrot::Render::Context renderContext) = 0;
         virtual void tick(double dt) {};
 
         // TODO: provide a way to render even in other passes
@@ -55,7 +55,7 @@ namespace Carrot {
     public:
         explicit LogicSystem(Carrot::World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
 
-        void onFrame(size_t frameIndex) override {};
+        void onFrame(Carrot::Render::Context renderContext) override {};
     };
 
     template<typename... RequiredComponents>

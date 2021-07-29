@@ -15,7 +15,7 @@ namespace Carrot {
     public:
         explicit CarrotGame(Engine& engine): engine(engine) {};
 
-        virtual void onFrame(uint32_t frameIndex) = 0;
+        virtual void onFrame(Carrot::Render::Context renderContext) = 0;
 
         virtual void tick(double frameTime) = 0;
 

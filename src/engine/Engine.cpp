@@ -640,8 +640,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
-        getRayTracer().onFrame(newRenderContext(imageIndex));
-        game->onFrame(imageIndex);
+        Carrot::Render::Context renderContext = newRenderContext(imageIndex);
+        getRayTracer().onFrame(renderContext);
+        game->onFrame(renderContext);
     }
     {
         ZoneScopedN("Record main command buffer");

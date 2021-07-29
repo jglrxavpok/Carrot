@@ -140,10 +140,11 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
 
         case spirv_cross::SPIRType::Float:
         case spirv_cross::SPIRType::UInt:
-            return 4;
+            return 4 * type.vecsize;
 
         case spirv_cross::SPIRType::UInt64:
-            return 8;
+        case spirv_cross::SPIRType::Double:
+            return 8 * type.vecsize;
 
         default:
             TODO

@@ -284,7 +284,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingD
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanceData::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{1};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{6};
 
     descriptions[0] = {
             .location = 0,
@@ -294,15 +294,15 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanc
     };
 
     descriptions[1] = {
-            .location = 4,
+            .location = 1,
             .binding = 1,
             .format = vk::Format::eR32G32B32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
     };
 
-    for (int i = 0; i < 1; ++i) {
-        descriptions[1+i] = {
-                .location = static_cast<uint32_t>(1+i),
+    for (int i = 0; i < 4; ++i) {
+        descriptions[2+i] = {
+                .location = static_cast<uint32_t>(2+i),
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
@@ -318,6 +318,11 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertexWithInstanceD
                     .binding = 0,
                     .stride = sizeof(SimpleVertexWithInstanceData),
                     .inputRate = vk::VertexInputRate::eVertex,
+            },
+            vk::VertexInputBindingDescription {
+                    .binding = 1,
+                    .stride = sizeof(InstanceData),
+                    .inputRate = vk::VertexInputRate::eInstance,
             },
     };
 }

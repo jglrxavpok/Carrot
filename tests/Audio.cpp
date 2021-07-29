@@ -12,7 +12,7 @@ namespace Game {
     public:
         explicit Game(Carrot::Engine& engine): Carrot::CarrotGame(engine) {};
 
-        void onFrame(uint32_t frameIndex) override {};
+        void onFrame(Carrot::Render::Context renderContext) override {};
 
         void tick(double frameTime) override {};
 

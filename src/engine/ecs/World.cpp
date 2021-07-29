@@ -52,19 +52,19 @@ void Carrot::World::tick(double dt) {
     }
 }
 
-void Carrot::World::onFrame(size_t frameIndex) {
+void Carrot::World::onFrame(Carrot::Render::Context renderContext) {
     ZoneScoped;
     {
         ZoneScopedN("Logic");
         for(const auto& logic : logicSystems) {
-            logic->onFrame(frameIndex);
+            logic->onFrame(renderContext);
         }
     }
 
     {
         ZoneScopedN("Prepare render");
         for(const auto& render : renderSystems) {
-            render->onFrame(frameIndex);
+            render->onFrame(renderContext);
         }
     }
 }

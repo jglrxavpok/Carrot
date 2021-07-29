@@ -113,6 +113,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
                 .addComponent<AnimatedModelInstance>(modelInstance);
         if(auto transform = entity.getComponent<Transform>()) {
             transform->position = position;
+            transform->scale = glm::vec3(1.0+i/30.0, 1.0+i/30.0, 1.0+i/30.0);
         }
         switch (color) {
             case Unit::Type::Blue:
@@ -181,7 +182,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
     // prepare for first frame
     world.tick(0);
-    world.onFrame(0);
+    world.onFrame(engine.newRenderContext(0));
 
     blueprint = make_unique<ParticleBlueprint>("resources/particles/testspiral.particle");
     particles = make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
@@ -192,13 +193,13 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     emitter->setRate(20);
 }
 
-void Game::Game::onFrame(uint32_t frameIndex) {
+void Game::Game::onFrame(Carrot::Render::Context renderContext) {
     ZoneScoped;
     // TODO: optimize
 
-    auto& skinningSemaphore = animatedUnits->onFrame(frameIndex);
+    auto& skinningSemaphore = animatedUnits->onFrame(renderContext.swapchainIndex);
 
-    world.onFrame(frameIndex);
+    world.onFrame(renderContext);
 
     {
         ZoneScopedN("Update Raytracing AS");
@@ -209,7 +210,7 @@ void Game::Game::onFrame(uint32_t frameIndex) {
 
     {
         ZoneScopedN("Prepare particles rendering");
-        particles->onFrame(frameIndex);
+        particles->onFrame(renderContext.swapchainIndex);
     }
 }
 

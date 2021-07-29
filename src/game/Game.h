@@ -36,13 +36,13 @@ namespace Game {
     public:
         explicit Game(Engine& engine);
 
-        void onFrame(uint32_t frameIndex) override;
+        void onFrame(Carrot::Render::Context renderContext) override;
 
         void tick(double frameTime) override;
 
         void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
 
-        void onMouseMove(double dx, double dy) override;
+        void onMouseMove(double dx, double dy) override {}
 
         void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override;
 
