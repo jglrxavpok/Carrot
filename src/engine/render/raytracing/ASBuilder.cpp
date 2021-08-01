@@ -308,10 +308,10 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     };
 
     bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-            .srcStageMask = vk::PipelineStageFlagBits2KHR::eTransfer,
-            .srcAccessMask = vk::AccessFlagBits2KHR::eTransferWrite,
-            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-            .dstAccessMask = vk::AccessFlagBits2KHR::eMemoryRead,
+            .srcStageMask = vk::PipelineStageFlagBits2KHR::e2Transfer,
+            .srcAccessMask = vk::AccessFlagBits2KHR::e2TransferWrite,
+            .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+            .dstAccessMask = vk::AccessFlagBits2KHR::e2MemoryRead,
 
             .srcQueueFamilyIndex = 0,
             .dstQueueFamilyIndex = 0,
@@ -341,10 +341,10 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
         renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
     } else {
         topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-                .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWrite,
-                .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureRead,
+                .srcStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                .srcAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureWrite,
+                .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                .dstAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureRead,
 
                 .srcQueueFamilyIndex = 0,
                 .dstQueueFamilyIndex = 0,
@@ -444,10 +444,10 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, v
             buildRangeList[i] = blas.cachedBuildRanges[0];
 
             bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-                    .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                    .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWrite,
-                    .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                    .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureRead,
+                    .srcStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                    .srcAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureWrite,
+                    .dstStageMask = vk::PipelineStageFlagBits2KHR::e2AccelerationStructureBuild,
+                    .dstAccessMask = vk::AccessFlagBits2KHR::e2AccelerationStructureRead,
 
                     .srcQueueFamilyIndex = 0,
                     .dstQueueFamilyIndex = 0,
