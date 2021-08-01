@@ -7,6 +7,8 @@
 
 template<typename VertexType>
 vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carrot::Model& model) {
+    if(!enabled)
+        return {};
     vector<Carrot::GeometryInput*> geometries{};
     for(const auto& mesh : model.getMeshes()) {
         auto geom = addGeometries<VertexType>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, mesh->getBackingBuffer(), mesh->getVertexCount(), {mesh->getVertexStartOffset()});
@@ -18,6 +20,8 @@ vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carro
 template<typename VertexType>
 Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& indexBuffer, uint64_t indexCount, uint64_t indexOffset,
                                       const Carrot::Buffer& vertexBuffer, uint64_t vertexCount, const vector<uint64_t>& vertexOffsets) {
+    if(!enabled)
+        return nullptr;
     // index buffer is assumed to be the same for all subranges
     // example usage: an original vertex buffer skinned by a compute shader, output to a global vertex buffer, but all using the same index buffer with offset
     auto& device = renderer.getLogicalDevice();

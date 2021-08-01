@@ -10,10 +10,12 @@
 #include "RayTracer.h"
 
 Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
-
+    enabled = renderer.getConfiguration().useRaytracing;
 }
 
 void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
+    if(!enabled)
+        return;
     const vk::BuildAccelerationStructureFlagsKHR flags = enableUpdate ? (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate) : vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace;
     auto& device = renderer.getLogicalDevice();
 
@@ -169,6 +171,8 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
 }
 
 void Carrot::ASBuilder::addInstance(const InstanceInput instance) {
+    if(!enabled)
+        return;
     topLevelInstances.push_back(instance);
 }
 
@@ -201,6 +205,8 @@ vk::AccelerationStructureInstanceKHR Carrot::ASBuilder::convertToVulkanInstance(
 }
 
 void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
+    if(!enabled)
+        return;
     ZoneScoped;
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
@@ -352,10 +358,14 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
 }
 
 void Carrot::ASBuilder::startFrame() {
+    if(!enabled)
+        return;
     topLevelBarriers.clear();
 }
 
 void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
+    if(!enabled)
+        return;
     vk::DependencyInfoKHR dependency {
             .bufferMemoryBarrierCount = static_cast<uint32_t>(topLevelBarriers.size()),
             .pBufferMemoryBarriers = topLevelBarriers.data(),
@@ -364,10 +374,13 @@ void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
 }
 
 Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
+    assert(enabled);
     return tlas;
 }
 
 void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore) {
+    if(!enabled)
+        return;
     ZoneScoped;
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
@@ -450,17 +463,24 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, v
 }
 
 void Carrot::ASBuilder::updateTopLevelAS() {
+    if(!enabled)
+        return;
     buildTopLevelAS(true, false);
 }
 
 void Carrot::ASBuilder::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    if(!enabled)
+        return;
     renderer.getRayTracer().registerVertexBuffer(vertexBuffer, start, length);
 }
 
 void Carrot::ASBuilder::registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    if(!enabled)
+        return;
     renderer.getRayTracer().registerIndexBuffer(indexBuffer, start, length);
 }
 
 vector<Carrot::InstanceInput>& Carrot::ASBuilder::getTopLevelInstances() {
+    assert(enabled);
     return topLevelInstances;
 }

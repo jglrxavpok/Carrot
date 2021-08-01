@@ -37,6 +37,7 @@ namespace Carrot {
     class ASBuilder {
     private:
         VulkanRenderer& renderer;
+        bool enabled = false;
         vector<GeometryInput> bottomLevelGeometries{};
         vector<InstanceInput> topLevelInstances{};
         unique_ptr<AccelerationStructure> topLevelAS{};

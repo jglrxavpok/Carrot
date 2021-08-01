@@ -18,6 +18,8 @@ namespace Carrot {
     class RayTracer: public SwapchainAware {
     private:
         VulkanRenderer& renderer;
+        bool enabled = false;
+
         vk::PhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties;
 
         vk::UniqueDescriptorPool rtDescriptorPool;

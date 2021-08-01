@@ -15,6 +15,10 @@ constexpr int maxInstances = 301;
 static constexpr float ResolutionScale = 0.5f;
 
 Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(renderer) {
+    enabled = renderer.getConfiguration().useRaytracing;
+
+    if(!enabled)
+        return;
     // init raytracing
     auto properties = renderer.getVulkanDriver().getPhysicalDevice().getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
     rayTracingProperties = properties.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
@@ -23,6 +27,8 @@ Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(rendere
 }
 
 void Carrot::RayTracer::generateBuffers() {
+    if(!enabled)
+        return;
     sceneBuffers.resize(renderer.getSwapchainImageCount());
     for (int i = 0; i < renderer.getSwapchainImageCount(); ++i) {
         sceneBuffers[i] = make_unique<Buffer>(renderer.getVulkanDriver(),
@@ -43,6 +49,8 @@ void Carrot::RayTracer::generateBuffers() {
 }
 
 void Carrot::RayTracer::onSwapchainRecreation() {
+    if(!enabled)
+        return;
     init();
     finishInit();
 /*    createRTDescriptorSets();
@@ -51,6 +59,8 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 }
 
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
+    if(!enabled)
+        return;
     ZoneScoped;
     // TODO: proper size
     renderer.getASBuilder().startFrame();
@@ -71,6 +81,8 @@ void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
 }
 
 void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    if(!enabled)
+        return;
     ZoneScoped;
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
     renderer.bindCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
@@ -110,6 +122,8 @@ vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
 }
 
 void Carrot::RayTracer::createRTDescriptorSets() {
+    if(!enabled)
+        return;
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
     std::array<vk::DescriptorPoolSize, 2> rtSizes = {
             vk::DescriptorPoolSize {
@@ -171,6 +185,8 @@ void Carrot::RayTracer::createRTDescriptorSets() {
 }
 
 void Carrot::RayTracer::createSceneDescriptorSets() {
+    if(!enabled)
+        return;
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
     std::vector<vk::DescriptorPoolSize> sceneSizes = {
@@ -297,11 +313,15 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
 }
 
 void Carrot::RayTracer::createDescriptorSets() {
+    if(!enabled)
+        return;
     createRTDescriptorSets();
     createSceneDescriptorSets();
 }
 
 void Carrot::RayTracer::createPipeline() {
+    if(!enabled)
+        return;
     auto stages = ShaderStages(renderer.getVulkanDriver(), {
             "resources/shaders/rt/raytrace.rgen.spv",
             "resources/shaders/rt/raytrace.rmiss.spv",
@@ -388,6 +408,8 @@ void Carrot::RayTracer::createPipeline() {
 }
 
 void Carrot::RayTracer::createShaderBindingTable() {
+    if(!enabled)
+        return;
     auto groupCount = shaderGroups.size();
     uint32_t groupHandleSize = rayTracingProperties.shaderGroupHandleSize;
     uint32_t groupSizeAligned = alignUp(groupHandleSize, rayTracingProperties.shaderGroupBaseAlignment);
@@ -421,6 +443,8 @@ constexpr uint32_t Carrot::RayTracer::alignUp(uint32_t value, uint32_t alignment
 }
 
 void Carrot::RayTracer::registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index) {
+    if(!enabled)
+        return;
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
     vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount()};
@@ -445,14 +469,21 @@ void Carrot::RayTracer::registerBuffer(uint32_t bindingIndex, const Buffer& vert
 }
 
 void Carrot::RayTracer::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    if(!enabled)
+        return;
+
     registerBuffer(2, vertexBuffer, start, length, vertexBufferIndex);
 }
 
 void Carrot::RayTracer::registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
+    if(!enabled)
+        return;
     registerBuffer(3, indexBuffer, start, length, indexBufferIndex);
 }
 
 void Carrot::RayTracer::finishInit() {
+    if(!enabled)
+        return;
     if(renderer.getASBuilder().getTopLevelAS().as == nullptr)
         return;
 
@@ -485,16 +516,21 @@ void Carrot::RayTracer::finishInit() {
 }
 
 Carrot::RaycastedShadowingLightBuffer& Carrot::RayTracer::getLightBuffer() {
+    assert(enabled);
     return *lightBuffer;
 }
 
 void Carrot::RayTracer::init() {
+    if(!enabled)
+        return;
     createDescriptorSets();
     createPipeline();
     createShaderBindingTable();
 }
 
 void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
+    if(!enabled)
+        return;
     if(!hasStuffToDraw)
         return;
     // TODO: handle this case
@@ -504,21 +540,29 @@ void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
 }
 
 void Carrot::RayTracer::onSwapchainSizeChange(int newWidth, int newHeight) {
+    if(!enabled)
+        return;
     finishInit();
 }
 
 Carrot::Render::Pass<Carrot::Render::PassData::Raytracing>& Carrot::RayTracer::appendRTPass(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye) {
     auto& rtPass = mainGraph.addPass<Carrot::Render::PassData::Raytracing>("raytracing",
-                                                                   [](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Raytracing>& pass, Carrot::Render::PassData::Raytracing& data) {
+                                                                   [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Raytracing>& pass, Carrot::Render::PassData::Raytracing& data) {
                                                                        pass.rasterized = false;
                                                                        Carrot::Render::TextureSize size;
                                                                        size.width = ResolutionScale;
                                                                        size.height = ResolutionScale;
-                                                                       data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
+                                                                       if(enabled) {
+                                                                           data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{0,0,0,0}), vk::ImageLayout::eGeneral);
+                                                                       } else {
+                                                                           data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm, size, vk::AttachmentLoadOp::eClear, vk::ClearColorValue(std::array{1,1,1,1}), vk::ImageLayout::eGeneral);
+                                                                       }
                                                                        data.output.layout = vk::ImageLayout::eGeneral;
                                                                        data.output.previousLayout = vk::ImageLayout::eGeneral;
                                                                    },
                                                                    [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Raytracing& data, vk::CommandBuffer& buffer) {
+                                                                        if(!enabled)
+                                                                            return;
                                                                        ZoneScopedN("CPU RenderGraph Raytracing");
                                                                        auto& texture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                                        texture.assumeLayout(vk::ImageLayout::eUndefined);
@@ -534,6 +578,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Raytracing>& Carrot::RayTracer::a
 
     rtPass.setSwapchainRecreation(
             [this, eye = eye](const Render::CompiledPass& pass, const Carrot::Render::PassData::Raytracing& data) {
+                if(!enabled)
+                    return;
                 for (int swapchainIndex = 0; swapchainIndex < renderer.getSwapchainImageCount(); ++swapchainIndex) {
                     auto& set = getRTDescriptorSets()[eye][swapchainIndex];
                     auto& texture = pass.getGraph().getTexture(data.output, swapchainIndex);

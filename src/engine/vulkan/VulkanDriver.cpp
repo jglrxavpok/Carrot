@@ -384,13 +384,13 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .runtimeDescriptorArray = true,
             },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
-                    .rayTracingPipeline = true,
+                    .rayTracingPipeline = getConfiguration().useRaytracing,
             },
             vk::PhysicalDeviceRayQueryFeaturesKHR {
-                    .rayQuery = true,
+                    .rayQuery = getConfiguration().useRaytracing,
             },
             vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
-                    .accelerationStructure = true,
+                    .accelerationStructure = getConfiguration().useRaytracing,
             },
             vk::PhysicalDeviceVulkan12Features {
                     .scalarBlockLayout = true,
@@ -400,8 +400,10 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 
     vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
 
-    for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
-        deviceExtensions.push_back(rayTracingExt);
+    if(getConfiguration().useRaytracing) {
+        for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
+            deviceExtensions.push_back(rayTracingExt);
+        }
     }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
@@ -475,8 +477,10 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
 
-    for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {
-        required.insert(ext);
+    if(getConfiguration().useRaytracing) {
+        for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {
+            required.insert(ext);
+        }
     }
 #ifndef NO_DEBUG
     if(USE_DEBUG_MARKERS) {
