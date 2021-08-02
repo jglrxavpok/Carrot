@@ -75,6 +75,9 @@ namespace Carrot::Render {
         void assumeLayout(vk::ImageLayout newLayout);
 
     public:
+        void clear(vk::CommandBuffer& cmds, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
+
+    public:
         ImTextureID getImguiID(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
         ImTextureID getImguiID(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
 

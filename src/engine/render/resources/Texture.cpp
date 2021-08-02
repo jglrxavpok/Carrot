@@ -122,4 +122,20 @@ namespace Carrot::Render {
     void Texture::setDebugNames(const string& name) {
         image->name(name);
     }
+
+    void Texture::clear(vk::CommandBuffer& cmds, vk::ClearValue clearValue, vk::ImageAspectFlags aspect) {
+        vk::ImageSubresourceRange wholeTexture {
+                .aspectMask = aspect,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = image->getLayerCount(),
+        };
+        if(aspect & vk::ImageAspectFlagBits::eDepth) {
+            assert((aspect & vk::ImageAspectFlagBits::eColor) == static_cast<vk::ImageAspectFlagBits>(0));
+            cmds.clearDepthStencilImage(getVulkanImage(), currentLayout, clearValue.depthStencil, wholeTexture);
+        } else {
+            cmds.clearColorImage(getVulkanImage(), currentLayout, clearValue.color, wholeTexture);
+        }
+    }
 }
