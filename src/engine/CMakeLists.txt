@@ -190,6 +190,11 @@ add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 
+add_library(Engine-Base-Renderdoc ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+target_link_libraries(Engine-Base-Renderdoc PUBLIC ${ALL_BASE_LIBS})
+target_compile_definitions(Engine-Base-Renderdoc PRIVATE DEBUG_MARKERS=1)
+add_includes(Engine-Base-Renderdoc)
+
 add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)

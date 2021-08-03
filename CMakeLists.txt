@@ -145,6 +145,8 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
+
+    target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
 endfunction()
 
 add_subdirectory(src/engine)

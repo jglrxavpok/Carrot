@@ -75,7 +75,7 @@ namespace Carrot {
     }
 
     void Camera::setViewProjection(const glm::mat4& view, const glm::mat4& projection) {
-        type = ControlType::PoseAndLookAt;
+        type = ControlType::ViewProjection;
         this->viewMatrix = view;
         this->projectionMatrix = projection;
     }
