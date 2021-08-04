@@ -190,6 +190,20 @@ namespace Carrot::IO {
                 changeVec2Input(correspondingPath, newValue);
             });
 
+            engine.addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
+                if(!active)
+                    return;
+
+                const auto correspondingPath = Carrot::IO::GLFWKeysVec2Binding(vectorType);
+
+                bool isPressed = glm::length(newValue) >= 0.5f;
+                bool isReleased = !isPressed;
+
+                changeButtonInput(correspondingPath, isPressed, isReleased);
+                changeAxisInput(correspondingPath, glm::length(newValue));
+                changeVec2Input(correspondingPath, newValue);
+            });
+
             engine.addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
                 if(!active)
                     return;
@@ -229,6 +243,7 @@ namespace Carrot::IO {
 
                 changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
             });
+
         }
 
         readyForUse = true;

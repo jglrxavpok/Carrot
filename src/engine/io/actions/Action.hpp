@@ -138,6 +138,10 @@ namespace Carrot::IO {
         return Carrot::sprintf("/user/glfw/gamepad/%d/vec2/%d", gamepadID, vectorType);
     }
 
+    inline std::string GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType vectorType) {
+        return Carrot::sprintf("/user/glfw/keys/vec2/%d", vectorType);
+    }
+
     constexpr const char* GLFWMousePositionBinding = "/user/glfw/mouse/pos";
     constexpr const char* GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
     constexpr const char* GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";

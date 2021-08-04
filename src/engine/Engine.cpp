@@ -304,7 +304,7 @@ void Carrot::Engine::pollGamepads() {
                     onGamepadAxisChange(joystickID, axisID, state.axes[axisID], prevState.axes[axisID]);
 
                     for(auto vec2Type = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2Type < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2Type++) {
-                        if(Carrot::IO::InputVectors[vec2Type].isIn(axisID)) {
+                        if(Carrot::IO::InputVectors[vec2Type].isAxisIn(axisID)) {
                             vec2ToUpdate[vec2Type] = true;
                         }
                     }
@@ -342,6 +342,26 @@ void Carrot::Engine::onGamepadVec2Change(int gamepadID, Carrot::IO::GameInputVec
     }
 }
 
+void Carrot::Engine::onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue) {
+    for(auto& callback : keysVec2Callbacks) {
+        callback(vecID, newValue, oldValue);
+    }
+}
+
+void Carrot::Engine::pollKeysVec2() {
+    // Update vec2 states
+    for(auto vec2TypeIndex = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2TypeIndex < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2TypeIndex++) {
+        auto vec2Type = static_cast<Carrot::IO::GameInputVectorType>(vec2TypeIndex);
+        auto& state = keysVec2States[vec2Type];
+        auto& prevState = keysVec2StatesPreviousFrame[vec2Type];
+        if(prevState != state) {
+            onKeysVec2Change(vec2Type, state.asVec2(), prevState.asVec2());
+        }
+    }
+
+    keysVec2StatesPreviousFrame = keysVec2States;
+}
+
 void Carrot::Engine::run() {
     size_t currentFrame = 0;
 
@@ -361,6 +381,7 @@ void Carrot::Engine::run() {
         onMouseMove(mouseX, mouseY, true);
         Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
         glfwPollEvents();
+        pollKeysVec2();
         pollGamepads();
 #ifdef ENABLE_VR
         if(config.runInVR) {
@@ -899,11 +920,30 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         callback(key, scancode, action, mods);
     }
 
-    /*
-    if(key == GLFW_KEY_G && action == GLFW_PRESS) {
-        grabCursor = !grabCursor;
-        glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    }*/
+    if(action == GLFW_REPEAT)
+        return;
+    bool pressed = action == GLFW_PRESS;
+    for(auto vec2TypeIndex = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2TypeIndex < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2TypeIndex++) {
+        auto& input = Carrot::IO::InputVectors[vec2TypeIndex];
+        if(input.isButtonIn(key)) {
+            auto vec2Type = static_cast<Carrot::IO::GameInputVectorType>(vec2TypeIndex);
+            auto& state = keysVec2States[vec2Type];
+            if(input.upKey == key)
+                state.up = pressed;
+            if(input.leftKey == key)
+                state.left = pressed;
+            if(input.rightKey == key)
+                state.right = pressed;
+            if(input.downKey == key)
+                state.down = pressed;
+        }
+    }
+
+            /*
+            if(key == GLFW_KEY_G && action == GLFW_PRESS) {
+                grabCursor = !grabCursor;
+                glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+            }*/
 
 
 

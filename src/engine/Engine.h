@@ -218,6 +218,7 @@ namespace Carrot {
         using GamepadButtonCallback = std::function<void(int joystickID, int button, bool isPressed)>;
         using GamepadAxisCallback = std::function<void(int joystickID, int axisID, float newValue, float oldValue)>;
         using GamepadVec2Callback = std::function<void(int joystickID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue)>;
+        using KeysVec2Callback = std::function<void(IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue)>;
         using MouseButtonCallback = std::function<void(int button, bool isPressed, int mods)>;
         using MousePositionCallback = std::function<void(double xpos, double ypos)>;
         using MouseDeltaCallback = std::function<void(double dx, double dy)>;
@@ -240,6 +241,10 @@ namespace Carrot {
 
         void addGLFWGamepadVec2Callback(GamepadVec2Callback callback) {
             gamepadVec2Callbacks.push_back(callback);
+        }
+
+        void addGLFWKeysVec2Callback(KeysVec2Callback callback) {
+            keysVec2Callbacks.push_back(callback);
         }
 
         void addGLFWMousePositionCallback(MousePositionCallback callback) {
@@ -367,8 +372,31 @@ namespace Carrot {
         void updateImGuiTextures(size_t swapchainLength);
 
     private:
+        struct Vec2KeyState {
+            bool up = false;
+            bool left = false;
+            bool down = false;
+            bool right = false;
+
+            auto operator<=>(const Vec2KeyState&) const = default;
+
+            [[nodiscard]] glm::vec2 asVec2() const {
+                glm::vec2 res{0.0f};
+                if(up)
+                    res.y -= 1.0f;
+                if(down)
+                    res.y += 1.0f;
+                if(left)
+                    res.x -= 1.0f;
+                if(right)
+                    res.x += 1.0f;
+                return res;
+            }
+        };
         std::unordered_map<int, GLFWgamepadstate> gamepadStates;
         std::unordered_map<int, GLFWgamepadstate> gamepadStatePreviousFrame;
+        std::unordered_map<Carrot::IO::GameInputVectorType, Vec2KeyState> keysVec2States;
+        std::unordered_map<Carrot::IO::GameInputVectorType, Vec2KeyState> keysVec2StatesPreviousFrame;
         std::vector<KeyCallback> keyCallbacks;
         std::vector<MouseButtonCallback> mouseButtonCallbacks;
         std::vector<GamepadButtonCallback> gamepadButtonCallbacks;
@@ -377,15 +405,18 @@ namespace Carrot {
         std::vector<MousePositionCallback> mousePositionCallbacks;
         std::vector<MouseDeltaCallback> mouseDeltaCallbacks;
         std::vector<MouseDeltaCallback> mouseDeltaGrabbedCallbacks;
+        std::vector<KeysVec2Callback> keysVec2Callbacks;
 
         /// Poll state of gamepads, GLFW does not (yet) post events for gamepad inputs
         void pollGamepads();
+        void pollKeysVec2();
 
         void initInputStructures();
 
         void onGamepadButtonChange(int gamepadID, int buttonID, bool pressed);
         void onGamepadAxisChange(int gamepadID, int buttonID, float newValue, float oldValue);
         void onGamepadVec2Change(int gamepadID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
+        void onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
     };
 }
 
