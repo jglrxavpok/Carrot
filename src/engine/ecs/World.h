@@ -15,6 +15,8 @@ using namespace std;
 
 namespace Carrot {
 
+    using Tags = std::uint64_t;
+
     class World {
     private:
 
@@ -30,6 +32,8 @@ namespace Carrot {
 
             template<typename Comp>
             Comp* getComponent();
+
+            EasyEntity& addTag(Tags tag);
 
             operator Entity_Ptr() {
                 return internalEntity;
@@ -51,6 +55,7 @@ namespace Carrot {
         vector<Entity_Ptr> entitiesToRemove;
 
         unordered_map<EntityID, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
+        unordered_map<EntityID, Tags> entityTags;
 
         vector<unique_ptr<System>> logicSystems;
         vector<unique_ptr<System>> renderSystems;
@@ -60,6 +65,10 @@ namespace Carrot {
 
         template<class Comp>
         Comp* getComponent(Entity_Ptr& entity) const;
+
+        Tags getTags(const Entity_Ptr& entity) const;
+
+        std::vector<Entity_Ptr> getEntitiesWithTags(Tags tags) const;
 
         void tick(double dt);
         void onFrame(Carrot::Render::Context renderContext);

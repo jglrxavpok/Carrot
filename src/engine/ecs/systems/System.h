@@ -48,6 +48,9 @@ namespace Carrot {
     class SignedSystem: public System {
     public:
         explicit SignedSystem(Carrot::World& world);
+
+        /// Calls 'action' of each entity in this system. Immediately called, so capturing on the stack is safe.
+        void forEachEntity(const std::function<void(Entity_Ptr, RequiredComponents&...)>& action);
     };
 
     template<typename... RequiredComponents>

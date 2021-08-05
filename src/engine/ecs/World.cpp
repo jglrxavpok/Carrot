@@ -14,6 +14,29 @@ Carrot::World::EasyEntity Carrot::World::newEntity() {
     return toReturn;
 }
 
+Carrot::World::EasyEntity& Carrot::World::EasyEntity::addTag(Tags tag) {
+    worldRef.entityTags[*internalEntity] |= tag;
+    return *this;
+}
+
+Carrot::Tags Carrot::World::getTags(const Entity_Ptr& entity) const {
+    auto it = entityTags.find(*entity);
+    if(it != entityTags.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+std::vector<Entity_Ptr> Carrot::World::getEntitiesWithTags(Tags tags) const {
+    std::vector<Entity_Ptr> result;
+    for(const auto& entity : entities) {
+        if((getTags(entity) & tags) == tags) {
+            result.push_back(entity);
+        }
+    }
+    return result;
+}
+
 void Carrot::World::tick(double dt) {
     for(const auto& toAdd : entitiesToAdd) {
         entities.push_back(toAdd);

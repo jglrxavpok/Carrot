@@ -47,3 +47,12 @@ template<class LogicSystemType, typename... Args>
 void Carrot::World::addLogicSystem(Args&&... args) {
     logicSystems.push_back(move(make_unique<LogicSystemType>(*this, args...)));
 }
+
+template<Carrot::SystemType type, typename... RequiredComponents>
+void Carrot::SignedSystem<type, RequiredComponents...>::forEachEntity(const std::function<void(Entity_Ptr, RequiredComponents&...)>& action) {
+    for(const auto& e : entities) {
+        if (auto entity = e.lock()) {
+            action(entity, *world.getComponent<RequiredComponents>(entity)...);
+        }
+    }
+}
