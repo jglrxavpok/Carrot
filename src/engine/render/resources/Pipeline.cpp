@@ -63,7 +63,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
             .polygonMode = vk::PolygonMode::eFill,
 
-            .cullMode = description.type == PipelineType::Skybox ? vk::CullModeFlagBits::eNone : vk::CullModeFlagBits::eFront,
+            .cullMode = description.cull ? vk::CullModeFlagBits::eFront : vk::CullModeFlagBits::eNone,
             .frontFace = vk::FrontFace::eClockwise,
 
             // TODO: change for shadow maps
@@ -536,5 +536,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
         for(const auto& constant : json["constants"].GetObject()) {
             constants[std::string(constant.name.GetString())] = static_cast<std::uint32_t>(constant.value.GetUint64());
         }
+    }
+
+    if(json.HasMember("cull")) {
+        cull = json["cull"].GetBool();
     }
 }

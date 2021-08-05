@@ -6,5 +6,6 @@
   "fragmentShader": "resources/shaders/skybox.fragment.glsl.spv",
   "reserveSet2ForCamera": true,
   "depthWrite": false,
-  "depthTest": true
+  "depthTest": true,
+  "cull": false
 }
