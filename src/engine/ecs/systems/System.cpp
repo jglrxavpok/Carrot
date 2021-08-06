@@ -21,11 +21,11 @@ void Carrot::System::onEntitiesAdded(const vector<Entity_Ptr>& added) {
 
 void Carrot::System::onEntitiesRemoved(const vector<Entity_Ptr>& removed) {
     for(const auto& e : removed) {
-        entities.erase(find_if(entities.begin(), entities.end(), [&](const auto& entity) {
+        entities.erase(std::remove_if(entities.begin(), entities.end(), [&](const auto& entity) {
             if(auto ent = entity.lock()) {
                 return *ent == *e;
             }
             return false;
-        }));
+        }), entities.end());
     }
 }

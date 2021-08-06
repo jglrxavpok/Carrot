@@ -49,18 +49,19 @@ void Carrot::World::tick(double dt) {
             render->onEntitiesAdded(entitiesToAdd);
         }
     }
-    for(const auto& toRemove : entitiesToRemove) {
-        auto position = find(entities.begin(), entities.end(), toRemove);
-        if(position != entities.end()) { // clear components
-            entityComponents.erase(entityComponents.find(*toRemove));
-        }
-    }
     if(!entitiesToRemove.empty()) {
         for(const auto& logic : logicSystems) {
             logic->onEntitiesRemoved(entitiesToRemove);
         }
         for(const auto& render : renderSystems) {
             render->onEntitiesRemoved(entitiesToRemove);
+        }
+
+        for(const auto& toRemove : entitiesToRemove) {
+            auto position = find(entities.begin(), entities.end(), toRemove);
+            if(position != entities.end()) { // clear components
+                entityComponents.erase(entityComponents.find(*toRemove));
+            }
         }
     }
     entitiesToAdd.clear();
@@ -122,4 +123,8 @@ Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
         s.addComponent(id);
     }
     return s;
+}
+
+void Carrot::World::removeEntity(const Entity_Ptr& ent) {
+    entitiesToRemove.push_back(ent);
 }

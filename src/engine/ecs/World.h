@@ -76,6 +76,8 @@ namespace Carrot {
 
         EasyEntity newEntity();
 
+        void removeEntity(const Entity_Ptr& ent);
+
         template<class RenderSystemType, typename... Args>
         void addRenderSystem(Args&&... args);
 
