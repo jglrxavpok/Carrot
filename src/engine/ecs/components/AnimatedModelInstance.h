@@ -11,6 +11,6 @@ namespace Carrot {
     struct AnimatedModelInstance: public IdentifiableComponent<AnimatedModelInstance> {
         AnimatedInstanceData& instanceData;
 
-        explicit AnimatedModelInstance(AnimatedInstanceData& instanceData): instanceData(instanceData) {};
+        explicit AnimatedModelInstance(EasyEntity entity, AnimatedInstanceData& instanceData): IdentifiableComponent<AnimatedModelInstance>(std::move(entity)), instanceData(instanceData) {};
     };
 }

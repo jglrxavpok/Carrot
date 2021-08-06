@@ -12,5 +12,7 @@
 namespace Carrot {
     struct Kinematics: public IdentifiableComponent<Kinematics> {
         glm::vec3 velocity{};
+
+        explicit Kinematics(EasyEntity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
     };
 }

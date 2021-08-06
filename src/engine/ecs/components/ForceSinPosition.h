@@ -15,5 +15,7 @@ namespace Carrot {
         glm::vec3 amplitude{1.0f};
         glm::vec3 angularOffset{0.0f};
         glm::vec3 centerPosition{0.0f};
+
+        explicit ForceSinPosition(EasyEntity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
     };
 }

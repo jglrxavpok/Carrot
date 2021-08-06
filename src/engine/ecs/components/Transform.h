@@ -11,11 +11,11 @@
 
 namespace Carrot {
     struct Transform: public IdentifiableComponent<Transform> {
-        Transform* parent = nullptr;
-
         glm::vec3 position{};
         glm::vec3 scale{1.0f};
         glm::quat rotation = glm::identity<glm::quat>();
+
+        explicit Transform(EasyEntity entity): IdentifiableComponent<Transform>(std::move(entity)) {};
 
         [[nodiscard]] glm::mat4 toTransformMatrix() const;
     };

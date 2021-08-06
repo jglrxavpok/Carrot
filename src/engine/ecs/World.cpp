@@ -5,18 +5,32 @@
 #include "World.h"
 #include "systems/System.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
+#include <engine/console/RuntimeOption.hpp>
 
-Carrot::World::EasyEntity Carrot::World::newEntity() {
+Carrot::EasyEntity Carrot::World::newEntity(std::string_view name) {
     auto newID = freeEntityID++;
     auto entity = make_shared<Entity>(newID);
     auto toReturn = EasyEntity(entity, *this);
+    entityNames[newID] = name;
     entitiesToAdd.emplace_back(entity);
     return toReturn;
 }
 
-Carrot::World::EasyEntity& Carrot::World::EasyEntity::addTag(Tags tag) {
+Carrot::EasyEntity& Carrot::EasyEntity::addTag(Carrot::Tags tag) {
     worldRef.entityTags[*internalEntity] |= tag;
     return *this;
+}
+
+Entity_Ptr Carrot::EasyEntity::getParent() {
+    return worldRef.getParent(internalEntity);
+}
+
+const Entity_Ptr Carrot::EasyEntity::getParent() const {
+    return worldRef.getParent(internalEntity);
+}
+
+void Carrot::EasyEntity::setParent(const Entity_Ptr& parent) {
+    worldRef.setParent(internalEntity, parent);
 }
 
 Carrot::Tags Carrot::World::getTags(const Entity_Ptr& entity) const {
@@ -62,6 +76,12 @@ void Carrot::World::tick(double dt) {
             if(position != entities.end()) { // clear components
                 entityComponents.erase(entityComponents.find(*toRemove));
             }
+
+            entities.erase(position);
+
+            setParent(toRemove, nullptr);
+            entityChildren.erase(*toRemove);
+            entityNames.erase(*toRemove);
         }
     }
     entitiesToAdd.clear();
@@ -76,6 +96,8 @@ void Carrot::World::tick(double dt) {
     }
 }
 
+static Carrot::RuntimeOption showWorldHierarchy("Debug/Show World hierarchy", false);
+
 void Carrot::World::onFrame(Carrot::Render::Context renderContext) {
     ZoneScoped;
     {
@@ -89,6 +111,37 @@ void Carrot::World::onFrame(Carrot::Render::Context renderContext) {
         ZoneScopedN("Prepare render");
         for(const auto& render : renderSystems) {
             render->onFrame(renderContext);
+        }
+    }
+
+    {
+        ZoneScopedN("Debug");
+        if(showWorldHierarchy) {
+            if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
+                std::function<void(const Entity_Ptr&)> showEntityTree = [&](const Entity_Ptr& entity) {
+                    if(!entity)
+                        return;
+                    auto childrenIt = entityChildren.find(*entity);
+                    if(childrenIt != entityChildren.end()) {
+                        if(ImGui::TreeNode("##child", "%s", getName(entity).c_str())) {
+                            auto& children = childrenIt->second;
+                            for(const auto& c : children) {
+                                showEntityTree(c);
+                            }
+
+                            ImGui::TreePop();
+                        }
+                    } else { // has no children
+                        ImGui::Text("- %s", getName(entity).c_str());
+                    }
+                };
+                for(const auto& ent : entities) {
+                    if( ! getParent(ent)) {
+                        showEntityTree(ent);
+                    }
+                }
+            }
+            ImGui::End();
         }
     }
 }
@@ -125,6 +178,50 @@ Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
     return s;
 }
 
+Entity_Ptr Carrot::World::getParent(const Entity_Ptr& of) const {
+    auto it = entityParents.find(*of);
+    if(it != entityParents.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void Carrot::World::setParent(const Entity_Ptr& toSet, const Entity_Ptr& parent) {
+    assert(toSet != nullptr);
+    auto previousParent = entityParents[*toSet];
+    if(previousParent) {
+        auto& parentChildren = entityChildren[*previousParent];
+        parentChildren.erase(std::remove(parentChildren.begin(), parentChildren.end(), toSet), parentChildren.end());
+    }
+    if(parent) {
+        entityParents[*toSet] = parent;
+        entityChildren[*parent].push_back(toSet);
+    } else {
+        entityParents.erase(*toSet);
+    }
+}
+
+const std::vector<Entity_Ptr>& Carrot::World::getChildren(const Entity_Ptr& parent) const {
+    auto it = entityChildren.find(*parent);
+    if(it != entityChildren.end()) {
+        return it->second;
+    }
+    static std::vector<Entity_Ptr> empty;
+    return empty;
+}
+
 void Carrot::World::removeEntity(const Entity_Ptr& ent) {
     entitiesToRemove.push_back(ent);
+    auto childrenCopy = entityChildren[*ent];
+    for(const auto& child : childrenCopy) {
+        removeEntity(child);
+    }
+}
+
+const std::string& Carrot::World::getName(const Entity_Ptr& entity) const {
+    auto it = entityNames.find(*entity);
+    if(it != entityNames.end()) {
+        return it->second;
+    }
+    throw std::runtime_error("Non-existent entity.");
 }

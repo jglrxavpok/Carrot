@@ -11,7 +11,7 @@ namespace Carrot {
     struct RaycastedShadowsLight: public IdentifiableComponent<RaycastedShadowsLight> {
         Light& lightRef;
 
-        explicit RaycastedShadowsLight(Light& light): lightRef(light) {
+        explicit RaycastedShadowsLight(EasyEntity entity, Light& light): IdentifiableComponent<RaycastedShadowsLight>(std::move(entity)), lightRef(light) {
             light.enabled = true;
         };
     };

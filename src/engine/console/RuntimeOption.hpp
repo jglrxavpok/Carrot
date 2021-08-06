@@ -20,6 +20,10 @@ namespace Carrot {
             return currentValue;
         }
 
+        bool& getValueRef() {
+            return currentValue;
+        }
+
         void setValue(bool newState) {
             currentValue = newState;
         }

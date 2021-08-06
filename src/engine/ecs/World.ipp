@@ -20,21 +20,21 @@ Comp* Carrot::World::getComponent(Entity_Ptr& entity) const {
 }
 
 template<typename Comp>
-Carrot::World::EasyEntity& Carrot::World::EasyEntity::addComponent(unique_ptr<Comp>&& component) {
+Carrot::EasyEntity& Carrot::EasyEntity::addComponent(std::unique_ptr<Comp>&& component) {
     auto& componentMap = worldRef.entityComponents[*internalEntity];
     componentMap[Comp::id] = move(component);
     return *this;
 }
 
 template<typename Comp, typename... Args>
-Carrot::World::EasyEntity& Carrot::World::EasyEntity::addComponent(Args&&... args) {
+Carrot::EasyEntity& Carrot::EasyEntity::addComponent(Args&&... args) {
     auto& componentMap = worldRef.entityComponents[*internalEntity];
-    componentMap[Comp::id] = make_unique<Comp>(args...);
+    componentMap[Comp::id] = make_unique<Comp>(*this, args...);
     return *this;
 }
 
 template<typename Comp>
-Comp* Carrot::World::EasyEntity::getComponent() {
+Comp* Carrot::EasyEntity::getComponent() {
     return worldRef.getComponent<Comp>(internalEntity);
 }
 
