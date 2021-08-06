@@ -36,6 +36,9 @@ namespace Carrot {
         glm::mat4& getViewMatrixRef();
         glm::mat4& getProjectionMatrixRef();
 
+    public:
+        [[nodiscard]] ControlType getControlMode() const { return type; }
+
     private:
         ControlType type = ControlType::PoseAndLookAt;
         glm::mat4 viewMatrix{1.0f};
