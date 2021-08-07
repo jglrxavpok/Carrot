@@ -18,6 +18,6 @@ namespace Game {
     struct UnitColor: public Carrot::IdentifiableComponent<UnitColor> {
         Unit::Type color;
 
-        explicit UnitColor(Unit::Type color): color(color) {}
+        explicit UnitColor(Carrot::EasyEntity entity, Unit::Type color): Carrot::IdentifiableComponent<UnitColor>(std::move(entity)), color(color) {}
     };
 }
