@@ -59,6 +59,8 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration co
 {
     ZoneScoped;
 
+    glfwSetWindowTitle(window.get(), this->config.applicationName.c_str());
+
     glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
 
     vk::DynamicLoader dl;
