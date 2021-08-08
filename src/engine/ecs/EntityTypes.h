@@ -31,6 +31,8 @@ namespace Carrot {
 
         EasyEntity& addTag(Tags tag);
 
+        Tags getTags() const;
+
         Entity_Ptr getParent();
         const Entity_Ptr getParent() const;
 

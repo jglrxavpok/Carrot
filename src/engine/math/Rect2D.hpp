@@ -35,6 +35,14 @@ namespace Carrot::Math {
             return center.y + halfSize.y;
         }
 
+        Vec2Type& getCenter() { return center; }
+        const Vec2Type& getCenter() const { return center; }
+
+        Vec2Type& getHalfSize() { return halfSize; }
+        const Vec2Type& getHalfSize() const { return halfSize; }
+
+        [[nodiscard]] Vec2Type getSize() { return halfSize * ((Scalar)2); }
+
     public:
         bool intersects(const Rect2D<Scalar>& other) const {
             return !(

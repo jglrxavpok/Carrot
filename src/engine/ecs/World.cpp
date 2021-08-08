@@ -21,6 +21,10 @@ Carrot::EasyEntity& Carrot::EasyEntity::addTag(Carrot::Tags tag) {
     return *this;
 }
 
+Carrot::Tags Carrot::EasyEntity::getTags() const {
+    return worldRef.getTags(internalEntity);
+}
+
 Entity_Ptr Carrot::EasyEntity::getParent() {
     return worldRef.getParent(internalEntity);
 }
