@@ -53,6 +53,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
 static Carrot::RuntimeOption showInputDebug("Debug/Show Inputs", false);
+static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 
 
 static std::unordered_set<int> activeJoysticks{};
@@ -586,7 +587,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     }
     static DebugBufferObject debug{};
     static int32_t gIndex = -1;
-    if(hasPreviousFrame()) {
+    if(hasPreviousFrame() && showGBuffer) {
         Render::Texture* textureToDisplay = nullptr;
         if(ImGui::Begin("GBuffer View")) {
             ImGui::RadioButton("All channels", &gIndex, -1);

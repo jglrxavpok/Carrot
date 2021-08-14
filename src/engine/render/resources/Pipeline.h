@@ -40,6 +40,7 @@ namespace Carrot {
         bool reserveSet2ForCamera = false; // descriptor set 0 is for the camera. Can be used to switch camera information without changing other sets (VR)
 
         bool cull = true;
+        bool alphaBlending = false;
 
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);

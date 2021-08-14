@@ -373,6 +373,8 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     vk::StructureChain deviceFeatures {
             vk::PhysicalDeviceFeatures2 {
                     .features = {
+                            .independentBlend = true,
+
                             .multiDrawIndirect = true,
                             .samplerAnisotropy = true,
                             .shaderUniformBufferArrayDynamicIndexing = true,

@@ -79,9 +79,9 @@ void Carrot::World::tick(double dt) {
             auto position = find(entities.begin(), entities.end(), toRemove);
             if(position != entities.end()) { // clear components
                 entityComponents.erase(entityComponents.find(*toRemove));
+                entities.erase(position, entities.end());
             }
 
-            entities.erase(position);
 
             setParent(toRemove, nullptr);
             entityChildren.erase(*toRemove);

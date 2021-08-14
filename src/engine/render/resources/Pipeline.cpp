@@ -90,15 +90,37 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .stencilTestEnable = false,
     };
 
-    pipelineTemplate.colorBlendAttachments = {
-            static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
-            {
-                    // TODO: blending
-                    .blendEnable = false,
+    if(description.alphaBlending) {
+        pipelineTemplate.colorBlendAttachments = {
+                static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 3 : 1),
+                vk::PipelineColorBlendAttachmentState {
+                        .blendEnable = true,
+                        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                        .colorBlendOp = vk::BlendOp::eAdd,
+                        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                        .alphaBlendOp = vk::BlendOp::eAdd,
 
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            }
-    };
+                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+                }
+        };
+        // R32 not blendable
+        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                .blendEnable = false,
+
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+        });
+    } else {
+        pipelineTemplate.colorBlendAttachments = {
+                static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
+                vk::PipelineColorBlendAttachmentState {
+                        .blendEnable = false,
+
+                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+                }
+        };
+    }
 
     pipelineTemplate.colorBlending = vk::PipelineColorBlendStateCreateInfo {
             .logicOpEnable = false,
@@ -540,5 +562,8 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
 
     if(json.HasMember("cull")) {
         cull = json["cull"].GetBool();
+    }
+    if(json.HasMember("alphaBlending")) {
+        alphaBlending = json["alphaBlending"].GetBool();
     }
 }
