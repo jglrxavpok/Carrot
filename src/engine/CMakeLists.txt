@@ -30,6 +30,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/animation/Animation.cpp
         ${EngineRoot}utils/conversions.cpp
         ${EngineRoot}utils/stringmanip.cpp
+        ${EngineRoot}render/resources/Font.cpp
 
         ${EngineRoot}ecs/components/Component.cpp
         ${EngineRoot}ecs/components/Transform.cpp
@@ -90,6 +91,7 @@ set(VERTEX_SHADERS
         ${ProjectRoot}resources/shaders/skybox.vertex.glsl
         ${ProjectRoot}resources/shaders/particles.vertex.glsl
         ${ProjectRoot}resources/shaders/screenQuad-transformed.vertex.glsl
+        ${ProjectRoot}resources/shaders/text-rendering.vertex.glsl
 
         #PARENT_SCOPE
         )
@@ -102,6 +104,7 @@ set(FRAGMENT_SHADERS
         ${ProjectRoot}resources/shaders/particles.fragment.glsl
         ${ProjectRoot}resources/shaders/gResolve-rendergraph.fragment.glsl
         ${ProjectRoot}resources/shaders/composer-blit.fragment.glsl
+        ${ProjectRoot}resources/shaders/text-rendering.fragment.glsl
 
         #PARENT_SCOPE
         )
