@@ -145,6 +145,7 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/dr_libs/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)

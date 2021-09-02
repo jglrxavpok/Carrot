@@ -113,7 +113,7 @@ namespace Carrot::Render {
     }
 
     void Font::immediateRender(std::u32string_view text, glm::mat4 transform) {
-        // TODO
+        TODO
     }
 
     void RenderableText::onFrame(Carrot::Render::Context renderContext) {

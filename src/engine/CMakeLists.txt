@@ -80,6 +80,11 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}tasks/PresentThread.cpp
 
+        ${EngineRoot}network/client/Client.cpp
+        ${EngineRoot}network/server/Server.cpp
+
+        ${EngineRoot}network/packets/HandshakePackets.cpp
+
 
        # PARENT_SCOPE
         )

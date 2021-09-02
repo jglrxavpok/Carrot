@@ -31,3 +31,6 @@
 [submodule "thirdparty/OpenXR-Hpp"]
 	path = thirdparty/OpenXR-Hpp
 	url = https://github.com/KhronosGroup/OpenXR-Hpp
+[submodule "thirdparty/asio"]
+    path = thirdparty/asio
+    url = https://github.com/chriskohlhoff/asio
