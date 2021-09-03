@@ -9,10 +9,22 @@
 
 namespace Carrot::Network {
     struct Handshake {
-        static Protocol Packets;
+        static Protocol ServerBoundPackets;
 
         enum PacketIDs: PacketID {
+            OpenConnectionWin32ID,
             SetUDP,
+            SetUsername,
+        };
+
+        class OpenConnectionWin32: public Packet {
+        public:
+            explicit OpenConnectionWin32(): Packet(Handshake::PacketIDs::OpenConnectionWin32ID) {}
+
+        protected:
+            void writeAdditional(std::vector<std::uint8_t>& data) const override {}
+
+            void readAdditional(const std::vector<std::uint8_t>& data) override {}
         };
 
         class SetUDPPort: public Packet {
@@ -28,7 +40,26 @@ namespace Carrot::Network {
             }
 
             void readAdditional(const std::vector<std::uint8_t>& data) override {
-                TODO
+                IO::VectorReader r{data};
+                r >> port;
+            }
+        };
+
+        class SetClientUsername: public Packet {
+        public:
+            std::u32string username = U"";
+
+            explicit SetClientUsername(): Packet(Handshake::PacketIDs::SetUsername) {}
+            explicit SetClientUsername(std::u32string_view username): Packet(Handshake::PacketIDs::SetUsername), username(username) {}
+
+        protected:
+            void writeAdditional(std::vector<std::uint8_t>& data) const override {
+                data << username;
+            }
+
+            void readAdditional(const std::vector<std::uint8_t>& data) override {
+                IO::VectorReader r{data};
+                r >> username;
             }
         };
     };

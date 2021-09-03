@@ -5,6 +5,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}io/Logging.cpp
         ${EngineRoot}io/FileHandle.cpp
         ${EngineRoot}io/Resource.cpp
+        ${EngineRoot}io/Serialisation.cpp
 
         ${EngineRoot}io/actions/ActionSet.cpp
 

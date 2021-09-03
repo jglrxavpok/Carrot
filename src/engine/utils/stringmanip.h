@@ -16,6 +16,8 @@ namespace Carrot {
     std::string toLowerCase(const string& str);
     std::string toUpperCase(const string& str);
 
+    std::string toString(std::u32string_view u32str);
+
     template<typename... Args>
     inline std::string sprintf(std::string_view format, Args... args) {
         int size = std::snprintf(nullptr, 0, format.data(), args...) +1;

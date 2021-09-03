@@ -17,7 +17,7 @@ namespace Carrot::Network {
     class Client {
     public:
         /// Starts a client and its backing thread.
-        Client(std::string_view username);
+        Client(std::u32string_view username);
         ~Client();
 
     public:
@@ -38,7 +38,7 @@ namespace Carrot::Network {
         void threadFunction();
 
     private:
-        std::string username;
+        std::u32string_view username;
         std::thread networkThread;
         bool connected = false;
         asio::io_context ioContext;

@@ -10,14 +10,16 @@
 #include <functional>
 #include <asio.hpp>
 #include <engine/network/Packet.hpp>
+#include <engine/utils/UUID.h>
 
 namespace Carrot::Network {
+
     /// Dedicated Server to which game clients can connect.
     /// Uses TCP to maintain connection and send "critical" messages.
     /// Uses UDP for quick message sending.
     class Server {
 
-        struct ConnectedClient {
+        struct ConnectedClient: public std::enable_shared_from_this<ConnectedClient> {
             enum class State {
                 Handshake,
                 Play,
@@ -27,10 +29,17 @@ namespace Carrot::Network {
 
             explicit ConnectedClient(asio::io_context& context): tcpSocket(context) {}
 
-            std::string username = "<<<<unknown, handshake not finished>>>>";
+            Carrot::UUID uuid = Carrot::randomUUID();
+            std::u32string username = U"<<<<unknown, handshake not finished>>>>";
             asio::ip::tcp::socket tcpSocket;
             asio::ip::udp::endpoint udpEndpoint;
             State currentState = State::Handshake;
+        };
+
+    public:
+        struct IPacketConsumer {
+            /// Handles an incoming packet.
+            virtual void consumePacket(const Carrot::UUID& clientID, const Packet::Ptr& packet) = 0;
         };
 
     public:
@@ -42,6 +51,13 @@ namespace Carrot::Network {
         void broadcastEvent(Packet::Ptr&& event);
         void broadcastMessage(Packet::Ptr&& message);
 
+    public:
+        void setPacketConsumer(IPacketConsumer* packetConsumer) {
+            this->packetConsumer = packetConsumer;
+        }
+
+        IPacketConsumer* getPacketConsumer() const { return packetConsumer; }
+
     private:
         void threadFunction();
 
@@ -52,7 +68,10 @@ namespace Carrot::Network {
         void addClient(const ConnectedClient::Ptr& client);
         void readUDP();
         void readTCP(const ConnectedClient::Ptr& client);
-        void decodePacket(ConnectedClient& client, const std::span<std::uint8_t>& packetData);
+
+        /// Decodes & dispatches a single packet and returns how many bytes have been read from 'packetData'
+        std::size_t decodePacket(ConnectedClient& client, const std::span<std::uint8_t>& packetData);
+        void handleHandshakePacket(ConnectedClient& client, const Packet::Ptr& packet);
 
     private:
 
@@ -63,5 +82,6 @@ namespace Carrot::Network {
         std::thread acceptorThread;
         std::list<ConnectedClient::Ptr> clients;
         std::unordered_map<asio::ip::udp::endpoint, ConnectedClient::Ptr> clientEndpoints;
+        IPacketConsumer* packetConsumer = nullptr;
     };
 }

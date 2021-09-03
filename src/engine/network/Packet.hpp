@@ -9,7 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <engine/utils/Assert.h>
-#include <engine/io/Serialisation.hpp>
+#include <engine/io/Serialisation.h>
 
 namespace Carrot::Network {
     using PacketID = std::uint32_t;
@@ -42,11 +42,15 @@ namespace Carrot::Network {
             destination.resize(prevSize + data.size());
             std::memcpy(destination.data() + prevSize, data.data(), data.size());
         }
+
+        std::size_t sizeOf() const {
+            return sizeof(std::uint32_t) * 2 /* packet ID + data length */ + data.size();
+        }
     };
 
     class Packet {
     public:
-        using Ptr = std::unique_ptr<Packet>;
+        using Ptr = std::shared_ptr<Packet>;
 
         explicit Packet(PacketID id): packetType(id) {};
 
@@ -63,6 +67,8 @@ namespace Carrot::Network {
         virtual void writeAdditional(std::vector<std::uint8_t>& data) const = 0;
         virtual void readAdditional(const std::vector<std::uint8_t>& data) = 0;
         // TODO
+
+        PacketID getPacketID() const { return packetType; }
 
     protected:
         PacketID packetType = -1;
@@ -89,7 +95,7 @@ namespace Carrot::Network {
         template<typename PacketType> requires std::is_base_of_v<Packet, PacketType>
         struct DefaultPacketGen: public PacketGen {
             typename PacketType::Ptr operator()() const override {
-                return std::make_unique<PacketType>();
+                return std::make_shared<PacketType>();
             }
         };
 

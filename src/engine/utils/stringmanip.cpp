@@ -4,6 +4,7 @@
 
 #include "stringmanip.h"
 #include <cctype>
+#include <codecvt>
 
 vector<string> Carrot::splitString(const string& toSplit, const string& delimiter) {
     vector<string> parts{};
@@ -35,4 +36,9 @@ std::string Carrot::toUpperCase(const string& str) {
         c = std::toupper(c);
     }
     return result;
+}
+
+std::string Carrot::toString(std::u32string_view u32str) {
+    static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
+    return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1]);
 }

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <asio.hpp>
+#include <engine/io/Serialisation.h>
 #include <engine/network/client/Client.h>
 #include <engine/network/server/Server.h>
 
@@ -20,7 +21,8 @@ protected:
     }
 
     void readAdditional(const std::vector<std::uint8_t>& data) override {
-        // TODO
+        Carrot::IO::VectorReader r{data};
+        r >> someVal;
     }
 };
 
@@ -28,10 +30,13 @@ int main() {
     using namespace Carrot;
 
     Network::Server server(25565);
-    Network::Client client("username");
+    Network::Client client(U"username");
+    Network::Client client2(U"username2");
     client.connect("localhost", 25565);
+    client2.connect("localhost", 25565);
     //client.queueEvent(std::move(std::make_unique<TestPacket>()));
     client.queueMessage(std::move(std::make_unique<TestPacket>()));
+    client2.queueMessage(std::move(std::make_unique<TestPacket>()));
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 

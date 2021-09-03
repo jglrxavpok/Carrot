@@ -5,8 +5,10 @@
 #include "HandshakePackets.h"
 
 namespace Carrot::Network {
-    Protocol Handshake::Packets = std::move(
+    Protocol Handshake::ServerBoundPackets = std::move(
             Carrot::Network::Protocol()
-                .with<0, Handshake::SetUDPPort>()
+                .with<Handshake::PacketIDs::SetUDP, Handshake::SetUDPPort>()
+                .with<Handshake::PacketIDs::OpenConnectionWin32ID, Handshake::OpenConnectionWin32>()
+                .with<Handshake::PacketIDs::SetUsername, Handshake::SetClientUsername>()
     );
 }

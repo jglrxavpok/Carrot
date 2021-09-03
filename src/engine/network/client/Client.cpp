@@ -10,7 +10,7 @@
 #include <engine/network/packets/HandshakePackets.h>
 
 namespace Carrot::Network {
-    Client::Client(std::string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {
+    Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {
         networkThread = std::thread([this]() {
            threadFunction();
         });
@@ -38,10 +38,35 @@ namespace Carrot::Network {
         asio::ip::udp::resolver udpResolver(ioContext);
         udpEndpoint = *udpResolver.resolve(address, portStr).begin();
 
-        Handshake::SetUDPPort setUDPPort { udpEndpoint.port() };
-        std::vector<std::uint8_t> bytes;
-        setUDPPort.toBuffer().write(bytes);
-        asio::write(tcpSocket, asio::buffer(bytes));
+        // https://stackoverflow.com/a/18434964
+        // A dummy TX is required for the socket to acquire the local port properly under windoze
+        // Transmitting an empty string works fine for this, but the TX must take place BEFORE the first call to Asynch_receive_from(...)
+#ifdef WIN32
+        {
+            Handshake::OpenConnectionWin32 open;
+            std::vector<std::uint8_t> bytes;
+            open.toBuffer().write(bytes);
+            udpSocket.send_to(asio::buffer(bytes), udpEndpoint);
+        }
+#endif
+
+        Handshake::SetUDPPort setUDPPort { udpSocket.local_endpoint().port() };
+        std::vector<std::uint8_t> udpBytes;
+        setUDPPort.toBuffer().write(udpBytes);
+
+        Handshake::SetClientUsername usernamePacket { username };
+        std::vector<std::uint8_t> usernameBytes;
+        usernamePacket.toBuffer().write(usernameBytes);
+
+        asio::error_code ec;
+        asio::write(tcpSocket, asio::buffer(udpBytes), ec);
+        if(ec) {
+            TODO
+        }
+        asio::write(tcpSocket, asio::buffer(usernameBytes), ec);
+        if(ec) {
+            TODO
+        }
 
         //asio::connect(udpSocket, udpEndpoint);
         connected = true;
