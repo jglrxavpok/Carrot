@@ -36,6 +36,7 @@ namespace Carrot::Network {
 
     private:
         void threadFunction();
+        void waitForHandshakeCompletion();
 
     private:
         std::u32string_view username;

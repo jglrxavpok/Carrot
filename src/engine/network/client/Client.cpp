@@ -8,6 +8,7 @@
 #include <engine/utils/stringmanip.h>
 #include <engine/io/Logging.hpp>
 #include <engine/network/packets/HandshakePackets.h>
+#include <engine/network/AsioHelpers.h>
 
 namespace Carrot::Network {
     Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {
@@ -68,23 +69,45 @@ namespace Carrot::Network {
             TODO
         }
 
+        waitForHandshakeCompletion();
+
+        // TODO: debug, remove
+        std::string usernameStr = Carrot::toString(username);
+        Carrot::Log::info("Client %s is connected.", usernameStr.c_str());
+
+        // setup listeners
+        // TODO
+
         //asio::connect(udpSocket, udpEndpoint);
         connected = true;
     }
 
+    void Client::waitForHandshakeCompletion() {
+        asio::error_code error;
+        tcpSocket.wait(asio::ip::tcp::socket::wait_read, error);
+        if(!error) {
+            std::vector<std::uint8_t> readBuffer(tcpSocket.available());
+            asio::error_code readError;
+            tcpSocket.receive(asio::buffer(readBuffer), 0, readError);
+            if(!readError) {
+                PacketBuffer buffer{readBuffer};
+                runtimeAssert(buffer.packetType == Handshake::PacketIDs::ConfirmHandshake,
+                              "Expected 'ConfirmHandshake' packet, got packet with ID " + std::to_string(buffer.packetType));
+            } else {
+                throw std::runtime_error("Could not complete handshake, error " + error.message());
+            }
+        } else {
+            throw std::runtime_error("Could not complete handshake, error " + error.message());
+        }
+    }
+
     void Client::queueEvent(Packet::Ptr&& event) {
         runtimeAssert(connected, "Client must be connected!");
-        auto bytes = std::make_shared<std::vector<std::uint8_t>>();
-        event->toBuffer().write(*bytes);
-        asio::async_write(tcpSocket, asio::buffer(*bytes), [bytes /* keep data alive for write */](const asio::error_code& error, std::size_t bytesTransferred) {});
+        Asio::asyncWriteToSocket(event, tcpSocket);
     }
 
     void Client::queueMessage(Packet::Ptr&& message) {
         runtimeAssert(connected, "Client must be connected!");
-        auto bytes = std::make_shared<std::vector<std::uint8_t>>();
-        message->toBuffer().write(*bytes);
-        udpSocket.async_send_to(asio::buffer(*bytes), udpEndpoint, [bytes /* keep data alive for write */](const asio::error_code& error, std::size_t bytesTransferred) {
-            Carrot::Log::info("queueMessage, write done");
-        });
+        Asio::asyncWriteToSocket(message, udpSocket, udpEndpoint);
     }
 }

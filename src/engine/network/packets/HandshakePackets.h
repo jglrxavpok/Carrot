@@ -10,11 +10,16 @@
 namespace Carrot::Network {
     struct Handshake {
         static Protocol ServerBoundPackets;
+        static Protocol ClientBoundPackets;
 
         enum PacketIDs: PacketID {
+            // Server-bound
             OpenConnectionWin32ID,
             SetUDP,
             SetUsername,
+
+            // Client-bound
+            ConfirmHandshake,
         };
 
         class OpenConnectionWin32: public Packet {
@@ -61,6 +66,16 @@ namespace Carrot::Network {
                 IO::VectorReader r{data};
                 r >> username;
             }
+        };
+
+        class CompleteHandshake: public Packet {
+        public:
+            explicit CompleteHandshake(): Packet(Handshake::PacketIDs::ConfirmHandshake) {}
+
+        protected:
+            void writeAdditional(std::vector<std::uint8_t>& data) const override {}
+
+            void readAdditional(const std::vector<std::uint8_t>& data) override {}
         };
     };
 }

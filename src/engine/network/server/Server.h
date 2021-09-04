@@ -58,11 +58,15 @@ namespace Carrot::Network {
 
         IPacketConsumer* getPacketConsumer() const { return packetConsumer; }
 
+    public:
+        /// Sets the protocol used for the game
+        void setPlayProtocol(Protocol serverBoundProtocol);
+
     private:
         void threadFunction();
 
-        void sendTCP(const ConnectedClient& client, const Packet::Ptr& data);
-        void sendUDP(const ConnectedClient& client, const Packet::Ptr& data);
+        void sendTCP(ConnectedClient& client, const Packet::Ptr& data);
+        void sendUDP(ConnectedClient& client, const Packet::Ptr& data);
 
         void acceptClients();
         void addClient(const ConnectedClient::Ptr& client);
@@ -74,7 +78,6 @@ namespace Carrot::Network {
         void handleHandshakePacket(ConnectedClient& client, const Packet::Ptr& packet);
 
     private:
-
         asio::io_context ioContext;
         asio::ip::tcp::acceptor tcpAcceptor;
         asio::ip::udp::socket udpSocket;
@@ -83,5 +86,7 @@ namespace Carrot::Network {
         std::list<ConnectedClient::Ptr> clients;
         std::unordered_map<asio::ip::udp::endpoint, ConnectedClient::Ptr> clientEndpoints;
         IPacketConsumer* packetConsumer = nullptr;
+        Protocol playProtocol;
+        bool hasSetPlayProtocol = false;
     };
 }

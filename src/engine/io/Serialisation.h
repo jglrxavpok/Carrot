@@ -11,7 +11,7 @@
 // Writes are done in little-endian
 namespace Carrot::IO {
     inline void write(std::vector<std::uint8_t>& destination, char v) {
-        write(destination, std::bit_cast<std::uint8_t>(v));
+        destination.push_back(std::bit_cast<std::uint8_t>(v));
     }
 
     inline void write(std::vector<std::uint8_t>& destination, std::uint8_t v) {

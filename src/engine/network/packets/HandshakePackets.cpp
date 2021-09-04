@@ -11,4 +11,9 @@ namespace Carrot::Network {
                 .with<Handshake::PacketIDs::OpenConnectionWin32ID, Handshake::OpenConnectionWin32>()
                 .with<Handshake::PacketIDs::SetUsername, Handshake::SetClientUsername>()
     );
+
+    Protocol Handshake::ClientBoundPackets = std::move(
+            Carrot::Network::Protocol()
+                    .with<Handshake::PacketIDs::ConfirmHandshake, Handshake::CompleteHandshake>()
+    );
 }

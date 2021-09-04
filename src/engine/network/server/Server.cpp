@@ -8,12 +8,14 @@
 #include <span>
 #include <iostream>
 #include <engine/network/packets/HandshakePackets.h>
+#include <engine/network/AsioHelpers.h>
 
 namespace Carrot::Network {
 
     Server::Server(std::uint16_t port):
     tcpAcceptor(ioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port)),
     udpSocket(ioContext, asio::ip::udp::endpoint(asio::ip::udp::v6(), port)) {
+        udpSocket.non_blocking(false);
         networkThread = std::thread([this] {
             threadFunction();
         });
@@ -31,8 +33,7 @@ namespace Carrot::Network {
 
         tcpAcceptor.async_accept(client->tcpSocket, [this, client](const asio::error_code& error) {
             if(!error) {
-                asio::ip::udp::endpoint udpEndpoint = {client->tcpSocket.remote_endpoint().address(), client->tcpSocket.remote_endpoint().port()};
-                client->udpEndpoint = udpEndpoint;
+                client->tcpSocket.non_blocking(false);
                 addClient(client);
             }
 
@@ -50,18 +51,17 @@ namespace Carrot::Network {
                 asio::error_code readError;
                 std::size_t readSize = tcpSocket.receive(asio::buffer(readBuffer), 0, readError);
 
-                std::cout << "readSize: " << readSize << ", available: " << readBuffer.size() << std::endl;
                 if(client && !readError) {
                     std::size_t processedSize = 0;
                     do {
                         std::size_t processedBytes = decodePacket(*client, std::span{readBuffer.data() + processedSize, readSize-processedSize});
                         processedSize += processedBytes;
-                    } while(processedSize < readBuffer.size());
+                    } while(processedSize < readSize);
                 } else {
-                    std::cerr << "readError: " << readError << std::endl;
+                    Carrot::Log::error("Read error: " + error.message());
                 }
             } else {
-                std::cerr << "Error: " << error << std::endl;
+                Carrot::Log::error("Wait error: " + error.message());
             }
 
             readTCP(client);
@@ -85,7 +85,8 @@ namespace Carrot::Network {
                 break;
 
             case ConnectedClient::State::Play:
-                TODO
+                runtimeAssert(hasSetPlayProtocol, "No protocol has been set with setPlayProtocol!");
+                packet = playProtocol.make(buffer.packetType);
                 break;
 
             default: TODO
@@ -122,6 +123,8 @@ namespace Carrot::Network {
                 // TODO: on client connect
                 std::string name = Carrot::toString(client.username);
                 Carrot::Log::info("Client '%s' just connected.", name.c_str());
+
+                sendTCP(client, std::make_shared<Handshake::CompleteHandshake>());
                 client.currentState = ConnectedClient::State::Play;
             } break;
         }
@@ -137,12 +140,13 @@ namespace Carrot::Network {
 
                 std::size_t readSize = udpSocket.receive_from(asio::buffer(readBuffer), remoteEndpoint, 0, readError);
 
+                std::cout << "UDP readSize: " << readSize << ", available: " << readBuffer.size() << std::endl;
                 auto client = clientEndpoints[remoteEndpoint];
                 if(client == nullptr) {
-                    std::cerr << "No client!" << std::endl;
+                    Carrot::Log::error("No client!");
                 }
                 if(readError) {
-                    std::cout << "Read error: " << readError << std::endl;
+                    Carrot::Log::error("Read error: " + readError.message());
                 }
                 if(client && !readError) {
                     try {
@@ -150,13 +154,15 @@ namespace Carrot::Network {
                         do {
                             std::size_t processedBytes = decodePacket(*client, std::span{readBuffer.data() + processedSize, readSize-processedSize});
                             processedSize += processedBytes;
-                        } while(processedSize < readBuffer.size());
+                        } while(processedSize < readSize);
                     } catch(std::exception& e) {
-                        Carrot::Log::error("Network error: %s", e.what());
+                        auto clientUUIDStr = Carrot::toString(client->uuid);
+                        auto clientUsernameStr = Carrot::toString(client->username);
+                        Carrot::Log::error("Network error from client %s (%s): %s", clientUUIDStr.c_str(), clientUsernameStr.c_str(), e.what());
                     }
                 }
             } else {
-                std::cout << "Error: " << error << std::endl;
+                Carrot::Log::error("Wait error: " + error.message());
             }
 
             readUDP();
@@ -180,11 +186,16 @@ namespace Carrot::Network {
         }
     }
 
-    void Server::sendTCP(const Server::ConnectedClient& client, const Packet::Ptr& data) {
-        TODO
+    void Server::setPlayProtocol(Protocol serverBoundProtocol) {
+        playProtocol = serverBoundProtocol;
+        hasSetPlayProtocol = true;
     }
 
-    void Server::sendUDP(const Server::ConnectedClient& client, const Packet::Ptr& data) {
-        TODO
+    void Server::sendTCP(Server::ConnectedClient& client, const Packet::Ptr& data) {
+        Asio::asyncWriteToSocket(data, client.tcpSocket);
+    }
+
+    void Server::sendUDP(Server::ConnectedClient& client, const Packet::Ptr& data) {
+        Asio::asyncWriteToSocket(data, udpSocket, client.udpEndpoint);
     }
 }

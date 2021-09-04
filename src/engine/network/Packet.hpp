@@ -76,20 +76,10 @@ namespace Carrot::Network {
     private:
     };
 
-    template<std::uint32_t ID, typename PacketType>
-    struct PacketGen {
-        static typename PacketType::Ptr make() {
-            return std::make_unique<PacketType>();
-        }
-
-        static std::uint32_t getID() {
-            return ID;
-        }
-    };
-
     class Protocol {
         struct PacketGen {
             virtual Packet::Ptr operator()() const = 0;
+            virtual std::unique_ptr<PacketGen> copy() const = 0;
         };
 
         template<typename PacketType> requires std::is_base_of_v<Packet, PacketType>
@@ -97,11 +87,19 @@ namespace Carrot::Network {
             typename PacketType::Ptr operator()() const override {
                 return std::make_shared<PacketType>();
             }
+
+            std::unique_ptr<PacketGen> copy() const override {
+                return std::make_unique<DefaultPacketGen<PacketType>>();
+            }
         };
 
     public:
         explicit Protocol() = default;
         Protocol(Protocol&&) = default;
+
+        Protocol(const Protocol& toCopy) {
+            *this = toCopy;
+        }
 
         template<PacketID ID, typename PacketType>
         Protocol& with() {
@@ -117,6 +115,14 @@ namespace Carrot::Network {
                 throw std::runtime_error("Unknown packet ID: " + std::to_string(packetID));
             }
             return generatorLoc->second->operator()();
+        }
+
+        Protocol& operator=(const Protocol& toCopy) {
+            entries.clear();
+            for(const auto& [key, value] : toCopy.entries) {
+                entries[key] = value->copy();
+            }
+            return *this;
         }
 
     private:
