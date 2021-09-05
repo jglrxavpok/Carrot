@@ -22,6 +22,7 @@ namespace Carrot::IO {
     }
 
     ActionSet::~ActionSet() {
+        deactivate();
         getSetList().erase(std::remove(WHOLE_CONTAINER(getSetList()), this), getSetList().end());
     }
 

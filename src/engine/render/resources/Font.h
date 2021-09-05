@@ -28,6 +28,10 @@ namespace Carrot::Render {
         void render(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer cmds);
 
         glm::mat4& getTransform();
+        const glm::mat4& getTransform() const;
+
+        glm::vec4& getColor();
+        const glm::vec4& getColor() const;
         const TextMetrics& getMetrics() const { return metrics; }
 
         RenderableText& operator=(RenderableText&& other) = default;

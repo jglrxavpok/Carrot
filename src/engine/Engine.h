@@ -83,6 +83,9 @@ namespace Carrot {
         /// Launch the engine loop
         void run();
 
+        /// Stops the game, triggering shutdown process and closing window.
+        void stop();
+
 
     public: // GLFW event handling
 

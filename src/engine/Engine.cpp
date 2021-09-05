@@ -432,6 +432,10 @@ void Carrot::Engine::run() {
     getLogicalDevice().waitIdle();
 }
 
+void Carrot::Engine::stop() {
+    running = false;
+}
+
 static void windowResize(GLFWwindow* window, int width, int height) {
     auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
     app->onWindowResize();
@@ -907,10 +911,6 @@ void Carrot::Engine::onMouseButton(int button, int action, int mods) {
 void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
     if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
         Console::instance().toggleVisibility();
-    }
-
-    if(key == GLFW_KEY_ESCAPE) {
-        running = false;
     }
 
     if(key == GLFW_KEY_F2 && action == GLFW_PRESS) {

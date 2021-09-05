@@ -132,4 +132,16 @@ namespace Carrot::Render {
     glm::mat4& RenderableText::getTransform() {
         return instance->transform;
     }
+
+    glm::vec4& RenderableText::getColor() {
+        return instance->color;
+    }
+
+    const glm::mat4& RenderableText::getTransform() const {
+        return instance->transform;
+    }
+
+    const glm::vec4& RenderableText::getColor() const {
+        return instance->color;
+    }
 }
