@@ -326,25 +326,25 @@ void Carrot::Engine::pollGamepads() {
 }
 
 void Carrot::Engine::onGamepadButtonChange(int gamepadID, int buttonID, bool pressed) {
-    for(auto& callback : gamepadButtonCallbacks) {
+    for(auto& [id, callback] : gamepadButtonCallbacks) {
         callback(gamepadID, buttonID, pressed);
     }
 }
 
 void Carrot::Engine::onGamepadAxisChange(int gamepadID, int axisID, float newValue, float oldValue) {
-    for(auto& callback : gamepadAxisCallbacks) {
+    for(auto& [id, callback] : gamepadAxisCallbacks) {
         callback(gamepadID, axisID, newValue, oldValue);
     }
 }
 
 void Carrot::Engine::onGamepadVec2Change(int gamepadID, Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue) {
-    for(auto& callback : gamepadVec2Callbacks) {
+    for(auto& [id, callback] : gamepadVec2Callbacks) {
         callback(gamepadID, vecID, newValue, oldValue);
     }
 }
 
 void Carrot::Engine::onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue) {
-    for(auto& callback : keysVec2Callbacks) {
+    for(auto& [id, callback] : keysVec2Callbacks) {
         callback(vecID, newValue, oldValue);
     }
 }
@@ -873,16 +873,16 @@ void Carrot::Engine::createCameras() {
 void Carrot::Engine::onMouseMove(double xpos, double ypos, bool updateOnlyDelta) {
     double dx = xpos-mouseX;
     double dy = ypos-mouseY;
-    for(auto& callback : mouseDeltaCallbacks) {
+    for(auto& [id, callback] : mouseDeltaCallbacks) {
         callback(dx, dy);
     }
     if(grabbingCursor) {
-        for(auto& callback : mouseDeltaGrabbedCallbacks) {
+        for(auto& [id, callback] : mouseDeltaGrabbedCallbacks) {
             callback(dx, dy);
         }
     }
     if(!updateOnlyDelta) {
-        for(auto& callback : mousePositionCallbacks) {
+        for(auto& [id, callback] : mousePositionCallbacks) {
             callback(xpos, ypos);
         }
         if(game) {
@@ -903,7 +903,7 @@ Carrot::Camera& Carrot::Engine::getCamera(Carrot::Render::Eye eye) {
 }
 
 void Carrot::Engine::onMouseButton(int button, int action, int mods) {
-    for(auto& callback : mouseButtonCallbacks) {
+    for(auto& [id, callback] : mouseButtonCallbacks) {
         callback(button, action == GLFW_PRESS || action == GLFW_REPEAT, mods);
     }
 }
@@ -917,7 +917,7 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
         takeScreenshot();
     }
 
-    for(auto& callback : keyCallbacks) {
+    for(auto& [id, callback] : keyCallbacks) {
         callback(key, scancode, action, mods);
     }
 

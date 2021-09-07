@@ -226,40 +226,94 @@ namespace Carrot {
         using MousePositionCallback = std::function<void(double xpos, double ypos)>;
         using MouseDeltaCallback = std::function<void(double dx, double dy)>;
 
-        void addGLFWKeyCallback(KeyCallback keyCallback) {
-            keyCallbacks.push_back(keyCallback);
+        Carrot::UUID addGLFWKeyCallback(KeyCallback keyCallback) {
+            auto uuid = Carrot::randomUUID();
+            keyCallbacks[uuid] = keyCallback;
+            return uuid;
         }
 
-        void addGLFWMouseButtonCallback(MouseButtonCallback callback) {
-            mouseButtonCallbacks.push_back(callback);
+        Carrot::UUID addGLFWMouseButtonCallback(MouseButtonCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            mouseButtonCallbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWGamepadButtonCallback(GamepadButtonCallback callback) {
-            gamepadButtonCallbacks.push_back(callback);
+        Carrot::UUID addGLFWGamepadButtonCallback(GamepadButtonCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            gamepadButtonCallbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWGamepadAxisCallback(GamepadAxisCallback callback) {
-            gamepadAxisCallbacks.push_back(callback);
+        Carrot::UUID addGLFWGamepadAxisCallback(GamepadAxisCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            gamepadAxisCallbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWGamepadVec2Callback(GamepadVec2Callback callback) {
-            gamepadVec2Callbacks.push_back(callback);
+        Carrot::UUID addGLFWGamepadVec2Callback(GamepadVec2Callback callback) {
+            auto uuid = Carrot::randomUUID();
+            gamepadVec2Callbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWKeysVec2Callback(KeysVec2Callback callback) {
-            keysVec2Callbacks.push_back(callback);
+        Carrot::UUID addGLFWKeysVec2Callback(KeysVec2Callback callback) {
+            auto uuid = Carrot::randomUUID();
+            keysVec2Callbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWMousePositionCallback(MousePositionCallback callback) {
-            mousePositionCallbacks.push_back(callback);
+        Carrot::UUID addGLFWMousePositionCallback(MousePositionCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            mousePositionCallbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWMouseDeltaCallback(MouseDeltaCallback callback) {
-            mouseDeltaCallbacks.push_back(callback);
+        Carrot::UUID addGLFWMouseDeltaCallback(MouseDeltaCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            mouseDeltaCallbacks[uuid] = callback;
+            return uuid;
         }
 
-        void addGLFWMouseDeltaGrabbedCallback(MouseDeltaCallback callback) {
-            mouseDeltaGrabbedCallbacks.push_back(callback);
+        Carrot::UUID addGLFWMouseDeltaGrabbedCallback(MouseDeltaCallback callback) {
+            auto uuid = Carrot::randomUUID();
+            mouseDeltaGrabbedCallbacks[uuid] = callback;
+            return uuid;
+        }
+
+        void removeGLFWKeyCallback(const Carrot::UUID& uuid) {
+            keyCallbacks.erase(uuid);
+        }
+
+        void removeGLFWMouseButtonCallback(const Carrot::UUID& uuid) {
+            mouseButtonCallbacks.erase(uuid);
+        }
+
+        void removeGLFWGamepadButtonCallback(const Carrot::UUID& uuid) {
+            gamepadButtonCallbacks.erase(uuid);
+        }
+
+        void removeGLFWGamepadAxisCallback(const Carrot::UUID& uuid) {
+            gamepadAxisCallbacks.erase(uuid);
+        }
+
+        void removeGLFWGamepadVec2Callback(const Carrot::UUID& uuid) {
+            gamepadVec2Callbacks.erase(uuid);
+        }
+
+        void removeGLFWKeysVec2Callback(const Carrot::UUID& uuid) {
+            keysVec2Callbacks.erase(uuid);
+        }
+
+        void removeGLFWMousePositionCallback(const Carrot::UUID& uuid) {
+            mousePositionCallbacks.erase(uuid);
+        }
+
+        void removeGLFWMouseDeltaCallback(const Carrot::UUID& uuid) {
+            mouseDeltaCallbacks.erase(uuid);
+        }
+
+        void removeGLFWMouseDeltaGrabbedCallback(const Carrot::UUID& uuid) {
+            mouseDeltaGrabbedCallbacks.erase(uuid);
         }
 
     public:
@@ -303,7 +357,6 @@ namespace Carrot {
         map<string, shared_ptr<Material>> materials{};
 
         unordered_map<Render::Eye, unique_ptr<Camera>> cameras{};
-        unique_ptr<Carrot::CarrotGame> game = nullptr;
 
         bool framebufferResized = false;
 
@@ -400,15 +453,15 @@ namespace Carrot {
         std::unordered_map<int, GLFWgamepadstate> gamepadStatePreviousFrame;
         std::unordered_map<Carrot::IO::GameInputVectorType, Vec2KeyState> keysVec2States;
         std::unordered_map<Carrot::IO::GameInputVectorType, Vec2KeyState> keysVec2StatesPreviousFrame;
-        std::vector<KeyCallback> keyCallbacks;
-        std::vector<MouseButtonCallback> mouseButtonCallbacks;
-        std::vector<GamepadButtonCallback> gamepadButtonCallbacks;
-        std::vector<GamepadAxisCallback> gamepadAxisCallbacks;
-        std::vector<GamepadVec2Callback> gamepadVec2Callbacks;
-        std::vector<MousePositionCallback> mousePositionCallbacks;
-        std::vector<MouseDeltaCallback> mouseDeltaCallbacks;
-        std::vector<MouseDeltaCallback> mouseDeltaGrabbedCallbacks;
-        std::vector<KeysVec2Callback> keysVec2Callbacks;
+        std::unordered_map<Carrot::UUID, KeyCallback> keyCallbacks;
+        std::unordered_map<Carrot::UUID, MouseButtonCallback> mouseButtonCallbacks;
+        std::unordered_map<Carrot::UUID, GamepadButtonCallback> gamepadButtonCallbacks;
+        std::unordered_map<Carrot::UUID, GamepadAxisCallback> gamepadAxisCallbacks;
+        std::unordered_map<Carrot::UUID, GamepadVec2Callback> gamepadVec2Callbacks;
+        std::unordered_map<Carrot::UUID, MousePositionCallback> mousePositionCallbacks;
+        std::unordered_map<Carrot::UUID, MouseDeltaCallback> mouseDeltaCallbacks;
+        std::unordered_map<Carrot::UUID, MouseDeltaCallback> mouseDeltaGrabbedCallbacks;
+        std::unordered_map<Carrot::UUID, KeysVec2Callback> keysVec2Callbacks;
 
         /// Poll state of gamepads, GLFW does not (yet) post events for gamepad inputs
         void pollGamepads();
@@ -420,6 +473,9 @@ namespace Carrot {
         void onGamepadAxisChange(int gamepadID, int buttonID, float newValue, float oldValue);
         void onGamepadVec2Change(int gamepadID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
         void onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
+
+    private: // game-specific members
+        unique_ptr<Carrot::CarrotGame> game = nullptr;
     };
 }
 

@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 #include "Action.hpp"
+#include "engine/utils/UUID.h"
 
 #ifdef ENABLE_VR
 #include "engine/vr/includes.h"
@@ -64,6 +65,17 @@ namespace Carrot::IO {
         std::vector<FloatInputAction*> floatInputs;
         std::vector<BoolInputAction*> boolInputs;
         std::vector<Vec2InputAction*> vec2Inputs;
+
+        Carrot::Engine* engine = nullptr; // TODO: remove when Engine class becomes singleton
+        Carrot::UUID keyCallback;
+        Carrot::UUID gamepadButtonCallback;
+        Carrot::UUID gamepadAxisCallback;
+        Carrot::UUID gamepadVec2Callback;
+        Carrot::UUID keysVec2Callback;
+        Carrot::UUID mouseButtonCallback;
+        Carrot::UUID mousePositionCallback;
+        Carrot::UUID mouseDeltaCallback;
+        Carrot::UUID mouseDeltaGrabbedCallback;
 
 #ifdef ENABLE_VR
     private: // OpenXR compatibility
