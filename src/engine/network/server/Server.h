@@ -10,6 +10,7 @@
 #include <functional>
 #include <asio.hpp>
 #include <engine/network/Packet.hpp>
+#include <engine/network/NetworkInterface.h>
 #include <engine/utils/UUID.h>
 
 namespace Carrot::Network {
@@ -17,13 +18,9 @@ namespace Carrot::Network {
     /// Dedicated Server to which game clients can connect.
     /// Uses TCP to maintain connection and send "critical" messages.
     /// Uses UDP for quick message sending.
-    class Server {
+    class Server: public NetworkInterface {
 
         struct ConnectedClient: public std::enable_shared_from_this<ConnectedClient> {
-            enum class State {
-                Handshake,
-                Play,
-            };
 
             using Ptr = std::shared_ptr<ConnectedClient>;
 
@@ -33,7 +30,7 @@ namespace Carrot::Network {
             std::u32string username = U"<<<<unknown, handshake not finished>>>>";
             asio::ip::tcp::socket tcpSocket;
             asio::ip::udp::endpoint udpEndpoint;
-            State currentState = State::Handshake;
+            ConnectionState currentState = ConnectionState::Handshake;
         };
 
     public:
@@ -59,8 +56,9 @@ namespace Carrot::Network {
         IPacketConsumer* getPacketConsumer() const { return packetConsumer; }
 
     public:
-        /// Sets the protocol used for the game
-        void setPlayProtocol(Protocol serverBoundProtocol);
+        const std::list<ConnectedClient::Ptr>& getConnectedClients() const {
+            return clients;
+        }
 
     private:
         void threadFunction();
@@ -70,12 +68,19 @@ namespace Carrot::Network {
 
         void acceptClients();
         void addClient(const ConnectedClient::Ptr& client);
-        void readUDP();
-        void readTCP(const ConnectedClient::Ptr& client);
+        void disconnect(const ConnectedClient::Ptr& client);
 
-        /// Decodes & dispatches a single packet and returns how many bytes have been read from 'packetData'
-        std::size_t decodePacket(ConnectedClient& client, const std::span<std::uint8_t>& packetData);
         void handleHandshakePacket(ConnectedClient& client, const Packet::Ptr& packet);
+
+    protected:
+        void handleHandshakePacket(void *userData, const Packet::Ptr& packet) override;
+        void handleGamePacket(void *userData, const Packet::Ptr& packet) override;
+
+        ConnectionState getConnectionState(void *userData) override;
+
+        void onDisconnect(void* userData) override;
+
+        void* getUDPUserData(const asio::ip::udp::endpoint& endpoint) override;
 
     private:
         asio::io_context ioContext;
@@ -86,7 +91,5 @@ namespace Carrot::Network {
         std::list<ConnectedClient::Ptr> clients;
         std::unordered_map<asio::ip::udp::endpoint, ConnectedClient::Ptr> clientEndpoints;
         IPacketConsumer* packetConsumer = nullptr;
-        Protocol playProtocol;
-        bool hasSetPlayProtocol = false;
     };
 }

@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <glm/glm.hpp>
 
 // Writes are done in little-endian
 namespace Carrot::IO {
@@ -62,6 +63,13 @@ namespace Carrot::IO {
             write(destination, std::bit_cast<std::uint32_t>(v));
         }
     }
+
+    template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
+    inline void write(std::vector<std::uint8_t>& destination, glm::vec<dim, Elem, qualifier> v) {
+        for (int i = 0; i < dim; ++i) {
+            write(destination, (Elem)v[i]);
+        }
+    }
 }
 
 #define CarrotSerialiseOperator(Type) \
@@ -81,6 +89,12 @@ CarrotSerialiseOperator(std::u32string_view)
 CarrotSerialiseOperator(char)
 #undef CarrotSerialiseOperator
 
+template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
+inline std::vector<std::uint8_t>& operator<<(std::vector<std::uint8_t>& out, const glm::vec<dim, Elem, qualifier>& value) {
+    Carrot::IO::write(out, value);
+    return out;
+}
+
 namespace Carrot::IO {
     /// Allows to read data written to a std::vector, with Carrot::IO::write methods. Little-endian is used for both
     class VectorReader {
@@ -98,6 +112,14 @@ namespace Carrot::IO {
         VectorReader& operator>>(std::u32string& out);
 
         VectorReader& operator>>(std::string& out);
+
+        template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
+        VectorReader& operator>>(glm::vec<dim, Elem, qualifier>& value) {
+            for (int i = 0; i < dim; ++i) {
+                *this >> value[i];
+            }
+            return *this;
+        }
 
     private:
         std::uint8_t next();

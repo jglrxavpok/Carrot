@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <engine/network/Packet.hpp>
+#include <engine/network/NetworkInterface.h>
 #include <thread>
 #include <queue>
 #include <semaphore>
@@ -14,7 +15,7 @@
 
 namespace Carrot::Network {
     /// Client which can connect to a game server
-    class Client {
+    class Client: public NetworkInterface {
     public:
         /// Starts a client and its backing thread.
         Client(std::u32string_view username);
@@ -34,12 +35,26 @@ namespace Carrot::Network {
     public:
         bool isConnected() const { return connected; }
 
+    protected:
+        void handleHandshakePacket(void *userData, const Packet::Ptr& packet) override;
+
+        void handleGamePacket(void *userData, const Packet::Ptr& packet) override;
+
+        ConnectionState getConnectionState(void *userData) override;
+
+        void onDisconnect(void *userData) override;
+
+        void *getUDPUserData(const asio::ip::udp::endpoint& endpoint) override;
+
     private:
         void threadFunction();
         void waitForHandshakeCompletion();
 
+        void onDisconnect();
+        void disconnect();
+
     private:
-        std::u32string_view username;
+        std::u32string username;
         std::thread networkThread;
         bool connected = false;
         asio::io_context ioContext;

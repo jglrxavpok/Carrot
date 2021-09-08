@@ -26,6 +26,9 @@ namespace Carrot {
         template<typename Comp, typename... Arg>
         EasyEntity& addComponent(Arg&&... args);
 
+        template<typename Comp, typename... Arg>
+        EasyEntity& addComponentIf(bool condition, Arg&&... args);
+
         template<typename Comp>
         Comp* getComponent();
 

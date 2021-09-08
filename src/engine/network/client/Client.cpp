@@ -12,9 +12,7 @@
 
 namespace Carrot::Network {
     Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {
-        networkThread = std::thread([this]() {
-           threadFunction();
-        });
+
     }
 
     Client::~Client() {
@@ -24,6 +22,7 @@ namespace Carrot::Network {
 
     void Client::threadFunction() {
         ioContext.run();
+        std::cout << "thread ded" << std::endl;
     }
 
     void Client::connect(std::string_view address, std::uint16_t port) {
@@ -37,19 +36,23 @@ namespace Carrot::Network {
         udpSocket.open(asio::ip::udp::v6());
 
         asio::ip::udp::resolver udpResolver(ioContext);
-        udpEndpoint = *udpResolver.resolve(address, portStr).begin();
+        auto udpEndpoints = udpResolver.resolve(address, portStr);
+        udpEndpoint = *udpEndpoints.begin();
+
+        connected = true;
+     //asio::connect(udpSocket, udpEndpoints);
+        //udpSocket.bind(asio::ip::udp::endpoint(asio::ip::udp::v6(), udpEndpoint.port()));
 
         // https://stackoverflow.com/a/18434964
         // A dummy TX is required for the socket to acquire the local port properly under windoze
         // Transmitting an empty string works fine for this, but the TX must take place BEFORE the first call to Asynch_receive_from(...)
 #ifdef WIN32
         {
-            Handshake::OpenConnectionWin32 open;
-            std::vector<std::uint8_t> bytes;
-            open.toBuffer().write(bytes);
-            udpSocket.send_to(asio::buffer(bytes), udpEndpoint);
+            queueMessage(std::make_shared<Handshake::OpenConnectionWin32>());
         }
 #endif
+
+       // udpSocket.bind(udpEndpoint);
 
         Handshake::SetUDPPort setUDPPort { udpSocket.local_endpoint().port() };
         std::vector<std::uint8_t> udpBytes;
@@ -76,10 +79,27 @@ namespace Carrot::Network {
         Carrot::Log::info("Client %s is connected.", usernameStr.c_str());
 
         // setup listeners
-        // TODO
+        readTCP(this, tcpSocket);
+        readUDP(udpSocket);
 
-        //asio::connect(udpSocket, udpEndpoint);
-        connected = true;
+        networkThread = std::thread([this]() {
+            threadFunction();
+        });
+    }
+
+    void Client::onDisconnect() {
+        connected = false;
+        tcpSocket.close();
+        ioContext.stop();
+
+        // TODO: debug, remove
+        std::string usernameStr = Carrot::toString(username);
+        Carrot::Log::info("Client %s is disconnected.", usernameStr.c_str());
+    }
+
+    void Client::disconnect() {
+        tcpSocket.close();
+        ioContext.stop();
     }
 
     void Client::waitForHandshakeCompletion() {
@@ -88,9 +108,9 @@ namespace Carrot::Network {
         if(!error) {
             std::vector<std::uint8_t> readBuffer(tcpSocket.available());
             asio::error_code readError;
-            tcpSocket.receive(asio::buffer(readBuffer), 0, readError);
+            std::size_t readSize = tcpSocket.receive(asio::buffer(readBuffer), 0, readError);
             if(!readError) {
-                PacketBuffer buffer{readBuffer};
+                PacketBuffer buffer{{readBuffer.data(), readSize}};
                 runtimeAssert(buffer.packetType == Handshake::PacketIDs::ConfirmHandshake,
                               "Expected 'ConfirmHandshake' packet, got packet with ID " + std::to_string(buffer.packetType));
             } else {
@@ -109,5 +129,25 @@ namespace Carrot::Network {
     void Client::queueMessage(Packet::Ptr&& message) {
         runtimeAssert(connected, "Client must be connected!");
         Asio::asyncWriteToSocket(message, udpSocket, udpEndpoint);
+    }
+
+    void Client::handleHandshakePacket(void *userData, const Packet::Ptr& packet) {
+        throw std::runtime_error("Should never happen, handshake is handled inside 'connect'");
+    }
+
+    void Client::handleGamePacket(void *userData, const Packet::Ptr& packet) {
+        TODO
+    }
+
+    ConnectionState Client::getConnectionState(void *userData) {
+        return connected ? ConnectionState::Play : ConnectionState::Handshake;
+    }
+
+    void Client::onDisconnect(void *userData) {
+        onDisconnect();
+    }
+
+    void* Client::getUDPUserData(const asio::ip::udp::endpoint& endpoint) {
+        return this; // don't return nullptr, otherwise this skips packet decoding (server requires this behaviour to determine whether a UDP packet corresponds to a known client)
     }
 }

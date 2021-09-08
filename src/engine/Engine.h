@@ -86,6 +86,8 @@ namespace Carrot {
         /// Stops the game, triggering shutdown process and closing window.
         void stop();
 
+        std::unique_ptr<Carrot::CarrotGame>& getGame();
+
 
     public: // GLFW event handling
 

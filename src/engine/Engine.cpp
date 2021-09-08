@@ -500,6 +500,10 @@ Carrot::Engine::~Engine() {
     }*/
 }
 
+std::unique_ptr<Carrot::CarrotGame>& Carrot::Engine::getGame() {
+    return game;
+}
+
 void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     // main command buffer
     vk::CommandBufferBeginInfo beginInfo{

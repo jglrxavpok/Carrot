@@ -29,6 +29,7 @@ namespace Carrot::Log {
     };
 
     enum class Severity {
+        Debug,
         Info,
         Warning,
         Error,
@@ -45,6 +46,8 @@ namespace Carrot::Log {
 
     inline const char* getSeverityString(Severity severity) {
         switch (severity) {
+            case Severity::Debug:
+                return "Debug";
             case Severity::Info:
                 return "Info";
             case Severity::Warning:
@@ -57,6 +60,10 @@ namespace Carrot::Log {
     }
 
     inline void log(Severity severity, const std::string& message, std::ostream& out = std::cout) {
+#ifndef IS_DEBUG_BUILD
+        if(severity == Severity::Debug)
+            return;
+#endif
         // TODO: write to file?
 
         const auto timestamp = std::chrono::system_clock::now() - getStartTime();
@@ -74,6 +81,10 @@ namespace Carrot::Log {
     inline void flush() {
         std::cout.flush();
         std::cerr.flush();
+    }
+
+    inline void debug(const std::string& message) {
+        log(Severity::Debug, message);
     }
 
     inline void info(const std::string& message) {
@@ -104,6 +115,9 @@ namespace Carrot::Log {
 
         logFunction(formatResult);
     }
+
+    template<typename Arg0, typename... Args>
+    void debug(const std::string& format, Arg0 arg0, Args... args) { formattedLog<debug>(format, std::forward<Arg0>(arg0), std::forward<Args>(args)...); };
 
     template<typename Arg0, typename... Args>
     void info(const std::string& format, Arg0 arg0, Args... args) { formattedLog<info>(format, std::forward<Arg0>(arg0), std::forward<Args>(args)...); };

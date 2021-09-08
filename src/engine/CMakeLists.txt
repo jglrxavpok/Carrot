@@ -83,6 +83,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}network/client/Client.cpp
         ${EngineRoot}network/server/Server.cpp
+        ${EngineRoot}network/NetworkInterface.cpp
 
         ${EngineRoot}network/packets/HandshakePackets.cpp
 

@@ -33,6 +33,14 @@ Carrot::EasyEntity& Carrot::EasyEntity::addComponent(Args&&... args) {
     return *this;
 }
 
+template<typename Comp, typename... Args>
+Carrot::EasyEntity& Carrot::EasyEntity::addComponentIf(bool condition, Args&&... args) {
+    if(condition) {
+        addComponent<Comp>(std::forward<Args>(args)...);
+    }
+    return *this;
+}
+
 template<typename Comp>
 Comp* Carrot::EasyEntity::getComponent() {
     return worldRef.getComponent<Comp>(internalEntity);
