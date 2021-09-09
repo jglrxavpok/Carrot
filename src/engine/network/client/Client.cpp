@@ -11,9 +11,7 @@
 #include <engine/network/AsioHelpers.h>
 
 namespace Carrot::Network {
-    Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {
-
-    }
+    Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {}
 
     Client::~Client() {
         ioContext.stop();
@@ -22,7 +20,6 @@ namespace Carrot::Network {
 
     void Client::threadFunction() {
         ioContext.run();
-        std::cout << "thread ded" << std::endl;
     }
 
     void Client::connect(std::string_view address, std::uint16_t port) {
@@ -136,7 +133,11 @@ namespace Carrot::Network {
     }
 
     void Client::handleGamePacket(void *userData, const Packet::Ptr& packet) {
-        TODO
+        if(getPacketConsumer() != nullptr) {
+            getPacketConsumer()->consumePacket(packet);
+        } else {
+            Carrot::Log::warn("No packet consumer!");
+        }
     }
 
     ConnectionState Client::getConnectionState(void *userData) {

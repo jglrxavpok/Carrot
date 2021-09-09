@@ -35,6 +35,18 @@ namespace Carrot::Network {
     public:
         bool isConnected() const { return connected; }
 
+    public:
+        struct IPacketConsumer {
+            /// Handles an incoming packet.
+            virtual void consumePacket(const Packet::Ptr& packet) = 0;
+        };
+
+        void setPacketConsumer(IPacketConsumer* packetConsumer) {
+            this->packetConsumer = packetConsumer;
+        }
+
+        IPacketConsumer* getPacketConsumer() const { return packetConsumer; }
+
     protected:
         void handleHandshakePacket(void *userData, const Packet::Ptr& packet) override;
 
@@ -68,6 +80,6 @@ namespace Carrot::Network {
 
         asio::ip::tcp::endpoint tcpEndpoint;
         asio::ip::udp::endpoint udpEndpoint;
-
+        IPacketConsumer* packetConsumer = nullptr;
     };
 }

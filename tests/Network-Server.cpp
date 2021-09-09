@@ -38,8 +38,8 @@ int main() {
     ;
     server.setPlayProtocol(protocol);
 
-    struct Consumer : public Carrot::Network::Server::IPacketConsumer {
-        explicit Consumer(Network::Server& server): server(server) {}
+    struct ServerConsumer : public Carrot::Network::Server::IPacketConsumer {
+        explicit ServerConsumer(Network::Server& server): server(server) {}
 
         void consumePacket(const UUID& clientID, const Network::Packet::Ptr& packet) override {
             std::string str = Carrot::toString(clientID);
@@ -56,20 +56,38 @@ int main() {
         }
 
         Carrot::Network::Server& server;
-    } consumer{server};
+    } serverConsumer{server};
 
-    server.setPacketConsumer(&consumer);
+    struct ClientConsumer : public Carrot::Network::Client::IPacketConsumer {
+        void consumePacket(const Network::Packet::Ptr& packet) override {
+            Carrot::Log::info("Received a packet on client!");
+            switch(packet->getPacketID()) {
+                case 42: {
+                    auto testPacket = std::reinterpret_pointer_cast<const TestPacket>(packet);
+                    Carrot::Log::info("(Client) TestPacket, value is %f", testPacket->someVal);
+                } break;
 
-    Network::Client client(U"username");
-//    Network::Client client2(U"username2");
+                default: TODO
+            }
+        }
+    } clientConsumer;
+
+    server.setPacketConsumer(&serverConsumer);
+
+    Network::Client client(U"username"s);
+    Network::Client client2(U"username2");
+    client.setPacketConsumer(&clientConsumer);
+    client2.setPacketConsumer(&clientConsumer);
+
     client.connect("localhost", 25565);
 
     client.setPlayProtocol(protocol);
-//    client2.connect("localhost", 25565);
-    //client.queueEvent(std::move(std::make_unique<TestPacket>()));
+    client2.setPlayProtocol(protocol);
+    client2.connect("localhost", 25565);
+//    client.queueEvent(std::move(std::make_unique<TestPacket>()));
     for (int i = 0; i < 10; ++i) {
         client.queueMessage(std::move(std::make_unique<TestPacket>(i)));
-//        client2.queueMessage(std::move(std::make_unique<TestPacket>(i)));
+        client2.queueMessage(std::move(std::make_unique<TestPacket>(i)));
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
