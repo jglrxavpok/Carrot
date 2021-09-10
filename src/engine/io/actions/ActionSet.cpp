@@ -24,15 +24,17 @@ namespace Carrot::IO {
     ActionSet::~ActionSet() {
         deactivate();
 
-        engine->removeGLFWKeyCallback(keyCallback);
-        engine->removeGLFWMouseButtonCallback(mouseButtonCallback);
-        engine->removeGLFWGamepadButtonCallback(gamepadButtonCallback);
-        engine->removeGLFWGamepadAxisCallback(gamepadAxisCallback);
-        engine->removeGLFWGamepadVec2Callback(gamepadVec2Callback);
-        engine->removeGLFWKeysVec2Callback(keysVec2Callback);
-        engine->removeGLFWMousePositionCallback(mousePositionCallback);
-        engine->removeGLFWMouseDeltaCallback(mouseDeltaCallback);
-        engine->removeGLFWMouseDeltaGrabbedCallback(mouseDeltaGrabbedCallback);
+        if(engine) {
+            engine->removeGLFWKeyCallback(keyCallback);
+            engine->removeGLFWMouseButtonCallback(mouseButtonCallback);
+            engine->removeGLFWGamepadButtonCallback(gamepadButtonCallback);
+            engine->removeGLFWGamepadAxisCallback(gamepadAxisCallback);
+            engine->removeGLFWGamepadVec2Callback(gamepadVec2Callback);
+            engine->removeGLFWKeysVec2Callback(keysVec2Callback);
+            engine->removeGLFWMousePositionCallback(mousePositionCallback);
+            engine->removeGLFWMouseDeltaCallback(mouseDeltaCallback);
+            engine->removeGLFWMouseDeltaGrabbedCallback(mouseDeltaGrabbedCallback);
+        }
 
         getSetList().erase(std::remove(WHOLE_CONTAINER(getSetList()), this), getSetList().end());
     }

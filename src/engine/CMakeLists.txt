@@ -80,6 +80,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}console/AutocompleteField.cpp
 
         ${EngineRoot}tasks/PresentThread.cpp
+        ${EngineRoot}tasks/Timer.cpp
 
         ${EngineRoot}network/client/Client.cpp
         ${EngineRoot}network/server/Server.cpp

@@ -5,10 +5,11 @@
 #pragma once
 #include <memory>
 #include <cstddef>
+#include <string_view>
 
 typedef std::uint32_t EntityID;
 typedef EntityID Entity;
-typedef std::shared_ptr<uint32_t> Entity_Ptr;
+typedef std::shared_ptr<EntityID> Entity_Ptr;
 typedef std::weak_ptr<Entity> Entity_WeakPtr;
 
 namespace Carrot {
@@ -44,6 +45,10 @@ namespace Carrot {
         World& getWorld() { return worldRef; }
         const World& getWorld() const { return worldRef; }
 
+        operator EntityID() const {
+            return *internalEntity;
+        }
+
         operator Entity_Ptr() {
             return internalEntity;
         }
@@ -51,6 +56,10 @@ namespace Carrot {
         operator Entity_Ptr() const {
             return internalEntity;
         }
+
+        std::string_view getName() const;
+
+        void updateName(std::string_view name);
 
     private:
         Entity_Ptr internalEntity;

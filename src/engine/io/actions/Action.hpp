@@ -72,10 +72,22 @@ namespace Carrot::IO {
             return state.vValue - state.vPreviousValue;;
         }
 
+        void forceValue(bool v) requires IsBoolInput<type> {
+            state.bValue = v;
+        }
+
+        void forceValue(float v) requires IsFloatInput<type> {
+            state.fValue = v;
+        }
+
+        void forceValue(const glm::vec2& v) requires IsVec2Input<type> {
+            state.vValue = v;
+        }
+
     private:
         std::string name;
         std::vector<std::string> suggestedBindings;
-        union {
+        union State {
             struct {
                 bool bValue;
                 bool bPreviousValue;

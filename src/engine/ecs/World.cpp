@@ -5,13 +5,18 @@
 #include "World.h"
 #include "systems/System.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
+#include "EntityTypes.h"
+
 #include <engine/console/RuntimeOption.hpp>
 
 Carrot::EasyEntity Carrot::World::newEntity(std::string_view name) {
-    auto newID = freeEntityID++;
-    auto entity = make_shared<Entity>(newID);
+    return newEntityWithID(allocationStrategy(), name);
+}
+
+Carrot::EasyEntity Carrot::World::newEntityWithID(EntityID id, std::string_view name) {
+    auto entity = make_shared<Entity>(id);
     auto toReturn = EasyEntity(entity, *this);
-    entityNames[newID] = name;
+    entityNames[id] = name;
     entitiesToAdd.emplace_back(entity);
     return toReturn;
 }
@@ -35,6 +40,25 @@ const Entity_Ptr Carrot::EasyEntity::getParent() const {
 
 void Carrot::EasyEntity::setParent(const Entity_Ptr& parent) {
     worldRef.setParent(internalEntity, parent);
+}
+
+std::string_view Carrot::EasyEntity::getName() const {
+    return worldRef.getName(internalEntity);
+}
+
+void Carrot::EasyEntity::updateName(std::string_view name) {
+    worldRef.entityNames[*internalEntity] = name;
+}
+
+Carrot::World::World() {
+    EntityID entityID = 0;
+    allocationStrategy = [entityID]() mutable {
+        return entityID++;
+    };
+}
+
+void Carrot::World::setAllocationStrategy(const std::function<EntityID()>& allocationStrategy) {
+    this->allocationStrategy = allocationStrategy;
 }
 
 Carrot::Tags Carrot::World::getTags(const Entity_Ptr& entity) const {

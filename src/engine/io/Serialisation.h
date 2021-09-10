@@ -70,6 +70,10 @@ namespace Carrot::IO {
             write(destination, (Elem)v[i]);
         }
     }
+
+    inline void write(std::vector<std::uint8_t>& destination, bool v) {
+        write(destination, static_cast<std::uint8_t>(v ? 1u : 0u));
+    }
 }
 
 #define CarrotSerialiseOperator(Type) \
@@ -87,6 +91,7 @@ CarrotSerialiseOperator(double)
 CarrotSerialiseOperator(std::string_view)
 CarrotSerialiseOperator(std::u32string_view)
 CarrotSerialiseOperator(char)
+CarrotSerialiseOperator(bool)
 #undef CarrotSerialiseOperator
 
 template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
@@ -112,6 +117,7 @@ namespace Carrot::IO {
         VectorReader& operator>>(std::u32string& out);
 
         VectorReader& operator>>(std::string& out);
+        VectorReader& operator>>(bool& out);
 
         template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
         VectorReader& operator>>(glm::vec<dim, Elem, qualifier>& value) {

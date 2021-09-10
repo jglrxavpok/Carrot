@@ -87,4 +87,9 @@ namespace Carrot::IO {
         }
         return *this;
     }
+
+    VectorReader& VectorReader::operator>>(bool& out) {
+        out = next() != 0;
+        return *this;
+    }
 }

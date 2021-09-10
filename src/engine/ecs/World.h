@@ -16,24 +16,9 @@ using namespace std;
 namespace Carrot {
 
     class World {
-    private:
-        EntityID freeEntityID = 0;
-        vector<Entity_Ptr> entities;
-        vector<Entity_Ptr> entitiesToAdd;
-        vector<Entity_Ptr> entitiesToRemove;
-
-        unordered_map<EntityID, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
-        unordered_map<EntityID, Tags> entityTags;
-        unordered_map<EntityID, std::string> entityNames;
-
-        vector<unique_ptr<System>> logicSystems;
-        vector<unique_ptr<System>> renderSystems;
-
-    private: // internal representation of hierarchy
-        unordered_map<EntityID, Entity_Ptr> entityParents;
-        unordered_map<EntityID, std::vector<Entity_Ptr>> entityChildren;
-
     public:
+        explicit World();
+
         Signature getSignature(const Entity_Ptr& entity) const;
 
         template<class Comp>
@@ -51,8 +36,14 @@ namespace Carrot {
 
         EasyEntity newEntity(std::string_view name = "<unnamed>");
 
+        /// /!\ Unsafe! Adds an entity with the given ID, should probably only used for deserialization/networking purposes.
+        EasyEntity newEntityWithID(EntityID id, std::string_view name = "<unnamed>");
+
         void removeEntity(const Entity_Ptr& ent);
 
+        void setAllocationStrategy(const std::function<EntityID()>& allocationStrategy);
+
+    public:
         template<class RenderSystemType, typename... Args>
         void addRenderSystem(Args&&... args);
 
@@ -69,8 +60,26 @@ namespace Carrot {
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
         const std::vector<Entity_Ptr>& getChildren(const Entity_Ptr& parent) const;
 
-
         friend class EasyEntity;
+
+    private:
+        EntityID freeEntityID = 0;
+        vector<Entity_Ptr> entities;
+        vector<Entity_Ptr> entitiesToAdd;
+        vector<Entity_Ptr> entitiesToRemove;
+
+        unordered_map<EntityID, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
+        unordered_map<EntityID, Tags> entityTags;
+        unordered_map<EntityID, std::string> entityNames;
+
+        vector<unique_ptr<System>> logicSystems;
+        vector<unique_ptr<System>> renderSystems;
+
+        std::function<EntityID()> allocationStrategy;
+
+    private: // internal representation of hierarchy
+        unordered_map<EntityID, Entity_Ptr> entityParents;
+        unordered_map<EntityID, std::vector<Entity_Ptr>> entityChildren;
     };
 }
 
