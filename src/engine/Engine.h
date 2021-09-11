@@ -30,6 +30,7 @@ namespace Carrot {
 #include "engine/Configuration.h"
 #include "engine/tasks/PresentThread.h"
 #include "engine/io/actions/InputVectors.h"
+#include "engine/async/Coroutines.hpp"
 
 using namespace std;
 
@@ -321,6 +322,10 @@ namespace Carrot {
     public:
         const Configuration& getConfiguration() const { return config; }
 
+    public: // async stuff
+        /// co_awaits the next engine frame. Used for coroutines.
+        Coroutines::Task<> cowaitNextFrame();
+
     private:
         Configuration config;
         double mouseX = 0.0;
@@ -387,6 +392,7 @@ namespace Carrot {
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
         unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
+        Coroutines::DeferringAwaiter nextFrameAwaiter;
 
         /// Init engine
         void init();

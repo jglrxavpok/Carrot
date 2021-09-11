@@ -5,6 +5,7 @@
 #pragma once
 #include <string>
 #include <string_view>
+#include <engine/utils/Macros.h>
 
 namespace Carrot::Skybox {
     enum class Type {
@@ -35,6 +36,9 @@ namespace Carrot::Skybox {
                 return "nz";
             case Direction::PositiveZ:
                 return "pz";
+
+                default:
+                TODO
         }
     }
     
@@ -45,6 +49,9 @@ namespace Carrot::Skybox {
                 
             case Type::Forest:
                 return std::string("resources/textures/forest_cubemap/")+getSuffix(direction)+".png";
+
+            default:
+                TODO
         }
     }
 }

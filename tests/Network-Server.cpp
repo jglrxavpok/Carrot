@@ -29,6 +29,12 @@ protected:
     }
 };
 
+static Carrot::Coroutines::DeferringAwaiter awaiter;
+
+Carrot::Coroutines::Task<> waitNextIteration() {
+    co_await awaiter;
+}
+
 int main() {
     using namespace Carrot;
 
@@ -38,10 +44,12 @@ int main() {
     ;
     server.setPlayProtocol(protocol);
 
+
     struct ServerConsumer : public Carrot::Network::Server::IPacketConsumer {
         explicit ServerConsumer(Network::Server& server): server(server) {}
 
-        void consumePacket(const UUID& clientID, const Network::Packet::Ptr& packet) override {
+        Coroutines::Task<> consumePacket(const UUID& clientID, const Network::Packet::Ptr packet) override {
+            co_await waitNextIteration();
             std::string str = Carrot::toString(clientID);
             Carrot::Log::info("Received a packet from client %s", str.c_str());
             switch(packet->getPacketID()) {
@@ -56,10 +64,14 @@ int main() {
         }
 
         Carrot::Network::Server& server;
+        //Carrot::Coroutines::DeferringAwaiter& awaiter;
     } serverConsumer{server};
 
     struct ClientConsumer : public Carrot::Network::Client::IPacketConsumer {
-        void consumePacket(const Network::Packet::Ptr& packet) override {
+        explicit ClientConsumer() {}
+
+        Coroutines::Task<> consumePacket(const Network::Packet::Ptr packet) override {
+            co_await waitNextIteration();
             Carrot::Log::info("Received a packet on client!");
             switch(packet->getPacketID()) {
                 case 42: {
@@ -70,9 +82,12 @@ int main() {
                 default: TODO
             }
         }
-    } clientConsumer;
+
+        //Carrot::Coroutines::DeferringAwaiter& awaiter;
+    } clientConsumer{};
 
     server.setPacketConsumer(&serverConsumer);
+
 
     Network::Client client(U"username"s);
     Network::Client client2(U"username2");
@@ -86,10 +101,25 @@ int main() {
     client2.connect("localhost", 25565);
 //    client.queueEvent(std::move(std::make_unique<TestPacket>()));
     for (int i = 0; i < 10; ++i) {
-        client.queueMessage(std::move(std::make_unique<TestPacket>(i)));
-        client2.queueMessage(std::move(std::make_unique<TestPacket>(i)));
+        client.queueEvent(std::move(std::make_unique<TestPacket>(i)));
+        client2.queueEvent(std::move(std::make_unique<TestPacket>(i)));
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    const auto maxTime = chrono::duration<float>(10.0f);
+    auto start = chrono::steady_clock::now();
+    while(true) {
+        auto currentTime = chrono::steady_clock::now();
+        chrono::duration<float> timeElapsed = currentTime-start;
+
+        awaiter.resume_all();
+        awaiter.cleanup();
+
+        if(timeElapsed >= maxTime) {
+            break;
+        }
+
+//        std::this_thread::yield();
+    }
+    //std::this_thread::sleep_for(std::chrono::seconds(10));
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <asio.hpp>
 #include <span>
 #include <vector>
+#include <engine/async/Coroutines.hpp>
 #include "Packet.hpp"
 #include "ConnectionState.h"
 

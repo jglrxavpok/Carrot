@@ -36,7 +36,7 @@ namespace Carrot::Network {
     public:
         struct IPacketConsumer {
             /// Handles an incoming packet.
-            virtual void consumePacket(const Carrot::UUID& clientID, const Packet::Ptr& packet) = 0;
+            virtual Coroutines::Task<> consumePacket(const Carrot::UUID& clientID, const Packet::Ptr packet) = 0;
         };
 
     public:

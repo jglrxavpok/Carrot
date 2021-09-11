@@ -83,7 +83,7 @@ namespace Carrot::Network {
 
                 std::size_t readSize = udpSocket.receive_from(asio::buffer(readBuffer), remoteEndpoint, 0, readError);
 
-                std::cout << "UDP readSize: " << readSize << ", available: " << readBuffer.size() << std::endl;
+                // std::cout << "UDP readSize: " << readSize << ", available: " << readBuffer.size() << std::endl;
                 auto userData = getUDPUserData(remoteEndpoint);
                 if(userData == nullptr) {
                     Carrot::Log::error("No client!");

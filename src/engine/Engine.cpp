@@ -396,6 +396,7 @@ void Carrot::Engine::run() {
 
         renderer.newFrame();
         ImGui::NewFrame();
+        nextFrameAwaiter.resume_all();
 
         if(showInputDebug) {
             Carrot::IO::debugDrawActions();
@@ -421,6 +422,8 @@ void Carrot::Engine::run() {
         }
 
         drawFrame(currentFrame);
+
+        nextFrameAwaiter.cleanup();
 
         currentFrame = (currentFrame+1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -1186,4 +1189,8 @@ Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFr
             .swapchainIndex = swapchainFrameIndex,
             .lastSwapchainIndex = lastFrameIndex,
     };
+}
+
+Carrot::Coroutines::Task<> Carrot::Engine::cowaitNextFrame() {
+    co_await nextFrameAwaiter;
 }
