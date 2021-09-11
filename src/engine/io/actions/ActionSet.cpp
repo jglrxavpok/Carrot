@@ -144,7 +144,6 @@ namespace Carrot::IO {
                 }
             };
 
-            // TODO: handle case where this action set is destroyed
             keyCallback = engine.addGLFWKeyCallback([this, changeButtonInput, changeAxisInput](int key, int scancode, int action, int mods) {
                 if(!active)
                     return;

@@ -66,7 +66,7 @@ namespace Carrot {
         virtual ~BaseExpressionVisitor() = default;
     };
 
-    template<typename ReturnType = void> // TODO
+    template<typename ReturnType = void>
     class IExpressionVisitor: public BaseExpressionVisitor {
     public:
         inline ReturnType visit(std::shared_ptr<Expression> expression) {

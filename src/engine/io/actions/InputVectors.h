@@ -33,7 +33,6 @@ namespace Carrot::IO {
         RightStick,
         Triggers,
 
-        // TODO: common key groups (ZQSD, WASD, Arrow keys)
         WASD,
         ZQSD,
         ArrowKeys,
