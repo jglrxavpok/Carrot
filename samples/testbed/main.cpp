@@ -3,7 +3,7 @@
 #include "engine/Engine.h"
 #include "engine/constants.h"
 #include "stb_image.h"
-#include "game/Game.h"
+#include "Game.h"
 #include "engine/Configuration.h"
 
 #ifdef TRACY_ENABLE

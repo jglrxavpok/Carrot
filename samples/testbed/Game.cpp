@@ -26,22 +26,11 @@
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
 #include "UnitColor.h"
-#include <engine/io/actions/ActionSet.h>
 #include <engine/io/Logging.hpp>
 
 constexpr static int maxInstanceCount = 100; // TODO: change
 
 static vector<size_t> blasIndices{};
-
-static Carrot::IO::ActionSet gameplayActions { "gameplay" };
-static Carrot::IO::BoolInputAction grabMouse { "grab mouse" };
-static Carrot::IO::BoolInputAction leftClickTest { "left click test" };
-static Carrot::IO::BoolInputAction rightClickTest { "right click test" };
-static Carrot::IO::BoolInputAction gamepadButtonTest { "Xbox A test" };
-static Carrot::IO::BoolInputAction gamepadLeftTriggerTest { "Left trigger" };
-static Carrot::IO::BoolInputAction gamepadLeftStickTest { "Left stick" };
-static Carrot::IO::BoolInputAction gamepadRightStickTest { "Right stick" };
-static Carrot::IO::Vec2InputAction cameraMove { "Camera move" };
 
 Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     ZoneScoped;

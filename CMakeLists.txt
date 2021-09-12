@@ -152,7 +152,7 @@ function(add_includes Target)
 endfunction()
 
 add_subdirectory(src/engine)
-add_subdirectory(src/game)
+add_subdirectory(samples)
 add_subdirectory(src/tools)
 add_subdirectory(tests)
 

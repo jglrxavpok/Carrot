@@ -13,6 +13,7 @@
 #include "engine/render/animation/AnimatedInstances.h"
 #include "engine/render/particles/Particles.h"
 #include "engine/CarrotGame.h"
+#include <engine/io/actions/ActionSet.h>
 
 namespace Carrot {
     class Engine;
@@ -52,5 +53,16 @@ namespace Game {
 
     private:
         void moveCamera(double dx, double dy);
+
+    private:
+        Carrot::IO::ActionSet gameplayActions { "gameplay" };
+        Carrot::IO::BoolInputAction grabMouse { "grab mouse" };
+        Carrot::IO::BoolInputAction leftClickTest { "left click test" };
+        Carrot::IO::BoolInputAction rightClickTest { "right click test" };
+        Carrot::IO::BoolInputAction gamepadButtonTest { "Xbox A test" };
+        Carrot::IO::BoolInputAction gamepadLeftTriggerTest { "Left trigger" };
+        Carrot::IO::BoolInputAction gamepadLeftStickTest { "Left stick" };
+        Carrot::IO::BoolInputAction gamepadRightStickTest { "Right stick" };
+        Carrot::IO::Vec2InputAction cameraMove { "Camera move" };
     };
 }
