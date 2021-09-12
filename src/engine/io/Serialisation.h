@@ -71,6 +71,13 @@ namespace Carrot::IO {
         }
     }
 
+    template<typename Elem, glm::qualifier qualifier>
+    inline void write(std::vector<std::uint8_t>& destination, glm::qua<Elem, qualifier> v) {
+        for (int i = 0; i < 4; ++i) {
+            write(destination, (Elem)v[i]);
+        }
+    }
+
     inline void write(std::vector<std::uint8_t>& destination, bool v) {
         write(destination, static_cast<std::uint8_t>(v ? 1u : 0u));
     }
@@ -100,6 +107,12 @@ inline std::vector<std::uint8_t>& operator<<(std::vector<std::uint8_t>& out, con
     return out;
 }
 
+template<typename Elem, glm::qualifier qualifier>
+inline std::vector<std::uint8_t>& operator<<(std::vector<std::uint8_t>& out, const glm::qua<Elem, qualifier>& value) {
+    Carrot::IO::write(out, value);
+    return out;
+}
+
 namespace Carrot::IO {
     /// Allows to read data written to a std::vector, with Carrot::IO::write methods. Little-endian is used for both
     class VectorReader {
@@ -122,6 +135,14 @@ namespace Carrot::IO {
         template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
         VectorReader& operator>>(glm::vec<dim, Elem, qualifier>& value) {
             for (int i = 0; i < dim; ++i) {
+                *this >> value[i];
+            }
+            return *this;
+        }
+
+        template<typename Elem, glm::qualifier qualifier>
+        VectorReader& operator>>(glm::qua<Elem, qualifier>& value) {
+            for (int i = 0; i < 4; ++i) {
                 *this >> value[i];
             }
             return *this;
