@@ -118,7 +118,12 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAK
 
 copy_all_resources()
 
-file(COPY "${OPENXR-LOADER-LIB-LOCATION}" DESTINATION "${CMAKE_BINARY_DIR}/")
+if(EXISTS "${OPENXR-LOADER-LIB-LOCATION}")
+    set(CAN_SUPPORT_VR true)
+    file(COPY "${OPENXR-LOADER-LIB-LOCATION}" DESTINATION "${CMAKE_BINARY_DIR}/")
+else()
+    set(CAN_SUPPORT_VR false)
+endif()
 
 function(make_tracy_target Target)
     target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
