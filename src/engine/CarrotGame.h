@@ -19,9 +19,9 @@ namespace Carrot {
 
         virtual void tick(double frameTime) = 0;
 
-        virtual void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) = 0;
+        [[deprecated]] virtual void onMouseMove(double dx, double dy) {};
 
-        virtual void onMouseMove(double dx, double dy) = 0;
+        virtual void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) = 0;
 
         virtual void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {};
 
