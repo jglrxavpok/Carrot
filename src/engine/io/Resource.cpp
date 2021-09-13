@@ -27,7 +27,7 @@ namespace Carrot::IO {
         name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
-    Resource::Resource(const std::span<std::uint8_t>& data): data(true) {
+    Resource::Resource(const std::span<const std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
         this->data.raw = container;
@@ -132,7 +132,7 @@ namespace Carrot::IO {
         auto buffer = readAll();
         const char* str = reinterpret_cast<const char *>(buffer.get());
         std::string result;
-        result.resize(getSize()+1, '\0');
+        result.resize(getSize());
         std::memcpy(result.data(), str, getSize());
         return result;
     }
@@ -143,6 +143,13 @@ namespace Carrot::IO {
 
     const std::string& Resource::getName() const {
         return filename;
+    }
+
+    Carrot::IO::Resource Resource::inMemory(const std::string& text) {
+        std::vector<std::uint8_t> vec;
+        vec.resize(text.size());
+        std::memcpy(vec.data(), text.data(), text.size());
+        return Carrot::IO::Resource(vec);
     }
 
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {

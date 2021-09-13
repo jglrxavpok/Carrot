@@ -27,6 +27,7 @@ set(OPENXR-INCLUDE-DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platfo
 include(FetchContent)
 find_package(Vulkan REQUIRED)
 find_package(Aftermath)
+find_package(Lua REQUIRED)
 add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 
@@ -146,12 +147,14 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
+    target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
 endfunction()
 
-add_subdirectory(src/engine)
+add_subdirectory(src)
 add_subdirectory(samples)
 add_subdirectory(src/tools)
 add_subdirectory(tests)

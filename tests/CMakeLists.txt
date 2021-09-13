@@ -10,6 +10,7 @@ make_test(Audio)
 make_test(Resources)
 make_test(Network-Client)
 make_test(Network-Server)
+make_test(Lua)
 
 list(JOIN AllTests " " AllTestsStr)
 message("All tests is: " ${AllTestsStr})

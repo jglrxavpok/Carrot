@@ -1,5 +1,5 @@
 #set(EngineRoot src/engine/)
-set(EngineRoot "")
+set(EngineRoot "engine/")
 set(ENGINE-SOURCES
         ${EngineRoot}io/IO.cpp
         ${EngineRoot}io/Logging.cpp
@@ -89,7 +89,13 @@ set(ENGINE-SOURCES
         ${EngineRoot}network/packets/HandshakePackets.cpp
 
 
-       # PARENT_SCOPE
+        ${EngineRoot}scripting/LuaScript.cpp
+        ${EngineRoot}scripting/bindings/glm.cpp
+        )
+
+set(VR_SOURCES
+        ${EngineRoot}vr/Session.cpp
+        ${EngineRoot}vr/VRInterface.cpp
         )
 
 set(VERTEX_SHADERS
@@ -191,12 +197,15 @@ set(THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
         )
 
-set(VR_SOURCES
-        vr/Session.cpp
-        vr/VRInterface.cpp
-        )
+if (MSVC)
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd)
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/bigobj>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
+endif()
+
+set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV ${LUA_LIBRARIES})
 
 add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})

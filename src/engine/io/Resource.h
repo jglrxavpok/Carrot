@@ -20,11 +20,14 @@ namespace Carrot::IO {
         /// Copies data inside a shared vector
         explicit Resource(const std::vector<std::uint8_t>& data);
 
-        /// Copies data inside a shared vector
-        explicit Resource(const std::span<std::uint8_t>& data);
+        explicit Resource(const std::span<const std::uint8_t>& data);
 
         /// Copies the other resource. Raw data is shared, file handles are cloned.
         Resource(const Resource& toCopy);
+
+    public:
+        /// Constructs an in-memory resource with the given text
+        static Carrot::IO::Resource inMemory(const std::string& text);
 
     public:
         uint64_t getSize() const;

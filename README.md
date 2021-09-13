@@ -1,14 +1,40 @@
 # Carrot
 
-Game engine in C++, for *fun*, and to attempt a tiny clone of Pikmin.
+Game engine in C++, mostly for my own fun.
 
-Don't expect support.
+Don't expect support for the moment.
+
+## Dependencies
+
+### What you need to install
+* `Vulkan`: Graphics API. I currently use the 1.2.170.0 LunarG SDK.
+* `Lua`: LuaJIT and Vanilla Lua are both supported by sol3 (C++ lib for Lua support).
+
+### Thirdparty libraries
+* `Vulkan`: Graphics API. I currently use the 1.2.170.0 LunarG SDK.
+* `asio`: Networking lib.
+* `Assimp`: **ass**et **imp**orting lib, used to load models
+* `dr_libs`: Audio codecs
+* `GLFW`: Cross-platform window & input API.
+* `GLM`: Math lib
+* `Dear ImGui`: Immediate mode GUI
+* `imgui-node-editor`: 
+* `sol3`: Lua <-> C++ support
+* `OpenXR`: XR (AR+VR) API.
+* `rapidjson`: Json support
+* `stduuid`: Cross-platform UUID lib.
+* `Tracy`: Profiler.
+* `stb_image`, `stb_image_write`, `stb_truetype`, `stb_vorbis`. Various single-file headers
 
 ## Some of its features
 - Vulkan renderer
 - Raytraced lighting & shadows
 - Skeletal animation support
 - Entity Component System
+- Networking
+- Lua scripting
+- (partial) VR support
+- Basic audio support
 
 ## Last screenshot
 ![Last screenshot](./screenshot.png)
