@@ -44,6 +44,7 @@
 #include "engine/io/actions/ActionSet.h"
 #include "engine/io/Logging.hpp"
 #include "engine/io/actions/ActionDebug.h"
+#include "engine/render/Sprite.h"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -494,6 +495,7 @@ void Carrot::Engine::initVulkan() {
 }
 
 Carrot::Engine::~Engine() {
+    Carrot::Render::Sprite::cleanup();
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

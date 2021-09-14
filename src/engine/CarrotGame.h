@@ -10,10 +10,10 @@
 namespace Carrot {
     class CarrotGame: public SwapchainAware {
     protected:
-        Engine& engine;
+        Carrot::Engine& engine;
 
     public:
-        explicit CarrotGame(Engine& engine): engine(engine) {};
+        explicit CarrotGame(Carrot::Engine& engine): engine(engine) {};
 
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
 

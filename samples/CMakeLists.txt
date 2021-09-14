@@ -1,1 +1,2 @@
+add_subdirectory(basicsprites)
 add_subdirectory(testbed)

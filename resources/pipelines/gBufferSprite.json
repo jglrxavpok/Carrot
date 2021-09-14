@@ -1,0 +1,18 @@
+{
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "SimpleVertexWithInstanceData",
+  "reserveSet2ForCamera": true,
+  "depthWrite": true,
+  "depthTest": true,
+  "cull": false,
+  "alphaBlending": true,
+  "constants": {
+    "MAX_TEXTURES": 1,
+    "MAX_MATERIALS": 1
+  },
+  "vertexShader": "resources/shaders/gBufferSprite.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/gBufferSprite.fragment.glsl.spv",
+  "materialStorageBufferBindingIndex": 2,
+  "texturesBindingIndex": 0
+}

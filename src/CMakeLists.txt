@@ -40,6 +40,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
         ${EngineRoot}ecs/systems/SystemUpdateLightPosition.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
+        ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/Signature.cpp
 
@@ -72,6 +73,10 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/TextureRepository.cpp
 
         ${EngineRoot}render/ComputePipeline.cpp
+
+        ${EngineRoot}render/AnimatedSprite.cpp
+        ${EngineRoot}render/Sprite.cpp
+        ${EngineRoot}render/TextureAtlas.cpp
 
         ${EngineRoot}expressions/Expressions.cpp
         ${EngineRoot}console/Console.cpp
@@ -106,6 +111,7 @@ set(VERTEX_SHADERS
         ${ProjectRoot}resources/shaders/particles.vertex.glsl
         ${ProjectRoot}resources/shaders/screenQuad-transformed.vertex.glsl
         ${ProjectRoot}resources/shaders/text-rendering.vertex.glsl
+        ${ProjectRoot}resources/shaders/gBufferSprite.vertex.glsl
 
         #PARENT_SCOPE
         )
@@ -119,6 +125,7 @@ set(FRAGMENT_SHADERS
         ${ProjectRoot}resources/shaders/gResolve-rendergraph.fragment.glsl
         ${ProjectRoot}resources/shaders/composer-blit.fragment.glsl
         ${ProjectRoot}resources/shaders/text-rendering.fragment.glsl
+        ${ProjectRoot}resources/shaders/gBufferSprite.fragment.glsl
 
         #PARENT_SCOPE
         )
