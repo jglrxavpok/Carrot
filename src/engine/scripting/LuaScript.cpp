@@ -8,20 +8,13 @@ namespace Carrot::Lua {
 
     Script::Script(const Carrot::IO::Resource& resource) {
         // open some common libraries
-        luaState.open_libraries(sol::lib::base, sol::lib::package);
+        open_libraries(sol::lib::base, sol::lib::package);
 
-        registerAllUsertypes(luaState);
-        std::string code = resource.readText();
-        std::cout << code << std::endl;
-
-        luaState.safe_script(code, sol::script_throw_on_error);
+        registerAllUsertypes(*this);
+        safe_script(resource.readText(), sol::script_throw_on_error);
     }
 
     Script::Script(const std::string& text): Script::Script(Carrot::IO::Resource::inMemory(text)) {}
 
     Script::Script(const char* text): Script::Script(std::string(text)) {}
-
-    sol::state& Script::getLuaState() {
-        return luaState;
-    }
 }

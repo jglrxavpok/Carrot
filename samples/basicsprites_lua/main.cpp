@@ -64,25 +64,21 @@ end
 
     script(LuaScript)
     {
-        //script.getLuaState()["init"](engine.getRenderer());
-        script.callWithThrow<void>("init", engine);
+        script["init"](engine);
         updateCameraProjection();
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
-        //script.getLuaState()["onFrame"](renderContext);
-        script.callWithThrow<void>("onFrame", renderContext);
+        script["onFrame"](renderContext);
     }
 
     void tick(double frameTime) override {
-        //script.getLuaState()["tick"](frameTime);
-        script.callWithThrow<void>("tick", frameTime);
+        script["tick"](frameTime);
     }
 
     void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
                            vk::CommandBuffer& commands) override {
-        //script.getLuaState()["recordGBufferPass"](pass, renderContext, commands);
-        script.callWithThrow<void>("recordGBufferPass", pass, renderContext, commands);
+        script["recordGBufferPass"](pass, renderContext, commands);
     }
 
     void onSwapchainSizeChange(int newWidth, int newHeight) override {

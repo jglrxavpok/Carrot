@@ -8,7 +8,7 @@
 #include <engine/io/Resource.h>
 
 namespace Carrot::Lua {
-    class Script {
+    class Script: public sol::state {
     public:
         /// Creates a script object from a resource (file or in-memory)
         explicit Script(const Carrot::IO::Resource& script);
@@ -19,11 +19,9 @@ namespace Carrot::Lua {
         /// Creates a script object directly from raw text
         Script(const char* text);
 
-        sol::state& getLuaState();
-
         template<typename ReturnType, typename... Args>
         ReturnType callWithThrow(std::string_view functionName, Args&&... args) {
-            sol::protected_function protectedVersion = luaState[functionName];
+            sol::protected_function protectedVersion = (*this)[functionName];
             auto result = protectedVersion(std::forward<Args>(args)...);
             if (result.valid()) {
                 if constexpr(!std::is_void_v<ReturnType>) {
@@ -36,8 +34,5 @@ namespace Carrot::Lua {
                 throw std::runtime_error("Lua error: " + what);
             }
         }
-
-    private:
-        sol::state luaState;
     };
 }
