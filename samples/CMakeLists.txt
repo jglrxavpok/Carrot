@@ -1,2 +1,3 @@
 add_subdirectory(basicsprites)
+add_subdirectory(basicsprites_lua)
 add_subdirectory(testbed)

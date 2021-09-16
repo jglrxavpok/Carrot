@@ -16,6 +16,10 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot {
     class GBuffer;
     class ASBuilder;
@@ -26,37 +30,6 @@ namespace Carrot {
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
     class VulkanRenderer: public SwapchainAware {
-    private:
-        VulkanDriver& driver;
-        Configuration config;
-
-        map<std::pair<std::string, std::uint64_t>, shared_ptr<Pipeline>> pipelines{};
-        map<string, Render::Texture::Ref> textures{};
-
-        vk::UniqueDescriptorPool imguiDescriptorPool{};
-
-        unique_ptr<RayTracer> raytracer = nullptr;
-        unique_ptr<ASBuilder> asBuilder = nullptr;
-        unique_ptr<GBuffer> gBuffer = nullptr;
-
-        std::list<CommandBufferConsumer> beforeFrameCommands;
-        std::list<CommandBufferConsumer> afterFrameCommands;
-
-        ImGui_ImplVulkan_InitInfo imguiInitInfo;
-        bool imguiIsInitialized = false;
-        unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
-        std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
-
-        void createUIResources();
-
-        /// Create the pipeline responsible for lighting via the gbuffer
-        void createGBuffer();
-
-        /// Create the object responsible of raytracing operations and subpasses
-        void createRayTracer();
-
-        void initImGui();
-
     public:
         static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
 
@@ -123,6 +96,40 @@ namespace Carrot {
         void bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
 
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
+
+    public:
+        static void registerUsertype(sol::state& destination);
+
+    private:
+        VulkanDriver& driver;
+        Configuration config;
+
+        map<std::pair<std::string, std::uint64_t>, shared_ptr<Pipeline>> pipelines{};
+        map<std::string, Render::Texture::Ref> textures{};
+
+        vk::UniqueDescriptorPool imguiDescriptorPool{};
+
+        std::unique_ptr<RayTracer> raytracer = nullptr;
+        std::unique_ptr<ASBuilder> asBuilder = nullptr;
+        std::unique_ptr<GBuffer> gBuffer = nullptr;
+
+        std::list<CommandBufferConsumer> beforeFrameCommands;
+        std::list<CommandBufferConsumer> afterFrameCommands;
+
+        ImGui_ImplVulkan_InitInfo imguiInitInfo;
+        bool imguiIsInitialized = false;
+        std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
+        std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
+
+        void createUIResources();
+
+        /// Create the pipeline responsible for lighting via the gbuffer
+        void createGBuffer();
+
+        /// Create the object responsible of raytracing operations and subpasses
+        void createRayTracer();
+
+        void initImGui();
     };
 }
 

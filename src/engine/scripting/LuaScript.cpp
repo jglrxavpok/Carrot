@@ -13,7 +13,8 @@ namespace Carrot::Lua {
         registerAllUsertypes(luaState);
         std::string code = resource.readText();
         std::cout << code << std::endl;
-        luaState.script(code);
+
+        luaState.safe_script(code, sol::script_throw_on_error);
     }
 
     Script::Script(const std::string& text): Script::Script(Carrot::IO::Resource::inMemory(text)) {}

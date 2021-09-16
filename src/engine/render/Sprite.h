@@ -13,6 +13,10 @@
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/resources/BufferView.h"
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot::Render {
     class Sprite {
     public:
@@ -39,6 +43,8 @@ namespace Carrot::Render {
 
     public:
         static void cleanup();
+
+        static void registerUsertype(sol::state& destination);
 
     private:
         Carrot::VulkanRenderer& renderer;

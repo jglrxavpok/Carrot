@@ -4,6 +4,10 @@
 
 #pragma once
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot {
     class VulkanRenderer;
 }
@@ -21,5 +25,7 @@ namespace Carrot::Render {
         size_t frameCount = -1;
         size_t swapchainIndex = -1;
         size_t lastSwapchainIndex = -1;
+
+        static void registerUsertype(sol::state& destination);
     };
 }

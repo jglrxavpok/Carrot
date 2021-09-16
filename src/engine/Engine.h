@@ -34,6 +34,10 @@ namespace Carrot {
 
 using namespace std;
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot {
     class CarrotGame;
 
@@ -325,6 +329,9 @@ namespace Carrot {
     public: // async stuff
         /// co_awaits the next engine frame. Used for coroutines.
         Coroutines::Task<> cowaitNextFrame();
+
+    public:
+        static void registerUsertype(sol::state& destination);
 
     private:
         Configuration config;

@@ -95,7 +95,18 @@ set(ENGINE-SOURCES
 
 
         ${EngineRoot}scripting/LuaScript.cpp
+        ${EngineRoot}scripting/bindings/all.cpp
         ${EngineRoot}scripting/bindings/glm.cpp
+        ${EngineRoot}scripting/bindings/Engine.cpp
+
+        ${EngineRoot}scripting/bindings/vulkan/VulkanDriver.cpp
+        ${EngineRoot}scripting/bindings/vulkan/vulkan.cpp
+
+        ${EngineRoot}scripting/bindings/render/RenderContext.cpp
+        ${EngineRoot}scripting/bindings/render/Sprite.cpp
+        ${EngineRoot}scripting/bindings/render/VulkanRenderer.cpp
+
+        ${EngineRoot}scripting/bindings/render/resources/Texture.cpp
         )
 
 set(VR_SOURCES

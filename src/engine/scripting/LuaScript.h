@@ -21,6 +21,22 @@ namespace Carrot::Lua {
 
         sol::state& getLuaState();
 
+        template<typename ReturnType, typename... Args>
+        ReturnType callWithThrow(std::string_view functionName, Args&&... args) {
+            sol::protected_function protectedVersion = luaState[functionName];
+            auto result = protectedVersion(std::forward<Args>(args)...);
+            if (result.valid()) {
+                if constexpr(!std::is_void_v<ReturnType>) {
+                    return result;
+                }
+            } else {
+                // An error has occured
+                sol::error err = result;
+                std::string what = err.what();
+                throw std::runtime_error("Lua error: " + what);
+            }
+        }
+
     private:
         sol::state luaState;
     };

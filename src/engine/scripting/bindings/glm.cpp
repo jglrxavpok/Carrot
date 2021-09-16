@@ -14,7 +14,33 @@ namespace Carrot::Lua {
                                                 sol::constructors<vec(), vec(Elem), fullConstructor>(),
                                                 "x", &vec::x,
                                                 "r", &vec::r,
-                                                "s", &vec::s
+                                                "s", &vec::s,
+                                                sol::meta_function::addition, sol::overload(
+                                                        [](vec& a, vec& b) {
+                                                            return a + b;
+                                                        }
+                                                ),
+                                                sol::meta_function::subtraction, sol::overload(
+                                                        [](vec& a, vec& b) {
+                                                            return a - b;
+                                                        }
+                                                ),
+                                                sol::meta_function::division, sol::overload(
+                                                        [](vec& a, vec& b) {
+                                                            return a / b;
+                                                        },
+                                                        [](vec& a, Elem f) {
+                                                            return a / f;
+                                                        }
+                                                ),
+                                                sol::meta_function::multiplication, sol::overload(
+                                                        [](vec& a, vec& b) {
+                                                            return a * b;
+                                                        },
+                                                        [](vec& a, Elem f) {
+                                                            return a * f;
+                                                        }
+                                                )
         );
         if constexpr (dim >= 2) {
             userType["y"] = &vec::y;

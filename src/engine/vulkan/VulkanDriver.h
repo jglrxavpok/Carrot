@@ -14,6 +14,10 @@
 #include "engine/memory/ThreadLocal.hpp"
 #include "engine/Configuration.h"
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot {
     namespace Render {
         class Texture;
@@ -275,6 +279,9 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    public:
+        static void registerUsertype(sol::state& destination);
     };
 }
 

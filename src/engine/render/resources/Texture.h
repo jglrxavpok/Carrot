@@ -10,6 +10,10 @@
 #include "engine/io/Resource.h"
 #include "engine/io/FileFormats.h"
 
+namespace sol {
+    class state;
+}
+
 namespace Carrot::Render {
     using namespace Carrot::IO;
 
@@ -80,6 +84,9 @@ namespace Carrot::Render {
     public:
         ImTextureID getImguiID(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
         ImTextureID getImguiID(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
+
+    public:
+        static void registerUsertype(sol::state& destination);
 
     protected:
         void setDebugNames(const string& name) override;
