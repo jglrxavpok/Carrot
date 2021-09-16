@@ -11,8 +11,6 @@
 #include <engine/ecs/systems/System.h>
 #include "EntityTypes.h"
 
-using namespace std;
-
 namespace Carrot {
 
     class World {
@@ -64,22 +62,22 @@ namespace Carrot {
 
     private:
         EntityID freeEntityID = 0;
-        vector<Entity_Ptr> entities;
-        vector<Entity_Ptr> entitiesToAdd;
-        vector<Entity_Ptr> entitiesToRemove;
+        std::vector<Entity_Ptr> entities;
+        std::vector<Entity_Ptr> entitiesToAdd;
+        std::vector<Entity_Ptr> entitiesToRemove;
 
-        unordered_map<EntityID, unordered_map<ComponentID, unique_ptr<Component>>> entityComponents;
-        unordered_map<EntityID, Tags> entityTags;
-        unordered_map<EntityID, std::string> entityNames;
+        std::unordered_map<EntityID, std::unordered_map<ComponentID, std::unique_ptr<Component>>> entityComponents;
+        std::unordered_map<EntityID, Tags> entityTags;
+        std::unordered_map<EntityID, std::string> entityNames;
 
-        vector<unique_ptr<System>> logicSystems;
-        vector<unique_ptr<System>> renderSystems;
+        std::vector<std::unique_ptr<System>> logicSystems;
+        std::vector<std::unique_ptr<System>> renderSystems;
 
         std::function<EntityID()> allocationStrategy;
 
     private: // internal representation of hierarchy
-        unordered_map<EntityID, Entity_Ptr> entityParents;
-        unordered_map<EntityID, std::vector<Entity_Ptr>> entityChildren;
+        std::unordered_map<EntityID, Entity_Ptr> entityParents;
+        std::unordered_map<EntityID, std::vector<Entity_Ptr>> entityChildren;
     };
 }
 

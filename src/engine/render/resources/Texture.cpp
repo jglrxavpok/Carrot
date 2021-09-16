@@ -13,10 +13,10 @@ namespace Carrot::Render {
             vk::Extent3D extent,
             vk::ImageUsageFlags usage,
             vk::Format format,
-            const set<uint32_t>& families,
+            const std::set<std::uint32_t>& families,
             vk::ImageCreateFlags flags,
             vk::ImageType type,
-            uint32_t layerCount): driver(driver), imageFormat(format), image(std::make_unique<Carrot::Image>(driver, extent, usage, format, families, flags, type, layerCount)) {
+                     std::uint32_t layerCount): driver(driver), imageFormat(format), image(std::make_unique<Carrot::Image>(driver, extent, usage, format, families, flags, type, layerCount)) {
         currentLayout = vk::ImageLayout::eUndefined;
     }
 
@@ -32,7 +32,7 @@ namespace Carrot::Render {
         imageFormat = image->getFormat();
     }
 
-    Texture::Texture(VulkanDriver& driver, vk::Image image, vk::Extent3D extent, vk::Format format, uint32_t layerCount)
+    Texture::Texture(VulkanDriver& driver, vk::Image image, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount)
     : driver(driver), image(std::make_unique<Carrot::Image>(driver, image, extent, format, layerCount)) {
         imageFormat = this->image->getFormat();
     }
@@ -119,7 +119,7 @@ namespace Carrot::Render {
         return *this;
     }
 
-    void Texture::setDebugNames(const string& name) {
+    void Texture::setDebugNames(const std::string& name) {
         image->name(name);
     }
 

@@ -31,8 +31,6 @@ namespace Carrot {
         class Session;
     }
 
-    using namespace std;
-
     class Image;
     class Buffer;
     class Engine;
@@ -92,17 +90,17 @@ namespace Carrot {
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
         vk::Extent2D windowFramebufferExtent{};
-        vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
+        std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
         vk::UniqueDescriptorPool emptyDescriptorSetPool{};
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
         vk::DescriptorSet emptyDescriptorSet{};
 
-        unordered_map<Render::Eye, vector<shared_ptr<Buffer>>> cameraUniformBuffers{};
+        std::unordered_map<Render::Eye, std::vector<std::shared_ptr<Buffer>>> cameraUniformBuffers{};
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorSetsPool{};
-        unordered_map<Render::Eye, vector<vk::DescriptorSet>> cameraDescriptorSets{};
-        vector<shared_ptr<Buffer>> debugUniformBuffers{};
+        std::unordered_map<Render::Eye, std::vector<vk::DescriptorSet>> cameraDescriptorSets{};
+        std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
         /// Create Vulkan instance
@@ -151,12 +149,12 @@ namespace Carrot {
         /// Choose best surface format from the list of given formats
         /// \param formats
         /// \return
-        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const vector<vk::SurfaceFormatKHR>& formats);
+        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats);
 
         /// Choose best present mode from the list of given modes
         /// \param presentModes
         /// \return
-        vk::PresentModeKHR chooseSwapPresentMode(const vector<vk::PresentModeKHR>& presentModes);
+        vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
 
         /// Choose resolution of swap chain images
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
@@ -231,13 +229,13 @@ namespace Carrot {
         vk::Format findDepthFormat();
 
         /// Find the best available format in the given candidates
-        vk::Format findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling,
+        vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
                                        vk::FormatFeatureFlags features);
 
         const vk::Extent2D& getWindowFramebufferExtent() const { return windowFramebufferExtent; };
         const vk::Extent2D& getFinalRenderSize() const;
 
-        vector<std::shared_ptr<Render::Texture>>& getSwapchainTextures() { return swapchainTextures; };
+        std::vector<std::shared_ptr<Render::Texture>>& getSwapchainTextures() { return swapchainTextures; };
 
         size_t getSwapchainImageCount() const { return swapchainTextures.size(); };
 
@@ -252,8 +250,8 @@ namespace Carrot {
 
         void createUniformBuffers();
 
-        vector<shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
-        unordered_map<Render::Eye, vector<shared_ptr<Buffer>>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
+        std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
+        std::unordered_map<Render::Eye, std::vector<std::shared_ptr<Buffer>>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
 
         NakedPtr<GLFWwindow>& getWindow() { return window; };
 

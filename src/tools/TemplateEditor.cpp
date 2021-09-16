@@ -24,7 +24,7 @@ void Tools::TemplateEditor::tick(double deltaTime) {
     graph.tick(deltaTime);
 }
 
-void Tools::TemplateEditor::onFrame(size_t frameIndex) {
+void Tools::TemplateEditor::onFrame(Carrot::Render::Context renderContext) {
     if(!isOpen)
         return;
     if(ImGui::Begin("Template Editor", &isOpen, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {
@@ -47,11 +47,11 @@ void Tools::TemplateEditor::onFrame(size_t frameIndex) {
             hasUnsavedChanges = true;
         }
 
-        graph.onFrame(frameIndex);
+        graph.onFrame(renderContext);
     }
     ImGui::End();
 
-    ProjectMenuHolder::onFrame(frameIndex);
+    ProjectMenuHolder::onFrame(renderContext);
 
     hasUnsavedChanges = graph.hasChanges();
 }
@@ -60,7 +60,7 @@ void Tools::TemplateEditor::open() {
     isOpen = true;
 }
 
-void Tools::TemplateEditor::performLoad(filesystem::path fileToOpen) {
+void Tools::TemplateEditor::performLoad(std::filesystem::path fileToOpen) {
     if(fileToOpen == EmptyProject) {
         graph.clear();
         hasUnsavedChanges = false;
@@ -109,14 +109,14 @@ void Tools::TemplateEditor::saveToFile(std::filesystem::path path) {
     outputs.SetArray();
 
     for(const auto& [id, node] : graph.getNodes()) {
-        if(auto namedInput = dynamic_pointer_cast<NamedInputNode>(node)) {
+        if(auto namedInput = std::dynamic_pointer_cast<NamedInputNode>(node)) {
             inputs.PushBack(rapidjson::Value(rapidjson::kObjectType)
                                     .AddMember("name", Carrot::JSON::makeRef(namedInput->getIOName()), document.GetAllocator())
                                     .AddMember("type", Carrot::JSON::makeRef(namedInput->getType().name()), document.GetAllocator())
                                     .AddMember("dimensions", namedInput->getDimensionCount(), document.GetAllocator())
                     , document.GetAllocator());
         }
-        if(auto namedOutput = dynamic_pointer_cast<NamedOutputNode>(node)) {
+        if(auto namedOutput = std::dynamic_pointer_cast<NamedOutputNode>(node)) {
             outputs.PushBack(rapidjson::Value(rapidjson::kObjectType)
                                      .AddMember("name", Carrot::JSON::makeRef(namedOutput->getIOName()), document.GetAllocator())
                                      .AddMember("type", Carrot::JSON::makeRef(namedOutput->getType().name()), document.GetAllocator())

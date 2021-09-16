@@ -9,28 +9,28 @@
 
 namespace Carrot {
     struct GeometryInput {
-        vector<vk::AccelerationStructureGeometryKHR> geometries{};
-        vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
+        std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
+        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
-        unique_ptr<AccelerationStructure> as{};
+        std::unique_ptr<AccelerationStructure> as{};
 
         // cached structures for rebuilding
-        unique_ptr<Buffer> scratchBuffer{};
-        unique_ptr<vk::AccelerationStructureBuildGeometryInfoKHR> cachedBuildInfo{};
-        vector<const vk::AccelerationStructureBuildRangeInfoKHR*> cachedBuildRanges{};
+        std::unique_ptr<Buffer> scratchBuffer{};
+        std::unique_ptr<vk::AccelerationStructureBuildGeometryInfoKHR> cachedBuildInfo{};
+        std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> cachedBuildRanges{};
     };
 
     struct InstanceInput {
         glm::mat4 transform{1.0f};
-        uint32_t customInstanceIndex;
-        uint32_t geometryIndex;
+        std::uint32_t customInstanceIndex;
+        std::uint32_t geometryIndex;
 
-        uint32_t mask;
-        uint32_t hitGroup;
+        std::uint32_t mask;
+        std::uint32_t hitGroup;
     };
 
     struct TLAS {
-        unique_ptr<AccelerationStructure> as{};
+        std::unique_ptr<AccelerationStructure> as{};
     };
 
     /// Helpers build Acceleration Structures for raytracing
@@ -38,10 +38,10 @@ namespace Carrot {
     private:
         VulkanRenderer& renderer;
         bool enabled = false;
-        vector<GeometryInput> bottomLevelGeometries{};
-        vector<InstanceInput> topLevelInstances{};
-        unique_ptr<AccelerationStructure> topLevelAS{};
-        unique_ptr<Buffer> instancesBuffer{};
+        std::vector<GeometryInput> bottomLevelGeometries{};
+        std::vector<InstanceInput> topLevelInstances{};
+        std::unique_ptr<AccelerationStructure> topLevelAS{};
+        std::unique_ptr<Buffer> instancesBuffer{};
         TLAS tlas{};
 
     private: // reuse between builds
@@ -68,7 +68,7 @@ namespace Carrot {
         explicit ASBuilder(VulkanRenderer& renderer);
 
         template<typename VertexType>
-        vector<Carrot::GeometryInput*> addModelGeometries(const Model& model);
+        std::vector<Carrot::GeometryInput*> addModelGeometries(const Model& model);
 
         ///
         /// \param indexBuffer
@@ -76,14 +76,14 @@ namespace Carrot {
         /// \param vertexBuffer
         /// \param vertexOffsets offset of vertices inside the vertex buffer, in bytes
         template<typename VertexType>
-        Carrot::GeometryInput* addGeometries(const Buffer& indexBuffer, uint64_t indexCount, uint64_t indexOffset, const Buffer& vertexBuffer, uint64_t vertexCount, const vector<uint64_t>& vertexOffsets);
+        Carrot::GeometryInput* addGeometries(const Buffer& indexBuffer, uint64_t indexCount, uint64_t indexOffset, const Buffer& vertexBuffer, uint64_t vertexCount, const std::vector<uint64_t>& vertexOffsets);
 
         void addInstance(const InstanceInput input);
 
         void buildBottomLevelAS(bool enableUpdate = true);
         void buildTopLevelAS(bool update, bool waitForCompletion = false);
 
-        void updateBottomLevelAS(const vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
+        void updateBottomLevelAS(const std::vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
         void updateTopLevelAS();
 
         void startFrame();
@@ -91,7 +91,7 @@ namespace Carrot {
 
         TLAS& getTopLevelAS();
 
-        vector<InstanceInput>& getTopLevelInstances();
+        std::vector<InstanceInput>& getTopLevelInstances();
     };
 }
 

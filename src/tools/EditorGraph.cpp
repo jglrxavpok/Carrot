@@ -17,7 +17,7 @@
 namespace ed = ax::NodeEditor;
 
 Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engine(engine), name(std::move(name)) {
-    config.NavigateButtonIndex = 2;
+    // TODO: config.NavigateButtonIndex = 2;
     g_Context = ed::CreateEditor(&config);
 
     ed::SetCurrentEditor(g_Context);
@@ -29,7 +29,7 @@ Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engin
     imguiTextures.expressionTypes[Carrot::ExpressionTypes::Float] = std::make_unique<Carrot::Render::Texture>(engine.getVulkanDriver(), "resources/textures/icons/float.png");
 }
 
-void Tools::EditorGraph::onFrame(size_t frameIndex) {
+void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
     ed::SetCurrentEditor(g_Context);
     ed::EnableShortcuts(true);
 
@@ -165,7 +165,7 @@ void Tools::EditorGraph::removeLink(const Link& link) {
     hasUnsavedChanges = true;
 }
 
-void Tools::EditorGraph::unregisterPin(shared_ptr<Pin> pin) {
+void Tools::EditorGraph::unregisterPin(std::shared_ptr<Pin> pin) {
     if(pin->getType() == PinType::Input) {
         for(const auto& l : getLinksLeadingTo(*pin)) {
             removeLink(l);
@@ -403,7 +403,7 @@ void Tools::EditorGraph::showLabel(const std::string& text, ImColor color) {
     ImGui::TextUnformatted(text.c_str());
 }
 
-void Tools::EditorGraph::addTemporaryLabel(const string& text) {
+void Tools::EditorGraph::addTemporaryLabel(const std::string& text) {
     tmpLabels.emplace_back(std::move(TemporaryLabel(text)));
 }
 

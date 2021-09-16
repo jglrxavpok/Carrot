@@ -9,14 +9,12 @@
 #include "engine/vulkan/VulkanDriver.h"
 
 namespace Carrot {
-    using namespace std;
-
     class DebugNameable {
     protected:
-        virtual void setDebugNames(const string& name) = 0;
+        virtual void setDebugNames(const std::string& name) = 0;
 
         template<typename VulkanType>
-        void nameSingle(VulkanDriver& driver, const string& name, const VulkanType& object) {
+        void nameSingle(VulkanDriver& driver, const std::string& name, const VulkanType& object) {
 #ifndef NO_DEBUG
             if(USE_DEBUG_MARKERS) {
                 vk::DebugMarkerObjectNameInfoEXT nameInfo {
@@ -30,7 +28,7 @@ namespace Carrot {
         }
 
     public:
-        void name(const string& name) {
+        void name(const std::string& name) {
             setDebugNames(name);
         }
 

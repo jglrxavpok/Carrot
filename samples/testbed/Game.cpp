@@ -28,9 +28,11 @@
 #include "UnitColor.h"
 #include <engine/io/Logging.hpp>
 
+using namespace Carrot;
+
 constexpr static int maxInstanceCount = 100; // TODO: change
 
-static vector<size_t> blasIndices{};
+static std::vector<size_t> blasIndices{};
 
 Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     ZoneScoped;
@@ -69,15 +71,15 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
         blasIndices.push_back(i);
     }
 
-    mapModel = make_unique<Model>(engine, "resources/models/map/map.obj");
-    animatedUnits = make_unique<AnimatedInstances>(engine, make_shared<Model>(engine, "resources/models/unit.fbx"), maxInstanceCount);
+    mapModel = std::make_unique<Model>(engine, "resources/models/map/map.obj");
+    animatedUnits = std::make_unique<AnimatedInstances>(engine, std::make_shared<Model>(engine, "resources/models/unit.fbx"), maxInstanceCount);
 
     int groupSize = maxInstanceCount /3;
 
-    mapInstanceBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
-                                            sizeof(InstanceData),
-                                            vk::BufferUsageFlagBits::eVertexBuffer,
-                                            vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+    mapInstanceBuffer = std::make_unique<Buffer>(engine.getVulkanDriver(),
+                                                 sizeof(InstanceData),
+                                                 vk::BufferUsageFlagBits::eVertexBuffer,
+                                                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     auto* mapData = mapInstanceBuffer->map<InstanceData>();
     mapData[0] = {
             {1,1,1,1},
@@ -88,12 +90,12 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     const float spacing = 0.5f;
     auto meshes = animatedUnits->getModel().getMeshes();
 
-    vector<GeometryInput*> geometries{};
+    std::vector<GeometryInput*> geometries{};
     for(int i = 0; i < maxInstanceCount; i++) {
         float x = (i % (int)sqrt(maxInstanceCount)) * spacing;
         float y = (i / (int)sqrt(maxInstanceCount)) * spacing;
         auto position = glm::vec3(x, y, 0);
-        auto color = static_cast<Unit::Type>((i / max(1, groupSize)) % 3);
+        auto color = static_cast<Unit::Type>((i / std::max(1, groupSize)) % 3);
 
         auto& modelInstance = animatedUnits->getInstance(i);
         auto entity = world.newEntity()
@@ -117,9 +119,9 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
         }
 
         for(const auto& mesh : meshes) {
-            int32_t vertexOffset = animatedUnits->getVertexOffset(i, mesh->getMeshID());
+            std::int32_t vertexOffset = animatedUnits->getVertexOffset(i, mesh->getMeshID());
 
-            uint64_t vertexStartAddress = vertexOffset * sizeof(Vertex);
+            std::uint64_t vertexStartAddress = vertexOffset * sizeof(Vertex);
             auto g = as.addGeometries<Vertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, animatedUnits->getFullySkinnedBuffer(), mesh->getVertexCount(), {vertexStartAddress});
             geometries.push_back(g);
 
@@ -173,8 +175,8 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     world.tick(0);
     world.onFrame(engine.newRenderContext(0));
 
-    blueprint = make_unique<ParticleBlueprint>("resources/particles/testspiral.particle");
-    particles = make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
+    blueprint = std::make_unique<ParticleBlueprint>("resources/particles/testspiral.particle");
+    particles = std::make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
     auto emitter = particles->createEmitter();
 
     float f = sqrt(maxInstanceCount) * spacing / 2.0f;
@@ -235,7 +237,7 @@ void Game::Game::moveCamera(double dx, double dy) {
     camera.getPositionRef() += camera.getTarget();
 }
 
-void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {
+void Game::Game::changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {
 /*    semaphores.emplace_back(animatedUnits->getSkinningSemaphore(frameIndex));
     waitStages.emplace_back(vk::PipelineStageFlagBits::eVertexInput);*/
 }

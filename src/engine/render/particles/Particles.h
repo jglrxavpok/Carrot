@@ -81,14 +81,14 @@ namespace Carrot {
         Carrot::BufferView particleBuffer;
         Particle* particlePool = nullptr;
         Particle* particlePoolEnd = nullptr;
-        size_t oldParticleCount = 0;
-        size_t usedParticleCount = 0;
+        std::size_t oldParticleCount = 0;
+        std::size_t usedParticleCount = 0;
 
         std::vector<std::shared_ptr<ParticleEmitter>> emitters;
         std::uint64_t maxParticleCount;
 
-        shared_ptr<Pipeline> renderingPipeline = nullptr;
-        shared_ptr<ComputePipeline> updateParticlesCompute = nullptr;
+        std::shared_ptr<Pipeline> renderingPipeline = nullptr;
+        std::shared_ptr<ComputePipeline> updateParticlesCompute = nullptr;
 
         Carrot::BufferView drawCommandBuffer;
         vk::DrawIndirectCommand* drawCommand = nullptr;
@@ -109,11 +109,11 @@ namespace Carrot {
 
         void tick(double deltaTime);
 
-        void onFrame(size_t frameIndex);
+        void onFrame(std::size_t frameIndex);
 
         void gBufferRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
 
-        void onSwapchainImageCountChange(size_t newCount) override;
+        void onSwapchainImageCountChange(std::size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
     };

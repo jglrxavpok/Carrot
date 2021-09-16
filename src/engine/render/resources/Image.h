@@ -51,7 +51,7 @@ namespace Carrot {
 
         } imageData;
 
-        uint32_t layerCount = 1;
+        std::uint32_t layerCount = 1;
         vk::Format format = vk::Format::eUndefined;
 
     public:
@@ -60,10 +60,10 @@ namespace Carrot {
                        vk::Extent3D extent,
                        vk::ImageUsageFlags usage,
                        vk::Format format,
-                       set<uint32_t> families = {},
+                       std::set<uint32_t> families = {},
                        vk::ImageCreateFlags flags = static_cast<vk::ImageCreateFlags>(0),
                        vk::ImageType type = vk::ImageType::e2D,
-                       uint32_t layerCount = 1);
+                       std::uint32_t layerCount = 1);
 
         explicit Image(Carrot::VulkanDriver& driver, vk::Image toView,
                        vk::Extent3D extent,
@@ -78,7 +78,7 @@ namespace Carrot {
         VulkanDriver& getDriver() const { return driver; }
 
         /// Stage a upload to this image, and wait for the upload to finish.
-        void stageUpload(std::span<uint8_t> data, uint32_t layer = 0, uint32_t layerCount = 1);
+        void stageUpload(std::span<std::uint8_t> data, std::uint32_t layer = 0, std::uint32_t layerCount = 1);
 
         /// Transition the layout of this image from one layout to another
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
@@ -86,20 +86,20 @@ namespace Carrot {
         /// Transition the layout of this image from one layout to another, inside of a given command buffer
         void transitionLayoutInline(vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
-        static void transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t layerCount = 1, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
+        static void transition(vk::Image image, vk::CommandBuffer& commands, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, std::uint32_t layerCount = 1, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
 
         /// Creates a ImageView pointing to this image
         vk::UniqueImageView createImageView(vk::Format imageFormat = vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t layerCount = 1);
 
         /// Create and fill an Image from a given image file
-        static unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);
+        static std::unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);
 
-        static unique_ptr<Image> cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier);
+        static std::unique_ptr<Image> cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier);
 
         ~Image() = default;
 
     protected:
-        void setDebugNames(const string& name) override;
+        void setDebugNames(const std::string& name) override;
     };
 
 }

@@ -22,14 +22,14 @@ Comp* Carrot::World::getComponent(Entity_Ptr& entity) const {
 template<typename Comp>
 Carrot::EasyEntity& Carrot::EasyEntity::addComponent(std::unique_ptr<Comp>&& component) {
     auto& componentMap = worldRef.entityComponents[*internalEntity];
-    componentMap[Comp::id] = move(component);
+    componentMap[Comp::id] = std::move(component);
     return *this;
 }
 
 template<typename Comp, typename... Args>
 Carrot::EasyEntity& Carrot::EasyEntity::addComponent(Args&&... args) {
     auto& componentMap = worldRef.entityComponents[*internalEntity];
-    componentMap[Comp::id] = make_unique<Comp>(*this, args...);
+    componentMap[Comp::id] = std::make_unique<Comp>(*this, args...);
     return *this;
 }
 
@@ -48,12 +48,12 @@ Comp* Carrot::EasyEntity::getComponent() {
 
 template<class RenderSystemType, typename... Args>
 void Carrot::World::addRenderSystem(Args&&... args) {
-    renderSystems.push_back(move(make_unique<RenderSystemType>(*this, args...)));
+    renderSystems.push_back(std::move(std::make_unique<RenderSystemType>(*this, args...)));
 }
 
 template<class LogicSystemType, typename... Args>
 void Carrot::World::addLogicSystem(Args&&... args) {
-    logicSystems.push_back(move(make_unique<LogicSystemType>(*this, args...)));
+    logicSystems.push_back(std::move(std::make_unique<LogicSystemType>(*this, args...)));
 }
 
 template<Carrot::SystemType type, typename... RequiredComponents>

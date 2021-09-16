@@ -47,13 +47,13 @@ namespace Carrot::Render {
     Carrot::Mesh& Sprite::getSpriteMesh(Carrot::Engine& engine) {
         if(!spriteMesh) {
             spriteMesh = make_unique<Carrot::Mesh>(engine.getVulkanDriver(),
-                                                   vector<Carrot::SimpleVertexWithInstanceData>{
+                                                   std::vector<Carrot::SimpleVertexWithInstanceData>{
                                                            { { -0.5f, -0.5f, 0.0f } },
                                                            { { 0.5f, -0.5f, 0.0f } },
                                                            { { 0.5f, 0.5f, 0.0f } },
                                                            { { -0.5f, 0.5f, 0.0f } },
                                                    },
-                                                   vector<uint32_t>{
+                                                   std::vector<uint32_t>{
                                                            2,1,0,
                                                            3,2,0,
                                                    });

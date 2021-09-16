@@ -93,14 +93,14 @@ void Tools::EditorNode::draw() {
 }
 
 Tools::Input& Tools::EditorNode::newInput(std::string name, Carrot::ExpressionType type) {
-    auto result = make_shared<Input>(*this, type, inputs.size(), graph.nextID(), name);
+    auto result = std::make_shared<Input>(*this, type, inputs.size(), graph.nextID(), name);
     inputs.push_back(result);
     graph.registerPin(result);
     return *result;
 }
 
 Tools::Output& Tools::EditorNode::newOutput(std::string name, Carrot::ExpressionType type) {
-    auto result = make_shared<Output>(*this, type, outputs.size(), graph.nextID(), name);
+    auto result = std::make_shared<Output>(*this, type, outputs.size(), graph.nextID(), name);
     outputs.push_back(result);
     graph.registerPin(result);
     return *result;

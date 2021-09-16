@@ -20,8 +20,8 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
     auto& device = renderer.getLogicalDevice();
 
     // add a bottom level AS for each geometry entry
-    size_t blasCount = bottomLevelGeometries.size();
-    vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfo{blasCount};
+    std::size_t blasCount = bottomLevelGeometries.size();
+    std::vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfo{blasCount};
     for(size_t index = 0; index < blasCount; index++) {
         auto& info = buildInfo[index];
         const auto& blas = bottomLevelGeometries[index];
@@ -34,10 +34,10 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
     }
 
     vk::DeviceSize scratchSize = 0;
-    vector<vk::DeviceSize> originalSizes(blasCount);
+    std::vector<vk::DeviceSize> originalSizes(blasCount);
     // allocate memory for each entry
     for(size_t index = 0; index < blasCount; index++) {
-        vector<uint32_t> primitiveCounts(bottomLevelGeometries[index].buildRanges.size());
+        std::vector<uint32_t> primitiveCounts(bottomLevelGeometries[index].buildRanges.size());
         // copy primitive counts to flat vector
         for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
             primitiveCounts[geomIndex] = bottomLevelGeometries[index].buildRanges[geomIndex].primitiveCount;
@@ -51,7 +51,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
         };
 
-        bottomLevelGeometries[index].as = move(make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
+        bottomLevelGeometries[index].as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
         buildInfo[index].dstAccelerationStructure = bottomLevelGeometries[index].as->getVulkanAS();
 
         scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
@@ -59,7 +59,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
         originalSizes[index] = sizeInfo.accelerationStructureSize;
     }
 
-    unique_ptr<Buffer> scratchBuffer = make_unique<Buffer>(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    std::unique_ptr<Buffer> scratchBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     bool compactAS = (flags & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
 
@@ -70,7 +70,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
 
     vk::UniqueQueryPool queryPool = device.createQueryPoolUnique(queryPoolCreateInfo, renderer.getVulkanDriver().getAllocationCallbacks());
 
-    vector<vk::CommandBuffer> buildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
+    std::vector<vk::CommandBuffer> buildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
             .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
             .level = vk::CommandBufferLevel::ePrimary,
             .commandBufferCount = static_cast<uint32_t>(blasCount),
@@ -85,7 +85,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
         });
         buildInfo[index].scratchData.deviceAddress = scratchAddress;
 
-        vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges{bottomLevelGeometries[index].buildRanges.size()};
+        std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges{bottomLevelGeometries[index].buildRanges.size()};
         for(size_t i = 0; i < bottomLevelGeometries[index].buildRanges.size(); i++) {
             pBuildRanges[i] = &bottomLevelGeometries[index].buildRanges[i];
         }
@@ -129,8 +129,8 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
 #endif
 
     if(compactAS) {
-        vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
-        vector<unique_ptr<AccelerationStructure>> compactedAS{};
+        std::vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
+        std::vector<std::unique_ptr<AccelerationStructure>> compactedAS{};
         for (size_t index = 0; index < blasCount; index++) {
             auto& cmds = buildCommands[index];
             cmds.begin(vk::CommandBufferBeginInfo{
@@ -144,7 +144,7 @@ void Carrot::ASBuilder::buildBottomLevelAS(bool enableUpdate) {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
             };
 
-            auto compactAS = make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
+            auto compactAS = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
 
             // copy AS
             cmds.copyAccelerationStructureKHR(vk::CopyAccelerationStructureInfoKHR {
@@ -220,7 +220,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     vk::CommandBuffer& buildCommand = tlasBuildCommands;
     buildCommand.reset();
 
-    vector<vk::AccelerationStructureInstanceKHR> instances{};
+    std::vector<vk::AccelerationStructureInstanceKHR> instances{};
     instances.reserve(topLevelInstances.size());
 
     {
@@ -236,10 +236,10 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     });
     // upload instances to the device
     if(!instancesBuffer || lastInstanceCount < instances.size()) {
-        instancesBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                              instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
-                                              vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
-                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+        instancesBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
+                                                   instances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
+                                                   vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
+                                                   vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
 
         instancesBuffer->setDebugNames("TLAS Instances");
@@ -282,12 +282,12 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
                 .size = sizeInfo.accelerationStructureSize,
                 .type = vk::AccelerationStructureTypeKHR::eTopLevel,
         };
-        tlas.as = make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
+        tlas.as = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
     }
 
     // Allocate scratch memory
     if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) {
-        scratchBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
+        scratchBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                  sizeInfo.buildScratchSize,
                                                  vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                                  vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -378,7 +378,7 @@ Carrot::TLAS& Carrot::ASBuilder::getTopLevelAS() {
     return tlas;
 }
 
-void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore) {
+void Carrot::ASBuilder::updateBottomLevelAS(const std::vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore) {
     if(!enabled)
         return;
     ZoneScoped;
@@ -397,7 +397,7 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, v
             auto& blas = bottomLevelGeometries[blasIndex];
 
             if(!blas.cachedBuildInfo) {
-                blas.cachedBuildInfo = make_unique<vk::AccelerationStructureBuildGeometryInfoKHR>();
+                blas.cachedBuildInfo = std::make_unique<vk::AccelerationStructureBuildGeometryInfoKHR>();
 
                 auto& buildInfo = *blas.cachedBuildInfo;
 
@@ -412,7 +412,7 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, v
                 };
 
                 // figure scratch size required to build
-                vector<uint32_t> primitiveCounts(blas.buildRanges.size());
+                std::vector<uint32_t> primitiveCounts(blas.buildRanges.size());
                 // copy primitive counts to flat vector
                 for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {
                     primitiveCounts[geomIndex] = blas.buildRanges[geomIndex].primitiveCount;
@@ -427,10 +427,10 @@ void Carrot::ASBuilder::updateBottomLevelAS(const vector<size_t>& blasIndices, v
                 };
 
                 auto scratchSize = sizeInfo.buildScratchSize;
-                blas.scratchBuffer = move(make_unique<Buffer>(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal));
+                blas.scratchBuffer = std::move(std::make_unique<Buffer>(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal));
                 buildInfo.scratchData.deviceAddress = blas.scratchBuffer->getDeviceAddress();
 
-                vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());
+                std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges(blas.buildRanges.size());
                 for(size_t i = 0; i < blas.buildRanges.size(); i++) {
                     pBuildRanges[i] = &blas.buildRanges[i];
                 }
@@ -480,7 +480,7 @@ void Carrot::ASBuilder::registerIndexBuffer(const Buffer& indexBuffer, vk::Devic
     renderer.getRayTracer().registerIndexBuffer(indexBuffer, start, length);
 }
 
-vector<Carrot::InstanceInput>& Carrot::ASBuilder::getTopLevelInstances() {
+std::vector<Carrot::InstanceInput>& Carrot::ASBuilder::getTopLevelInstances() {
     assert(enabled);
     return topLevelInstances;
 }

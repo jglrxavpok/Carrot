@@ -50,10 +50,10 @@ namespace Carrot {
         /// \tparam T
         /// \param data
         template<typename... T>
-        void stageUpload(const vector<T>&... data);
+        void stageUpload(const std::vector<T>&... data);
 
         template<typename... T>
-        void stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs);
+        void stageUploadWithOffsets(const std::pair<std::uint64_t, std::vector<T>>&... offsetDataPairs);
 
         template<typename T>
         void stageUploadWithOffset(uint64_t offset, const T* data);
@@ -67,7 +67,7 @@ namespace Carrot {
 
         ~Buffer();
 
-        void setDebugNames(const string& name) override;
+        void setDebugNames(const std::string& name) override;
 
         vk::DeviceAddress getDeviceAddress() const override;
 

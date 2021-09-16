@@ -13,8 +13,6 @@
 #include "AL/alc.h"
 
 namespace AL {
-    using namespace std;
-
     class Context;
     class Device;
     class Buffer;
@@ -101,16 +99,16 @@ namespace AL {
 
         const ALuint& getALBuffer() const { return buffer; };
 
-        static vector<unique_ptr<Buffer>> generateMultiple(size_t count) {
-            vector<ALuint> ids;
+        static std::vector<std::unique_ptr<Buffer>> generateMultiple(size_t count) {
+            std::vector<ALuint> ids;
             ids.resize(count);
             alGenBuffers(count, ids.data());
             checkALError();
 
-            vector<unique_ptr<Buffer>> buffers;
+            std::vector<std::unique_ptr<Buffer>> buffers;
             buffers.reserve(count);
             for (int i = 0; i < count; ++i) {
-                buffers.emplace_back(make_unique<Buffer>(ids[i]));
+                buffers.emplace_back(std::make_unique<Buffer>(ids[i]));
             }
 
             return buffers;
@@ -120,10 +118,10 @@ namespace AL {
     class Source {
     private:
         ALuint source = -1;
-        vector<shared_ptr<Buffer>> queuedBuffers;
+        std::vector<std::shared_ptr<Buffer>> queuedBuffers;
 
         /// Container to hold unqueued buffers, used to reduce the amount of allocations/deallocations while unqueuing buffers
-        vector<ALuint> unqueueContainer;
+        std::vector<ALuint> unqueueContainer;
 
     public:
         explicit Source() {
@@ -131,7 +129,7 @@ namespace AL {
             checkALError();
         }
 
-        void queue(const shared_ptr<Buffer>& buffer) {
+        void queue(const std::shared_ptr<Buffer>& buffer) {
             alSourceQueueBuffers(source, 1, &buffer->getALBuffer());
             queuedBuffers.push_back(buffer);
         }

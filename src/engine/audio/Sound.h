@@ -11,19 +11,17 @@
 #include "decoders/AudioDecoder.h"
 
 namespace Carrot {
-    using namespace std;
-
     class Sound {
     private:
         constexpr static size_t SAMPLES_AT_ONCE = 44100;
         bool endOfFile = false;
         bool streaming = false;
-        unique_ptr<AudioDecoder> decoder = nullptr;
+        std::unique_ptr<AudioDecoder> decoder = nullptr;
 
     public:
-        Sound(const string& filename, bool streaming);
+        Sound(const std::string& filename, bool streaming);
 
-        shared_ptr<AL::Buffer> getNextBuffer();
+        std::shared_ptr<AL::Buffer> getNextBuffer();
 
         void rewind();
 
@@ -33,8 +31,8 @@ namespace Carrot {
             return endOfFile;
         };
 
-        static unique_ptr<Sound> loadSoundEffect(const string& filename);
+        static std::unique_ptr<Sound> loadSoundEffect(const std::string& filename);
 
-        static unique_ptr<Sound> loadMusic(const string& filename);
+        static std::unique_ptr<Sound> loadMusic(const std::string& filename);
     };
 }

@@ -128,16 +128,16 @@ namespace Tools {
         std::map<std::string, std::unique_ptr<NodeInitialiserBase>> nodeLibrary;
         std::map<std::string, std::string> internalName2title;
         ed::Config config{};
-        unordered_map<Carrot::UUID, shared_ptr<Pin>> id2pin;
-        unordered_map<Carrot::UUID, shared_ptr<EditorNode>> id2node;
-        unordered_map<Carrot::UUID, uint32_t> uuid2id;
-        unordered_map<uint32_t, Carrot::UUID> id2uuid;
-        std::vector<weak_ptr<TerminalNode>> terminalNodes;
-        uint32_t uniqueID = 1;
+        std::unordered_map<Carrot::UUID, std::shared_ptr<Pin>> id2pin;
+        std::unordered_map<Carrot::UUID, std::shared_ptr<EditorNode>> id2node;
+        std::unordered_map<Carrot::UUID, std::uint32_t> uuid2id;
+        std::unordered_map<uint32_t, Carrot::UUID> id2uuid;
+        std::vector<std::weak_ptr<TerminalNode>> terminalNodes;
+        std::uint32_t uniqueID = 1;
         Carrot::Engine& engine;
         std::string name;
-        vector<Link> links;
-        vector<TemporaryLabel> tmpLabels;
+        std::vector<Link> links;
+        std::vector<TemporaryLabel> tmpLabels;
         bool zoomToContent = false;
         ed::EditorContext* g_Context = nullptr;
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
@@ -145,7 +145,7 @@ namespace Tools {
         ImGuiTextures imguiTextures;
         bool hasUnsavedChanges = false;
 
-        uint32_t nextFreeEditorID();
+        std::uint32_t nextFreeEditorID();
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
         void handleLinkCreation(std::shared_ptr<Pin> pinA, std::shared_ptr<Pin> pinB);
 
@@ -172,7 +172,7 @@ namespace Tools {
         uint32_t reserveID(const Carrot::UUID& id);
         uint32_t getEditorID(const Carrot::UUID& id);
 
-        void onFrame(size_t frameIndex);
+        void onFrame(Carrot::Render::Context renderContext);
         void tick(double deltaTime);
 
     public:
@@ -185,7 +185,7 @@ namespace Tools {
     public:
         template<class T, typename... Args> requires IsNode<T>
         T& newNode(Args&&... args) {
-            auto result = make_shared<T>(*this, args...);
+            auto result = std::make_shared<T>(*this, args...);
             id2node[result->getID()] = result;
             if constexpr (std::is_base_of_v<Tools::TerminalNode, T>) {
                 terminalNodes.push_back(result);
@@ -194,15 +194,15 @@ namespace Tools {
             return *result;
         }
 
-        void registerPin(shared_ptr<Pin> pin);
-        void unregisterPin(shared_ptr<Pin> pin);
+        void registerPin(std::shared_ptr<Pin> pin);
+        void unregisterPin(std::shared_ptr<Pin> pin);
         void removeNode(const Tools::EditorNode& node);
         void clear();
 
     public:
         std::vector<Tools::Link> getLinksStartingFrom(const Tools::Pin& from) const;
         std::vector<Tools::Link> getLinksLeadingTo(const Tools::Pin& to) const;
-        const unordered_map<Carrot::UUID, shared_ptr<EditorNode>>& getNodes() { return id2node; };
+        const std::unordered_map<Carrot::UUID, std::shared_ptr<EditorNode>>& getNodes() { return id2node; };
 
         void addLink(Tools::Link link);
         void removeLink(const Tools::Link& link);
@@ -249,7 +249,7 @@ namespace Tools {
                     return NodeValidity::Possible;
                 };
             };
-            addToLibrary(TerminalNode::getInternalName(NodeType), TerminalNode::getTitle(NodeType), std::move(make_unique<TerminalNodeInit>()));
+            addToLibrary(TerminalNode::getInternalName(NodeType), TerminalNode::getTitle(NodeType), std::move(std::make_unique<TerminalNodeInit>()));
         }
 
         template<VariableNodeType NodeType>
@@ -263,12 +263,12 @@ namespace Tools {
                     return graph.newNode<VariableNode>(NodeType);
                 };
             };
-            addToLibrary(VariableNode::getInternalName(NodeType), VariableNode::getTitle(NodeType), std::move(make_unique<VariableNodeInit>()));
+            addToLibrary(VariableNode::getInternalName(NodeType), VariableNode::getTitle(NodeType), std::move(std::make_unique<VariableNodeInit>()));
         }
 
         template<typename NodeType> requires Tools::IsNode<NodeType>
         void addToLibrary(const std::string& internalName, const std::string& title) {
-            addToLibrary(internalName, title, std::move(make_unique<NodeInitialiser<NodeType>>()));
+            addToLibrary(internalName, title, std::move(std::make_unique<NodeInitialiser<NodeType>>()));
         }
 
     public:

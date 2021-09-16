@@ -104,16 +104,16 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     PrepareVulkanTracy(engine.tracyCtx[imageIndex], cmds);
 
     auto quad = Mesh(driver,
-                                       vector<ScreenSpaceVertex>{
-                                               { { -1, -1} },
-                                               { { 1, -1} },
-                                               { { 1, 1} },
-                                               { { -1, 1} },
-                                       },
-                                       vector<uint32_t>{
-                                               2,1,0,
-                                               3,2,0,
-                                       });
+                     std::vector<ScreenSpaceVertex> {
+                               { { -1, -1} },
+                               { { 1, -1} },
+                               { { 1, 1} },
+                               { { -1, 1} },
+                     },
+                     std::vector<uint32_t> {
+                               2,1,0,
+                               3,2,0,
+                     });
 
     driver.updateViewportAndScissor(cmds, swapchainExtent);
 
@@ -139,7 +139,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     cmds.end();
 
-    vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+    std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
     vk::SubmitInfo submitInfo {
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = nullptr,

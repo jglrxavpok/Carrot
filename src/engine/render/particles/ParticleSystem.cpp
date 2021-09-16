@@ -50,7 +50,7 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
     statistics = statisticsBuffer.map<ParticleStatistics>();
 }
 
-void Carrot::ParticleSystem::onFrame(size_t frameIndex) {
+void Carrot::ParticleSystem::onFrame(std::size_t frameIndex) {
     drawCommand->vertexCount = usedParticleCount*6;
 
 #if DEBUG_PARTICLES
@@ -112,7 +112,7 @@ void Carrot::ParticleSystem::gBufferRender(vk::RenderPass pass, Carrot::Render::
     commands.drawIndirect(drawCommandBuffer.getVulkanBuffer(), drawCommandBuffer.getStart(), 1, sizeof(vk::DrawIndexedIndirectCommand));
 }
 
-void Carrot::ParticleSystem::onSwapchainImageCountChange(size_t newCount) {
+void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
     renderingPipeline->onSwapchainImageCountChange(newCount);
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
         auto set = renderingPipeline->getDescriptorSets0()[i];

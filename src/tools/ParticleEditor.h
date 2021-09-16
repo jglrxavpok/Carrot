@@ -25,8 +25,8 @@ namespace Tools {
 
         bool hasUnsavedChanges = false;
 
-        void updateUpdateGraph(size_t frameIndex);
-        void updateRenderGraph(size_t frameIndex);
+        void updateUpdateGraph(Carrot::Render::Context renderContext);
+        void updateRenderGraph(Carrot::Render::Context renderContext);
 
     public:
         void clear();
@@ -34,12 +34,12 @@ namespace Tools {
 
         void saveToFile(std::filesystem::path path) override;
 
-        void performLoad(filesystem::path path) override;
+        void performLoad(std::filesystem::path path) override;
 
     public:
         explicit ParticleEditor(Carrot::Engine& engine);
 
-        void onFrame(size_t frameIndex);
+        void onFrame(Carrot::Render::Context renderContext);
         void tick(double deltaTime);
 
         ~ParticleEditor();

@@ -23,11 +23,11 @@ namespace Carrot {
 
         virtual void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) = 0;
 
-        virtual void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {};
+        virtual void changeGraphicsWaitSemaphores(std::uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {};
 
         virtual void onSwapchainSizeChange(int newWidth, int newHeight) override {};
 
-        virtual void onSwapchainImageCountChange(size_t newCount) override {};
+        virtual void onSwapchainImageCountChange(std::size_t newCount) override {};
 
         virtual ~CarrotGame() = default;
     };

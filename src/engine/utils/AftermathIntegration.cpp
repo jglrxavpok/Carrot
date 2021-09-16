@@ -3,11 +3,9 @@
 #include <iostream>
 #include <mutex>
 
-using namespace std;
-
 static std::mutex mut{};
 
-static void WriteGpuCrashDumpToFile(const void* data, const uint32_t size) {
+static void WriteGpuCrashDumpToFile(const void* data, const std::uint32_t size) {
     auto output = ofstream("gpucrash.nv-gpudmp", std::ios::out | std::ios::binary);
     output.write(static_cast<const char *>(data), size);
     output.flush();

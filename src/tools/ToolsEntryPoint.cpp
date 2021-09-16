@@ -18,7 +18,7 @@ namespace Tools {
     public:
         explicit Tools(Carrot::Engine& engine);
 
-        void onFrame(uint32_t frameIndex) override;
+        void onFrame(Carrot::Render::Context renderContext) override;
 
         void tick(double frameTime) override;
 
@@ -26,7 +26,7 @@ namespace Tools {
 
         void onMouseMove(double dx, double dy) override;
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override;
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
@@ -39,15 +39,15 @@ Tools::Tools::Tools(Carrot::Engine& engine): Carrot::CarrotGame(engine), particl
     NFD_Init();
 }
 
-void Tools::Tools::onFrame(uint32_t frameIndex) {
-    particleEditor.onFrame(frameIndex);
+void Tools::Tools::onFrame(Carrot::Render::Context renderContext) {
+    particleEditor.onFrame(renderContext);
 }
 void Tools::Tools::tick(double frameTime) {
     particleEditor.tick(frameTime);
 }
 void Tools::Tools::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {}
 void Tools::Tools::onMouseMove(double dx, double dy) {}
-void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) {}
+void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {}
 
 void Tools::Tools::onSwapchainSizeChange(int newWidth, int newHeight) {
     particleEditor.onSwapchainSizeChange(newWidth, newHeight);
@@ -111,5 +111,5 @@ int main() {
 }
 
 void Carrot::Engine::initGame() {
-    game = make_unique<Tools::Tools>(*this);
+    game = std::make_unique<Tools::Tools>(*this);
 }

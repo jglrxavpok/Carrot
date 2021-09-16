@@ -7,20 +7,20 @@
 #include "Buffer.h"
 
 template<typename... T>
-void Carrot::Buffer::stageUpload(const vector<T>&... data) {
+void Carrot::Buffer::stageUpload(const std::vector<T>&... data) {
     uint64_t offset = 0;
     (
             (
-                this->stageUpload<T>(make_pair<uint64_t, T>(offset, data)),
+                this->stageUpload<T>(std::make_pair<uint64_t, T>(offset, data)),
                 offset += data.size() * sizeof(T)
             )
     , ...);
 }
 
 template<typename... T>
-void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... offsetDataPairs) {
+void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::vector<T>>&... offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(driver, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
     (
@@ -37,9 +37,9 @@ void Carrot::Buffer::stageUploadWithOffsets(const pair<uint64_t, vector<T>>&... 
 }
 
 template<typename T>
-void Carrot::Buffer::stageUploadWithOffset(uint64_t offset, const T* data) {
+void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, sizeof(T), vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+    auto stagingBuffer = Carrot::Buffer(driver, sizeof(T), vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, sizeof(T));

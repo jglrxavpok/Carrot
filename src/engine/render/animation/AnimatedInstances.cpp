@@ -9,38 +9,38 @@
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
 
-Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<Model> animatedModel, size_t maxInstanceCount):
+Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, size_t maxInstanceCount):
     engine(engine), model(std::move(animatedModel)), maxInstanceCount(maxInstanceCount) {
 
-    instanceBuffer = make_unique<Buffer>(engine.getVulkanDriver(),
-                                         maxInstanceCount*sizeof(AnimatedInstanceData),
-                                         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
-                                         vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+    instanceBuffer = std::make_unique<Buffer>(engine.getVulkanDriver(),
+                                              maxInstanceCount*sizeof(AnimatedInstanceData),
+                                              vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
+                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     animatedInstances = instanceBuffer->map<AnimatedInstanceData>();
     std::fill_n(animatedInstances, maxInstanceCount, AnimatedInstanceData{});
 
-    map<MeshID, vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
+    std::map<MeshID, std::vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
     auto meshes = model->getMeshes();
     uint64_t maxVertexCount = 0;
 
     for(const auto& mesh : meshes) {
-        indirectBuffers[mesh->getMeshID()] = make_shared<Buffer>(engine.getVulkanDriver(),
-                                                                 maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
-                                                                 vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                                                 vk::MemoryPropertyFlagBits::eDeviceLocal);
+        indirectBuffers[mesh->getMeshID()] = std::make_shared<Buffer>(engine.getVulkanDriver(),
+                                                                      maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
+                                                                      vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                                      vk::MemoryPropertyFlagBits::eDeviceLocal);
         size_t meshSize = mesh->getVertexCount();
-        maxVertexCount = max(meshSize, maxVertexCount);
+        maxVertexCount = std::max(meshSize, maxVertexCount);
 
         meshOffsets[mesh->getMeshID()] = vertexCountPerInstance;
         vertexCountPerInstance += meshSize;
     }
 
     // TODO: swapchainlength-buffering?
-    flatVertices = make_unique<Buffer>(engine.getVulkanDriver(),
-                                       sizeof(SkinnedVertex) * vertexCountPerInstance,
-                                       vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                       vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                       engine.createGraphicsAndTransferFamiliesSet());
+    flatVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
+                                            sizeof(SkinnedVertex) * vertexCountPerInstance,
+                                            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                            vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                            engine.createGraphicsAndTransferFamiliesSet());
     flatVertices->name("flat vertices");
 
     // copy mesh vertices into a flat buffer to allow for easy indexing inside the compute shader
@@ -57,16 +57,16 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<
         });
     }
 
-    fullySkinnedUnitVertices = make_unique<Buffer>(engine.getVulkanDriver(),
-                                                   sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
-                                                   vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
-                                                   vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                                   engine.createGraphicsAndTransferFamiliesSet());
+    fullySkinnedUnitVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
+                                                        sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
+                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                                        vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                                        engine.createGraphicsAndTransferFamiliesSet());
     fullySkinnedUnitVertices->name("full skinned unit vertices");
 
     for(int i = 0; i < maxInstanceCount; i++) {
         for(const auto& mesh : meshes) {
-            int32_t vertexOffset = (static_cast<int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
+            std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
             indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
                     .indexCount = static_cast<uint32_t>(mesh->getIndexCount()),
@@ -79,8 +79,8 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, shared_ptr<
     }
 
     for(const auto& mesh : meshes) {
-        indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #"+to_string(mesh->getMeshID()));
-        indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0),
+        indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #" + std::to_string(mesh->getMeshID()));
+        indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(std::make_pair(static_cast<std::uint64_t>(0),
                                                                              indirectCommands[mesh->getMeshID()]));
     }
 
@@ -112,7 +112,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             },
     };
 
-    uint32_t specData[] = {
+    std::uint32_t specData[] = {
             static_cast<uint32_t>(vertexCountPerInstance),
             static_cast<uint32_t>(maxInstanceCount),
     };
@@ -126,8 +126,8 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 
     // Describe descriptors used by compute shader
 
-    constexpr size_t set0Size = 3;
-    constexpr size_t set1Size = 1;
+    constexpr std::size_t set0Size = 3;
+    constexpr std::size_t set1Size = 1;
     vk::DescriptorSetLayoutBinding bindings[set0Size] = {
             // original vertices
             {
@@ -171,7 +171,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             .pBindings = &animationBinding,
     });
 
-    vector<vk::DescriptorPoolSize> poolSizes{};
+    std::vector<vk::DescriptorPoolSize> poolSizes{};
     // set0
     poolSizes.push_back(vk::DescriptorPoolSize {
             .type = vk::DescriptorType::eStorageBuffer,
@@ -202,7 +202,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
                 .pSetLayouts = &(*computeSetLayout1)
         })[0]);
 
-        computeDescriptorPools.emplace_back(move(pool));
+        computeDescriptorPools.emplace_back(std::move(pool));
     }
 
     // write to descriptor sets
@@ -233,7 +233,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     // TODO: fix validation error with arrays
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
         using DT = vk::DescriptorType;
-        vector<vk::WriteDescriptorSet> writes = {
+        std::vector<vk::WriteDescriptorSet> writes = {
                 // set0, binding0, original vertex buffer
                 vk::WriteDescriptorSet {
                         .dstSet = computeDescriptorSet0[i],
@@ -294,9 +294,9 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             .layout = *computePipelineLayout,
     }, engine.getAllocator());
 
-    uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
-    uint32_t instanceGroups = (maxInstanceCount + 7)/8;
-    for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
+    std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
+    std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;
+    for(std::size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
         vk::CommandBuffer& commands = skinningCommandBuffers[i];
         commands.begin(vk::CommandBufferBeginInfo {
         });
@@ -308,11 +308,11 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         }
         commands.end();
 
-        skinningSemaphores.emplace_back(move(engine.getLogicalDevice().createSemaphoreUnique({})));
+        skinningSemaphores.emplace_back(std::move(engine.getLogicalDevice().createSemaphoreUnique({})));
     }
 }
 
-vk::Semaphore& Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
+vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
     ZoneScoped;
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
@@ -328,7 +328,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(size_t frameIndex) {
     return *skinningSemaphores[frameIndex];
 }
 
-void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t indirectDrawCount) {
+void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, std::size_t indirectDrawCount) {
     TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render units");
     commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
     model->indirectDraw(pass, renderContext, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);

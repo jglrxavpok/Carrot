@@ -22,8 +22,6 @@
 #include "engine/vr/VRInterface.h"
 #endif
 
-using namespace std;
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -158,7 +156,7 @@ void Carrot::VulkanDriver::createInstance() {
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions();
 
-    array<vk::ValidationFeatureEnableEXT, 2> validationFeatures = {
+    std::array<vk::ValidationFeatureEnableEXT, 2> validationFeatures = {
             vk::ValidationFeatureEnableEXT::eGpuAssisted,
             vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
     };
@@ -356,9 +354,9 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     float priority = 1.0f;
 
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfoStructs{};
-    std::set<uint32_t> uniqueQueueFamilies = { queueFamilies.presentFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.transferFamily.value() };
+    std::set<std::uint32_t> uniqueQueueFamilies = { queueFamilies.presentFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.transferFamily.value() };
 
-    for(uint32_t queueFamily : uniqueQueueFamilies) {
+    for(std::uint32_t queueFamily : uniqueQueueFamilies) {
         vk::DeviceQueueCreateInfo queueCreateInfo{
                 .queueFamilyIndex = queueFamily,
                 .queueCount = 1,
@@ -402,7 +400,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
     };
 
-    vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
+    std::vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
 
     if(getConfiguration().useRaytracing) {
         for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
@@ -439,15 +437,15 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 #else
             .pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
 #endif
-            .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfoStructs.size()),
+            .queueCreateInfoCount = static_cast<std::uint32_t>(queueCreateInfoStructs.size()),
             .pQueueCreateInfos = queueCreateInfoStructs.data(),
-            .enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
+            .enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size()),
             .ppEnabledExtensionNames = deviceExtensions.data(),
             .pEnabledFeatures = nullptr,
     };
 
     if(USE_VULKAN_VALIDATION_LAYERS) { // keep compatibility with older Vulkan implementations
-        createInfo.enabledLayerCount = static_cast<uint32_t>(VULKAN_VALIDATION_LAYERS.size());
+        createInfo.enabledLayerCount = static_cast<std::uint32_t>(VULKAN_VALIDATION_LAYERS.size());
         createInfo.ppEnabledLayerNames = VULKAN_VALIDATION_LAYERS.data();
     } else {
         createInfo.enabledLayerCount = 0;
@@ -524,15 +522,15 @@ Carrot::SwapChainSupportDetails Carrot::VulkanDriver::querySwapChainSupport(cons
     };
 }
 
-uint32_t Carrot::VulkanDriver::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+std::uint32_t Carrot::VulkanDriver::findMemoryType(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
     auto memProperties = getPhysicalDevice().getMemoryProperties();
-    for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    for(std::uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
         if(typeFilter & (1 << i)
            && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
             return i;
         }
     }
-    throw runtime_error("Failed to find suitable memory type.");
+    throw std::runtime_error("Failed to find suitable memory type.");
 }
 
 vk::UniqueCommandPool Carrot::VulkanDriver::createGraphicsCommandPool() {
@@ -585,7 +583,7 @@ vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image
                                                     }, getAllocationCallbacks());
 }
 
-std::set<uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() {
+std::set<std::uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() {
     return {
             getQueueFamilies().graphicsFamily.value(),
             getQueueFamilies().transferFamily.value(),
@@ -635,8 +633,8 @@ vk::Extent2D Carrot::VulkanDriver::chooseSwapExtent(const vk::SurfaceCapabilitie
                 static_cast<uint32_t>(height),
         };
 
-        actualExtent.width = max(capabilities.minImageExtent.width, min(capabilities.maxImageExtent.width, actualExtent.width));
-        actualExtent.height = max(capabilities.minImageExtent.height, min(capabilities.maxImageExtent.height, actualExtent.height));
+        actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+        actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
 
         return actualExtent;
     }
@@ -711,7 +709,7 @@ void Carrot::VulkanDriver::createSwapChain() {
     depthFormat = findDepthFormat();
 }
 
-vk::Format Carrot::VulkanDriver::findSupportedFormat(const vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+vk::Format Carrot::VulkanDriver::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
     for(auto& format : candidates) {
         vk::FormatProperties properties = getPhysicalDevice().getFormatProperties(format);
 
@@ -724,7 +722,7 @@ vk::Format Carrot::VulkanDriver::findSupportedFormat(const vector<vk::Format>& c
         }
     }
 
-    throw runtime_error("Could not find supported format");
+    throw std::runtime_error("Could not find supported format");
 }
 
 vk::Format Carrot::VulkanDriver::findDepthFormat() {
@@ -751,27 +749,27 @@ void Carrot::VulkanDriver::createUniformBuffers() {
         cameraUniformBuffers[Carrot::Render::Eye::RightEye].resize(getSwapchainImageCount(), nullptr);
 
         for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-            cameraUniformBuffers[Carrot::Render::Eye::LeftEye][i] = make_unique<Carrot::Buffer>(*this,
-                                                                                                 bufferSize,
-                                                                                                 vk::BufferUsageFlagBits::eUniformBuffer,
-                                                                                                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                                                                 createGraphicsAndTransferFamiliesSet());
-            cameraUniformBuffers[Carrot::Render::Eye::RightEye][i] = make_unique<Carrot::Buffer>(*this,
-                                                                  bufferSize,
-                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
-                                                                  vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                                  createGraphicsAndTransferFamiliesSet());
+            cameraUniformBuffers[Carrot::Render::Eye::LeftEye][i] = std::make_unique<Carrot::Buffer>(*this,
+                                                                                                     bufferSize,
+                                                                                                     vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                     vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                                                     createGraphicsAndTransferFamiliesSet());
+            cameraUniformBuffers[Carrot::Render::Eye::RightEye][i] = std::make_unique<Carrot::Buffer>(*this,
+                                                                                                      bufferSize,
+                                                                                                      vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                      vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                                                      createGraphicsAndTransferFamiliesSet());
         }
 
     } else {
         cameraUniformBuffers[Carrot::Render::Eye::NoVR].resize(getSwapchainImageCount(), nullptr);
 
         for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-            cameraUniformBuffers[Carrot::Render::Eye::NoVR][i] = make_unique<Carrot::Buffer>(*this,
-                                                                  bufferSize,
-                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
-                                                                  vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                                  createGraphicsAndTransferFamiliesSet());
+            cameraUniformBuffers[Carrot::Render::Eye::NoVR][i] = std::make_unique<Carrot::Buffer>(*this,
+                                                                                                  bufferSize,
+                                                                                                  vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                  vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                                                                                                  createGraphicsAndTransferFamiliesSet());
         }
 
     }
@@ -781,7 +779,7 @@ void Carrot::VulkanDriver::createUniformBuffers() {
     debugUniformBuffers.resize(getSwapchainImageCount(), nullptr);
 
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        debugUniformBuffers[i] = make_unique<Carrot::Buffer>(*this,
+        debugUniformBuffers[i] = std::make_unique<Carrot::Buffer>(*this,
                                                              debugBufferSize,
                                                              vk::BufferUsageFlagBits::eUniformBuffer,
                                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,

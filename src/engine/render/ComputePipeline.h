@@ -16,7 +16,7 @@ namespace Carrot {
         uint32_t bindingID = 0;
         uint32_t count = 1;
 
-        shared_ptr<vk::DescriptorBufferInfo> bufferInfo = nullptr;
+        std::shared_ptr<vk::DescriptorBufferInfo> bufferInfo = nullptr;
     };
 
     class ComputePipeline: public SwapchainAware {
@@ -27,8 +27,8 @@ namespace Carrot {
         Carrot::Engine& engine;
         vk::CommandBuffer commandBuffer{};
         vk::UniqueDescriptorPool descriptorPool{};
-        std::map<uint32_t, vk::UniqueDescriptorSetLayout> descriptorLayouts{};
-        std::map<uint32_t, vk::DescriptorSet> descriptorSets{};
+        std::map<std::uint32_t, vk::UniqueDescriptorSetLayout> descriptorLayouts{};
+        std::map<std::uint32_t, vk::DescriptorSet> descriptorSets{};
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
         vk::UniqueFence finishedFence{};
@@ -36,7 +36,7 @@ namespace Carrot {
         mutable vk::DispatchIndirectCommand* dispatchSizes = nullptr;
 
     public:
-        explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, vector<ComputeBinding>>& bindings);
+        explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<std::uint32_t, std::vector<ComputeBinding>>& bindings);
 
         void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const;
 
@@ -51,7 +51,7 @@ namespace Carrot {
     private:
         Carrot::Engine& engine;
         IO::Resource shaderResource;
-        vector<ComputeBinding> bindings;
+        std::vector<ComputeBinding> bindings;
 
     public:
         explicit ComputePipelineBuilder(Carrot::Engine& engine);

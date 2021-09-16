@@ -8,13 +8,11 @@
 #include <memory>
 #include <utility>
 
-using namespace std;
-
 namespace Carrot {
-    vector<string> splitString(const string& toSplit, const string& delimiter);
+    std::vector<std::string> splitString(const std::string& toSplit, const std::string& delimiter);
 
-    std::string toLowerCase(const string& str);
-    std::string toUpperCase(const string& str);
+    std::string toLowerCase(const std::string& str);
+    std::string toUpperCase(const std::string& str);
 
     std::string toString(std::u32string_view u32str);
 

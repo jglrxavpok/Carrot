@@ -26,32 +26,32 @@ namespace Carrot {
         vk::UniqueDescriptorPool sceneDescriptorPool;
         vk::UniqueDescriptorSetLayout rtDescriptorLayout;
         vk::UniqueDescriptorSetLayout sceneDescriptorLayout;
-        std::unordered_map<Render::Eye, vector<vk::DescriptorSet>> rtDescriptorSets;
-        vector<vk::DescriptorSet> sceneDescriptorSets;
-        vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
+        std::unordered_map<Render::Eye, std::vector<vk::DescriptorSet>> rtDescriptorSets;
+        std::vector<vk::DescriptorSet> sceneDescriptorSets;
+        std::vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
         vk::UniquePipelineLayout pipelineLayout;
         vk::UniquePipeline pipeline;
-        unique_ptr<Buffer> sbtBuffer;
-        vector<unique_ptr<Buffer>> sceneBuffers{};
-        unique_ptr<RaycastedShadowingLightBuffer> lightBuffer;
-        vector<unique_ptr<Buffer>> lightVkBuffers{};
-        size_t vertexBufferIndex = 0;
-        size_t indexBufferIndex = 0;
+        std::unique_ptr<Buffer> sbtBuffer;
+        std::vector<std::unique_ptr<Buffer>> sceneBuffers{};
+        std::unique_ptr<RaycastedShadowingLightBuffer> lightBuffer;
+        std::vector<std::unique_ptr<Buffer>> lightVkBuffers{};
+        std::size_t vertexBufferIndex = 0;
+        std::size_t indexBufferIndex = 0;
 
         bool hasStuffToDraw = false;
 
-        constexpr uint32_t alignUp(uint32_t value, uint32_t alignment);
+        constexpr std::uint32_t alignUp(std::uint32_t value, std::uint32_t alignment);
 
         void createRTDescriptorSets();
         void createSceneDescriptorSets();
 
-        void registerBuffer(uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, size_t& index);
+        void registerBuffer(std::uint32_t bindingIndex, const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length, std::size_t& index);
 
         void generateBuffers();
 
     public:
         /// Extensions required for raytracing
-        static vector<const char*> getRequiredDeviceExtensions();
+        static std::vector<const char*> getRequiredDeviceExtensions();
 
         explicit RayTracer(VulkanRenderer& renderer);
 
@@ -74,13 +74,13 @@ namespace Carrot {
         void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
         void registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length);
 
-        void onSwapchainImageCountChange(size_t newCount) override;
+        void onSwapchainImageCountChange(std::size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         Carrot::Render::Pass<Carrot::Render::PassData::Raytracing>& appendRTPass(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye);
 
     public:
-        std::unordered_map<Render::Eye, vector<vk::DescriptorSet>>& getRTDescriptorSets() { return rtDescriptorSets; }
+        std::unordered_map<Render::Eye, std::vector<vk::DescriptorSet>>& getRTDescriptorSets() { return rtDescriptorSets; }
     };
 }

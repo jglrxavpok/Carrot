@@ -11,12 +11,12 @@
 #include <engine/io/IO.h>
 #include <engine/render/GBuffer.h>
 
-Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): engine(engine) {
+Carrot::Material::Material(Carrot::Engine& engine, const std::string& materialName): engine(engine) {
     rapidjson::Document description;
     description.Parse(Carrot::IO::readFileAsText("resources/materials/"+materialName+".json").c_str());
 
-    string textureName = description["texture"].GetString();
-    string pipelineName = description["pipeline"].GetString();
+    std::string textureName = description["texture"].GetString();
+    std::string pipelineName = description["pipeline"].GetString();
 
     pipeline = engine.getRenderer().getOrCreatePipeline(pipelineName);
 
@@ -27,7 +27,7 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
     }
 
     if(description.HasMember("texture")) {
-        string textureName = description["texture"].GetString();
+        std::string textureName = description["texture"].GetString();
         textureID = renderingPipeline->reserveTextureSlot(engine.getRenderer().getOrCreateTexture(textureName)->getView());
     }
     if(description.HasMember("ignoreInstanceColor")) {
@@ -38,9 +38,9 @@ Carrot::Material::Material(Carrot::Engine& engine, const string& materialName): 
 
 void Carrot::Material::bindForRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
     renderingPipeline->bind(pass, renderContext, commands);
-    vector<DrawData> data{1};
+    std::vector<DrawData> data{1};
     data[0].materialIndex = id;
-    commands.pushConstants<DrawData>(renderingPipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<uint32_t>(0), data);
+    commands.pushConstants<DrawData>(renderingPipeline->getPipelineLayout(), vk::ShaderStageFlagBits::eFragment, static_cast<std::uint32_t>(0), data);
 }
 
 Carrot::MaterialID Carrot::Material::getMaterialID() const {

@@ -9,23 +9,21 @@
 #include "ShaderModule.h"
 #include <map>
 
-using namespace std;
-
 namespace Carrot {
     class ShaderStages {
     private:
         Carrot::VulkanDriver& driver;
-        vector<pair<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>> stages{};
+        std::vector<std::pair<vk::ShaderStageFlagBits, std::unique_ptr<Carrot::ShaderModule>>> stages{};
 
     public:
-        explicit ShaderStages(Carrot::VulkanDriver& driver, const vector<string>& filenames);
-        explicit ShaderStages(Carrot::VulkanDriver& driver, const vector<Carrot::IO::Resource>& filenames, const vector<vk::ShaderStageFlagBits>& stages);
+        explicit ShaderStages(Carrot::VulkanDriver& driver, const std::vector<std::string>& filenames);
+        explicit ShaderStages(Carrot::VulkanDriver& driver, const std::vector<Carrot::IO::Resource>& filenames, const std::vector<vk::ShaderStageFlagBits>& stages);
 
-        [[nodiscard]] vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages(const vk::SpecializationInfo* specialization = nullptr) const;
+        [[nodiscard]] std::vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages(const vk::SpecializationInfo* specialization = nullptr) const;
 
-        vk::UniqueDescriptorSetLayout createDescriptorSetLayout0(const map<string, uint32_t>& constants) const;
+        vk::UniqueDescriptorSetLayout createDescriptorSetLayout0(const std::map<std::string, std::uint32_t>& constants) const;
 
-        [[nodiscard]] const vector<pair<vk::ShaderStageFlagBits, unique_ptr<Carrot::ShaderModule>>>& getModuleMap() const;
+        [[nodiscard]] const std::vector<std::pair<vk::ShaderStageFlagBits, std::unique_ptr<Carrot::ShaderModule>>>& getModuleMap() const;
     };
 
 }

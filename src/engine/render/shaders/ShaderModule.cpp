@@ -10,7 +10,7 @@
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const string& entryPoint)
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const std::string& entryPoint)
         : driver(driver), entryPoint(entryPoint) {
     auto code = file.readAll();
     auto& device = driver.getLogicalDevice();
@@ -23,13 +23,13 @@ Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resou
     parser.parse();
     parsedCode = parser.get_parsed_ir();
 
-    compiler = make_unique<spirv_cross::Compiler>(parsedCode);
+    compiler = std::make_unique<spirv_cross::Compiler>(parsedCode);
 }
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const string& entryPoint): driver(driver), entryPoint(entryPoint) {
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const std::string& entryPoint): driver(driver), entryPoint(entryPoint) {
     auto& device = driver.getLogicalDevice();
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
-            .codeSize = static_cast<uint32_t>(code.size()),
+            .codeSize = static_cast<std::uint32_t>(code.size()),
             .pCode = reinterpret_cast<const uint32_t*>(code.data()),
     }, driver.getAllocationCallbacks());
 
@@ -37,7 +37,7 @@ Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vect
     parser.parse();
     parsedCode = parser.get_parsed_ir();
 
-    compiler = make_unique<spirv_cross::Compiler>(parsedCode);
+    compiler = std::make_unique<spirv_cross::Compiler>(parsedCode);
 }
 
 vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const {
@@ -49,7 +49,7 @@ vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStag
     };
 }
 
-void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings, const map<string, uint32_t>& constants) {
+void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings, const std::map<std::string, std::uint32_t>& constants) {
     const auto resources = compiler->get_shader_resources();
 
     // buffers
@@ -72,10 +72,10 @@ void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, vector
 }
 
 void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
-                                              vector<NamedBinding>& bindings,
+                                              std::vector<NamedBinding>& bindings,
                                               vk::DescriptorType type,
                                               const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                                              const map<string, uint32_t>& constants) {
+                                              const std::map<std::string, std::uint32_t>& constants) {
     for(const auto& resource : resources) {
         const auto bindingID = compiler->get_decoration(resource.id, spv::DecorationBinding);
         const auto& resourceType = compiler->get_type(resource.type_id);
@@ -92,7 +92,7 @@ void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
                 // resolve specialization constant value
                 uint32_t varId = resourceType.array[0];
                 const auto& constant = compiler->get_constant(varId);
-                const string constantName = compiler->get_name(varId);
+                const std::string& constantName = compiler->get_name(varId);
                 auto it = constants.find(constantName);
                 if(it != constants.end()) {
                     count = it->second;
@@ -113,12 +113,12 @@ void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
             if(bindingToAdd.areSame(*existing)) {
                 existing->vkBinding.stageFlags |= stage;
             } else {
-                throw std::runtime_error("Mismatched of binding " + to_string(bindingID) + " over different stages.");
+                throw std::runtime_error("Mismatched of binding " + std::to_string(bindingID) + " over different stages.");
             }
         } else {
             bindings.push_back(bindingToAdd);
 
-            bindingMap[static_cast<uint32_t>(bindingID)] = {
+            bindingMap[static_cast<std::uint32_t>(bindingID)] = {
                     bindingID,
                     type,
                     count
@@ -151,7 +151,7 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
     }
 }
 
-void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const {
+void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::vector<vk::PushConstantRange>& pushConstants) const {
     const auto resources = compiler->get_shader_resources();
 
     // TODO: other types than uint32_t

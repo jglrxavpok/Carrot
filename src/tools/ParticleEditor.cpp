@@ -184,12 +184,12 @@ void Tools::ParticleEditor::addCommonLogic(Tools::EditorGraph& graph) {
     graph.addToLibrary<NegateBoolNode>("not", "Not");
 }
 
-void Tools::ParticleEditor::updateUpdateGraph(size_t frameIndex) {
-    updateGraph.onFrame(frameIndex);
+void Tools::ParticleEditor::updateUpdateGraph(Carrot::Render::Context renderContext) {
+    updateGraph.onFrame(renderContext);
 }
 
-void Tools::ParticleEditor::updateRenderGraph(size_t frameIndex) {
-    renderGraph.onFrame(frameIndex);
+void Tools::ParticleEditor::updateRenderGraph(Carrot::Render::Context renderContext) {
+    renderGraph.onFrame(renderContext);
 }
 
 void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
@@ -214,7 +214,7 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
     renderGraph.resetChangeFlag();
 }
 
-void Tools::ParticleEditor::onFrame(size_t frameIndex) {
+void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
     float menuBarHeight = 0;
     if(ImGui::BeginMainMenuBar()) {
         if(ImGui::BeginMenu("Project")) {
@@ -278,11 +278,11 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
         if(ImGui::BeginTabBar("ParticleEditorTabs")) {
             if(ImGui::BeginTabItem("Update##tab particle editor")) {
-                updateUpdateGraph(frameIndex);
+                updateUpdateGraph(renderContext);
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("Render##tab particle editor")) {
-                updateRenderGraph(frameIndex);
+                updateRenderGraph(renderContext);
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -291,12 +291,12 @@ void Tools::ParticleEditor::onFrame(size_t frameIndex) {
     ImGui::End();
 
 
-    templateEditor.onFrame(frameIndex);
+    templateEditor.onFrame(renderContext);
 
-    ProjectMenuHolder::onFrame(frameIndex);
+    ProjectMenuHolder::onFrame(renderContext);
 
     engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-        previewRenderGraph->execute(engine.newRenderContext(frameIndex), cmds);
+        previewRenderGraph->execute(renderContext, cmds);
     });
 }
 

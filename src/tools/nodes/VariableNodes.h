@@ -25,7 +25,7 @@ namespace Tools {
     class VariableNode : public EditorNode {
     private:
         VariableNodeType nodeType;
-        uint32_t dimensions = 0;
+        std::uint32_t dimensions = 0;
 
     public:
         explicit VariableNode(Tools::EditorGraph& graph, VariableNodeType type): Tools::EditorNode(graph, getTitle(type), getInternalName(type)), nodeType(type) {
@@ -103,7 +103,7 @@ namespace Tools {
             throw std::runtime_error("Unsupported terminal node type");
         }
 
-        static uint32_t getDimensionCount(VariableNodeType type) {
+        static std::uint32_t getDimensionCount(VariableNodeType type) {
             switch (type) {
                 case VariableNodeType::GetVelocity:
                 case VariableNodeType::GetPosition:

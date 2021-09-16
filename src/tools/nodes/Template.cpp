@@ -19,35 +19,35 @@ namespace Tools {
                                         inputExpressions(inputExpressions)
                                         {};
 
-        shared_ptr<Carrot::Expression> visitConstant(Carrot::ConstantExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitConstant(Carrot::ConstantExpression& expression) override {
             return expression.shared_from_this();
         }
 
-        shared_ptr<Carrot::Expression> visitGetVariable(Carrot::GetVariableExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitGetVariable(Carrot::GetVariableExpression& expression) override {
             return expression.shared_from_this();
         }
 
-        shared_ptr<Carrot::Expression> visitSetVariable(Carrot::SetVariableExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitSetVariable(Carrot::SetVariableExpression& expression) override {
             return std::make_shared<Carrot::SetVariableExpression>(expression.getVariableName(), visit(expression.getValue()));
         }
 
-        shared_ptr<Carrot::Expression> visitAdd(Carrot::AddExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitAdd(Carrot::AddExpression& expression) override {
             return std::make_shared<Carrot::AddExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitSub(Carrot::SubExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitSub(Carrot::SubExpression& expression) override {
             return std::make_shared<Carrot::SubExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitMult(Carrot::MultExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitMult(Carrot::MultExpression& expression) override {
             return std::make_shared<Carrot::MultExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitDiv(Carrot::DivExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitDiv(Carrot::DivExpression& expression) override {
             return std::make_shared<Carrot::DivExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitCompound(Carrot::CompoundExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitCompound(Carrot::CompoundExpression& expression) override {
             auto& subExprs = expression.getSubExpressions();
             std::vector<std::shared_ptr<Carrot::Expression>> expressions(subExprs.size());
 
@@ -57,79 +57,79 @@ namespace Tools {
             return std::make_shared<Carrot::CompoundExpression>(expressions);
         }
 
-        shared_ptr<Carrot::Expression> visitMod(Carrot::ModExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitMod(Carrot::ModExpression& expression) override {
             return std::make_shared<Carrot::ModExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitLess(Carrot::LessExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitLess(Carrot::LessExpression& expression) override {
             return std::make_shared<Carrot::LessExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitLessOrEquals(Carrot::LessOrEqualsExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitLessOrEquals(Carrot::LessOrEqualsExpression& expression) override {
             return std::make_shared<Carrot::LessOrEqualsExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitGreater(Carrot::GreaterExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitGreater(Carrot::GreaterExpression& expression) override {
             return std::make_shared<Carrot::GreaterExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitGreaterOrEquals(Carrot::GreaterOrEqualsExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitGreaterOrEquals(Carrot::GreaterOrEqualsExpression& expression) override {
             return std::make_shared<Carrot::GreaterOrEqualsExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitEquals(Carrot::EqualsExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitEquals(Carrot::EqualsExpression& expression) override {
             return std::make_shared<Carrot::EqualsExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitNotEquals(Carrot::NotEqualsExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitNotEquals(Carrot::NotEqualsExpression& expression) override {
             return std::make_shared<Carrot::NotEqualsExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitOr(Carrot::OrExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitOr(Carrot::OrExpression& expression) override {
             return std::make_shared<Carrot::OrExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitAnd(Carrot::AndExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitAnd(Carrot::AndExpression& expression) override {
             return std::make_shared<Carrot::AndExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitXor(Carrot::XorExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitXor(Carrot::XorExpression& expression) override {
             return std::make_shared<Carrot::XorExpression>(visit(expression.getOperand1()), visit(expression.getOperand2()));
         }
 
-        shared_ptr<Carrot::Expression> visitBoolNegate(Carrot::BoolNegateExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitBoolNegate(Carrot::BoolNegateExpression& expression) override {
             return std::make_shared<Carrot::BoolNegateExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitSin(Carrot::SinExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitSin(Carrot::SinExpression& expression) override {
             return std::make_shared<Carrot::SinExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitCos(Carrot::CosExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitCos(Carrot::CosExpression& expression) override {
             return std::make_shared<Carrot::CosExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitTan(Carrot::TanExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitTan(Carrot::TanExpression& expression) override {
             return std::make_shared<Carrot::TanExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitExp(Carrot::ExpExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitExp(Carrot::ExpExpression& expression) override {
             return std::make_shared<Carrot::ExpExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitAbs(Carrot::AbsExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitAbs(Carrot::AbsExpression& expression) override {
             return std::make_shared<Carrot::AbsExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitSqrt(Carrot::SqrtExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitSqrt(Carrot::SqrtExpression& expression) override {
             return std::make_shared<Carrot::SqrtExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitLog(Carrot::LogExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitLog(Carrot::LogExpression& expression) override {
             return std::make_shared<Carrot::LogExpression>(visit(expression.getOperand()));
         }
 
-        shared_ptr<Carrot::Expression> visitPlaceholder(Carrot::PlaceholderExpression& expression) override {
+        std::shared_ptr<Carrot::Expression> visitPlaceholder(Carrot::PlaceholderExpression& expression) override {
             auto placeholderData = std::static_pointer_cast<NamedInputPlaceholderData>(expression.getData());
             if(!placeholderData) {
                 throw std::runtime_error("Unexpected placeholder data type");
@@ -197,7 +197,7 @@ namespace Tools {
         internalGraph->loadFromJSON(graphJson);
     }
 
-    shared_ptr<Carrot::Expression> TemplateNode::toExpression(uint32_t outputIndex) const {
+    std::shared_ptr<Carrot::Expression> TemplateNode::toExpression(uint32_t outputIndex) const {
         //  find corresponding output inside internalGraph
         //  generate expression from internalGraph starting from output
         //  -> how to handle Named Inputs ?

@@ -2,10 +2,10 @@
 #include "Mesh.h"
 
 template<typename VertexType>
-Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const vector<VertexType>& vertices, const vector<uint32_t>& indices): meshID(currentMeshID++), driver(driver) {
+Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& vertices, const std::vector<std::uint32_t>& indices): meshID(currentMeshID++), driver(driver) {
     const auto& queueFamilies = driver.getQueueFamilies();
     // create and allocate underlying buffer
-    std::set<uint32_t> families = {
+    std::set<std::uint32_t> families = {
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
     };
 
@@ -18,12 +18,12 @@ Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const vector<VertexType>& verti
     }
     indexCount = indices.size();
     vertexCount = vertices.size();
-    vertexAndIndexBuffer = make_unique<Carrot::Buffer>(driver,
-                                                       vertexStartOffset + sizeof(VertexType) * vertices.size(),
-                                                       vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
-                                                       vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                                       families);
+    vertexAndIndexBuffer = std::make_unique<Carrot::Buffer>(driver,
+                                                            vertexStartOffset + sizeof(VertexType) * vertices.size(),
+                                                            vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                            vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                                            families);
 
     // upload vertices
-    vertexAndIndexBuffer->stageUploadWithOffsets(make_pair(vertexStartOffset, vertices), make_pair(static_cast<uint64_t>(0), indices));
+    vertexAndIndexBuffer->stageUploadWithOffsets(std::make_pair(vertexStartOffset, vertices), std::make_pair(static_cast<uint64_t>(0), indices));
 }

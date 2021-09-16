@@ -28,11 +28,11 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                                                     description.vertexShader,
                                                     description.fragmentShader
                                                 },
-                                               std::vector<vk::ShaderStageFlagBits> {
+                                                std::vector<vk::ShaderStageFlagBits> {
                                                     vk::ShaderStageFlagBits::eVertex,
                                                     vk::ShaderStageFlagBits::eFragment
                                                 }
-                                                );
+    );
 
     descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
 
@@ -40,10 +40,10 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     pipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
 
     pipelineTemplate.vertexInput = {
-            .vertexBindingDescriptionCount = static_cast<uint32_t>(pipelineTemplate.vertexBindingDescriptions.size()),
+            .vertexBindingDescriptionCount = static_cast<std::uint32_t>(pipelineTemplate.vertexBindingDescriptions.size()),
             .pVertexBindingDescriptions = pipelineTemplate.vertexBindingDescriptions.data(),
 
-            .vertexAttributeDescriptionCount = static_cast<uint32_t>(pipelineTemplate.vertexAttributes.size()),
+            .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(pipelineTemplate.vertexAttributes.size()),
             .pVertexAttributeDescriptions = pipelineTemplate.vertexAttributes.data(),
     };
 
@@ -92,7 +92,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
     if(description.alphaBlending) {
         pipelineTemplate.colorBlendAttachments = {
-                static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 3 : 1),
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 3 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = true,
                         .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
@@ -113,7 +113,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         });
     } else {
         pipelineTemplate.colorBlendAttachments = {
-                static_cast<size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = false,
 
@@ -128,12 +128,12 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .pAttachments = pipelineTemplate.colorBlendAttachments.data(),
     };
 
-    vector<vk::PushConstantRange> pushConstants{};
+    std::vector<vk::PushConstantRange> pushConstants{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addPushConstants(stage, pushConstants);
     }
 
-    vector<vk::DescriptorSetLayout> layouts{};
+    std::vector<vk::DescriptorSetLayout> layouts{};
     layouts.push_back(*descriptorSetLayout0);
     if(description.vertexFormat == VertexFormat::SkinnedVertex) {
         vk::DescriptorSetLayoutBinding binding {
@@ -158,9 +158,9 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     }
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-            .setLayoutCount = static_cast<uint32_t>(layouts.size()),
+            .setLayoutCount = static_cast<std::uint32_t>(layouts.size()),
             .pSetLayouts = layouts.data(),
-            .pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size()),
+            .pushConstantRangeCount = static_cast<std::uint32_t>(pushConstants.size()),
             .pPushConstantRanges = pushConstants.data(),
     };
 
@@ -197,7 +197,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         .pScissors = &pipelineTemplate.scissor,
     };
 
-    vector<Specialization> specializations{};
+    std::vector<Specialization> specializations{};
 
     for(const auto& [constantName, constantValue] : description.constants) {
         if("MAX_MATERIALS" == constantName) {
@@ -208,22 +208,22 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         }
         Carrot::Log::info("Specializing constant %s to value %lu", constantName.c_str(), constantValue);
         specializations.push_back(Specialization {
-                .offset = static_cast<uint32_t>(specializations.size()*sizeof(uint32_t)),
-                .size = sizeof(uint32_t),
-                .constantID = static_cast<uint32_t>(specializations.size()), // TODO: Map name to index
+                .offset = static_cast<std::uint32_t>(specializations.size()*sizeof(uint32_t)),
+                .size = sizeof(std::uint32_t),
+                .constantID = static_cast<std::uint32_t>(specializations.size()), // TODO: Map name to index
         });
-        pipelineTemplate.specializationData.push_back(static_cast<uint32_t>(constantValue));
+        pipelineTemplate.specializationData.push_back(static_cast<std::uint32_t>(constantValue));
     }
 
     uint32_t totalDataSize = 0;
-    vector<vk::SpecializationMapEntry> entries{};
+    std::vector<vk::SpecializationMapEntry> entries{};
     for(const auto& spec : specializations) {
         entries.emplace_back(spec.convertToEntry());
         totalDataSize += spec.size;
     }
     pipelineTemplate.specializationEntries = entries;
     pipelineTemplate.specialization = {
-            .mapEntryCount = static_cast<uint32_t>(pipelineTemplate.specializationEntries.size()),
+            .mapEntryCount = static_cast<std::uint32_t>(pipelineTemplate.specializationEntries.size()),
             .pMapEntries = pipelineTemplate.specializationEntries.data(),
             .dataSize = totalDataSize,
             .pData = pipelineTemplate.specializationData.data(),
@@ -231,7 +231,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
     pipelineTemplate.shaderStageCreation = stages->createPipelineShaderStages(&pipelineTemplate.specialization);
     pipelineTemplate.pipelineInfo = vk::GraphicsPipelineCreateInfo {
-            .stageCount = static_cast<uint32_t>(pipelineTemplate.shaderStageCreation.size()),
+            .stageCount = static_cast<std::uint32_t>(pipelineTemplate.shaderStageCreation.size()),
             .pStages = pipelineTemplate.shaderStageCreation.data(),
 
             .pVertexInputState = &pipelineTemplate.vertexInput,
@@ -245,7 +245,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
             .layout = *layout,
             .renderPass = {}, // will be filled in getOrCreatePipelineForRenderPass
-            .subpass = static_cast<uint32_t>(description.subpassIndex),
+            .subpass = static_cast<std::uint32_t>(description.subpassIndex),
     };
 
     if(description.type == PipelineType::GBuffer) {
@@ -254,9 +254,9 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                                                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                     vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                     driver.createGraphicsAndTransferFamiliesSet());
-        vector<char> zeroes{};
+        std::vector<char> zeroes{};
         zeroes.resize(materialStorageBuffer->getSize());
-        materialStorageBuffer->stageUploadWithOffsets(make_pair(static_cast<uint64_t>(0), zeroes));
+        materialStorageBuffer->stageUploadWithOffsets(std::make_pair(static_cast<std::uint64_t>(0), zeroes));
     }
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
@@ -296,16 +296,16 @@ const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout() const 
 }
 
 void Carrot::Pipeline::bindDescriptorSets(vk::CommandBuffer& commands,
-                                          const vector<vk::DescriptorSet>& descriptors,
-                                          const vector<uint32_t>& dynamicOffsets,
-                                          uint32_t firstSet) const {
+                                          const std::vector<vk::DescriptorSet>& descriptors,
+                                          const std::vector<std::uint32_t>& dynamicOffsets,
+                                          std::uint32_t firstSet) const {
     commands.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout, firstSet, descriptors, dynamicOffsets);
 }
 
 void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
-    vector<vk::DescriptorPoolSize> sizes{};
+    std::vector<vk::DescriptorPoolSize> sizes{};
 
-    vector<NamedBinding> bindings{};
+    std::vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addBindingsSet0(stage, bindings, description.constants);
     }
@@ -334,13 +334,13 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     descriptorSets0 = allocateDescriptorSets0();
 
     if(description.type == PipelineType::GBuffer) {
-        for(uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+        for(std::uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
             vk::DescriptorBufferInfo storageBufferInfo{
                     .buffer = materialStorageBuffer->getVulkanBuffer(),
                     .offset = 0,
                     .range = materialStorageBuffer->getSize(),
             };
-            vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer*/};
+            std::vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer*/};
             writes[0].dstSet = descriptorSets0[imageIndex];
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
@@ -352,7 +352,7 @@ void Carrot::Pipeline::allocateDescriptorSets() {
             writes[1].descriptorType = vk::DescriptorType::eSampledImage;
             writes[1].dstBinding = description.texturesBindingIndex;
 
-            vector<vk::DescriptorImageInfo> imageInfoStructs {maxTextureID};
+            std::vector<vk::DescriptorImageInfo> imageInfoStructs {maxTextureID};
             writes[1].pImageInfo = imageInfoStructs.data();
 
             for(TextureID textureID = 0; textureID < maxTextureID; textureID++) {
@@ -366,29 +366,29 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     }
 }
 
-vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
-    vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), *descriptorSetLayout0};
+std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
+    std::vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), *descriptorSetLayout0};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
         .pSetLayouts = layouts.data(),
     };
-    vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
+    std::vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
 
-    vector<NamedBinding> bindings{};
+    std::vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addBindingsSet0(stage, bindings, description.constants);
     }
 
     // allocate default values
-    vector<vk::WriteDescriptorSet> writes{bindings.size() * driver.getSwapchainImageCount()};
-    vector<vk::DescriptorBufferInfo> buffers{bindings.size() * driver.getSwapchainImageCount()};
-    vector<vk::DescriptorImageInfo> samplers{bindings.size() * driver.getSwapchainImageCount()};
-    vector<vk::DescriptorImageInfo> images{bindings.size() * driver.getSwapchainImageCount()};
+    std::vector<vk::WriteDescriptorSet> writes{bindings.size() * driver.getSwapchainImageCount()};
+    std::vector<vk::DescriptorBufferInfo> buffers{bindings.size() * driver.getSwapchainImageCount()};
+    std::vector<vk::DescriptorImageInfo> samplers{bindings.size() * driver.getSwapchainImageCount()};
+    std::vector<vk::DescriptorImageInfo> images{bindings.size() * driver.getSwapchainImageCount()};
 
-    uint32_t writeIndex = 0;
+    std::uint32_t writeIndex = 0;
     for(const auto& binding : bindings) {
-        for(size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+        for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
             auto& write = writes[writeIndex];
             write.dstBinding = binding.vkBinding.binding;
             write.descriptorCount = binding.vkBinding.descriptorCount;
@@ -444,13 +444,13 @@ vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     return sets;
 }
 
-const vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets0() const {
+const std::vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets0() const {
     return descriptorSets0;
 }
 
 Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material& material) {
     if(materialID >= maxMaterialID) {
-        throw runtime_error("Max material id is " + to_string(maxMaterialID));
+        throw std::runtime_error("Max material id is " + std::to_string(maxMaterialID));
     }
     MaterialID id = materialID++;
     updateMaterial(material, id);
@@ -459,18 +459,18 @@ Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material&
 
 Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::ImageView& textureView) {
     if(textureID >= maxTextureID) {
-        throw runtime_error("Max texture id is " + to_string(maxTextureID));
+        throw std::runtime_error("Max texture id is " + std::to_string(maxTextureID));
     }
     TextureID id = textureID++;
     reservedTextures[id] = textureView;
 
-    for(size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+    for(std::size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
         updateTextureReservation(textureView, id, imageIndex);
     }
     return id;
 }
 
-void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex) {
+void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView, TextureID id, std::size_t imageIndex) {
     vk::DescriptorImageInfo imageInfo {
             .imageView = textureView,
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -491,7 +491,7 @@ void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, Material
         material.getTextureID(),
         material.ignoresInstanceColor(),
     };
-    materialStorageBuffer->stageUploadWithOffset(static_cast<uint64_t>(materialID)*sizeof(MaterialData), &data);
+    materialStorageBuffer->stageUploadWithOffset(static_cast<std::uint64_t>(materialID)*sizeof(MaterialData), &data);
 }
 
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
@@ -502,7 +502,7 @@ Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
     return description.vertexFormat;
 }
 
-Carrot::PipelineType Carrot::Pipeline::getPipelineType(const string& name) {
+Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) {
     if(name == "gResolve") {
         return PipelineType::GResolve;
     } else if(name == "gbuffer") {
@@ -517,13 +517,13 @@ Carrot::PipelineType Carrot::Pipeline::getPipelineType(const string& name) {
     return PipelineType::Unknown;
 }
 
-void Carrot::Pipeline::onSwapchainImageCountChange(size_t newCount) {
+void Carrot::Pipeline::onSwapchainImageCountChange(std::size_t newCount) {
     allocateDescriptorSets();
 
     // pipeline will be refreshed, so update reserved slots
     for(TextureID texID = 0; texID < textureID; texID++) {
         auto& textureView = reservedTextures[texID];
-        for(size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+        for(std::size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
             updateTextureReservation(textureView, texID, imageIndex);
         }
     }

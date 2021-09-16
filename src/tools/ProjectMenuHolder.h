@@ -79,7 +79,7 @@ namespace Tools {
             }
         }
 
-        virtual void onFrame(size_t frameIndex) {
+        virtual void onFrame(Carrot::Render::Context renderContext) {
             assert(settings);
             if(tryingToOpenFile) {
                 ImGui::OpenPopup(popupName.c_str());

@@ -15,7 +15,7 @@ namespace Carrot {
         VulkanDriver& device;
 
         // TODO: smarter allocation algorithm, just making it work now
-        vector<unique_ptr<Buffer>> allocatedBuffers;
+        std::vector<std::unique_ptr<Buffer>> allocatedBuffers;
 
         void freeBufferView(BufferView& view);
 
@@ -25,6 +25,6 @@ namespace Carrot {
         explicit ResourceAllocator(VulkanDriver& device);
 
         BufferView allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
-        unique_ptr<Buffer> allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
+        std::unique_ptr<Buffer> allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
     };
 }

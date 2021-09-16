@@ -9,7 +9,7 @@
 #include "engine/io/Logging.hpp"
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
-                     set<uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, uint32_t layerCount):
+                     std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount):
         Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), format(format), imageData(true) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
@@ -107,10 +107,10 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
     auto buffer = resource.readAll();
     stbi_uc* pixels = stbi_load_from_memory(buffer.get(), resource.getSize(), &width, &height, &channels, STBI_rgb_alpha);
     if(!pixels) {
-        throw runtime_error("Failed to load image "+resource.getName());
+        throw std::runtime_error("Failed to load image "+resource.getName());
     }
 
-    auto image = make_unique<Carrot::Image>(device,
+    auto image = std::make_unique<Carrot::Image>(device,
                                         vk::Extent3D {
                                             .width = static_cast<uint32_t>(width),
                                             .height = static_cast<uint32_t>(height),
@@ -267,7 +267,7 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
     return std::move(driver.createImageView(getVulkanImage(), imageFormat, aspect, viewType, layerCount));
 }
 
-void Carrot::Image::setDebugNames(const string& name) {
+void Carrot::Image::setDebugNames(const std::string& name) {
     nameSingle(driver, name, getVulkanImage());
     if(imageData.ownsImage) {
         nameSingle(driver, name + " Memory", getMemory());
@@ -297,7 +297,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
         .depth = 1,
     };
     vk::DeviceSize imageSize = w*h*4;
-    auto image = make_unique<Image>(device,
+    auto image = std::make_unique<Image>(device,
                                     extent,
                                     vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
                                     vk::Format::eR8G8B8A8Unorm,
@@ -306,12 +306,12 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
                                     vk::ImageType::e2D,
                                     6);
 
-    image->stageUpload(span<uint8_t>{pixelsPX, imageSize}, 0);
-    image->stageUpload(span<uint8_t>{pixelsNX, imageSize}, 1);
-    image->stageUpload(span<uint8_t>{pixelsPY, imageSize}, 2);
-    image->stageUpload(span<uint8_t>{pixelsNY, imageSize}, 3);
-    image->stageUpload(span<uint8_t>{pixelsPZ, imageSize}, 4);
-    image->stageUpload(span<uint8_t>{pixelsNZ, imageSize}, 5);
+    image->stageUpload(std::span<uint8_t>{pixelsPX, imageSize}, 0);
+    image->stageUpload(std::span<uint8_t>{pixelsNX, imageSize}, 1);
+    image->stageUpload(std::span<uint8_t>{pixelsPY, imageSize}, 2);
+    image->stageUpload(std::span<uint8_t>{pixelsNY, imageSize}, 3);
+    image->stageUpload(std::span<uint8_t>{pixelsPZ, imageSize}, 4);
+    image->stageUpload(std::span<uint8_t>{pixelsNZ, imageSize}, 5);
 
     stbi_image_free(pixelsPZ);
     stbi_image_free(pixelsPY);

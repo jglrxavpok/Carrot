@@ -50,8 +50,8 @@ namespace Carrot {
 
     private:
         struct {
-            vector<vk::VertexInputBindingDescription> vertexBindingDescriptions;
-            vector<vk::VertexInputAttributeDescription> vertexAttributes;
+            std::vector<vk::VertexInputBindingDescription> vertexBindingDescriptions;
+            std::vector<vk::VertexInputAttributeDescription> vertexAttributes;
 
             vk::PipelineVertexInputStateCreateInfo vertexInput;
             vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
@@ -88,8 +88,8 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
         vk::UniquePipelineLayout layout{};
         vk::UniqueDescriptorPool descriptorPool{};
-        unique_ptr<ShaderStages> stages = nullptr;
-        vector<vk::DescriptorSet> descriptorSets0{};
+        std::unique_ptr<ShaderStages> stages = nullptr;
+        std::vector<vk::DescriptorSet> descriptorSets0{};
         MaterialID materialID = 0;
         MaterialID maxMaterialID = 16;
 
@@ -97,11 +97,11 @@ namespace Carrot {
         TextureID maxTextureID = 16;
 
         PipelineDescription description;
-        unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
-        unordered_map<TextureID, vk::ImageView> reservedTextures{};
-        mutable unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
+        std::unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
+        std::unordered_map<TextureID, vk::ImageView> reservedTextures{};
+        mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
 
-        vector<vk::DescriptorSet> allocateDescriptorSets0();
+        std::vector<vk::DescriptorSet> allocateDescriptorSets0();
 
         void allocateDescriptorSets();
 
@@ -115,14 +115,14 @@ namespace Carrot {
 
         void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
-        void bindDescriptorSets(vk::CommandBuffer& commands, const vector<vk::DescriptorSet>& descriptors, const vector<uint32_t>& dynamicOffsets, uint32_t firstSet = 0) const;
+        void bindDescriptorSets(vk::CommandBuffer& commands, const std::vector<vk::DescriptorSet>& descriptors, const std::vector<std::uint32_t>& dynamicOffsets, std::uint32_t firstSet = 0) const;
 
-        void recreateDescriptorPool(uint32_t imageCount);
+        void recreateDescriptorPool(std::uint32_t imageCount);
 
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
         [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout() const;
-        const vector<vk::DescriptorSet>& getDescriptorSets0() const;
+        const std::vector<vk::DescriptorSet>& getDescriptorSets0() const;
 
         VertexFormat getVertexFormat() const;
 
@@ -140,6 +140,6 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     public:
-        static PipelineType getPipelineType(const string& name);
+        static PipelineType getPipelineType(const std::string& name);
     };
 }

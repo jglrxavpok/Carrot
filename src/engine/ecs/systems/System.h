@@ -10,8 +10,6 @@
 
 namespace Carrot {
 
-    using namespace std;
-
     class World;
 
     enum class SystemType {
@@ -23,7 +21,7 @@ namespace Carrot {
     protected:
         Carrot::World& world;
         Signature signature;
-        vector<Entity_WeakPtr> entities;
+        std::vector<Entity_WeakPtr> entities;
 
         virtual void onEntityAdded(Entity_WeakPtr entity) {};
 
@@ -38,8 +36,8 @@ namespace Carrot {
         // TODO: provide a way to render even in other passes
         virtual void gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 
-        void onEntitiesAdded(const vector<Entity_Ptr>& entities);
-        void onEntitiesRemoved(const vector<Entity_Ptr>& entities);
+        void onEntitiesAdded(const std::vector<Entity_Ptr>& entities);
+        void onEntitiesRemoved(const std::vector<Entity_Ptr>& entities);
 
         virtual ~System() = default;
     };

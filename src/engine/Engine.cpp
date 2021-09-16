@@ -68,16 +68,17 @@ vkDriver(window, config, this
     , *vrInterface
 #endif
 ),
-renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver, vector<ScreenSpaceVertex>{
-                                                                                                                                   { { -1, -1} },
-                                                                                                                                   { { 1, -1} },
-                                                                                                                                   { { 1, 1} },
-                                                                                                                                   { { -1, 1} },
-                                                                                                                           },
-                                                                                                                           vector<uint32_t>{
-                                                                                                                                   2,1,0,
-                                                                                                                                   3,2,0,
-                                                                                                                           })),
+renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
+                                                              std::vector<ScreenSpaceVertex> {
+                                                                   { { -1, -1} },
+                                                                   { { 1, -1} },
+                                                                   { { 1, 1} },
+                                                                   { { -1, 1} },
+                                                              },
+                                                              std::vector<uint32_t> {
+                                                                   2,1,0,
+                                                                   3,2,0,
+                                                              })),
     presentThread(vkDriver),
     config(config)
     {
@@ -368,13 +369,13 @@ void Carrot::Engine::run() {
     size_t currentFrame = 0;
 
 
-    auto previous = chrono::steady_clock::now();
-    auto lag = chrono::duration<float>(0.0f);
-    const auto timeBetweenUpdates = chrono::duration<float>(1.0f/60.0f); // 60 Hz
+    auto previous = std::chrono::steady_clock::now();
+    auto lag = std::chrono::duration<float>(0.0f);
+    const auto timeBetweenUpdates = std::chrono::duration<float>(1.0f/60.0f); // 60 Hz
     bool ticked = false;
     while(running) {
-        auto frameStartTime = chrono::steady_clock::now();
-        chrono::duration<float> timeElapsed = frameStartTime-previous;
+        auto frameStartTime = std::chrono::steady_clock::now();
+        std::chrono::duration<float> timeElapsed = frameStartTime-previous;
         currentFPS = 1.0f / timeElapsed.count();
         lag += timeElapsed;
         previous = frameStartTime;
@@ -481,7 +482,7 @@ void Carrot::Engine::initWindow() {
 }
 
 void Carrot::Engine::initVulkan() {
-    resourceAllocator = make_unique<ResourceAllocator>(vkDriver);
+    resourceAllocator = std::make_unique<ResourceAllocator>(vkDriver);
 
     createCameras();
 
@@ -692,8 +693,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     {
         ZoneScopedN("Present");
 
-        vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[currentFrame]};
-        vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        std::vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[currentFrame]};
+        std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
         vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
         game->changeGraphicsWaitSemaphores(imageIndex, waitSemaphores, waitStages);
@@ -787,14 +788,15 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
-    cout << "========== RESIZE ==========" << std::endl;
+    // TODO: debug only, remove
+    std::cout << "========== RESIZE ==========" << std::endl;
     vkDriver.fetchNewFramebufferSize();
 
     framebufferResized = false;
 
     getLogicalDevice().waitIdle();
 
-    size_t previousImageCount = getSwapchainImageCount();
+    std::size_t previousImageCount = getSwapchainImageCount();
     vkDriver.cleanupSwapchain();
     vkDriver.createSwapChain();
 
@@ -845,22 +847,22 @@ vk::Queue& Carrot::Engine::getPresentQueue() {
     return vkDriver.getPresentQueue();
 }
 
-set<uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
+std::set<std::uint32_t> Carrot::Engine::createGraphicsAndTransferFamiliesSet() {
     return vkDriver.createGraphicsAndTransferFamiliesSet();
 }
 
-uint32_t Carrot::Engine::getSwapchainImageCount() {
+std::uint32_t Carrot::Engine::getSwapchainImageCount() {
     return vkDriver.getSwapchainImageCount();
 }
 
-vector<shared_ptr<Carrot::Buffer>>& Carrot::Engine::getDebugUniformBuffers() {
+std::vector<std::shared_ptr<Carrot::Buffer>>& Carrot::Engine::getDebugUniformBuffers() {
     return vkDriver.getDebugUniformBuffers();
 }
 
-shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const string& name) {
+std::shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const std::string& name) {
     auto it = materials.find(name);
     if(it == materials.end()) {
-        materials[name] = make_shared<Material>(*this, name);
+        materials[name] = std::make_shared<Material>(*this, name);
     }
     return materials[name];
 }
@@ -869,10 +871,10 @@ void Carrot::Engine::createCameras() {
     auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
 
     if(config.runInVR) {
-        cameras[Render::Eye::LeftEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
-        cameras[Render::Eye::RightEye] = make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
+        cameras[Render::Eye::LeftEye] = std::make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
+        cameras[Render::Eye::RightEye] = std::make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
     } else {
-        auto camera = make_unique<Camera>(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
+        auto camera = std::make_unique<Camera>(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
         camera->getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
         camera->getTargetRef() = center;
         cameras[Render::Eye::NoVR] = std::move(camera);
@@ -962,7 +964,7 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 
 void Carrot::Engine::createTracyContexts() {
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        tracyCtx.emplace_back(move(make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue(), getQueueFamilies().graphicsFamily.value())));
+        tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue(), getQueueFamilies().graphicsFamily.value())));
     }
 }
 
@@ -982,14 +984,14 @@ void Carrot::Engine::tick(double deltaTime) {
 void Carrot::Engine::takeScreenshot() {
     namespace fs = std::filesystem;
 
-    auto currentTime = chrono::system_clock::now().time_since_epoch().count();
+    auto currentTime = std::chrono::system_clock::now().time_since_epoch().count();
     auto screenshotFolder = fs::current_path() / "screenshots";
     if(!fs::exists(screenshotFolder)) {
         if(!fs::create_directories(screenshotFolder)) {
-            throw runtime_error("Could not create screenshot folder");
+            throw std::runtime_error("Could not create screenshot folder");
         }
     }
-    auto screenshotPath = screenshotFolder / (to_string(currentTime) + ".png");
+    auto screenshotPath = screenshotFolder / (std::to_string(currentTime) + ".png");
 
     auto& lastImage = vkDriver.getSwapchainTextures()[lastFrameIndex];
 
@@ -1072,7 +1074,7 @@ void Carrot::Engine::takeScreenshot() {
 }
 
 void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
-    static vector<SimpleVertex> skyboxVertices = {
+    static std::vector<SimpleVertex> skyboxVertices = {
             { { 1.0f, -1.0f, -1.0f } },
             { { 1.0f, -1.0f, 1.0f } },
             { { -1.0f, -1.0f, -1.0f } },
@@ -1082,7 +1084,7 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
             { { -1.0f, 1.0f, -1.0f } },
             { { -1.0f, 1.0f, 1.0f } },
     };
-    static vector<uint32_t> skyboxIndices = {
+    static std::vector<std::uint32_t> skyboxIndices = {
             1, 2, 0,
             3, 6, 2,
             7, 4, 6,
@@ -1162,7 +1164,7 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
     updateImGuiTextures(getSwapchainImageCount());
 }
 
-void Carrot::Engine::updateImGuiTextures(size_t swapchainLength) {
+void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
     imguiTextures.resize(swapchainLength);
     for (int i = 0; i < swapchainLength; ++i) {
         auto& textures = imguiTextures[i];

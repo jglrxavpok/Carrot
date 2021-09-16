@@ -11,7 +11,7 @@ namespace Carrot {
     class LoadingScreen {
     private:
         Engine& engine;
-        unique_ptr<Image> loadingImage;
+        std::unique_ptr<Image> loadingImage;
 
     public:
         explicit LoadingScreen(Engine& engine);

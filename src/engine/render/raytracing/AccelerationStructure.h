@@ -10,7 +10,7 @@ namespace Carrot {
     class AccelerationStructure {
     private:
         VulkanDriver& driver;
-        unique_ptr<Buffer> buffer = nullptr;
+        std::unique_ptr<Buffer> buffer = nullptr;
         vk::UniqueAccelerationStructureKHR as{};
 
     public:

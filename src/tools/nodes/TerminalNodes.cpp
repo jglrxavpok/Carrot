@@ -15,6 +15,6 @@ std::shared_ptr<Carrot::Expression> Tools::TerminalNode::toExpression(uint32_t p
 
         index++;
     }
-    return make_shared<Carrot::CompoundExpression>(std::move(expressions));
+    return std::make_shared<Carrot::CompoundExpression>(std::move(expressions));
 }
 

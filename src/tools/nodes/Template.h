@@ -52,7 +52,7 @@ namespace Tools {
             );
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override;
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override;
 
     private:
         void loadInternalGraph(const rapidjson::Value& graphJson);

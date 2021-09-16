@@ -32,20 +32,20 @@ void Carrot::RayTracer::generateBuffers() {
         return;
     sceneBuffers.resize(renderer.getSwapchainImageCount());
     for (int i = 0; i < renderer.getSwapchainImageCount(); ++i) {
-        sceneBuffers[i] = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                              sizeof(SceneElement)*maxInstances/* TODO: proper size for scene description*/,
-                                              vk::BufferUsageFlagBits::eStorageBuffer,
-                                              vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+        sceneBuffers[i] = std::make_unique<Buffer>(renderer.getVulkanDriver(),
+                                                   sizeof(SceneElement)*maxInstances/* TODO: proper size for scene description*/,
+                                                   vk::BufferUsageFlagBits::eStorageBuffer,
+                                                   vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
 
     lightBuffer = RaycastedShadowingLightBuffer::create(16);
 
     lightVkBuffers.resize(renderer.getSwapchainImageCount());
     for (int i = 0; i < renderer.getSwapchainImageCount(); ++i) {
-        lightVkBuffers[i] = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                                lightBuffer->getStructSize(),
-                                                vk::BufferUsageFlagBits::eStorageBuffer,
-                                                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+        lightVkBuffers[i] = std::make_unique<Buffer>(renderer.getVulkanDriver(),
+                                                     lightBuffer->getStructSize(),
+                                                     vk::BufferUsageFlagBits::eStorageBuffer,
+                                                     vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
 }
 
@@ -65,9 +65,9 @@ void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     ZoneScoped;
     // TODO: proper size
     renderer.getASBuilder().startFrame();
-    vector<SceneElement> sceneElements(maxInstances);
+    std::vector<SceneElement> sceneElements(maxInstances);
     auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
-    size_t maxInstance = topLevel.size();
+    std::size_t maxInstance = topLevel.size();
     for (int i = 0; i < maxInstances; ++i) {
         sceneElements[i].mappedIndex = i;
         if(i < maxInstance) {
@@ -92,12 +92,12 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
     // TODO: push constants
 
     // tell the GPU how the SBT is set up
-    uint32_t groupSize = alignUp(rayTracingProperties.shaderGroupHandleSize, rayTracingProperties.shaderGroupBaseAlignment);
-    uint32_t groupStride = groupSize;
+    std::uint32_t groupSize = alignUp(rayTracingProperties.shaderGroupHandleSize, rayTracingProperties.shaderGroupBaseAlignment);
+    std::uint32_t groupStride = groupSize;
     vk::DeviceAddress sbtAddress = renderer.getVulkanDriver().getLogicalDevice().getBufferAddress({.buffer = sbtBuffer->getVulkanBuffer()});
 
     using Stride = vk::StridedDeviceAddressRegionKHR;
-    array<Stride, 4> strideAddresses {
+    std::array<Stride, 4> strideAddresses {
         Stride { sbtAddress + 0u * groupSize, groupStride, groupSize*1 }, // raygen
         Stride { sbtAddress + 1u * groupSize, groupStride, groupSize*1 }, // miss + miss shadow
         Stride { sbtAddress + 3u * groupSize, groupStride, groupSize*1 }, // hit
@@ -111,7 +111,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
     }
 }
 
-vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
+std::vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
     return {
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -143,7 +143,7 @@ void Carrot::RayTracer::createRTDescriptorSets() {
             .pPoolSizes = rtSizes.data()
     }, renderer.getVulkanDriver().getAllocationCallbacks());
 
-    array<vk::DescriptorSetLayoutBinding, 2> rtBindings = {
+    std::array<vk::DescriptorSetLayoutBinding, 2> rtBindings = {
             vk::DescriptorSetLayoutBinding {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
@@ -163,7 +163,7 @@ void Carrot::RayTracer::createRTDescriptorSets() {
             .pBindings = rtBindings.data()
     }, renderer.getVulkanDriver().getAllocationCallbacks());
 
-    vector<vk::DescriptorSetLayout> rtLayouts = {renderer.getSwapchainImageCount(), *rtDescriptorLayout};
+    std::vector<vk::DescriptorSetLayout> rtLayouts = {renderer.getSwapchainImageCount(), *rtDescriptorLayout};
 
     if(renderer.getConfiguration().runInVR) {
         rtDescriptorSets[Render::Eye::LeftEye] = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
@@ -228,7 +228,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             .pPoolSizes = sceneSizes.data()
     }, renderer.getVulkanDriver().getAllocationCallbacks());
 
-    vector<vk::DescriptorSetLayoutBinding> sceneBindings = {
+    std::vector<vk::DescriptorSetLayoutBinding> sceneBindings = {
             // Scene Elements
             vk::DescriptorSetLayoutBinding {
                     .binding = 1,
@@ -267,7 +267,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
             .pBindings = sceneBindings.data()
     }, renderer.getVulkanDriver().getAllocationCallbacks());
 
-    vector<vk::DescriptorSetLayout> sceneLayouts = {renderer.getSwapchainImageCount(), *sceneDescriptorLayout};
+    std::vector<vk::DescriptorSetLayout> sceneLayouts = {renderer.getSwapchainImageCount(), *sceneDescriptorLayout};
 
     sceneDescriptorSets = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
             .descriptorPool = *sceneDescriptorPool,
@@ -290,7 +290,7 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
                 .range = lightBuffer->getStructSize(),
         };
 
-        vector<vk::WriteDescriptorSet> writes = {
+        std::vector<vk::WriteDescriptorSet> writes = {
                 vk::WriteDescriptorSet {
                         .dstSet = set,
                         .dstBinding = 1,
@@ -379,7 +379,7 @@ void Carrot::RayTracer::createPipeline() {
 
     // TODO: push constants
 
-    vector<vk::DescriptorSetLayout> setLayouts = {
+    std::vector<vk::DescriptorSetLayout> setLayouts = {
             *rtDescriptorLayout,
             *sceneDescriptorLayout,
             renderer.getVulkanDriver().getMainCameraDescriptorSetLayout(),
@@ -419,15 +419,15 @@ void Carrot::RayTracer::createShaderBindingTable() {
 
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
-    vector<uint8_t> shaderHandleStorage(sbtSize);
+    std::vector<uint8_t> shaderHandleStorage(sbtSize);
 
     auto result = device.getRayTracingShaderGroupHandlesKHR(*pipeline, 0, groupCount, sbtSize, shaderHandleStorage.data());
     assert(result == vk::Result::eSuccess);
 
-    sbtBuffer = make_unique<Buffer>(renderer.getVulkanDriver(),
-                                    sbtSize,
-                                    vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eTransferDst,
-                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+    sbtBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
+                                         sbtSize,
+                                         vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eTransferDst,
+                                         vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
                                     );
 
     sbtBuffer->setDebugNames("SBT");
@@ -448,8 +448,8 @@ void Carrot::RayTracer::registerBuffer(uint32_t bindingIndex, const Buffer& vert
         return;
     auto& device = renderer.getVulkanDriver().getLogicalDevice();
 
-    vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount()};
-    vector<vk::DescriptorBufferInfo> bufferInfo{renderer.getSwapchainImageCount()};
+    std::vector<vk::WriteDescriptorSet> writes{renderer.getSwapchainImageCount()};
+    std::vector<vk::DescriptorBufferInfo> bufferInfo{renderer.getSwapchainImageCount()};
     for(size_t frameIndex = 0; frameIndex < renderer.getSwapchainImageCount(); frameIndex++) {
         vk::WriteDescriptorSet& write = writes[frameIndex];
         vk::DescriptorBufferInfo& buffer = bufferInfo[frameIndex];
@@ -500,7 +500,7 @@ void Carrot::RayTracer::finishInit() {
                     .pAccelerationStructures = &renderer.getASBuilder().getTopLevelAS().as->getVulkanAS(),
             };
 
-            array<vk::WriteDescriptorSet, 1> writes = {
+            std::array<vk::WriteDescriptorSet, 1> writes = {
                     vk::WriteDescriptorSet {
                             .pNext = &writeAS,
                             .dstSet = set,
@@ -529,7 +529,7 @@ void Carrot::RayTracer::init() {
     createShaderBindingTable();
 }
 
-void Carrot::RayTracer::onSwapchainImageCountChange(size_t newCount) {
+void Carrot::RayTracer::onSwapchainImageCountChange(std::size_t newCount) {
     if(!enabled)
         return;
     if(!hasStuffToDraw)

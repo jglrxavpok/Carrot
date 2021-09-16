@@ -15,19 +15,19 @@ namespace Carrot {
 
         Carrot::VulkanDriver& driver;
         /// <vertices>+<indices> at the end of the vertex list, to better use cache
-        unique_ptr<Carrot::Buffer> vertexAndIndexBuffer = nullptr;
+        std::unique_ptr<Carrot::Buffer> vertexAndIndexBuffer = nullptr;
 
         /// How many indices are inside this mesh? Used for the actual drawcall
-        uint64_t indexCount = 0;
-        uint64_t vertexCount = 0;
+        std::uint64_t indexCount = 0;
+        std::uint64_t vertexCount = 0;
 
         /// Index at which indices start inside the buffer
-        uint64_t vertexStartOffset = 0;
+        std::uint64_t vertexStartOffset = 0;
 
-        uint64_t meshID = 0;
+        std::uint64_t meshID = 0;
 
     protected:
-        void setDebugNames(const string& name) override;
+        void setDebugNames(const std::string& name) override;
 
     public:
         template<typename VertexType>
@@ -39,13 +39,13 @@ namespace Carrot {
         void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
         void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
 
-        uint64_t getIndexCount() const;
-        uint64_t getVertexCount() const;
-        uint64_t getVertexStartOffset() const;
+        std::uint64_t getIndexCount() const;
+        std::uint64_t getVertexCount() const;
+        std::uint64_t getVertexStartOffset() const;
 
         Carrot::Buffer& getBackingBuffer();
 
-        uint64_t getMeshID() const;
+        std::uint64_t getMeshID() const;
     };
 }
 

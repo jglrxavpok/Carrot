@@ -9,24 +9,22 @@
 #include "dr_wav.h"
 
 namespace Carrot {
-    using namespace std;
-
     class WavDecoder: public AudioDecoder {
     private:
         drwav wav;
 
     public:
-        explicit WavDecoder(string filename);
+        explicit WavDecoder(const std::string& filename);
 
         size_t getSampleCount() override;
 
         uint64_t getFrequency() override;
 
-        vector<float> extractSamples(size_t sampleCount) override;
+        std::vector<float> extractSamples(std::size_t sampleCount) override;
 
         ALenum getFormat() override;
 
-        void seek(size_t sampleIndex) override;
+        void seek(std::size_t sampleIndex) override;
 
         uint64_t getChannelCount() override;
 

@@ -11,14 +11,12 @@
 #include <thread>
 
 namespace Carrot {
-    using namespace std;
-
     class SoundThread {
     private:
         bool running = false;
         std::thread backingThread;
         std::mutex sourceMutex;
-        vector<shared_ptr<SoundSource>> currentSources;
+        std::vector<std::shared_ptr<SoundSource>> currentSources;
 
         SoundThread();
 
@@ -27,9 +25,10 @@ namespace Carrot {
         ~SoundThread();
 
     public:
-        void registerSoundSource(const shared_ptr<SoundSource>& source);
+        void registerSoundSource(const std::shared_ptr<SoundSource>& source);
 
         static SoundThread& instance() {
+            // TODO: put in single .cpp, this probably does not work as-is (one instance per .cpp which includes SoundThread.h)
             static SoundThread threadInstance{};
             return threadInstance;
         }

@@ -37,15 +37,15 @@ namespace Carrot {
 
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Instance offset can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
-        shared_ptr<Pipeline> getOrCreatePipeline(const string& name, std::uint64_t instanceOffset = 0);
+        std::shared_ptr<Pipeline> getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset = 0);
 
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
-        shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const string& name, const vk::RenderPass& pass);
+        std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& pass);
 
-        std::shared_ptr<Render::Texture>& getOrCreateTexture(const string& textureName);
+        std::shared_ptr<Render::Texture>& getOrCreateTexture(const std::string& textureName);
 
-        void recreateDescriptorPools(size_t frameCount);
+        void recreateDescriptorPools(std::size_t frameCount);
 
     public:
         void beforeFrameCommand(const CommandBufferConsumer& command);
@@ -57,7 +57,7 @@ namespace Carrot {
         void postFrame();
 
     public:
-        size_t getSwapchainImageCount() { return driver.getSwapchainImageCount(); };
+        std::size_t getSwapchainImageCount() { return driver.getSwapchainImageCount(); };
         VulkanDriver& getVulkanDriver() { return driver; };
 
         ASBuilder& getASBuilder() { return *asBuilder; };
@@ -76,7 +76,7 @@ namespace Carrot {
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
-        void onSwapchainImageCountChange(size_t newCount) override;
+        void onSwapchainImageCountChange(std::size_t newCount) override;
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
@@ -104,8 +104,8 @@ namespace Carrot {
         VulkanDriver& driver;
         Configuration config;
 
-        map<std::pair<std::string, std::uint64_t>, shared_ptr<Pipeline>> pipelines{};
-        map<std::string, Render::Texture::Ref> textures{};
+        std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
+        std::map<std::string, Render::Texture::Ref> textures{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 

@@ -7,7 +7,7 @@
 #include <utility>
 #include <stdexcept>
 
-Carrot::WavDecoder::WavDecoder(std::string filename): AudioDecoder(std::move(filename)), wav() {
+Carrot::WavDecoder::WavDecoder(const std::string& filename): AudioDecoder(filename), wav() {
     if(!drwav_init_file(&wav, this->filename.c_str(), nullptr)) {
         throw std::runtime_error("Failed to open WAV file: "+filename);
     }
@@ -22,7 +22,7 @@ uint64_t Carrot::WavDecoder::getFrequency() {
 }
 
 std::vector<float> Carrot::WavDecoder::extractSamples(size_t sampleCount) {
-    vector<float> buffer;
+    std::vector<float> buffer;
     buffer.resize(sampleCount * sizeof(float) * wav.channels);
     auto read = drwav_read_pcm_frames_f32(&wav, sampleCount, buffer.data());
     buffer.resize(read);

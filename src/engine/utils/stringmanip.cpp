@@ -6,14 +6,14 @@
 #include <cctype>
 #include <codecvt>
 
-vector<string> Carrot::splitString(const string& toSplit, const string& delimiter) {
-    vector<string> parts{};
+std::vector<std::string> Carrot::splitString(const std::string& toSplit, const std::string& delimiter) {
+    std::vector<std::string> parts{};
 
-    string remaining = toSplit;
+    std::string remaining = toSplit;
     while(!remaining.empty()) {
         auto nextDelimiter = remaining.find(delimiter);
         parts.push_back(remaining.substr(0, nextDelimiter));
-        if(nextDelimiter == string::npos) {
+        if(nextDelimiter == std::string::npos) {
             remaining = "";
         } else {
             remaining = remaining.substr(nextDelimiter+1);
@@ -22,7 +22,7 @@ vector<string> Carrot::splitString(const string& toSplit, const string& delimite
     return parts;
 }
 
-std::string Carrot::toLowerCase(const string& str) {
+std::string Carrot::toLowerCase(const std::string& str) {
     std::string result = str;
     for(auto& c : result) {
         c = std::tolower(c);
@@ -30,7 +30,7 @@ std::string Carrot::toLowerCase(const string& str) {
     return result;
 }
 
-std::string Carrot::toUpperCase(const string& str) {
+std::string Carrot::toUpperCase(const std::string& str) {
     std::string result = str;
     for(auto& c : result) {
         c = std::toupper(c);

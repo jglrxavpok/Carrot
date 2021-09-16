@@ -13,13 +13,13 @@ namespace Carrot {
     private:
         MaterialID id = 0;
         Carrot::Engine& engine;
-        shared_ptr<Pipeline> pipeline = nullptr;
-        shared_ptr<Pipeline> renderingPipeline = nullptr;
+        std::shared_ptr<Pipeline> pipeline = nullptr;
+        std::shared_ptr<Pipeline> renderingPipeline = nullptr;
         TextureID textureID{0xFFFFFFFF};
         bool ignoreInstanceColor = false;
 
     public:
-        explicit Material(Carrot::Engine& engine, const string& materialName);
+        explicit Material(Carrot::Engine& engine, const std::string& materialName);
 
         MaterialID getMaterialID() const;
         TextureID getTextureID() const;

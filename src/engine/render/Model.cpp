@@ -15,7 +15,7 @@
 #include <engine/utils/conversions.h>
 #include <engine/io/Logging.hpp>
 
-Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(engine) {
+Carrot::Model::Model(Carrot::Engine& engine, const std::string& filename): engine(engine) {
     ZoneScoped;
     TracyMessageL(filename.c_str());
 
@@ -23,15 +23,15 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
     const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
 
     if(!scene) {
-        throw runtime_error("Failed to load model "+filename);
+        throw std::runtime_error("Failed to load model "+filename);
     }
 
     Carrot::Log::info("Loading model %s", filename.c_str());
 
-    map<uint32_t, shared_ptr<Material>> materialMap{};
-    for(size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
+    std::map<std::uint32_t, std::shared_ptr<Material>> materialMap{};
+    for(std::size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
         const aiMaterial* mat = scene->mMaterials[materialIndex];
-        string materialName = mat->GetName().data;
+        std::string materialName = mat->GetName().data;
 
         // TODO: remove ugly hack, maybe due to Assimp creating a default material?
         if(materialName == "DefaultMaterial") {
@@ -44,16 +44,16 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
         materialMap[materialIndex] = material;
     }
 
-    unordered_map<string, uint32_t> boneMapping{};
-    unordered_map<string, glm::mat4> offsetMatrices{};
+    std::unordered_map<std::string, std::uint32_t> boneMapping{};
+    std::unordered_map<std::string, glm::mat4> offsetMatrices{};
     aiNode* armature = scene->mRootNode;
 
-    for(size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
+    for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
         auto material = materialMap[mesh->mMaterialIndex];
         auto loadedMesh = loadMesh(material->getPipeline().getVertexFormat(), mesh, boneMapping, offsetMatrices);
 
-        loadedMesh->name(filename+", mesh #"+to_string(loadedMesh->getMeshID()));
+        loadedMesh->name(filename+", mesh #"+std::to_string(loadedMesh->getMeshID()));
         meshes[material.get()].push_back(loadedMesh);
     }
 
@@ -63,19 +63,19 @@ Carrot::Model::Model(Carrot::Engine& engine, const string& filename): engine(eng
 }
 
 void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                                   const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, glm::mat4>& offsetMatrices, const aiNode *armature) {
+                                   const std::unordered_map<std::string, std::uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature) {
 
     glm::mat4 globalInverseTransform = glm::inverse(glmMat4FromAssimp(armature->mTransformation));
 
     // load animations into staging buffer
-    vector<Animation> allAnimations{};
+    std::vector<Animation> allAnimations{};
     for(int animationIndex = 0; animationIndex < scene->mNumAnimations; animationIndex++) {
         aiAnimation* anim = scene->mAnimations[animationIndex];
-        string name = anim->mName.data;
+        std::string name = anim->mName.data;
 
         // collect all timestamps
-        set<float> timestampSet{};
-        unordered_map<string, aiNodeAnim*> animationNodes{};
+        std::set<float> timestampSet{};
+        std::unordered_map<std::string, aiNodeAnim*> animationNodes{};
         // TODO: reduce timestamp count by removing duplicates
         for(int channelIndex = 0; channelIndex < anim->mNumChannels; channelIndex++) {
             aiNodeAnim* node = anim->mChannels[channelIndex];
@@ -94,12 +94,12 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
         allAnimations.emplace_back();
         auto& animation = allAnimations[animationIndex];
         if(timestampSet.size() > Carrot::MAX_KEYFRAMES_PER_ANIMATION) {
-            throw runtime_error("Too many keyframes: "+to_string(timestampSet.size()));
+            throw std::runtime_error("Too many keyframes: "+std::to_string(timestampSet.size()));
         }
         animation.keyframeCount = timestampSet.size();
         animation.duration = anim->mDuration / anim->mTicksPerSecond;
 
-        vector<float> timestamps = {timestampSet.begin(), timestampSet.end()};
+        std::vector<float> timestamps = {timestampSet.begin(), timestampSet.end()};
         for(size_t index = 0; index < timestamps.size(); index++) {
             float time = timestamps[index];
             auto& keyframe = animation.keyframes[index];
@@ -112,7 +112,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     }
 
     // upload staging buffer to GPU buffer
-    this->animationData = make_unique<Carrot::Buffer>(engine.getVulkanDriver(),
+    this->animationData = std::make_unique<Carrot::Buffer>(engine.getVulkanDriver(),
                                                       sizeof(Carrot::Animation) * scene->mNumAnimations,
                                                       vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -141,7 +141,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
         .pPoolSizes = &size,
     }, engine.getAllocator());
 
-    vector<vk::DescriptorSetLayout> layouts = {engine.getSwapchainImageCount(), *animationSetLayout};
+    std::vector<vk::DescriptorSetLayout> layouts = {engine.getSwapchainImageCount(), *animationSetLayout};
     animationDescriptorSets = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
         .descriptorPool = *animationSetPool,
         .descriptorSetCount = engine.getSwapchainImageCount(),
@@ -153,7 +153,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
         .offset = 0,
         .range = animationData->getSize(),
     };
-    vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()};
+    std::vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()};
     for(size_t writeIndex = 0; writeIndex < writes.size(); writeIndex++) {
         auto& write = writes[writeIndex];
         write.descriptorCount = 1;
@@ -166,7 +166,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 }
 
-void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, uint32_t instanceCount) {
+void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
         material->bindForRender(pass, renderContext, commands);
@@ -181,7 +181,7 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
     }
 }
 
-void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const map<MeshID, shared_ptr<Carrot::Buffer>>& indirectDrawCommands, uint32_t drawCount) {
+void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
     for(const auto& material : materials) {
         material->bindForRender(pass, renderContext, commands);
@@ -194,10 +194,10 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
     }
 }
 
-shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, unordered_map<string, uint32_t>& boneMapping, unordered_map<string, glm::mat4>& offsetMatrices) {
-    vector<Vertex> vertices{};
-    vector<SkinnedVertex> skinnedVertices{};
-    vector<uint32_t> indices{};
+std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices) {
+    std::vector<Vertex> vertices{};
+    std::vector<SkinnedVertex> skinnedVertices{};
+    std::vector<std::uint32_t> indices{};
 
     bool usesSkinning = vertexFormat == VertexFormat::SkinnedVertex || vertexFormat == VertexFormat::ComputeSkinnedVertex;
 
@@ -251,7 +251,7 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
     }
 
     if(usesSkinning) {
-        for(size_t boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++) {
+        for(std::size_t boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++) {
             aiBone* bone = mesh->mBones[boneIndex];
 
             for(int i = 0; i < bone->mNumWeights; i++) {
@@ -265,10 +265,10 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
         }
     }
 
-    for(size_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++) {
+    for(std::size_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++) {
         const aiFace face = mesh->mFaces[faceIndex];
         if(face.mNumIndices != 3) {
-            throw runtime_error("Can only load triangles.");
+            throw std::runtime_error("Can only load triangles.");
         }
 
         indices.push_back(face.mIndices[0]);
@@ -277,16 +277,16 @@ shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexForm
     }
 
     if(usesSkinning) {
-        return make_shared<Mesh>(engine.getVulkanDriver(), skinnedVertices, indices);
+        return std::make_shared<Mesh>(engine.getVulkanDriver(), skinnedVertices, indices);
     } else {
-        return make_shared<Mesh>(engine.getVulkanDriver(), vertices, indices);
+        return std::make_shared<Mesh>(engine.getVulkanDriver(), vertices, indices);
     }
 }
 
-void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const aiNode* armature, float time, const unordered_map<string, uint32_t>& boneMapping, const unordered_map<string, aiNodeAnim*>& animationNodes, const unordered_map<string, glm::mat4>& offsetMatrices, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix) {
+void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, std::uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix) {
     if(armature == nullptr)
         return;
-    string boneName = armature->mName.data;
+    std::string boneName = armature->mName.data;
     auto potentialMapping = boneMapping.find(boneName);
     auto potentialAnim = animationNodes.find(boneName);
     glm::mat4 nodeTransform = glmMat4FromAssimp(armature->mTransformation);
@@ -346,8 +346,8 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
     }
 }
 
-vector<shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
-    vector<shared_ptr<Mesh>> result{};
+std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
+    std::vector<std::shared_ptr<Mesh>> result{};
     for(const auto& [material, meshes] : meshes) {
         for(const auto& mesh : meshes) {
             result.push_back(mesh);
@@ -356,8 +356,8 @@ vector<shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
     return result;
 }
 
-const map<Carrot::MaterialID, vector<shared_ptr<Carrot::Mesh>>> Carrot::Model::getMaterialToMeshMap() const {
-    map<MaterialID, vector<shared_ptr<Mesh>>> result{};
+const std::map<Carrot::MaterialID, std::vector<std::shared_ptr<Carrot::Mesh>>> Carrot::Model::getMaterialToMeshMap() const {
+    std::map<MaterialID, std::vector<std::shared_ptr<Mesh>>> result{};
     for(const auto& [material, meshList] : meshes) {
         result[material->getMaterialID()] = meshList;
     }

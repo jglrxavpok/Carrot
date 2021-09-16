@@ -8,10 +8,10 @@
 Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
                                                      vk::AccelerationStructureCreateInfoKHR& createInfo): driver(driver) {
     // allocate buffer to store AS
-    buffer = make_unique<Buffer>(driver,
-                                 createInfo.size,
-                                 vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
-                                 vk::MemoryPropertyFlagBits::eDeviceLocal);
+    buffer = std::make_unique<Buffer>(driver,
+                                      createInfo.size,
+                                      vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                      vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     createInfo.buffer = buffer->getVulkanBuffer();
 

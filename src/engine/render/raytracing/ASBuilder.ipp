@@ -6,10 +6,10 @@
 // Logic based on NVIDIA nvpro-samples tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
 
 template<typename VertexType>
-vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carrot::Model& model) {
+std::vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carrot::Model& model) {
     if(!enabled)
         return {};
-    vector<Carrot::GeometryInput*> geometries{};
+    std::vector<Carrot::GeometryInput*> geometries{};
     for(const auto& mesh : model.getMeshes()) {
         auto geom = addGeometries<VertexType>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, mesh->getBackingBuffer(), mesh->getVertexCount(), {mesh->getVertexStartOffset()});
         geometries.push_back(geom);
@@ -19,7 +19,7 @@ vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carro
 
 template<typename VertexType>
 Carrot::GeometryInput* Carrot::ASBuilder::addGeometries(const Carrot::Buffer& indexBuffer, uint64_t indexCount, uint64_t indexOffset,
-                                      const Carrot::Buffer& vertexBuffer, uint64_t vertexCount, const vector<uint64_t>& vertexOffsets) {
+                                      const Carrot::Buffer& vertexBuffer, uint64_t vertexCount, const std::vector<uint64_t>& vertexOffsets) {
     if(!enabled)
         return nullptr;
     // index buffer is assumed to be the same for all subranges

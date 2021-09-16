@@ -20,22 +20,20 @@ namespace Carrot {
 }
 
 namespace Game {
-    using namespace Carrot;
-
-    class Game: public CarrotGame {
+    class Game: public Carrot::CarrotGame {
     protected:
-        unique_ptr<Model> mapModel = nullptr;
-        unique_ptr<Model> model = nullptr;
-        unique_ptr<Buffer> mapInstanceBuffer = nullptr;
+        std::unique_ptr<Carrot::Model> mapModel = nullptr;
+        std::unique_ptr<Carrot::Model> model = nullptr;
+        std::unique_ptr<Carrot::Buffer> mapInstanceBuffer = nullptr;
 
-        unique_ptr<AnimatedInstances> animatedUnits = nullptr;
+        std::unique_ptr<Carrot::AnimatedInstances> animatedUnits = nullptr;
 
-        World world;
-        unique_ptr<ParticleBlueprint> blueprint = nullptr;
-        unique_ptr<ParticleSystem> particles = nullptr;
+        Carrot::World world;
+        std::unique_ptr<Carrot::ParticleBlueprint> blueprint = nullptr;
+        std::unique_ptr<Carrot::ParticleSystem> particles = nullptr;
 
     public:
-        explicit Game(Engine& engine);
+        explicit Game(Carrot::Engine& engine);
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -45,7 +43,7 @@ namespace Game {
 
         void onMouseMove(double dx, double dy) override {}
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override;
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 

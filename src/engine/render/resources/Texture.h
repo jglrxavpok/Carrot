@@ -36,10 +36,10 @@ namespace Carrot::Render {
                          vk::Extent3D extent,
                          vk::ImageUsageFlags usage,
                          vk::Format format,
-                         const set<uint32_t>& families = {},
+                         const std::set<uint32_t>& families = {},
                          vk::ImageCreateFlags flags = static_cast<vk::ImageCreateFlags>(0),
                          vk::ImageType type = vk::ImageType::e2D,
-                         uint32_t layerCount = 1);
+                         std::uint32_t layerCount = 1);
 
         /// Create texture from a given file
         explicit Texture(Carrot::VulkanDriver& driver, const Resource& resource, FileFormat format = FileFormat::PNG);
@@ -49,7 +49,7 @@ namespace Carrot::Render {
                          vk::Image image,
                          vk::Extent3D extent,
                          vk::Format format,
-                         uint32_t layerCount = 1);
+                         std::uint32_t layerCount = 1);
 
         /// Wrap Carrot::Image into a Texture. DOES NOT own the image
         explicit Texture(const Carrot::Image& image);
@@ -89,15 +89,15 @@ namespace Carrot::Render {
         static void registerUsertype(sol::state& destination);
 
     protected:
-        void setDebugNames(const string& name) override;
+        void setDebugNames(const std::string& name) override;
 
     private:
         using FormatAspectPair = std::pair<vk::Format, vk::ImageAspectFlags>;
         struct HashFormatAspectPair {
             size_t operator()(const FormatAspectPair& p) const
             {
-                auto hash1 = hash<vk::Format>{}(p.first);
-                auto hash2 = hash<unsigned int>{}(p.second.operator unsigned int());
+                auto hash1 = std::hash<vk::Format>{}(p.first);
+                auto hash2 = std::hash<unsigned int>{}(p.second.operator unsigned int());
                 return hash1 ^ hash2;
             }
         };

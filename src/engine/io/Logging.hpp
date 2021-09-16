@@ -73,7 +73,7 @@ namespace Carrot::Log {
 
         getMessages().emplace_back(Message {
             .severity = severity,
-            .timestamp = static_cast<uint64_t>(timestamp.count()),
+            .timestamp = static_cast<std::uint64_t>(timestamp.count()),
             .message = message,
         });
     }

@@ -51,8 +51,8 @@ namespace Tools {
 
     class EditorNode: public std::enable_shared_from_this<EditorNode> {
     protected:
-        std::vector<shared_ptr<Input>> inputs;
-        std::vector<shared_ptr<Output>> outputs;
+        std::vector<std::shared_ptr<Input>> inputs;
+        std::vector<std::shared_ptr<Output>> outputs;
 
         Input& newInput(std::string name, Carrot::ExpressionType type);
         Output& newOutput(std::string name, Carrot::ExpressionType type);
@@ -63,7 +63,7 @@ namespace Tools {
         EditorGraph& graph;
 
     private:
-        uuids::uuid id = Carrot::randomUUID();
+        Carrot::UUID id = Carrot::randomUUID();
         bool updatePosition = true;
         ImVec2 position{};
 

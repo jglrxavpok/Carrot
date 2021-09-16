@@ -7,8 +7,6 @@
 #include "engine/vulkan/includes.h"
 #include "engine/Engine.h"
 
-using namespace std;
-
 template<typename CommandBufferConsumer>
 void Carrot::Engine::performSingleTimeTransferCommands(CommandBufferConsumer&& consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags) {
     vkDriver.performSingleTimeTransferCommands<CommandBufferConsumer>(consumer, waitFor, waitSemaphore, waitDstFlags);

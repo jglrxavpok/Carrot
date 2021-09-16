@@ -14,15 +14,13 @@
 #include <engine/io/Resource.h>
 #include <span>
 
-using namespace std;
-
 namespace Carrot {
     class ShaderModule {
     public:
         struct Binding {
-            uint32_t index;
+            std::uint32_t index;
             vk::DescriptorType type;
-            uint32_t count;
+            std::uint32_t count;
 
             auto operator<=>(const Binding& rhs) const = default;
         };
@@ -30,25 +28,25 @@ namespace Carrot {
     private:
         Carrot::VulkanDriver& driver;
         vk::UniqueShaderModule vkModule{};
-        string entryPoint = "main";
+        std::string entryPoint = "main";
         spirv_cross::ParsedIR parsedCode{};
-        unique_ptr<spirv_cross::Compiler> compiler = nullptr;
-        map<uint32_t, Binding> bindingMap{};
+        std::unique_ptr<spirv_cross::Compiler> compiler = nullptr;
+        std::map<std::uint32_t, Binding> bindingMap{};
 
         void
-        createBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings,
+        createBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings,
                            vk::DescriptorType type,
                            const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                           const map<string, uint32_t>& constants);
+                           const std::map<std::string, uint32_t>& constants);
 
     public:
-        explicit ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource resource, const string& entryPoint = "main");
-        explicit ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource resource, const std::string& entryPoint = "main");
+        explicit ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const std::string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
-        void addBindingsSet0(vk::ShaderStageFlagBits stage, vector<NamedBinding>& bindings, const map<string, uint32_t>& constants);
+        void addBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings, const std::map<std::string, uint32_t>& constants);
 
-        void addPushConstants(vk::ShaderStageFlagBits stage, vector<vk::PushConstantRange>& pushConstants) const;
+        void addPushConstants(vk::ShaderStageFlagBits stage, std::vector<vk::PushConstantRange>& pushConstants) const;
     };
 }

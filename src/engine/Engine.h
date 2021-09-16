@@ -32,8 +32,6 @@ namespace Carrot {
 #include "engine/io/actions/InputVectors.h"
 #include "engine/async/Coroutines.hpp"
 
-using namespace std;
-
 namespace sol {
     class state;
 }
@@ -80,7 +78,7 @@ namespace Carrot {
     /// Base class interfacing with Vulkan
     class Engine: public SwapchainAware {
     public:
-        vector<unique_ptr<TracyVulkanContext>> tracyCtx{};
+        std::vector<std::unique_ptr<TracyVulkanContext>> tracyCtx{};
 
         /// Init the engine with the given GLFW window. Will immediately load Vulkan resources
         explicit Engine(NakedPtr<GLFWwindow> window, Configuration config = {});
@@ -152,14 +150,14 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeGraphicsCommands(CommandBufferConsumer&& consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0));
 
-        uint32_t getSwapchainImageCount();
+        std::uint32_t getSwapchainImageCount();
 
-        vector<shared_ptr<Buffer>>& getDebugUniformBuffers();
+        std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers();
 
-        shared_ptr<Material> getOrCreateMaterial(const string& name);
+        std::shared_ptr<Material> getOrCreateMaterial(const std::string& name);
 
         /// Creates a set with the graphics and transfer family indices
-        set<uint32_t> createGraphicsAndTransferFamiliesSet();
+        std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
         Camera& getCamera(Carrot::Render::Eye eye);
         Camera& getCamera();
@@ -350,35 +348,35 @@ namespace Carrot {
         VulkanDriver vkDriver;
         PresentThread presentThread;
         VulkanRenderer renderer;
-        uint32_t lastFrameIndex = 0;
-        uint32_t frames = 0;
+        std::uint32_t lastFrameIndex = 0;
+        std::uint32_t frames = 0;
         std::uint32_t swapchainImageIndexRightNow = 0;
 
-        unique_ptr<ResourceAllocator> resourceAllocator;
+        std::unique_ptr<ResourceAllocator> resourceAllocator;
 
         vk::UniqueCommandPool tracyCommandPool{};
-        vector<vk::CommandBuffer> tracyCommandBuffers{};
+        std::vector<vk::CommandBuffer> tracyCommandBuffers{};
 
-        vector<vk::CommandBuffer> mainCommandBuffers{};
-        vector<vk::CommandBuffer> gBufferCommandBuffers{};
-        vector<vk::CommandBuffer> gResolveCommandBuffers{};
-        vector<vk::CommandBuffer> skyboxCommandBuffers{};
-        vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
-        vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
-        vector<vk::UniqueFence> inFlightFences{};
-        vector<vk::UniqueFence> imagesInFlight{};
+        std::vector<vk::CommandBuffer> mainCommandBuffers{};
+        std::vector<vk::CommandBuffer> gBufferCommandBuffers{};
+        std::vector<vk::CommandBuffer> gResolveCommandBuffers{};
+        std::vector<vk::CommandBuffer> skyboxCommandBuffers{};
+        std::vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
+        std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
+        std::vector<vk::UniqueFence> inFlightFences{};
+        std::vector<vk::UniqueFence> imagesInFlight{};
 
-        map<string, shared_ptr<Material>> materials{};
+        std::unordered_map<std::string, std::shared_ptr<Material>> materials{}; // TODO: is it still used? If so, move to VulkanRenderer
 
-        unordered_map<Render::Eye, unique_ptr<Camera>> cameras{};
+        std::unordered_map<Render::Eye, std::unique_ptr<Camera>> cameras{};
 
         bool framebufferResized = false;
 
         Skybox::Type currentSkybox = Skybox::Type::None;
-        unique_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
-        unique_ptr<Mesh> skyboxMesh = nullptr;
+        std::unique_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
+        std::unique_ptr<Mesh> skyboxMesh = nullptr;
 
-        unique_ptr<Mesh> screenQuad = nullptr;
+        std::unique_ptr<Mesh> screenQuad = nullptr;
 
         struct ImGuiTextures {
             Render::Texture* allChannels = nullptr;
@@ -398,7 +396,7 @@ namespace Carrot {
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
-        unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
+        std::unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
         Coroutines::DeferringAwaiter nextFrameAwaiter;
 
         /// Init engine
@@ -414,10 +412,10 @@ namespace Carrot {
         void initConsole();
 
         /// Create the primary command buffers for rendering
-        void recordMainCommandBuffer(size_t frameIndex);
+        void recordMainCommandBuffer(std::size_t frameIndex);
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
-        void drawFrame(size_t currentFrame);
+        void drawFrame(std::size_t currentFrame);
 
         /// Update the game systems
         void tick(double deltaTime);
@@ -440,7 +438,7 @@ namespace Carrot {
 
         void allocateGraphicsCommandBuffers();
 
-        void updateImGuiTextures(size_t swapchainLength);
+        void updateImGuiTextures(std::size_t swapchainLength);
 
     private:
         struct Vec2KeyState {
@@ -490,7 +488,7 @@ namespace Carrot {
         void onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
 
     private: // game-specific members
-        unique_ptr<Carrot::CarrotGame> game = nullptr;
+        std::unique_ptr<Carrot::CarrotGame> game = nullptr;
     };
 }
 

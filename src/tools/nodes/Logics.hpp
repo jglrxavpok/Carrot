@@ -17,7 +17,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::LessExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -41,7 +41,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::LessOrEqualsExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -65,7 +65,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::GreaterExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -89,7 +89,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::GreaterOrEqualsExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -113,7 +113,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::EqualsExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -137,7 +137,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::NotEqualsExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -161,7 +161,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::AndExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -185,7 +185,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::OrExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -209,7 +209,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::XorExpression>(inputExprs[0], inputExprs[1]);
         }
@@ -233,7 +233,7 @@ namespace Tools {
             init();
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
             auto inputExprs = getExpressionsFromInput();
             return std::make_shared<Carrot::BoolNegateExpression>(inputExprs[0]);
         }

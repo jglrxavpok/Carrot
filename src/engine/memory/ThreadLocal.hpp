@@ -9,28 +9,26 @@
 #include <mutex>
 
 namespace Carrot {
-    using namespace std;
-
     template<typename T>
     class ThreadLocal {
     private:
-        mutex valueGuard;
-        unordered_map<thread::id, T> value;
-        function<T()> initializer = []() { return T{}; };
+        std::mutex valueGuard;
+        std::unordered_map<std::thread::id, T> value;
+        std::function<T()> initializer = []() { return T{}; };
 
     public:
         explicit ThreadLocal() = default;
-        explicit ThreadLocal(function<T()> initializer): initializer(initializer) {};
+        explicit ThreadLocal(std::function<T()> initializer): initializer(initializer) {};
 
         operator T&() {
             return get();
         }
 
         T& get() {
-            auto id = this_thread::get_id();
+            auto id = std::this_thread::get_id();
             auto iterator = value.find(id);
             if(iterator == value.end()) {
-                lock_guard lk(valueGuard);
+                std::lock_guard lk(valueGuard);
                 {
                     auto it = value.find(id);
                     if(it == value.end()) {

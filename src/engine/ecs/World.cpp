@@ -14,7 +14,7 @@ Carrot::EasyEntity Carrot::World::newEntity(std::string_view name) {
 }
 
 Carrot::EasyEntity Carrot::World::newEntityWithID(EntityID id, std::string_view name) {
-    auto entity = make_shared<Entity>(id);
+    auto entity = std::make_shared<Entity>(id);
     auto toReturn = EasyEntity(entity, *this);
     entityNames[id] = name;
     entitiesToAdd.emplace_back(entity);

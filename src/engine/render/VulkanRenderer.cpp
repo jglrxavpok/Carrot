@@ -11,14 +11,14 @@
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     ZoneScoped;
-    fullscreenQuad = make_unique<Mesh>(driver,
-                                       vector<ScreenSpaceVertex>{
+    fullscreenQuad = std::make_unique<Mesh>(driver,
+                                       std::vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
                                                { { 1, -1} },
                                                { { 1, 1} },
                                                { { -1, 1} },
                                        },
-                                       vector<uint32_t>{
+                                       std::vector<uint32_t>{
                                                2,1,0,
                                                3,2,0,
                                        });
@@ -30,20 +30,20 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     initImGui();
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const string& name, const vk::RenderPass& renderPass) {
+std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& renderPass) {
     return getOrCreatePipeline(name, reinterpret_cast<std::uint64_t>((void*) &renderPass));
 }
 
-shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const string& name, std::uint64_t instanceOffset) {
+std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset) {
     auto key = std::make_pair(name, instanceOffset);
     auto it = pipelines.find(key);
     if(it == pipelines.end()) {
-        pipelines[key] = make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+        pipelines[key] = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
     }
     return pipelines[key];
 }
 
-std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const string& textureName) {
+std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
     auto it = textures.find(textureName);
     if(it == textures.end()) {
         auto texture = std::make_unique<Carrot::Render::Texture>(driver, "resources/textures/" + textureName);
@@ -82,12 +82,12 @@ void Carrot::VulkanRenderer::createUIResources() {
 }
 
 void Carrot::VulkanRenderer::createGBuffer() {
-    gBuffer = make_unique<GBuffer>(*this, *raytracer);
+    gBuffer = std::make_unique<GBuffer>(*this, *raytracer);
 }
 
 void Carrot::VulkanRenderer::createRayTracer() {
-    raytracer = make_unique<RayTracer>(*this);
-    asBuilder = make_unique<ASBuilder>(*this);
+    raytracer = std::make_unique<RayTracer>(*this);
+    asBuilder = std::make_unique<ASBuilder>(*this);
 }
 
 static void imguiCheckVkResult(VkResult err) {
@@ -129,7 +129,7 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
 
     SwapChainSupportDetails swapChainSupport = driver.querySwapChainSupport(driver.getPhysicalDevice());
 
-    uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
+    std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
     // maxImageCount == 0 means we can request any number of image
     if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
         // ensure we don't ask for more images than the device will be able to provide
@@ -147,7 +147,7 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
     });
 }
 
-void Carrot::VulkanRenderer::onSwapchainImageCountChange(size_t newCount) {
+void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
     for(const auto& [name, pipe]: pipelines) {

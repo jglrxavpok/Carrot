@@ -44,7 +44,7 @@ namespace Tools {
             );
         }
 
-        shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
             if constexpr (isInput) {
                 auto placeholderData = std::make_shared<NamedInputPlaceholderData>();
                 placeholderData->name = getIOName();
@@ -144,7 +144,7 @@ namespace Tools {
         }
 
     private:
-        inline static vector<Carrot::ExpressionType> selectableTypes = {Carrot::ExpressionTypes::Float, Carrot::ExpressionTypes::Bool};
+        inline static std::vector<Carrot::ExpressionType> selectableTypes = {Carrot::ExpressionTypes::Float, Carrot::ExpressionTypes::Bool};
         uint32_t selectedTypeIndex = 0;
         char nameImGuiBuffer[128] = {'\0'};
         std::string name;

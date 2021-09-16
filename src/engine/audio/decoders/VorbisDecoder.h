@@ -15,19 +15,19 @@ namespace Carrot {
         stb_vorbis_info info{};
 
     public:
-        explicit VorbisDecoder(string filename);
+        explicit VorbisDecoder(const std::string& filename);
 
-        size_t getSampleCount() override;
+        std::size_t getSampleCount() override;
 
-        uint64_t getFrequency() override;
+        std::uint64_t getFrequency() override;
 
-        vector<float> extractSamples(size_t sampleCount) override;
+        std::vector<float> extractSamples(size_t sampleCount) override;
 
         ALenum getFormat() override;
 
-        void seek(size_t sampleIndex) override;
+        void seek(std::size_t sampleIndex) override;
 
-        uint64_t getChannelCount() override;
+        std::uint64_t getChannelCount() override;
 
         ~VorbisDecoder() override;
     };

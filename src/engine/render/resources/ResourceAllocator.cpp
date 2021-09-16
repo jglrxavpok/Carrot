@@ -19,7 +19,7 @@ Carrot::BufferView Carrot::ResourceAllocator::allocateBuffer(vk::DeviceSize size
 std::unique_ptr<Carrot::Buffer> Carrot::ResourceAllocator::allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                                       vk::MemoryPropertyFlags properties,
                                                                       const std::set<uint32_t>& families) {
-    return make_unique<Buffer>(device, size, usage, properties, families);
+    return std::make_unique<Buffer>(device, size, usage, properties, families);
 }
 
 void Carrot::ResourceAllocator::freeBufferView(Carrot::BufferView& view) {

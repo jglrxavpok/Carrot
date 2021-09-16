@@ -7,9 +7,9 @@
 #include <utility>
 #include <stdexcept>
 
-Carrot::MP3Decoder::MP3Decoder(std::string filename): AudioDecoder(std::move(filename)), mp3() {
+Carrot::MP3Decoder::MP3Decoder(const std::string& filename): AudioDecoder(filename), mp3() {
     if(!drmp3_init_file(&mp3, this->filename.c_str(), nullptr)) {
-        throw std::runtime_error("Failed to open MP3 file: "+filename);
+        throw std::runtime_error("Failed to open MP3 file: " + filename);
     }
 }
 
@@ -22,7 +22,7 @@ uint64_t Carrot::MP3Decoder::getFrequency() {
 }
 
 std::vector<float> Carrot::MP3Decoder::extractSamples(size_t sampleCount) {
-    vector<float> buffer;
+    std::vector<float> buffer;
     buffer.resize(sampleCount * sizeof(float) * mp3.channels);
     auto read = drmp3_read_pcm_frames_f32(&mp3, sampleCount, buffer.data());
     buffer.resize(read);

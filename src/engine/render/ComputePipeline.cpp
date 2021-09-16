@@ -10,7 +10,7 @@ Carrot::ComputePipelineBuilder::ComputePipelineBuilder(Carrot::Engine& engine): 
 
 }
 
-Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo info, uint32_t count) {
+Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, std::uint32_t setID, std::uint32_t bindingID, const vk::DescriptorBufferInfo info, std::uint32_t count) {
     ComputeBinding binding{};
     binding.type = type;
     binding.count = count;
@@ -22,15 +22,15 @@ Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk
     return *this;
 }
 
-unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
-    std::map<uint32_t, vector<ComputeBinding>> bindingsPerSet{};
+std::unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
+    std::map<uint32_t, std::vector<ComputeBinding>> bindingsPerSet{};
     for(const auto& b : bindings) {
         bindingsPerSet[b.setID].push_back(b);
     }
     return std::make_unique<ComputePipeline>(engine, shaderResource, bindingsPerSet);
 }
 
-Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, vector<ComputeBinding>>& bindings):
+Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, std::vector<ComputeBinding>>& bindings):
         engine(engine), dispatchBuffer(engine.getResourceAllocator().allocateBuffer(sizeof(vk::DispatchIndirectCommand),
                                                                                     vk::BufferUsageFlagBits::eIndirectBuffer,
                                                                                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
@@ -46,10 +46,10 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     // TODO: specialisation
     auto specialization = vk::SpecializationInfo{};
 
-    uint32_t totalBindingCount = 0;
-    uint32_t dynamicBindingCount = 0;
-    uint32_t storageBufferCount = 0;
-    uint32_t storageBufferDynamicCount = 0;
+    std::uint32_t totalBindingCount = 0;
+    std::uint32_t dynamicBindingCount = 0;
+    std::uint32_t storageBufferCount = 0;
+    std::uint32_t storageBufferDynamicCount = 0;
 
     // descriptor layouts used by pipeline
     descriptorLayouts.clear();
@@ -87,10 +87,10 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
         }));
     }
 
-    vector<uint32_t> dynamicOffsets;
+    std::vector<uint32_t> dynamicOffsets;
     dynamicOffsets.resize(dynamicBindingCount, 0);
 
-    vector<vk::DescriptorPoolSize> descriptorSizes{};
+    std::vector<vk::DescriptorPoolSize> descriptorSizes{};
     if(storageBufferCount != 0) {
         descriptorSizes.emplace_back(vk::DescriptorPoolSize {
                 .type = vk::DescriptorType::eStorageBuffer,
@@ -124,11 +124,11 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
         descriptorSetsFlat.push_back(descriptorSets[setID]);
     }
 
-    vector<vk::WriteDescriptorSet> writes{totalBindingCount};
-    vector<vk::DescriptorBufferInfo> bufferInfo{storageBufferCount+storageBufferDynamicCount};
+    std::vector<vk::WriteDescriptorSet> writes{totalBindingCount};
+    std::vector<vk::DescriptorBufferInfo> bufferInfo{storageBufferCount+storageBufferDynamicCount};
 
-    uint32_t bufferIndex = 0;
-    uint32_t writeIndex = 0;
+    std::uint32_t bufferIndex = 0;
+    std::uint32_t writeIndex = 0;
     for (const auto& [setID, bindingList] : bindings) {
         for(const auto& binding : bindingList) {
             switch (binding.type) {

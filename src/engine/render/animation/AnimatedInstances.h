@@ -10,45 +10,45 @@
 namespace Carrot {
     class AnimatedInstances {
     private:
-        size_t maxInstanceCount = 0;
+        std::size_t maxInstanceCount = 0;
         Carrot::Engine& engine;
-        shared_ptr<Model> model = nullptr;
-        unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
-        unique_ptr<Buffer> flatVertices = nullptr;
-        map<MeshID, shared_ptr<Buffer>> indirectBuffers{};
+        std::shared_ptr<Model> model = nullptr;
+        std::unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
+        std::unique_ptr<Buffer> flatVertices = nullptr;
+        std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* animatedInstances = nullptr;
-        unique_ptr<Buffer> instanceBuffer = nullptr;
+        std::unique_ptr<Buffer> instanceBuffer = nullptr;
 
-        unordered_map<MeshID, size_t> meshOffsets{};
-        size_t vertexCountPerInstance = 0;
+        std::unordered_map<MeshID, size_t> meshOffsets{};
+        std::size_t vertexCountPerInstance = 0;
 
-        vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
-        vector<vk::DescriptorSet> computeDescriptorSet0{};
-        vector<vk::DescriptorSet> computeDescriptorSet1{};
+        std::vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
+        std::vector<vk::DescriptorSet> computeDescriptorSet0{};
+        std::vector<vk::DescriptorSet> computeDescriptorSet1{};
         vk::UniqueDescriptorSetLayout computeSetLayout0{};
         vk::UniqueDescriptorSetLayout computeSetLayout1{};
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
-        vector<vk::CommandBuffer> skinningCommandBuffers{};
-        vector<vk::UniqueSemaphore> skinningSemaphores{};
+        std::vector<vk::CommandBuffer> skinningCommandBuffers{};
+        std::vector<vk::UniqueSemaphore> skinningSemaphores{};
 
         void createSkinningComputePipeline();
 
     public:
-        explicit AnimatedInstances(Carrot::Engine& engine, shared_ptr<Model> animatedModel, size_t maxInstanceCount);
+        explicit AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, std::size_t maxInstanceCount);
 
     /// Getters
         Model& getModel() { return *model; };
 
         AnimatedInstanceData* getInstancePtr() { return animatedInstances; };
 
-        AnimatedInstanceData& getInstance(size_t index) {
+        AnimatedInstanceData& getInstance(std::size_t index) {
             assert(index < maxInstanceCount);
             return animatedInstances[index];
         };
 
-        inline vk::DeviceSize getVertexOffset(size_t instanceIndex, MeshID meshID) {
-            return static_cast<int32_t>(instanceIndex * vertexCountPerInstance + meshOffsets[meshID]);
+        inline vk::DeviceSize getVertexOffset(std::size_t instanceIndex, MeshID meshID) {
+            return static_cast<std::int32_t>(instanceIndex * vertexCountPerInstance + meshOffsets[meshID]);
         }
 
         /**
@@ -56,12 +56,12 @@ namespace Carrot {
          */
         Buffer& getFullySkinnedBuffer() { return *fullySkinnedUnitVertices; };
 
-        vk::Semaphore& getSkinningSemaphore(size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
+        vk::Semaphore& getSkinningSemaphore(std::size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
 
 #pragma region RenderingUpdate
-        vk::Semaphore& onFrame(size_t frameIndex);
+        vk::Semaphore& onFrame(std::size_t frameIndex);
 
-        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, size_t instanceCount);
+        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, std::size_t instanceCount);
 #pragma endregion RenderingUpdate
     };
 }

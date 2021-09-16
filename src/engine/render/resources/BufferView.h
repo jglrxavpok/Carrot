@@ -9,8 +9,6 @@
 #include <memory>
 
 namespace Carrot {
-    using namespace std;
-
     class ResourceAllocator;
 
     class BufferView {

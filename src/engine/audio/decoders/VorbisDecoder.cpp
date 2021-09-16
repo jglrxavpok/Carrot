@@ -4,7 +4,7 @@
 
 #include "VorbisDecoder.h"
 
-Carrot::VorbisDecoder::VorbisDecoder(std::string filename) : AudioDecoder(move(filename)) {
+Carrot::VorbisDecoder::VorbisDecoder(const std::string& filename) : AudioDecoder(filename) {
     int error = 0;
     vorbis = stb_vorbis_open_filename(this->filename.c_str(), &error, nullptr);
     info = stb_vorbis_get_info(vorbis);
@@ -19,7 +19,7 @@ uint64_t Carrot::VorbisDecoder::getFrequency() {
 }
 
 std::vector<float> Carrot::VorbisDecoder::extractSamples(size_t sampleCount) {
-    vector<float> result{};
+    std::vector<float> result{};
     size_t totalSamples = sampleCount*getChannelCount();
     result.resize(totalSamples);
     unsigned int read = stb_vorbis_get_samples_float_interleaved(vorbis, getChannelCount(), result.data(), totalSamples);
@@ -38,7 +38,7 @@ void Carrot::VorbisDecoder::seek(size_t sampleIndex) {
     stb_vorbis_seek_frame(vorbis, sampleIndex);
 }
 
-uint64_t Carrot::VorbisDecoder::getChannelCount() {
+std::uint64_t Carrot::VorbisDecoder::getChannelCount() {
     return info.channels;
 }
 

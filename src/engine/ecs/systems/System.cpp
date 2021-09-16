@@ -9,17 +9,17 @@ const Carrot::Signature& Carrot::System::getSignature() const {
     return signature;
 }
 
-void Carrot::System::onEntitiesAdded(const vector<Entity_Ptr>& added) {
+void Carrot::System::onEntitiesAdded(const std::vector<Entity_Ptr>& added) {
     for(const auto& e : added) {
         if((world.getSignature(e) & getSignature()) == getSignature()) {
-            auto ptr = weak_ptr<Entity>(e);
+            auto ptr = std::weak_ptr<Entity>(e);
             onEntityAdded(ptr);
             entities.emplace_back(ptr);
         }
     }
 }
 
-void Carrot::System::onEntitiesRemoved(const vector<Entity_Ptr>& removed) {
+void Carrot::System::onEntitiesRemoved(const std::vector<Entity_Ptr>& removed) {
     for(const auto& e : removed) {
         entities.erase(std::remove_if(entities.begin(), entities.end(), [&](const auto& entity) {
             if(auto ent = entity.lock()) {
