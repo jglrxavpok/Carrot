@@ -12,6 +12,7 @@ namespace Carrot {
     class Engine;
 }
 
+#include <engine/Window.h>
 #include <engine/vulkan/includes.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
@@ -80,8 +81,8 @@ namespace Carrot {
     public:
         std::vector<std::unique_ptr<TracyVulkanContext>> tracyCtx{};
 
-        /// Init the engine with the given GLFW window. Will immediately load Vulkan resources
-        explicit Engine(NakedPtr<GLFWwindow> window, Configuration config = {});
+        /// Starts the engine. Will immediately load Vulkan resources
+        explicit Engine(Configuration config = {});
 
         /// Launch the engine loop
         void run();
@@ -194,12 +195,12 @@ namespace Carrot {
 
         void grabCursor() {
             grabbingCursor = true;
-            glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
 
         void ungrabCursor() {
             grabbingCursor = false;
-            glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
 
         bool hasPreviousFrame() const {
@@ -333,12 +334,12 @@ namespace Carrot {
 
     private:
         Configuration config;
+        Window window;
         double mouseX = 0.0;
         double mouseY = 0.0;
         float currentFPS = 0.0f;
         bool running = true;
         bool grabbingCursor = false;
-        NakedPtr<GLFWwindow> window = nullptr;
 
 #ifdef ENABLE_VR
         std::unique_ptr<VR::Interface> vrInterface = nullptr;

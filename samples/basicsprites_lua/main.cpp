@@ -100,23 +100,11 @@ void Carrot::Engine::initGame() {
 
 int main() {
     std::ios::sync_with_stdio(false);
-    glfwInit();
 
-    glfwDefaultWindowHints();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    Carrot::Configuration config;
+    config.useRaytracing = false;
+    Carrot::Engine engine{config};
+    engine.run();
 
-    NakedPtr<GLFWwindow> window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-
-    // create new scope, as the destructor requires the window to *not* be terminated at its end
-    // otherwise this creates a DEP exception when destroying the surface provided by GLFW
-    {
-        Carrot::Configuration config;
-        config.useRaytracing = false;
-        Carrot::Engine engine{window, config};
-        engine.run();
-    }
-
-    glfwDestroyWindow(window.get());
-    glfwTerminate();
     return 0;
 }

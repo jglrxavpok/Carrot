@@ -110,7 +110,7 @@ void Carrot::VulkanRenderer::initImGui() {
     //ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForVulkan(driver.getWindow().get(), true);
+    ImGui_ImplGlfw_InitForVulkan(driver.getWindow().getGLFWPointer(), true);
     imguiInitInfo = {};
     imguiInitInfo.Instance = driver.getInstance();
     imguiInitInfo.PhysicalDevice = driver.getPhysicalDevice();

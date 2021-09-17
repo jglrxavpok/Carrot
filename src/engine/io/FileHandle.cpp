@@ -20,6 +20,19 @@ namespace Carrot::IO {
         open(filename, openMode);
     }
 
+    FileHandle::FileHandle(FileHandle&& toMove) {
+        handle = toMove.handle;
+        opened = toMove.opened;
+        fileSize = toMove.fileSize;
+        currentOpenMode = toMove.currentOpenMode;
+        currentFilename = std::move(toMove.currentFilename);
+
+        toMove.opened = false;
+        toMove.handle = nullptr;
+        toMove.fileSize = 0;
+        toMove.currentOpenMode = OpenMode::Invalid;
+    }
+
     void FileHandle::open(const std::string& filename, OpenMode openMode) {
         const char* mode = "";
         switch (openMode) {

@@ -21,58 +21,18 @@ void operator delete(void* ptr) noexcept{
 
 int main() {
     std::ios::sync_with_stdio(false);
-    // try {
-    glfwInit();
 
-    glfwDefaultWindowHints();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    NakedPtr<GLFWwindow> window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-
-
-    int w, h, n;
-    auto* icon32Pixels = stbi_load("resources/icon32.png", &w, &h, &n, 4);
-    auto* icon64Pixels = stbi_load("resources/icon64.png", &w, &h, &n, 4);
-    auto* icon128Pixels = stbi_load("resources/icon128.png", &w, &h, &n, 4);
-    GLFWimage icons[] = {
-            {
-                    .width = 32,
-                    .height = 32,
-                    .pixels = icon32Pixels,
-            },
-            {
-                    .width = 64,
-                    .height = 64,
-                    .pixels = icon64Pixels,
-            },
-            {
-                    .width = 128,
-                    .height = 128,
-                    .pixels = icon128Pixels,
-            },
-    };
-    glfwSetWindowIcon(window.get(), 3, icons);
-    stbi_image_free(icon32Pixels);
-    stbi_image_free(icon64Pixels);
-    stbi_image_free(icon128Pixels);
-
-    // create new scope, as the destructor requires the window to *not* be terminated at its end
-    // otherwise this creates a DEP exception when destroying the surface provided by GLFW
-    {
-        Carrot::Configuration config;
+    Carrot::Configuration config;
 #ifdef ENABLE_VR
-        config.runInVR = true;
+    config.runInVR = true;
 #endif
-        Carrot::Engine engine{window, config};
-        engine.run();
-    }
+    config.icon32 = "resources/icon32.png";
+    config.icon64 = "resources/icon64.png";
+    config.icon128 = "resources/icon128.png";
 
-    glfwDestroyWindow(window.get());
-    glfwTerminate();
-    /* } catch (const std::exception& e) {
-         std::cerr << "Fatal exception happened: " << e.what() << std::endl;
-         throw e;
-     }*/
+    Carrot::Engine engine{config};
+    engine.run();
+
     return 0;
 }
 

@@ -13,6 +13,7 @@
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/memory/ThreadLocal.hpp"
 #include "engine/Configuration.h"
+#include "engine/Window.h"
 
 namespace sol {
     class state;
@@ -52,12 +53,12 @@ namespace Carrot {
 
     class VulkanDriver: public SwapchainAware {
     private:
+        Window& window;
         Configuration config;
-        const vk::AllocationCallbacks* allocator = nullptr;
 
-        NakedPtr<GLFWwindow> window = nullptr;
-        int framebufferWidth;
-        int framebufferHeight;
+        const vk::AllocationCallbacks* allocator = nullptr;
+        std::int32_t framebufferWidth;
+        std::int32_t framebufferHeight;
         Engine* engine = nullptr;
 
 #ifdef ENABLE_VR
@@ -160,7 +161,7 @@ namespace Carrot {
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
-        VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config, Engine* engine
+        VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine
         #ifdef ENABLE_VR
                 , Carrot::VR::Interface& vrInterface
         #endif
@@ -253,7 +254,7 @@ namespace Carrot {
         std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
         std::unordered_map<Render::Eye, std::vector<std::shared_ptr<Buffer>>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
 
-        NakedPtr<GLFWwindow>& getWindow() { return window; };
+        Window& getWindow() { return window; };
 
         vk::Format getDepthFormat() { return depthFormat; };
 

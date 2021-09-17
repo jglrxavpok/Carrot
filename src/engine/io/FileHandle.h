@@ -55,6 +55,8 @@ namespace Carrot::IO {
         explicit FileHandle() = default;
         explicit FileHandle(const std::string filename, OpenMode openMode);
         explicit FileHandle(const char* const filename, OpenMode openMode);
+        FileHandle(FileHandle&& toMove);
+        FileHandle(const FileHandle&) = delete;
 
         ~FileHandle();
 

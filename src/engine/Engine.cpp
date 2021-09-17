@@ -59,7 +59,7 @@ static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
-Carrot::Engine::Engine(NakedPtr<GLFWwindow> window, Configuration config): window(window),
+Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
 #ifdef ENABLE_VR
 vrInterface(std::make_unique<VR::Interface>(*this)),
 #endif
@@ -392,7 +392,7 @@ void Carrot::Engine::run() {
             vrInterface->pollEvents();
         }
 #endif
-        if(glfwWindowShouldClose(window.get())) {
+        if(glfwWindowShouldClose(window.getGLFWPointer())) {
             running = false;
         }
 
@@ -432,7 +432,7 @@ void Carrot::Engine::run() {
         FrameMark;
     }
 
-    glfwHideWindow(window.get());
+    glfwHideWindow(window.getGLFWPointer());
 
     getLogicalDevice().waitIdle();
 }
@@ -472,12 +472,12 @@ static void joystickCallback(int joystickID, int event) {
 }
 
 void Carrot::Engine::initWindow() {
-    glfwSetWindowUserPointer(window.get(), this);
-    glfwSetFramebufferSizeCallback(window.get(), windowResize);
+    glfwSetWindowUserPointer(window.getGLFWPointer(), this);
+    glfwSetFramebufferSizeCallback(window.getGLFWPointer(), windowResize);
 
-    glfwSetCursorPosCallback(window.get(), mouseMove);
-    glfwSetMouseButtonCallback(window.get(), mouseButton);
-    glfwSetKeyCallback(window.get(), keyCallback);
+    glfwSetCursorPosCallback(window.getGLFWPointer(), mouseMove);
+    glfwSetMouseButtonCallback(window.getGLFWPointer(), mouseButton);
+    glfwSetKeyCallback(window.getGLFWPointer(), keyCallback);
     glfwSetJoystickCallback(joystickCallback);
 }
 

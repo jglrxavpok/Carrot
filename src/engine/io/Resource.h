@@ -20,10 +20,14 @@ namespace Carrot::IO {
         /// Copies data inside a shared vector
         explicit Resource(const std::vector<std::uint8_t>& data);
 
+        /// Creates an in-memory resource, without copying the data, but moving it instead
+        explicit Resource(std::vector<std::uint8_t>&& data);
+
         explicit Resource(const std::span<const std::uint8_t>& data);
 
         /// Copies the other resource. Raw data is shared, file handles are cloned.
         Resource(const Resource& toCopy);
+        Resource(Resource&& toMove);
 
     public:
         /// Constructs an in-memory resource with the given text
@@ -47,10 +51,17 @@ namespace Carrot::IO {
         void writeToFile(FileHandle& file, uint64_t offset = 0) const;
 
     public:
+        /// Copies this resource to a new in-memory Resource.
+        /// For files, this reads the entire file to memory
+        /// For in-memory resources, this copies to another memory are inside the heap
+        [[nodiscard]] Carrot::IO::Resource copyToMemory() const;
+
+    public:
         void name(const std::string& name);
 
     public:
         Resource& operator=(const Resource& toCopy);
+        Resource& operator=(Resource&& toMove);
 
     public:
         /// Resources are equal if they represent the same data: same filename, or same pointer to shared data (not data equality!)
@@ -68,6 +79,9 @@ namespace Carrot::IO {
             };
 
             explicit Data(bool isRawData);
+            Data(Data&& toMove);
+
+            Data& operator=(Data&& toMove);
 
             ~Data();
         } data;

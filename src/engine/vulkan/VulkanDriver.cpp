@@ -39,7 +39,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration config, Carrot::Engine* engine
+Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config, Carrot::Engine* engine
 #ifdef ENABLE_VR
     , Carrot::VR::Interface& vrInterface
 #endif
@@ -57,9 +57,7 @@ Carrot::VulkanDriver::VulkanDriver(NakedPtr<GLFWwindow> window, Configuration co
 {
     ZoneScoped;
 
-    glfwSetWindowTitle(window.get(), this->config.applicationName.c_str());
-
-    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+    window.getFramebufferSize(framebufferWidth, framebufferHeight);
 
     vk::DynamicLoader dl;
     auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
@@ -508,7 +506,7 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
 void Carrot::VulkanDriver::createSurface() {
     auto cAllocator = (const VkAllocationCallbacks*) allocator;
     VkSurfaceKHR cSurface;
-    if(glfwCreateWindowSurface(static_cast<VkInstance>(*instance), window.get(), cAllocator, &cSurface) != VK_SUCCESS) {
+    if(glfwCreateWindowSurface(static_cast<VkInstance>(*instance), window.getGLFWPointer(), cAllocator, &cSurface) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create window surface.");
     }
     surface = cSurface;
@@ -626,7 +624,7 @@ vk::Extent2D Carrot::VulkanDriver::chooseSwapExtent(const vk::SurfaceCapabilitie
         return capabilities.currentExtent; // no choice
     } else {
         int width, height;
-        glfwGetFramebufferSize(window.get(), &width, &height);
+        glfwGetFramebufferSize(window.getGLFWPointer(), &width, &height);
 
         vk::Extent2D actualExtent = {
                 static_cast<uint32_t>(width),
@@ -804,9 +802,9 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands,
 }
 
 void Carrot::VulkanDriver::fetchNewFramebufferSize() {
-    glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+    window.getFramebufferSize(framebufferWidth, framebufferHeight);
     while(framebufferWidth == 0 || framebufferHeight == 0) {
-        glfwGetFramebufferSize(window.get(), &framebufferWidth, &framebufferHeight);
+        window.getFramebufferSize(framebufferWidth, framebufferHeight);
         glfwWaitEvents();
     }
 }

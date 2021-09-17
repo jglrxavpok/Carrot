@@ -27,6 +27,11 @@ namespace Carrot::IO {
         name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
+    Resource::Resource(std::vector<std::uint8_t>&& dataToMove): data(true) {
+        this->data.raw = std::make_shared<std::vector<std::uint8_t>>();
+        *this->data.raw = std::move(dataToMove);
+    }
+
     Resource::Resource(const std::span<const std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
@@ -41,6 +46,16 @@ namespace Carrot::IO {
             data.fileHandle = toCopy.data.fileHandle->copyReadable();
         }
         name(toCopy.filename);
+    }
+
+    Resource::Resource(Resource&& toMove): data(std::move(toMove.data)) {
+        filename = std::move(toMove.filename);
+    }
+
+    Resource& Resource::operator=(Resource&& toMove) {
+        data = std::move(toMove.data);
+        filename = std::move(toMove.filename);
+        return *this;
     }
 
     Resource& Resource::operator=(const Resource& toCopy) {
@@ -152,7 +167,33 @@ namespace Carrot::IO {
         return Carrot::IO::Resource(vec);
     }
 
-    Resource::Data::Data(bool isRawData): isRawData(isRawData) {
+    Carrot::IO::Resource Resource::copyToMemory() const {
+        std::vector<std::uint8_t> dataCopy;
+        dataCopy.resize(getSize());
+        readAll(dataCopy.data());
+        return Resource(std::move(dataCopy));
+    }
+
+    Resource::Data::Data(bool isRawData): isRawData(isRawData) {}
+
+    Resource::Data::Data(Resource::Data&& toMove) {
+        *this = std::move(toMove);
+    }
+
+    Resource::Data& Resource::Data::operator=(Resource::Data&& toMove) {
+        bool wasRawData = isRawData;
+        isRawData = toMove.isRawData;
+        if(wasRawData && !isRawData) {
+            raw = nullptr;
+        } else if(!wasRawData && isRawData) {
+            fileHandle = nullptr;
+        }
+        if(isRawData) {
+            raw = std::move(toMove.raw);
+        } else {
+            fileHandle = std::move(toMove.fileHandle);
+        }
+        return *this;
     }
 
     Resource::Data::~Data() {

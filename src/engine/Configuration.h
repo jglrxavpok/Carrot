@@ -6,7 +6,11 @@
 #ifdef ENABLE_VR
 #include "engine/vr/includes.h"
 #endif
+
 #include "engine/constants.h"
+#include "engine/io/Resource.h"
+#include <optional>
+
 namespace Carrot {
     struct Configuration {
         bool useRaytracing = true;
@@ -22,6 +26,11 @@ namespace Carrot {
 #ifdef ENABLE_VR
         std::uint64_t openXRApiVersion = XR_CURRENT_API_VERSION;
 #endif
+
+        std::optional<Carrot::IO::Resource> icon16;
+        std::optional<Carrot::IO::Resource> icon32;
+        std::optional<Carrot::IO::Resource> icon64;
+        std::optional<Carrot::IO::Resource> icon128;
 
     };
 }

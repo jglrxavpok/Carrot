@@ -1,6 +1,8 @@
 #set(EngineRoot src/engine/)
 set(EngineRoot "engine/")
 set(ENGINE-SOURCES
+        ${EngineRoot}Window.cpp
+
         ${EngineRoot}io/IO.cpp
         ${EngineRoot}io/Logging.cpp
         ${EngineRoot}io/FileHandle.cpp
