@@ -17,7 +17,7 @@ namespace Carrot::Lua {
         );
 
         vkNamespace.new_usertype<vk::Extent2D>("Extent2D",
-                                               sol::meta_function::construct,
+                                               sol::call_constructor,
                                                sol::factories(
                                                        [](std::uint32_t w, std::uint32_t h) {
                                                            return vk::Extent2D{ .width = w, .height = h };
@@ -28,7 +28,7 @@ namespace Carrot::Lua {
                                                );
 
         vkNamespace.new_usertype<vk::Extent3D>("Extent3D",
-                                               sol::meta_function::construct,
+                                               sol::call_constructor,
                                                sol::factories(
                                                        [](std::uint32_t w, std::uint32_t h, std::uint32_t d) {
                                                            return vk::Extent3D{ .width = w, .height = h, .depth = d };

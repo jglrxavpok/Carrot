@@ -11,6 +11,7 @@ namespace Carrot::Lua {
     static sol::usertype<glm::vec<dim, Elem, qualifier>> registerVectorType(sol::table& state, std::string_view name) {
         using vec = glm::vec<dim, Elem, qualifier>;
         auto userType = state.new_usertype<vec>(name,
+                                                sol::call_constructor,
                                                 sol::constructors<vec(), vec(Elem), fullConstructor>(),
                                                 "x", &vec::x,
                                                 "r", &vec::r,

@@ -12,7 +12,7 @@ namespace Carrot::Render {
         auto renderNamespace = carrotNamespace["Render"].get_or_create<sol::table>();
 
         renderNamespace.new_usertype<Carrot::Render::Sprite>("Sprite",
-                                                             sol::meta_function::construct,
+                                                             sol::call_constructor,
                                                              sol::factories(
                                                                      [](VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture) {
                                                                          return Sprite(renderer, std::move(texture));

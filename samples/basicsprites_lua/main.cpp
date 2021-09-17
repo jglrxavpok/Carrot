@@ -11,14 +11,14 @@
 class BasicSprites: public Carrot::CarrotGame {
 public:
     const char* LuaScript = R"lua(
-position = glm.vec2.new()
-direction = glm.vec2.new(1, -1)
-spriteSize = glm.vec2.new(128, 128)
+position = glm.vec2()
+direction = glm.vec2(1, -1)
+spriteSize = glm.vec2(128, 128)
 
 function init(engine)
     engineRef = engine
     local renderer = engine:getRenderer()
-    mySprite = Carrot.Render.Sprite.new(renderer, renderer:getOrCreateTexture('../icon128.png'))
+    mySprite = Carrot.Render.Sprite(renderer, renderer:getOrCreateTexture('../icon128.png'))
     mySprite.size = spriteSize
 end
 
@@ -31,7 +31,7 @@ function tick(frameTime)
     local moveSpeed = 100.0
     local dpos = direction * (moveSpeed * frameTime)
 
-    mySprite.position = mySprite.position + glm.vec3.new(dpos.x, dpos.y, 0.0)
+    mySprite.position = mySprite.position + glm.vec3(dpos.x, dpos.y, 0.0)
 
     local renderSize = engineRef:getVulkanDriver():getFinalRenderSize()
     if mySprite.position.x + spriteSize.x/2.0 > renderSize.width then
