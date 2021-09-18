@@ -6,23 +6,36 @@
 
 #include <coroutine>
 #include <vector>
+#include <list>
 #include <concepts>
 #include <mutex>
 #include <memory>
 #include <engine/utils/Concepts.hpp>
 #include <engine/utils/Macros.h>
+#include <iostream>
 
 #ifdef __CLION_IDE_
 #include <experimental/coroutine>
 #endif
 
-namespace Carrot::Coroutines {
+namespace Carrot::Async {
     template<typename Awaiter>
     concept IsAwaiter = requires(Awaiter a, std::coroutine_handle<> h) {
         { a.await_ready() } -> std::convertible_to<bool>;
         { a.await_suspend(h) };
         { a.await_resume() } -> std::convertible_to<void>;
     };
+
+    template<typename Value = void>
+    class Task;
+
+    template<typename Owner, typename ResultType>
+    concept TaskOwner = requires(Owner owner, Task<ResultType> task) {
+        { owner.transferOwnership(std::move(task)) };
+    };
+
+    template<typename Value>
+    struct CoroutinePromiseType;
 
     class DeferringAwaiter {
     public:
@@ -49,9 +62,12 @@ namespace Carrot::Coroutines {
             }
             auto removedStart = std::remove_if(WHOLE_CONTAINER(handles), [](const auto& h) { return h.done(); });
             for(auto it = removedStart; it != handles.end(); it++) {
+                auto& h = *it;
                 completed.push_back(*it);
             }
             handles.erase(removedStart, handles.end());
+
+            updateOwnedCompletedTasks();
         }
 
         /// Forces cleanup of all handles inside this awaiter
@@ -71,20 +87,23 @@ namespace Carrot::Coroutines {
             completed.clear();
         }
 
+        void transferOwnership(Async::Task<>&& task);
+
         ~DeferringAwaiter() {
             cleanup();
         }
 
     private:
+        // destroys tasks owned by this object that have finished
+        void updateOwnedCompletedTasks();
+
         std::vector<std::coroutine_handle<>> handlesToAdd;
         std::vector<std::coroutine_handle<>> handles;
         std::vector<std::coroutine_handle<>> completed;
+        std::list<Task<>> ownedTasks;
         std::mutex handlesAccess;
         std::mutex handlesToAddAccess;
     };
-
-    template<typename Value = void>
-    class Task;
 
     template<typename Value>
     struct PromiseTypeReturn;
@@ -124,7 +143,8 @@ namespace Carrot::Coroutines {
         Task<Value> get_return_object() {
             return Task<Value>(std::coroutine_handle<CoroutinePromiseType<Value>>::from_promise(*this));
         }
-        std::suspend_never initial_suspend() { return {}; }
+
+        std::suspend_always initial_suspend() { return {}; }
 
         // when final suspend is executed 'value' is already set
         // we need to suspend this coroutine in order to use value in other coroutine or through 'get' function
@@ -150,7 +170,7 @@ namespace Carrot::Coroutines {
                 }
                 void await_resume() noexcept {}
             };
-            return transfer_awaitable{awaiting};
+            return transfer_awaitable{this->awaiting};
         }
 
         template<typename Awaiter>
@@ -205,8 +225,17 @@ namespace Carrot::Coroutines {
             // TODO std::current_exception();
         }
 
+        // called when coroutine_handle::destroy is called
+        ~CoroutinePromiseType() {
+
+        }
+
     };
 
+    /// Coroutine-based async Task
+    /// Always suspend on init. The execution will not start before the coroutine is resumed (via resume or operator())
+    /// Coroutine handle is destroyed when reaching the destructor (RAII).
+    /// Move operator and constructor both allow to transfer ownership (can be used to move coroutine to another thread without keeping the original Task)
     template<typename Value>
     class Task {
     public:
@@ -214,10 +243,24 @@ namespace Carrot::Coroutines {
 
         std::coroutine_handle<promise_type> coroutineHandle;
 
+        // copy not allowed
+        Task(const Task<Value>&) = delete;
+        Task& operator=(const Task<Value>&) = delete;
+
+        Task(Task<Value>&& toMove): coroutineHandle(toMove.coroutineHandle) {
+            toMove.coroutineHandle = nullptr;
+        }
+
+        Task& operator=(Task<Value>&& toMove) {
+            coroutineHandle = toMove.coroutineHandle;
+            toMove.coroutineHandle = nullptr;
+            return *this;
+        }
+
         ~Task() {
-            /*if(coroutineHandle) {
+            if(coroutineHandle) {
                 coroutineHandle.destroy();
-            }*/
+            }
         }
 
         [[nodiscard]] bool done() const {
@@ -228,48 +271,23 @@ namespace Carrot::Coroutines {
             coroutineHandle();
         }
 
-/*        operator std::coroutine_handle<promise_type>() {
-            return coroutineHandle;
+        void resume() {
+            coroutineHandle();
         }
-
-        operator const std::coroutine_handle<promise_type>() const {
-            return coroutineHandle;
-        }*/
 
         Value getValue() const requires Carrot::Concepts::NotSame<void, Value> {
             return coroutineHandle.promise().value;
         }
 
+        template<typename Owner>
+        void transferTo(Owner& owner) requires TaskOwner<Owner, Value> {
+            owner.transferOwnership(std::move(*this));
+        }
+
     private:
-        explicit Task(std::coroutine_handle<promise_type> handle): coroutineHandle(handle) {}
+        explicit Task(std::coroutine_handle<promise_type> h): coroutineHandle(h) {}
 
         friend promise_type;
     };
 
-    /*
-     Task<SomeType> myTask(Arg0 arg0, Arg1 arg1) {
-        // do stuff
-        co_await engine.nextFrameAwaiter();
-        // or
-        engine.cowaitNextFrame();
-        // do your stuff which will execute at the beginning of the next frame.
-        co_return SomeTypeValue;
-     }
-
-     int main() {
-        auto task = myTask();
-        SomeJobList.push_back(task);
-        // do other stuff
-        return 0;
-     }
-
-     void handleJobs() {
-        for(auto& job : SomeJobList) {
-            job();
-        }
-        SomeJobList.erase(std::remove_if(..., [](auto& job) { return job.done(); }));
-     }
-
-     Task must be invocable (will invoke underlying coroutine_handle) -> implicitly convertible to coroutine_handle
-    */
 }

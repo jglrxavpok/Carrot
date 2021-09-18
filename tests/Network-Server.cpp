@@ -3,6 +3,7 @@
 //
 #include "test_game_main.inc"
 #include <ctime>
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <asio.hpp>
@@ -30,12 +31,6 @@ protected:
     }
 };
 
-static Carrot::Coroutines::DeferringAwaiter awaiter;
-
-Carrot::Coroutines::Task<> waitNextIteration() {
-    co_await awaiter;
-}
-
 int main() {
     using namespace Carrot;
 
@@ -49,8 +44,7 @@ int main() {
     struct ServerConsumer : public Carrot::Network::Server::IPacketConsumer {
         explicit ServerConsumer(Network::Server& server): server(server) {}
 
-        Coroutines::Task<> consumePacket(const UUID& clientID, const Network::Packet::Ptr packet) override {
-            co_await waitNextIteration();
+        void consumePacket(const UUID& clientID, const Network::Packet::Ptr packet) override {
             std::string str = Carrot::toString(clientID);
             Carrot::Log::info("Received a packet from client %s", str.c_str());
             switch(packet->getPacketID()) {
@@ -71,8 +65,7 @@ int main() {
     struct ClientConsumer : public Carrot::Network::Client::IPacketConsumer {
         explicit ClientConsumer() {}
 
-        Coroutines::Task<> consumePacket(const Network::Packet::Ptr packet) override {
-            co_await waitNextIteration();
+        void consumePacket(const Network::Packet::Ptr packet) override {
             Carrot::Log::info("Received a packet on client!");
             switch(packet->getPacketID()) {
                 case 42: {
@@ -106,14 +99,11 @@ int main() {
         client2.queueEvent(std::move(std::make_unique<TestPacket>(i)));
     }
 
-    const auto maxTime = chrono::duration<float>(10.0f);
-    auto start = chrono::steady_clock::now();
+    const auto maxTime = std::chrono::duration<float>(10.0f);
+    auto start = std::chrono::steady_clock::now();
     while(true) {
-        auto currentTime = chrono::steady_clock::now();
-        chrono::duration<float> timeElapsed = currentTime-start;
-
-        awaiter.resume_all();
-        awaiter.cleanup();
+        auto currentTime = std::chrono::steady_clock::now();
+        std::chrono::duration<float> timeElapsed = currentTime-start;
 
         if(timeElapsed >= maxTime) {
             break;

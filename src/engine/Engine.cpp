@@ -1195,6 +1195,6 @@ Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFr
     };
 }
 
-Carrot::Coroutines::Task<> Carrot::Engine::cowaitNextFrame() {
+Carrot::Async::Task<> Carrot::Engine::cowaitNextFrame() {
     co_await nextFrameAwaiter;
 }

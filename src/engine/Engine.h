@@ -327,7 +327,11 @@ namespace Carrot {
 
     public: // async stuff
         /// co_awaits the next engine frame. Used for coroutines.
-        Coroutines::Task<> cowaitNextFrame();
+        Async::Task<> cowaitNextFrame();
+
+        void transferOwnership(Async::Task<>&& task) {
+            nextFrameAwaiter.transferOwnership(std::move(task));
+        }
 
     public:
         static void registerUsertype(sol::state& destination);
@@ -398,7 +402,7 @@ namespace Carrot {
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
         std::unordered_map<Render::Eye, std::unique_ptr<Render::Composer>> composers;
-        Coroutines::DeferringAwaiter nextFrameAwaiter;
+        Async::DeferringAwaiter nextFrameAwaiter;
 
         /// Init engine
         void init();

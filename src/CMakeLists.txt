@@ -95,6 +95,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}network/packets/HandshakePackets.cpp
 
+        ${EngineRoot}async/Coroutines.cpp
 
         ${EngineRoot}scripting/LuaScript.cpp
         ${EngineRoot}scripting/bindings/all.cpp
