@@ -8,26 +8,26 @@
 
 #include <utility>
 
-namespace Carrot {
+namespace Carrot::ECS {
 
-    class EasyEntity;
+    class Entity;
 
     struct Component {
     public:
-        explicit Component(EasyEntity entity): entity(std::move(entity)) {}
+        explicit Component(Entity entity): entity(std::move(entity)) {}
 
-        EasyEntity& getEntity() { return entity; }
-        const EasyEntity& getEntity() const { return entity; }
+        Entity& getEntity() { return entity; }
+        const Entity& getEntity() const { return entity; }
 
         virtual ~Component() = default;
 
     private:
-        EasyEntity entity;
+        Entity entity;
     };
 
     template<class Self>
     struct IdentifiableComponent: public Component, Identifiable<Self> {
-        explicit IdentifiableComponent(EasyEntity entity): Component(std::move(entity)) {}
+        explicit IdentifiableComponent(Entity entity): Component(std::move(entity)) {}
     };
 
 }

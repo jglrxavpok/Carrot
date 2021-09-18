@@ -7,17 +7,17 @@
 #include "engine/ecs/components/AnimatedModelInstance.h"
 #include "engine/ecs/systems/System.h"
 
-namespace Carrot {
+namespace Carrot::ECS {
     class SystemUpdateAnimatedModelInstance: public RenderSystem<Transform, AnimatedModelInstance> {
     public:
-        explicit SystemUpdateAnimatedModelInstance(Carrot::World& world): RenderSystem<Transform, AnimatedModelInstance>(world) {}
+        explicit SystemUpdateAnimatedModelInstance(World& world): RenderSystem<Transform, AnimatedModelInstance>(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
         void tick(double dt) override;
 
     protected:
-        void onEntityAdded(Entity_WeakPtr entity) override;
+        void onEntityAdded(Entity& entity) override;
     };
 
 }

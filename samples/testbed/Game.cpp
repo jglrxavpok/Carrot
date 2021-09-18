@@ -29,6 +29,7 @@
 #include <engine/io/Logging.hpp>
 
 using namespace Carrot;
+using namespace Carrot::ECS;
 
 constexpr static int maxInstanceCount = 100; // TODO: change
 
@@ -99,13 +100,12 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
         auto& modelInstance = animatedUnits->getInstance(i);
         auto entity = world.newEntity()
-                .addComponent<Transform>()
+                .addComponent<Carrot::ECS::Transform>()
                 .addComponent<UnitColor>(color)
-                .addComponent<AnimatedModelInstance>(modelInstance);
-        if(auto transform = entity.getComponent<Transform>()) {
-            transform->position = position;
-            transform->scale = glm::vec3(1.0+i/30.0, 1.0+i/30.0, 1.0+i/30.0);
-        }
+                .addComponent<Carrot::ECS::AnimatedModelInstance>(modelInstance);
+        Transform& transform = entity.getComponent<Transform>();
+        transform.position = position;
+        transform.scale = glm::vec3(1.0+i/30.0, 1.0+i/30.0, 1.0+i/30.0);
         switch (color) {
             case Unit::Type::Blue:
                 modelInstance.color = {0,0,1,1};
@@ -125,9 +125,9 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
             auto g = as.addGeometries<Vertex>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, animatedUnits->getFullySkinnedBuffer(), mesh->getVertexCount(), {vertexStartAddress});
             geometries.push_back(g);
 
-            auto transform = entity.getComponent<Transform>();
+            Transform& transform = entity.getComponent<Transform>();
             as.addInstance(InstanceInput {
-                .transform = transform->toTransformMatrix(),
+                .transform = transform.toTransformMatrix(),
                 .customInstanceIndex = static_cast<uint32_t>(geometries.size()-1),
                 .geometryIndex = static_cast<uint32_t>(geometries.size()-1),
                 .mask = 0xFF,
@@ -156,7 +156,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
             .addComponent<RaycastedShadowsLight>(light)
             .addComponent<ForceSinPosition>();
 
-    auto* sinPosition = dynLight.getComponent<ForceSinPosition>();
+    auto sinPosition = dynLight.getComponent<ForceSinPosition>();
     sinPosition->angularOffset = {0, 1, 2};
     sinPosition->angularFrequency = {1, 2, 3.14};
     sinPosition->amplitude = {1, 2, 0.2};

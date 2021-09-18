@@ -3,29 +3,29 @@
 //
 #include "System.h"
 
-Carrot::System::System(Carrot::World& world): world(world), signature() {}
+namespace Carrot::ECS {
+    System::System(World& world): world(world), signature() {}
 
-const Carrot::Signature& Carrot::System::getSignature() const {
-    return signature;
-}
+    const Signature& System::getSignature() const {
+        return signature;
+    }
 
-void Carrot::System::onEntitiesAdded(const std::vector<Entity_Ptr>& added) {
-    for(const auto& e : added) {
-        if((world.getSignature(e) & getSignature()) == getSignature()) {
-            auto ptr = std::weak_ptr<Entity>(e);
-            onEntityAdded(ptr);
-            entities.emplace_back(ptr);
+    void System::onEntitiesAdded(const std::vector<EntityID>& added) {
+        for(const auto& e : added) {
+            auto obj = Entity(e, world);
+            if((world.getSignature(obj) & getSignature()) == getSignature()) {
+                onEntityAdded(obj);
+                entities.push_back(obj);
+            }
         }
     }
-}
 
-void Carrot::System::onEntitiesRemoved(const std::vector<Entity_Ptr>& removed) {
-    for(const auto& e : removed) {
-        entities.erase(std::remove_if(entities.begin(), entities.end(), [&](const auto& entity) {
-            if(auto ent = entity.lock()) {
-                return *ent == *e;
-            }
-            return false;
-        }), entities.end());
+    void System::onEntitiesRemoved(const std::vector<EntityID>& removed) {
+        for(const auto& e : removed) {
+            auto obj = Entity(e, world);
+            entities.erase(std::remove_if(entities.begin(), entities.end(), [&](const Entity& entity) {
+                return entity.operator EntityID() == e;
+            }), entities.end());
+        }
     }
 }

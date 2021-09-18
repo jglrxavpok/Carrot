@@ -8,10 +8,10 @@
 #include "engine/ecs/components/RaycastedShadowsLight.h"
 #include "System.h"
 
-namespace Carrot {
+namespace Carrot::ECS {
     class SystemUpdateLightPosition: public LogicSystem<Transform, RaycastedShadowsLight> {
     public:
-        explicit SystemUpdateLightPosition(Carrot::World& world): LogicSystem<Transform, RaycastedShadowsLight>(world) {}
+        explicit SystemUpdateLightPosition(World& world): LogicSystem<Transform, RaycastedShadowsLight>(world) {}
 
         void tick(double dt) override;
     };

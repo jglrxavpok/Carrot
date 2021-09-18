@@ -7,39 +7,42 @@
 #include <cstddef>
 #include <memory>
 #include <unordered_map>
+#include <engine/memory/OptionalRef.h>
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
 #include "EntityTypes.h"
 
-namespace Carrot {
+namespace Carrot::ECS {
 
     class World {
     public:
         explicit World();
 
-        Signature getSignature(const Entity_Ptr& entity) const;
+        Signature getSignature(const Entity& entity) const;
 
         template<class Comp>
-        Comp* getComponent(Entity_Ptr& entity) const;
+        Memory::OptionalRef<Comp> getComponent(const Entity& entity) const;
 
-        Carrot::Tags getTags(const Entity_Ptr& entity) const;
+        Tags getTags(const Entity& entity) const;
 
-        std::vector<Entity_Ptr> getEntitiesWithTags(Carrot::Tags tags) const;
+        std::vector<Entity> getEntitiesWithTags(Tags tags) const;
 
-        const std::string& getName(const Entity_Ptr& entity) const;
+        const std::string& getName(const Entity& entity) const;
 
         void tick(double dt);
         void onFrame(Carrot::Render::Context renderContext);
         void recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
 
-        EasyEntity newEntity(std::string_view name = "<unnamed>");
+        Entity newEntity(std::string_view name = "<unnamed>");
 
         /// /!\ Unsafe! Adds an entity with the given ID, should probably only used for deserialization/networking purposes.
-        EasyEntity newEntityWithID(EntityID id, std::string_view name = "<unnamed>");
+        Entity newEntityWithID(EntityID id, std::string_view name = "<unnamed>");
 
-        void removeEntity(const Entity_Ptr& ent);
+        void removeEntity(const Entity& ent);
 
         void setAllocationStrategy(const std::function<EntityID()>& allocationStrategy);
+
+        bool exists(EntityID ent) const;
 
     public:
         template<class RenderSystemType, typename... Args>
@@ -49,22 +52,21 @@ namespace Carrot {
         void addLogicSystem(Args&&... args);
 
     public: // hierarchy
-        /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be nullptr.
-        void setParent(const Entity_Ptr& toSet, const Entity_Ptr& parent);
+        /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
+        void setParent(const Entity& toSet, std::optional<Entity> parent);
 
         /// Gets the parent of 'of'. Can return nullptr if no parent exists
-        Entity_Ptr getParent(const Entity_Ptr& of) const;
+        std::optional<Entity> getParent(const Entity& of) const;
 
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
-        const std::vector<Entity_Ptr>& getChildren(const Entity_Ptr& parent) const;
+        const std::vector<Entity> getChildren(const Entity& parent) const;
 
         friend class EasyEntity;
 
     private:
-        EntityID freeEntityID = 0;
-        std::vector<Entity_Ptr> entities;
-        std::vector<Entity_Ptr> entitiesToAdd;
-        std::vector<Entity_Ptr> entitiesToRemove;
+        std::vector<EntityID> entities;
+        std::vector<EntityID> entitiesToAdd;
+        std::vector<EntityID> entitiesToRemove;
 
         std::unordered_map<EntityID, std::unordered_map<ComponentID, std::unique_ptr<Component>>> entityComponents;
         std::unordered_map<EntityID, Tags> entityTags;
@@ -76,8 +78,10 @@ namespace Carrot {
         std::function<EntityID()> allocationStrategy;
 
     private: // internal representation of hierarchy
-        std::unordered_map<EntityID, Entity_Ptr> entityParents;
-        std::unordered_map<EntityID, std::vector<Entity_Ptr>> entityChildren;
+        std::unordered_map<EntityID, EntityID> entityParents;
+        std::unordered_map<EntityID, std::vector<EntityID>> entityChildren;
+
+        friend class Entity;
     };
 }
 

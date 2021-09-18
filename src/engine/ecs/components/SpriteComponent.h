@@ -7,9 +7,9 @@
 #include "engine/render/Sprite.h"
 
 namespace Carrot::ECS {
-    struct SpriteComponent: public Carrot::IdentifiableComponent<SpriteComponent> {
+    struct SpriteComponent: public IdentifiableComponent<SpriteComponent> {
         std::shared_ptr<Carrot::Render::Sprite> sprite;
 
-        explicit SpriteComponent(Carrot::EasyEntity entity): Carrot::IdentifiableComponent<SpriteComponent>(std::move(entity)) {}
+        explicit SpriteComponent(Entity entity): IdentifiableComponent<SpriteComponent>(std::move(entity)) {}
     };
 }

@@ -5,7 +5,9 @@
 #include "System.h"
 #include "engine/ecs/World.h"
 
-template<Carrot::SystemType type, typename... RequiredComponents>
-Carrot::SignedSystem<type, RequiredComponents...>::SignedSystem(Carrot::World& world): System(world) {
-    signature.addComponents<RequiredComponents...>();
+namespace Carrot::ECS {
+    template<SystemType type, typename... RequiredComponents>
+    SignedSystem<type, RequiredComponents...>::SignedSystem(World& world): System(world) {
+        signature.addComponents<RequiredComponents...>();
+    }
 }

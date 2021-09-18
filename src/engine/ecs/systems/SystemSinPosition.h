@@ -8,13 +8,13 @@
 #include "engine/ecs/components/ForceSinPosition.h"
 #include "System.h"
 
-namespace Carrot {
+namespace Carrot::ECS {
     class SystemSinPosition: public LogicSystem<Transform, ForceSinPosition> {
     private:
         double time = 0.0;
 
     public:
-        explicit SystemSinPosition(Carrot::World& world): LogicSystem<Transform, ForceSinPosition>(world) {}
+        explicit SystemSinPosition(World& world): LogicSystem<Transform, ForceSinPosition>(world) {}
 
         void tick(double dt) override;
     };

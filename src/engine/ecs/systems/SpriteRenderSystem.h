@@ -9,9 +9,9 @@
 #include <engine/ecs/components/SpriteComponent.h>
 
 namespace Carrot::ECS {
-    class SpriteRenderSystem: public Carrot::RenderSystem<Carrot::Transform, Carrot::ECS::SpriteComponent> {
+    class SpriteRenderSystem: public RenderSystem<Transform, Carrot::ECS::SpriteComponent> {
     public:
-        explicit SpriteRenderSystem(Carrot::World& world): Carrot::RenderSystem<Carrot::Transform, Carrot::ECS::SpriteComponent>(world) {}
+        explicit SpriteRenderSystem(World& world): RenderSystem<Transform, SpriteComponent>(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -20,6 +20,6 @@ namespace Carrot::ECS {
         void tick(double dt) override;
 
     private:
-        void updateSprite(Carrot::Render::Context renderContext, const Carrot::Transform& transform, Carrot::Render::Sprite& sprite);
+        void updateSprite(Carrot::Render::Context renderContext, const Transform& transform, Carrot::Render::Sprite& sprite);
     };
 }

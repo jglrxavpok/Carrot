@@ -9,10 +9,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-namespace Carrot {
+namespace Carrot::ECS {
     struct Kinematics: public IdentifiableComponent<Kinematics> {
         glm::vec3 velocity{};
 
-        explicit Kinematics(EasyEntity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
+        explicit Kinematics(Entity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
     };
 }

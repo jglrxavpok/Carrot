@@ -8,13 +8,11 @@
 #include "engine/ecs/components/Kinematics.h"
 #include "System.h"
 
-namespace Carrot {
+namespace Carrot::ECS {
     class SystemKinematics: public LogicSystem<Transform, Kinematics> {
     public:
-        explicit SystemKinematics(Carrot::World& world): LogicSystem<Transform, Kinematics>(world) {}
+        explicit SystemKinematics(World& world): LogicSystem<Transform, Kinematics>(world) {}
 
         void tick(double dt) override;
     };
 }
-
-

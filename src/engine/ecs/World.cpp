@@ -9,247 +9,266 @@
 
 #include <engine/console/RuntimeOption.hpp>
 
-Carrot::EasyEntity Carrot::World::newEntity(std::string_view name) {
-    return newEntityWithID(allocationStrategy(), name);
-}
-
-Carrot::EasyEntity Carrot::World::newEntityWithID(EntityID id, std::string_view name) {
-    auto entity = std::make_shared<Entity>(id);
-    auto toReturn = EasyEntity(entity, *this);
-    entityNames[id] = name;
-    entitiesToAdd.emplace_back(entity);
-    return toReturn;
-}
-
-Carrot::EasyEntity& Carrot::EasyEntity::addTag(Carrot::Tags tag) {
-    worldRef.entityTags[*internalEntity] |= tag;
-    return *this;
-}
-
-Carrot::Tags Carrot::EasyEntity::getTags() const {
-    return worldRef.getTags(internalEntity);
-}
-
-Entity_Ptr Carrot::EasyEntity::getParent() {
-    return worldRef.getParent(internalEntity);
-}
-
-const Entity_Ptr Carrot::EasyEntity::getParent() const {
-    return worldRef.getParent(internalEntity);
-}
-
-void Carrot::EasyEntity::setParent(const Entity_Ptr& parent) {
-    worldRef.setParent(internalEntity, parent);
-}
-
-std::string_view Carrot::EasyEntity::getName() const {
-    return worldRef.getName(internalEntity);
-}
-
-void Carrot::EasyEntity::updateName(std::string_view name) {
-    worldRef.entityNames[*internalEntity] = name;
-}
-
-Carrot::World::World() {
-    EntityID entityID = 0;
-    allocationStrategy = [entityID]() mutable {
-        return entityID++;
-    };
-}
-
-void Carrot::World::setAllocationStrategy(const std::function<EntityID()>& allocationStrategy) {
-    this->allocationStrategy = allocationStrategy;
-}
-
-Carrot::Tags Carrot::World::getTags(const Entity_Ptr& entity) const {
-    auto it = entityTags.find(*entity);
-    if(it != entityTags.end()) {
-        return it->second;
+namespace Carrot::ECS {
+    Entity World::newEntity(std::string_view name) {
+        return newEntityWithID(allocationStrategy(), name);
     }
-    return {};
-}
 
-std::vector<Entity_Ptr> Carrot::World::getEntitiesWithTags(Tags tags) const {
-    std::vector<Entity_Ptr> result;
-    for(const auto& entity : entities) {
-        if((getTags(entity) & tags) == tags) {
-            result.push_back(entity);
-        }
+    Entity World::newEntityWithID(EntityID entity, std::string_view name) {
+        auto toReturn = Entity(entity, *this);
+        entityNames[entity] = name;
+        entitiesToAdd.emplace_back(toReturn);
+        return toReturn;
     }
-    return result;
-}
 
-void Carrot::World::tick(double dt) {
-    for(const auto& toAdd : entitiesToAdd) {
-        entities.push_back(toAdd);
+    Entity& Entity::addTag(Tags tag) {
+        worldRef.entityTags[internalEntity] |= tag;
+        return *this;
     }
-    if(!entitiesToAdd.empty()) {
-        for(const auto& logic : logicSystems) {
-            logic->onEntitiesAdded(entitiesToAdd);
-        }
-        for(const auto& render : renderSystems) {
-            render->onEntitiesAdded(entitiesToAdd);
-        }
-    }
-    if(!entitiesToRemove.empty()) {
-        for(const auto& logic : logicSystems) {
-            logic->onEntitiesRemoved(entitiesToRemove);
-        }
-        for(const auto& render : renderSystems) {
-            render->onEntitiesRemoved(entitiesToRemove);
-        }
 
-        for(const auto& toRemove : entitiesToRemove) {
-            auto position = find(entities.begin(), entities.end(), toRemove);
-            if(position != entities.end()) { // clear components
-                entityComponents.erase(entityComponents.find(*toRemove));
-                entities.erase(position, entities.end());
+    Tags Entity::getTags() const {
+        return worldRef.getTags(*this);
+    }
+
+    std::optional<Entity> Entity::getParent() {
+        return worldRef.getParent(*this);
+    }
+
+    std::optional<const Entity> Entity::getParent() const {
+        return worldRef.getParent(*this);
+    }
+
+    void Entity::setParent(std::optional<Entity> parent) {
+        worldRef.setParent(*this, parent);
+    }
+
+    std::string_view Entity::getName() const {
+        return worldRef.getName(*this);
+    }
+
+    void Entity::updateName(std::string_view name) {
+        worldRef.entityNames[internalEntity] = name;
+    }
+
+    Entity::operator bool() const {
+        return exists();
+    }
+
+    bool Entity::exists() const {
+        return worldRef.exists(internalEntity);
+    }
+
+    World::World() {
+        EntityID entityID = 0;
+        allocationStrategy = [entityID]() mutable {
+            return entityID++;
+        };
+    }
+
+    void World::setAllocationStrategy(const std::function<EntityID()>& allocationStrategy) {
+        this->allocationStrategy = allocationStrategy;
+    }
+
+    Tags World::getTags(const Entity& entity) const {
+        auto it = entityTags.find(entity);
+        if(it != entityTags.end()) {
+            return it->second;
+        }
+        return {};
+    }
+
+    std::vector<Entity> World::getEntitiesWithTags(Tags tags) const {
+        std::vector<Entity> result;
+        for(const auto& entity : entities) {
+            auto obj = Entity(entity, const_cast<World&>(*this));
+            if((getTags(obj) & tags) == tags) {
+                result.push_back(obj);
+            }
+        }
+        return result;
+    }
+
+    void World::tick(double dt) {
+        for(const auto& toAdd : entitiesToAdd) {
+            entities.push_back(toAdd);
+        }
+        if(!entitiesToAdd.empty()) {
+            for(const auto& logic : logicSystems) {
+                logic->onEntitiesAdded(entitiesToAdd);
+            }
+            for(const auto& render : renderSystems) {
+                render->onEntitiesAdded(entitiesToAdd);
+            }
+        }
+        if(!entitiesToRemove.empty()) {
+            for(const auto& logic : logicSystems) {
+                logic->onEntitiesRemoved(entitiesToRemove);
+            }
+            for(const auto& render : renderSystems) {
+                render->onEntitiesRemoved(entitiesToRemove);
             }
 
+            for(const auto& toRemove : entitiesToRemove) {
+                auto position = find(entities.begin(), entities.end(), toRemove);
+                if(position != entities.end()) { // clear components
+                    entityComponents.erase(entityComponents.find(toRemove));
+                    entities.erase(position, entities.end());
+                }
 
-            setParent(toRemove, nullptr);
-            entityChildren.erase(*toRemove);
-            entityNames.erase(*toRemove);
+
+                setParent(Entity(toRemove, *this), {});
+                entityChildren.erase(toRemove);
+                entityNames.erase(toRemove);
+            }
         }
-    }
-    entitiesToAdd.clear();
-    entitiesToRemove.clear();
+        entitiesToAdd.clear();
+        entitiesToRemove.clear();
 
-    for(const auto& logic : logicSystems) {
-        logic->tick(dt);
-    }
-
-    for(const auto& render : renderSystems) {
-        render->tick(dt);
-    }
-}
-
-static Carrot::RuntimeOption showWorldHierarchy("Debug/Show World hierarchy", false);
-
-void Carrot::World::onFrame(Carrot::Render::Context renderContext) {
-    ZoneScoped;
-    {
-        ZoneScopedN("Logic");
         for(const auto& logic : logicSystems) {
-            logic->onFrame(renderContext);
+            logic->tick(dt);
         }
-    }
 
-    {
-        ZoneScopedN("Prepare render");
         for(const auto& render : renderSystems) {
-            render->onFrame(renderContext);
+            render->tick(dt);
         }
     }
 
-    {
-        ZoneScopedN("Debug");
-        if(showWorldHierarchy) {
-            if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
-                std::function<void(const Entity_Ptr&)> showEntityTree = [&](const Entity_Ptr& entity) {
-                    if(!entity)
-                        return;
-                    auto childrenIt = entityChildren.find(*entity);
-                    if(childrenIt != entityChildren.end()) {
-                        if(ImGui::TreeNode("##child", "%s", getName(entity).c_str())) {
-                            auto& children = childrenIt->second;
-                            for(const auto& c : children) {
-                                showEntityTree(c);
-                            }
+    static Carrot::RuntimeOption showWorldHierarchy("Debug/Show World hierarchy", false);
 
-                            ImGui::TreePop();
+    void World::onFrame(Carrot::Render::Context renderContext) {
+        ZoneScoped;
+        {
+            ZoneScopedN("Logic");
+            for(const auto& logic : logicSystems) {
+                logic->onFrame(renderContext);
+            }
+        }
+
+        {
+            ZoneScopedN("Prepare render");
+            for(const auto& render : renderSystems) {
+                render->onFrame(renderContext);
+            }
+        }
+
+        {
+            ZoneScopedN("Debug");
+            if(showWorldHierarchy) {
+                if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
+                    std::function<void(Entity&)> showEntityTree = [&](Entity& entity) {
+                        if(!entity)
+                            return;
+                        auto children = getChildren(entity);
+                        if(!children.empty()) {
+                            if(ImGui::TreeNode("##child", "%s", getName(entity).c_str())) {
+                                for(auto& c : children) {
+                                    showEntityTree(c);
+                                }
+
+                                ImGui::TreePop();
+                            }
+                        } else { // has no children
+                            ImGui::Text("- %s", getName(entity).c_str());
                         }
-                    } else { // has no children
-                        ImGui::Text("- %s", getName(entity).c_str());
-                    }
-                };
-                for(const auto& ent : entities) {
-                    if( ! getParent(ent)) {
-                        showEntityTree(ent);
+                    };
+                    for(const auto& ent : entities) {
+                        auto entityObj = Entity(ent, *this);
+                        if( ! getParent(entityObj)) {
+                            showEntityTree(entityObj);
+                        }
                     }
                 }
+                ImGui::End();
             }
-            ImGui::End();
-        }
-    }
-}
-
-void Carrot::World::recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-    ZoneScoped;
-    {
-        ZoneScopedN("GBuffer Logic");
-        for(const auto& logic : logicSystems) {
-            logic->gBufferRender(pass, renderContext, commands);
         }
     }
 
-    {
-        ZoneScopedN("GBuffer render");
-        for(const auto& render : renderSystems) {
-            render->gBufferRender(pass, renderContext, commands);
+    void World::recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+        ZoneScoped;
+        {
+            ZoneScopedN("GBuffer Logic");
+            for(const auto& logic : logicSystems) {
+                logic->gBufferRender(pass, renderContext, commands);
+            }
+        }
+
+        {
+            ZoneScopedN("GBuffer render");
+            for(const auto& render : renderSystems) {
+                render->gBufferRender(pass, renderContext, commands);
+            }
         }
     }
-}
 
-Carrot::Signature Carrot::World::getSignature(const Entity_Ptr& entity) const {
-    auto componentMapLocation = this->entityComponents.find(*entity);
-    if(componentMapLocation == this->entityComponents.end()) {
-        // no such entity
-        return Signature{};
+    Signature World::getSignature(const Entity& entity) const {
+        auto componentMapLocation = this->entityComponents.find(entity);
+        if(componentMapLocation == this->entityComponents.end()) {
+            // no such entity
+            return Signature{};
+        }
+
+        auto& componentMap = componentMapLocation->second;
+        Signature s{};
+        for(const auto& [id, _] : componentMap) {
+            s.addComponent(id);
+        }
+        return s;
     }
 
-    auto& componentMap = componentMapLocation->second;
-    Signature s{};
-    for(const auto& [id, _] : componentMap) {
-        s.addComponent(id);
+    std::optional<Entity> World::getParent(const Entity& of) const {
+        auto it = entityParents.find(of);
+        if(it != entityParents.end()) {
+            return Entity(it->second, const_cast<World&>(*this));
+        }
+        return {};
     }
-    return s;
-}
 
-Entity_Ptr Carrot::World::getParent(const Entity_Ptr& of) const {
-    auto it = entityParents.find(*of);
-    if(it != entityParents.end()) {
-        return it->second;
+    void World::setParent(const Entity& toSet, std::optional<Entity> parent) {
+        assert(toSet);
+        auto previousParent = entityParents[toSet];
+        if(previousParent) {
+            auto& parentChildren = entityChildren[previousParent];
+            parentChildren.erase(std::remove(parentChildren.begin(), parentChildren.end(), toSet.internalEntity), parentChildren.end());
+        }
+        if(parent) {
+            entityParents[toSet] = parent.value();
+            entityChildren[*parent].push_back(toSet);
+        } else {
+            entityParents.erase(toSet);
+        }
     }
-    return nullptr;
-}
 
-void Carrot::World::setParent(const Entity_Ptr& toSet, const Entity_Ptr& parent) {
-    assert(toSet != nullptr);
-    auto previousParent = entityParents[*toSet];
-    if(previousParent) {
-        auto& parentChildren = entityChildren[*previousParent];
-        parentChildren.erase(std::remove(parentChildren.begin(), parentChildren.end(), toSet), parentChildren.end());
+    const std::vector<Entity> World::getChildren(const Entity& parent) const {
+        auto it = entityChildren.find(parent);
+        if(it != entityChildren.end()) {
+            std::vector<Entity> children;
+            for(auto& entityID : it->second) {
+                children.emplace_back(entityID, const_cast<World&>(*this));
+            }
+            return children;
+        }
+        static std::vector<Entity> empty;
+        return empty;
     }
-    if(parent) {
-        entityParents[*toSet] = parent;
-        entityChildren[*parent].push_back(toSet);
-    } else {
-        entityParents.erase(*toSet);
-    }
-}
 
-const std::vector<Entity_Ptr>& Carrot::World::getChildren(const Entity_Ptr& parent) const {
-    auto it = entityChildren.find(*parent);
-    if(it != entityChildren.end()) {
-        return it->second;
+    void World::removeEntity(const Entity& ent) {
+        entitiesToRemove.push_back(ent);
+        auto childrenCopy = entityChildren[ent];
+        for(const auto& child : childrenCopy) {
+            removeEntity(Entity(child, *this));
+        }
     }
-    static std::vector<Entity_Ptr> empty;
-    return empty;
-}
 
-void Carrot::World::removeEntity(const Entity_Ptr& ent) {
-    entitiesToRemove.push_back(ent);
-    auto childrenCopy = entityChildren[*ent];
-    for(const auto& child : childrenCopy) {
-        removeEntity(child);
+    const std::string& World::getName(const Entity& entity) const {
+        auto it = entityNames.find(entity);
+        if(it != entityNames.end()) {
+            return it->second;
+        }
+        throw std::runtime_error("Non-existent entity.");
     }
-}
 
-const std::string& Carrot::World::getName(const Entity_Ptr& entity) const {
-    auto it = entityNames.find(*entity);
-    if(it != entityNames.end()) {
-        return it->second;
+    bool World::exists(EntityID ent) const {
+        return entityNames.find(ent) != entityNames.end();
     }
-    throw std::runtime_error("Non-existent entity.");
+
 }

@@ -7,11 +7,11 @@
 #include "Component.h"
 #include <engine/render/lighting/Lights.h>
 
-namespace Carrot {
+namespace Carrot::ECS {
     struct RaycastedShadowsLight: public IdentifiableComponent<RaycastedShadowsLight> {
         Light& lightRef;
 
-        explicit RaycastedShadowsLight(EasyEntity entity, Light& light): IdentifiableComponent<RaycastedShadowsLight>(std::move(entity)), lightRef(light) {
+        explicit RaycastedShadowsLight(Entity entity, Light& light): IdentifiableComponent<RaycastedShadowsLight>(std::move(entity)), lightRef(light) {
             light.enabled = true;
         };
     };

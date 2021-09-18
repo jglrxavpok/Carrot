@@ -9,13 +9,13 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-namespace Carrot {
+namespace Carrot::ECS {
     struct ForceSinPosition: public IdentifiableComponent<ForceSinPosition> {
         glm::vec3 angularFrequency{1.0f};
         glm::vec3 amplitude{1.0f};
         glm::vec3 angularOffset{0.0f};
         glm::vec3 centerPosition{0.0f};
 
-        explicit ForceSinPosition(EasyEntity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
+        explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
     };
 }

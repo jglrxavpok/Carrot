@@ -8,7 +8,7 @@
 #include "engine/render/RenderContext.h"
 #include <engine/render/RenderPass.h>
 
-namespace Carrot {
+namespace Carrot::ECS {
 
     class World;
 
@@ -19,14 +19,14 @@ namespace Carrot {
 
     class System {
     protected:
-        Carrot::World& world;
+        World& world;
         Signature signature;
-        std::vector<Entity_WeakPtr> entities;
+        std::vector<Entity> entities;
 
-        virtual void onEntityAdded(Entity_WeakPtr entity) {};
+        virtual void onEntityAdded(Entity& entity) {};
 
     public:
-        explicit System(Carrot::World& world);
+        explicit System(World& world);
 
         [[nodiscard]] const Signature& getSignature() const;
 
@@ -36,8 +36,8 @@ namespace Carrot {
         // TODO: provide a way to render even in other passes
         virtual void gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 
-        void onEntitiesAdded(const std::vector<Entity_Ptr>& entities);
-        void onEntitiesRemoved(const std::vector<Entity_Ptr>& entities);
+        void onEntitiesAdded(const std::vector<EntityID>& entities);
+        void onEntitiesRemoved(const std::vector<EntityID>& entities);
 
         virtual ~System() = default;
     };
@@ -45,16 +45,16 @@ namespace Carrot {
     template<SystemType systemType, typename... RequiredComponents>
     class SignedSystem: public System {
     public:
-        explicit SignedSystem(Carrot::World& world);
+        explicit SignedSystem(World& world);
 
         /// Calls 'action' of each entity in this system. Immediately called, so capturing on the stack is safe.
-        void forEachEntity(const std::function<void(Entity_Ptr, RequiredComponents&...)>& action);
+        void forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action);
     };
 
     template<typename... RequiredComponents>
     class LogicSystem: public SignedSystem<SystemType::Logic, RequiredComponents...> {
     public:
-        explicit LogicSystem(Carrot::World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
+        explicit LogicSystem(World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
 
         void onFrame(Carrot::Render::Context renderContext) override {};
     };
@@ -62,7 +62,7 @@ namespace Carrot {
     template<typename... RequiredComponents>
     class RenderSystem: public SignedSystem<SystemType::Render, RequiredComponents...> {
     public:
-        explicit RenderSystem(Carrot::World& world): SignedSystem<SystemType::Render, RequiredComponents...>(world) {};
+        explicit RenderSystem(World& world): SignedSystem<SystemType::Render, RequiredComponents...>(world) {};
 
         void tick(double dt) override {};
     };

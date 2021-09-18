@@ -28,7 +28,7 @@ namespace Game {
 
         std::unique_ptr<Carrot::AnimatedInstances> animatedUnits = nullptr;
 
-        Carrot::World world;
+        Carrot::ECS::World world;
         std::unique_ptr<Carrot::ParticleBlueprint> blueprint = nullptr;
         std::unique_ptr<Carrot::ParticleSystem> particles = nullptr;
 
