@@ -26,6 +26,7 @@ namespace Carrot {
     class RayTracer;
     class Mesh;
     class Engine;
+    class BufferView;
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
@@ -83,6 +84,9 @@ namespace Carrot {
         Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
+        std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
+
+    public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
@@ -93,7 +97,7 @@ namespace Carrot {
         template<typename ConstantBlock>
         void pushConstantBlock(const vk::PipelineLayout& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
 
-        void bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
+        void bindMainCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
 
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 
@@ -103,6 +107,9 @@ namespace Carrot {
     private:
         VulkanDriver& driver;
         Configuration config;
+
+        vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
+        vk::UniqueDescriptorPool cameraDescriptorPool{};
 
         std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         std::map<std::string, Render::Texture::Ref> textures{};
@@ -120,6 +127,8 @@ namespace Carrot {
         bool imguiIsInitialized = false;
         std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
+
+        void createCameraSetResources();
 
         void createUIResources();
 

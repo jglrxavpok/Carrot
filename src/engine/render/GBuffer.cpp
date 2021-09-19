@@ -18,7 +18,7 @@ void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
 
 Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> callback) {
     using namespace Carrot::Render;
-    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
             .depth = 1.0f,
@@ -70,7 +70,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                                                                                       const Carrot::Render::FrameResource& skyboxOutput,
                                                                                       Carrot::Render::GraphBuilder& graph) {
     using namespace Carrot::Render;
-    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f});
+    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {

@@ -127,6 +127,11 @@ namespace Carrot {
         VertexFormat getVertexFormat() const;
 
     public:
+        PipelineDescription& getDescription() {
+            return description;
+        }
+
+    public:
         MaterialID reserveMaterialSlot(const Material& material);
 
         TextureID reserveTextureSlot(const vk::ImageView& textureView);

@@ -135,3 +135,11 @@ void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
 }
 
 void Carrot::ParticleSystem::onSwapchainSizeChange(int newWidth, int newHeight) {}
+
+Carrot::Pipeline& Carrot::ParticleSystem::getRenderingPipeline() {
+    return *renderingPipeline;
+}
+
+Carrot::ComputePipeline& Carrot::ParticleSystem::getComputePipeline() {
+    return *updateParticlesCompute;
+}

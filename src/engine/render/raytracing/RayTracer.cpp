@@ -86,7 +86,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
         return;
     ZoneScoped;
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
-    renderer.bindCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
+    renderer.bindMainCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
     commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[renderContext.eye][renderContext.swapchainIndex], sceneDescriptorSets[renderContext.swapchainIndex]}, {});
     // TODO: scene data
     // TODO: push constants

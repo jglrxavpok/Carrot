@@ -64,7 +64,6 @@ namespace Carrot {
     }
 
     glm::mat4& Camera::getProjectionMatrixRef() {
-        runtimeAssert(type == ControlType::ViewProjection, "Cannot get PROJECTION matrix on non view-projection cameras!");
         return projectionMatrix;
     }
 

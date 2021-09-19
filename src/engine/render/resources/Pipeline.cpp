@@ -177,7 +177,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         .width = static_cast<float>(driver.getFinalRenderSize().width),
         .height = static_cast<float>(driver.getFinalRenderSize().height),
 
-        .minDepth = 0.0f,
+        .minDepth = -1.0f,
         .maxDepth = 1.0f,
     };
 
@@ -276,7 +276,7 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderC
     commands.bindPipeline(bindPoint, getOrCreatePipelineForRenderPass(pass));
     if(description.reserveSet2ForCamera && description.vertexFormat != VertexFormat::SkinnedVertex) {
         bindDescriptorSets(commands, {driver.getEmptyDescriptorSet()}, {}, 1);
-        renderContext.renderer.bindCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
+        renderContext.renderer.bindMainCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
     }
     if(description.type == PipelineType::Blit || description.type == PipelineType::Skybox) {
         bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});

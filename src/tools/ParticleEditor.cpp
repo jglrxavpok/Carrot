@@ -20,17 +20,22 @@
 #include "tools/generators/ParticleShaderGenerator.h"
 #include "engine/render/particles/ParticleBlueprint.h"
 #include "engine/render/RenderGraph.h"
+#include "engine/render/TextureRepository.h"
 
 #include <spirv_glsl.hpp>
 #include <nfd.h>
+#include <engine/render/CameraBufferObject.h>
+#include <engine/render/resources/ResourceAllocator.h>
 
 namespace ed = ax::NodeEditor;
 
 std::filesystem::path Tools::ParticleEditor::EmptyProject = "";
 
+static std::uint32_t MaxPreviewParticles = 10000;
+
 Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
 : Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
-updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph()
+updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph(), previewCamera(90.0f, 1.0f, 0.001f, 10000.0f)
 {
     previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver());
     struct TmpPass {
@@ -39,22 +44,39 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
 
     auto& tmpPass = previewRenderGraphBuilder->addPass<TmpPass>("tmp-test",
     [this](Carrot::Render::GraphBuilder& builder, Carrot::Render::Pass<TmpPass>& pass, TmpPass& data) {
-        vk::ClearValue clearColor = vk::ClearColorValue(std::array{1.0f,0.0f,0.0f,1.0f});
+        vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
         data.color = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                {},
+                                                vk::Extent3D{.width = 500, .height = 500, .depth = 1},
                                                 vk::AttachmentLoadOp::eClear,
                                                 clearColor,
                                                 vk::ImageLayout::eColorAttachmentOptimal);
 
     },
-    [](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
-        // TODO
+    [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
+        if(previewSystem) {
+            auto& renderingPipeline = previewSystem->getRenderingPipeline();
+            cmds.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, renderingPipeline.getPipelineLayout(), 2, {cameraDescriptorSets[frame.swapchainIndex]}, {});
+            previewSystem->gBufferRender(pass.getRenderPass(), frame, cmds);
+        }
     });
 
+    previewColorTexture = tmpPass.getData().color;
+
     auto& composer = engine.getMainComposer();
-    composer.add(tmpPass.getData().color, 0.5, 1.0, 0.5, 1.0, 0.5);
+    composer.add(tmpPass.getData().color/*, -0.25, 0.25, 1.0, 0.5, -0.5*/);
 
     previewRenderGraph = previewRenderGraphBuilder->compile();
+
+    cameraUniformBufferViews.resize(engine.getSwapchainImageCount());
+    for (int i = 0; i < engine.getSwapchainImageCount(); i++) {
+        cameraUniformBufferViews[i] = engine.getResourceAllocator().allocateBuffer(sizeof(Carrot::CameraBufferObject),
+                                                                                   vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    }
+    cameraDescriptorSets = engine.getRenderer().createDescriptorSetForCamera(cameraUniformBufferViews);
+
+    previewCamera.getPositionRef() = glm::vec3(2, 2, 2);
+    previewCamera.getTargetRef() = glm::vec3(0, 0, 0);
 
     settings.load();
     settings.save();
@@ -212,6 +234,23 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
 
     updateGraph.resetChangeFlag();
     renderGraph.resetChangeFlag();
+    reloadPreview();
+}
+
+void Tools::ParticleEditor::generateParticleFile(std::string_view filename) {
+    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
+    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
+    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
+    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
+
+    auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
+    auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+
+    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
+
+    Carrot::IO::writeFile(std::string(filename), [&](std::ostream& out) {
+        out << blueprint;
+    });
 }
 
 void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
@@ -233,26 +272,16 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
             }
 
             if(ImGui::MenuItem("Test SPIR-V generation")) {
-                auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
-                auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
-                ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
-                ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
-
-                auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
-                auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
-
-                Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
                 // TODO: let user decide output file
-                Carrot::IO::writeFile("test-particle.particle", [&](std::ostream& out) {
-                   out << blueprint;
-                });
+                generateParticleFile("test-particle.particle");
 
                 Carrot::ParticleBlueprint loadTest("test-particle.particle");
 
-                auto& result = blueprint.getFragmentShader();
+                auto& result = loadTest.getFragmentShader();
                 Carrot::IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
 
-                /* can be useful for debugging:*/
+                /*
+                 * can be useful for debugging:
                  std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
 
                 spirv_cross::CompilerGLSL compiler(result);
@@ -263,6 +292,7 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
                 compiler.set_common_options(options);
 
                 std::cout << compiler.compile() << std::endl;
+                */
             }
 
             ImGui::EndMenu();
@@ -298,11 +328,58 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
     engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
         previewRenderGraph->execute(renderContext, cmds);
     });
+
+    UIParticlePreview(renderContext);
+}
+
+void Tools::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderContext) {
+    if(previewSystem) {
+        static Carrot::CameraBufferObject cameraObj{};
+        cameraObj.update(previewCamera);
+
+        auto& view = cameraUniformBufferViews[renderContext.swapchainIndex];
+        view.getBuffer().directUpload(&cameraObj, sizeof(cameraObj), view.getStart());
+
+        previewSystem->onFrame(renderContext.swapchainIndex);
+    }
+
+    ImVec2 previewSize { 200, 200 };
+    ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH/2 - previewSize.x/2, WINDOW_HEIGHT - previewSize.y/2), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(previewSize, ImGuiCond_FirstUseEver);
+    if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
+        auto windowSize = ImGui::GetContentRegionAvail();
+        auto& texture = renderContext.renderer.getVulkanDriver().getTextureRepository().get(previewColorTexture, renderContext.swapchainIndex);
+        ImGui::Image(texture.getImguiID(), windowSize);
+        // TODO camera controls
+    }
+    ImGui::End();
+}
+
+void Tools::ParticleEditor::reloadPreview() {
+    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
+    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
+    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor-Preview");
+    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor-Preview");
+
+    auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
+    auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+
+    previewBlueprint = std::make_unique<Carrot::ParticleBlueprint>(std::move(computeShader), std::move(fragmentShader));
+    previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
+
+    previewSystem->getRenderingPipeline().getDescription().reserveSet2ForCamera = false;
+
+    auto& emitter = *previewSystem->createEmitter();
+    emitter.setRate(10.0f);
 }
 
 void Tools::ParticleEditor::tick(double deltaTime) {
     updateGraph.tick(deltaTime);
     renderGraph.tick(deltaTime);
+
+    if(previewSystem) {
+        previewSystem->tick(deltaTime);
+    }
 
     hasUnsavedChanges = updateGraph.hasChanges() || renderGraph.hasChanges();
 }
@@ -327,12 +404,14 @@ void Tools::ParticleEditor::performLoad(std::filesystem::path fileToOpen) {
 
     settings.addToRecentProjects(fileToOpen);
     hasUnsavedChanges = false;
+    reloadPreview();
 }
 
 void Tools::ParticleEditor::clear() {
     updateGraph.clear();
     renderGraph.clear();
     hasUnsavedChanges = false;
+    reloadPreview();
 }
 
 bool Tools::ParticleEditor::showUnsavedChangesPopup() {

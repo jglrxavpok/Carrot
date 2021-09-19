@@ -152,13 +152,14 @@ void Carrot::Engine::init() {
                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
                                                         {},
                                                         vk::AttachmentLoadOp::eClear,
-                                                        vk::ClearColorValue(std::array{0,0,0,1})
+                                                        vk::ClearColorValue(std::array{0,0,0,0})
                );
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph skybox");
                 auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame, buffer);
+                renderer.bindMainCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
+                                          buffer);
                 renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
                 skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
                 skyboxMesh->bind(buffer);
@@ -198,6 +199,7 @@ void Carrot::Engine::init() {
                                                    auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                    fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
                                                    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+
                                                    //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                    //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
                                                    //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
@@ -247,6 +249,7 @@ void Carrot::Engine::init() {
                                                auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
                                                ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+
                                                //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
                                                //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);

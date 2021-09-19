@@ -11,23 +11,12 @@
 #include "EditorGraph.h"
 #include "TemplateEditor.h"
 #include "ProjectMenuHolder.h"
+#include <engine/render/Camera.h>
+#include <engine/render/particles/Particles.h>
+#include <engine/render/resources/BufferView.h>
 
 namespace Tools {
     class ParticleEditor: public SwapchainAware, public ProjectMenuHolder {
-    private:
-        Carrot::Engine& engine;
-        EditorSettings settings;
-        EditorGraph updateGraph;
-        EditorGraph renderGraph;
-        TemplateEditor templateEditor;
-        std::unique_ptr<Carrot::Render::Graph> previewRenderGraph = nullptr;
-        std::unique_ptr<Carrot::Render::GraphBuilder> previewRenderGraphBuilder = nullptr;
-
-        bool hasUnsavedChanges = false;
-
-        void updateUpdateGraph(Carrot::Render::Context renderContext);
-        void updateRenderGraph(Carrot::Render::Context renderContext);
-
     public:
         void clear();
         bool showUnsavedChangesPopup() override;
@@ -54,6 +43,31 @@ namespace Tools {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    private:
+        Carrot::Engine& engine;
+        EditorSettings settings;
+        EditorGraph updateGraph;
+        EditorGraph renderGraph;
+        TemplateEditor templateEditor;
+        std::unique_ptr<Carrot::Render::Graph> previewRenderGraph = nullptr;
+        std::unique_ptr<Carrot::Render::GraphBuilder> previewRenderGraphBuilder = nullptr;
+        Carrot::Render::FrameResource previewColorTexture;
+        std::vector<Carrot::BufferView> cameraUniformBufferViews;
+        std::vector<vk::DescriptorSet> cameraDescriptorSets;
+        Carrot::Camera previewCamera;
+        std::unique_ptr<Carrot::ParticleBlueprint> previewBlueprint = nullptr;
+        std::unique_ptr<Carrot::ParticleSystem> previewSystem = nullptr;
+
+        bool hasUnsavedChanges = false;
+
+        void updateUpdateGraph(Carrot::Render::Context renderContext);
+        void updateRenderGraph(Carrot::Render::Context renderContext);
+
+        void UIParticlePreview(Carrot::Render::Context renderContext);
+        void reloadPreview();
+
+        void generateParticleFile(std::string_view filename);
 
     };
 }

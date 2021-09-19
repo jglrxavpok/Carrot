@@ -107,6 +107,9 @@ namespace Carrot {
         /// Not thread-safe
         Particle* getFreeParticle();
 
+        Pipeline& getRenderingPipeline();
+        ComputePipeline& getComputePipeline();
+
         void tick(double deltaTime);
 
         void onFrame(std::size_t frameIndex);

@@ -6,11 +6,11 @@
 #include "ResourceAllocator.h"
 
 Carrot::BufferView::BufferView(Carrot::ResourceAllocator* allocator, Carrot::Buffer& buffer, vk::DeviceSize start, vk::DeviceSize size):
-    allocator(allocator), buffer(buffer), start(start), size(size) {}
+    allocator(allocator), buffer(&buffer), start(start), size(size) {}
 
 vk::DescriptorBufferInfo Carrot::BufferView::asBufferInfo() const {
     return vk::DescriptorBufferInfo {
-        .buffer = buffer.getVulkanBuffer(),
+        .buffer = getBuffer().getVulkanBuffer(),
         .offset = start,
         .range = size,
     };
@@ -18,11 +18,11 @@ vk::DescriptorBufferInfo Carrot::BufferView::asBufferInfo() const {
 
 void Carrot::BufferView::unmap() {
     // TODO: proper segmentation
-    buffer.unmap();
+    getBuffer().unmap();
 }
 
 void Carrot::BufferView::flushMappedMemory() {
-    buffer.flushMappedMemory(start, size);
+    getBuffer().flushMappedMemory(start, size);
 }
 
 Carrot::BufferView::~BufferView() {

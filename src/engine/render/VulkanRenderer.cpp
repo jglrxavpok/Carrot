@@ -8,6 +8,7 @@
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/utils/Assert.h"
 #include "imgui.h"
+#include "engine/render/resources/BufferView.h"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     ZoneScoped;
@@ -23,6 +24,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                3,2,0,
                                        });
 
+    createCameraSetResources();
     createRayTracer();
     createUIResources();
     createGBuffer();
@@ -265,7 +267,7 @@ void Carrot::VulkanRenderer::newFrame() {
     ImGui_ImplGlfw_NewFrame();
 }
 
-void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
+void Carrot::VulkanRenderer::bindMainCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
     auto& cameraSet = driver.getMainCameraDescriptorSet(data);
     cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
 }
@@ -288,4 +290,52 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
     return driver.getEngine();
+}
+
+void Carrot::VulkanRenderer::createCameraSetResources() {
+    vk::DescriptorSetLayoutBinding cameraBinding {
+            .binding = 0,
+            .descriptorType = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+    };
+    cameraDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = 1,
+            .pBindings = &cameraBinding,
+    });
+
+    vk::DescriptorPoolSize poolSize {
+            .type = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+    };
+    cameraDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()),
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+    });
+}
+
+std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
+    std::vector<vk::DescriptorSetLayout> layouts {getSwapchainImageCount(), *cameraDescriptorSetLayout};
+    auto cameraDescriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *cameraDescriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
+    });
+
+    assert(cameraDescriptorSets.size() == uniformBuffers.size());
+    for (int i = 0; i < cameraDescriptorSets.size(); i++) {
+        vk::DescriptorBufferInfo cameraBuffer = uniformBuffers[i].asBufferInfo();
+        vk::WriteDescriptorSet write {
+                .dstSet = cameraDescriptorSets[i],
+                .dstBinding = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                .pBufferInfo = &cameraBuffer,
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
+    }
+    return cameraDescriptorSets;
 }
