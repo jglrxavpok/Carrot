@@ -302,7 +302,9 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
         ImGui::EndMainMenuBar();
     }
 
-    ImGui::SetNextWindowPos(ImVec2(0, menuBarHeight));
+    auto& viewport = *ImGui::GetMainViewport();
+    ImGui::SetNextWindowViewport(viewport.ID);
+    ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
     ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize().width,
                                     engine.getVulkanDriver().getFinalRenderSize().height - menuBarHeight));
     if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {

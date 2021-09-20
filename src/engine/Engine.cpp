@@ -427,6 +427,8 @@ void Carrot::Engine::run() {
         }
 
         drawFrame(currentFrame);
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
 
         nextFrameAwaiter.cleanup();
 

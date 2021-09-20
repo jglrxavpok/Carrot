@@ -117,7 +117,7 @@ namespace Tools::NodeEditor {
                     popup_window->AutoPosLastDirection = ImGuiDir_Left; // "Below, Toward Left"
                 else
                     popup_window->AutoPosLastDirection = ImGuiDir_Down; // "Below, Toward Right (default)"
-                ImRect r_outer = GetWindowAllowedExtentRect(popup_window);
+                ImRect r_outer = GetPopupAllowedExtentRect(popup_window);
                 ImVec2 pos = FindBestWindowPosForPopupEx(frame_bb.GetBL(), size_expected,
                                                          &popup_window->AutoPosLastDirection, r_outer, frame_bb,
                                                          ImGuiPopupPositionPolicy_ComboBox);
