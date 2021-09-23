@@ -182,6 +182,18 @@ namespace Tools {
             visitBinOp(spv::OpFMod, expression.getOperand1(), expression.getOperand2());
         }
 
+        void visitMin(Carrot::MinExpression& expression) override {
+            visit(expression.getOperand1());
+            visit(expression.getOperand2());
+            visitGLSLBiFunction(GLSLstd450FMin);
+        }
+
+        void visitMax(Carrot::MaxExpression& expression) override {
+            visit(expression.getOperand1());
+            visit(expression.getOperand2());
+            visitGLSLBiFunction(GLSLstd450FMax);
+        }
+
         void visitLess(Carrot::LessExpression& expression) override {
             visitCompareOp(spv::OpFOrdLessThan, expression.getOperand1(), expression.getOperand2());
         }
@@ -306,6 +318,19 @@ namespace Tools {
             auto operandType = popType();
             assert(operandType == Carrot::ExpressionTypes::Float);
             auto result = builder.createTriOp(spv::OpExtInst, builder.makeFloatType(32), vars.glslImport, function, operand);
+            ids.push(result);
+            types.push(Carrot::ExpressionTypes::Float);
+        }
+
+        void visitGLSLBiFunction(GLSLstd450 function) {
+            auto operand1 = popID();
+            auto operandType1 = popType();
+            assert(operandType1 == Carrot::ExpressionTypes::Float);
+            auto operand2 = popID();
+            auto operandType2 = popType();
+            assert(operandType2 == Carrot::ExpressionTypes::Float);
+
+            auto result = builder.createOp(spv::OpExtInst, builder.makeFloatType(32), std::vector<spv::Id>{ vars.glslImport, static_cast<spv::Id>(function), operand1, operand2 });
             ids.push(result);
             types.push(Carrot::ExpressionTypes::Float);
         }

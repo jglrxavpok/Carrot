@@ -80,7 +80,7 @@ namespace Carrot::Render {
     private:
         void createFramebuffers();
         void createCommandPool();
-        void createCommandBuffers(Render::Eye eye);
+        void createCommandBuffers(const Render::Context& renderContext);
         void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
 
     private:

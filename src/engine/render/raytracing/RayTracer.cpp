@@ -62,6 +62,8 @@ void Carrot::RayTracer::onSwapchainRecreation() {
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     if(!enabled)
         return;
+    if(&renderContext.viewport != &renderer.getEngine().getMainViewport())
+        return;
     ZoneScoped;
     // TODO: proper size
     renderer.getASBuilder().startFrame();
@@ -86,7 +88,7 @@ void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk
         return;
     ZoneScoped;
     commands.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, *pipeline);
-    renderer.bindMainCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
+    renderer.bindCameraSet(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, renderContext, commands);
     commands.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, *pipelineLayout, 0, {rtDescriptorSets[renderContext.eye][renderContext.swapchainIndex], sceneDescriptorSets[renderContext.swapchainIndex]}, {});
     // TODO: scene data
     // TODO: push constants
@@ -382,7 +384,7 @@ void Carrot::RayTracer::createPipeline() {
     std::vector<vk::DescriptorSetLayout> setLayouts = {
             *rtDescriptorLayout,
             *sceneDescriptorLayout,
-            renderer.getVulkanDriver().getMainCameraDescriptorSetLayout(),
+            renderer.getCameraDescriptorSetLayout(),
     };
     pipelineLayoutCreateInfo.setLayoutCount = setLayouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();

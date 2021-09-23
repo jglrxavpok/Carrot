@@ -35,6 +35,7 @@ namespace Carrot {
     class Image;
     class Buffer;
     class Engine;
+    class VulkanRenderer;
 
     struct QueueFamilies {
         std::optional<uint32_t> graphicsFamily;
@@ -97,10 +98,6 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
         vk::DescriptorSet emptyDescriptorSet{};
 
-        std::unordered_map<Render::Eye, std::vector<std::shared_ptr<Buffer>>> cameraUniformBuffers{};
-        vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
-        vk::UniqueDescriptorPool cameraDescriptorSetsPool{};
-        std::unordered_map<Render::Eye, std::vector<vk::DescriptorSet>> cameraDescriptorSets{};
         std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
@@ -144,8 +141,6 @@ namespace Carrot {
         vk::UniqueCommandPool createComputeCommandPool();
 
         void createDefaultTexture();
-
-        void prepareCameraSets();
 
         /// Choose best surface format from the list of given formats
         /// \param formats
@@ -252,7 +247,6 @@ namespace Carrot {
         void createUniformBuffers();
 
         std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
-        std::unordered_map<Render::Eye, std::vector<std::shared_ptr<Buffer>>>& getCameraUniformBuffers() { return cameraUniformBuffers; };
 
         Window& getWindow() { return window; };
 
@@ -262,13 +256,11 @@ namespace Carrot {
 
         const Configuration& getConfiguration() { return config; }
 
-        vk::DescriptorSet& getMainCameraDescriptorSet(const Render::Context& context);
-        vk::DescriptorSetLayout& getMainCameraDescriptorSetLayout();
-
         vk::DescriptorSet& getEmptyDescriptorSet() { return emptyDescriptorSet; }
         vk::DescriptorSetLayout& getEmptyDescriptorSetLayout() { return *emptyDescriptorSetLayout; }
 
         Engine& getEngine();
+        VulkanRenderer& getRenderer();
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);

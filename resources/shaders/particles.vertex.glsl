@@ -39,6 +39,7 @@ void main() {
 
     inPosition = inPosition.zxy;
 
+    //uint particleIndex = gl_InstanceIndex;
     uint particleIndex = gl_VertexIndex / 6;
     outParticleIndex = particleIndex;
 

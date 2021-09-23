@@ -25,12 +25,12 @@ namespace Carrot::Memory {
         }
 
         T& asRef() {
-            runtimeAssert(hasValue(), "No value in optional!");
+            verify(hasValue(), "No value in optional!");
             return *value;
         }
 
         T& asRef() const {
-            runtimeAssert(hasValue(), "No value in optional!");
+            verify(hasValue(), "No value in optional!");
             return *value;
         }
 
@@ -43,12 +43,12 @@ namespace Carrot::Memory {
         }
 
         T* asPtr() {
-            runtimeAssert(hasValue(), "No value in optional!");
+            verify(hasValue(), "No value in optional!");
             return value;
         }
 
         T* asPtr() const {
-            runtimeAssert(hasValue(), "No value in optional!");
+            verify(hasValue(), "No value in optional!");
             return value;
         }
 

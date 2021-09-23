@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include <set>
+#include <future>
 
 namespace Carrot {
     class Engine;
@@ -79,6 +80,8 @@ namespace Carrot {
     /// Base class interfacing with Vulkan
     class Engine: public SwapchainAware {
     public:
+        using FrameTask = std::function<void()>;
+
         std::vector<std::unique_ptr<TracyVulkanContext>> tracyCtx{};
 
         /// Starts the engine. Will immediately load Vulkan resources
@@ -160,7 +163,7 @@ namespace Carrot {
         /// Creates a set with the graphics and transfer family indices
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
-        Camera& getCamera(Carrot::Render::Eye eye);
+        Camera& getMainViewportCamera(Carrot::Render::Eye eye);
         Camera& getCamera();
 
         vk::PhysicalDevice& getPhysicalDevice();
@@ -213,13 +216,16 @@ namespace Carrot {
 
         Render::Composer& getMainComposer(Render::Eye eye = Render::Eye::NoVR) { return *composers[eye]; }
 
-        Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Eye eye = Render::Eye::NoVR);
+        Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Viewport& viewport, Render::Eye eye = Render::Eye::NoVR);
 
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
-
 #ifdef ENABLE_VR
         VR::Session& getVRSession() { return *vrSession; }
 #endif
+
+    public: // viewports
+        Render::Viewport& getMainViewport();
+        Render::Viewport& createViewport();
 
     public: // inputs
 
@@ -333,6 +339,13 @@ namespace Carrot {
             nextFrameAwaiter.transferOwnership(std::move(task));
         }
 
+        /// Adds a task that will run parallel to other systems during the frame.
+        /// WARNING: WILL BE WAITED AT THE END OF THE FRAME. DON'T DO ANYTHING THAT COULD FREEZE THE MAIN LOOP
+        void addFrameTask(FrameTask&& task);
+
+    private: // async private
+        void waitForFrameTasks();
+
     public:
         static void registerUsertype(sol::state& destination);
 
@@ -372,8 +385,7 @@ namespace Carrot {
         std::vector<vk::UniqueFence> imagesInFlight{};
 
         std::unordered_map<std::string, std::shared_ptr<Material>> materials{}; // TODO: is it still used? If so, move to VulkanRenderer
-
-        std::unordered_map<Render::Eye, std::unique_ptr<Camera>> cameras{};
+        std::list<Carrot::Render::Viewport> viewports;
 
         bool framebufferResized = false;
 
@@ -491,6 +503,9 @@ namespace Carrot {
         void onGamepadAxisChange(int gamepadID, int buttonID, float newValue, float oldValue);
         void onGamepadVec2Change(int gamepadID, IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
         void onKeysVec2Change(Carrot::IO::GameInputVectorType vecID, glm::vec2 newValue, glm::vec2 oldValue);
+
+    private: // async members
+        std::list<std::future<void>> frameTaskFutures;
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;

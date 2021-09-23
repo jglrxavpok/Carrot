@@ -79,6 +79,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/AnimatedSprite.cpp
         ${EngineRoot}render/Sprite.cpp
         ${EngineRoot}render/TextureAtlas.cpp
+        ${EngineRoot}render/Viewport.cpp
+        ${EngineRoot}render/RenderContext.cpp
 
         ${EngineRoot}expressions/Expressions.cpp
         ${EngineRoot}console/Console.cpp

@@ -15,7 +15,7 @@ namespace Carrot::Render {
 
     Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), texture(std::move(texture)), textureRegion(std::move(textureRegion)),
     instanceBuffer(renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::InstanceData), vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
-        runtimeAssert(this->texture != nullptr, "Cannot create sprite with no texture");
+        verify(this->texture != nullptr, "Cannot create sprite with no texture");
 /*        Carrot::PipelineDescription desc = Carrot::PipelineDescription("resources/pipelines/gBufferSprite.json");
         renderingPipeline = std::make_unique<Carrot::Pipeline>(renderer.getVulkanDriver(), desc);*/
         // create a different pipeline for each texture (probably not really efficient)

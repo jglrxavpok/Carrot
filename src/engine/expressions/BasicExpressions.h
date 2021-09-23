@@ -166,7 +166,21 @@ namespace Carrot {
         }
     };
 
+    struct fminstruct {
+        float operator()(const float& x, const float& y) const {
+            return std::max(x, y);
+        }
+    };
+
+    struct fmaxstruct {
+        float operator()(const float& x, const float& y) const {
+            return std::max(x, y);
+        }
+    };
+
     using ModExpression = BinaryOperationExpression<fmodstruct>;
+    using MinExpression = BinaryOperationExpression<fminstruct>;
+    using MaxExpression = BinaryOperationExpression<fmaxstruct>;
 
     class PlaceholderExpression: public Expression {
     public:

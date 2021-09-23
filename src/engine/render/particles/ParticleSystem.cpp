@@ -10,6 +10,7 @@
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/io/Resource.h"
+#include "engine/io/Logging.hpp"
 
 #define DEBUG_PARTICLES 1
 
@@ -17,13 +18,8 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
         engine(engine), blueprint(blueprint), maxParticleCount(maxParticleCount),
         particleBuffer(engine.getResourceAllocator().allocateBuffer(
             sizeof(Particle) * maxParticleCount,
-            vk::BufferUsageFlagBits::eStorageBuffer,
-            vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
-        )),
-        drawCommandBuffer(engine.getResourceAllocator().allocateBuffer(
-                sizeof(vk::DrawIndirectCommand),
-                vk::BufferUsageFlagBits::eIndirectBuffer,
-                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc,
+            vk::MemoryPropertyFlagBits::eDeviceLocal
         )),
         statisticsBuffer(engine.getResourceAllocator().allocateBuffer(
                 sizeof(ParticleStatistics),
@@ -31,28 +27,17 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         )) {
 
-    drawCommand = drawCommandBuffer.map<vk::DrawIndirectCommand>();
-    drawCommand->firstInstance = 0;
-    drawCommand->firstVertex = 0;
-    drawCommand->instanceCount = 1;
-    drawCommand->vertexCount = 0;
-
-    particlePool = particleBuffer.map<Particle>();
-    particlePoolEnd = particlePool + maxParticleCount;
+    particlePool.resize(maxParticleCount);
 
     renderingPipeline = blueprint.buildRenderingPipeline(engine);
     onSwapchainImageCountChange(engine.getSwapchainImageCount());
-
-    std::fill(particlePool, particlePoolEnd, Particle{});
 
     updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
 
     statistics = statisticsBuffer.map<ParticleStatistics>();
 }
 
-void Carrot::ParticleSystem::onFrame(std::size_t frameIndex) {
-    drawCommand->vertexCount = usedParticleCount*6;
-
+void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContext) {
 #if DEBUG_PARTICLES
     if(ImGui::Begin("Debug ParticleSystem")) {
         ImGui::Text("Alive particle count: %lli", usedParticleCount);
@@ -61,15 +46,58 @@ void Carrot::ParticleSystem::onFrame(std::size_t frameIndex) {
     }
     ImGui::End();
 #endif
+
+    if(gotUpdated) {
+        engine.addFrameTask([this, renderContext]() {
+            if(usedParticleCount <= 0)
+                return;
+            pullDataFromGPU();
+
+            auto& camera = renderContext.viewport.getCamera();
+
+            ZoneScopedN("Sort particles");
+            // sort by distance to camera
+            std::sort(&particlePool[0], &particlePool[usedParticleCount], [&](const Particle& a, const Particle& b) {
+                auto toA = a.position - camera.getPosition();
+                auto toB = b.position - camera.getPosition();
+
+                return glm::dot(toA, toA) > glm::dot(toB, toB);
+            });
+            pushDataToGPU();
+        });
+
+        gotUpdated = false;
+    }
+}
+
+void Carrot::ParticleSystem::pullDataFromGPU() {
+    ZoneScoped;
+    updateParticlesCompute->waitForCompletion();
+    if(usedParticleCount > 0) {
+        particleBuffer.getBuffer().copyTo(std::span<std::uint8_t>{reinterpret_cast<std::uint8_t*>(particlePool.data()), usedParticleCount*sizeof(Particle)}, particleBuffer.getStart());
+    }
+}
+
+void Carrot::ParticleSystem::pushDataToGPU() {
+    ZoneScoped;
+    if(usedParticleCount > 0) {
+        particleBuffer.getBuffer().stageUploadWithOffset(particleBuffer.getStart(), particlePool.data(), sizeof(Particle)*usedParticleCount);
+        updateParticlesCompute->dispatch(ceil(1024.0f / usedParticleCount),1,1);
+    }
 }
 
 void Carrot::ParticleSystem::tick(double deltaTime) {
+    pullDataFromGPU();
+
     for(auto& emitter : emitters) {
         emitter->tick(deltaTime);
     }
-
     initNewParticles();
     updateParticles(deltaTime);
+
+    pushDataToGPU();
+
+    gotUpdated = true;
 }
 
 void Carrot::ParticleSystem::initNewParticles() {
@@ -81,17 +109,15 @@ void Carrot::ParticleSystem::initNewParticles() {
 }
 
 void Carrot::ParticleSystem::updateParticles(double deltaTime) {
-    updateParticlesCompute->waitForCompletion();
-
+    ZoneScoped;
     // remove dead particles
-    auto end = std::remove_if(particlePool, particlePool+usedParticleCount, [](const auto& p) { return p.life < 0.0f; });
-    auto count = std::distance(particlePool, end);
+    auto end = std::remove_if(&particlePool[0], &particlePool[usedParticleCount], [](const auto& p) { return p.life < 0.0f; });
+    auto count = std::distance(&particlePool[0], end);
     usedParticleCount = count;
     oldParticleCount = count;
 
     statistics->totalCount = usedParticleCount;
     statistics->deltaTime = deltaTime;
-    updateParticlesCompute->dispatch(ceil(usedParticleCount/1024.0f),1,1);
 }
 
 std::shared_ptr<Carrot::ParticleEmitter> Carrot::ParticleSystem::createEmitter() {
@@ -109,7 +135,7 @@ Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
 
 void Carrot::ParticleSystem::gBufferRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
     renderingPipeline->bind(pass, renderContext, commands);
-    commands.drawIndirect(drawCommandBuffer.getVulkanBuffer(), drawCommandBuffer.getStart(), 1, sizeof(vk::DrawIndexedIndirectCommand));
+    commands.draw(6 * usedParticleCount, 1, 0, 0);
 }
 
 void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {

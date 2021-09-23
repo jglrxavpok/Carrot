@@ -20,7 +20,7 @@ namespace Carrot::Network {
                 break;
 
             case ConnectionState::Play:
-                runtimeAssert(hasSetPlayProtocol, "No protocol has been set with setPlayProtocol!");
+                verify(hasSetPlayProtocol, "No protocol has been set with setPlayProtocol!");
                 packet = playProtocol.make(buffer.packetType);
                 break;
 

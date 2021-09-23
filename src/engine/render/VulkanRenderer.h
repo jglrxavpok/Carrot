@@ -33,6 +33,7 @@ namespace Carrot {
     class VulkanRenderer: public SwapchainAware {
     public:
         static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
+        static constexpr std::uint32_t MaxCameras = 10; // used to determine descriptor set pool size
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
 
@@ -84,7 +85,10 @@ namespace Carrot {
         Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
+        const vk::DescriptorSetLayout& getCameraDescriptorSetLayout() const;
+
         std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
+        void destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
@@ -97,7 +101,7 @@ namespace Carrot {
         template<typename ConstantBlock>
         void pushConstantBlock(const vk::PipelineLayout& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
 
-        void bindMainCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
+        void bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
 
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 

@@ -20,7 +20,7 @@ namespace Carrot {
     }
 
     const glm::vec3& Camera::getUp() const {
-        runtimeAssert(type == ControlType::PoseAndLookAt, "Cannot get UP vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get UP vector on non pose-and-look-at cameras!");
         return up;
     }
 
@@ -39,27 +39,27 @@ namespace Carrot {
     }
 
     const glm::vec3& Camera::getTarget() const {
-        runtimeAssert(type == ControlType::PoseAndLookAt, "Cannot get TARGET vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get TARGET vector on non pose-and-look-at cameras!");
         return target;
     }
 
     const glm::vec3& Camera::getPosition() const {
-        runtimeAssert(type == ControlType::PoseAndLookAt, "Cannot get POSITION vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get POSITION vector on non pose-and-look-at cameras!");
         return position;
     }
 
     glm::vec3& Camera::getTargetRef() {
-        runtimeAssert(type == ControlType::PoseAndLookAt, "Cannot get TARGET vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get TARGET vector on non pose-and-look-at cameras!");
         return target;
     }
 
     glm::vec3& Camera::getPositionRef() {
-        runtimeAssert(type == ControlType::PoseAndLookAt, "Cannot get POSITION vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get POSITION vector on non pose-and-look-at cameras!");
         return position;
     }
 
     glm::mat4& Camera::getViewMatrixRef() {
-        runtimeAssert(type == ControlType::ViewProjection, "Cannot get VIEW matrix on non view-projection cameras!");
+        verify(type == ControlType::ViewProjection, "Cannot get VIEW matrix on non view-projection cameras!");
         return viewMatrix;
     }
 
@@ -78,4 +78,6 @@ namespace Carrot {
         this->viewMatrix = view;
         this->projectionMatrix = projection;
     }
+
+    Camera& Camera::operator=(const Camera& toCopy) = default;
 }

@@ -116,7 +116,7 @@ namespace Carrot::Network {
     }
 
     ConnectionState Server::getConnectionState(void *userData) {
-        runtimeAssert(userData, "User data cannot be nullptr here");
+        verify(userData, "User data cannot be nullptr here");
         return reinterpret_cast<ConnectedClient*>(userData)->currentState;
     }
 

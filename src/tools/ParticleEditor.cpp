@@ -35,7 +35,7 @@ static std::uint32_t MaxPreviewParticles = 10000;
 
 Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
 : Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
-updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph(), previewCamera(90.0f, 1.0f, 0.001f, 10000.0f)
+updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph(), previewViewport(engine.createViewport())
 {
     previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver());
     struct TmpPass {
@@ -55,7 +55,6 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
     [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
         if(previewSystem) {
             auto& renderingPipeline = previewSystem->getRenderingPipeline();
-            cmds.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, renderingPipeline.getPipelineLayout(), 2, {cameraDescriptorSets[frame.swapchainIndex]}, {});
             previewSystem->gBufferRender(pass.getRenderPass(), frame, cmds);
         }
     });
@@ -67,16 +66,9 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
 
     previewRenderGraph = previewRenderGraphBuilder->compile();
 
-    cameraUniformBufferViews.resize(engine.getSwapchainImageCount());
-    for (int i = 0; i < engine.getSwapchainImageCount(); i++) {
-        cameraUniformBufferViews[i] = engine.getResourceAllocator().allocateBuffer(sizeof(Carrot::CameraBufferObject),
-                                                                                   vk::BufferUsageFlagBits::eUniformBuffer,
-                                                                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    }
-    cameraDescriptorSets = engine.getRenderer().createDescriptorSetForCamera(cameraUniformBufferViews);
-
-    previewCamera.getPositionRef() = glm::vec3(2, 2, 2);
-    previewCamera.getTargetRef() = glm::vec3(0, 0, 0);
+    previewViewport.getCamera() = Carrot::Camera(90.0f, 1.0f, 0.001f, 10000.0f);
+    previewViewport.getCamera().getPositionRef() = glm::vec3(2, 2, 3);
+    previewViewport.getCamera().getTargetRef() = glm::vec3(0, 0, 2.5);
 
     settings.load();
     settings.save();
@@ -154,11 +146,11 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
     ProjectMenuHolder::attachSettings(settings);
 
     if(settings.currentProject) {
-        performLoad(settings.currentProject.value());
+        scheduleLoad(settings.currentProject.value());
     }
 
     std::filesystem::path testPath = "resources/node_templates/vec2length.json";
-    templateEditor.performLoad(testPath);
+    templateEditor.scheduleLoad(testPath);
 
     templateEditor.open();
 }
@@ -180,6 +172,8 @@ void Tools::ParticleEditor::addCommonOperators(Tools::EditorGraph& graph) {
     graph.addToLibrary<MultNode>("mult", "Multiply");
     graph.addToLibrary<DivNode>("div", "Divide");
     graph.addToLibrary<ModNode>("mod", "Modulus");
+    graph.addToLibrary<MinNode>("min", "Minimum");
+    graph.addToLibrary<MaxNode>("max", "Maximum");
 }
 
 void Tools::ParticleEditor::addCommonMath(Tools::EditorGraph& graph) {
@@ -237,118 +231,114 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
     reloadPreview();
 }
 
-void Tools::ParticleEditor::generateParticleFile(std::string_view filename) {
+void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& filename) {
     auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
     auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
-    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor"); // TODO: use project name
-    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor"); // TODO: use project name
+    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, getCurrentProjectName()); // TODO: use project name
+    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, getCurrentProjectName()); // TODO: use project name
 
     auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
     auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
 
     Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
 
-    Carrot::IO::writeFile(std::string(filename), [&](std::ostream& out) {
+    Carrot::IO::writeFile(filename.string(), [&](std::ostream& out) {
         out << blueprint;
     });
 }
 
 void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
-    float menuBarHeight = 0;
-    if(ImGui::BeginMainMenuBar()) {
-        if(ImGui::BeginMenu("Project")) {
-            drawProjectMenu();
+    if(&renderContext.viewport == &previewViewport) {
+        if(previewSystem) {
+            previewSystem->onFrame(renderContext);
 
-            ImGui::EndMenu();
+            engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+                previewRenderGraph->execute(renderContext, cmds);
+            });
         }
 
-        if(ImGui::BeginMenu("Tests")) {
-            if(ImGui::MenuItem("Print tree")) {
-                auto expressions = renderGraph.generateExpressionsFromTerminalNodes();
-                for(const auto& expr : expressions) {
-                    std::cout << expr->toString() << '\n';
+    } else {
+        float menuBarHeight = 0;
+        if(ImGui::BeginMainMenuBar()) {
+            if(ImGui::BeginMenu("Project")) {
+                drawProjectMenu();
+
+                if(ImGui::MenuItem("Export...")) {
+                    nfdchar_t* savePath;
+
+                    // prepare filters for the dialog
+                    nfdfilteritem_t filterItem[1] = {{"Particle", "particle"}};
+
+                    // show the dialog
+                    std::string defaultFilename = getCurrentProjectName()+".particle";
+                    nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultFilename.c_str());
+                    if (result == NFD_OKAY) {
+                        saveToFile(savePath);
+                        std::filesystem::path path = savePath;
+                        generateParticleFile(path);
+                        // remember to free the memory (since NFD_OKAY is returned)
+                        NFD_FreePath(savePath);
+                    } else if (result == NFD_CANCEL) {
+                        // no op
+                    } else {
+                        std::string msg = "Error: ";
+                        msg += NFD_GetError();
+                        throw std::runtime_error(msg);
+                    }
                 }
-                std::cout << std::endl;
+
+                ImGui::EndMenu();
             }
 
-            if(ImGui::MenuItem("Test SPIR-V generation")) {
-                // TODO: let user decide output file
-                generateParticleFile("test-particle.particle");
+            if(ImGui::BeginMenu("Tests")) {
+                if(ImGui::MenuItem("Print tree")) {
+                    auto expressions = renderGraph.generateExpressionsFromTerminalNodes();
+                    for(const auto& expr : expressions) {
+                        std::cout << expr->toString() << '\n';
+                    }
+                    std::cout << std::endl;
+                }
 
-                Carrot::ParticleBlueprint loadTest("test-particle.particle");
-
-                auto& result = loadTest.getFragmentShader();
-                Carrot::IO::writeFile("test-shader-fragment.spv", (void*)result.data(), result.size() * sizeof(uint32_t));
-
-                /*
-                 * can be useful for debugging:
-                 std::system("spirv-dis test-shader-fragment.spv > test-disassembly-fragment.txt");
-
-                spirv_cross::CompilerGLSL compiler(result);
-
-                spirv_cross::CompilerGLSL::Options options;
-                options.version = 450;
-                options.vulkan_semantics = true;
-                compiler.set_common_options(options);
-
-                std::cout << compiler.compile() << std::endl;
-                */
+                ImGui::EndMenu();
             }
 
-            ImGui::EndMenu();
+            menuBarHeight = ImGui::GetWindowSize().y;
+            ImGui::EndMainMenuBar();
         }
 
-        menuBarHeight = ImGui::GetWindowSize().y;
-        ImGui::EndMainMenuBar();
-    }
-
-    auto& viewport = *ImGui::GetMainViewport();
-    ImGui::SetNextWindowViewport(viewport.ID);
-    ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
-    ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize().width,
-                                    engine.getVulkanDriver().getFinalRenderSize().height - menuBarHeight));
-    if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-        if(ImGui::BeginTabBar("ParticleEditorTabs")) {
-            if(ImGui::BeginTabItem("Update##tab particle editor")) {
-                updateUpdateGraph(renderContext);
-                ImGui::EndTabItem();
+        auto& viewport = *ImGui::GetMainViewport();
+        ImGui::SetNextWindowViewport(viewport.ID);
+        ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
+        ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize().width,
+                                        engine.getVulkanDriver().getFinalRenderSize().height - menuBarHeight));
+        if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+            if(ImGui::BeginTabBar("ParticleEditorTabs")) {
+                if(ImGui::BeginTabItem("Update##tab particle editor")) {
+                    updateUpdateGraph(renderContext);
+                    ImGui::EndTabItem();
+                }
+                if(ImGui::BeginTabItem("Render##tab particle editor")) {
+                    updateRenderGraph(renderContext);
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
             }
-            if(ImGui::BeginTabItem("Render##tab particle editor")) {
-                updateRenderGraph(renderContext);
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
         }
+        ImGui::End();
+
+        templateEditor.onFrame(renderContext);
+
+        ProjectMenuHolder::onFrame(renderContext);
+
+        UIParticlePreview(renderContext);
     }
-    ImGui::End();
-
-
-    templateEditor.onFrame(renderContext);
-
-    ProjectMenuHolder::onFrame(renderContext);
-
-    engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-        previewRenderGraph->execute(renderContext, cmds);
-    });
-
-    UIParticlePreview(renderContext);
 }
 
 void Tools::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderContext) {
-    if(previewSystem) {
-        static Carrot::CameraBufferObject cameraObj{};
-        cameraObj.update(previewCamera);
-
-        auto& view = cameraUniformBufferViews[renderContext.swapchainIndex];
-        view.getBuffer().directUpload(&cameraObj, sizeof(cameraObj), view.getStart());
-
-        previewSystem->onFrame(renderContext.swapchainIndex);
-    }
-
     ImVec2 previewSize { 200, 200 };
     ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH/2 - previewSize.x/2, WINDOW_HEIGHT - previewSize.y/2), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(previewSize, ImGuiCond_FirstUseEver);
-    if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
+    if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground)) {
         auto windowSize = ImGui::GetContentRegionAvail();
         auto& texture = renderContext.renderer.getVulkanDriver().getTextureRepository().get(previewColorTexture, renderContext.swapchainIndex);
         ImGui::Image(texture.getImguiID(), windowSize);
@@ -368,8 +358,6 @@ void Tools::ParticleEditor::reloadPreview() {
 
     previewBlueprint = std::make_unique<Carrot::ParticleBlueprint>(std::move(computeShader), std::move(fragmentShader));
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
-
-    previewSystem->getRenderingPipeline().getDescription().reserveSet2ForCamera = false;
 
     auto& emitter = *previewSystem->createEmitter();
     emitter.setRate(10.0f);

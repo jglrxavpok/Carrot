@@ -108,7 +108,7 @@ namespace Carrot::Network {
             std::size_t readSize = tcpSocket.receive(asio::buffer(readBuffer), 0, readError);
             if(!readError) {
                 PacketBuffer buffer{{readBuffer.data(), readSize}};
-                runtimeAssert(buffer.packetType == Handshake::PacketIDs::ConfirmHandshake,
+                verify(buffer.packetType == Handshake::PacketIDs::ConfirmHandshake,
                               "Expected 'ConfirmHandshake' packet, got packet with ID " + std::to_string(buffer.packetType));
             } else {
                 throw std::runtime_error("Could not complete handshake, error " + error.message());
@@ -119,12 +119,12 @@ namespace Carrot::Network {
     }
 
     void Client::queueEvent(Packet::Ptr&& event) {
-        runtimeAssert(connected, "Client must be connected!");
+        verify(connected, "Client must be connected!");
         Asio::asyncWriteToSocket(event, tcpSocket);
     }
 
     void Client::queueMessage(Packet::Ptr&& message) {
-        runtimeAssert(connected, "Client must be connected!");
+        verify(connected, "Client must be connected!");
         Asio::asyncWriteToSocket(message, udpSocket, udpEndpoint);
     }
 

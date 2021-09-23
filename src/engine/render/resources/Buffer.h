@@ -41,6 +41,13 @@ namespace Carrot {
         /// Copies this buffer to 'other' as a transfer operation
         void copyTo(Buffer& other, vk::DeviceSize offset) const;
 
+        /// Copies the content of this buffer to the given buffer, as a transfer operation.
+        void copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const;
+
+        /// Mmaps the buffer memory into the application memory space, and copies the data from this buffer to 'out'. Unmaps the memory when finished.
+        /// Only use for host-visible and host-coherent memory
+        void directDownload(std::span<std::uint8_t> out, vk::DeviceSize offset);
+
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
         void directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
@@ -56,7 +63,7 @@ namespace Carrot {
         void stageUploadWithOffsets(const std::pair<std::uint64_t, std::vector<T>>&... offsetDataPairs);
 
         template<typename T>
-        void stageUploadWithOffset(uint64_t offset, const T* data);
+        void stageUploadWithOffset(uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
 
         template<typename T>
         T* map();

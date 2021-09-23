@@ -157,11 +157,12 @@ namespace Tools {
 
         virtual ~ProjectMenuHolder() = default;
 
-    private:
-        void performLoad() {
-            performLoad(fileToOpen);
-            fileToOpen = EmptyProject;
-            tryingToOpenFile = false;
+        const std::string& getCurrentProjectName() const {
+            return currentProjectName;
+        }
+
+        const std::filesystem::path& getCurrentProjectFile() const {
+            return currentFile;
         }
 
         void scheduleLoad(std::filesystem::path path) {
@@ -175,6 +176,15 @@ namespace Tools {
         }
 
     private:
+        void performLoad() {
+            performLoad(fileToOpen);
+            currentFile = fileToOpen;
+            currentProjectName = currentFile.stem().string();
+            fileToOpen = EmptyProject;
+            tryingToOpenFile = false;
+        }
+
+    private:
         EditorSettings* settings = nullptr;
         std::string popupName;
         std::string newItemName;
@@ -184,5 +194,7 @@ namespace Tools {
         std::string saveAsItemName;
         bool tryingToOpenFile = false;
         std::filesystem::path fileToOpen = EmptyProject;
+        std::filesystem::path currentFile = EmptyProject;
+        std::string currentProjectName = "Untitled";
     };
 }

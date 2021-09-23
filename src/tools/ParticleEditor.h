@@ -55,7 +55,7 @@ namespace Tools {
         Carrot::Render::FrameResource previewColorTexture;
         std::vector<Carrot::BufferView> cameraUniformBufferViews;
         std::vector<vk::DescriptorSet> cameraDescriptorSets;
-        Carrot::Camera previewCamera;
+        Carrot::Render::Viewport& previewViewport;
         std::unique_ptr<Carrot::ParticleBlueprint> previewBlueprint = nullptr;
         std::unique_ptr<Carrot::ParticleSystem> previewSystem = nullptr;
 
@@ -67,7 +67,7 @@ namespace Tools {
         void UIParticlePreview(Carrot::Render::Context renderContext);
         void reloadPreview();
 
-        void generateParticleFile(std::string_view filename);
+        void generateParticleFile(const std::filesystem::path& filename);
 
     };
 }

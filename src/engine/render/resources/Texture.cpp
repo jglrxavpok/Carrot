@@ -25,7 +25,7 @@ namespace Carrot::Render {
     }
 
     Texture::Texture(Carrot::VulkanDriver& driver, const Resource& resource, FileFormat format): driver(driver) {
-        runtimeAssert(Carrot::IO::isImageFormat(format), "Format must be an image format!");
+        verify(Carrot::IO::isImageFormat(format), "Format must be an image format!");
         image = Carrot::Image::fromFile(driver, resource);
         image->name(resource.getName());
         currentLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -47,12 +47,12 @@ namespace Carrot::Render {
     }
 
     Carrot::Image& Texture::getImage() {
-        runtimeAssert(image, "Texture not initialized!");
+        verify(image, "Texture not initialized!");
         return *image;
     }
 
     const Carrot::Image& Texture::getImage() const {
-        runtimeAssert(image, "Texture not initialized!");
+        verify(image, "Texture not initialized!");
         return *image;
     }
 
@@ -63,7 +63,7 @@ namespace Carrot::Render {
     }
 
     void Texture::transitionInline(vk::CommandBuffer& commands, vk::ImageLayout newLayout, vk::ImageAspectFlags aspect) {
-        runtimeAssert(image, "Texture not initialized!");
+        verify(image, "Texture not initialized!");
         if(currentLayout == newLayout)
             return;
 

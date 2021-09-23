@@ -126,4 +126,52 @@ namespace Tools {
             newOutput("Result", Carrot::ExpressionTypes::Float);
         }
     };
+
+    class MinNode: public EditorNode {
+    public:
+        explicit MinNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Min", "min") {
+            init();
+        }
+
+        explicit MinNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Min", "min", json) {
+            init();
+        }
+
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::MinExpression>(inputExprs[0], inputExprs[1]);
+        }
+
+    private:
+        void init() {
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
+
+            newOutput("Result", Carrot::ExpressionTypes::Float);
+        }
+    };
+
+    class MaxNode: public EditorNode {
+    public:
+        explicit MaxNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Max", "max") {
+            init();
+        }
+
+        explicit MaxNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Max", "max", json) {
+            init();
+        }
+
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
+            auto inputExprs = getExpressionsFromInput();
+            return std::make_shared<Carrot::MaxExpression>(inputExprs[0], inputExprs[1]);
+        }
+
+    private:
+        void init() {
+            newInput("Op 1", Carrot::ExpressionTypes::Float);
+            newInput("Op 2", Carrot::ExpressionTypes::Float);
+
+            newOutput("Result", Carrot::ExpressionTypes::Float);
+        }
+    };
 }

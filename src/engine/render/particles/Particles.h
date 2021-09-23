@@ -70,34 +70,6 @@ namespace Carrot {
     };
 
     class ParticleSystem: public SwapchainAware {
-    private:
-        ParticleBlueprint& blueprint;
-        Carrot::Engine& engine;
-
-        /// All particles will be kept inside this buffer, sorted by lifetime each frame
-        ///  oldParticleCount will keep the number of particles active last frame, while
-        ///  usedParticleCount will keep the number of all active particles.
-        ///  Before a call to initNewParticles, usedParticleCount-oldParticleCount represent the newly created particle during the frame
-        Carrot::BufferView particleBuffer;
-        Particle* particlePool = nullptr;
-        Particle* particlePoolEnd = nullptr;
-        std::size_t oldParticleCount = 0;
-        std::size_t usedParticleCount = 0;
-
-        std::vector<std::shared_ptr<ParticleEmitter>> emitters;
-        std::uint64_t maxParticleCount;
-
-        std::shared_ptr<Pipeline> renderingPipeline = nullptr;
-        std::shared_ptr<ComputePipeline> updateParticlesCompute = nullptr;
-
-        Carrot::BufferView drawCommandBuffer;
-        vk::DrawIndirectCommand* drawCommand = nullptr;
-        Carrot::BufferView statisticsBuffer;
-        ParticleStatistics* statistics = nullptr;
-
-        void initNewParticles();
-        void updateParticles(double deltaTime);
-
     public:
         explicit ParticleSystem(Carrot::Engine& engine, ParticleBlueprint& blueprint, std::uint64_t maxParticleCount);
 
@@ -112,12 +84,42 @@ namespace Carrot {
 
         void tick(double deltaTime);
 
-        void onFrame(std::size_t frameIndex);
+        void onFrame(const Carrot::Render::Context& renderContext);
 
         void gBufferRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    private:
+        void pullDataFromGPU();
+        void pushDataToGPU();
+
+    private:
+        ParticleBlueprint& blueprint;
+        Carrot::Engine& engine;
+
+        /// All particles will be kept inside this buffer, sorted by lifetime each frame
+        ///  oldParticleCount will keep the number of particles active last frame, while
+        ///  usedParticleCount will keep the number of all active particles.
+        ///  Before a call to initNewParticles, usedParticleCount-oldParticleCount represent the newly created particle during the frame
+        Carrot::BufferView particleBuffer;
+        std::vector<Particle> particlePool;
+        std::size_t oldParticleCount = 0;
+        std::size_t usedParticleCount = 0;
+
+        std::vector<std::shared_ptr<ParticleEmitter>> emitters;
+        std::uint64_t maxParticleCount;
+
+        std::shared_ptr<Pipeline> renderingPipeline = nullptr;
+        std::shared_ptr<ComputePipeline> updateParticlesCompute = nullptr;
+
+        Carrot::BufferView statisticsBuffer;
+        ParticleStatistics* statistics = nullptr;
+        std::atomic<bool> gotUpdated = false;
+
+        void initNewParticles();
+        void updateParticles(double deltaTime);
     };
 }

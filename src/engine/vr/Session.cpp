@@ -148,7 +148,7 @@ namespace Carrot::VR {
 
         auto updateCamera = [&](Carrot::Render::Eye eye, xr::View& view) {
             glm::vec3 translation{0.0f};
-            auto& camera = getEngine().getCamera(eye);
+            auto& camera = getEngine().getMainViewportCamera(eye);
             auto tmp = Carrot::toGlm(view.pose);
             // used to align with engine orientation
             glm::mat4 correctOrientation = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));

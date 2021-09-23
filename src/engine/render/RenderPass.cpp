@@ -106,7 +106,7 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
 
         if(prerecordable) {
             if(commandBuffers.empty()) {
-                createCommandBuffers(renderContext.eye);
+                createCommandBuffers(renderContext);
             }
             cmds.executeCommands(commandBuffers[renderContext.swapchainIndex]);
         } else {
@@ -136,7 +136,7 @@ void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource
 
 void Carrot::Render::PassBase::present(FrameResource& toPresent) {
     auto output = std::find_if(WHOLE_CONTAINER(outputs), [&](const auto& o) { return o.resource.rootID == toPresent.rootID; });
-    runtimeAssert(output != outputs.end(), "Presentable resource must be in outputs of this render pass!");
+    verify(output != outputs.end(), "Presentable resource must be in outputs of this render pass!");
 
     // not using updateLayout to keep previousLayout value
     toPresent.layout = vk::ImageLayout::ePresentSrcKHR;
@@ -196,7 +196,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             if(finalLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal
                || finalLayout == vk::ImageLayout::eDepthAttachmentOptimal
                || finalLayout == vk::ImageLayout::eStencilAttachmentOptimal) {
-                runtimeAssert(!depthAttachmentRef, "Only one depth-stencil is allowed at once.");
+                verify(!depthAttachmentRef, "Only one depth-stencil is allowed at once.");
                 depthAttachmentRef = std::make_unique<vk::AttachmentReference>(vk::AttachmentReference{
                         .attachment = static_cast<uint32_t>(attachments.size()-1),
                         .layout = finalLayout,
@@ -315,7 +315,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 void Carrot::Render::CompiledPass::createFramebuffers(){
     framebuffers.clear();
     auto fb = this->initCallback(*this, renderSize);
-    runtimeAssert(rasterized || fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
+    verify(rasterized || fb.empty(), "No framebuffers should be generated for a non-rasterized pass");
     framebuffers = std::move(fb);
     swapchainRecreationCallback(*this);
 }
@@ -343,7 +343,7 @@ void Carrot::Render::CompiledPass::createCommandPool() {
     });
 }
 
-void Carrot::Render::CompiledPass::createCommandBuffers(Render::Eye eye) {
+void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& renderContext) {
     if(!prerecordable)
         return;
     commandBuffers = getVulkanDriver().getLogicalDevice().allocateCommandBuffers(vk::CommandBufferAllocateInfo {
@@ -367,7 +367,7 @@ void Carrot::Render::CompiledPass::createCommandBuffers(Render::Eye eye) {
         if(rasterized) {
             getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
         }
-        renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(i, eye), cmds);
+        renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(i, renderContext.viewport, renderContext.eye), cmds);
         cmds.end();
     }
 }

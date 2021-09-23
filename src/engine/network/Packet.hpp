@@ -24,12 +24,12 @@ namespace Carrot::Network {
         PacketBuffer(PacketBuffer&&) = default;
 
         explicit PacketBuffer(const std::span<std::uint8_t>& input) {
-            runtimeAssert(input.size() >= 2*sizeof(std::uint32_t), "Not enough data inside packet buffer!");
+            verify(input.size() >= 2*sizeof(std::uint32_t), "Not enough data inside packet buffer!");
 
             auto* header = reinterpret_cast<uint32_t *>(input.data());
             packetType = header[0];
             std::uint32_t dataSize = header[1];
-            runtimeAssert(input.size() >= dataSize+2*sizeof(std::uint32_t), "Not enough data inside packet buffer!");
+            verify(input.size() >= dataSize+2*sizeof(std::uint32_t), "Not enough data inside packet buffer!");
             data.resize(dataSize);
             std::memcpy(data.data(), input.data()+ 2*sizeof(std::uint32_t), dataSize);
         }

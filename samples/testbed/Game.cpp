@@ -105,7 +105,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
                 .addComponent<Carrot::ECS::AnimatedModelInstance>(modelInstance);
         Transform& transform = entity.getComponent<Transform>();
         transform.position = position;
-        transform.scale = glm::vec3(1.0+i/30.0, 1.0+i/30.0, 1.0+i/30.0);
+        transform.scale = glm::vec3(1.0+i/60.0, 1.0+i/60.0, 1.0+i/60.0);
         switch (color) {
             case Unit::Type::Blue:
                 modelInstance.color = {0,0,1,1};
@@ -173,9 +173,9 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
     // prepare for first frame
     world.tick(0);
-    world.onFrame(engine.newRenderContext(0));
+    world.onFrame(engine.newRenderContext(0, engine.getMainViewport()));
 
-    blueprint = std::make_unique<ParticleBlueprint>("resources/particles/testspiral.particle");
+    blueprint = std::make_unique<ParticleBlueprint>("resources/particles/testspiral2.particle");
     particles = std::make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
     auto emitter = particles->createEmitter();
 
@@ -201,7 +201,7 @@ void Game::Game::onFrame(Carrot::Render::Context renderContext) {
 
     {
         ZoneScopedN("Prepare particles rendering");
-        particles->onFrame(renderContext.swapchainIndex);
+        particles->onFrame(renderContext);
     }
 }
 

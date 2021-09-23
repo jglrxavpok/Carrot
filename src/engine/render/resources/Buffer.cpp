@@ -57,6 +57,33 @@ void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize offset) const 
     });
 }
 
+void Carrot::Buffer::copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const {
+    // allocate staging buffer used for transfer
+    auto stagingBuffer = Carrot::Buffer(driver, out.size(), vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+
+    // download data to staging buffer
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+        vk::BufferCopy copyRegion = {
+                .srcOffset = offset,
+                .dstOffset = 0,
+                .size = out.size(),
+        };
+        stagingCommands.copyBuffer(*vkBuffer, *stagingBuffer.vkBuffer, {copyRegion});
+    });
+
+    // copy staging buffer to the 'out' buffer
+    stagingBuffer.directDownload(out, 0);
+}
+
+void Carrot::Buffer::directDownload(std::span<std::uint8_t> out, vk::DeviceSize offset) {
+    void* pData;
+    if(driver.getLogicalDevice().mapMemory(*memory, offset, out.size(), static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
+        throw std::runtime_error("Failed to map memory!");
+    }
+    std::memcpy(out.data(), reinterpret_cast<const uint8_t*>(pData), out.size());
+    driver.getLogicalDevice().unmapMemory(*memory);
+}
+
 const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
     return *vkBuffer;
 }
@@ -66,7 +93,7 @@ void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::D
     if(driver.getLogicalDevice().mapMemory(*memory, offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to map memory!");
     }
-    std::copy(reinterpret_cast<const uint8_t*>(data), reinterpret_cast<const uint8_t*>(data)+length, reinterpret_cast<uint8_t*>(pData));
+    std::memcpy(reinterpret_cast<uint8_t*>(pData), data, length);
     driver.getLogicalDevice().unmapMemory(*memory);
 }
 

@@ -23,6 +23,8 @@ namespace Carrot {
     VISIT_T(Mult);
     VISIT_T(Div);
     VISIT_T(Mod);
+    VISIT_T(Min);
+    VISIT_T(Max);
 
     VISIT_T(Less);
     VISIT_T(LessOrEquals);

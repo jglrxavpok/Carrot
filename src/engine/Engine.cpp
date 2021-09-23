@@ -109,6 +109,9 @@ void Carrot::Engine::init() {
     allocateGraphicsCommandBuffers();
     createTracyContexts();
 
+    resourceAllocator = std::make_unique<ResourceAllocator>(vkDriver);
+    createViewport(); // main viewport
+
     // quickly render something on screen
     LoadingScreen screen{*this};
     initVulkan();
@@ -158,7 +161,7 @@ void Carrot::Engine::init() {
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph skybox");
                 auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                renderer.bindMainCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
+                renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
                                           buffer);
                 renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
                 skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
@@ -487,8 +490,6 @@ void Carrot::Engine::initWindow() {
 }
 
 void Carrot::Engine::initVulkan() {
-    resourceAllocator = std::make_unique<ResourceAllocator>(vkDriver);
-
     createCameras();
 
     getRayTracer().init();
@@ -529,10 +530,10 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
 
     if(config.runInVR) {
-        leftEyeGlobalFrameGraph->execute(newRenderContext(i, Render::Eye::LeftEye), mainCommandBuffers[i]);
-        rightEyeGlobalFrameGraph->execute(newRenderContext(i, Render::Eye::RightEye), mainCommandBuffers[i]);
+        leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
+        rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
     }
-    globalFrameGraph->execute(newRenderContext(i), mainCommandBuffers[i]);
+    globalFrameGraph->execute(newRenderContext(i, getMainViewport()), mainCommandBuffers[i]);
 
     mainCommandBuffers[i].end();
 }
@@ -557,19 +558,21 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
 }
 
 void Carrot::Engine::updateUniformBuffer(int imageIndex) {
-    if(config.runInVR) {
+    // TODO: remove
+    /*if(config.runInVR) {
+        // TODO: move to viewport?
         static CameraBufferObject leftCBO{};
         static CameraBufferObject rightCBO{};
-        leftCBO.update(*cameras[Render::Eye::LeftEye]);
-        rightCBO.update(*cameras[Render::Eye::RightEye]);
+        leftCBO.update(getMainViewportCamera(Render::Eye::LeftEye));
+        rightCBO.update(getMainViewportCamera(Render::Eye::RightEye));
 
         vkDriver.getCameraUniformBuffers()[Render::Eye::LeftEye][imageIndex]->directUpload(&leftCBO, sizeof(leftCBO));
         vkDriver.getCameraUniformBuffers()[Render::Eye::RightEye][imageIndex]->directUpload(&rightCBO, sizeof(rightCBO));
     } else {
         static CameraBufferObject cbo{};
-        cbo.update(*cameras[Render::Eye::NoVR]);
+        cbo.update(getMainViewportCamera(Render::Eye::NoVR));
         vkDriver.getCameraUniformBuffers()[Render::Eye::NoVR][imageIndex]->directUpload(&cbo, sizeof(cbo));
-    }
+    }*/
 }
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
@@ -681,9 +684,12 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
-        Carrot::Render::Context renderContext = newRenderContext(imageIndex);
-        getRayTracer().onFrame(renderContext);
-        game->onFrame(renderContext);
+        for(auto& v : viewports) {
+            Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
+            v.onFrame(renderContext);
+            getRayTracer().onFrame(renderContext);
+            game->onFrame(renderContext);
+        }
     }
     {
         ZoneScopedN("Record main command buffer");
@@ -730,6 +736,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ZoneScopedN("Submit to graphics queue");
             //presentThread.present(currentFrame, signalSemaphores[0], submitInfo, *inFlightFences[currentFrame]);
 
+            waitForFrameTasks();
 
             getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
             vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
@@ -876,13 +883,13 @@ void Carrot::Engine::createCameras() {
     auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
 
     if(config.runInVR) {
-        cameras[Render::Eye::LeftEye] = std::make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
-        cameras[Render::Eye::RightEye] = std::make_unique<Camera>(glm::mat4{1.0f}, glm::mat4{1.0f});
+        getMainViewport().getCamera(Render::Eye::LeftEye) = Camera(glm::mat4{1.0f}, glm::mat4{1.0f});
+        getMainViewport().getCamera(Render::Eye::RightEye) = Camera(glm::mat4{1.0f}, glm::mat4{1.0f});
     } else {
-        auto camera = std::make_unique<Camera>(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
-        camera->getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
-        camera->getTargetRef() = center;
-        cameras[Render::Eye::NoVR] = std::move(camera);
+        auto camera = Camera(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
+        camera.getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
+        camera.getTargetRef() = center;
+        getMainViewport().getCamera(Render::Eye::NoVR) = std::move(camera);
     }
 }
 
@@ -910,12 +917,11 @@ void Carrot::Engine::onMouseMove(double xpos, double ypos, bool updateOnlyDelta)
 }
 
 Carrot::Camera& Carrot::Engine::getCamera() {
-    return getCamera(Carrot::Render::Eye::NoVR);
+    return getMainViewportCamera(Carrot::Render::Eye::NoVR);
 }
 
-Carrot::Camera& Carrot::Engine::getCamera(Carrot::Render::Eye eye) {
-    assert(cameras.find(eye) != cameras.end());
-    return *cameras[eye];
+Carrot::Camera& Carrot::Engine::getMainViewportCamera(Carrot::Render::Eye eye) {
+    return getMainViewport().getCamera(eye);
 }
 
 void Carrot::Engine::onMouseButton(int button, int action, int mods) {
@@ -1190,9 +1196,10 @@ void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
     }
 }
 
-Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex, Render::Eye eye) {
+Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex, Carrot::Render::Viewport& viewport, Carrot::Render::Eye eye) {
     return Carrot::Render::Context {
             .renderer = renderer,
+            .viewport = viewport,
             .eye = eye,
             .frameCount = frames,
             .swapchainIndex = swapchainFrameIndex,
@@ -1202,4 +1209,24 @@ Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFr
 
 Carrot::Async::Task<> Carrot::Engine::cowaitNextFrame() {
     co_await nextFrameAwaiter;
+}
+
+void Carrot::Engine::addFrameTask(FrameTask&& task) {
+    frameTaskFutures.emplace_back(std::move(std::async(std::launch::async, task)));
+}
+
+void Carrot::Engine::waitForFrameTasks() {
+    for(auto& f : frameTaskFutures) {
+        f.wait();
+    }
+    frameTaskFutures.clear();
+}
+
+Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
+    return viewports.front();
+}
+
+Carrot::Render::Viewport& Carrot::Engine::createViewport() {
+    viewports.emplace_back(renderer);
+    return viewports.back();
 }

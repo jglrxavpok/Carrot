@@ -16,6 +16,11 @@ namespace Carrot {
 
         explicit Camera(float fov, float aspectRatio, float zNear, float zFar, glm::vec3 up = {0,0,1});
         explicit Camera(const glm::mat4& view, const glm::mat4& projection);
+        explicit Camera(): Camera(90.0f, 16.0f/9.0f, 0.0001f, 100.0f) {}
+
+        Camera(const Camera& toCopy) {
+            *this = toCopy;
+        }
 
         const glm::mat4& computeViewMatrix();
     public:
@@ -38,6 +43,9 @@ namespace Carrot {
 
     public:
         [[nodiscard]] ControlType getControlMode() const { return type; }
+
+    public:
+        Camera& operator=(const Camera& toCopy);
 
     private:
         ControlType type = ControlType::PoseAndLookAt;

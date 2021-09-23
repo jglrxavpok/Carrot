@@ -200,7 +200,7 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
 }
 
 void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
-    runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo samplerInfo {
@@ -223,7 +223,7 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
 }
 
 void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
-    runtimeAssert(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
@@ -270,8 +270,8 @@ void Carrot::VulkanRenderer::newFrame() {
     ImGui_ImplGlfw_NewFrame();
 }
 
-void Carrot::VulkanRenderer::bindMainCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
-    auto& cameraSet = driver.getMainCameraDescriptorSet(data);
+void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
+    auto cameraSet = data.getCameraDescriptorSet();
     cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
 }
 
@@ -313,7 +313,7 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
     };
     cameraDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()),
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxCameras,
             .poolSizeCount = 1,
             .pPoolSizes = &poolSize,
     });
@@ -341,4 +341,12 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
     }
     return cameraDescriptorSets;
+}
+
+void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets) {
+    getVulkanDriver().getLogicalDevice().freeDescriptorSets(*cameraDescriptorPool, sets);
+}
+
+const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getCameraDescriptorSetLayout() const {
+    return *cameraDescriptorSetLayout;
 }

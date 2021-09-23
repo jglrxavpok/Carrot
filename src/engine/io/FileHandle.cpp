@@ -118,19 +118,19 @@ namespace Carrot::IO {
         uint64_t previousPosition = getCurrentPosition();
         seek(offset);
         auto written = fwrite(toWrite.data(), sizeof(uint8_t), toWrite.size(), handle);
-        runtimeAssert(written == toWrite.size(), "write error");
+        verify(written == toWrite.size(), "write error");
         seek(previousPosition);
     }
 
     void FileHandle::read(void* buffer, uint64_t size, uint64_t offset) {
-        runtimeAssert(size + offset <= getSize(), "Out-of-bounds!");
+        verify(size + offset <= getSize(), "Out-of-bounds!");
         assert(opened);
         assert(isReadableMode(currentOpenMode));
         uint64_t previousPosition = getCurrentPosition();
         seek(offset);
         auto read = fread(buffer, sizeof(uint8_t), size, handle);
         checkStdError(ferror(handle), "read");
-        runtimeAssert(read == size, "hit unexpected EOF");
+        verify(read == size, "hit unexpected EOF");
         seek(previousPosition);
     }
 

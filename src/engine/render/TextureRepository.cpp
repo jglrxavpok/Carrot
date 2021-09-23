@@ -13,13 +13,13 @@
 namespace Carrot::Render {
     Texture& TextureRepository::get(const FrameResource& texture, size_t swapchainIndex) {
         auto it = textures[swapchainIndex].find(texture.rootID);
-        runtimeAssert(it != textures[swapchainIndex].end(), "Did not create texture correctly?");
+        verify(it != textures[swapchainIndex].end(), "Did not create texture correctly?");
         return get(texture.rootID, swapchainIndex);
     }
 
     Texture& TextureRepository::get(const Carrot::UUID& id, size_t swapchainIndex) {
         auto it = textures[swapchainIndex].find(id);
-        runtimeAssert(it != textures[swapchainIndex].end(), "Did not create texture correctly?");
+        verify(it != textures[swapchainIndex].end(), "Did not create texture correctly?");
         return *it->second;
     }
 

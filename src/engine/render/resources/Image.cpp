@@ -328,6 +328,6 @@ vk::Format Carrot::Image::getFormat() const {
 }
 
 const vk::DeviceMemory& Carrot::Image::getMemory() const {
-    runtimeAssert(imageData.ownsImage, "Cannot access memory of not-owned image.")
+    verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
     return *imageData.asOwned.memory;
 }

@@ -95,7 +95,7 @@ namespace Carrot::IO {
     }
 
     void Resource::write(const std::span<uint8_t> toWrite, uint64_t offset) {
-        runtimeAssert(toWrite.size() + offset <= getSize(), "Overflow!");
+        verify(toWrite.size() + offset <= getSize(), "Overflow!");
         if(data.isRawData) {
             auto& vec = *data.raw;
             std::memcpy(vec.data(), toWrite.data() + offset, toWrite.size());
@@ -105,7 +105,7 @@ namespace Carrot::IO {
     }
 
     void Resource::read(void* buffer, uint64_t size, uint64_t offset) const {
-        runtimeAssert(size + offset <= getSize(), "Out-of-bounds!");
+        verify(size + offset <= getSize(), "Out-of-bounds!");
         if(data.isRawData) {
             std::memcpy(buffer, data.raw->data() + offset, size);
         } else {

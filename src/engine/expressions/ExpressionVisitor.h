@@ -20,6 +20,8 @@ namespace Carrot {
     VISIT(Div);                              \
     VISIT(Compound);                         \
     VISIT(Mod);                              \
+    VISIT(Min);                              \
+    VISIT(Max);                              \
                                              \
     VISIT(Less);                             \
     VISIT(LessOrEquals);                     \
