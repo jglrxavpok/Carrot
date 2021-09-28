@@ -53,8 +53,8 @@ public:
         mySprite.tick(frameTime); // updates the sprite. Does nothing for Sprite, but allows sprite-based animation with AnimatedSprite
     }
 
-    void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
-                           vk::CommandBuffer& commands) override {
+    void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+                                 vk::CommandBuffer& commands) override {
         mySprite.soloGBufferRender(pass, renderContext, commands); // render sprite to GBuffer
     }
 

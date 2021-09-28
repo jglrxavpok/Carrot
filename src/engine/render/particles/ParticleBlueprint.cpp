@@ -13,9 +13,10 @@ struct Header {
     std::uint32_t version;
     std::uint32_t computeLength;
     std::uint32_t fragmentLength;
+    bool opaque = false;
 };
 
-Carrot::ParticleBlueprint::ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode): computeShaderCode(computeCode), fragmentShaderCode(fragmentCode) {
+Carrot::ParticleBlueprint::ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque): computeShaderCode(computeCode), fragmentShaderCode(fragmentCode), opaque(opaque) {
     version = 1;
 }
 
@@ -27,14 +28,16 @@ Carrot::ParticleBlueprint::ParticleBlueprint(const std::string& filename) {
     }
     auto* header = (Header*)bytes.data();
     if(std::string("carrot particle") != header->magic) throw std::runtime_error("Invalid magic header.");
-    if(header->version != 1) throw std::runtime_error("Unsupported version: " + std::to_string(version));
+    if(header->version < 0 || header->version > 2) throw std::runtime_error("Unsupported version: " + std::to_string(version));
 
-    if(bytes.size() != sizeof(Header) + header->computeLength + header->fragmentLength) {
-        uint32_t expectedTotalSize = sizeof(Header) + header->computeLength + header->fragmentLength;
+    uint32_t expectedTotalSize = sizeof(Header) + header->computeLength + header->fragmentLength;
+    if(bytes.size() != expectedTotalSize) {
+        std::cout << "Size of header: " << sizeof(Header) << std::endl;
         throw std::runtime_error("File is too small (" + std::to_string(bytes.size()) + "), cannot fit compute and render shaders as advertised in header (" + std::to_string(expectedTotalSize) + ")!");
     }
 
     version = header->version;
+    opaque = header->opaque;
     if(header->computeLength % sizeof(std::uint32_t) != 0) {
         throw std::runtime_error("computeLength is not a multiple of sizeof(uint32) !");
     }
@@ -48,14 +51,16 @@ Carrot::ParticleBlueprint::ParticleBlueprint(const std::string& filename) {
 }
 
 std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBlueprint& blueprint) {
-    out << Carrot::ParticleBlueprint::Magic << '\0';
-    out.write(reinterpret_cast<const char *>(&blueprint.version), sizeof(blueprint.version));
-    uint32_t computeSize = blueprint.computeShaderCode.size() * sizeof(uint32_t);
-    uint32_t fragmentSize = blueprint.fragmentShaderCode.size() * sizeof(uint32_t);
-    out.write(reinterpret_cast<const char *>(&computeSize), sizeof(uint32_t));
-    out.write(reinterpret_cast<const char *>(&fragmentSize), sizeof(uint32_t));
-    out.write(reinterpret_cast<const char *>(blueprint.computeShaderCode.data()), blueprint.computeShaderCode.size() * sizeof(uint32_t));
-    out.write(reinterpret_cast<const char *>(blueprint.fragmentShaderCode.data()), blueprint.fragmentShaderCode.size() * sizeof(uint32_t));
+    Header h {
+        .version = blueprint.version,
+        .computeLength = static_cast<std::uint32_t>(blueprint.computeShaderCode.size() * sizeof(std::uint32_t)),
+        .fragmentLength = static_cast<std::uint32_t>(blueprint.fragmentShaderCode.size() * sizeof(std::uint32_t)),
+        .opaque = blueprint.opaque,
+    };
+    strncpy_s(h.magic, Carrot::ParticleBlueprint::Magic, sizeof(h.magic));
+    out.write(reinterpret_cast<const char *>(&h), sizeof(h));
+    out.write(reinterpret_cast<const char*>(blueprint.computeShaderCode.data()), h.computeLength);
+    out.write(reinterpret_cast<const char*>(blueprint.fragmentShaderCode.data()), h.fragmentLength);
     return out;
 }
 

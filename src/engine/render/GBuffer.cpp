@@ -16,7 +16,7 @@ void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
     // TODO
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> callback) {
+Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> opaqueCallback) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
@@ -25,7 +25,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
             .stencil = 0
     };
     vk::ClearValue clearIntProperties = vk::ClearColorValue();
-    return graph.addPass<Carrot::Render::PassData::GBuffer>("gbuffer",
+    auto& opaquePass = graph.addPass<Carrot::Render::PassData::GBuffer>("gbuffer",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
            {
 
@@ -59,13 +59,37 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                       clearIntProperties,
                                                       vk::ImageLayout::eColorAttachmentOptimal);
            },
-           [callback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
-                callback(pass, frame, buffer);
+           [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
+                opaqueCallback(pass, frame, buffer);
            }
     );
+    return opaquePass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& data,
+Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuffer::addTransparentGBufferPass(Render::GraphBuilder& graph, const Carrot::Render::PassData::GBuffer& opaqueData, std::function<void(const Carrot::Render::CompiledPass&, const Render::Context&, vk::CommandBuffer&)> transparentCallback) {
+    using namespace Carrot::Render;
+    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+    auto& transparentPass = graph.addPass<Carrot::Render::PassData::GBufferTransparent>("gbuffer-transparent",
+                                                                                        [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBufferTransparent>& pass, Carrot::Render::PassData::GBufferTransparent& data)
+                                                                                        {
+
+                                                                                            data.transparentOutput = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                                                                                                              {},
+                                                                                                                                              vk::AttachmentLoadOp::eClear,
+                                                                                                                                              clearColor,
+                                                                                                                                              vk::ImageLayout::eColorAttachmentOptimal);
+
+                                                                                            data.depthInput = graph.write(opaqueData.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                                                                                        },
+                                                                                        [transparentCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBufferTransparent& data, vk::CommandBuffer& buffer){
+                                                                                            transparentCallback(pass, frame, buffer);
+                                                                                        }
+    );
+    return transparentPass;
+}
+
+Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData,
+                                                                                           const Carrot::Render::PassData::GBufferTransparent& transparentData,
                                                                                       const Carrot::Render::PassData::Raytracing& rtData,
                                                                                       const Carrot::Render::FrameResource& skyboxOutput,
                                                                                       Carrot::Render::GraphBuilder& graph) {
@@ -75,11 +99,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {
                 pass.prerecordable = true;
-                resolveData.positions = graph.read(data.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.normals = graph.read(data.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.albedo = graph.read(data.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.depthStencil = graph.read(data.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
-                resolveData.flags = graph.read(data.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.positions = graph.read(opaqueData.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.normals = graph.read(opaqueData.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.albedo = graph.read(opaqueData.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.transparent = graph.read(transparentData.transparentOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.depthStencil = graph.read(opaqueData.depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                resolveData.flags = graph.read(opaqueData.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.raytracing = graph.read(rtData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
@@ -97,6 +122,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.swapchainIndex), 0, 3, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.raytracing, frame.swapchainIndex), 0, 5, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.transparent, frame.swapchainIndex), 0, 6, nullptr);
 
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 10, nullptr);
 

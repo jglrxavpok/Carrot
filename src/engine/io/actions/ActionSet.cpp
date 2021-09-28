@@ -17,7 +17,7 @@ namespace Carrot::IO {
         getSetList().push_back(this);
 
 #ifndef ENABLE_VR
-        runtimeAssert(!isXRSet, "Cannot create XR set when ENABLE_VR is not defined.");
+        verify(!isXRSet, "Cannot create XR set when ENABLE_VR is not defined.");
 #endif
     }
 

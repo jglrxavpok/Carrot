@@ -26,6 +26,13 @@ namespace Carrot::Render {
                 driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
                 break;
 
+            case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+            case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+            case vk::ImageLayout::eDepthAttachmentOptimal:
+            case vk::ImageLayout::eDepthReadOnlyOptimal:
+                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                break;
+
             default:
                 driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
@@ -135,6 +142,10 @@ namespace Carrot::Render {
 
     Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex) {
         return driver.getTextureRepository().create(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID));
+    }
+
+    Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex) {
+        return driver.getTextureRepository().getOrCreate(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID));
     }
 
     void Graph::onSwapchainImageCountChange(size_t newCount) {

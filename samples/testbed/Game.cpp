@@ -175,7 +175,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     world.tick(0);
     world.onFrame(engine.newRenderContext(0, engine.getMainViewport()));
 
-    blueprint = std::make_unique<ParticleBlueprint>("resources/particles/testspiral2.particle");
+    blueprint = std::make_unique<ParticleBlueprint>("resources/particles/test_particle2.particle");
     particles = std::make_unique<ParticleSystem>(engine, *blueprint, 10000ul);
     auto emitter = particles->createEmitter();
 
@@ -205,7 +205,7 @@ void Game::Game::onFrame(Carrot::Render::Context renderContext) {
     }
 }
 
-void Game::Game::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Game::Game::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScopedN("CPU recordGBufferPass");
     {
         TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render map");
@@ -216,7 +216,13 @@ void Game::Game::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context 
         animatedUnits->recordGBufferPass(pass, renderContext, commands, maxInstanceCount);
     }
 
-    particles->gBufferRender(pass, renderContext, commands);
+    particles->renderOpaqueGBuffer(pass, renderContext, commands);
+}
+
+void Game::Game::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScopedN("CPU recordTransparentGBufferPass");
+
+    particles->renderTransparentGBuffer(pass, renderContext, commands);
 }
 
 float yaw = 0.0f;

@@ -16,7 +16,7 @@ namespace Game {
 
         void tick(double frameTime) override {};
 
-        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
+        void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
 
         void onMouseMove(double dx, double dy) override {};
 

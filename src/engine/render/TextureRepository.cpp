@@ -23,6 +23,17 @@ namespace Carrot::Render {
         return *it->second;
     }
 
+    Texture& TextureRepository::getOrCreate(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages) {
+        if(textures.empty()) {
+            textures.resize(driver.getSwapchainImageCount());
+        }
+        auto it = textures[swapchainIndex].find(id.rootID);
+        if(it != textures[swapchainIndex].end()) {
+            return *it->second;
+        }
+        return create(id, swapchainIndex, textureUsages);
+    }
+
     Texture& TextureRepository::create(const FrameResource& resource, size_t frameIndex, vk::ImageUsageFlags textureUsages) {
         // TODO: aliasing
         if(textures.empty()) {

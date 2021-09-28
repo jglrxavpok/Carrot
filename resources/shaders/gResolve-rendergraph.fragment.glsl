@@ -9,7 +9,8 @@ layout(set = 0, binding = 2) uniform texture2D viewPos;
 layout(set = 0, binding = 3) uniform texture2D viewNormals;
 layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
 layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
-layout(set = 0, binding = 6) uniform sampler linearSampler;
+layout(set = 0, binding = 6) uniform texture2D transparent;
+layout(set = 0, binding = 7) uniform sampler linearSampler;
 
 layout(set = 0, binding = 9) uniform Debug {
     #include "debugparams.glsl"
@@ -51,5 +52,9 @@ void main() {
         outColorWorld = vec4(skyboxRGB, fragmentColor.a);
     }
 
-    outColor = outColorWorld;
+    vec4 transparentColor = texture(sampler2D(transparent, linearSampler), uv);
+
+    vec3 blended = outColorWorld.rgb * (1.0 - transparentColor.a) + transparentColor.rgb * transparentColor.a;
+
+    outColor = vec4(blended, 1.0);
 }

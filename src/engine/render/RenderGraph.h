@@ -21,6 +21,7 @@ namespace Carrot::Render {
         [[nodiscard]] Render::Texture& createTexture(const FrameResource& resource, size_t frameIndex);
         [[nodiscard]] Render::Texture& getTexture(const Carrot::UUID& resourceID, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getTexture(const FrameResource& resource, size_t frameIndex) const;
+        [[nodiscard]] Render::Texture& getOrCreateTexture(const FrameResource& resource, size_t frameIndex);
 
         VulkanDriver& getVulkanDriver() { return driver; }
 

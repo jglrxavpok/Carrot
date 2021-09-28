@@ -23,7 +23,7 @@ namespace Carrot {
         static constexpr char Magic[] = "carrot particle";
 
         explicit ParticleBlueprint(const std::string& filename);
-        explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode);
+        explicit ParticleBlueprint(std::vector<uint32_t>&& computeCode, std::vector<uint32_t>&& fragmentCode, bool opaque);
 
         friend std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);
 
@@ -35,10 +35,13 @@ namespace Carrot {
         const std::vector<std::uint32_t>& getComputeShader() const { return computeShaderCode; }
         const std::vector<std::uint32_t>& getFragmentShader() const { return fragmentShaderCode; }
 
+        bool isOpaque() const { return opaque; }
+
     private:
         std::uint32_t version = 0;
         std::vector<std::uint32_t> computeShaderCode;
         std::vector<std::uint32_t> fragmentShaderCode;
+        bool opaque = false;
     };
 
     std::ostream& operator<<(std::ostream& out, const ParticleBlueprint& blueprint);

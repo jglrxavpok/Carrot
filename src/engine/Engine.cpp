@@ -173,11 +173,15 @@ void Carrot::Engine::init() {
             return currentSkybox != Skybox::Type::None;
         });
 
-        auto& gbufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-            ZoneScopedN("CPU RenderGraph GPass");
-            game->recordGBufferPass(pass.getRenderPass(), frame, cmds);
+        auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+            ZoneScopedN("CPU RenderGraph Opaque GPass");
+            game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
         });
-        auto& gresolvePass = getGBuffer().addGResolvePass(gbufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
+        auto& transparentGBufferPass = getGBuffer().addTransparentGBufferPass(mainGraph, opaqueGBufferPass.getData(), [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+            ZoneScopedN("CPU RenderGraph Opaque GPass");
+            game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+        });
+        auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
 
         gResolvePassData = gresolvePass.getData();
 
@@ -620,6 +624,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ImGui::RadioButton("Raytracing", &gIndex, 4);
             ImGui::RadioButton("UI", &gIndex, 5);
             ImGui::RadioButton("Int Properties", &gIndex, 6);
+            ImGui::RadioButton("Transparent", &gIndex, 7);
 
             vk::Format format = vk::Format::eR32G32B32A32Sfloat;
             if(gIndex == -1) {
@@ -651,6 +656,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             if(gIndex == 6) {
                 textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
                 format = vk::Format::eR32Sfloat;
+            }
+            if(gIndex == 7) {
+                textureToDisplay = imguiTextures[lastFrameIndex].transparent;
+                format = vk::Format::eR8G8B8A8Unorm;
             }
             if(textureToDisplay) {
                 static vk::ImageLayout layout = vk::ImageLayout::eUndefined;
@@ -1192,6 +1201,8 @@ void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
         textures.intProperties = &globalFrameGraph->getTexture(gResolvePassData.flags, i);
 
         textures.raytracing = &globalFrameGraph->getTexture(gResolvePassData.raytracing, i);
+
+        textures.transparent = &globalFrameGraph->getTexture(gResolvePassData.transparent, i);
 
     }
 }

@@ -224,6 +224,14 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
             destinationStage = vk::PipelineStageFlagBits::eTransfer;
         } break;
 
+        case vk::ImageLayout::eDepthAttachmentOptimal:
+        case vk::ImageLayout::eDepthReadOnlyOptimal:
+        case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+        case vk::ImageLayout::eDepthStencilReadOnlyOptimal: {
+            barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead; // shader must be able to read
+            destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        } break;
+
         default:
             newLayoutHandled = false;
             break;

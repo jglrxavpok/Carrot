@@ -76,8 +76,8 @@ end
         script["tick"](frameTime);
     }
 
-    void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
-                           vk::CommandBuffer& commands) override {
+    void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+                                 vk::CommandBuffer& commands) override {
         script["recordGBufferPass"](pass, renderContext, commands);
     }
 

@@ -12,6 +12,7 @@
 #include <engine/render/resources/BufferView.h>
 #include <engine/render/ComputePipeline.h>
 #include "ParticleBlueprint.h"
+#include "engine/render/BasicRenderable.h"
 
 namespace Carrot {
     class ParticleSystem;
@@ -69,7 +70,7 @@ namespace Carrot {
         void tick(double deltaTime);
     };
 
-    class ParticleSystem: public SwapchainAware {
+    class ParticleSystem: public SwapchainAware, public Render::BasicRenderable {
     public:
         explicit ParticleSystem(Carrot::Engine& engine, ParticleBlueprint& blueprint, std::uint64_t maxParticleCount);
 
@@ -84,15 +85,19 @@ namespace Carrot {
 
         void tick(double deltaTime);
 
-        void onFrame(const Carrot::Render::Context& renderContext);
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
-        void gBufferRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
+        void renderOpaqueGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
+        void renderTransparentGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
+        bool isOpaque() const;
+
     private:
+        void render(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const;
         void pullDataFromGPU();
         void pushDataToGPU();
 

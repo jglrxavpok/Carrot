@@ -55,7 +55,8 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
     [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, const TmpPass& data, vk::CommandBuffer& cmds) {
         if(previewSystem) {
             auto& renderingPipeline = previewSystem->getRenderingPipeline();
-            previewSystem->gBufferRender(pass.getRenderPass(), frame, cmds);
+            previewSystem->renderOpaqueGBuffer(pass.getRenderPass(), frame, cmds);
+            previewSystem->renderTransparentGBuffer(pass.getRenderPass(), frame, cmds);
         }
     });
 
@@ -239,8 +240,9 @@ void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& fi
 
     auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
     auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+    bool isOpaque = false; // TODO: determine via render graph
 
-    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader));
+    Carrot::ParticleBlueprint blueprint(std::move(computeShader), std::move(fragmentShader), isOpaque);
 
     Carrot::IO::writeFile(filename.string(), [&](std::ostream& out) {
         out << blueprint;
@@ -355,8 +357,9 @@ void Tools::ParticleEditor::reloadPreview() {
 
     auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
     auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);
+    bool isOpaque = false; // TODO: determine via render graph
 
-    previewBlueprint = std::make_unique<Carrot::ParticleBlueprint>(std::move(computeShader), std::move(fragmentShader));
+    previewBlueprint = std::make_unique<Carrot::ParticleBlueprint>(std::move(computeShader), std::move(fragmentShader), isOpaque);
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
 
     auto& emitter = *previewSystem->createEmitter();

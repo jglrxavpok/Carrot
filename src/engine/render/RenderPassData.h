@@ -120,6 +120,11 @@ namespace Carrot::Render {
             FrameResource flags;
         };
 
+        struct GBufferTransparent {
+            FrameResource depthInput;
+            FrameResource transparentOutput;
+        };
+
         struct GResolve {
             FrameResource positions;
             FrameResource normals;
@@ -127,6 +132,7 @@ namespace Carrot::Render {
             FrameResource depthStencil;
             FrameResource flags;
             FrameResource raytracing;
+            FrameResource transparent;
             FrameResource skybox;
 
             FrameResource resolved;

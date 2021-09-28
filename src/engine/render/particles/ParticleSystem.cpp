@@ -133,9 +133,27 @@ Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
     return particle;
 }
 
-void Carrot::ParticleSystem::gBufferRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
+void Carrot::ParticleSystem::render(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
     renderingPipeline->bind(pass, renderContext, commands);
     commands.draw(6 * usedParticleCount, 1, 0, 0);
+}
+
+void Carrot::ParticleSystem::renderOpaqueGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+    if(!isOpaque()) {
+        return;
+    }
+    render(pass, renderContext, commands);
+}
+
+void Carrot::ParticleSystem::renderTransparentGBuffer(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {
+    if(isOpaque()) {
+        return;
+    }
+    render(pass, renderContext, commands);
+}
+
+bool Carrot::ParticleSystem::isOpaque() const {
+    return blueprint.isOpaque();
 }
 
 void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {

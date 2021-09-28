@@ -11,6 +11,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/io/Logging.hpp"
 #include "engine/Engine.h"
+#include "engine/render/TextureRepository.h"
 
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
@@ -265,7 +266,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
                 // TODO: inputs
                 for (const auto& output : outputs) {
-                    auto& texture = graph.createTexture(output.resource, i);
+                    auto& texture = graph.getOrCreateTexture(output.resource, i);
                     frameImageViews.push_back(texture.getView(output.aspect));
 
                     maxWidth = std::max(texture.getSize().width, maxWidth);
