@@ -19,7 +19,7 @@ namespace Carrot {
         const Carrot::UUID& getUUID() const { return id; }
 
         inline std::string toString() const override {
-            return "Once(" + Carrot::toString(id)+ ", " + toExecute->toString()+")";
+            return "Once(" + id.toString()+ ", " + toExecute->toString()+")";
         }
 
         inline std::shared_ptr<Carrot::Expression> getExpressionToExecute() const { return toExecute; }

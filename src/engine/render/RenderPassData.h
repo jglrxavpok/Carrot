@@ -91,9 +91,9 @@ namespace Carrot::Render {
         TextureSize size;
         vk::Format format = vk::Format::eUndefined;
         ImageOrigin imageOrigin = ImageOrigin::Created;
-        Carrot::UUID id = Carrot::randomUUID();
-        Carrot::UUID rootID = Carrot::randomUUID();
-        Carrot::UUID parentID = Carrot::randomUUID();
+        Carrot::UUID id;
+        Carrot::UUID rootID;
+        Carrot::UUID parentID;
         GraphBuilder* owner = nullptr;
         vk::ImageLayout layout = vk::ImageLayout::eUndefined;
         vk::ImageLayout previousLayout = vk::ImageLayout::eUndefined;
@@ -140,6 +140,27 @@ namespace Carrot::Render {
 
         struct Raytracing {
             FrameResource output;
+        };
+
+        struct Present {
+            Render::FrameResource input;
+            Render::FrameResource output;
+        };
+
+        struct ComposerRegion {
+            bool enabled = true;
+            float left = -1.0f;
+            float right = +1.0f;
+            float bottom = -1.0f;
+            float top = +1.0f;
+            float depth = 0.0f;
+            FrameResource toDraw;
+        };
+
+        struct Composer {
+            std::vector<ComposerRegion> elements;
+            FrameResource depthStencil;
+            FrameResource color;
         };
     }
 }

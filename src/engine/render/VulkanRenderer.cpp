@@ -350,3 +350,27 @@ void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::D
 const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getCameraDescriptorSetLayout() const {
     return *cameraDescriptorSetLayout;
 }
+
+void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
+    auto pipeline = getOrCreateRenderPassSpecificPipeline("blit", pass);
+    vk::DescriptorImageInfo imageInfo {
+            .sampler = getVulkanDriver().getLinearSampler(),
+            .imageView = textureToBlit.getView(),
+            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+
+    auto& set = pipeline->getDescriptorSets0()[frame.swapchainIndex];
+    vk::WriteDescriptorSet writeImage {
+            .dstSet = set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eSampledImage,
+            .pImageInfo = &imageInfo,
+    };
+    getVulkanDriver().getLogicalDevice().updateDescriptorSets(writeImage, {});
+
+    pipeline->bind(pass, frame, cmds);
+    getFullscreenQuad().bind(cmds);
+    getFullscreenQuad().draw(cmds);
+}

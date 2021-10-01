@@ -5,10 +5,9 @@
 #pragma once
 
 #include <uuid.h>
+#include <xhash>
 
 namespace Carrot {
-
-    using UUID = uuids::uuid;
 
     namespace {
         struct Generator {
@@ -33,16 +32,56 @@ namespace Carrot {
         };
     }
 
-    inline UUID randomUUID() {
-        Generator generator;
-        return generator();
-    }
+    class UUID {
+    public:
+        explicit UUID() {
+            Generator generator;
+            uuid = generator();
+        }
 
-    inline UUID fromString(const std::string& str) {
-        return uuids::uuid::from_string(str).value();
-    }
+        UUID(const UUID&) = default;
+        UUID(UUID&&) = default;
 
-    inline std::string toString(const UUID& uuid) {
-        return uuids::to_string(uuid);
-    }
+        UUID& operator=(const UUID&) = default;
+        UUID& operator=(UUID&&) = default;
+
+        bool operator==(const UUID& other) const {
+            return uuid == other.uuid;
+        }
+
+        [[nodiscard]] std::string toString() const {
+            return uuids::to_string(uuid);
+        }
+
+        [[nodiscard]] std::size_t hash() const {
+            // Java style hashing
+
+            const std::size_t prime = 31;
+
+            auto asbytes = uuid.as_bytes();
+            std::size_t hashResult = 0;
+            for (auto byte : asbytes) {
+                hashResult = static_cast<std::size_t>(byte) + (hashResult * prime);
+            }
+            return hashResult;
+        }
+
+        static UUID fromString(std::string_view str) {
+            UUID value;
+            value.uuid = uuids::uuid::from_string(str).value();
+            return value;
+        }
+
+    private:
+        uuids::uuid uuid;
+    };
+}
+
+namespace std {
+    template<>
+    struct hash<Carrot::UUID> {
+        std::size_t operator()(const Carrot::UUID& uuid) const {
+            return uuid.hash();
+        }
+    };
 }

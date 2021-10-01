@@ -6,6 +6,7 @@
 #include <engine/CarrotGame.h>
 #include <engine/edition/ProjectMenuHolder.h>
 #include <engine/edition/EditorSettings.h>
+#include <engine/render/Viewport.h>
 
 namespace Peeler {
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
@@ -28,9 +29,31 @@ namespace Peeler {
 
         bool showUnsavedChangesPopup() override;
 
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        void onSwapchainImageCountChange(std::size_t newCount) override;
+
+    private: // UI
+        void UIEditor(const Carrot::Render::Context& renderContext);
+        void UIGameView(const Carrot::Render::Context& renderContext);
+        void UIPlayBar(const Carrot::Render::Context& renderContext);
+
+    private: // simulation
+        void startSimulation();
+        void stopSimulation();
+
     private:
         ImGuiID mainDockspace;
         Tools::EditorSettings settings;
+        Carrot::Render::Viewport& gameViewport;
+        Carrot::Render::FrameResource gameTexture;
+        std::unique_ptr<Carrot::Render::Graph> gameRenderingGraph;
+
+        Carrot::Render::Texture playButtonIcon;
+        Carrot::Render::Texture stopButtonIcon;
+
+    private: // simulation state
+        bool isPlaying = false;
     };
 
 }

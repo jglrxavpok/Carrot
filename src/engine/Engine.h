@@ -68,6 +68,11 @@ namespace Carrot {
     namespace Render {
         class Texture;
         class Graph;
+
+        namespace PassData {
+            struct Composer;
+            struct GResolve;
+        }
     };
 
 #ifdef ENABLE_VR
@@ -223,6 +228,9 @@ namespace Carrot {
         VR::Session& getVRSession() { return *vrSession; }
 #endif
 
+    public:
+        Render::Pass<Render::PassData::GResolve>& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback);
+
     public: // viewports
         Render::Viewport& getMainViewport();
         Render::Viewport& createViewport();
@@ -239,55 +247,55 @@ namespace Carrot {
         using MouseDeltaCallback = std::function<void(double dx, double dy)>;
 
         Carrot::UUID addGLFWKeyCallback(KeyCallback keyCallback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             keyCallbacks[uuid] = keyCallback;
             return uuid;
         }
 
         Carrot::UUID addGLFWMouseButtonCallback(MouseButtonCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             mouseButtonCallbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWGamepadButtonCallback(GamepadButtonCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             gamepadButtonCallbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWGamepadAxisCallback(GamepadAxisCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             gamepadAxisCallbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWGamepadVec2Callback(GamepadVec2Callback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             gamepadVec2Callbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWKeysVec2Callback(KeysVec2Callback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             keysVec2Callbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWMousePositionCallback(MousePositionCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             mousePositionCallbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWMouseDeltaCallback(MouseDeltaCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             mouseDeltaCallbacks[uuid] = callback;
             return uuid;
         }
 
         Carrot::UUID addGLFWMouseDeltaGrabbedCallback(MouseDeltaCallback callback) {
-            auto uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             mouseDeltaGrabbedCallbacks[uuid] = callback;
             return uuid;
         }

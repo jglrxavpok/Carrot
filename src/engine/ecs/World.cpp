@@ -11,7 +11,8 @@
 
 namespace Carrot::ECS {
     Entity World::newEntity(std::string_view name) {
-        return newEntityWithID(allocationStrategy(), name);
+        Carrot::UUID uuid;
+        return newEntityWithID(uuid, name);
     }
 
     Entity World::newEntityWithID(EntityID entity, std::string_view name) {
@@ -58,16 +59,7 @@ namespace Carrot::ECS {
         return worldRef.exists(internalEntity);
     }
 
-    World::World() {
-        EntityID entityID = 0;
-        allocationStrategy = [entityID]() mutable {
-            return entityID++;
-        };
-    }
-
-    void World::setAllocationStrategy(const std::function<EntityID()>& allocationStrategy) {
-        this->allocationStrategy = allocationStrategy;
-    }
+    World::World() {}
 
     Tags World::getTags(const Entity& entity) const {
         auto it = entityTags.find(entity);
@@ -225,9 +217,9 @@ namespace Carrot::ECS {
 
     void World::setParent(const Entity& toSet, std::optional<Entity> parent) {
         assert(toSet);
-        auto previousParent = entityParents[toSet];
-        if(previousParent) {
-            auto& parentChildren = entityChildren[previousParent];
+        auto previousParent = entityParents.find(toSet);
+        if(previousParent != entityParents.end()) {
+            auto& parentChildren = entityChildren[previousParent->second];
             parentChildren.erase(std::remove(parentChildren.begin(), parentChildren.end(), toSet.internalEntity), parentChildren.end());
         }
         if(parent) {

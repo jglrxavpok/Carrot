@@ -10,7 +10,7 @@
 #include "engine/render/TextureRepository.h"
 
 namespace Carrot::Render {
-    ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
+    PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
         // graph containing composer pass can be initialised after the 'toDraw' texture has been created
         driver.getTextureRepository().getUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
@@ -24,9 +24,9 @@ namespace Carrot::Render {
         return r;
     }
 
-    Pass<ComposerPassData>& Composer::appendPass(GraphBuilder& renderGraph) {
-        return renderGraph.addPass<ComposerPassData>("composer",
-        [this](Render::GraphBuilder& builder, Render::Pass<ComposerPassData>& pass, ComposerPassData& data) {
+    Pass<PassData::Composer>& Composer::appendPass(GraphBuilder& renderGraph) {
+        return renderGraph.addPass<PassData::Composer>("composer",
+        [this](Render::GraphBuilder& builder, Render::Pass<PassData::Composer>& pass, PassData::Composer& data) {
             pass.prerecordable = true;
             vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
             vk::ClearValue clearDepth = vk::ClearDepthStencilValue{
@@ -49,7 +49,7 @@ namespace Carrot::Render {
                                                            clearDepth,
                                                            vk::ImageLayout::eDepthStencilAttachmentOptimal);
         },
-        [](const Render::CompiledPass& pass, const Render::Context& frame, const ComposerPassData& data, vk::CommandBuffer& cmds) {
+        [](const Render::CompiledPass& pass, const Render::Context& frame, const PassData::Composer& data, vk::CommandBuffer& cmds) {
             ZoneScopedN("CPU RenderGraph Composer");
             auto& renderer = frame.renderer;
             auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("composer-blit", pass.getRenderPass());

@@ -40,8 +40,6 @@ namespace Carrot::ECS {
 
         void removeEntity(const Entity& ent);
 
-        void setAllocationStrategy(const std::function<EntityID()>& allocationStrategy);
-
         bool exists(EntityID ent) const;
 
     public:
@@ -74,8 +72,6 @@ namespace Carrot::ECS {
 
         std::vector<std::unique_ptr<System>> logicSystems;
         std::vector<std::unique_ptr<System>> renderSystems;
-
-        std::function<EntityID()> allocationStrategy;
 
     private: // internal representation of hierarchy
         std::unordered_map<EntityID, EntityID> entityParents;

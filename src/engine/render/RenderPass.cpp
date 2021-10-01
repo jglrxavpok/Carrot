@@ -299,7 +299,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
-                    DISCARD(graph.createTexture(output.resource, i)); // force create textures
+                    DISCARD(graph.getOrCreateTexture(output.resource, i)); // force create textures
                 }
             }
             // no render pass = no render size

@@ -26,7 +26,7 @@ namespace Carrot::Network {
 
             explicit ConnectedClient(asio::io_context& context): tcpSocket(context) {}
 
-            Carrot::UUID uuid = Carrot::randomUUID();
+            Carrot::UUID uuid;
             std::u32string username = U"<<<<unknown, handshake not finished>>>>";
             asio::ip::tcp::socket tcpSocket;
             asio::ip::udp::endpoint udpEndpoint;

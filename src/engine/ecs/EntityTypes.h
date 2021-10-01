@@ -9,10 +9,11 @@
 #include <string_view>
 #include <cassert>
 #include <engine/memory/OptionalRef.h>
+#include <engine/utils/UUID.h>
 
 namespace Carrot::ECS {
     using Tags = std::uint64_t;
-    using EntityID = std::uint32_t;
+    using EntityID = Carrot::UUID;
 
     class World;
 

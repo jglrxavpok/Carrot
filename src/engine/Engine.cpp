@@ -116,104 +116,49 @@ void Carrot::Engine::init() {
     LoadingScreen screen{*this};
     initVulkan();
 
-    struct PresentPassData {
-        Render::FrameResource input;
-        Render::FrameResource output;
-    };
-
-    auto& testTexture = renderer.getOrCreateTexture("default.png");
-
-    auto fullscreenBlit = [this](const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
-        auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("blit", pass);
-        vk::DescriptorImageInfo imageInfo {
-                .sampler = vkDriver.getLinearSampler(),
-                .imageView = textureToBlit.getView(),
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-        };
-
-        auto& set = pipeline->getDescriptorSets0()[frame.swapchainIndex];
-        vk::WriteDescriptorSet writeImage {
-                .dstSet = set,
-                .dstBinding = 0,
-                .dstArrayElement = 0,
-                .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eSampledImage,
-                .pImageInfo = &imageInfo,
-        };
-        vkDriver.getLogicalDevice().updateDescriptorSets(writeImage, {});
-
-        pipeline->bind(pass, frame, cmds);
-        screenQuad->bind(cmds);
-        screenQuad->draw(cmds);
-    };
-
     auto fillGraphBuilder = [&](Render::GraphBuilder& mainGraph, bool shouldPresentToSwapchain, Render::Eye eye = Render::Eye::NoVR) {
-        auto& rtPass = getRayTracer().appendRTPass(mainGraph, eye);
+         auto& gResolvePass = fillInDefaultPipeline(mainGraph, eye,
+                                     [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+                                         ZoneScopedN("CPU RenderGraph Opaque GPass");
+                                         game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                     },
+                                     [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+                                         ZoneScopedN("CPU RenderGraph Opaque GPass");
+                                         game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                     });
 
-        auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
-           [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
-               data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                        {},
-                                                        vk::AttachmentLoadOp::eClear,
-                                                        vk::ClearColorValue(std::array{0,0,0,0})
-               );
-           },
-           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph skybox");
-                auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
-                                          buffer);
-                renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
-                skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
-                skyboxMesh->bind(buffer);
-                skyboxMesh->draw(buffer);
-           }
-        );
-        skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data) {
-            return currentSkybox != Skybox::Type::None;
-        });
-
-        auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-            ZoneScopedN("CPU RenderGraph Opaque GPass");
-            game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-        });
-        auto& transparentGBufferPass = getGBuffer().addTransparentGBufferPass(mainGraph, opaqueGBufferPass.getData(), [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-            ZoneScopedN("CPU RenderGraph Opaque GPass");
-            game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-        });
-        auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
-
-        gResolvePassData = gresolvePass.getData();
-
-        composers[eye]->add(gresolvePass.getData().resolved);
+        composers[eye]->add(gResolvePass.getData().resolved);
         auto& composerPass = composers[eye]->appendPass(mainGraph);
+
+        gResolvePassData = gResolvePass.getData();
+
 
         if(shouldPresentToSwapchain) {
 //            auto& imguiPass = renderer.addImGuiPass(mainGraph, composerPass.getData().color);
 
-            mainGraph.addPass<PresentPassData>("present",
+            mainGraph.addPass<Carrot::Render::PassData::Present>("present",
 
-                                               [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
-                                                   // pass.rasterized = false;
-                                                    data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
-                                                    data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
-                                                    // uses ImGui, so no pre-record: pass.prerecordable = false;
-                                                    builder.present(data.output);
-                                               },
-                                               [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
-                                                   ZoneScopedN("CPU RenderGraph present");
-                                                   auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
-                                                   auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                                                   fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
-                                                   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+                                                                 [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
+                                                                     // pass.rasterized = false;
+                                                                     data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
+                                                                     data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
+                                                                     // uses ImGui, so no pre-record: pass.prerecordable = false;
+                                                                     builder.present(data.output);
+                                                                 },
+                                                                 [](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
+                                                                     ZoneScopedN("CPU RenderGraph present");
+                                                                     auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
+                                                                     auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+                                                                     frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
+                                                                     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
 
-                                                   //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
-                                                   //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
-                                                   //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
-                                               },
-                                               [this](Render::CompiledPass& pass, PresentPassData& data) {
-                                                   renderer.initImGuiPass(pass.getRenderPass());
-                                               }
+                                                                     //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
+                                                                     //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
+                                                                     //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
+                                                                 },
+                                                                 [this](Render::CompiledPass& pass, Carrot::Render::PassData::Present& data) {
+                                                                     renderer.initImGuiPass(pass.getRenderPass());
+                                                                 }
             );
         }
         return composerPass;
@@ -242,26 +187,26 @@ void Carrot::Engine::init() {
 
        // auto& imguiPass = renderer.addImGuiPass(mainGraph);
 
-        mainGraph.addPass<PresentPassData>("present",
-                                           [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<PresentPassData>& pass, PresentPassData& data) {
+        mainGraph.addPass<Render::PassData::Present>("present",
+                                           [prevPassData = composerPass.getData()](Render::GraphBuilder& builder, Render::Pass<Render::PassData::Present>& pass, Render::PassData::Present& data) {
                                                //pass.rasterized = false;
                                                data.input = builder.read(prevPassData.color, vk::ImageLayout::eShaderReadOnlyOptimal);
                                                data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                                                // uses ImGui, so no pre-record: pass.prerecordable = false;
                                                builder.present(data.output);
                                            },
-                                           [fullscreenBlit](const Render::CompiledPass& pass, const Render::Context& frame, const PresentPassData& data, vk::CommandBuffer& cmds) {
+                                           [](const Render::CompiledPass& pass, const Render::Context& frame, const Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                ZoneScopedN("CPU RenderGraph present");
                                                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                                                auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
-                                               fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
+                                               frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
                                                ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
 
                                                //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
                                                //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
                                            },
-                                           [this](Render::CompiledPass& pass, PresentPassData& data) {
+                                           [this](Render::CompiledPass& pass, Render::PassData::Present& data) {
                                                renderer.initImGuiPass(pass.getRenderPass());
                                            }
         );
@@ -1240,4 +1185,51 @@ Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
 Carrot::Render::Viewport& Carrot::Engine::createViewport() {
     viewports.emplace_back(renderer);
     return viewports.back();
+}
+
+Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
+                                           std::function<void(const Carrot::Render::CompiledPass&,
+                                                              const Carrot::Render::Context&,
+                                                              vk::CommandBuffer&)> opaqueCallback,
+                                           std::function<void(const Carrot::Render::CompiledPass&,
+                                                              const Carrot::Render::Context&,
+                                                              vk::CommandBuffer&)> transparentCallback) {
+    auto& testTexture = renderer.getOrCreateTexture("default.png");
+
+    auto& rtPass = getRayTracer().appendRTPass(mainGraph, eye);
+
+    auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
+                                                                           [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
+                                                                               data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                                                                                        {},
+                                                                                                                        vk::AttachmentLoadOp::eClear,
+                                                                                                                        vk::ClearColorValue(std::array{0,0,0,0})
+                                                                               );
+                                                                           },
+                                                                           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
+                                                                               ZoneScopedN("CPU RenderGraph skybox");
+                                                                               auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
+                                                                               renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
+                                                                                                      buffer);
+                                                                               renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+                                                                               skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
+                                                                               skyboxMesh->bind(buffer);
+                                                                               skyboxMesh->draw(buffer);
+                                                                           }
+    );
+    skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data) {
+        return currentSkybox != Skybox::Type::None;
+    });
+
+    auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+        ZoneScopedN("CPU RenderGraph Opaque GPass");
+        opaqueCallback(pass, frame, cmds);
+    });
+    auto& transparentGBufferPass = getGBuffer().addTransparentGBufferPass(mainGraph, opaqueGBufferPass.getData(), [transparentCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+        ZoneScopedN("CPU RenderGraph Opaque GPass");
+        transparentCallback(pass, frame, cmds);
+    });
+    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
+
+    return gresolvePass;
 }

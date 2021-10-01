@@ -26,6 +26,10 @@ namespace Carrot::Render {
 
         vk::DescriptorSet getCameraDescriptorSet() const;
 
+        /// Returns a copy of this RenderContext, with swapchainIndex = lastSwapchainIndex. Calling it again on the
+        /// resulting object won't have any effect (outside of creating a new object)
+        Context lastFrame() const;
+
         static void registerUsertype(sol::state& destination);
     };
 }
