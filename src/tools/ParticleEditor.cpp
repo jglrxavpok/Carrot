@@ -26,10 +26,9 @@
 #include <nfd.h>
 #include <engine/render/CameraBufferObject.h>
 #include <engine/render/resources/ResourceAllocator.h>
+#include <rapidjson/prettywriter.h>
 
 namespace ed = ax::NodeEditor;
-
-std::filesystem::path Tools::ParticleEditor::EmptyProject = "";
 
 static std::uint32_t MaxPreviewParticles = 10000;
 
@@ -215,7 +214,7 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
     char writeBuffer[65536];
     rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
-    rapidjson::Writer<rapidjson::FileWriteStream> writer(os);
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
     rapidjson::Document document;
     document.SetObject();

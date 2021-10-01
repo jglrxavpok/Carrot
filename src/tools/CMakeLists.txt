@@ -2,7 +2,6 @@ set(ToolsRoot "")
 
 set(ToolsSources
         ${ToolsRoot}ParticleEditor.cpp
-        ${ToolsRoot}EditorSettings.cpp
         ${ToolsRoot}EditorGraph.cpp
         ${ToolsRoot}EditorNode.cpp
         ${ToolsRoot}TemplateEditor.cpp

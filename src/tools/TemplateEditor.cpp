@@ -5,6 +5,7 @@
 #include "TemplateEditor.h"
 #include <rapidjson/writer.h>
 #include <rapidjson/filewritestream.h>
+#include <rapidjson/prettywriter.h>
 #include "nodes/NamedIO.h"
 
 Tools::TemplateEditor::TemplateEditor(Carrot::Engine& engine): Tools::ProjectMenuHolder(), engine(engine), settings("node_templates"), graph(engine, "Template Editor") {
@@ -93,7 +94,7 @@ void Tools::TemplateEditor::saveToFile(std::filesystem::path path) {
     char writeBuffer[65536];
     rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
-    rapidjson::Writer<rapidjson::FileWriteStream> writer(os);
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
     rapidjson::Document document;
     document.SetObject();

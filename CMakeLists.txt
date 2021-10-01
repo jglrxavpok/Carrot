@@ -172,6 +172,7 @@ endfunction()
 add_subdirectory(src)
 add_subdirectory(samples)
 add_subdirectory(src/tools)
+add_subdirectory(editor)
 add_subdirectory(tests)
 
 if(AFTERMATH_LIBS)

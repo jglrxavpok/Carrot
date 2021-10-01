@@ -112,6 +112,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/bindings/render/VulkanRenderer.cpp
 
         ${EngineRoot}scripting/bindings/render/resources/Texture.cpp
+
+        ${EngineRoot}edition/EditorSettings.cpp
         )
 
 set(VR_SOURCES

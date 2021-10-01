@@ -52,7 +52,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-static Carrot::RuntimeOption showFPS("Debug/Show FPS", true);
+static Carrot::RuntimeOption showFPS("Debug/Show FPS", false);
 static Carrot::RuntimeOption showInputDebug("Debug/Show Inputs", false);
 static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 

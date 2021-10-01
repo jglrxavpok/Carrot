@@ -3,6 +3,7 @@
 //
 
 #include "EditorSettings.h"
+#include "ProjectMenuHolder.h"
 #include <iostream>
 #include <fstream>
 #include <rapidjson/document.h>
@@ -13,6 +14,9 @@
 #include <engine/io/IO.h>
 #include <engine/utils/Containers.h>
 #include <engine/utils/JSON.h>
+#include <rapidjson/prettywriter.h>
+
+std::filesystem::path Tools::ProjectMenuHolder::EmptyProject = "";
 
 void Tools::EditorSettings::load() {
     recentProjects.clear();
@@ -36,7 +40,7 @@ void Tools::EditorSettings::save() {
     char writeBuffer[65536];
     rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
-    rapidjson::Writer<rapidjson::FileWriteStream> writer(os);
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
     rapidjson::Document document;
     document.SetObject();

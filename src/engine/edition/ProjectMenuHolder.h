@@ -6,6 +6,7 @@
 #include "imgui.h"
 #include "EditorSettings.h"
 #include <nfd.h>
+#include <engine/render/RenderContext.h>
 
 namespace Tools {
     class ProjectMenuHolder {

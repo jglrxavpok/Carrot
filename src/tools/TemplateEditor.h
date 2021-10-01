@@ -8,8 +8,8 @@
 #include "imgui_node_editor.h"
 #include "imgui.h"
 #include "EditorGraph.h"
-#include "EditorSettings.h"
-#include "ProjectMenuHolder.h"
+#include "engine/edition/EditorSettings.h"
+#include "engine/edition/ProjectMenuHolder.h"
 
 namespace Tools {
     class TemplateEditor: public ProjectMenuHolder {

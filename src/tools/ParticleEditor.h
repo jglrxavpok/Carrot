@@ -6,11 +6,11 @@
 
 #include "engine/Engine.h"
 #include "imgui.h"
-#include "EditorSettings.h"
+#include "engine/edition/EditorSettings.h"
 #include "imgui_node_editor.h"
 #include "EditorGraph.h"
 #include "TemplateEditor.h"
-#include "ProjectMenuHolder.h"
+#include <engine/edition/ProjectMenuHolder.h>
 #include <engine/render/Camera.h>
 #include <engine/render/particles/Particles.h>
 #include <engine/render/resources/BufferView.h>

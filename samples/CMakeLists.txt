@@ -1,3 +1,4 @@
 add_subdirectory(basicsprites)
 add_subdirectory(basicsprites_lua)
 add_subdirectory(testbed)
+add_subdirectory(imgui_demo)
