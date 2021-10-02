@@ -67,6 +67,7 @@ namespace Carrot::ECS {
         }
 
         std::string_view getName() const;
+        std::string& getName();
 
         void updateName(std::string_view name);
 

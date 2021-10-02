@@ -6,8 +6,8 @@
 
 namespace Carrot::ECS {
     glm::mat4 Transform::toTransformMatrix() const {
-        auto modelRotation = glm::rotate(rotation, 0.0f, glm::vec3(0,0,01));
-        auto matrix = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(modelRotation) * glm::scale(glm::mat4(1.0f), scale);
+        auto modelRotation = glm::toMat4(rotation);
+        auto matrix = glm::translate(glm::mat4(1.0f), position) * modelRotation * glm::scale(glm::mat4(1.0f), scale);
         auto parent = getEntity().getParent();
         if(parent) {
             if(auto parentTransform = getEntity().getWorld().getComponent<Transform>(parent.value())) {

@@ -4,7 +4,12 @@
 namespace Carrot::ECS {
     template<class Comp>
     Memory::OptionalRef<Comp> World::getComponent(const Entity& entity) const {
-        auto componentMapLocation = this->entityComponents.find(entity.internalEntity);
+        return getComponent<Comp>(entity.getID());
+    }
+
+    template<class Comp>
+    Memory::OptionalRef<Comp> World::getComponent(const EntityID& entityID) const {
+        auto componentMapLocation = this->entityComponents.find(entityID);
         if(componentMapLocation == this->entityComponents.end()) {
             // no such entity
             return {};

@@ -8,6 +8,7 @@
 #include <engine/edition/EditorSettings.h>
 #include <engine/render/Viewport.h>
 #include <engine/ecs/World.h>
+#include <optional>
 
 namespace Peeler {
     struct GameState {
@@ -51,6 +52,9 @@ namespace Peeler {
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UIInspector(const Carrot::Render::Context& renderContext);
 
+    private:
+        void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
+
     private: // simulation
         void startSimulation();
         void stopSimulation();
@@ -64,6 +68,10 @@ namespace Peeler {
 
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture stopButtonIcon;
+        Carrot::Render::Texture translateIcon;
+        Carrot::Render::Texture rotateIcon;
+        Carrot::Render::Texture scaleIcon;
+
         GameState state;
         std::optional<Carrot::ECS::EntityID> selectedID;
 

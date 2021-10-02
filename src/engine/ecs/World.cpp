@@ -47,6 +47,10 @@ namespace Carrot::ECS {
         return worldRef.getName(*this);
     }
 
+    std::string& Entity::getName() {
+        return worldRef.getName(*this);
+    }
+
     void Entity::updateName(std::string_view name) {
         worldRef.entityNames[internalEntity] = name;
     }
@@ -270,8 +274,24 @@ namespace Carrot::ECS {
         }
     }
 
+    std::string& World::getName(const Entity& entity) {
+        return getName(entity.getID());
+    }
+
     const std::string& World::getName(const Entity& entity) const {
-        auto it = entityNames.find(entity);
+        return getName(entity.getID());
+    }
+
+    std::string& World::getName(const EntityID& entityID) {
+        auto it = entityNames.find(entityID);
+        if(it != entityNames.end()) {
+            return it->second;
+        }
+        throw std::runtime_error("Non-existent entity.");
+    }
+
+    const std::string& World::getName(const EntityID& entityID) const {
+        auto it = entityNames.find(entityID);
         if(it != entityNames.end()) {
             return it->second;
         }

@@ -4,6 +4,13 @@ Game engine in C++, mostly for my own fun.
 
 Don't expect support for the moment.
 
+## Structure
+* `src/engine`: Engine code
+* `src/tools`: Particle editor code. Should move to `editor/` at some point.
+* `editor`: Peeler editor code and resources.
+* `samples`: Directories of different samples for Carrot.
+* `resources`: Resources used by the engine (or left over from old code).
+
 ## Dependencies
 
 ### What you need to install
@@ -25,6 +32,7 @@ Don't expect support for the moment.
 * `stduuid`: Cross-platform UUID lib.
 * `Tracy`: Profiler.
 * `stb_image`, `stb_image_write`, `stb_truetype`, `stb_vorbis`. Various single-file headers
+* `ImGuizmo`: Guizmo lib for Dear ImGui. Used by the Peeler editor.
 
 ## Some of its features
 - Vulkan renderer

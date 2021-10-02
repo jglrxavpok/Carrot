@@ -23,10 +23,16 @@ namespace Carrot::ECS {
         template<class Comp>
         Memory::OptionalRef<Comp> getComponent(const Entity& entity) const;
 
+        template<class Comp>
+        Memory::OptionalRef<Comp> getComponent(const EntityID& entityID) const;
+
         Tags getTags(const Entity& entity) const;
 
         std::vector<Entity> getEntitiesWithTags(Tags tags) const;
 
+        std::string& getName(const EntityID& entityID);
+        std::string& getName(const Entity& entity);
+        const std::string& getName(const EntityID& entityID) const;
         const std::string& getName(const Entity& entity) const;
 
         void tick(double dt);

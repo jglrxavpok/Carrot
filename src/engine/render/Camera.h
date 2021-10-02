@@ -5,6 +5,7 @@
 #pragma once
 #include "engine/vulkan/includes.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace Carrot {
     class Camera {
