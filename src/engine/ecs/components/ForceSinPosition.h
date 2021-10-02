@@ -17,5 +17,9 @@ namespace Carrot::ECS {
         glm::vec3 centerPosition{0.0f};
 
         explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
+
+        const char *const getName() const override {
+            return "ForceSinPosition";
+        }
     };
 }

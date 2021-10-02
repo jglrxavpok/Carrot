@@ -7,8 +7,19 @@
 #include <engine/edition/ProjectMenuHolder.h>
 #include <engine/edition/EditorSettings.h>
 #include <engine/render/Viewport.h>
+#include <engine/ecs/World.h>
 
 namespace Peeler {
+    struct GameState {
+        explicit GameState() = default;
+        GameState(const GameState&) = default;
+
+        void tick(double frameTime);
+        void onFrame(const Carrot::Render::Context& renderContext);
+
+        Carrot::ECS::World world;
+    };
+
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
     public:
         explicit Application(Carrot::Engine& engine);
@@ -37,6 +48,8 @@ namespace Peeler {
         void UIEditor(const Carrot::Render::Context& renderContext);
         void UIGameView(const Carrot::Render::Context& renderContext);
         void UIPlayBar(const Carrot::Render::Context& renderContext);
+        void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
+        void UIInspector(const Carrot::Render::Context& renderContext);
 
     private: // simulation
         void startSimulation();
@@ -51,6 +64,8 @@ namespace Peeler {
 
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture stopButtonIcon;
+        GameState state;
+        std::optional<Carrot::ECS::EntityID> selectedID;
 
     private: // simulation state
         bool isPlaying = false;

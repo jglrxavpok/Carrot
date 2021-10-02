@@ -31,7 +31,8 @@ namespace Carrot::ECS {
 
         void tick(double dt);
         void onFrame(Carrot::Render::Context renderContext);
-        void recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordOpaqueGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordTransparentGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
 
         Entity newEntity(std::string_view name = "<unnamed>");
 
@@ -41,6 +42,14 @@ namespace Carrot::ECS {
         void removeEntity(const Entity& ent);
 
         bool exists(EntityID ent) const;
+
+        std::vector<Entity> getAllEntities() const;
+        std::vector<Component*> getAllComponents(const Entity& ent) const;
+        std::vector<Component*> getAllComponents(const EntityID& ent) const;
+
+        /// Stops the processing of components (no longer calls tick), but still processes added/removed entities
+        void freezeLogic() { frozenLogic = true; }
+        void unfreezeLogic() { frozenLogic = false; }
 
     public:
         template<class RenderSystemType, typename... Args>
@@ -72,6 +81,8 @@ namespace Carrot::ECS {
 
         std::vector<std::unique_ptr<System>> logicSystems;
         std::vector<std::unique_ptr<System>> renderSystems;
+
+        bool frozenLogic = false;
 
     private: // internal representation of hierarchy
         std::unordered_map<EntityID, EntityID> entityParents;

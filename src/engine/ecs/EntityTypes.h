@@ -62,6 +62,10 @@ namespace Carrot::ECS {
             return internalEntity;
         }
 
+        const EntityID& getID() const {
+            return internalEntity;
+        }
+
         std::string_view getName() const;
 
         void updateName(std::string_view name);

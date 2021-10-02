@@ -16,4 +16,27 @@ namespace Carrot::ECS {
         }
         return matrix;
     }
+
+    void Transform::drawInspectorInternals(const Render::Context& renderContext) {
+        {
+            float arr[] = { position.x, position.y, position.z };
+            if (ImGui::DragFloat3("Position", arr)) {
+                position = { arr[0], arr[1], arr[2] };
+            }
+        }
+
+        {
+            float arr[] = { scale.x, scale.y, scale.z };
+            if (ImGui::DragFloat3("Scale", arr)) {
+                scale = { arr[0], arr[1], arr[2] };
+            }
+        }
+
+        {
+            float arr[] = { rotation.x, rotation.y, rotation.z, rotation.w };
+            if (ImGui::DragFloat4("Rotation", arr)) {
+                rotation = { arr[3], arr[0], arr[1], arr[2] };
+            }
+        }
+    }
 }

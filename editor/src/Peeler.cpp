@@ -5,6 +5,9 @@
 #include "Peeler.h"
 #include <engine/render/resources/Texture.h>
 #include <engine/render/TextureRepository.h>
+#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/SpriteComponent.h>
+#include <engine/ecs/systems/SpriteRenderSystem.h>
 
 namespace Peeler {
 
@@ -13,6 +16,7 @@ namespace Peeler {
             UIEditor(renderContext);
         }
         if(&renderContext.viewport == &gameViewport) {
+            state.onFrame(renderContext);
             engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 gameRenderingGraph->execute(renderContext, cmds);
                 auto& texture = gameRenderingGraph->getTexture(gameTexture, renderContext.swapchainIndex);
@@ -41,6 +45,8 @@ namespace Peeler {
         mainDockspace = ImGui::GetID("PeelerMainDockspace");
         ImGui::DockSpace(mainDockspace, ImVec2(0.0f, 0.0f), dockspaceFlags);
 
+        ImGui::PopStyleVar(3);
+
         if (ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Project")) {
                 drawProjectMenu();
@@ -49,18 +55,19 @@ namespace Peeler {
             ImGui::EndMenuBar();
         }
 
-        auto region = ImGui::GetContentRegionMax();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         if(ImGui::Begin("Game view", nullptr, ImGuiWindowFlags_NoBackground)) {
             UIGameView(renderContext);
         }
         ImGui::End();
-
         ImGui::PopStyleVar(3);
 
         ImGui::End();
 
         if(ImGui::Begin("World")) {
-
+            UIWorldHierarchy(renderContext);
         }
         ImGui::End();
 
@@ -70,7 +77,7 @@ namespace Peeler {
         ImGui::End();
 
         if(ImGui::Begin("Properties")) {
-
+            UIInspector(renderContext);
         }
         ImGui::End();
 
@@ -78,6 +85,71 @@ namespace Peeler {
             UIPlayBar(renderContext);
         }
         ImGui::End();
+    }
+
+    void Application::UIInspector(const Carrot::Render::Context& renderContext) {
+        if(selectedID.has_value()) {
+            auto& entityID = selectedID.value();
+            auto components = state.world.getAllComponents(entityID);
+            for(auto& comp : components) {
+                comp->drawInspector(renderContext);
+            }
+        }
+    }
+
+    void Application::UIWorldHierarchy(const Carrot::Render::Context& renderContext) {
+        if(ImGui::IsItemClicked()) {
+            selectedID.reset();
+        }
+
+        if (ImGui::BeginPopupContextWindow("##popup world editor")) {
+            if(ImGui::MenuItem("Add entity")) {
+                auto entity = state.world.newEntity("Entity")
+                    .addComponent<Carrot::ECS::Transform>()
+                    .addComponent<Carrot::ECS::SpriteComponent>();
+                auto testSprite = std::make_shared<Carrot::Render::Sprite>(engine.getRenderer(), engine.getRenderer().getOrCreateTexture("../icon128.png"));
+                entity.getComponent<Carrot::ECS::SpriteComponent>()->sprite = testSprite;
+            }
+
+            ImGui::EndPopup();
+        }
+
+        std::function<void(Carrot::ECS::Entity&)> showEntityTree = [&, id = std::size_t { 0 }] (Carrot::ECS::Entity& entity) mutable {
+            if(!entity)
+                return;
+            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if(selectedID.has_value() && selectedID.value() == entity.getID()) {
+                nodeFlags |= ImGuiTreeNodeFlags_Selected;
+            }
+            auto children = state.world.getChildren(entity);
+            if(!children.empty()) {
+                if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", state.world.getName(entity).c_str())) {
+                    if(ImGui::IsItemClicked()) {
+                        selectedID.reset(); // TODO: multi-select
+                        selectedID = entity.getID();
+                    }
+
+                    for(auto& c : children) {
+                        showEntityTree(c);
+                    }
+
+                    ImGui::TreePop();
+                }
+            } else { // has no children
+                nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "- %s", state.world.getName(entity).c_str());
+
+                if(ImGui::IsItemClicked()) {
+                    selectedID.reset(); // TODO: multi-select
+                    selectedID = entity.getID();
+                }
+            }
+        };
+        for(auto& entityObj : state.world.getAllEntities()) {
+            if( ! state.world.getParent(entityObj)) {
+                showEntityTree(entityObj);
+            }
+        }
     }
 
     void Application::UIGameView(const Carrot::Render::Context& renderContext) {
@@ -138,13 +210,18 @@ namespace Peeler {
     {
         attachSettings(settings);
 
+        state.world.freezeLogic();
+        state.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
+
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
 
         auto& resolvePass = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
+                                         state.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                          // TODO: game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      },
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
+                                         state.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                          // TODO: game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
         gameTexture = resolvePass.getData().resolved;
@@ -152,10 +229,12 @@ namespace Peeler {
         engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
         gameRenderingGraph = std::move(graphBuilder.compile());
+
+        gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(5,5,5));
     }
 
     void Application::tick(double frameTime) {
-
+        state.tick(frameTime);
     }
 
     void Application::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
@@ -187,5 +266,13 @@ namespace Peeler {
 
     void Application::onSwapchainImageCountChange(std::size_t newCount) {
         gameRenderingGraph->onSwapchainImageCountChange(newCount);
+    }
+
+    void GameState::tick(double frameTime) {
+        world.tick(frameTime);
+    }
+
+    void GameState::onFrame(const Carrot::Render::Context& renderContext) {
+        world.onFrame(renderContext);
     }
 }

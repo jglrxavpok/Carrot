@@ -5,9 +5,17 @@
 #include "SpriteRenderSystem.h"
 
 namespace Carrot::ECS {
-    void SpriteRenderSystem::gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         forEachEntity([&](Entity& entity, Transform& transform, SpriteComponent& spriteComp) {
-            if(spriteComp.sprite) {
+            if(spriteComp.sprite && spriteComp.isTransparent) {
+                spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
+            }
+        });
+    }
+
+    void SpriteRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+        forEachEntity([&](Entity& entity, Transform& transform, SpriteComponent& spriteComp) {
+            if(spriteComp.sprite && !spriteComp.isTransparent) {
                 spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
             }
         });

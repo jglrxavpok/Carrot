@@ -8,6 +8,10 @@
 
 #include <utility>
 
+namespace Carrot::Render {
+    struct Context;
+}
+
 namespace Carrot::ECS {
 
     class Entity;
@@ -19,6 +23,11 @@ namespace Carrot::ECS {
         Entity& getEntity() { return entity; }
         const Entity& getEntity() const { return entity; }
 
+        void drawInspector(const Carrot::Render::Context& renderContext);
+        virtual void drawInspectorInternals(const Carrot::Render::Context& renderContext) {};
+
+        virtual const char* const getName() const = 0;
+
         virtual ~Component() = default;
 
     private:
@@ -28,6 +37,10 @@ namespace Carrot::ECS {
     template<class Self>
     struct IdentifiableComponent: public Component, Identifiable<Self> {
         explicit IdentifiableComponent(Entity entity): Component(std::move(entity)) {}
+
+        virtual const char* const getName() const override {
+            return typeid(Self).name();
+        }
     };
 
 }

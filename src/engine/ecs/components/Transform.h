@@ -18,5 +18,11 @@ namespace Carrot::ECS {
         explicit Transform(Entity entity): IdentifiableComponent<Transform>(std::move(entity)) {};
 
         [[nodiscard]] glm::mat4 toTransformMatrix() const;
+
+        const char *const getName() const override {
+            return "Transform";
+        }
+
+        void drawInspectorInternals(const Render::Context& renderContext) override;
     };
 }

@@ -116,8 +116,10 @@ namespace Carrot::ECS {
         entitiesToAdd.clear();
         entitiesToRemove.clear();
 
-        for(const auto& logic : logicSystems) {
-            logic->tick(dt);
+        if(!frozenLogic) {
+            for(const auto& logic : logicSystems) {
+                logic->tick(dt);
+            }
         }
 
         for(const auto& render : renderSystems) {
@@ -175,19 +177,36 @@ namespace Carrot::ECS {
         }
     }
 
-    void World::recordGBufferPass(vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    void World::recordOpaqueGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         ZoneScoped;
         {
             ZoneScopedN("GBuffer Logic");
             for(const auto& logic : logicSystems) {
-                logic->gBufferRender(pass, renderContext, commands);
+                logic->opaqueGBufferRender(pass, renderContext, commands);
             }
         }
 
         {
             ZoneScopedN("GBuffer render");
             for(const auto& render : renderSystems) {
-                render->gBufferRender(pass, renderContext, commands);
+                render->opaqueGBufferRender(pass, renderContext, commands);
+            }
+        }
+    }
+
+    void World::recordTransparentGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+        ZoneScoped;
+        {
+            ZoneScopedN("GBuffer Logic");
+            for(const auto& logic : logicSystems) {
+                logic->transparentGBufferRender(pass, renderContext, commands);
+            }
+        }
+
+        {
+            ZoneScopedN("GBuffer render");
+            for(const auto& render : renderSystems) {
+                render->transparentGBufferRender(pass, renderContext, commands);
             }
         }
     }
@@ -261,6 +280,27 @@ namespace Carrot::ECS {
 
     bool World::exists(EntityID ent) const {
         return entityNames.find(ent) != entityNames.end();
+    }
+
+    std::vector<Entity> World::getAllEntities() const {
+        std::vector<Entity> list;
+        for(const auto& ent : entities) {
+            list.emplace_back(ent, const_cast<World&>(*this));
+        }
+        return list;
+    }
+
+    std::vector<Component *> World::getAllComponents(const Entity& entity) const {
+        return getAllComponents(entity.getID());
+    }
+
+
+    std::vector<Component *> World::getAllComponents(const EntityID& entityID) const {
+        std::vector<Component*> comps;
+        for(auto& [id, comp] : entityComponents.at(entityID)) {
+            comps.push_back(comp.get());
+        }
+        return comps;
     }
 
 }

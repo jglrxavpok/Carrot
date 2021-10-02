@@ -12,5 +12,9 @@ namespace Carrot::ECS {
         AnimatedInstanceData& instanceData;
 
         explicit AnimatedModelInstance(Entity entity, AnimatedInstanceData& instanceData): IdentifiableComponent<AnimatedModelInstance>(std::move(entity)), instanceData(instanceData) {};
+
+        const char *const getName() const override {
+            return "AnimatedModelInstance";
+        }
     };
 }

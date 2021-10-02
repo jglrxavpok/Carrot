@@ -34,7 +34,8 @@ namespace Carrot::ECS {
         virtual void tick(double dt) {};
 
         // TODO: provide a way to render even in other passes
-        virtual void gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
+        virtual void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
+        virtual void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 
         void onEntitiesAdded(const std::vector<EntityID>& entities);
         void onEntitiesRemoved(const std::vector<EntityID>& entities);

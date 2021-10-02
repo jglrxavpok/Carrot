@@ -15,7 +15,8 @@ namespace Carrot::ECS {
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
-        void gBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
+        void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
+        void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
 
         void tick(double dt) override;
 

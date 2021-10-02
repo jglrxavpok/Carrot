@@ -14,5 +14,9 @@ namespace Carrot::ECS {
         glm::vec3 velocity{};
 
         explicit Kinematics(Entity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
+
+        const char *const getName() const override {
+            return "Kinematics";
+        }
     };
 }

@@ -14,5 +14,9 @@ namespace Carrot::ECS {
         explicit RaycastedShadowsLight(Entity entity, Light& light): IdentifiableComponent<RaycastedShadowsLight>(std::move(entity)), lightRef(light) {
             light.enabled = true;
         };
+
+        const char *const getName() const override {
+            return "RaycastedShadowsLight";
+        }
     };
 }
