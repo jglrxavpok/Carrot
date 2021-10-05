@@ -28,7 +28,11 @@ namespace Carrot::ECS {
 
         virtual const char* const getName() const = 0;
 
+        virtual std::unique_ptr<Component> duplicate(const Entity& newOwner) const = 0;
+
         virtual ~Component() = default;
+
+        [[nodiscard]] virtual ComponentID getComponentTypeID() const = 0;
 
     private:
         Entity entity;
@@ -40,6 +44,10 @@ namespace Carrot::ECS {
 
         virtual const char* const getName() const override {
             return typeid(Self).name();
+        }
+
+        virtual ComponentID getComponentTypeID() const override {
+            return Self::id;
         }
     };
 

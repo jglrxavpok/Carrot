@@ -28,7 +28,7 @@ namespace Carrot::ECS {
     template<typename Comp>
     Entity& Entity::addComponent(std::unique_ptr<Comp>&& component) {
         auto& componentMap = worldRef.entityComponents[internalEntity];
-        componentMap[Comp::id] = std::move(component);
+        componentMap[component->getComponentTypeID()] = std::move(component);
         return *this;
     }
 

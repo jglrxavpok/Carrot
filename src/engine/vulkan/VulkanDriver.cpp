@@ -809,3 +809,17 @@ Carrot::Engine& Carrot::VulkanDriver::getEngine() {
 Carrot::VulkanRenderer& Carrot::VulkanDriver::getRenderer() {
     return engine->getRenderer();
 }
+
+void Carrot::VulkanDriver::newFrame() {
+    ZoneScoped;
+    std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
+    for(const auto& [pool, buffer] : deferredCommandBufferDestructions[swapchainIndex]) {
+        device->freeCommandBuffers(pool, buffer);
+    }
+    deferredCommandBufferDestructions[swapchainIndex].clear();
+}
+
+void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {
+    std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
+    deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
+}

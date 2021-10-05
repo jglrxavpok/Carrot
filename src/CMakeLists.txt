@@ -114,6 +114,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/bindings/render/resources/Texture.cpp
 
         ${EngineRoot}edition/EditorSettings.cpp
+        ${EngineRoot}edition/FreeCameraController.cpp
         )
 
 set(VR_SOURCES

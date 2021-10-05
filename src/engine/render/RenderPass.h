@@ -72,6 +72,8 @@ namespace Carrot::Render {
 
         const Graph& getGraph() const { return graph; }
 
+        std::string_view getName() const { return name; }
+
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 

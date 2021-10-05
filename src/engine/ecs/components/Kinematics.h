@@ -18,5 +18,11 @@ namespace Carrot::ECS {
         const char *const getName() const override {
             return "Kinematics";
         }
+
+        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
+            auto result = std::make_unique<Kinematics>(newOwner);
+            result->velocity = velocity;
+            return result;
+        }
     };
 }

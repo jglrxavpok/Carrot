@@ -47,6 +47,8 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
 
         // free now-useless command buffers
         getLogicalDevice().freeCommandBuffers(commandPool, stagingCommands);
+    } else {
+        deferCommandBufferDestruction(commandPool, stagingCommands);
     }
     // TODO: freeCommandBuffer if no wait
 }

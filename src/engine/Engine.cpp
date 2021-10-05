@@ -472,17 +472,37 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             .pInheritanceInfo = nullptr,
     };
 
-    Console::instance().renderToImGui(*this);
-    ImGui::Render();
+    {
+        ZoneScopedN("ImGui Render");
+        Console::instance().renderToImGui(*this);
+        ImGui::Render();
+    }
 
-    mainCommandBuffers[i].begin(beginInfo);
-    PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
+    {
+        ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
+        mainCommandBuffers[i].begin(beginInfo);
+    }
+    {
+        ZoneScopedN("PrepareVulkanTracy");
+
+        PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
+    }
 
     if(config.runInVR) {
-        leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
-        rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
+        {
+            ZoneScopedN("VR Left eye render");
+            leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
+        }
+        {
+            ZoneScopedN("VR Right eye render");
+            rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
+        }
     }
-    globalFrameGraph->execute(newRenderContext(i, getMainViewport()), mainCommandBuffers[i]);
+
+    {
+        ZoneScopedN("Render complete frame");
+        globalFrameGraph->execute(newRenderContext(i, getMainViewport()), mainCommandBuffers[i]);
+    }
 
     mainCommandBuffers[i].end();
 }
@@ -556,6 +576,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             swapchainImageIndexRightNow = imageIndex;
         }
     }
+
+    vkDriver.newFrame();
+
     static DebugBufferObject debug{};
     static int32_t gIndex = -1;
     if(hasPreviousFrame() && showGBuffer) {
@@ -1233,3 +1256,17 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
 
     return gresolvePass;
 }
+
+
+#ifdef TRACY_ENABLE
+void* operator new(std::size_t count) {
+    auto ptr = malloc(count);
+    TracyAllocS(ptr, count, 20);
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept{
+    TracyFreeS(ptr, 20);
+    free(ptr);
+}
+#endif

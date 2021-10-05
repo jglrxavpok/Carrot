@@ -18,5 +18,10 @@ namespace Carrot::ECS {
         const char *const getName() const override {
             return "RaycastedShadowsLight";
         }
+
+        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
+            auto result = std::make_unique<RaycastedShadowsLight>(newOwner, lightRef);
+            return result;
+        }
     };
 }

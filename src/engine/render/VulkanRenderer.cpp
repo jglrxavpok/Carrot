@@ -201,6 +201,10 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
 
 void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
     verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    if(boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == samplerToBind) {
+        return;
+    }
+    boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = samplerToBind;
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo samplerInfo {
@@ -223,7 +227,12 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
 }
 
 void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
+    ZoneScoped;
     verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == textureToBind.getVulkanImage()) {
+        return;
+    }
+    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = textureToBind.getVulkanImage();
     auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
@@ -237,15 +246,20 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     if(sampler) {
         descType = vk::DescriptorType::eCombinedImageSampler;
     }
-    vk::WriteDescriptorSet writeTexture {
-            .dstSet = descriptorSet,
-            .dstBinding = bindingID,
-            .dstArrayElement = arrayIndex,
-            .descriptorCount = 1,
-            .descriptorType = descType,
-            .pImageInfo = &imageInfo,
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                .dstSet = descriptorSet,
+                .dstBinding = bindingID,
+                .dstArrayElement = arrayIndex,
+                .descriptorCount = 1,
+                .descriptorType = descType,
+                .pImageInfo = &imageInfo,
+            }
     };
-    driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
 }
 
 Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {

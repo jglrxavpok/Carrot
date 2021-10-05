@@ -27,6 +27,8 @@ namespace Carrot::Render {
 
         explicit Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion = Carrot::Math::Rect2Df { 0.0f, 0.0f, 1.0f, 1.0f });
 
+        std::shared_ptr<Sprite> duplicate() const;
+
         virtual ~Sprite() = default;
 
     public:

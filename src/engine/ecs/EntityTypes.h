@@ -16,6 +16,7 @@ namespace Carrot::ECS {
     using EntityID = Carrot::UUID;
 
     class World;
+    class Component;
 
     /// Wrapper struct to allow easy addition of components. This does NOT hold the components.
     struct Entity {
@@ -45,6 +46,8 @@ namespace Carrot::ECS {
 
         template<typename Comp>
         Memory::OptionalRef<Comp> getComponent();
+
+        std::vector<Component*> getAllComponents() const;
 
         Entity& addTag(Tags tag);
 

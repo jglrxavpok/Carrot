@@ -16,5 +16,9 @@ namespace Carrot::ECS {
         const char *const getName() const override {
             return "AnimatedModelInstance";
         }
+
+        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
+            return std::make_unique<AnimatedModelInstance>(newOwner, instanceData);
+        }
     };
 }

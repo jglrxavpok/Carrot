@@ -25,13 +25,24 @@ namespace Carrot::Render {
     }
 
     void Sprite::onFrame(Carrot::Render::Context renderContext) const {
-        instanceData->transform = computeTransformMatrix();
-        instanceData->color = {1.0, 1.0, 1.0, 1.0};
-        renderer.bindTexture(*renderingPipeline, renderContext, *texture, 0, 0, nullptr);
-        renderer.bindSampler(*renderingPipeline, renderContext, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
+        ZoneScoped;
+        {
+            ZoneScopedN("Instance update");
+            instanceData->transform = computeTransformMatrix();
+            instanceData->color = {1.0, 1.0, 1.0, 1.0};
+        }
+        {
+            ZoneScopedN("Bind texture");
+            renderer.bindTexture(*renderingPipeline, renderContext, *texture, 0, 0, nullptr);
+        }
+        {
+            ZoneScopedN("Bind sampler");
+            renderer.bindSampler(*renderingPipeline, renderContext, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
+        }
     }
 
     void Sprite::soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
+        ZoneScoped;
         auto& mesh = getSpriteMesh(renderContext.renderer.getEngine());
         renderContext.renderer.pushConstantBlock(*renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex, commands, textureRegion);
         renderingPipeline->bind(renderPass, renderContext, commands);
@@ -67,5 +78,15 @@ namespace Carrot::Render {
 
     void Sprite::cleanup() {
         spriteMesh.reset();
+    }
+
+    std::shared_ptr<Sprite> Sprite::duplicate() const {
+        auto clone = std::make_shared<Sprite>(renderer, texture, textureRegion);
+        *clone->instanceData = *instanceData;
+        clone->size = size;
+        clone->position = position;
+        clone->rotation = rotation;
+        clone->parentTransform = parentTransform;
+        return clone;
     }
 }

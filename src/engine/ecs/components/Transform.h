@@ -23,6 +23,14 @@ namespace Carrot::ECS {
             return "Transform";
         }
 
+        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
+            auto result = std::make_unique<Transform>(newOwner);
+            result->position = position;
+            result->scale = scale;
+            result->rotation = rotation;
+            return result;
+        }
+
         void drawInspectorInternals(const Render::Context& renderContext) override;
     };
 }

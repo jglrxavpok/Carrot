@@ -3,6 +3,7 @@
 //
 
 #include "SpriteRenderSystem.h"
+#include <engine/vulkan/CustomTracyVulkan.h>
 
 namespace Carrot::ECS {
     void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
@@ -30,6 +31,7 @@ namespace Carrot::ECS {
     }
 
     void SpriteRenderSystem::updateSprite(Carrot::Render::Context renderContext, const Transform& transform, Carrot::Render::Sprite& sprite) {
+        ZoneScoped;
         sprite.parentTransform = transform.toTransformMatrix();
         sprite.onFrame(renderContext);
     }

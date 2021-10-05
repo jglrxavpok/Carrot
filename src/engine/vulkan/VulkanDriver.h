@@ -53,108 +53,6 @@ namespace Carrot {
     };
 
     class VulkanDriver: public SwapchainAware {
-    private:
-        Window& window;
-        Configuration config;
-
-        const vk::AllocationCallbacks* allocator = nullptr;
-        std::int32_t framebufferWidth;
-        std::int32_t framebufferHeight;
-        Engine* engine = nullptr;
-
-#ifdef ENABLE_VR
-        VR::Interface& vrInterface;
-#endif
-
-        vk::UniqueInstance instance;
-        vk::UniqueDebugUtilsMessengerEXT callback{};
-        vk::PhysicalDevice physicalDevice{};
-        vk::UniqueDevice device{};
-        QueueFamilies queueFamilies{};
-
-        std::uint32_t graphicsQueueIndex = -1;
-        vk::Queue graphicsQueue{};
-        vk::Queue presentQueue{};
-        vk::Queue transferQueue{};
-        vk::Queue computeQueue{};
-        vk::SurfaceKHR surface{};
-
-        ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
-        ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
-        ThreadLocal<vk::UniqueCommandPool> computeCommandPool;
-
-        std::shared_ptr<Render::Texture> defaultTexture = nullptr;
-
-        vk::UniqueSampler linearRepeatSampler{};
-        vk::UniqueSampler nearestRepeatSampler{};
-
-        vk::UniqueSwapchainKHR swapchain{};
-        vk::Format swapchainImageFormat = vk::Format::eUndefined;
-        vk::Format depthFormat = vk::Format::eUndefined;
-        vk::Extent2D windowFramebufferExtent{};
-        std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
-
-        vk::UniqueDescriptorPool emptyDescriptorSetPool{};
-        vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
-        vk::DescriptorSet emptyDescriptorSet{};
-
-        std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
-        std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
-
-        /// Create Vulkan instance
-        void createInstance();
-
-        /// Check validation layers are supported (if NO_DEBUG disabled)
-        bool checkValidationLayerSupport();
-
-        /// Generate a vector with the required extensions for this application
-        std::vector<const char *> getRequiredExtensions();
-
-        /// Setups debug messages
-        void setupDebugMessenger();
-
-        /// Prepares a debug messenger
-        void setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT &ext);
-
-        /// Select a GPU
-        void pickPhysicalDevice();
-
-        /// Rank physical device based on their capabilities
-        int ratePhysicalDevice(const vk::PhysicalDevice& device);
-
-        /// Create the logical device to interface with Vulkan
-        void createLogicalDevice();
-
-        /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
-        bool checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice);
-
-        /// Create the rendering surface for Vulkan
-        void createSurface();
-
-        /// Create the command pool for transfer operations
-        vk::UniqueCommandPool createTransferCommandPool();
-
-        /// Create the command pool for graphic operations
-        vk::UniqueCommandPool createGraphicsCommandPool();
-
-        /// Create the command pool for compute operations
-        vk::UniqueCommandPool createComputeCommandPool();
-
-        void createDefaultTexture();
-
-        /// Choose best surface format from the list of given formats
-        /// \param formats
-        /// \return
-        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats);
-
-        /// Choose best present mode from the list of given modes
-        /// \param presentModes
-        /// \return
-        vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
-
-        /// Choose resolution of swap chain images
-        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-
     public:
         VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine
         #ifdef ENABLE_VR
@@ -262,6 +160,8 @@ namespace Carrot {
         Engine& getEngine();
         VulkanRenderer& getRenderer();
 
+        void newFrame();
+
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
 
@@ -272,7 +172,121 @@ namespace Carrot {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     public:
+        void deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer);
+
+    public:
         static void registerUsertype(sol::state& destination);
+
+    private:
+        struct DeferredCommandBufferDestruction {
+            vk::CommandPool pool;
+            vk::CommandBuffer buffer;
+
+            explicit DeferredCommandBufferDestruction(vk::CommandPool pool, vk::CommandBuffer buffer): pool(pool), buffer(buffer) {}
+        };
+
+        Window& window;
+        Configuration config;
+
+        const vk::AllocationCallbacks* allocator = nullptr;
+        std::int32_t framebufferWidth;
+        std::int32_t framebufferHeight;
+        Engine* engine = nullptr;
+
+#ifdef ENABLE_VR
+        VR::Interface& vrInterface;
+#endif
+
+        vk::UniqueInstance instance;
+        vk::UniqueDebugUtilsMessengerEXT callback{};
+        vk::PhysicalDevice physicalDevice{};
+        vk::UniqueDevice device{};
+        QueueFamilies queueFamilies{};
+
+        std::uint32_t graphicsQueueIndex = -1;
+        vk::Queue graphicsQueue{};
+        vk::Queue presentQueue{};
+        vk::Queue transferQueue{};
+        vk::Queue computeQueue{};
+        vk::SurfaceKHR surface{};
+
+        ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
+        ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
+        ThreadLocal<vk::UniqueCommandPool> computeCommandPool;
+
+        std::shared_ptr<Render::Texture> defaultTexture = nullptr;
+
+        vk::UniqueSampler linearRepeatSampler{};
+        vk::UniqueSampler nearestRepeatSampler{};
+
+        vk::UniqueSwapchainKHR swapchain{};
+        vk::Format swapchainImageFormat = vk::Format::eUndefined;
+        vk::Format depthFormat = vk::Format::eUndefined;
+        vk::Extent2D windowFramebufferExtent{};
+        std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
+
+        vk::UniqueDescriptorPool emptyDescriptorSetPool{};
+        vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
+        vk::DescriptorSet emptyDescriptorSet{};
+
+        std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
+        std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
+
+        std::unordered_map<std::uint32_t, std::vector<DeferredCommandBufferDestruction>> deferredCommandBufferDestructions;
+
+        /// Create Vulkan instance
+        void createInstance();
+
+        /// Check validation layers are supported (if NO_DEBUG disabled)
+        bool checkValidationLayerSupport();
+
+        /// Generate a vector with the required extensions for this application
+        std::vector<const char *> getRequiredExtensions();
+
+        /// Setups debug messages
+        void setupDebugMessenger();
+
+        /// Prepares a debug messenger
+        void setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT &ext);
+
+        /// Select a GPU
+        void pickPhysicalDevice();
+
+        /// Rank physical device based on their capabilities
+        int ratePhysicalDevice(const vk::PhysicalDevice& device);
+
+        /// Create the logical device to interface with Vulkan
+        void createLogicalDevice();
+
+        /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
+        bool checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice);
+
+        /// Create the rendering surface for Vulkan
+        void createSurface();
+
+        /// Create the command pool for transfer operations
+        vk::UniqueCommandPool createTransferCommandPool();
+
+        /// Create the command pool for graphic operations
+        vk::UniqueCommandPool createGraphicsCommandPool();
+
+        /// Create the command pool for compute operations
+        vk::UniqueCommandPool createComputeCommandPool();
+
+        void createDefaultTexture();
+
+        /// Choose best surface format from the list of given formats
+        /// \param formats
+        /// \return
+        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats);
+
+        /// Choose best present mode from the list of given modes
+        /// \param presentModes
+        /// \return
+        vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
+
+        /// Choose resolution of swap chain images
+        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
     };
 }
 

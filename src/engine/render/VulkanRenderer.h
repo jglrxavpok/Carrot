@@ -21,6 +21,34 @@ namespace sol {
 }
 
 namespace Carrot {
+    struct BindingKey {
+        vk::PipelineLayout pipeline;
+        std::size_t swapchainIndex;
+        std::uint32_t setID;
+        std::uint32_t bindingID;
+
+        bool operator==(const BindingKey& other) const {
+            return pipeline == other.pipeline && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID;
+        }
+    };
+};
+
+namespace std {
+    template<>
+    struct hash<Carrot::BindingKey> {
+        std::size_t operator()(const Carrot::BindingKey& key) const {
+            const std::size_t prime = 31;
+
+            std::size_t hash = static_cast<std::size_t>((std::uint64_t)key.pipeline.operator VkPipelineLayout_T *());
+            hash = key.swapchainIndex + hash * prime;
+            hash = key.setID + hash * prime;
+            hash = key.bindingID + hash * prime;
+            return hash;
+        }
+    };
+}
+
+namespace Carrot {
     class GBuffer;
     class ASBuilder;
     class RayTracer;
@@ -133,6 +161,9 @@ namespace Carrot {
         bool imguiIsInitialized = false;
         std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
+
+        std::unordered_map<BindingKey, vk::Image> boundTextures;
+        std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
 
         void createCameraSetResources();
 

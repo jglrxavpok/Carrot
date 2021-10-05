@@ -128,6 +128,11 @@ namespace Carrot::Render {
     void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
         ZoneScoped;
         for(auto* pass : sortedPasses) {
+#ifdef TRACY_ENABLE
+            std::string passName = "Execute pass ";
+            passName += pass->getName();
+            ZoneScopedN("Execute pass");
+#endif
             pass->execute(data, cmds);
         }
     }

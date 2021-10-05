@@ -6,14 +6,17 @@
 #include <engine/CarrotGame.h>
 #include <engine/edition/ProjectMenuHolder.h>
 #include <engine/edition/EditorSettings.h>
+#include <engine/edition/FreeCameraController.h>
 #include <engine/render/Viewport.h>
 #include <engine/ecs/World.h>
+#include <engine/io/actions/Action.hpp>
+#include <engine/io/actions/ActionSet.h>
 #include <optional>
 
 namespace Peeler {
-    struct GameState {
-        explicit GameState() = default;
-        GameState(const GameState&) = default;
+    struct Scene {
+        explicit Scene() = default;
+        Scene(const Scene&) = default;
 
         void tick(double frameTime);
         void onFrame(const Carrot::Render::Context& renderContext);
@@ -54,6 +57,8 @@ namespace Peeler {
 
     private:
         void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
+        void duplicateEntity(const Carrot::ECS::Entity& entity);
+        void removeEntity(const Carrot::ECS::Entity& entity);
 
     private: // simulation
         void startSimulation();
@@ -72,8 +77,19 @@ namespace Peeler {
         Carrot::Render::Texture rotateIcon;
         Carrot::Render::Texture scaleIcon;
 
-        GameState state;
         std::optional<Carrot::ECS::EntityID> selectedID;
+        bool movingGameViewCamera = false;
+
+        Scene scene;
+
+    private: // inputs
+        Carrot::IO::ActionSet editorActions { "Editor actions" };
+        Carrot::IO::Vec2InputAction moveCamera { "Move camera (strafe & forward) " };
+        Carrot::IO::FloatInputAction moveCameraUp { "Move camera (up) " };
+        Carrot::IO::FloatInputAction moveCameraDown { "Move camera (down) " };
+        Carrot::IO::Vec2InputAction turnCamera { "Turn camera " };
+
+        Carrot::Edition::FreeCameraController cameraController;
 
     private: // simulation state
         bool isPlaying = false;

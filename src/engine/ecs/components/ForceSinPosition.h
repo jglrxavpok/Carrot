@@ -21,5 +21,14 @@ namespace Carrot::ECS {
         const char *const getName() const override {
             return "ForceSinPosition";
         }
+
+        std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
+            auto result = std::make_unique<ForceSinPosition>(newOwner);
+            result->angularFrequency = angularFrequency;
+            result->amplitude = amplitude;
+            result->angularOffset = angularOffset;
+            result->centerPosition = centerPosition;
+            return result;
+        }
     };
 }

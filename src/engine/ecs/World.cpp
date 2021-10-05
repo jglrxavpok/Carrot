@@ -63,6 +63,10 @@ namespace Carrot::ECS {
         return worldRef.exists(internalEntity);
     }
 
+    std::vector<Component*> Entity::getAllComponents() const {
+        return worldRef.getAllComponents(*this);
+    }
+
     World::World() {}
 
     Tags World::getTags(const Entity& entity) const {
@@ -108,7 +112,7 @@ namespace Carrot::ECS {
                 auto position = find(entities.begin(), entities.end(), toRemove);
                 if(position != entities.end()) { // clear components
                     entityComponents.erase(entityComponents.find(toRemove));
-                    entities.erase(position, entities.end());
+                    entities.erase(position);
                 }
 
 
