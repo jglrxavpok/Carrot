@@ -18,13 +18,6 @@ namespace Carrot::ECS {
     };
 
     class System {
-    protected:
-        World& world;
-        Signature signature;
-        std::vector<Entity> entities;
-
-        virtual void onEntityAdded(Entity& entity) {};
-
     public:
         explicit System(World& world);
 
@@ -40,7 +33,18 @@ namespace Carrot::ECS {
         void onEntitiesAdded(const std::vector<EntityID>& entities);
         void onEntitiesRemoved(const std::vector<EntityID>& entities);
 
+        virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
+
         virtual ~System() = default;
+
+    protected:
+        World& world;
+        Signature signature;
+        std::vector<Entity> entities;
+
+        virtual void onEntityAdded(Entity& entity) {};
+
+        friend class World;
     };
 
     template<SystemType systemType, typename... RequiredComponents>

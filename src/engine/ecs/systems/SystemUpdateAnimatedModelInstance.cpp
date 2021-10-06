@@ -23,4 +23,9 @@ namespace Carrot::ECS {
         model.instanceData.animationIndex = rand() % 2;
         //model->instanceData.animationTime = rand() / 10.0f;
     }
+
+    std::unique_ptr<System> SystemUpdateAnimatedModelInstance::duplicate(World& newOwner) const {
+        auto system = std::make_unique<SystemUpdateAnimatedModelInstance>(newOwner);
+        return system;
+    }
 }

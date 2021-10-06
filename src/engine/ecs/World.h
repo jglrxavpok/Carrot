@@ -17,6 +17,9 @@ namespace Carrot::ECS {
     class World {
     public:
         explicit World();
+        World(const World& toCopy) {
+            *this = toCopy;
+        }
 
         Signature getSignature(const Entity& entity) const;
 
@@ -49,10 +52,14 @@ namespace Carrot::ECS {
 
         bool exists(EntityID ent) const;
 
+    public:
+        Entity wrap(EntityID id) const;
+
         std::vector<Entity> getAllEntities() const;
         std::vector<Component*> getAllComponents(const Entity& ent) const;
         std::vector<Component*> getAllComponents(const EntityID& ent) const;
 
+    public:
         /// Stops the processing of components (no longer calls tick), but still processes added/removed entities
         void freezeLogic() { frozenLogic = true; }
         void unfreezeLogic() { frozenLogic = false; }
@@ -74,7 +81,8 @@ namespace Carrot::ECS {
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
         const std::vector<Entity> getChildren(const Entity& parent) const;
 
-        friend class EasyEntity;
+    public:
+        World& operator=(const World& toCopy);
 
     private:
         std::vector<EntityID> entities;

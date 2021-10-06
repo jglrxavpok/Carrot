@@ -14,6 +14,8 @@ namespace Carrot::ECS {
         explicit SystemUpdateLightPosition(World& world): LogicSystem<Transform, RaycastedShadowsLight>(world) {}
 
         void tick(double dt) override;
+
+        std::unique_ptr<System> duplicate(World& newOwner) const override;
     };
 }
 

@@ -14,5 +14,7 @@ namespace Carrot::ECS {
         explicit SystemKinematics(World& world): LogicSystem<Transform, Kinematics>(world) {}
 
         void tick(double dt) override;
+
+        std::unique_ptr<System> duplicate(World& newOwner) const override;
     };
 }

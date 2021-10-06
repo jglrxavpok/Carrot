@@ -80,7 +80,7 @@ namespace Carrot::ECS {
     std::vector<Entity> World::getEntitiesWithTags(Tags tags) const {
         std::vector<Entity> result;
         for(const auto& entity : entities) {
-            auto obj = Entity(entity, const_cast<World&>(*this));
+            auto obj = wrap(entity);
             if((getTags(obj) & tags) == tags) {
                 result.push_back(obj);
             }
@@ -116,7 +116,7 @@ namespace Carrot::ECS {
                 }
 
 
-                setParent(Entity(toRemove, *this), {});
+                setParent(wrap(toRemove), {});
                 entityChildren.erase(toRemove);
                 entityNames.erase(toRemove);
             }
@@ -174,7 +174,7 @@ namespace Carrot::ECS {
                         }
                     };
                     for(const auto& ent : entities) {
-                        auto entityObj = Entity(ent, *this);
+                        auto entityObj = wrap(ent);
                         if( ! getParent(entityObj)) {
                             showEntityTree(entityObj);
                         }
@@ -226,6 +226,7 @@ namespace Carrot::ECS {
             return Signature{};
         }
 
+        // TODO: might be interesting to pre-compute this value when entity components are modified
         auto& componentMap = componentMapLocation->second;
         Signature s{};
         for(const auto& [id, _] : componentMap) {
@@ -237,7 +238,7 @@ namespace Carrot::ECS {
     std::optional<Entity> World::getParent(const Entity& of) const {
         auto it = entityParents.find(of);
         if(it != entityParents.end()) {
-            return Entity(it->second, const_cast<World&>(*this));
+            return wrap(it->second);
         }
         return {};
     }
@@ -327,4 +328,41 @@ namespace Carrot::ECS {
         return comps;
     }
 
+    Entity World::wrap(EntityID id) const {
+        return Entity(id, const_cast<World&>(*this));
+    }
+
+    World& World::operator=(const World& toCopy) {
+        entityParents = toCopy.entityParents;
+        entityChildren = toCopy.entityChildren;
+        entityNames = toCopy.entityNames;
+        entityTags = toCopy.entityTags;
+        entities = toCopy.entities;
+        entitiesToAdd = toCopy.entitiesToAdd;
+        entitiesToRemove = toCopy.entitiesToRemove;
+
+        auto copySystems = [&](std::vector<std::unique_ptr<System>>& dest, const std::vector<std::unique_ptr<System>>& src) {
+            dest.clear();
+            dest.resize(src.size());
+
+            for (std::size_t i = 0; i < src.size(); ++i) {
+                dest[i] = src[i]->duplicate(*this);
+                for(const auto& srcEntity : src[i]->entities) {
+                    dest[i]->entities.emplace_back(srcEntity.internalEntity, *this);
+                }
+            }
+        };
+        copySystems(logicSystems, toCopy.logicSystems);
+        copySystems(renderSystems, toCopy.renderSystems);
+
+        entityComponents.clear();
+        for(const auto& [entityID, componentMap] : toCopy.entityComponents) {
+            auto& destComponents = entityComponents[entityID];
+            for(const auto& [id, comp] : componentMap) {
+                destComponents[id] = comp->duplicate(wrap(entityID));
+            }
+        }
+
+        return *this;
+    }
 }

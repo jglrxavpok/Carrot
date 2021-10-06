@@ -25,7 +25,7 @@ namespace Peeler {
             auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
             cameraController.applyTo(glm::vec2{ viewportSize.width, viewportSize.height }, gameViewport.getCamera());
 
-            scene.onFrame(renderContext);
+            currentScene.onFrame(renderContext);
             engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 gameRenderingGraph->execute(renderContext, cmds);
                 auto& texture = gameRenderingGraph->getTexture(gameTexture, renderContext.swapchainIndex);
@@ -101,10 +101,10 @@ namespace Peeler {
         ZoneScoped;
         if(selectedID.has_value()) {
             auto& entityID = selectedID.value();
-            auto& str = scene.world.getName(entityID);
+            auto& str = currentScene.world.getName(entityID);
             Carrot::ImGui::InputText("Entity name##entity name field inspector", str);
 
-            auto components = scene.world.getAllComponents(entityID);
+            auto components = currentScene.world.getAllComponents(entityID);
             for(auto& comp : components) {
                 comp->drawInspector(renderContext);
             }
@@ -132,7 +132,7 @@ namespace Peeler {
             if(selectedID.has_value() && selectedID.value() == entity.getID()) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
-            auto children = scene.world.getChildren(entity);
+            auto children = currentScene.world.getChildren(entity);
 
             auto addChildMenu = [&]() {
                 std::string id = "##add child to entity ";
@@ -152,7 +152,7 @@ namespace Peeler {
             };
 
             if(!children.empty()) {
-                if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", scene.world.getName(entity).c_str())) {
+                if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str())) {
                     addChildMenu();
                     if(ImGui::IsItemClicked()) {
                         selectedID.reset(); // TODO: multi-select
@@ -167,7 +167,7 @@ namespace Peeler {
                 }
             } else { // has no children
                 nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", scene.world.getName(entity).c_str());
+                ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
 
                 addChildMenu();
                 if(ImGui::IsItemClicked()) {
@@ -176,8 +176,8 @@ namespace Peeler {
                 }
             }
         };
-        for(auto& entityObj : scene.world.getAllEntities()) {
-            if( ! scene.world.getParent(entityObj)) {
+        for(auto& entityObj : currentScene.world.getAllEntities()) {
+            if( ! currentScene.world.getParent(entityObj)) {
                 showEntityTree(entityObj);
             }
         }
@@ -213,7 +213,7 @@ namespace Peeler {
 
         bool usingGizmo = false;
         if(selectedID.has_value()) {
-            auto transformRef = scene.world.getComponent<Carrot::ECS::Transform>(selectedID.value());
+            auto transformRef = currentScene.world.getComponent<Carrot::ECS::Transform>(selectedID.value());
             if(transformRef) {
                 glm::mat4 transformMatrix = transformRef->toTransformMatrix();
 
@@ -333,12 +333,13 @@ namespace Peeler {
 
     void Application::startSimulation() {
         isPlaying = true;
-        // TODO
+        savedScene = currentScene;
     }
 
     void Application::stopSimulation() {
         isPlaying = false;
-        // TODO
+        currentScene = savedScene;
+        savedScene.clear();
     }
 
     void Application::UIPlayBar(const Carrot::Render::Context& renderContext) {
@@ -397,17 +398,17 @@ namespace Peeler {
             editorActions.activate();
         }
 
-        scene.world.freezeLogic();
-        scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
+        currentScene.world.freezeLogic();
+        currentScene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
 
         auto& resolvePass = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         scene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      },
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         scene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
         gameTexture = resolvePass.getData().resolved;
 
@@ -419,7 +420,7 @@ namespace Peeler {
     }
 
     void Application::tick(double frameTime) {
-        scene.tick(frameTime);
+        currentScene.tick(frameTime);
 
         if(movingGameViewCamera) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
@@ -460,7 +461,7 @@ namespace Peeler {
     }
 
     void Application::addEntity(std::optional<Carrot::ECS::Entity> parent) {
-        auto entity = scene.world.newEntity("Entity")
+        auto entity = currentScene.world.newEntity("Entity")
                 .addComponent<Carrot::ECS::Transform>()
                 .addComponent<Carrot::ECS::SpriteComponent>();
         auto testSprite = std::make_shared<Carrot::Render::Sprite>(engine.getRenderer(), engine.getRenderer().getOrCreateTexture("../icon128.png"));
@@ -474,7 +475,7 @@ namespace Peeler {
     }
 
     void Application::duplicateEntity(const Carrot::ECS::Entity& entity) {
-        auto clone = scene.world.newEntity(std::string(entity.getName())+" (Copy)");
+        auto clone = currentScene.world.newEntity(std::string(entity.getName())+" (Copy)");
         for(const auto* comp : entity.getAllComponents()) {
             clone.addComponent(std::move(comp->duplicate(clone)));
         }
@@ -488,14 +489,7 @@ namespace Peeler {
         if(selectedID.has_value() && entity.getID() == selectedID.value()) {
             selectedID.reset();
         }
-        scene.world.removeEntity(entity);
+        currentScene.world.removeEntity(entity);
     }
 
-    void Scene::tick(double frameTime) {
-        world.tick(frameTime);
-    }
-
-    void Scene::onFrame(const Carrot::Render::Context& renderContext) {
-        world.onFrame(renderContext);
-    }
 }

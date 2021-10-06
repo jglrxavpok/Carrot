@@ -10,4 +10,9 @@ namespace Carrot::ECS {
             light.lightRef.position = transform.position;
         });
     }
+
+    std::unique_ptr<System> SystemUpdateLightPosition::duplicate(World& newOwner) const {
+        auto system = std::make_unique<SystemUpdateLightPosition>(newOwner);
+        return system;
+    }
 }

@@ -15,4 +15,10 @@ namespace Carrot::ECS {
                     glm::sin(sinArguments) * forceSinPosition.amplitude + forceSinPosition.centerPosition;
         });
     }
+
+    std::unique_ptr<System> SystemSinPosition::duplicate(World& newOwner) const {
+        auto system = std::make_unique<SystemSinPosition>(newOwner);
+        system->time = time;
+        return system;
+    }
 }

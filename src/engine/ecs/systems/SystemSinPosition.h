@@ -17,6 +17,8 @@ namespace Carrot::ECS {
         explicit SystemSinPosition(World& world): LogicSystem<Transform, ForceSinPosition>(world) {}
 
         void tick(double dt) override;
+
+        std::unique_ptr<System> duplicate(World& newOwner) const override;
     };
 }
 

@@ -10,4 +10,8 @@ namespace Carrot::ECS {
             transform.position += kinematics.velocity * static_cast<float>(dt);
         });
     }
+
+    std::unique_ptr<System> SystemKinematics::duplicate(World& newOwner) const {
+        return std::make_unique<SystemKinematics>(newOwner);
+    }
 }

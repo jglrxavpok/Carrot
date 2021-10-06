@@ -18,6 +18,9 @@ namespace Carrot::ECS {
 
     protected:
         void onEntityAdded(Entity& entity) override;
+
+    public:
+        std::unique_ptr<System> duplicate(World& newOwner) const override;
     };
 
 }

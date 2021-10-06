@@ -3,6 +3,7 @@ set(EditorRoot "src/")
 set(EditorSources
         ${EditorRoot}main.cpp
         ${EditorRoot}Peeler.cpp
+        ${EditorRoot}Scene.cpp
         )
 
 set(ImGuizmoSources

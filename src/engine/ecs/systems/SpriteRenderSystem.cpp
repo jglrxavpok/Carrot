@@ -43,4 +43,8 @@ namespace Carrot::ECS {
             }
         });
     }
+
+    std::unique_ptr<System> SpriteRenderSystem::duplicate(World& newOwner) const {
+        return std::make_unique<SpriteRenderSystem>(newOwner);
+    }
 }

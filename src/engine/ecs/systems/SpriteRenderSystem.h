@@ -20,6 +20,8 @@ namespace Carrot::ECS {
 
         void tick(double dt) override;
 
+        std::unique_ptr<System> duplicate(World& newOwner) const override;
+
     private:
         void updateSprite(Carrot::Render::Context renderContext, const Transform& transform, Carrot::Render::Sprite& sprite);
     };

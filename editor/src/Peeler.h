@@ -12,18 +12,9 @@
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
 #include <optional>
+#include "Scene.h"
 
 namespace Peeler {
-    struct Scene {
-        explicit Scene() = default;
-        Scene(const Scene&) = default;
-
-        void tick(double frameTime);
-        void onFrame(const Carrot::Render::Context& renderContext);
-
-        Carrot::ECS::World world;
-    };
-
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
     public:
         explicit Application(Carrot::Engine& engine);
@@ -80,7 +71,8 @@ namespace Peeler {
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
 
-        Scene scene;
+        Scene currentScene;
+        Scene savedScene;
 
     private: // inputs
         Carrot::IO::ActionSet editorActions { "Editor actions" };
