@@ -5,8 +5,9 @@
 #pragma once
 #include "engine/utils/Identifiable.h"
 #include <engine/ecs/EntityTypes.h>
-
+#include <rapidjson/document.h>
 #include <utility>
+#include <engine/utils/Library.hpp>
 
 namespace Carrot::Render {
     struct Context;
@@ -30,6 +31,10 @@ namespace Carrot::ECS {
 
         virtual std::unique_ptr<Component> duplicate(const Entity& newOwner) const = 0;
 
+        virtual rapidjson::Value toJSON(rapidjson::Document& doc) const {
+            return rapidjson::Value(rapidjson::kObjectType);
+        };
+
         virtual ~Component() = default;
 
         [[nodiscard]] virtual ComponentID getComponentTypeID() const = 0;
@@ -47,8 +52,11 @@ namespace Carrot::ECS {
         }
 
         virtual ComponentID getComponentTypeID() const override {
-            return Self::id;
+            return Self::getID();
         }
     };
 
+    using ComponentLibrary = Library<std::unique_ptr<Component>, Entity>;
+
+    ComponentLibrary& getComponentLibrary();
 }

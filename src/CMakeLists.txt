@@ -31,8 +31,11 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Camera.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
         ${EngineRoot}render/animation/Animation.cpp
+
         ${EngineRoot}utils/conversions.cpp
         ${EngineRoot}utils/stringmanip.cpp
+        ${EngineRoot}utils/Identifiable.cpp
+
         ${EngineRoot}render/resources/Font.cpp
 
         ${EngineRoot}ecs/components/Component.cpp

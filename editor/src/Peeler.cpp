@@ -7,10 +7,16 @@
 #include <engine/render/TextureRepository.h>
 #include <engine/ecs/components/Transform.h>
 #include <engine/ecs/components/SpriteComponent.h>
+#include <engine/ecs/components/Kinematics.h>
+#include <engine/ecs/components/ForceSinPosition.h>
+#include <engine/ecs/components/AnimatedModelInstance.h>
+#include <engine/ecs/components/RaycastedShadowsLight.h>
 #include <engine/ecs/systems/SpriteRenderSystem.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <engine/utils/ImGuiUtils.hpp>
+#include <rapidjson/filewritestream.h>
+#include <rapidjson/prettywriter.h>
 
 namespace Peeler {
 
@@ -62,6 +68,25 @@ namespace Peeler {
                 drawProjectMenu();
                 ImGui::EndMenu();
             }
+
+            if(ImGui::BeginMenu("Tests")) {
+                if(ImGui::MenuItem("Test serialisation")) {
+                    FILE* fp = fopen("TestScene.json", "wb"); // non-Windows use "w"
+
+                    char writeBuffer[65536];
+                    rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+
+                    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
+
+                    rapidjson::Document document;
+                    document.SetObject();
+                    currentScene.serialise(document);
+                    document.Accept(writer);
+                    fclose(fp);
+                }
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenuBar();
         }
 
@@ -417,6 +442,17 @@ namespace Peeler {
         gameRenderingGraph = std::move(graphBuilder.compile());
 
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
+
+        // register components for serialisation
+        {
+            auto& lib = Carrot::ECS::getComponentLibrary();
+            lib.addUniquePtrBased<Carrot::ECS::Transform>();
+            lib.addUniquePtrBased<Carrot::ECS::Kinematics>();
+            lib.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
+            //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>();
+            lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
+            //lib.addUniquePtrBased<Carrot::ECS::RaycastedShadowsLight>();
+        }
     }
 
     void Application::tick(double frameTime) {

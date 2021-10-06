@@ -26,5 +26,31 @@ namespace Carrot {
             saved.push_back(toCopy);
             return rapidjson::StringRef(saved.back().c_str());
         }
+
+        template<glm::length_t len, typename Elem, glm::qualifier qualifier = glm::qualifier::defaultp>
+        inline glm::vec<len, Elem, qualifier> read(const rapidjson::Value& source) {
+            using vec = glm::vec<len, Elem, qualifier>;
+            vec v;
+            auto array = source.GetArray();
+            for (glm::length_t i = 0; i < len; ++i) {
+                if constexpr(std::is_same_v<Elem, float>) {
+                    v[i] = array[i].GetFloat();
+                } else if constexpr(std::is_same_v<Elem, double>){
+                    v[i] = array[i].GetDouble();
+                } else {
+                    static_assert(!std::is_same_v<Elem, double> && !std::is_same_v<Elem, float>, "Unknown type");
+                }
+            }
+            return v;
+        }
+
+        template<glm::length_t len, typename Elem, glm::qualifier qualifier = glm::qualifier::defaultp>
+        inline rapidjson::Value write(const glm::vec<len, Elem, qualifier>& vec, rapidjson::Document& doc) {
+            rapidjson::Value arr(rapidjson::kArrayType);
+            for (glm::length_t i = 0; i < len; ++i) {
+                arr.PushBack(vec[i], doc.GetAllocator());
+            }
+            return arr;
+        }
     }
 }

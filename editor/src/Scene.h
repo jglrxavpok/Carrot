@@ -6,6 +6,7 @@
 
 #include <engine/ecs/World.h>
 #include <engine/render/RenderContext.h>
+#include <rapidjson/document.h>
 
 namespace Peeler {
     class Scene {
@@ -23,6 +24,10 @@ namespace Peeler {
     public:
         void tick(double frameTime);
         void onFrame(const Carrot::Render::Context& renderContext);
+
+    public:
+        void deserialise(const rapidjson::Value& src);
+        void serialise(rapidjson::Document& dest) const;
 
     public:
         Scene& operator=(const Scene& toCopy);

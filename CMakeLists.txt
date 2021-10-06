@@ -167,6 +167,7 @@ function(add_includes Target)
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
+    target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
 endfunction()
 
 add_subdirectory(src)

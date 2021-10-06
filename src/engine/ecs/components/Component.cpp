@@ -21,3 +21,8 @@ namespace Carrot::ECS {
         }
     }
 }
+
+Carrot::ECS::ComponentLibrary& Carrot::ECS::getComponentLibrary() {
+    static ComponentLibrary lib;
+    return lib;
+}

@@ -17,6 +17,10 @@ namespace Carrot::ECS {
 
         explicit Transform(Entity entity): IdentifiableComponent<Transform>(std::move(entity)) {};
 
+        explicit Transform(const rapidjson::Value& json, Entity entity);
+
+        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+
         [[nodiscard]] glm::mat4 toTransformMatrix() const;
 
         const char *const getName() const override {
@@ -33,4 +37,9 @@ namespace Carrot::ECS {
 
         void drawInspectorInternals(const Render::Context& renderContext) override;
     };
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::Transform>::getStringRepresentation() {
+    return "Transform";
 }

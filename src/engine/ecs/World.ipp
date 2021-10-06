@@ -16,7 +16,7 @@ namespace Carrot::ECS {
         }
 
         auto& componentMap = componentMapLocation->second;
-        auto componentLocation = componentMap.find(Comp::id);
+        auto componentLocation = componentMap.find(Comp::getID());
 
         if(componentLocation == componentMap.end()) {
             // no such component
@@ -35,7 +35,7 @@ namespace Carrot::ECS {
     template<typename Comp, typename... Args>
     Entity& Entity::addComponent(Args&&... args) {
         auto& componentMap = worldRef.entityComponents[internalEntity];
-        componentMap[Comp::id] = std::make_unique<Comp>(*this, args...);
+        componentMap[Comp::getID()] = std::make_unique<Comp>(*this, args...);
         return *this;
     }
 

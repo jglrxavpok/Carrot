@@ -87,7 +87,7 @@ void Carrot::Signature::addComponent() {
 
 template<typename Component>
 std::size_t Carrot::Signature::getIndex() {
-    return getIndex(Component::id);
+    return getIndex(Component::getID());
 }
 
 template<typename Component>

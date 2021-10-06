@@ -3,6 +3,7 @@
 //
 #include "Transform.h"
 #include <engine/ecs/World.h>
+#include <engine/utils/JSON.h>
 
 namespace Carrot::ECS {
     glm::mat4 Transform::toTransformMatrix() const {
@@ -38,5 +39,21 @@ namespace Carrot::ECS {
                 rotation = { arr[3], arr[0], arr[1], arr[2] };
             }
         }
+    }
+
+    Transform::Transform(const rapidjson::Value& json, Entity entity): Transform(std::move(entity)) {
+        position = JSON::read<3, float>(json["position"]);
+        scale = JSON::read<3, float>(json["scale"]);
+        auto rotVec = JSON::read<4, float>(json["rotation"]);
+        rotation = glm::quat { rotVec.w, rotVec.x, rotVec.y, rotVec.z };
+    };
+
+    rapidjson::Value Transform::toJSON(rapidjson::Document& doc) const {
+        rapidjson::Value obj(rapidjson::kObjectType);
+        obj.AddMember("position", JSON::write<3, float>(position, doc), doc.GetAllocator());
+        obj.AddMember("scale", JSON::write<3, float>(scale, doc), doc.GetAllocator());
+        glm::vec4 rotationVec { rotation.w, rotation.x, rotation.y, rotation.z };
+        obj.AddMember("rotation", JSON::write<4, float>(rotationVec, doc), doc.GetAllocator());
+        return obj;
     }
 }

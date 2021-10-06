@@ -15,6 +15,12 @@ namespace Carrot::ECS {
             light.enabled = true;
         };
 
+        /* not serialisable for the moment
+        explicit RaycastedShadowsLight(const rapidjson::Value& json, Entity entity);
+
+        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+         */
+
         const char *const getName() const override {
             return "RaycastedShadowsLight";
         }
@@ -24,4 +30,9 @@ namespace Carrot::ECS {
             return result;
         }
     };
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::RaycastedShadowsLight>::getStringRepresentation() {
+    return "RaycastedShadowsLight";
 }

@@ -18,6 +18,23 @@ namespace Carrot::ECS {
 
         explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
 
+        explicit ForceSinPosition(const rapidjson::Value& json, Entity entity): ForceSinPosition(std::move(entity)) {
+            auto angularFrequencyArr = json["angularFrequency"].GetArray();
+            auto amplitudeArr = json["amplitude"].GetArray();
+            auto angularOffsetArr = json["angularOffset"].GetArray();
+            auto centerPositionArr = json["centerPosition"].GetArray();
+
+            angularFrequency = glm::vec3 { angularFrequencyArr[0].GetFloat(), angularFrequencyArr[1].GetFloat(), angularFrequencyArr[2].GetFloat() };
+        };
+
+        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
+            rapidjson::Value arr(rapidjson::kArrayType);
+
+            TODO
+
+            return arr;
+        }
+
         const char *const getName() const override {
             return "ForceSinPosition";
         }
@@ -31,4 +48,9 @@ namespace Carrot::ECS {
             return result;
         }
     };
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::ForceSinPosition>::getStringRepresentation() {
+    return "ForceSinPosition";
 }

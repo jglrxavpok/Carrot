@@ -13,6 +13,9 @@ namespace Carrot::ECS {
 
         explicit AnimatedModelInstance(Entity entity, AnimatedInstanceData& instanceData): IdentifiableComponent<AnimatedModelInstance>(std::move(entity)), instanceData(instanceData) {};
 
+        /* TODO: Not serialisable at the moment
+         * */
+
         const char *const getName() const override {
             return "AnimatedModelInstance";
         }
@@ -21,4 +24,9 @@ namespace Carrot::ECS {
             return std::make_unique<AnimatedModelInstance>(newOwner, instanceData);
         }
     };
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::AnimatedModelInstance>::getStringRepresentation() {
+    return "AnimatedModelInstance";
 }
