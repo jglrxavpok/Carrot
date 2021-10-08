@@ -52,7 +52,7 @@ namespace Carrot::ECS {
         rapidjson::Value obj(rapidjson::kObjectType);
         obj.AddMember("position", JSON::write<3, float>(position, doc), doc.GetAllocator());
         obj.AddMember("scale", JSON::write<3, float>(scale, doc), doc.GetAllocator());
-        glm::vec4 rotationVec { rotation.w, rotation.x, rotation.y, rotation.z };
+        glm::vec4 rotationVec { rotation.x, rotation.y, rotation.z, rotation.w };
         obj.AddMember("rotation", JSON::write<4, float>(rotationVec, doc), doc.GetAllocator());
         return obj;
     }

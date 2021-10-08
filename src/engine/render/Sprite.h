@@ -42,6 +42,12 @@ namespace Carrot::Render {
 
     public:
         Carrot::VulkanRenderer& getRenderer() { return renderer; }
+        const Texture& getTexture() const { return *texture; }
+        Math::Rect2Df& getTextureRegion() { return textureRegion; }
+        const Math::Rect2Df& getTextureRegion() const { return textureRegion; }
+
+    public:
+        void setTexture(Texture::Ref texture);
 
     public:
         static void cleanup();

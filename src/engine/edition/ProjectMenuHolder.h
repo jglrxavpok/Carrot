@@ -23,6 +23,7 @@ namespace Tools {
             openRecentItemName = "Open Recent##" + settings.getName();
             saveItemName = "Save##" + settings.getName();
             saveAsItemName = "Save as...##" + settings.getName();
+            cantSavePopupName = "Can't save##" + settings.getName();
         }
 
         void drawProjectMenu() {
@@ -82,6 +83,11 @@ namespace Tools {
 
         virtual void onFrame(Carrot::Render::Context renderContext) {
             assert(settings);
+            if(cantSavePopup) {
+                tryingToOpenFile = false;
+                fileToOpen = EmptyProject;
+                ImGui::OpenPopup(cantSavePopupName.c_str());
+            }
             if(tryingToOpenFile) {
                 ImGui::OpenPopup(popupName.c_str());
             }
@@ -110,9 +116,22 @@ namespace Tools {
                 }
                 ImGui::EndPopup();
             }
+
+            if(ImGui::BeginPopupModal(cantSavePopupName.c_str())) {
+                drawCantSavePopup();
+                if(ImGui::Button("OK##cantsavepopup ok")) {
+                    cantSavePopup = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
         }
 
         bool triggerSaveAs(std::filesystem::path& path) {
+            if(!canSave()) {
+                handleCantSavePopup();
+                return false;
+            }
             nfdchar_t* savePath;
 
             // prepare filters for the dialog
@@ -137,6 +156,10 @@ namespace Tools {
 
         bool triggerSave() {
             assert(settings);
+            if(!canSave()) {
+                handleCantSavePopup();
+                return false;
+            }
             if(settings->currentProject) {
                 saveToFile(settings->currentProject.value());
                 return true;
@@ -155,6 +178,11 @@ namespace Tools {
 
         virtual void saveToFile(std::filesystem::path path) = 0;
         virtual bool showUnsavedChangesPopup() = 0;
+        virtual bool canSave() const { return true; };
+
+        virtual void drawCantSavePopup() {
+            ImGui::Text("Cannot save right now.");
+        }
 
         virtual ~ProjectMenuHolder() = default;
 
@@ -167,6 +195,10 @@ namespace Tools {
         }
 
         void scheduleLoad(std::filesystem::path path) {
+            if(!canSave()) {
+                handleCantSavePopup();
+                return;
+            }
             fileToOpen = path;
             if(showUnsavedChangesPopup()) {
                 ImGui::OpenPopup(popupName.c_str());
@@ -177,6 +209,10 @@ namespace Tools {
         }
 
     private:
+        void handleCantSavePopup() {
+            cantSavePopup = true;
+        }
+
         void performLoad() {
             performLoad(fileToOpen);
             currentFile = fileToOpen;
@@ -193,9 +229,14 @@ namespace Tools {
         std::string openRecentItemName;
         std::string saveItemName;
         std::string saveAsItemName;
-        bool tryingToOpenFile = false;
+        std::string cantSavePopupName;
+
         std::filesystem::path fileToOpen = EmptyProject;
         std::filesystem::path currentFile = EmptyProject;
         std::string currentProjectName = "Untitled";
+
+    private: // popup control
+        bool tryingToOpenFile = false;
+        bool cantSavePopup = false;
     };
 }

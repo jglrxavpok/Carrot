@@ -40,6 +40,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}ecs/components/Component.cpp
         ${EngineRoot}ecs/components/Transform.cpp
+        ${EngineRoot}ecs/components/SpriteComponent.cpp
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemUpdateAnimatedModelInstance.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp

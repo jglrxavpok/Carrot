@@ -52,6 +52,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
+Carrot::Engine* Carrot::Engine::instance = nullptr;
 static Carrot::RuntimeOption showFPS("Debug/Show FPS", false);
 static Carrot::RuntimeOption showInputDebug("Debug/Show Inputs", false);
 static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
@@ -83,6 +84,8 @@ renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
     config(config)
     {
     ZoneScoped;
+    instance = this;
+
 #ifndef ENABLE_VR
     if(config.runInVR) {
         //Carrot::crash("");

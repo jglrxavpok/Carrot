@@ -7,7 +7,7 @@
 #include "engine/Engine.h"
 
 namespace Carrot::Render {
-    Texture::Texture(Carrot::VulkanDriver& driver): driver(driver) {}
+    Texture::Texture(Carrot::VulkanDriver& driver): resource(), driver(driver) {}
 
     Texture::Texture(Carrot::VulkanDriver& driver,
             vk::Extent3D extent,
@@ -16,15 +16,15 @@ namespace Carrot::Render {
             const std::set<std::uint32_t>& families,
             vk::ImageCreateFlags flags,
             vk::ImageType type,
-                     std::uint32_t layerCount): driver(driver), imageFormat(format), image(std::make_unique<Carrot::Image>(driver, extent, usage, format, families, flags, type, layerCount)) {
+                     std::uint32_t layerCount): resource(), driver(driver), imageFormat(format), image(std::make_unique<Carrot::Image>(driver, extent, usage, format, families, flags, type, layerCount)) {
         currentLayout = vk::ImageLayout::eUndefined;
     }
 
-    Texture::Texture(Texture&& toMove): driver(toMove.driver) {
+    Texture::Texture(Texture&& toMove): driver(toMove.driver), resource(std::move(toMove.resource)) {
         *this = std::move(toMove);
     }
 
-    Texture::Texture(Carrot::VulkanDriver& driver, const Resource& resource, FileFormat format): driver(driver) {
+    Texture::Texture(Carrot::VulkanDriver& driver, const Resource& resource, FileFormat format): driver(driver), resource(resource) {
         verify(Carrot::IO::isImageFormat(format), "Format must be an image format!");
         image = Carrot::Image::fromFile(driver, resource);
         image->name(resource.getName());
@@ -33,7 +33,7 @@ namespace Carrot::Render {
     }
 
     Texture::Texture(VulkanDriver& driver, vk::Image image, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount)
-    : driver(driver), image(std::make_unique<Carrot::Image>(driver, image, extent, format, layerCount)) {
+    : resource(), driver(driver), image(std::make_unique<Carrot::Image>(driver, image, extent, format, layerCount)) {
         imageFormat = this->image->getFormat();
     }
 

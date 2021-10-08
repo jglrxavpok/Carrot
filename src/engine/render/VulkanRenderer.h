@@ -74,6 +74,7 @@ namespace Carrot {
         std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& pass);
 
         std::shared_ptr<Render::Texture>& getOrCreateTexture(const std::string& textureName);
+        std::shared_ptr<Render::Texture>& getOrCreateTextureFullPath(const std::string& textureName);
 
         void recreateDescriptorPools(std::size_t frameCount);
 

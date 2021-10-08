@@ -42,6 +42,14 @@ namespace Carrot {
         UUID(const UUID&) = default;
         UUID(UUID&&) = default;
 
+        UUID(const std::string& str) {
+            uuid = uuids::uuid::from_string(str).value();
+        }
+
+        UUID(const char* str) {
+            uuid = uuids::uuid::from_string(str).value();
+        }
+
         UUID& operator=(const UUID&) = default;
         UUID& operator=(UUID&&) = default;
 
@@ -67,9 +75,7 @@ namespace Carrot {
         }
 
         static UUID fromString(std::string_view str) {
-            UUID value;
-            value.uuid = uuids::uuid::from_string(str).value();
-            return value;
+            return UUID(std::string(str));
         }
 
     private:

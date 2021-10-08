@@ -13,18 +13,9 @@ namespace Carrot::ECS {
 
         explicit SpriteComponent(Entity entity): IdentifiableComponent<SpriteComponent>(std::move(entity)) {}
 
-        explicit SpriteComponent(const rapidjson::Value& json, Entity entity): SpriteComponent(std::move(entity)) {
-            TODO
-        }
+        explicit SpriteComponent(const rapidjson::Value& json, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj{rapidjson::kObjectType};
-
-            obj.AddMember("isTransparent", isTransparent, doc.GetAllocator());
-            // TODO: sprite info
-
-            return obj;
-        }
+        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
 
         const char *const getName() const override {
             return "SpriteComponent";
@@ -36,6 +27,11 @@ namespace Carrot::ECS {
             result->isTransparent = isTransparent;
             return result;
         }
+
+        void drawInspectorInternals(const Render::Context& renderContext) override;
+
+    private:
+        static SpriteComponent* inInspector;
     };
 }
 

@@ -174,6 +174,10 @@ namespace Carrot::IO {
         return Resource(std::move(dataCopy));
     }
 
+    bool Resource::isFile() const {
+        return !data.isRawData;
+    }
+
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {}
 
     Resource::Data::Data(Resource::Data&& toMove) {

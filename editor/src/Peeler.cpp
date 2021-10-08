@@ -17,6 +17,8 @@
 #include <engine/utils/ImGuiUtils.hpp>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
+#include <engine/io/IO.h>
+#include <engine/utils/stringmanip.h>
 
 namespace Peeler {
 
@@ -25,6 +27,7 @@ namespace Peeler {
         if(&renderContext.viewport == &engine.getMainViewport()) {
             ZoneScopedN("Main viewport");
             UIEditor(renderContext);
+            Tools::ProjectMenuHolder::onFrame(renderContext);
         }
         if(&renderContext.viewport == &gameViewport) {
             ZoneScopedN("Game viewport");
@@ -70,20 +73,7 @@ namespace Peeler {
             }
 
             if(ImGui::BeginMenu("Tests")) {
-                if(ImGui::MenuItem("Test serialisation")) {
-                    FILE* fp = fopen("TestScene.json", "wb"); // non-Windows use "w"
-
-                    char writeBuffer[65536];
-                    rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
-
-                    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
-
-                    rapidjson::Document document;
-                    document.SetObject();
-                    currentScene.serialise(document);
-                    document.Accept(writer);
-                    fclose(fp);
-                }
+                // TODO
                 ImGui::EndMenu();
             }
 
@@ -323,6 +313,8 @@ namespace Peeler {
                     transformRef->position = glm::vec3(translation[0], translation[1], translation[2]);
                     transformRef->rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
                     transformRef->scale = glm::vec3(scale[0], scale[1], scale[2]);
+
+                    markDirty();
                 }
 
                 usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
@@ -359,6 +351,7 @@ namespace Peeler {
     void Application::startSimulation() {
         isPlaying = true;
         savedScene = currentScene;
+        currentScene.world.unfreezeLogic();
     }
 
     void Application::stopSimulation() {
@@ -423,8 +416,8 @@ namespace Peeler {
             editorActions.activate();
         }
 
+        addDefaultSystems(currentScene);
         currentScene.world.freezeLogic();
-        currentScene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
 
@@ -453,6 +446,12 @@ namespace Peeler {
             lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
             //lib.addUniquePtrBased<Carrot::ECS::RaycastedShadowsLight>();
         }
+
+        settings.load();
+        settings.useMostRecent();
+        if(settings.currentProject) {
+            scheduleLoad(settings.currentProject.value());
+        }
     }
 
     void Application::tick(double frameTime) {
@@ -475,17 +474,72 @@ namespace Peeler {
         // no op, everything is done inside gameViewport
     }
 
-    void Application::performLoad(std::filesystem::path path) {
-        // TODO
+    void Application::performLoad(std::filesystem::path fileToOpen) {
+        if(fileToOpen == EmptyProject) {
+            currentScene.clear();
+            addDefaultSystems(currentScene);
+            hasUnsavedChanges = false;
+            settings.currentProject.reset();
+            selectedID.reset();
+            updateWindowTitle();
+            return;
+        }
+        rapidjson::Document description;
+        description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
+
+        currentScene.deserialise(description["scene"].GetObject());
+        addDefaultSystems(currentScene); // TODO: load systems from scene
+        currentScene.world.freezeLogic();
+
+        settings.currentProject = fileToOpen;
+        settings.addToRecentProjects(fileToOpen);
+        hasUnsavedChanges = false;
+
+        if(description.HasMember("selected")) {
+            auto wantedSelection = Carrot::UUID::fromString(description["selected"].GetString());
+            if(currentScene.world.exists(wantedSelection)) {
+                selectedID = wantedSelection;
+            } else {
+                selectedID.reset();
+            }
+        } else {
+            selectedID.reset();
+        }
+        updateWindowTitle();
     }
 
     void Application::saveToFile(std::filesystem::path path) {
-        // TODO
+        FILE* fp = fopen(path.string().c_str(), "wb"); // non-Windows use "w"
+
+        char writeBuffer[65536];
+        rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+
+        rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
+
+        rapidjson::Document document;
+        document.SetObject();
+
+        rapidjson::Value scene(rapidjson::kObjectType);
+        document.AddMember("scene", currentScene.serialise(document), document.GetAllocator());
+        if(selectedID) {
+            rapidjson::Value uuid(selectedID.value().toString(), document.GetAllocator());
+            document.AddMember("selectedID", uuid, document.GetAllocator());
+        }
+        document.Accept(writer);
+        fclose(fp);
+
+        hasUnsavedChanges = false;
+        settings.currentProject = path;
+        settings.addToRecentProjects(path);
+        updateWindowTitle();
     }
 
     bool Application::showUnsavedChangesPopup() {
-        // TODO
-        return false;
+        return hasUnsavedChanges;
+    }
+
+    bool Application::canSave() const {
+        return !isPlaying;
     }
 
     void Application::onSwapchainSizeChange(int newWidth, int newHeight) {
@@ -508,6 +562,8 @@ namespace Peeler {
         }
 
         selectedID = entity.getID();
+
+        markDirty();
     }
 
     void Application::duplicateEntity(const Carrot::ECS::Entity& entity) {
@@ -519,6 +575,7 @@ namespace Peeler {
         clone.setParent(entity.getParent());
 
         selectedID = entity.getID();
+        markDirty();
     }
 
     void Application::removeEntity(const Carrot::ECS::Entity& entity) {
@@ -526,6 +583,29 @@ namespace Peeler {
             selectedID.reset();
         }
         currentScene.world.removeEntity(entity);
+        markDirty();
+    }
+
+    void Application::drawCantSavePopup() {
+        ImGui::Text("Cannot save while game is running.");
+        ImGui::Text("Please stop the game before saving.");
+    }
+
+    void Application::markDirty() {
+        hasUnsavedChanges = true;
+        updateWindowTitle();
+    }
+
+    void Application::updateWindowTitle() {
+        std::string projectName = "Untitled";
+        if(settings.currentProject) {
+            projectName = settings.currentProject.value().stem().string();
+        }
+        engine.getVulkanDriver().getWindow().setTitle(Carrot::sprintf("Peeler - %s%s", projectName.c_str(), hasUnsavedChanges ? "*" : ""));
+    }
+
+    void Application::addDefaultSystems(Scene& scene) {
+        scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
     }
 
 }

@@ -71,3 +71,9 @@ void Tools::EditorSettings::addToRecentProjects(std::filesystem::path toAdd) {
 
     save();
 }
+
+void Tools::EditorSettings::useMostRecent() {
+    if(!recentProjects.empty()) {
+        currentProject = *recentProjects.begin();
+    }
+}

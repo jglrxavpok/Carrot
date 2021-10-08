@@ -86,6 +86,9 @@ namespace Carrot::Render {
         ImTextureID getImguiID(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
 
     public:
+        const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
+
+    public:
         static void registerUsertype(sol::state& destination);
 
     protected:
@@ -107,6 +110,7 @@ namespace Carrot::Render {
         mutable std::unordered_map<FormatAspectPair, vk::UniqueImageView, HashFormatAspectPair> views{};
         vk::ImageLayout currentLayout = vk::ImageLayout::eUndefined;
         vk::Format imageFormat = vk::Format::eUndefined;
+        Carrot::IO::Resource resource; // resource from which this texture comes. Used for serialisation
 
         mutable ImTextureID imguiID = 0;
     };

@@ -45,13 +45,24 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
     return pipelines[key];
 }
 
-std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
+std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
     auto it = textures.find(textureName);
     if(it == textures.end()) {
-        auto texture = std::make_unique<Carrot::Render::Texture>(driver, "resources/textures/" + textureName);
+        Carrot::IO::Resource from;
+        try {
+            from = textureName;
+        } catch(std::runtime_error& e) {
+            // in case file could not be opened
+            from = "resources/textures/default.png";
+        }
+        auto texture = std::make_unique<Carrot::Render::Texture>(driver, std::move(from));
         textures[textureName] = move(texture);
     }
     return textures[textureName];
+}
+
+std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
+    return getOrCreateTextureFullPath("resources/textures/" + textureName);
 }
 
 void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {

@@ -73,9 +73,7 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
     settings.load();
     settings.save();
 
-    if(!settings.recentProjects.empty()) {
-        settings.currentProject = *settings.recentProjects.begin();
-    }
+    settings.useMostRecent();
 
     {
         NodeLibraryMenuScope s1("Operators", &updateGraph);

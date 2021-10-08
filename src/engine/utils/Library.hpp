@@ -18,8 +18,7 @@ namespace Carrot {
 
         explicit Library() = default;
 
-        template<typename Type> requires IsIdentifiable<Type>
-        ContainedType deserialise(const ID& id, const rapidjson::Value& json, Param&&... params) const {
+        ContainedType deserialise(const ID& id, const rapidjson::Value& json, Param... params) const {
             return deserialisers.at(id)(json, std::forward<Param>(params)...);
         }
 
@@ -30,7 +29,7 @@ namespace Carrot {
 
         template<typename Type> requires IsIdentifiable<Type>
         void addUniquePtrBased() {
-            return add<Type>([](const rapidjson::Value& json, Param&&... params) {
+            return add<Type>([](const rapidjson::Value& json, Param... params) {
                 return std::make_unique<Type>(json, std::forward<Param>(params)...);
             });
         }

@@ -340,6 +340,7 @@ namespace Carrot::ECS {
         entities = toCopy.entities;
         entitiesToAdd = toCopy.entitiesToAdd;
         entitiesToRemove = toCopy.entitiesToRemove;
+        frozenLogic = toCopy.frozenLogic;
 
         auto copySystems = [&](std::vector<std::unique_ptr<System>>& dest, const std::vector<std::unique_ptr<System>>& src) {
             dest.clear();

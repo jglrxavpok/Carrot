@@ -34,6 +34,7 @@ namespace Carrot::IO {
         static Carrot::IO::Resource inMemory(const std::string& text);
 
     public:
+        bool isFile() const;
         uint64_t getSize() const;
         const std::string& getName() const;
 

@@ -89,6 +89,8 @@ namespace Carrot {
 
         std::vector<std::unique_ptr<TracyVulkanContext>> tracyCtx{};
 
+        static Carrot::Engine& getInstance() { return *instance; }
+
         /// Starts the engine. Will immediately load Vulkan resources
         explicit Engine(Configuration config = {});
 
@@ -518,6 +520,9 @@ namespace Carrot {
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;
+
+    private:
+        static Carrot::Engine* instance;
     };
 }
 

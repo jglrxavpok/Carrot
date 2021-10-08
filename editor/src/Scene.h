@@ -27,7 +27,7 @@ namespace Peeler {
 
     public:
         void deserialise(const rapidjson::Value& src);
-        void serialise(rapidjson::Document& dest) const;
+        rapidjson::Value serialise(rapidjson::Document& dest) const;
 
     public:
         Scene& operator=(const Scene& toCopy);

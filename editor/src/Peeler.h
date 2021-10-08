@@ -29,15 +29,23 @@ namespace Peeler {
         void recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
                                           vk::CommandBuffer& commands) override;
 
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+        void onSwapchainImageCountChange(std::size_t newCount) override;
+
+    public: // project management
         void performLoad(std::filesystem::path path) override;
 
         void saveToFile(std::filesystem::path path) override;
 
         bool showUnsavedChangesPopup() override;
+        bool canSave() const override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void drawCantSavePopup() override;
 
-        void onSwapchainImageCountChange(std::size_t newCount) override;
+    private:
+        void markDirty();
+        void updateWindowTitle();
 
     private: // UI
         void UIEditor(const Carrot::Render::Context& renderContext);
@@ -50,6 +58,8 @@ namespace Peeler {
         void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
         void duplicateEntity(const Carrot::ECS::Entity& entity);
         void removeEntity(const Carrot::ECS::Entity& entity);
+
+        void addDefaultSystems(Scene& scene);
 
     private: // simulation
         void startSimulation();
@@ -70,6 +80,8 @@ namespace Peeler {
 
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
+
+        bool hasUnsavedChanges = false;
 
         Scene currentScene;
         Scene savedScene;

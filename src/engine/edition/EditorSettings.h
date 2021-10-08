@@ -22,6 +22,8 @@ namespace Tools {
         void load();
         void save();
 
+        void useMostRecent();
+
         /// Add to recent projects list.
         /// If already present, pushes the project back to the front
         void addToRecentProjects(std::filesystem::path toAdd);

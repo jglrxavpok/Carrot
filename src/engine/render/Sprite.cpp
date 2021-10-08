@@ -13,13 +13,12 @@ namespace Carrot::Render {
 
     std::unique_ptr<Carrot::Mesh> Sprite::spriteMesh = nullptr;
 
-    Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), texture(std::move(texture)), textureRegion(std::move(textureRegion)),
+    Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), textureRegion(std::move(textureRegion)),
     instanceBuffer(renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::InstanceData), vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
-        verify(this->texture != nullptr, "Cannot create sprite with no texture");
 /*        Carrot::PipelineDescription desc = Carrot::PipelineDescription("resources/pipelines/gBufferSprite.json");
         renderingPipeline = std::make_unique<Carrot::Pipeline>(renderer.getVulkanDriver(), desc);*/
         // create a different pipeline for each texture (probably not really efficient)
-        renderingPipeline = renderer.getOrCreatePipeline("gBufferSprite", (std::uint64_t)((VkImage)this->texture->getVulkanImage()));
+        setTexture(texture);
         instanceData = instanceBuffer.map<Carrot::InstanceData>();
         *instanceData = Carrot::InstanceData();
     }
@@ -88,5 +87,11 @@ namespace Carrot::Render {
         clone->rotation = rotation;
         clone->parentTransform = parentTransform;
         return clone;
+    }
+
+    void Sprite::setTexture(Texture::Ref texture) {
+        this->texture = std::move(texture);
+        verify(this->texture != nullptr, "Cannot create sprite with no texture");
+        renderingPipeline = renderer.getOrCreatePipeline("gBufferSprite", (std::uint64_t)((VkImage)this->texture->getVulkanImage()));
     }
 }
