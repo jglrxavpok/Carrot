@@ -53,6 +53,7 @@ namespace Peeler {
         void UIPlayBar(const Carrot::Render::Context& renderContext);
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UIInspector(const Carrot::Render::Context& renderContext);
+        void UIResourcesPanel(const Carrot::Render::Context& renderContext);
 
     private:
         void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
@@ -77,6 +78,9 @@ namespace Peeler {
         Carrot::Render::Texture translateIcon;
         Carrot::Render::Texture rotateIcon;
         Carrot::Render::Texture scaleIcon;
+        Carrot::Render::Texture genericFileIcon;
+        Carrot::Render::Texture folderIcon;
+        Carrot::Render::Texture parentFolderIcon;
 
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
@@ -94,6 +98,22 @@ namespace Peeler {
         Carrot::IO::Vec2InputAction turnCamera { "Turn camera " };
 
         Carrot::Edition::FreeCameraController cameraController;
+
+    private: // resources
+        void updateCurrentFolder(std::filesystem::path path);
+
+        enum class ResourceType {
+            GenericFile,
+            Folder,
+            // TODO: images, shaders, scenes, etc.
+        };
+
+        struct ResourceEntry {
+            ResourceType type = ResourceType::GenericFile;
+            std::filesystem::path path;
+        };
+        std::filesystem::path currentFolder = "";
+        std::vector<ResourceEntry> resourcesInCurrentFolder;
 
     private: // simulation state
         bool isPlaying = false;

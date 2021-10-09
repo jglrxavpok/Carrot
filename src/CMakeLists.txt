@@ -119,6 +119,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}edition/EditorSettings.cpp
         ${EngineRoot}edition/FreeCameraController.cpp
+        ${EngineRoot}edition/DragDropTypes.cpp
         )
 
 set(VR_SOURCES

@@ -15,10 +15,12 @@
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <engine/utils/ImGuiUtils.hpp>
+#include <utility>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
 #include <engine/io/IO.h>
 #include <engine/utils/stringmanip.h>
+#include <engine/edition/DragDropTypes.h>
 
 namespace Peeler {
 
@@ -97,7 +99,7 @@ namespace Peeler {
         ImGui::End();
 
         if(ImGui::Begin("Resources")) {
-
+            UIResourcesPanel(renderContext);
         }
         ImGui::End();
 
@@ -110,6 +112,68 @@ namespace Peeler {
             UIPlayBar(renderContext);
         }
         ImGui::End();
+    }
+
+    void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {
+        if(currentFolder.has_parent_path()) {
+            if(ImGui::ImageButton(parentFolderIcon.getImguiID(), ImVec2(16, 16))) {
+                updateCurrentFolder(currentFolder.parent_path());
+            }
+        }
+        ImGui::SameLine();
+        ImGui::Text("%s", currentFolder.string().c_str());
+
+        // Thanks Hazel
+        // https://github.com/TheCherno/Hazel/blob/f627b9c90923382f735350cd3060892bbd4b1e75/Hazelnut/src/Panels/ContentBrowserPanel.cpp#L30
+        static float padding = 8.0f;
+        static float thumbnailSize = 64.0f;
+        float cellSize = thumbnailSize + padding;
+        float panelWidth = ImGui::GetContentRegionAvail().x;
+        int columnCount = (int)(panelWidth / cellSize);
+        if (columnCount < 1)
+            columnCount = 1;
+
+
+        ImGui::Columns(columnCount, nullptr, false);
+
+        for(const auto& entry : resourcesInCurrentFolder) {
+            ImTextureID texture = nullptr;
+            switch(entry.type) {
+                case ResourceType::GenericFile:
+                    texture = genericFileIcon.getImguiID();
+                    break;
+
+                case ResourceType::Folder:
+                    texture = folderIcon.getImguiID();
+                    break;
+
+                default:
+                    TODO // missing a resource type
+            }
+            std::string filename = entry.path.string();
+            ImGui::PushID(filename.c_str());
+            {
+                ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
+
+                // TODO: drag & drop
+                if(ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length());
+                    ImGui::EndDragDropSource();
+                }
+
+                if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    if(std::filesystem::is_directory(entry.path)) {
+                        updateCurrentFolder(entry.path);
+                    }
+                }
+                std::string smallFilename = entry.path.filename().string();
+                ImGui::TextWrapped("%s", smallFilename.c_str());
+            }
+            ImGui::NextColumn();
+            ImGui::PopID();
+        }
+
+        ImGui::Columns(1);
     }
 
     void Application::UIInspector(const Carrot::Render::Context& renderContext) {
@@ -389,7 +453,10 @@ namespace Peeler {
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         translateIcon(engine.getVulkanDriver(), "resources/textures/ui/translate.png"),
         rotateIcon(engine.getVulkanDriver(), "resources/textures/ui/rotate.png"),
-        scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png")
+        scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png"),
+        folderIcon(engine.getVulkanDriver(), "resources/textures/ui/folder.png"),
+        genericFileIcon(engine.getVulkanDriver(), "resources/textures/ui/file.png"),
+        parentFolderIcon(engine.getVulkanDriver(), "resources/textures/ui/parent_folder.png")
 
 
     {
@@ -452,6 +519,8 @@ namespace Peeler {
         if(settings.currentProject) {
             scheduleLoad(settings.currentProject.value());
         }
+
+        updateCurrentFolder(std::filesystem::current_path() / "resources");
     }
 
     void Application::tick(double frameTime) {
@@ -606,6 +675,15 @@ namespace Peeler {
 
     void Application::addDefaultSystems(Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
+    }
+
+    void Application::updateCurrentFolder(std::filesystem::path path) {
+        currentFolder = std::move(path);
+        resourcesInCurrentFolder.clear();
+        for(const auto& file : std::filesystem::directory_iterator(currentFolder)) {
+            ResourceType type = file.is_directory() ? ResourceType::Folder : ResourceType::GenericFile;
+            resourcesInCurrentFolder.emplace_back(type, file.path());
+        }
     }
 
 }

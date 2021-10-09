@@ -6,6 +6,8 @@
 #include "engine/Engine.h"
 #include "engine/utils/ImGuiUtils.hpp"
 #include "imgui.h"
+#include "engine/edition/DragDropTypes.h"
+#include <filesystem>
 
 namespace Carrot::ECS {
     SpriteComponent* SpriteComponent::inInspector = nullptr;
@@ -69,6 +71,23 @@ namespace Carrot::ECS {
         }
         if(Carrot::ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path));
+        }
+        if(::ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ::ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char[]> buffer = std::make_unique<char[]>(payload->DataSize+1);
+                std::memcpy(buffer.get(), static_cast<const char *>(payload->Data), payload->DataSize);
+                buffer.get()[payload->DataSize] = '\0';
+
+                std::string newPath = buffer.get();
+
+                std::filesystem::path fsPath = std::filesystem::relative(newPath, std::filesystem::current_path());
+                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
+                    sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str()));
+                    inInspector = nullptr;
+                }
+            }
+
+            ::ImGui::EndDragDropTarget();
         }
 
         auto& region = sprite->getTextureRegion();
