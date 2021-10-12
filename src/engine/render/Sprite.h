@@ -45,6 +45,7 @@ namespace Carrot::Render {
         const Texture& getTexture() const { return *texture; }
         Math::Rect2Df& getTextureRegion() { return textureRegion; }
         const Math::Rect2Df& getTextureRegion() const { return textureRegion; }
+        Pipeline& getRenderingPipeline() const { return *renderingPipeline; }
 
     public:
         void setTexture(Texture::Ref texture);

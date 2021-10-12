@@ -6,6 +6,7 @@
 
 #include <uuid.h>
 #include <xhash>
+#include "engine/utils/Macros.h"
 
 namespace Carrot {
 
@@ -34,9 +35,17 @@ namespace Carrot {
 
     class UUID {
     public:
+        static const UUID& null();
+
         explicit UUID() {
             Generator generator;
             uuid = generator();
+        }
+
+        UUID(std::uint32_t data0, std::uint32_t data1, std::uint32_t data2, std::uint32_t data3) {
+            std::uint32_t data[4] { data0, data1, data2, data3 };
+            std::span<std::uint8_t, 16> dataView = std::span<std::uint8_t, 16> { reinterpret_cast<std::uint8_t*>(data), static_cast<std::size_t>(16) };
+            uuid = uuids::uuid(dataView);
         }
 
         UUID(const UUID&) = default;
@@ -72,6 +81,32 @@ namespace Carrot {
                 hashResult = static_cast<std::size_t>(byte) + (hashResult * prime);
             }
             return hashResult;
+        }
+
+        [[nodiscard]] std::uint32_t data0() const {
+            return data(0);
+        }
+
+        [[nodiscard]] std::uint32_t data1() const {
+            return data(1);
+        }
+
+        [[nodiscard]] std::uint32_t data2() const {
+            return data(2);
+        }
+
+        [[nodiscard]] std::uint32_t data3() const {
+            return data(3);
+        }
+
+        [[nodiscard]] std::uint32_t data(std::uint8_t index) const {
+            verify(index == 0 || index == 1 || index == 2 || index == 3, "Invalid index");
+            auto bytes = uuid.as_bytes();
+            std::uint32_t result = 0;
+            for (int i = 0; i < 4; ++i) {
+                result |= static_cast<std::uint32_t>(bytes[i + index*4]) << (i*8);
+            }
+            return result;
         }
 
         static UUID fromString(std::string_view str) {

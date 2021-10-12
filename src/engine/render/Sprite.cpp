@@ -43,7 +43,7 @@ namespace Carrot::Render {
     void Sprite::soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
         ZoneScoped;
         auto& mesh = getSpriteMesh(renderContext.renderer.getEngine());
-        renderContext.renderer.pushConstantBlock(*renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex, commands, textureRegion);
+        renderContext.renderer.pushConstantBlock("region", *renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex, commands, textureRegion);
         renderingPipeline->bind(renderPass, renderContext, commands);
         mesh.bind(commands);
         commands.bindVertexBuffers(1, instanceBuffer.getVulkanBuffer(), instanceBuffer.getStart());

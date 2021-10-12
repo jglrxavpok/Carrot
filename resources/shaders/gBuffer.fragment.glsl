@@ -29,9 +29,10 @@ layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outViewPosition;
 layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
+layout(location = 4) out uvec4 entityID;
 
 void main() {
-    DrawData instanceDrawData = drawData[0]; // TODO: instancing
+    DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
     MaterialData material = materials[instanceDrawData.materialIndex];
     vec4 texColor = texture(sampler2D(textures[material.textureIndex], linearSampler), uv);
     if(!material.ignoresInstanceColor) {
@@ -44,4 +45,5 @@ void main() {
     outViewPosition = vec4(viewPosition, 1.0);
     outNormal = vec4(viewNormal, 1.0);
     intProperty = IntPropertiesRayTracedLighting;
+    entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
 }

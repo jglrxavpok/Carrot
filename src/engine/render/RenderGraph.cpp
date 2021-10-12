@@ -118,6 +118,8 @@ namespace Carrot::Render {
         for(auto& [name, pass] : result->passes) {
             result->sortedPasses.push_back(pass.get());
         }
+
+        result->passesData = passesData;
         return result;
     }
 
@@ -163,5 +165,14 @@ namespace Carrot::Render {
         for(auto& [n, pass] : passes) {
             pass->onSwapchainSizeChange(newWidth, newHeight);
         }
+    }
+
+    Render::CompiledPass* Graph::getPass(std::string_view passName) const {
+        for(const auto& [name, pass] : passes) {
+            if(name == passName) {
+                return pass.get();
+            }
+        }
+        return nullptr;
     }
 }

@@ -4,11 +4,13 @@
 
 #include "SpriteRenderSystem.h"
 #include <engine/vulkan/CustomTracyVulkan.h>
+#include <engine/render/DrawData.h>
 
 namespace Carrot::ECS {
     void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         forEachEntity([&](Entity& entity, Transform& transform, SpriteComponent& spriteComp) {
             if(spriteComp.sprite && spriteComp.isTransparent) {
+                setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
                 spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
             }
         });
@@ -17,9 +19,16 @@ namespace Carrot::ECS {
     void SpriteRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         forEachEntity([&](Entity& entity, Transform& transform, SpriteComponent& spriteComp) {
             if(spriteComp.sprite && !spriteComp.isTransparent) {
+                setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
                 spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
             }
         });
+    }
+
+    void SpriteRenderSystem::setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
+        DrawData entityData;
+        entityData.setUUID(entity.getID());
+        renderContext.renderer.pushConstantBlock("drawDataPush", sprite.getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, entityData);
     }
 
     void SpriteRenderSystem::onFrame(Carrot::Render::Context renderContext) {

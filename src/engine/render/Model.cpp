@@ -14,6 +14,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
 #include <engine/io/Logging.hpp>
+#include <engine/render/DrawData.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const std::string& filename): engine(engine) {
     ZoneScoped;
@@ -166,10 +167,16 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 }
 
-void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount) {
+void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount, const Carrot::UUID& entityID) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
+
+    DrawData data;
+    data.setUUID(entityID);
     for(const auto& material : materials) {
-        material->bindForRender(pass, renderContext, commands);
+        material->bindForRender(data, pass, renderContext, commands);
+
+        renderContext.renderer.pushConstantBlock<DrawData>("drawData", material->getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
+
         if(!animations.empty()) {
             material->getRenderingPipeline().bindDescriptorSets(commands, {animationDescriptorSets[renderContext.swapchainIndex]}, {}, 1);
         }
@@ -181,11 +188,15 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
     }
 }
 
-void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount) {
+void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID) {
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
-    for(const auto& material : materials) {
-        material->bindForRender(pass, renderContext, commands);
 
+    DrawData data;
+    data.setUUID(entityID);
+    for(const auto& material : materials) {
+        material->bindForRender(data, pass, renderContext, commands);
+
+        renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", material->getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
         for(const auto& mesh : meshes[material.get()]) {
             mesh->bindForIndirect(commands);
             //mesh->bind(commands);

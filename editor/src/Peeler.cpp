@@ -21,6 +21,7 @@
 #include <engine/io/IO.h>
 #include <engine/utils/stringmanip.h>
 #include <engine/edition/DragDropTypes.h>
+#include <engine/io/Logging.hpp>
 
 namespace Peeler {
 
@@ -272,7 +273,7 @@ namespace Peeler {
         float startX = ImGui::GetCursorScreenPos().x;
         float startY = ImGui::GetCursorScreenPos().y;
         ImGui::Image(texture.getImguiID(), entireRegion);
-        movingGameViewCamera = ImGui::IsItemClicked();
+        movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
         auto& camera = gameViewport.getCamera();
         glm::mat4 identityMatrix = glm::identity<glm::mat4>();
@@ -391,7 +392,7 @@ namespace Peeler {
             if(!engine.isGrabbingCursor()) {
                 engine.grabCursor();
             }
-        } else if(!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        } else if(!ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
             engine.ungrabCursor();
         } else if(engine.isGrabbingCursor()) {
             movingGameViewCamera = true;
@@ -400,7 +401,22 @@ namespace Peeler {
         if(!usingGizmo && ImGui::IsItemClicked()) {
             // TODO: pick object on click
             selectedID.reset();
+            const auto& gbufferPass = gameRenderingGraph->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
+            const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
+            glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+            uv -= glm::vec2 { startX, startY };
+            uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };
+            Carrot::Log::debug("uv: %f ; %f", uv.x, uv.y);
+            Carrot::Log::flush();
+            if(uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
+                return;
+            glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
+            Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
+            if(currentScene.world.exists(uuid)) {
+                selectedID = uuid;
+            }
         }
+
         /* TODO: fix resize of game view
         bool requireResize = entireRegion.x != previousGameViewWidth || entireRegion.y != previousGameViewHeight;
         if(requireResize) {
@@ -498,6 +514,8 @@ namespace Peeler {
         gameTexture = resolvePass.getData().resolved;
 
         engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        const auto& gbufferPass = graphBuilder.getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
+        engine.getVulkanDriver().getTextureRepository().getUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
 
         gameRenderingGraph = std::move(graphBuilder.compile());
 

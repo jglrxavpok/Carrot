@@ -45,7 +45,7 @@ namespace Carrot {
     public:
         explicit Model(Carrot::Engine& engine, const std::string& filename);
 
-        void draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount);
+        void draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount, const Carrot::UUID& entityID = Carrot::UUID::null());
 
         ///
         /// \param imageIndex
@@ -53,7 +53,7 @@ namespace Carrot {
         /// \param instanceData
         /// \param indirectDrawCommands a buffer per mesh/material
         /// \param drawCount
-        void indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<Carrot::MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount);
+        void indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<Carrot::MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID = Carrot::UUID::null());
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getMeshes() const;
 

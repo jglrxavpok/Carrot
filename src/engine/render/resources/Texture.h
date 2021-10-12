@@ -9,6 +9,7 @@
 #include "Image.h"
 #include "engine/io/Resource.h"
 #include "engine/io/FileFormats.h"
+#include <glm/glm.hpp>
 
 namespace sol {
     class state;
@@ -87,6 +88,9 @@ namespace Carrot::Render {
 
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
+
+    public:
+        glm::vec<4, std::uint32_t> sampleUVec4(float u, float v) const;
 
     public:
         static void registerUsertype(sol::state& destination);

@@ -111,9 +111,16 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
                 .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
         });
+
+        // R32G32B32A32
+        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                .blendEnable = false,
+
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+        });
     } else {
         pipelineTemplate.colorBlendAttachments = {
-                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 4 : 1),
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 5 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = false,
 
@@ -130,7 +137,10 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
     std::vector<vk::PushConstantRange> pushConstants{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addPushConstants(stage, pushConstants);
+        module->addPushConstants(stage, pushConstantMap);
+    }
+    for(const auto& [_, range] : pushConstantMap) {
+        pushConstants.push_back(range);
     }
 
     std::vector<vk::DescriptorSetLayout> layouts{};
@@ -260,6 +270,10 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     }
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
+}
+
+const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view name) const {
+    return pushConstantMap[std::string(name)];
 }
 
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass pass) const {

@@ -118,6 +118,7 @@ namespace Carrot::Render {
             FrameResource albedo;
             FrameResource depthStencil;
             FrameResource flags;
+            FrameResource entityID;
         };
 
         struct GBufferTransparent {

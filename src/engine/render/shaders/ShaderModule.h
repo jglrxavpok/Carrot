@@ -47,6 +47,6 @@ namespace Carrot {
 
         void addBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings, const std::map<std::string, uint32_t>& constants);
 
-        void addPushConstants(vk::ShaderStageFlagBits stage, std::vector<vk::PushConstantRange>& pushConstants) const;
+        void addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const;
     };
 }

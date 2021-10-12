@@ -25,6 +25,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
             .stencil = 0
     };
     vk::ClearValue clearIntProperties = vk::ClearColorValue();
+    vk::ClearValue clearEntityID = vk::ClearColorValue(std::array<std::uint32_t,4>{0,0,0,0});
     auto& opaquePass = graph.addPass<Carrot::Render::PassData::GBuffer>("gbuffer",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
            {
@@ -58,6 +59,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                       vk::AttachmentLoadOp::eClear,
                                                       clearIntProperties,
                                                       vk::ImageLayout::eColorAttachmentOptimal);
+
+                data.entityID = graph.createRenderTarget(vk::Format::eR32G32B32A32Uint,
+                                                        {},
+                                                        vk::AttachmentLoadOp::eClear,
+                                                        clearEntityID,
+                                                        vk::ImageLayout::eColorAttachmentOptimal);
            },
            [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
                 opaqueCallback(pass, frame, buffer);

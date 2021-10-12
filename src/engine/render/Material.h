@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 #include "IDTypes.h"
 #include "engine/vulkan/SwapchainAware.h"
+#include "engine/render/DrawData.h"
 
 namespace Carrot {
     class Material: public SwapchainAware {
@@ -27,7 +28,7 @@ namespace Carrot {
 
         bool ignoresInstanceColor() const;
 
-        void bindForRender(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
+        void bindForRender(DrawData& data, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
 
         const Pipeline& getPipeline() const;
         const Pipeline& getRenderingPipeline() const;

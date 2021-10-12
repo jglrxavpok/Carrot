@@ -23,6 +23,7 @@ namespace Carrot::ECS {
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 
     private:
+        void setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands);
         void updateSprite(Carrot::Render::Context renderContext, const Transform& transform, Carrot::Render::Sprite& sprite);
     };
 }

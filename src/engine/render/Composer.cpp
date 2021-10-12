@@ -88,7 +88,7 @@ namespace Carrot::Render {
                     .depth = e.depth,
                     .texIndex = index,
                 };
-                renderer.pushConstantBlock(*pipeline, frame, vk::ShaderStageFlagBits::eVertex, cmds, r);
+                renderer.pushConstantBlock("region", *pipeline, frame, vk::ShaderStageFlagBits::eVertex, cmds, r);
 
                 screenQuad.draw(cmds);
 

@@ -101,6 +101,8 @@ namespace Carrot {
         std::unordered_map<TextureID, vk::ImageView> reservedTextures{};
         mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
 
+        mutable std::unordered_map<std::string, vk::PushConstantRange> pushConstantMap{};
+
         std::vector<vk::DescriptorSet> allocateDescriptorSets0();
 
         void allocateDescriptorSets();
@@ -118,6 +120,8 @@ namespace Carrot {
         void bindDescriptorSets(vk::CommandBuffer& commands, const std::vector<vk::DescriptorSet>& descriptors, const std::vector<std::uint32_t>& dynamicOffsets, std::uint32_t firstSet = 0) const;
 
         void recreateDescriptorPool(std::uint32_t imageCount);
+
+        const vk::PushConstantRange& getPushConstant(std::string_view name) const;
 
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;

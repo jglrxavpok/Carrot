@@ -23,7 +23,7 @@ layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
 
 layout(push_constant) uniform TexRegion {
-    vec2 center;
+    layout(offset = 24) vec2 center;
     vec2 halfSize;
 } region;
 

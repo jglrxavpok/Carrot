@@ -35,6 +35,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/conversions.cpp
         ${EngineRoot}utils/stringmanip.cpp
         ${EngineRoot}utils/Identifiable.cpp
+        ${EngineRoot}utils/UUID.cpp
 
         ${EngineRoot}render/resources/Font.cpp
 

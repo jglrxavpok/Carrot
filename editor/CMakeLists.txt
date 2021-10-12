@@ -30,4 +30,9 @@ target_include_directories(Peeler-Tracy PUBLIC ../thirdparty/ImGuizmo)
 target_link_libraries(Peeler-Tracy PUBLIC Engine-Tracy)
 make_tracy_target(Peeler-Tracy)
 
+add_executable(Peeler-Renderdoc ${EditorSources} ${ImGuizmoSources})
+add_includes(Peeler-Renderdoc)
+target_include_directories(Peeler-Renderdoc PUBLIC ../thirdparty/ImGuizmo)
+target_link_libraries(Peeler-Renderdoc PUBLIC Engine-Base-Renderdoc)
+
 copy_all_resources() # game resources

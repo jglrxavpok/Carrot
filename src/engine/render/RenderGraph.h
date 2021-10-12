@@ -26,6 +26,18 @@ namespace Carrot::Render {
         VulkanDriver& getVulkanDriver() { return driver; }
 
     public:
+        Render::CompiledPass* getPass(std::string_view passName) const;
+
+        template<typename Type>
+        std::optional<Type> getPassData(std::string_view passName) const {
+            for(const auto& [name, passData] : passesData) {
+                if(name == passName)
+                    return std::any_cast<Type>(passData);
+            }
+            return {};
+        }
+
+    public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
@@ -34,6 +46,7 @@ namespace Carrot::Render {
         Carrot::VulkanDriver& driver;
         std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;
         std::vector<Render::CompiledPass*> sortedPasses;
+        std::list<std::pair<std::string, std::any>> passesData;
 
         friend class GraphBuilder;
     };
@@ -53,6 +66,8 @@ namespace Carrot::Render {
             currentPass = pair.second.get();
             auto* pass = static_cast<Render::Pass<Data>*>(currentPass);
             setup(*this, *pass, pass->data);
+
+            passesData.emplace_back(name, pass->data);
 
             currentPass = nullptr;
             return *pass;
@@ -74,12 +89,22 @@ namespace Carrot::Render {
         FrameResource& createRenderTarget(vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(FrameResource& toPresent);
 
+        template<typename Type>
+        std::optional<Type> getPassData(std::string_view passName) const {
+            for(const auto& [name, passData] : passesData) {
+                if(name == passName)
+                    return std::any_cast<Type>(passData);
+            }
+            return {};
+        }
+
     private:
         Carrot::VulkanDriver& driver;
         FrameResource swapchainImage;
         std::list<FrameResource> resources;
         std::set<Carrot::UUID> toPresent;
         std::list<std::pair<std::string, std::unique_ptr<Render::PassBase>>> passes;
+        std::list<std::pair<std::string, std::any>> passesData;
         Render::PassBase* currentPass = nullptr;
     };
 

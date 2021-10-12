@@ -151,31 +151,42 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
     }
 }
 
-void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::vector<vk::PushConstantRange>& pushConstants) const {
+void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const {
     const auto resources = compiler->get_shader_resources();
 
     // TODO: other types than uint32_t
     std::uint32_t offset = 0;
-    for(const auto& pushConstant : resources.push_constant_buffers) {
-        const auto& resourceType = compiler->get_type(pushConstant.type_id);
+    if(resources.push_constant_buffers.size() == 0)
+        return;
+    const auto& pushConstant = resources.push_constant_buffers[0];
+    const auto& ranges = compiler->get_active_buffer_ranges(pushConstant.id);
+    std::string name = pushConstant.name;
+    const auto& range = *std::find_if(WHOLE_CONTAINER(ranges), [&](const auto& r) { return r.index == 0; });
+    const auto& resourceType = compiler->get_type(pushConstant.type_id);
 
-        bool alreadyPresent = false;
-        std::uint32_t size = computeTypeSize(*compiler, resourceType);
-        for(auto& range : pushConstants) {
-            if(range.offset == offset && range.size == size) {
-                range.stageFlags |= stage;
-                alreadyPresent = true;
-                break;
-            }
-        }
+/*        bool hasOffset = compiler->has_member_decoration(pushConstant.id, 0, spv::DecorationOffset);
 
-        if(!alreadyPresent) {
-            pushConstants.emplace_back(vk::PushConstantRange {
-                    .stageFlags = stage,
-                    .offset = offset,
-                    .size = size,
-            });
+    if(hasOffset) {
+        offset = compiler->get_member_decoration(pushConstant.id, 0, spv::DecorationOffset);
+    }*/
+    offset = range.offset;
+
+    bool alreadyPresent = false;
+    std::uint32_t size = computeTypeSize(*compiler, resourceType);
+    for(auto& [_, range] : pushConstants) {
+        if(range.offset == offset && range.size == size) {
+            range.stageFlags |= stage;
+            alreadyPresent = true;
+            break;
         }
-        offset += size;
     }
+
+    if(!alreadyPresent) {
+        pushConstants[name] = vk::PushConstantRange {
+                .stageFlags = stage,
+                .offset = offset,
+                .size = size,
+        };
+    }
+    //offset += size;
 }
