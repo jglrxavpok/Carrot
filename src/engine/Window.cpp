@@ -100,10 +100,40 @@ namespace Carrot {
         glfwSetWindowTitle(glfwWindow, title.data());
     }
 
-    void Window::getFramebufferSize(std::int32_t& w, std::int32_t& h) {
+    void Window::getFramebufferSize(std::int32_t& w, std::int32_t& h) const {
         int width, height;
         glfwGetFramebufferSize(glfwWindow, &width, &height);
         w = width;
         h = height;
+    }
+
+    void Window::maximise() {
+        glfwMaximizeWindow(glfwWindow);
+    }
+
+    bool Window::isMaximised() const {
+        return glfwGetWindowAttrib(glfwWindow, GLFW_MAXIMIZED) == GLFW_TRUE;
+    }
+
+    void Window::getWindowSize(std::int32_t& w, std::int32_t& h) const {
+        int width, height;
+        glfwGetWindowSize(glfwWindow, &width, &height);
+        w = width;
+        h = height;
+    }
+
+    void Window::getPosition(std::int32_t& x, std::int32_t& y) const {
+        int xPos, yPos;
+        glfwGetWindowPos(glfwWindow, &xPos, &yPos);
+        x = xPos;
+        y = yPos;
+    }
+
+    void Window::setPosition(std::int32_t x, std::int32_t y) {
+        glfwSetWindowPos(glfwWindow, x, y);
+    }
+
+    void Window::setWindowSize(std::int32_t w, std::int32_t h) {
+        glfwSetWindowSize(glfwWindow, w, h);
     }
 }

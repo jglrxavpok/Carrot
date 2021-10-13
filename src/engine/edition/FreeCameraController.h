@@ -5,6 +5,7 @@
 #pragma once
 
 #include <engine/render/Camera.h>
+#include <rapidjson/document.h>
 
 namespace Carrot::Edition {
     class FreeCameraController {
@@ -24,6 +25,14 @@ namespace Carrot::Edition {
 
     public:
         explicit FreeCameraController() = default;
+        FreeCameraController(const FreeCameraController&) = default;
+        FreeCameraController(FreeCameraController&&) = default;
+
+        FreeCameraController& operator=(const FreeCameraController&) = default;
+        FreeCameraController& operator=(FreeCameraController&&) = default;
+
+        void deserialise(const rapidjson::Value& src);
+        rapidjson::Value serialise(rapidjson::Document& dest) const;
 
         /// Move camera with the given inputs. Takes the parameters for this controller into account
         void move(float strafe, float forward, float upward, float rotDx, float rotDy, double dt);

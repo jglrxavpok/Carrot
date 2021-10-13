@@ -81,6 +81,7 @@ namespace Peeler {
         Carrot::Render::Texture genericFileIcon;
         Carrot::Render::Texture folderIcon;
         Carrot::Render::Texture parentFolderIcon;
+        Carrot::Render::Texture driveIcon;
 
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
@@ -105,6 +106,7 @@ namespace Peeler {
         enum class ResourceType {
             GenericFile,
             Folder,
+            Drive,
             // TODO: images, shaders, scenes, etc.
         };
 
@@ -114,6 +116,8 @@ namespace Peeler {
         };
         std::filesystem::path currentFolder = "";
         std::vector<ResourceEntry> resourcesInCurrentFolder;
+
+        bool isLookingAtRoots = false;
 
     private: // simulation state
         bool isPlaying = false;

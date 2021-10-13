@@ -22,9 +22,23 @@ namespace Carrot {
         void set64x64Icon(const Carrot::IO::Resource& icon);
         void set128x128Icon(const Carrot::IO::Resource& icon);
         void setTitle(std::string_view title);
-        void getFramebufferSize(std::int32_t& w, std::int32_t& h);
+        void maximise();
+        void setPosition(std::int32_t x, std::int32_t y);
+        void setWindowSize(std::int32_t w, std::int32_t h);
+
+    public:
+        void getFramebufferSize(std::int32_t& w, std::int32_t& h) const;
+
+        void getPosition(std::int32_t& x, std::int32_t& y) const;
+        void getWindowSize(std::int32_t& w, std::int32_t& h) const;
+
+        bool isMaximised() const;
 
         GLFWwindow* getGLFWPointer() {
+            return glfwWindow;
+        }
+
+        const GLFWwindow* getGLFWPointer() const {
             return glfwWindow;
         }
 

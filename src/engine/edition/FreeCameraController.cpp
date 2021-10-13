@@ -5,6 +5,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include "FreeCameraController.h"
 #include "engine/io/Logging.hpp"
+#include "engine/utils/JSON.h"
 
 namespace Carrot::Edition {
     void FreeCameraController::move(float strafe, float forward, float upward, float rotDx, float rotDy, double dt) {
@@ -39,5 +40,39 @@ namespace Carrot::Edition {
         glm::mat4 projection = glm::perspective(fov, aspectRatio, zNear, zFar);
 
         camera.setViewProjection(view, projection);
+    }
+
+    void FreeCameraController::deserialise(const rapidjson::Value& src) {
+        strafeSpeed = src["strafeSpeed"].GetFloat();
+        forwardSpeed = src["forwardSpeed"].GetFloat();
+        verticalSpeed = src["verticalSpeed"].GetFloat();
+        xSensibility = src["xSensibility"].GetFloat();
+        ySensibility = src["ySensibility"].GetFloat();
+
+        zNear = src["zNear"].GetFloat();
+        zFar = src["zFar"].GetFloat();
+        fov = src["fov"].GetFloat();
+
+        eulerAngles = JSON::read<3, float>(src["eulerAngles"]);
+        position = JSON::read<3, float>(src["position"]);
+    }
+
+    rapidjson::Value FreeCameraController::serialise(rapidjson::Document& dest) const {
+        rapidjson::Value obj{rapidjson::kObjectType};
+
+        obj.AddMember("strafeSpeed", strafeSpeed, dest.GetAllocator());
+        obj.AddMember("forwardSpeed", forwardSpeed, dest.GetAllocator());
+        obj.AddMember("verticalSpeed", verticalSpeed, dest.GetAllocator());
+        obj.AddMember("xSensibility", xSensibility, dest.GetAllocator());
+        obj.AddMember("ySensibility", ySensibility, dest.GetAllocator());
+
+        obj.AddMember("zNear", zNear, dest.GetAllocator());
+        obj.AddMember("zFar", zFar, dest.GetAllocator());
+        obj.AddMember("fov", fov, dest.GetAllocator());
+
+        obj.AddMember("eulerAngles", JSON::write<3, float>(eulerAngles, dest), dest.GetAllocator());
+        obj.AddMember("position", JSON::write<3, float>(position, dest), dest.GetAllocator());
+
+        return obj;
     }
 }

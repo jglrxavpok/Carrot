@@ -19,6 +19,7 @@
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
 #include <engine/io/IO.h>
+#include <engine/io/Files.h>
 #include <engine/utils/stringmanip.h>
 #include <engine/edition/DragDropTypes.h>
 #include <engine/io/Logging.hpp>
@@ -117,8 +118,22 @@ namespace Peeler {
 
     void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {
         if(currentFolder.has_parent_path()) {
+            bool isAtRoot = Carrot::IO::Files::isRootFolder(currentFolder);
             if(ImGui::ImageButton(parentFolderIcon.getImguiID(), ImVec2(16, 16))) {
-                updateCurrentFolder(currentFolder.parent_path());
+                if(isAtRoot) {
+                    auto roots = Carrot::IO::Files::enumerateRoots();
+                    if(roots.size() == 1) {
+                        updateCurrentFolder(roots[0]);
+                    } else { // Windows can have multiple drives
+                        isLookingAtRoots = true;
+                        resourcesInCurrentFolder.clear();
+                        for(const auto& root : roots) {
+                            resourcesInCurrentFolder.emplace_back(ResourceType::Drive, root);
+                        }
+                    }
+                } else {
+                    updateCurrentFolder(currentFolder.parent_path());
+                }
             }
         }
         ImGui::SameLine();
@@ -148,6 +163,10 @@ namespace Peeler {
                     texture = folderIcon.getImguiID();
                     break;
 
+                case ResourceType::Drive:
+                    texture = driveIcon.getImguiID();
+                    break;
+
                 default:
                     TODO // missing a resource type
             }
@@ -156,7 +175,6 @@ namespace Peeler {
             {
                 ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
 
-                // TODO: drag & drop
                 if(ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length());
                     ImGui::EndDragDropSource();
@@ -167,7 +185,13 @@ namespace Peeler {
                         updateCurrentFolder(entry.path);
                     }
                 }
-                std::string smallFilename = entry.path.filename().string();
+
+                std::string smallFilename;
+                if(!isLookingAtRoots) {
+                    smallFilename = entry.path.filename().string();
+                } else {
+                    smallFilename = entry.path.string();
+                }
                 ImGui::TextWrapped("%s", smallFilename.c_str());
             }
             ImGui::NextColumn();
@@ -472,7 +496,8 @@ namespace Peeler {
         scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png"),
         folderIcon(engine.getVulkanDriver(), "resources/textures/ui/folder.png"),
         genericFileIcon(engine.getVulkanDriver(), "resources/textures/ui/file.png"),
-        parentFolderIcon(engine.getVulkanDriver(), "resources/textures/ui/parent_folder.png")
+        parentFolderIcon(engine.getVulkanDriver(), "resources/textures/ui/parent_folder.png"),
+        driveIcon(engine.getVulkanDriver(), "resources/textures/ui/drive.png")
 
 
     {
@@ -577,6 +602,26 @@ namespace Peeler {
         currentScene.deserialise(description["scene"].GetObject());
         addDefaultSystems(currentScene); // TODO: load systems from scene
         currentScene.world.freezeLogic();
+        if(description.HasMember("camera")) {
+            cameraController.deserialise(description["camera"].GetObject());
+        }
+
+        if(description.HasMember("window")) {
+            auto windowObj = description["window"].GetObject();
+            std::int32_t x = windowObj["x"].GetInt();
+            std::int32_t y = windowObj["y"].GetInt();
+            std::int32_t width = windowObj["width"].GetInt();
+            std::int32_t height = windowObj["height"].GetInt();
+
+            bool maximised = windowObj["maximised"].GetBool();
+
+            auto& window = engine.getVulkanDriver().getWindow();
+            window.setPosition(x, y);
+            window.setWindowSize(width, height);
+            if(maximised) {
+                window.maximise();
+            }
+        }
 
         settings.currentProject = fileToOpen;
         settings.addToRecentProjects(fileToOpen);
@@ -606,12 +651,40 @@ namespace Peeler {
         rapidjson::Document document;
         document.SetObject();
 
-        rapidjson::Value scene(rapidjson::kObjectType);
-        document.AddMember("scene", currentScene.serialise(document), document.GetAllocator());
+        {
+            rapidjson::Value scene(rapidjson::kObjectType);
+            document.AddMember("scene", currentScene.serialise(document), document.GetAllocator());
+        }
+
         if(selectedID) {
             rapidjson::Value uuid(selectedID.value().toString(), document.GetAllocator());
             document.AddMember("selectedID", uuid, document.GetAllocator());
         }
+
+        {
+            document.AddMember("camera", cameraController.serialise(document), document.GetAllocator());
+        }
+
+        {
+            rapidjson::Value windowObj(rapidjson::kObjectType);
+
+            const auto& window = engine.getVulkanDriver().getWindow();
+
+            std::int32_t x, y;
+            std::int32_t w, h;
+            window.getPosition(x, y);
+            window.getWindowSize(w, h);
+
+            bool maximised = window.isMaximised();
+            windowObj.AddMember("x", x, document.GetAllocator());
+            windowObj.AddMember("y", y, document.GetAllocator());
+            windowObj.AddMember("width", w, document.GetAllocator());
+            windowObj.AddMember("height", h, document.GetAllocator());
+            windowObj.AddMember("maximised", maximised, document.GetAllocator());
+
+            document.AddMember("window", windowObj, document.GetAllocator());
+        }
+
         document.Accept(writer);
         fclose(fp);
 
@@ -702,6 +775,8 @@ namespace Peeler {
             ResourceType type = file.is_directory() ? ResourceType::Folder : ResourceType::GenericFile;
             resourcesInCurrentFolder.emplace_back(type, file.path());
         }
+
+        isLookingAtRoots = false;
     }
 
 }
