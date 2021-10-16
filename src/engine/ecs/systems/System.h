@@ -32,6 +32,7 @@ namespace Carrot::ECS {
 
         void onEntitiesAdded(const std::vector<EntityID>& entities);
         void onEntitiesRemoved(const std::vector<EntityID>& entities);
+        void onEntitiesUpdated(const std::vector<EntityID>& entities);
 
         virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
 

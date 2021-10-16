@@ -15,6 +15,7 @@ namespace Carrot {
     public:
         using ID = std::string;
         using DeserialiseFunction = std::function<ContainedType(const rapidjson::Value& json, Param&&... params)>;
+        using CreateNewFunction = std::function<ContainedType(Param&&... params)>;
 
         explicit Library() = default;
 
@@ -22,15 +23,22 @@ namespace Carrot {
             return deserialisers.at(id)(json, std::forward<Param>(params)...);
         }
 
+        ContainedType create(const ID& id, Param... params) const {
+            return creationFunctions.at(id)(std::forward<Param>(params)...);
+        }
+
         template<typename Type> requires IsIdentifiable<Type>
-        void add(const DeserialiseFunction& func) {
-            deserialisers[Type::getStringRepresentation()] = func;
+        void add(const DeserialiseFunction& deserialise, const CreateNewFunction& create) {
+            deserialisers[Type::getStringRepresentation()] = deserialise;
+            creationFunctions[Type::getStringRepresentation()] = create;
         }
 
         template<typename Type> requires IsIdentifiable<Type>
         void addUniquePtrBased() {
             return add<Type>([](const rapidjson::Value& json, Param... params) {
                 return std::make_unique<Type>(json, std::forward<Param>(params)...);
+            }, [](Param... params) {
+                return std::make_unique<Type>(std::forward<Param>(params)...);
             });
         }
 
@@ -48,5 +56,6 @@ namespace Carrot {
 
     private:
         std::unordered_map<ID, DeserialiseFunction> deserialisers;
+        std::unordered_map<ID, CreateNewFunction> creationFunctions;
     };
 }

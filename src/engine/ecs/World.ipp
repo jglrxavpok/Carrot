@@ -29,6 +29,7 @@ namespace Carrot::ECS {
     Entity& Entity::addComponent(std::unique_ptr<Comp>&& component) {
         auto& componentMap = worldRef.entityComponents[internalEntity];
         componentMap[component->getComponentTypeID()] = std::move(component);
+        worldRef.entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 
@@ -36,6 +37,15 @@ namespace Carrot::ECS {
     Entity& Entity::addComponent(Args&&... args) {
         auto& componentMap = worldRef.entityComponents[internalEntity];
         componentMap[Comp::getID()] = std::make_unique<Comp>(*this, args...);
+        worldRef.entitiesUpdated.push_back(internalEntity);
+        return *this;
+    }
+
+    template<typename Comp>
+    Entity& Entity::removeComponent() {
+        auto& componentMap = worldRef.entityComponents[internalEntity];
+        componentMap.erase(Comp::getID());
+        worldRef.entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 

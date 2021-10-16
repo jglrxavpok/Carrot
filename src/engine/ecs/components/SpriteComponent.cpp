@@ -63,7 +63,7 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    void SpriteComponent::drawInspectorInternals(const Render::Context& renderContext) {
+    void SpriteComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
         static std::string path = "<<path>>";
         if(inInspector != this) {
             inInspector = this;
@@ -71,6 +71,7 @@ namespace Carrot::ECS {
         }
         if(Carrot::ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path));
+            modified = true;
         }
         if(::ImGui::BeginDragDropTarget()) {
             if(auto* payload = ::ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
@@ -84,6 +85,7 @@ namespace Carrot::ECS {
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
                     sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str()));
                     inInspector = nullptr;
+                    modified = true;
                 }
             }
 
@@ -104,6 +106,7 @@ namespace Carrot::ECS {
         }
 
         if(recompute) {
+            modified = true;
             region = Math::Rect2Df(minU, minV, maxU, maxV);
         }
     }

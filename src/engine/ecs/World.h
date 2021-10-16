@@ -88,6 +88,7 @@ namespace Carrot::ECS {
         std::vector<EntityID> entities;
         std::vector<EntityID> entitiesToAdd;
         std::vector<EntityID> entitiesToRemove;
+        std::vector<EntityID> entitiesUpdated;
 
         std::unordered_map<EntityID, std::unordered_map<ComponentID, std::unique_ptr<Component>>> entityComponents;
         std::unordered_map<EntityID, Tags> entityTags;

@@ -23,6 +23,8 @@
 #include <engine/utils/stringmanip.h>
 #include <engine/edition/DragDropTypes.h>
 #include <engine/io/Logging.hpp>
+#include <engine/ecs/systems/SystemKinematics.h>
+#include <engine/ecs/systems/SystemSinPosition.h>
 
 namespace Peeler {
 
@@ -205,12 +207,57 @@ namespace Peeler {
         ZoneScoped;
         if(selectedID.has_value()) {
             auto& entityID = selectedID.value();
-            auto& str = currentScene.world.getName(entityID);
+            auto entity = currentScene.world.wrap(entityID);
+            auto& str = entity.getName();
             Carrot::ImGui::InputText("Entity name##entity name field inspector", str);
 
             auto components = currentScene.world.getAllComponents(entityID);
+
+            std::unordered_set<Carrot::ComponentID> toRemove;
             for(auto& comp : components) {
-                comp->drawInspector(renderContext);
+                bool shouldKeep = true;
+                bool modified = false;
+                comp->drawInspector(renderContext, shouldKeep, modified);
+                if(!shouldKeep) {
+                    toRemove.insert(comp->getComponentTypeID());
+                }
+
+                if(modified) {
+                    markDirty();
+                }
+            }
+
+            for(const auto& id : toRemove) {
+                markDirty();
+                entity.removeComponent(id);
+            }
+
+            if(ImGui::Button("Add component##inspector add component")) {
+                ImGui::OpenPopup("Add component##Add component popup");
+            }
+
+            if(ImGui::BeginPopup("Add component##Add component popup")) {
+                const auto& lib = Carrot::ECS::getComponentLibrary();
+
+                std::unordered_set<std::string> componentsEntityHas;
+                for(const auto* comp : entity.getAllComponents()) {
+                    componentsEntityHas.insert(comp->getName());
+                }
+                for(const auto& compID : lib.getAllIDs()) {
+                    std::string id = compID;
+
+                    if(componentsEntityHas.contains(id)) {
+                        continue;
+                    }
+
+                    id += "##add component menu item inspector";
+                    if(ImGui::MenuItem(id.c_str())) {
+                        auto comp = lib.create(compID, entity);
+                        entity.addComponent(std::move(comp));
+                        markDirty();
+                    }
+                }
+                ImGui::EndPopup();
             }
         }
     }
@@ -766,6 +813,8 @@ namespace Peeler {
 
     void Application::addDefaultSystems(Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
+        scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
+        scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
     }
 
     void Application::updateCurrentFolder(std::filesystem::path path) {

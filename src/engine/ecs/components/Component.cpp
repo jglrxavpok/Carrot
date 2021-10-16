@@ -7,17 +7,16 @@
 #include <imgui/imgui.h>
 
 namespace Carrot::ECS {
-    void Component::drawInspector(const Carrot::Render::Context& renderContext) {
-        bool shouldKeep = true;
-
+    void Component::drawInspector(const Carrot::Render::Context& renderContext, bool& shouldKeep, bool& modified) {
+        shouldKeep = true;
         std::string s = getName();
         s += "##" + getEntity().getID().toString();
         if(ImGui::CollapsingHeader(s.c_str(), &shouldKeep)) {
-            drawInspectorInternals(renderContext);
+            drawInspectorInternals(renderContext, modified);
         }
 
         if(!shouldKeep) {
-            TODO
+            shouldKeep = false;
         }
     }
 }

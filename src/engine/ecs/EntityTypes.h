@@ -49,6 +49,13 @@ namespace Carrot::ECS {
 
         std::vector<Component*> getAllComponents() const;
 
+        template<typename Comp>
+        Entity& removeComponent();
+
+        Entity& removeComponent(Component& comp);
+
+        Entity& removeComponent(const ComponentID& id);
+
         Entity& addTag(Tags tag);
 
         Tags getTags() const;

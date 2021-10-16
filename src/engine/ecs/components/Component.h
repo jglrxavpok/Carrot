@@ -24,8 +24,8 @@ namespace Carrot::ECS {
         Entity& getEntity() { return entity; }
         const Entity& getEntity() const { return entity; }
 
-        void drawInspector(const Carrot::Render::Context& renderContext);
-        virtual void drawInspectorInternals(const Carrot::Render::Context& renderContext) {};
+        void drawInspector(const Carrot::Render::Context& renderContext, bool& shouldKeep, bool& modified);
+        virtual void drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) {};
 
         virtual const char* const getName() const = 0;
 
@@ -48,7 +48,7 @@ namespace Carrot::ECS {
         explicit IdentifiableComponent(Entity entity): Component(std::move(entity)) {}
 
         virtual const char* const getName() const override {
-            return typeid(Self).name();
+            return Self::getStringRepresentation();
         }
 
         virtual ComponentID getComponentTypeID() const override {

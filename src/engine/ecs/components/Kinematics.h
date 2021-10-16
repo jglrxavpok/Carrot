@@ -9,6 +9,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/JSON.h>
+#include <engine/utils/JSON.h>
+#include <imgui.h>
 
 namespace Carrot::ECS {
     struct Kinematics: public IdentifiableComponent<Kinematics> {
@@ -21,7 +23,11 @@ namespace Carrot::ECS {
         };
 
         rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            return JSON::write(velocity, doc);
+            rapidjson::Value obj(rapidjson::kObjectType);
+
+            obj.AddMember("velocity", JSON::write(velocity, doc), doc.GetAllocator());
+
+            return obj;
         }
 
         const char *const getName() const override {
@@ -32,6 +38,14 @@ namespace Carrot::ECS {
             auto result = std::make_unique<Kinematics>(newOwner);
             result->velocity = velocity;
             return result;
+        }
+
+        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override {
+            float arr[] = { velocity.x, velocity.y, velocity.z };
+            if (ImGui::DragFloat3("Velocity", arr)) {
+                velocity = { arr[0], arr[1], arr[2] };
+                modified = true;
+            }
         }
     };
 }

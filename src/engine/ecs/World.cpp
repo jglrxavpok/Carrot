@@ -67,6 +67,17 @@ namespace Carrot::ECS {
         return worldRef.getAllComponents(*this);
     }
 
+    Entity& Entity::removeComponent(Component& component) {
+        return removeComponent(component.getComponentTypeID());
+    }
+
+    Entity& Entity::removeComponent(const ComponentID& componentID) {
+        auto& componentMap = worldRef.entityComponents[internalEntity];
+        componentMap.erase(componentID);
+        worldRef.entitiesUpdated.push_back(internalEntity);
+        return *this;
+    }
+
     World::World() {}
 
     Tags World::getTags(const Entity& entity) const {
@@ -100,6 +111,14 @@ namespace Carrot::ECS {
                 render->onEntitiesAdded(entitiesToAdd);
             }
         }
+        if(!entitiesUpdated.empty()) {
+            for(const auto& logic : logicSystems) {
+                logic->onEntitiesUpdated(entitiesUpdated);
+            }
+            for(const auto& render : renderSystems) {
+                render->onEntitiesUpdated(entitiesUpdated);
+            }
+        }
         if(!entitiesToRemove.empty()) {
             for(const auto& logic : logicSystems) {
                 logic->onEntitiesRemoved(entitiesToRemove);
@@ -123,6 +142,7 @@ namespace Carrot::ECS {
         }
         entitiesToAdd.clear();
         entitiesToRemove.clear();
+        entitiesUpdated.clear();
 
         if(!frozenLogic) {
             for(const auto& logic : logicSystems) {

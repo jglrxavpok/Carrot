@@ -8,6 +8,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <engine/utils/JSON.h>
+#include <imgui.h>
 
 namespace Carrot::ECS {
     struct ForceSinPosition: public IdentifiableComponent<ForceSinPosition> {
@@ -19,20 +21,21 @@ namespace Carrot::ECS {
         explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
 
         explicit ForceSinPosition(const rapidjson::Value& json, Entity entity): ForceSinPosition(std::move(entity)) {
-            auto angularFrequencyArr = json["angularFrequency"].GetArray();
-            auto amplitudeArr = json["amplitude"].GetArray();
-            auto angularOffsetArr = json["angularOffset"].GetArray();
-            auto centerPositionArr = json["centerPosition"].GetArray();
-
-            angularFrequency = glm::vec3 { angularFrequencyArr[0].GetFloat(), angularFrequencyArr[1].GetFloat(), angularFrequencyArr[2].GetFloat() };
+            angularFrequency = JSON::read<3, float>(json["angularFrequency"]);
+            amplitude = JSON::read<3, float>(json["amplitude"]);
+            angularOffset = JSON::read<3, float>(json["angularOffset"]);
+            centerPosition = JSON::read<3, float>(json["centerPosition"]);
         };
 
         rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value arr(rapidjson::kArrayType);
+            rapidjson::Value obj(rapidjson::kObjectType);
 
-            TODO
+            obj.AddMember("angularFrequency", JSON::write<3, float>(angularFrequency, doc), doc.GetAllocator());
+            obj.AddMember("amplitude", JSON::write<3, float>(amplitude, doc), doc.GetAllocator());
+            obj.AddMember("angularOffset", JSON::write<3, float>(angularOffset, doc), doc.GetAllocator());
+            obj.AddMember("centerPosition", JSON::write<3, float>(centerPosition, doc), doc.GetAllocator());
 
-            return arr;
+            return obj;
         }
 
         const char *const getName() const override {
@@ -46,6 +49,20 @@ namespace Carrot::ECS {
             result->angularOffset = angularOffset;
             result->centerPosition = centerPosition;
             return result;
+        }
+
+        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override {
+            auto line = [&](const char* id, glm::vec3& vec) {
+                float arr[] = { vec.x, vec.y, vec.z };
+                if (ImGui::DragFloat3(id, arr)) {
+                    vec = { arr[0], arr[1], arr[2] };
+                    modified = true;
+                }
+            };
+            line("Angular Frequency", angularFrequency);
+            line("Amplitude", amplitude);
+            line("Angular Offset", angularOffset);
+            line("Center Position", centerPosition);
         }
     };
 }

@@ -28,4 +28,25 @@ namespace Carrot::ECS {
             }), entities.end());
         }
     }
+
+    void System::onEntitiesUpdated(const std::vector<EntityID>& updated) {
+        for(const auto& e : updated) {
+            auto obj = Entity(e, world);
+
+            if((world.getSignature(obj) & getSignature()) != getSignature()) {
+                entities.erase(std::remove_if(entities.begin(), entities.end(), [&](const Entity& entity) {
+                    return entity.operator EntityID() == e;
+                }), entities.end());
+            } else if((world.getSignature(obj) & getSignature()) == getSignature()) {
+                auto it = std::find_if(entities.begin(), entities.end(), [&](const Entity& entity) {
+                    return entity.operator EntityID() == e;
+                });
+                if(it == entities.end()) {
+                    onEntityAdded(obj);
+                    entities.push_back(obj);
+                }
+            }
+        }
+    }
+
 }
