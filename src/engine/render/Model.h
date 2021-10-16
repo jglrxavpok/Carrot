@@ -21,29 +21,10 @@ namespace Carrot {
     class Buffer;
 
     class Model {
-    private:
-        Carrot::Engine& engine;
-        std::map<Material*, std::vector<std::shared_ptr<Mesh>>> meshes{};
-        std::vector<std::shared_ptr<Material>> materials{};
-
-        // TODO: move animations somewhere else?
-        std::map<std::string, Animation*> animations{};
-        std::map<std::string, std::uint32_t> animationMapping{};
-        std::unique_ptr<Buffer> animationData = nullptr;
-        vk::UniqueDescriptorSetLayout animationSetLayout{};
-        vk::UniqueDescriptorPool animationSetPool{};
-        vk::UniqueDescriptorSet animationSet{};
-        std::vector<vk::DescriptorSet> animationDescriptorSets{};
-
-        std::shared_ptr<Mesh> loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices);
-
-        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
-
-        void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                                   const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature);
-
     public:
-        explicit Model(Carrot::Engine& engine, const std::string& filename);
+        using Ref = std::shared_ptr<Model>;
+
+        explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
 
         void draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount, const Carrot::UUID& entityID = Carrot::UUID::null());
 
@@ -60,5 +41,32 @@ namespace Carrot {
         [[nodiscard]] const std::map<MaterialID, std::vector<std::shared_ptr<Mesh>>> getMaterialToMeshMap() const;
 
         Carrot::Buffer& getAnimationDataBuffer();
+
+    public:
+        const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
+
+    private:
+        Carrot::Engine& engine;
+        std::map<Material*, std::vector<std::shared_ptr<Mesh>>> meshes{};
+        std::vector<std::shared_ptr<Material>> materials{};
+
+        // TODO: move animations somewhere else?
+        std::map<std::string, Animation*> animations{};
+        std::map<std::string, std::uint32_t> animationMapping{};
+        std::unique_ptr<Buffer> animationData = nullptr;
+        vk::UniqueDescriptorSetLayout animationSetLayout{};
+        vk::UniqueDescriptorPool animationSetPool{};
+        vk::UniqueDescriptorSet animationSet{};
+        std::vector<vk::DescriptorSet> animationDescriptorSets{};
+
+        Carrot::IO::Resource resource; // resource from which this model comes. Used for serialisation
+
+        std::shared_ptr<Mesh> loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices);
+
+        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
+
+        void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
+                            const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature);
+
     };
 }

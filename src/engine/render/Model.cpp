@@ -16,18 +16,22 @@
 #include <engine/io/Logging.hpp>
 #include <engine/render/DrawData.h>
 
-Carrot::Model::Model(Carrot::Engine& engine, const std::string& filename): engine(engine) {
+Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
-    TracyMessageL(filename.c_str());
+    TracyMessageL(file.getName().c_str());
 
     Assimp::Importer importer{};
-    const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
-
-    if(!scene) {
-        throw std::runtime_error("Failed to load model "+filename);
+    const aiScene* scene = nullptr;
+    {
+        auto buffer = file.readAll();
+        scene = importer.ReadFileFromMemory(buffer.get(), file.getSize(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
     }
 
-    Carrot::Log::info("Loading model %s", filename.c_str());
+    if(!scene) {
+        throw std::runtime_error("Failed to load model "+file.getName());
+    }
+
+    Carrot::Log::info("Loading model %s", file.getName().c_str());
 
     std::map<std::uint32_t, std::shared_ptr<Material>> materialMap{};
     for(std::size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
@@ -35,9 +39,9 @@ Carrot::Model::Model(Carrot::Engine& engine, const std::string& filename): engin
         std::string materialName = mat->GetName().data;
 
         // TODO: remove ugly hack, maybe due to Assimp creating a default material?
-        if(materialName == "DefaultMaterial") {
+/*        if(materialName == "DefaultMaterial") {
             continue;
-        }
+        }*/
 
         auto material = engine.getOrCreateMaterial(materialName);
         materials.emplace_back(material);
@@ -54,7 +58,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const std::string& filename): engin
         auto material = materialMap[mesh->mMaterialIndex];
         auto loadedMesh = loadMesh(material->getPipeline().getVertexFormat(), mesh, boneMapping, offsetMatrices);
 
-        loadedMesh->name(filename+", mesh #"+std::to_string(loadedMesh->getMeshID()));
+        loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
         meshes[material.get()].push_back(loadedMesh);
     }
 

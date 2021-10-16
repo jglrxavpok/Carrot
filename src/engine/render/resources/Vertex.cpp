@@ -7,7 +7,7 @@
 #include "engine/render/particles/Particles.h"
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{9};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{10};
 
     descriptions[0] = {
             .location = 0,
@@ -44,9 +44,16 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDes
             .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
     };
 
+    descriptions[5] = {
+            .location = 5,
+            .binding = 1,
+            .format = vk::Format::eR32G32B32A32Uint,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, uuid)),
+    };
+
     for (int i = 0; i < 4; ++i) {
-        descriptions[5+i] = {
-                .location = static_cast<uint32_t>(5+i),
+        descriptions[6+i] = {
+                .location = static_cast<uint32_t>(6+i),
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
@@ -284,7 +291,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingD
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanceData::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{6};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{7};
 
     descriptions[0] = {
             .location = 0,
@@ -300,9 +307,16 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanc
             .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
     };
 
+    descriptions[2] = {
+            .location = 2,
+            .binding = 1,
+            .format = vk::Format::eR32G32B32A32Uint,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, uuid)),
+    };
+
     for (int i = 0; i < 4; ++i) {
-        descriptions[2+i] = {
-                .location = static_cast<uint32_t>(2+i),
+        descriptions[3+i] = {
+                .location = static_cast<uint32_t>(3+i),
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),

@@ -16,7 +16,8 @@ layout(location = 3) in vec2 inUV;
 
 // Per instance
 layout(location = 4) in vec4 inInstanceColor;
-layout(location = 5) in mat4 inInstanceTransform;
+layout(location = 5) in uvec4 inUUID;
+layout(location = 6) in mat4 inInstanceTransform;
 
 
 layout(location = 0) out vec3 fragColor;
@@ -24,6 +25,7 @@ layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
+layout(location = 5) out uvec4 outUUID;
 
 void main() {
     uv = inUV;
@@ -36,4 +38,6 @@ void main() {
     outViewPos = viewPosition.xyz/viewPosition.w;
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * inNormal);
+
+    outUUID = inUUID;
 }

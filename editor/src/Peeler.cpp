@@ -12,6 +12,7 @@
 #include <engine/ecs/components/AnimatedModelInstance.h>
 #include <engine/ecs/components/RaycastedShadowsLight.h>
 #include <engine/ecs/systems/SpriteRenderSystem.h>
+#include <engine/ecs/systems/ModelRenderSystem.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <engine/utils/ImGuiUtils.hpp>
@@ -599,6 +600,7 @@ namespace Peeler {
             lib.addUniquePtrBased<Carrot::ECS::Transform>();
             lib.addUniquePtrBased<Carrot::ECS::Kinematics>();
             lib.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
+            lib.addUniquePtrBased<Carrot::ECS::ModelComponent>();
             //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>();
             lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
             //lib.addUniquePtrBased<Carrot::ECS::RaycastedShadowsLight>();
@@ -813,6 +815,7 @@ namespace Peeler {
 
     void Application::addDefaultSystems(Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
+        scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
         scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
     }

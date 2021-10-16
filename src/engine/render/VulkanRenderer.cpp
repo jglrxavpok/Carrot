@@ -65,6 +65,22 @@ std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTex
     return getOrCreateTextureFullPath("resources/textures/" + textureName);
 }
 
+std::shared_ptr<Carrot::Model>& Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
+    auto it = models.find(modelPath);
+    if(it == models.end()) {
+        Carrot::IO::Resource from;
+        try {
+            from = modelPath;
+        } catch(std::runtime_error& e) {
+            // in case file could not be opened
+            from = "resources/models/simple_cube.obj";
+        }
+        auto model = std::make_unique<Carrot::Model>(getEngine(), std::move(from));
+        models[modelPath] = move(model);
+    }
+    return models[modelPath];
+}
+
 void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {
     for(const auto& [name, pipeline] : pipelines) {
         pipeline->recreateDescriptorPool(frameCount);

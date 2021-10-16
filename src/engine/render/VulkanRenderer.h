@@ -55,6 +55,7 @@ namespace Carrot {
     class Mesh;
     class Engine;
     class BufferView;
+    class Model;
 
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
@@ -75,6 +76,8 @@ namespace Carrot {
 
         std::shared_ptr<Render::Texture>& getOrCreateTexture(const std::string& textureName);
         std::shared_ptr<Render::Texture>& getOrCreateTextureFullPath(const std::string& textureName);
+
+        std::shared_ptr<Model>& getOrCreateModel(const std::string& modelPath);
 
         void recreateDescriptorPools(std::size_t frameCount);
 
@@ -145,6 +148,7 @@ namespace Carrot {
 
         std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         std::map<std::string, Render::Texture::Ref> textures{};
+        std::map<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 
