@@ -30,6 +30,7 @@ struct Vertex {
 
 struct Instance {
     vec4 inInstanceColor;
+    uvec4 inUUID;
     mat4 inInstanceTransform;
     uint animationIndex;
     double animationTime;

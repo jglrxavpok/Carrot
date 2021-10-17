@@ -84,6 +84,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     auto* mapData = mapInstanceBuffer->map<InstanceData>();
     mapData[0] = {
             {1,1,1,1},
+            {0,0,0,0},
             glm::mat4(1.0f)
     };
 
