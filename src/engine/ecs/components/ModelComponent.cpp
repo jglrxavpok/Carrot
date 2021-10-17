@@ -21,8 +21,8 @@ namespace Carrot::ECS {
         if(obj.HasMember("model")) {
             auto modelData = obj["model"].GetObject();
 
-            if(modelData.HasMember("path")) {
-                std::string modelPath = modelData["path"].GetString();
+            if(modelData.HasMember("modelPath")) {
+                std::string modelPath = modelData["modelPath"].GetString();
                 model = Engine::getInstance().getRenderer().getOrCreateModel(modelPath);
             } else {
                 TODO // cannot load non-file models at the moment
