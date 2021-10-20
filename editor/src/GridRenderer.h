@@ -15,7 +15,7 @@ namespace Peeler {
         explicit GridRenderer();
 
         void drawGrid(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds,
-                      const glm::vec4& color, float linePixelWidth, float cellSize, float size);
+                      const glm::vec4& color, float lineWidth, float cellSize, float size);
 
     private:
         Carrot::Mesh gridMesh;

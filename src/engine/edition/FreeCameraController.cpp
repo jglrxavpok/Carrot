@@ -25,8 +25,9 @@ namespace Carrot::Edition {
         eulerAngles.z += rotDx * dt * ySensibility;
 
         glm::quat rotationQuat = glm::quat(eulerAngles);
-        glm::vec3 movement { strafe * strafeSpeed, -upward * verticalSpeed, forward * forwardSpeed };
+        glm::vec3 movement { strafe * strafeSpeed, 0.0f, forward * forwardSpeed };
         position += glm::rotate(rotationQuat, movement) * static_cast<float>(dt);
+        position.z += upward * verticalSpeed * static_cast<float>(dt);
     }
 
     void FreeCameraController::applyTo(const glm::vec2& viewportSize, Carrot::Camera& camera) const {

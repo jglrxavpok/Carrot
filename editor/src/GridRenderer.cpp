@@ -21,18 +21,18 @@ namespace Peeler {
     }
 
     void GridRenderer::drawGrid(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds,
-                                const glm::vec4& color, float linePixelWidth, float cellSize, float size) {
+                                const glm::vec4& color, float lineWidth, float cellSize, float size) {
         renderingPipeline->bind(renderPass, renderContext, cmds);
         struct {
             glm::vec4 color; // RGBA
             vk::Extent2D screenSize; // in pixels
-            float linePixelWidth = 1.0f; // in pixels
+            float lineWidth = 1.0f; // in pixels
             float cellSize = 1.0f; // in units
             float size = 1.0f; // in units
         } gridData;
         gridData.color = color;
         gridData.screenSize = renderContext.renderer.getVulkanDriver().getFinalRenderSize();
-        gridData.linePixelWidth = linePixelWidth;
+        gridData.lineWidth = lineWidth;
         gridData.cellSize = cellSize;
         gridData.size = size;
         renderContext.renderer.pushConstantBlock("grid", *renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, cmds, gridData);

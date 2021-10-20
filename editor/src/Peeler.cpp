@@ -152,56 +152,64 @@ namespace Peeler {
         if (columnCount < 1)
             columnCount = 1;
 
+        ImGuiTableFlags tableFlags = ImGuiTableFlags_NoBordersInBody;
+        if(ImGui::BeginTable("##resources table", columnCount, tableFlags)) {
+            ImGui::TableNextRow();
+            std::uint32_t index = 0;
+            for(const auto& entry : resourcesInCurrentFolder) {
+                ImGui::TableNextColumn();
 
-        ImGui::Columns(columnCount, nullptr, false);
+                ImTextureID texture = nullptr;
+                switch(entry.type) {
+                    case ResourceType::GenericFile:
+                        texture = genericFileIcon.getImguiID();
+                        break;
 
-        for(const auto& entry : resourcesInCurrentFolder) {
-            ImTextureID texture = nullptr;
-            switch(entry.type) {
-                case ResourceType::GenericFile:
-                    texture = genericFileIcon.getImguiID();
-                    break;
+                    case ResourceType::Folder:
+                        texture = folderIcon.getImguiID();
+                        break;
 
-                case ResourceType::Folder:
-                    texture = folderIcon.getImguiID();
-                    break;
+                    case ResourceType::Drive:
+                        texture = driveIcon.getImguiID();
+                        break;
 
-                case ResourceType::Drive:
-                    texture = driveIcon.getImguiID();
-                    break;
-
-                default:
-                    TODO // missing a resource type
-            }
-            std::string filename = entry.path.string();
-            ImGui::PushID(filename.c_str());
-            {
-                ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
-
-                if(ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length());
-                    ImGui::EndDragDropSource();
+                    default:
+                        TODO // missing a resource type
                 }
+                std::string filename = entry.path.string();
+                ImGui::PushID(filename.c_str());
+                {
+                    ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
 
-                if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                    if(std::filesystem::is_directory(entry.path)) {
-                        updateCurrentFolder(entry.path);
+                    if(ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length());
+                        ImGui::EndDragDropSource();
                     }
-                }
 
-                std::string smallFilename;
-                if(!isLookingAtRoots) {
-                    smallFilename = entry.path.filename().string();
-                } else {
-                    smallFilename = entry.path.string();
+                    if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        if(std::filesystem::is_directory(entry.path)) {
+                            updateCurrentFolder(entry.path);
+                        }
+                    }
+
+                    std::string smallFilename;
+                    if(!isLookingAtRoots) {
+                        smallFilename = entry.path.filename().string();
+                    } else {
+                        smallFilename = entry.path.string();
+                    }
+                    ImGui::TextWrapped("%s", smallFilename.c_str());
                 }
-                ImGui::TextWrapped("%s", smallFilename.c_str());
+                ImGui::PopID();
+
+                if(++index == columnCount) {
+                    index = 0;
+                    ImGui::TableNextRow();
+                }
             }
-            ImGui::NextColumn();
-            ImGui::PopID();
-        }
 
-        ImGui::Columns(1);
+            ImGui::EndTable();
+        }
     }
 
     void Application::UIInspector(const Carrot::Render::Context& renderContext) {
@@ -578,7 +586,7 @@ namespace Peeler {
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
                                          float gridSize = 100.0f;
                                          float cellSize = 1.0f;
-                                         float lineWidth = 2.0f;
+                                         float lineWidth = 0.005f;
                                          glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
                                          gridRenderer.drawGrid(pass.getRenderPass(), frame, cmds, gridColor, lineWidth, cellSize, gridSize);
 
