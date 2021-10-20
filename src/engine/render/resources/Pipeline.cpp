@@ -47,11 +47,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .pVertexAttributeDescriptions = pipelineTemplate.vertexAttributes.data(),
     };
 
-    vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-
-
     pipelineTemplate.inputAssembly = {
-            .topology = topology,
+            .topology = description.topology,
             .primitiveRestartEnable = false,
     };
 
@@ -579,5 +576,16 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     }
     if(json.HasMember("alphaBlending")) {
         alphaBlending = json["alphaBlending"].GetBool();
+    }
+
+    if(json.HasMember("topology")) {
+        std::string topologyStr = Carrot::toLowerCase(json["topology"].GetString());
+        if(topologyStr == "triangles") {
+            topology = vk::PrimitiveTopology::eTriangleList;
+        } else if(topologyStr == "lines") {
+            topology = vk::PrimitiveTopology::eLineList;
+        } else {
+            verify(false, "Unknown topology: " + topologyStr);
+        }
     }
 }

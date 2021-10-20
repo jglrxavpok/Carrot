@@ -9,6 +9,7 @@
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
+#include "engine/io/Logging.hpp"
 
 Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const std::string& entryPoint)
         : driver(driver), entryPoint(entryPoint) {
@@ -140,9 +141,11 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
 
         case spirv_cross::SPIRType::Float:
         case spirv_cross::SPIRType::UInt:
+        case spirv_cross::SPIRType::Int:
             return 4 * type.vecsize;
 
         case spirv_cross::SPIRType::UInt64:
+        case spirv_cross::SPIRType::Int64:
         case spirv_cross::SPIRType::Double:
             return 8 * type.vecsize;
 
@@ -155,30 +158,32 @@ void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::
     const auto resources = compiler->get_shader_resources();
 
     // TODO: other types than uint32_t
-    std::uint32_t offset = 0;
     if(resources.push_constant_buffers.size() == 0)
         return;
+    std::uint32_t offset = std::numeric_limits<std::uint32_t>::max();
+    std::uint32_t size = 0;
     const auto& pushConstant = resources.push_constant_buffers[0];
     const auto& ranges = compiler->get_active_buffer_ranges(pushConstant.id);
     std::string name = pushConstant.name;
-    const auto& range = *std::find_if(WHOLE_CONTAINER(ranges), [&](const auto& r) { return r.index == 0; });
+    const auto& range = *std::min_element(WHOLE_CONTAINER(ranges), [&](const auto& a, const auto& b) { return a.index < b.index; });
     const auto& resourceType = compiler->get_type(pushConstant.type_id);
 
-/*        bool hasOffset = compiler->has_member_decoration(pushConstant.id, 0, spv::DecorationOffset);
-
-    if(hasOffset) {
-        offset = compiler->get_member_decoration(pushConstant.id, 0, spv::DecorationOffset);
-    }*/
-    offset = range.offset;
+    for(const auto& r : ranges) {
+        offset = std::min(static_cast<std::uint32_t>(r.offset), offset);
+        size = std::max(static_cast<std::uint32_t>(r.offset+r.range), size);
+    }
 
     bool alreadyPresent = false;
-    std::uint32_t size = computeTypeSize(*compiler, resourceType);
-    for(auto& [_, range] : pushConstants) {
-        if(range.offset == offset && range.size == size) {
-            range.stageFlags |= stage;
+    if(pushConstants.contains(name)) {
+        auto& existingRange = pushConstants.at(name);
+//        if(existingRange.offset == offset && existingRange.size == size) {
+            existingRange.stageFlags |= stage;
             alreadyPresent = true;
-            break;
-        }
+            existingRange.offset = std::min(static_cast<std::uint32_t>(offset), existingRange.offset);
+            existingRange.size = std::min(static_cast<std::uint32_t>(size), existingRange.size);
+            //break;
+            return;
+       // }
     }
 
     if(!alreadyPresent) {

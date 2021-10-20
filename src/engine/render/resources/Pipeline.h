@@ -42,6 +42,8 @@ namespace Carrot {
         bool cull = true;
         bool alphaBlending = false;
 
+        vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };

@@ -360,9 +360,6 @@ namespace Peeler {
         float* cameraViewImGuizmo = glm::value_ptr(cameraView);
         float* cameraProjectionImGuizmo = glm::value_ptr(cameraProjection);
 
-        // TODO: draw grid with engine code?
-        ImGuizmo::DrawGrid(cameraViewImGuizmo, cameraProjectionImGuizmo, glm::value_ptr(identityMatrix), 100.f, true);
-
         bool usingGizmo = false;
         if(selectedID.has_value()) {
             auto transformRef = currentScene.world.getComponent<Carrot::ECS::Transform>(selectedID.value());
@@ -579,6 +576,14 @@ namespace Peeler {
 
         auto& resolvePass = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
+                                         float gridSize = 100.0f;
+                                         float cellSize = 1.0f;
+                                         float lineWidth = 2.0f;
+                                         glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
+                                         gridRenderer.drawGrid(pass.getRenderPass(), frame, cmds, gridColor, lineWidth, cellSize, gridSize);
+
+                                         gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
+                                         gridRenderer.drawGrid(pass.getRenderPass(), frame, cmds, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
                                          currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      },
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {

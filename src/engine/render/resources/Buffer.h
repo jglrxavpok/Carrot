@@ -17,20 +17,6 @@ namespace Carrot {
 
     /// Abstraction over Vulkan buffers
     class Buffer: public DebugNameable, public DeviceAddressable, std::enable_shared_from_this<Buffer> {
-
-    private:
-        bool mapped = false;
-        VulkanDriver& driver;
-        uint64_t size;
-        vk::UniqueBuffer vkBuffer{};
-        vk::UniqueDeviceMemory memory{};
-
-        /// Creates and allocates a buffer with the given parameters
-        //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
-
-        friend class ResourceAllocator;
-        friend class std::unique_ptr<Buffer>;
-        friend class std::shared_ptr<Buffer>;
     public:
         /// TODO: PRIVATE ONLY
         explicit Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
@@ -80,6 +66,20 @@ namespace Carrot {
 
         // TODO: make const asap
         BufferView getWholeView();
+
+    private:
+        VulkanDriver& driver;
+        uint64_t size;
+        void* mappedPtr = nullptr;
+        vk::UniqueBuffer vkBuffer{};
+        vk::UniqueDeviceMemory memory{};
+
+        /// Creates and allocates a buffer with the given parameters
+        //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
+
+        friend class ResourceAllocator;
+        friend class std::unique_ptr<Buffer>;
+        friend class std::shared_ptr<Buffer>;
     };
 }
 

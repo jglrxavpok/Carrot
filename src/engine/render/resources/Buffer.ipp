@@ -51,6 +51,10 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 
 template<typename T>
 T* Carrot::Buffer::map() {
+    if(mappedPtr) {
+       return reinterpret_cast<T*>(mappedPtr);
+    }
     void* ptr = driver.getLogicalDevice().mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    mappedPtr = ptr;
     return reinterpret_cast<T*>(ptr);
 }

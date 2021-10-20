@@ -4,6 +4,7 @@ set(EditorSources
         ${EditorRoot}main.cpp
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}Scene.cpp
+        ${EditorRoot}GridRenderer.cpp
         )
 
 set(ImGuizmoSources
@@ -14,10 +15,32 @@ set(ImGuizmoSources
         ../thirdparty/ImGuizmo/ImSequencer.cpp
         )
 
+set(EditorFragmentShaders
+        resources/shaders/grid.fragment.glsl
+        )
+
+set(EditorVertexShaders
+        resources/shaders/grid.vertex.glsl
+        )
+
+set(EditorShaders "")
+
+foreach(shader ${EditorFragmentShaders})
+    add_spirv_shader(fragment "${CMAKE_CURRENT_SOURCE_DIR}/${shader}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+    set(EditorShaders "${EditorShaders}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+endforeach()
+
+foreach(shader ${EditorVertexShaders})
+    add_spirv_shader(vertex "${CMAKE_CURRENT_SOURCE_DIR}/${shader}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+    set(EditorShaders "${EditorShaders}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+endforeach()
+
 if (MSVC)
     add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
+
+set(EditorSources "${EditorSources}" "${EditorShaders}")
 
 add_executable(Peeler ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler)

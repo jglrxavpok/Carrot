@@ -7,6 +7,7 @@
 #include <vector>
 #include "BufferView.h"
 #include "ResourceAllocator.h"
+#include <engine/utils/Macros.h>
 
 Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
                        vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
@@ -102,8 +103,8 @@ uint64_t Carrot::Buffer::getSize() const {
 }
 
 Carrot::Buffer::~Buffer() {
-    if(mapped) {
-        driver.getLogicalDevice().unmapMemory(*memory);
+    if(mappedPtr) {
+        unmap();
     }
 }
 
@@ -112,7 +113,9 @@ void Carrot::Buffer::setDebugNames(const std::string& name) {
 }
 
 void Carrot::Buffer::unmap() {
+    verify(mappedPtr != nullptr, "Must be mapped!");
     driver.getLogicalDevice().unmapMemory(*memory);
+    mappedPtr = nullptr;
 }
 
 vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {

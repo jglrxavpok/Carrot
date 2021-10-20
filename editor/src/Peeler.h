@@ -13,6 +13,7 @@
 #include <engine/io/actions/ActionSet.h>
 #include <optional>
 #include "Scene.h"
+#include "GridRenderer.h"
 
 namespace Peeler {
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
@@ -82,6 +83,10 @@ namespace Peeler {
         Carrot::Render::Texture folderIcon;
         Carrot::Render::Texture parentFolderIcon;
         Carrot::Render::Texture driveIcon;
+
+        GridRenderer gridRenderer;
+
+    private: // Scene manipulation
 
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
