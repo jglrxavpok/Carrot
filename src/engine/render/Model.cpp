@@ -56,7 +56,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
         auto material = materialMap[mesh->mMaterialIndex];
-        auto loadedMesh = loadMesh(material->getPipeline().getVertexFormat(), mesh, boneMapping, offsetMatrices);
+        auto loadedMesh = loadMesh(mesh, boneMapping, offsetMatrices);
 
         loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
         meshes[material.get()].push_back(loadedMesh);
@@ -209,12 +209,12 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
     }
 }
 
-std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices) {
+std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices) {
     std::vector<Vertex> vertices{};
     std::vector<SkinnedVertex> skinnedVertices{};
     std::vector<std::uint32_t> indices{};
 
-    bool usesSkinning = vertexFormat == VertexFormat::SkinnedVertex || vertexFormat == VertexFormat::ComputeSkinnedVertex;
+    bool usesSkinning = mesh->HasBones();
 
     for(size_t vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++) {
         const aiVector3D vec = mesh->mVertices[vertexIndex];

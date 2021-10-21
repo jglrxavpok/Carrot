@@ -38,7 +38,12 @@ std::string Carrot::toUpperCase(const std::string& str) {
     return result;
 }
 
+std::string Carrot::toString(std::u8string_view wstr) {
+    static std::wstring_convert<std::codecvt<char8_t,char,std::mbstate_t>,char8_t> converter;
+    return converter.to_bytes(&wstr[0], &wstr[wstr.size()-1] + sizeof(char8_t));
+}
+
 std::string Carrot::toString(std::u32string_view u32str) {
     static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
-    return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1]);
+    return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1] + sizeof(char32_t));
 }

@@ -140,7 +140,7 @@ namespace Peeler {
             }
         }
         ImGui::SameLine();
-        ImGui::Text("%s", currentFolder.string().c_str());
+        ImGui::UnformattedWText(currentFolder.u8string());
 
         // Thanks Hazel
         // https://github.com/TheCherno/Hazel/blob/f627b9c90923382f735350cd3060892bbd4b1e75/Hazelnut/src/Panels/ContentBrowserPanel.cpp#L30
@@ -156,6 +156,8 @@ namespace Peeler {
         if(ImGui::BeginTable("##resources table", columnCount, tableFlags)) {
             ImGui::TableNextRow();
             std::uint32_t index = 0;
+
+            std::optional<std::filesystem::path> updateToPath;
             for(const auto& entry : resourcesInCurrentFolder) {
                 ImGui::TableNextColumn();
 
@@ -176,29 +178,30 @@ namespace Peeler {
                     default:
                         TODO // missing a resource type
                 }
-                std::string filename = entry.path.string();
-                ImGui::PushID(filename.c_str());
+                std::u8string filename = entry.path.u8string();
+                ImGui::PushID(index);
                 {
                     ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
 
                     if(ImGui::BeginDragDropSource()) {
-                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length());
+                        ImGui::UnformattedWText(filename);
+                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length()*sizeof(char8_t));
                         ImGui::EndDragDropSource();
                     }
 
                     if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                         if(std::filesystem::is_directory(entry.path)) {
-                            updateCurrentFolder(entry.path);
+                            updateToPath = entry.path;
                         }
                     }
 
-                    std::string smallFilename;
+                    std::u8string smallFilename;
                     if(!isLookingAtRoots) {
-                        smallFilename = entry.path.filename().string();
+                        smallFilename = entry.path.filename().u8string();
                     } else {
-                        smallFilename = entry.path.string();
+                        smallFilename = entry.path.u8string();
                     }
-                    ImGui::TextWrapped("%s", smallFilename.c_str());
+                    ImGui::UnformattedWTextWrapped(smallFilename);
                 }
                 ImGui::PopID();
 
@@ -206,6 +209,10 @@ namespace Peeler {
                     index = 0;
                     ImGui::TableNextRow();
                 }
+            }
+
+            if(updateToPath) {
+                updateCurrentFolder(updateToPath.value());
             }
 
             ImGui::EndTable();
@@ -218,7 +225,7 @@ namespace Peeler {
             auto& entityID = selectedID.value();
             auto entity = currentScene.world.wrap(entityID);
             auto& str = entity.getName();
-            Carrot::ImGui::InputText("Entity name##entity name field inspector", str);
+            ImGui::InputText("Entity name##entity name field inspector", str);
 
             auto components = currentScene.world.getAllComponents(entityID);
 
@@ -476,15 +483,12 @@ namespace Peeler {
         }
 
         if(!usingGizmo && ImGui::IsItemClicked()) {
-            // TODO: pick object on click
             selectedID.reset();
-            const auto& gbufferPass = gameRenderingGraph->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
+            const auto gbufferPass = gameRenderingGraph->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
             const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
             glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
             uv -= glm::vec2 { startX, startY };
             uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };
-            Carrot::Log::debug("uv: %f ; %f", uv.x, uv.y);
-            Carrot::Log::flush();
             if(uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
                 return;
             glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);

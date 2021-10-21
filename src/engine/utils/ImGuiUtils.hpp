@@ -4,8 +4,10 @@
 
 #pragma once
 
-#include "imgui.h"
-#include "imgui_stdlib.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_stdlib.h>
+#include "stringmanip.h"
 
 inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) {
     return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y);
@@ -15,7 +17,7 @@ inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) {
     return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y);
 }
 
-namespace Carrot::ImGui {
+namespace ImGui {
     inline int StdStringInputCallback( ImGuiInputTextCallbackData* data ) {
         switch( data->EventFlag ) {
             case ImGuiInputTextFlags_CallbackResize:
@@ -34,5 +36,15 @@ namespace Carrot::ImGui {
 
     inline bool InputText(const char* label, std::string& str, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None) {
         return ::ImGui::InputText(label, &str, flags, StdStringInputCallback);
+    }
+
+    inline void UnformattedWTextWrapped(std::u8string_view wideText) {
+        std::string converted = Carrot::toString(wideText);
+        ::ImGui::TextWrapped("%s", converted.c_str());
+    }
+
+    inline void UnformattedWText(const std::u8string& wideText) {
+        std::string converted = Carrot::toString(wideText);
+        ::ImGui::Text("%s", converted.c_str());
     }
 }

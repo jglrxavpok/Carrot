@@ -5,38 +5,63 @@
 #pragma once
 
 #include <filesystem>
+#include <cstdint>
+#include "engine/utils/stringmanip.h"
 
 namespace Carrot::IO {
-    enum class FileFormat {
+    enum class FileFormat: std::uint8_t {
+        UNKNOWN = 0,
+
         PNG,
         JPEG,
+        ImageFirst = PNG,
+        ImageLast = JPEG,
+
+        FBX,
+        OBJ,
+        ModelFirst = FBX,
+        ModelLast = OBJ,
     };
 
     constexpr bool isImageFormat(FileFormat format) {
-        switch (format) {
-            case FileFormat::PNG:
-            case FileFormat::JPEG:
-                return true;
-
-            default: return false;
-        }
+        return format >= FileFormat::ImageFirst && format <= FileFormat::ImageLast;
     }
 
-    inline bool isImageFormat(const char* fileFormat) {
-        if(_stricmp(fileFormat, ".png") == 0) {
-            return true;
+    constexpr bool isModelFormat(FileFormat format) {
+        return format >= FileFormat::ModelFirst && format <= FileFormat::ModelLast;
+    }
+
+    inline FileFormat getFileFormat(const char* filepath) {
+        if(_stricmp(filepath, ".png") == 0) {
+            return FileFormat::PNG;
         }
-        if(_stricmp(fileFormat, ".jpeg") == 0) {
-            return true;
+        if(_stricmp(filepath, ".jpeg") == 0 || _stricmp(filepath, ".jpg") == 0) {
+            return FileFormat::JPEG;
         }
-        if(_stricmp(fileFormat, ".jpg") == 0) {
-            return true;
+        if(_stricmp(filepath, ".fbx") == 0) {
+            return FileFormat::FBX;
         }
-        return false;
+        if(_stricmp(filepath, ".obj") == 0) {
+            return FileFormat::OBJ;
+        }
+        return FileFormat::UNKNOWN;
+    }
+
+    inline bool isImageFormat(const char* filepath) {
+        return isImageFormat(getFileFormat(filepath));
     }
 
     inline bool isImageFormatFromPath(const std::filesystem::path& path) {
-        std::string extension = path.extension().string();
+        std::string extension = Carrot::toString(path.extension().u8string());
         return isImageFormat(extension.c_str());
+    }
+
+    inline bool isModelFormat(const char* filepath) {
+        return isModelFormat(getFileFormat(filepath));
+    }
+
+    inline bool isModelFormatFromPath(const std::filesystem::path& path) {
+        std::string extension = Carrot::toString(path.extension().u8string());
+        return isModelFormat(extension.c_str());
     }
 }

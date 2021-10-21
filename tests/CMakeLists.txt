@@ -19,6 +19,7 @@ make_test(Resources)
 make_test(Network-Client)
 make_test(Network-Server)
 make_test(Lua)
+make_test(GeneralMaterials)
 
 enable_testing()
 
@@ -34,3 +35,5 @@ target_link_libraries(
 
 include(GoogleTest)
 gtest_discover_tests(Engine-Tests)
+
+copy_all_resources()

@@ -69,19 +69,19 @@ namespace Carrot::ECS {
             inInspector = this;
             path = sprite->getTexture().getOriginatingResource().getName();
         }
-        if(Carrot::ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if(ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path));
             modified = true;
         }
-        if(::ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ::ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char[]> buffer = std::make_unique<char[]>(payload->DataSize+1);
-                std::memcpy(buffer.get(), static_cast<const char *>(payload->Data), payload->DataSize);
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+1);
+                std::memcpy(buffer.get(), static_cast<const void*>(payload->Data), payload->DataSize);
                 buffer.get()[payload->DataSize] = '\0';
 
-                std::string newPath = buffer.get();
+                std::u8string newPath = buffer.get();
 
-                std::filesystem::path fsPath = std::filesystem::relative(newPath, std::filesystem::current_path());
+                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
                     sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str()));
                     inInspector = nullptr;
@@ -89,7 +89,7 @@ namespace Carrot::ECS {
                 }
             }
 
-            ::ImGui::EndDragDropTarget();
+            ImGui::EndDragDropTarget();
         }
 
         auto& region = sprite->getTextureRegion();
@@ -98,10 +98,10 @@ namespace Carrot::ECS {
         float minV = region.getMinY();
         float maxU = region.getMaxX();
         float maxV = region.getMaxY();
-        if(::ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
-        |  ::ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
-        |  ::ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
-        |  ::ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
+        if(ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
+        |  ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
+        |  ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
+        |  ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
             recompute = true;
         }
 

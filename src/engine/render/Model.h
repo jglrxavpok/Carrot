@@ -61,7 +61,7 @@ namespace Carrot {
 
         Carrot::IO::Resource resource; // resource from which this model comes. Used for serialisation
 
-        std::shared_ptr<Mesh> loadMesh(Carrot::VertexFormat vertexFormat, const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices);
+        std::shared_ptr<Mesh> loadMesh(const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices);
 
         void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
 

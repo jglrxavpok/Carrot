@@ -61,32 +61,32 @@ namespace Carrot::ECS {
                 path = "";
             }
         }
-        if(Carrot::ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             model = Engine::getInstance().getRenderer().getOrCreateModel(path);
             modified = true;
         }
 
-        if(::ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ::ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char[]> buffer = std::make_unique<char[]>(payload->DataSize+1);
-                std::memcpy(buffer.get(), static_cast<const char *>(payload->Data), payload->DataSize);
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
                 buffer.get()[payload->DataSize] = '\0';
 
-                std::string newPath = buffer.get();
+                std::filesystem::path newPath = buffer.get();
 
-                std::filesystem::path fsPath = std::filesystem::relative(newPath, std::filesystem::current_path());
-                if(!std::filesystem::is_directory(fsPath)/* && Carrot::IO::isImageFormatFromPath(fsPath) TODO: isModelFormat */) {
-                    model = Engine::getInstance().getRenderer().getOrCreateModel(fsPath.string());
+                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
+                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
+                    model = Engine::getInstance().getRenderer().getOrCreateModel(Carrot::toString(fsPath.u8string()));
                     inInspector = nullptr;
                     modified = true;
                 }
             }
 
-            ::ImGui::EndDragDropTarget();
+            ImGui::EndDragDropTarget();
         }
 
         float colorArr[4] = { color.r, color.g, color.b, color.a };
-        if(::ImGui::ColorPicker4("Model color", colorArr)) {
+        if(ImGui::ColorPicker4("Model color", colorArr)) {
             color = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
             modified = true;
         }
