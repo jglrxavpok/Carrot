@@ -165,8 +165,6 @@ namespace Carrot {
 
         std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers();
 
-        std::shared_ptr<Material> getOrCreateMaterial(const std::string& name);
-
         /// Creates a set with the graphics and transfer family indices
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
@@ -401,7 +399,6 @@ namespace Carrot {
         std::vector<vk::UniqueFence> inFlightFences{};
         std::vector<vk::UniqueFence> imagesInFlight{};
 
-        std::unordered_map<std::string, std::shared_ptr<Material>> materials{}; // TODO: is it still used? If so, move to VulkanRenderer
         std::list<Carrot::Render::Viewport> viewports;
 
         bool framebufferResized = false;

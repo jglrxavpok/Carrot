@@ -30,6 +30,10 @@ layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
 const vec3 sunDirection = vec3(1,1,1);
+/*
+layout(push_constant) uniform LightingParameters {
+    bool lit;
+} lightParameters;*/
 
 void main() {
     vec4 outColorWorld;

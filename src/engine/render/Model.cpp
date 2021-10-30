@@ -9,7 +9,6 @@
 #include <assimp/IOSystem.hpp>
 #include <assimp/IOStream.hpp>
 #include "engine/render/resources/Mesh.h"
-#include "engine/render/Material.h"
 #include <iostream>
 #include <engine/utils/stringmanip.h>
 #include "engine/render/resources/Pipeline.h"

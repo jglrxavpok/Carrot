@@ -49,6 +49,37 @@ namespace Carrot {
     };
 
     class Pipeline: public SwapchainAware {
+    public:
+        explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
+
+        void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
+
+        void bindDescriptorSets(vk::CommandBuffer& commands, const std::vector<vk::DescriptorSet>& descriptors, const std::vector<std::uint32_t>& dynamicOffsets, std::uint32_t firstSet = 0) const;
+
+        void recreateDescriptorPool(std::uint32_t imageCount);
+
+        const vk::PushConstantRange& getPushConstant(std::string_view name) const;
+
+    public:
+        [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
+        [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout() const;
+        const std::vector<vk::DescriptorSet>& getDescriptorSets0() const;
+
+        VertexFormat getVertexFormat() const;
+
+    public:
+        PipelineDescription& getDescription() {
+            return description;
+        }
+
+    public:
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    public:
+        static PipelineType getPipelineType(const std::string& name);
 
     private:
         struct {
@@ -109,48 +140,6 @@ namespace Carrot {
 
         void allocateDescriptorSets();
 
-        void updateTextureReservation(const vk::ImageView& textureView, TextureID id, size_t imageIndex);
-
         vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
-
-    public:
-        explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
-        explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
-
-        void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
-
-        void bindDescriptorSets(vk::CommandBuffer& commands, const std::vector<vk::DescriptorSet>& descriptors, const std::vector<std::uint32_t>& dynamicOffsets, std::uint32_t firstSet = 0) const;
-
-        void recreateDescriptorPool(std::uint32_t imageCount);
-
-        const vk::PushConstantRange& getPushConstant(std::string_view name) const;
-
-    public:
-        [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
-        [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout() const;
-        const std::vector<vk::DescriptorSet>& getDescriptorSets0() const;
-
-        VertexFormat getVertexFormat() const;
-
-    public:
-        PipelineDescription& getDescription() {
-            return description;
-        }
-
-    public:
-        MaterialID reserveMaterialSlot(const Material& material);
-
-        TextureID reserveTextureSlot(const vk::ImageView& textureView);
-
-        void updateMaterial(const Material& material);
-        void updateMaterial(const Material& material, MaterialID materialID);
-
-    public:
-        void onSwapchainImageCountChange(size_t newCount) override;
-
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
-
-    public:
-        static PipelineType getPipelineType(const std::string& name);
     };
 }

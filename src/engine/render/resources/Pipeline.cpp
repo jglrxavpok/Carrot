@@ -9,7 +9,6 @@
 #include <rapidjson/document.h>
 #include "engine/io/IO.h"
 #include "engine/render/DrawData.h"
-#include "engine/render/Material.h"
 #include "Vertex.h"
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/MaterialSystem.h"
@@ -259,17 +258,6 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .subpass = static_cast<std::uint32_t>(description.subpassIndex),
     };
 
-    if(description.type == PipelineType::GBuffer) {
-        materialStorageBuffer = make_unique<Buffer>(driver,
-                                                    sizeof(MaterialData)*maxMaterialID,
-                                                    vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
-                                                    vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                                    driver.createGraphicsAndTransferFamiliesSet());
-        std::vector<char> zeroes{};
-        zeroes.resize(materialStorageBuffer->getSize());
-        materialStorageBuffer->stageUploadWithOffsets(std::make_pair(static_cast<std::uint64_t>(0), zeroes));
-    }
-
     recreateDescriptorPool(driver.getSwapchainImageCount());
 }
 
@@ -354,38 +342,6 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 void Carrot::Pipeline::allocateDescriptorSets() {
     driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     descriptorSets0 = allocateDescriptorSets0();
-
-    if(description.type == PipelineType::GBuffer) {
-        /*for(std::uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
-            vk::DescriptorBufferInfo storageBufferInfo{
-                    .buffer = materialStorageBuffer->getVulkanBuffer(),
-                    .offset = 0,
-                    .range = materialStorageBuffer->getSize(),
-            };
-            std::vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer* /};
-            writes[0].dstSet = descriptorSets0[imageIndex];
-            writes[0].descriptorCount = 1;
-            writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
-            writes[0].pBufferInfo = &storageBufferInfo;
-            writes[0].dstBinding = description.materialStorageBufferBindingIndex;
-
-            writes[1].dstSet = descriptorSets0[imageIndex];
-            writes[1].descriptorCount = maxTextureID;
-            writes[1].descriptorType = vk::DescriptorType::eSampledImage;
-            writes[1].dstBinding = description.texturesBindingIndex;
-
-            std::vector<vk::DescriptorImageInfo> imageInfoStructs {maxTextureID};
-            writes[1].pImageInfo = imageInfoStructs.data();
-
-            for(TextureID textureID = 0; textureID < maxTextureID; textureID++) {
-                auto& info = imageInfoStructs[textureID];
-                info.imageView = driver.getDefaultTexture().getView();
-                info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-            }
-
-            driver.getLogicalDevice().updateDescriptorSets(writes, {});
-        }*/
-    }
 }
 
 std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
@@ -447,17 +403,6 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                     writeIndex++;
                 }
                 break;
-
-                // TODO: write default textures
-/*                case vk::DescriptorType::eSampledImage: {
-                    auto& image = images[writeIndex];
-                    image.imageView = *engine.getDefaultImageView();
-                    image.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-                    write.pImageInfo = images.data()+writeIndex;
-
-                    writeIndex++;
-                }
-                break;*/
             }
         }
     }
@@ -468,55 +413,6 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
 
 const std::vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets0() const {
     return descriptorSets0;
-}
-
-Carrot::MaterialID Carrot::Pipeline::reserveMaterialSlot(const Carrot::Material& material) {
-    if(materialID >= maxMaterialID) {
-        throw std::runtime_error("Max material id is " + std::to_string(maxMaterialID));
-    }
-    MaterialID id = materialID++;
-    updateMaterial(material, id);
-    return id;
-}
-
-Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::ImageView& textureView) {
-    if(textureID >= maxTextureID) {
-        throw std::runtime_error("Max texture id is " + std::to_string(maxTextureID));
-    }
-    TextureID id = textureID++;
-    reservedTextures[id] = textureView;
-
-    for(std::size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
-        updateTextureReservation(textureView, id, imageIndex);
-    }
-    return id;
-}
-
-void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView, TextureID id, std::size_t imageIndex) {
-    /*vk::DescriptorImageInfo imageInfo {
-            .imageView = textureView,
-            .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-    };
-    vk::WriteDescriptorSet write {
-            .dstSet = descriptorSets0[imageIndex],
-            .dstBinding = static_cast<std::uint32_t>(description.texturesBindingIndex),
-            .dstArrayElement = id,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eSampledImage,
-            .pImageInfo = &imageInfo
-    };
-    driver.getLogicalDevice().updateDescriptorSets(write, {});*/
-}
-
-void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, MaterialID materialID) {
-    /*MaterialData data = {
-        material.getTextureID(),
-    };
-    materialStorageBuffer->stageUploadWithOffset(static_cast<std::uint64_t>(materialID)*sizeof(MaterialData), &data);*/
-}
-
-void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {
-    updateMaterial(material, material.getMaterialID());
 }
 
 Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
@@ -540,14 +436,6 @@ Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) 
 
 void Carrot::Pipeline::onSwapchainImageCountChange(std::size_t newCount) {
     allocateDescriptorSets();
-
-    // pipeline will be refreshed, so update reserved slots
-    for(TextureID texID = 0; texID < textureID; texID++) {
-        auto& textureView = reservedTextures[texID];
-        for(std::size_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
-            updateTextureReservation(textureView, texID, imageIndex);
-        }
-    }
 }
 
 void Carrot::Pipeline::onSwapchainSizeChange(int newWidth, int newHeight) {

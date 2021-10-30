@@ -1,0 +1,29 @@
+# Blender MTL File: 'sofa_03_4k.blend'
+# Material Count: 2
+
+newmtl sofa_03
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump textures\\sofa_03_nor_gl_4k.exr
+map_Kd textures\\sofa_03_diff_4k.jpg
+map_Ns textures\\sofa_03_rough_4k.jpg
+
+newmtl sofa_03_fringe
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump textures\\sofa_03_nor_gl_4k.exr
+map_Kd textures\\sofa_03_diff_4k.jpg
+map_Ns textures\\sofa_03_rough_4k.jpg
+map_d textures\\sofa_03_opacity_4k.png

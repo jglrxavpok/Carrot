@@ -23,7 +23,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Image.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
         ${EngineRoot}render/resources/Texture.cpp
-        ${EngineRoot}render/Material.cpp
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
         ${EngineRoot}render/resources/Pipeline.cpp

@@ -23,7 +23,6 @@
 #include "engine/render/resources/Image.h"
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/Model.h"
-#include "engine/render/Material.h"
 #include "engine/render/resources/Vertex.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/InstanceData.h"
@@ -853,14 +852,6 @@ std::vector<std::shared_ptr<Carrot::Buffer>>& Carrot::Engine::getDebugUniformBuf
     return vkDriver.getDebugUniformBuffers();
 }
 
-std::shared_ptr<Carrot::Material> Carrot::Engine::getOrCreateMaterial(const std::string& name) {
-    auto it = materials.find(name);
-    if(it == materials.end()) {
-        materials[name] = std::make_shared<Material>(*this, name);
-    }
-    return materials[name];
-}
-
 void Carrot::Engine::createCameras() {
     auto center = glm::vec3(5*0.5f, 5*0.5f, 0);
 
@@ -1125,10 +1116,6 @@ void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     }
     globalFrameGraph->onSwapchainImageCountChange(newCount);
 
-    for(const auto& [name, mat]: materials) {
-        mat->onSwapchainImageCountChange(newCount);
-    }
-
     createSynchronizationObjects();
 
     game->onSwapchainImageCountChange(newCount);
@@ -1147,10 +1134,6 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
     }
 
     globalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
-
-    for(const auto& [name, mat]: materials) {
-        mat->onSwapchainSizeChange(newWidth, newHeight);
-    }
 
     game->onSwapchainSizeChange(newWidth, newHeight);
 

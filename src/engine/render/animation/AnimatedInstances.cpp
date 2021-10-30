@@ -20,7 +20,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     std::fill_n(animatedInstances, maxInstanceCount, AnimatedInstanceData{});
 
     std::map<MeshID, std::vector<vk::DrawIndexedIndirectCommand>> indirectCommands{};
-    auto meshes = model->getMeshes();
+    auto meshes = model->getSkinnedMeshes();
     uint64_t maxVertexCount = 0;
 
     for(const auto& mesh : meshes) {

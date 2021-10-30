@@ -1,9 +1,0 @@
-{
-  "pipeline": "gBufferWithBoneInfo",
-  "renderingPipeline": "gBufferWithBoneInfo",
-  "texture": "units/eye.png",
-  "ignoreInstanceColor": true,
-  "todo": [
-    "samplers", "uniforms (& buffers)"
-  ]
-}

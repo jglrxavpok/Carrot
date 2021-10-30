@@ -117,6 +117,23 @@ namespace Peeler {
             UIPlayBar(renderContext);
         }
         ImGui::End();
+
+        if(ImGui::Begin("Scene properties")) {
+            UISceneProperties(renderContext);
+        }
+        ImGui::End();
+    }
+
+    void Application::UISceneProperties(const Carrot::Render::Context& renderContext) {
+        if(ImGui::CollapsingHeader("Lighting")) {
+            if(ImGui::BeginMenu("Ambient color")) {
+                static float color[3] = {0};
+                if(ImGui::ColorPicker3("Ambient color picker", color)) {
+                    // TODO
+                }
+                ImGui::EndMenu();
+            }
+        }
     }
 
     void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {

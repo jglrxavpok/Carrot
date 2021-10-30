@@ -55,6 +55,7 @@ namespace Peeler {
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UIInspector(const Carrot::Render::Context& renderContext);
         void UIResourcesPanel(const Carrot::Render::Context& renderContext);
+        void UISceneProperties(const Carrot::Render::Context& renderContext);
 
     private:
         void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
