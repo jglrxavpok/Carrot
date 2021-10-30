@@ -360,6 +360,13 @@ namespace Carrot {
         static void registerUsertype(sol::state& destination);
 
     private:
+        /// allows to set the 'instance' static variable during construction. Big hack, but lets systems access the engine during their construction
+        struct SetterHack {
+            explicit SetterHack(Carrot::Engine* e) {
+                Carrot::Engine::instance = e;
+            }
+        } instanceSetterHack;
+
         Configuration config;
         Window window;
         double mouseX = 0.0;
@@ -374,13 +381,13 @@ namespace Carrot {
 #endif
 
         VulkanDriver vkDriver;
+        std::unique_ptr<ResourceAllocator> resourceAllocator;
         PresentThread presentThread;
         VulkanRenderer renderer;
         std::uint32_t lastFrameIndex = 0;
         std::uint32_t frames = 0;
         std::uint32_t swapchainImageIndexRightNow = 0;
 
-        std::unique_ptr<ResourceAllocator> resourceAllocator;
 
         vk::UniqueCommandPool tracyCommandPool{};
         std::vector<vk::CommandBuffer> tracyCommandBuffers{};

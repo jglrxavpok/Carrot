@@ -22,9 +22,4 @@ namespace Carrot {
             uuid3 = uuid.data3();
         }
     };
-
-    struct MaterialData {
-        uint32_t textureIndex;
-        uint32_t ignoreInstanceColor;
-    };
 }

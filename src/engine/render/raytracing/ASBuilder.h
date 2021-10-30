@@ -68,7 +68,7 @@ namespace Carrot {
         explicit ASBuilder(VulkanRenderer& renderer);
 
         template<typename VertexType>
-        std::vector<Carrot::GeometryInput*> addModelGeometries(const Model& model);
+        std::vector<Carrot::GeometryInput*> addModelGeometries(const Model& model, bool skinned);
 
         ///
         /// \param indexBuffer

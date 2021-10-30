@@ -1,23 +1,13 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 #include "draw_data.glsl"
 #include "includes/gbuffer.glsl"
+#include "includes/materials.glsl"
 
-layout(constant_id = 0) const uint MAX_TEXTURES = 16;
-layout(constant_id = 1) const uint MAX_MATERIALS = 16;
 
-struct MaterialData {
-    uint textureIndex;
-    bool ignoresInstanceColor;
-};
-
-layout(set = 0, binding = 1) uniform texture2D textures[MAX_TEXTURES];
-layout(set = 0, binding = 2) uniform sampler linearSampler;
-
-layout(set = 0, binding = 3) buffer MaterialBuffer {
-    MaterialData materials[MAX_MATERIALS];
-};
+MATERIAL_SYSTEM_SET(1)
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 uv;
@@ -34,11 +24,9 @@ layout(location = 4) out uvec4 entityID;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
-    MaterialData material = materials[instanceDrawData.materialIndex];
-    vec4 texColor = texture(sampler2D(textures[material.textureIndex], linearSampler), uv);
-    if(!material.ignoresInstanceColor) {
-        texColor *= instanceColor;
-    }
+    #define material materials[nonuniformEXT(instanceDrawData.materialIndex)]
+    vec4 texColor = texture(sampler2D(textures[nonuniformEXT(material.diffuseTexture)], linearSampler), uv);
+    texColor.a = 1.0;
     if(texColor.a < 0.01) {
         discard;
     }

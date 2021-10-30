@@ -90,7 +90,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
     auto& as = engine.getASBuilder();
     const float spacing = 0.5f;
-    auto meshes = animatedUnits->getModel().getMeshes();
+    auto meshes = animatedUnits->getModel().getSkinnedMeshes();
 
     std::vector<GeometryInput*> geometries{};
     for(int i = 0; i < maxInstanceCount; i++) {
@@ -138,7 +138,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     }
 
     // add map to AS
-    auto worldMesh = mapModel->getMeshes()[0];
+    auto worldMesh = mapModel->getStaticMeshes()[0];
     as.addGeometries<Vertex>(worldMesh->getBackingBuffer(), worldMesh->getIndexCount(), 0, worldMesh->getBackingBuffer(), worldMesh->getVertexCount(), {worldMesh->getVertexStartOffset()});
     as.addInstance(InstanceInput {
         .customInstanceIndex = static_cast<uint32_t>(geometries.size()),

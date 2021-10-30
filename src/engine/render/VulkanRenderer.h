@@ -13,6 +13,7 @@
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/RenderContext.h"
 #include "engine/render/RenderGraph.h"
+#include "engine/render/MaterialSystem.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
@@ -76,6 +77,7 @@ namespace Carrot {
 
         std::shared_ptr<Render::Texture>& getOrCreateTexture(const std::string& textureName);
         std::shared_ptr<Render::Texture>& getOrCreateTextureFullPath(const std::string& textureName);
+        std::shared_ptr<Render::Texture>& getOrCreateTextureFromResource(const Carrot::IO::Resource& from);
 
         std::shared_ptr<Model>& getOrCreateModel(const std::string& modelPath);
 
@@ -107,10 +109,14 @@ namespace Carrot {
 
         Engine& getEngine();
 
+        Render::MaterialSystem& getMaterialSystem() { return materialSystem; }
+
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
+
+        void onFrame(const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
@@ -137,6 +143,9 @@ namespace Carrot {
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
 
     public:
+        Render::Texture::Ref getDefaultImage();
+
+    public:
         static void registerUsertype(sol::state& destination);
 
     private:
@@ -148,6 +157,7 @@ namespace Carrot {
 
         std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         std::map<std::string, Render::Texture::Ref> textures{};
+        Render::MaterialSystem materialSystem;
         std::map<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};

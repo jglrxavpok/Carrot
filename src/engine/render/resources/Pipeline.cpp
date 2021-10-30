@@ -12,6 +12,7 @@
 #include "engine/render/Material.h"
 #include "Vertex.h"
 #include "engine/render/DebugBufferObject.h"
+#include "engine/render/MaterialSystem.h"
 #include "Mesh.h"
 #include "Mesh.ipp"
 #include <engine/io/Logging.hpp>
@@ -156,6 +157,9 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
         layouts.push_back(*descriptorSetLayout1);
     }
+    if(description.vertexFormat == VertexFormat::Vertex) { // FIXME: remove condition
+        layouts.push_back(GetRenderer().getMaterialSystem().getDescriptorSetLayout());
+    }
 
     if(description.reserveSet2ForCamera) {
         while(layouts.size() < 2) {
@@ -284,17 +288,24 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
 }
 
 void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
-    commands.bindPipeline(bindPoint, getOrCreatePipelineForRenderPass(pass));
+    auto& pipeline = getOrCreatePipelineForRenderPass(pass);
+    commands.bindPipeline(bindPoint, pipeline);
     if(description.reserveSet2ForCamera && description.vertexFormat != VertexFormat::SkinnedVertex) {
-        bindDescriptorSets(commands, {driver.getEmptyDescriptorSet()}, {}, 1);
+        //bindDescriptorSets(commands, {driver.getEmptyDescriptorSet()}, {}, 1);
         renderContext.renderer.bindCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
     }
     if(description.type == PipelineType::Blit || description.type == PipelineType::Skybox) {
         bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
     } else if(description.type == PipelineType::GBuffer) {
-        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+        if(description.vertexFormat == VertexFormat::Vertex || description.vertexFormat == VertexFormat::SkinnedVertex) { // FIXME hack to make sprites work
+            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+            renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
+        } else {
+            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+        }
     } else {
         bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+        renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
     }
 }
 
@@ -345,13 +356,13 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     descriptorSets0 = allocateDescriptorSets0();
 
     if(description.type == PipelineType::GBuffer) {
-        for(std::uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
+        /*for(std::uint64_t imageIndex = 0; imageIndex < driver.getSwapchainImageCount(); imageIndex++) {
             vk::DescriptorBufferInfo storageBufferInfo{
                     .buffer = materialStorageBuffer->getVulkanBuffer(),
                     .offset = 0,
                     .range = materialStorageBuffer->getSize(),
             };
-            std::vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer*/};
+            std::vector<vk::WriteDescriptorSet> writes{1+1 /*textures+material storage buffer* /};
             writes[0].dstSet = descriptorSets0[imageIndex];
             writes[0].descriptorCount = 1;
             writes[0].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
@@ -373,7 +384,7 @@ void Carrot::Pipeline::allocateDescriptorSets() {
             }
 
             driver.getLogicalDevice().updateDescriptorSets(writes, {});
-        }
+        }*/
     }
 }
 
@@ -482,7 +493,7 @@ Carrot::TextureID Carrot::Pipeline::reserveTextureSlot(const vk::ImageView& text
 }
 
 void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView, TextureID id, std::size_t imageIndex) {
-    vk::DescriptorImageInfo imageInfo {
+    /*vk::DescriptorImageInfo imageInfo {
             .imageView = textureView,
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
@@ -494,15 +505,14 @@ void Carrot::Pipeline::updateTextureReservation(const vk::ImageView& textureView
             .descriptorType = vk::DescriptorType::eSampledImage,
             .pImageInfo = &imageInfo
     };
-    driver.getLogicalDevice().updateDescriptorSets(write, {});
+    driver.getLogicalDevice().updateDescriptorSets(write, {});*/
 }
 
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material, MaterialID materialID) {
-    MaterialData data = {
+    /*MaterialData data = {
         material.getTextureID(),
-        material.ignoresInstanceColor(),
     };
-    materialStorageBuffer->stageUploadWithOffset(static_cast<std::uint64_t>(materialID)*sizeof(MaterialData), &data);
+    materialStorageBuffer->stageUploadWithOffset(static_cast<std::uint64_t>(materialID)*sizeof(MaterialData), &data);*/
 }
 
 void Carrot::Pipeline::updateMaterial(const Carrot::Material& material) {

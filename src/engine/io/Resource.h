@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <memory>
@@ -14,7 +15,7 @@ namespace Carrot::IO {
         /// Creates empty resource
         explicit Resource();
 
-        Resource(const std::string filename);
+        Resource(const std::string& filename);
         Resource(const char* const filename);
 
         /// Copies data inside a shared vector
@@ -56,6 +57,11 @@ namespace Carrot::IO {
         /// For files, this reads the entire file to memory
         /// For in-memory resources, this copies to another memory are inside the heap
         [[nodiscard]] Carrot::IO::Resource copyToMemory() const;
+
+        /// Gets a relative resource based on this resource path.
+        /// If this resource is memory-based, gets the file with the corresponding name
+        /// If the path given is absolute, the file will instead use that absolute path
+        Carrot::IO::Resource relative(const std::filesystem::path& path) const;
 
     public:
         void name(const std::string& name);

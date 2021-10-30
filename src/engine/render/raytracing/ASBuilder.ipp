@@ -6,11 +6,11 @@
 // Logic based on NVIDIA nvpro-samples tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
 
 template<typename VertexType>
-std::vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carrot::Model& model) {
+std::vector<Carrot::GeometryInput*> Carrot::ASBuilder::addModelGeometries(const Carrot::Model& model, bool skinned) {
     if(!enabled)
         return {};
     std::vector<Carrot::GeometryInput*> geometries{};
-    for(const auto& mesh : model.getMeshes()) {
+    for(const auto& mesh : skinned ? model.getSkinnedMeshes() : model.getStaticMeshes()) {
         auto geom = addGeometries<VertexType>(mesh->getBackingBuffer(), mesh->getIndexCount(), 0, mesh->getBackingBuffer(), mesh->getVertexCount(), {mesh->getVertexStartOffset()});
         geometries.push_back(geom);
     }

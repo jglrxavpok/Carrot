@@ -7,6 +7,7 @@
 #include <vector>
 #include "BufferView.h"
 #include "ResourceAllocator.h"
+#include "engine/Engine.h"
 #include <engine/utils/Macros.h>
 
 Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
@@ -123,7 +124,7 @@ vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
 }
 
 Carrot::BufferView Carrot::Buffer::getWholeView() {
-    return BufferView(nullptr, *this, 0u, static_cast<vk::DeviceSize>(size));
+    return BufferView(nullptr /* allocator does NOT own this buffer view */, *this, 0u, static_cast<vk::DeviceSize>(size));
 }
 
 void Carrot::Buffer::flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length) {

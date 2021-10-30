@@ -120,6 +120,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                                         vk::Format::eR8G8B8A8Unorm);
 
     image->stageUpload(std::span<std::uint8_t>{pixels, static_cast<std::size_t>((width*height)*4) });
+    image->name(resource.getName());
 
     stbi_image_free(pixels);
 

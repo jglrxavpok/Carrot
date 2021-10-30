@@ -89,6 +89,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/TextureAtlas.cpp
         ${EngineRoot}render/Viewport.cpp
         ${EngineRoot}render/RenderContext.cpp
+        ${EngineRoot}render/MaterialSystem.cpp
 
         ${EngineRoot}expressions/Expressions.cpp
         ${EngineRoot}console/Console.cpp
@@ -133,7 +134,6 @@ set(VR_SOURCES
 
 set(VERTEX_SHADERS
         ${ProjectRoot}resources/shaders/gBuffer.vertex.glsl
-        ${ProjectRoot}resources/shaders/gBufferWithBoneInfo.vertex.glsl
         ${ProjectRoot}resources/shaders/screenQuad.vertex.glsl
         ${ProjectRoot}resources/shaders/skybox.vertex.glsl
         ${ProjectRoot}resources/shaders/particles.vertex.glsl

@@ -20,3 +20,8 @@ namespace Carrot::Exceptions {
 
 #define TODO throw Carrot::Exceptions::TodoException();
 #define DISCARD(x) static_cast<void>((x))
+#define GetEngine() Carrot::Engine::getInstance()
+#define GetRenderer() GetEngine().getRenderer()
+#define GetVulkanDriver() GetEngine().getVulkanDriver()
+#define GetResourceAllocator() GetEngine().getResourceAllocator()
+#define GetVulkanDevice() GetVulkanDriver().getLogicalDevice()

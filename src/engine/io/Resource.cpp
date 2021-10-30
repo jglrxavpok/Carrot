@@ -15,7 +15,7 @@ namespace Carrot::IO {
         name(filename);
     }
 
-    Resource::Resource(const std::string filename): data(false) {
+    Resource::Resource(const std::string& filename): data(false) {
         data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
         name(filename);
     }
@@ -176,6 +176,16 @@ namespace Carrot::IO {
 
     bool Resource::isFile() const {
         return !data.isRawData;
+    }
+
+    Carrot::IO::Resource Resource::relative(const std::filesystem::path& path) const {
+        if(!isFile() || path.is_absolute()) {
+            return { path.string() };
+        }
+        std::filesystem::path fullPath = getName();
+        fullPath = fullPath.parent_path();
+        fullPath /= path;
+        return { fullPath.string() };
     }
 
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {}

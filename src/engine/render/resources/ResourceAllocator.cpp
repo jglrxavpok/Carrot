@@ -24,5 +24,5 @@ std::unique_ptr<Carrot::Buffer> Carrot::ResourceAllocator::allocateDedicatedBuff
 
 void Carrot::ResourceAllocator::freeBufferView(Carrot::BufferView& view) {
     // TODO: proper allocation algorithm
-    allocatedBuffers.erase(find_if(allocatedBuffers.begin(), allocatedBuffers.end(), [&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); }));
+    std::erase_if(allocatedBuffers, [&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); });
 }

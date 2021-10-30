@@ -9,6 +9,7 @@
 #include "engine/utils/Assert.h"
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
+#include "engine/render/MaterialSystem.h"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     ZoneScoped;
@@ -59,6 +60,21 @@ std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTex
         textures[textureName] = move(texture);
     }
     return textures[textureName];
+}
+
+std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
+    if(from.isFile()) {
+        const auto& textureName = from.getName();
+        auto it = textures.find(textureName);
+        if(it == textures.end()) {
+            auto texture = std::make_unique<Carrot::Render::Texture>(driver, std::move(from));
+            textures[textureName] = move(texture);
+        }
+        return textures[textureName];
+    } else {
+        auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+        return texture;
+    }
 }
 
 std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
@@ -182,6 +198,7 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
 void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
+    materialSystem.onSwapchainImageCountChange(newCount);
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainImageCountChange(newCount);
     }
@@ -190,7 +207,7 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
 void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
     raytracer->onSwapchainSizeChange(newWidth, newHeight);
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
-
+    materialSystem.onSwapchainSizeChange(newWidth, newHeight);
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainSizeChange(newWidth, newHeight);
     }
@@ -332,6 +349,10 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
     cmds.blitImage(source.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, destination.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
 }
 
+void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
+    materialSystem.onFrame(renderContext);
+}
+
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
     return driver.getEngine();
 }
@@ -414,4 +435,8 @@ void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Ca
     pipeline->bind(pass, frame, cmds);
     getFullscreenQuad().bind(cmds);
     getFullscreenQuad().draw(cmds);
+}
+
+Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
+    return getOrCreateTexture("default.png");
 }

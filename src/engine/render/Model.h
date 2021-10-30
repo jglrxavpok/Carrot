@@ -12,6 +12,7 @@
 #include "engine/render/resources/VertexFormat.h"
 #include "engine/render/animation/Animation.h"
 #include "engine/Engine.h"
+#include "engine/render/MaterialSystem.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -36,9 +37,8 @@ namespace Carrot {
         /// \param drawCount
         void indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<Carrot::MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID = Carrot::UUID::null());
 
-        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getMeshes() const;
-
-        [[nodiscard]] const std::map<MaterialID, std::vector<std::shared_ptr<Mesh>>> getMaterialToMeshMap() const;
+        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getStaticMeshes() const;
+        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getSkinnedMeshes() const;
 
         Carrot::Buffer& getAnimationDataBuffer();
 
@@ -47,8 +47,11 @@ namespace Carrot {
 
     private:
         Carrot::Engine& engine;
-        std::map<Material*, std::vector<std::shared_ptr<Mesh>>> meshes{};
-        std::vector<std::shared_ptr<Material>> materials{};
+        std::shared_ptr<Carrot::Pipeline> staticMeshesPipeline;
+        std::shared_ptr<Carrot::Pipeline> skinnedMeshesPipeline;
+        std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> staticMeshes{};
+        std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> skinnedMeshes{};
+        std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
 
         // TODO: move animations somewhere else?
         std::map<std::string, Animation*> animations{};

@@ -380,6 +380,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
             vk::PhysicalDeviceDescriptorIndexingFeatures {
                     .shaderStorageBufferArrayNonUniformIndexing = true,
+                    .descriptorBindingPartiallyBound = true,
                     .runtimeDescriptorArray = true,
             },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {

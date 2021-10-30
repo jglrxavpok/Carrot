@@ -61,6 +61,7 @@ static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 static std::unordered_set<int> activeJoysticks{};
 
 Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
+instanceSetterHack(this),
 #ifdef ENABLE_VR
 vrInterface(std::make_unique<VR::Interface>(*this)),
 #endif
@@ -69,6 +70,7 @@ vkDriver(window, config, this
     , *vrInterface
 #endif
 ),
+resourceAllocator(std::move(std::make_unique<ResourceAllocator>(vkDriver))),
 renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
                                                               std::vector<ScreenSpaceVertex> {
                                                                    { { -1, -1} },
@@ -112,7 +114,6 @@ void Carrot::Engine::init() {
     allocateGraphicsCommandBuffers();
     createTracyContexts();
 
-    resourceAllocator = std::make_unique<ResourceAllocator>(vkDriver);
     createViewport(); // main viewport
 
     // quickly render something on screen
@@ -664,6 +665,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
+        renderer.onFrame(newRenderContext(imageIndex, getMainViewport()));
         for(auto& v : viewports) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
             v.onFrame(renderContext);

@@ -6,6 +6,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
+#include <assimp/IOSystem.hpp>
+#include <assimp/IOStream.hpp>
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/Material.h"
 #include <iostream>
@@ -23,8 +25,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     Assimp::Importer importer{};
     const aiScene* scene = nullptr;
     {
-        auto buffer = file.readAll();
-        scene = importer.ReadFileFromMemory(buffer.get(), file.getSize(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
+        verify(file.isFile(), "In-memory models are not supported!");
+        scene = importer.ReadFile(file.getName(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
     }
 
     if(!scene) {
@@ -33,20 +35,36 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     Carrot::Log::info("Loading model %s", file.getName().c_str());
 
-    std::map<std::uint32_t, std::shared_ptr<Material>> materialMap{};
+    staticMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
+    skinnedMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");//engine.getRenderer().getOrCreatePipeline("gBufferWithBoneInfo");
+
+    std::unordered_map<std::uint32_t, std::shared_ptr<Render::MaterialHandle>> materialMap;
+    auto& materialSystem = engine.getRenderer().getMaterialSystem();
     for(std::size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
         const aiMaterial* mat = scene->mMaterials[materialIndex];
         std::string materialName = mat->GetName().data;
 
-        // TODO: remove ugly hack, maybe due to Assimp creating a default material?
-/*        if(materialName == "DefaultMaterial") {
-            continue;
-        }*/
+        auto handle = materialSystem.createMaterialHandle();
 
-        auto material = engine.getOrCreateMaterial(materialName);
-        materials.emplace_back(material);
-        meshes[material.get()] = {};
-        materialMap[materialIndex] = material;
+        std::size_t count = mat->GetTextureCount(aiTextureType_DIFFUSE);
+        if(count > 0) {
+            if(count > 1) {
+                Carrot::Log::warn("Model '%s' has %d diffuse textures. Carrot only supports 1. Only the first texture will be used");
+            }
+            aiString path;
+            mat->GetTexture(aiTextureType_DIFFUSE, 0, &path);
+            Carrot::IO::Resource from;
+            try {
+                from = file.relative(std::string(path.C_Str()));
+                auto texture = materialSystem.createTextureHandle(GetRenderer().getOrCreateTextureFromResource(from));
+                handle->diffuseTexture = texture;
+            } catch (std::runtime_error& e) {
+                Carrot::Log::warn("Failed to open texture '%s'", path.C_Str());
+            }
+        }
+
+        materialMap[materialIndex] = handle;
+        materials.push_back(handle);
     }
 
     std::unordered_map<std::string, std::uint32_t> boneMapping{};
@@ -55,11 +73,16 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
-        auto material = materialMap[mesh->mMaterialIndex];
         auto loadedMesh = loadMesh(mesh, boneMapping, offsetMatrices);
-
+        auto& material = materialMap[mesh->mMaterialIndex];
+        bool usesSkinning = mesh->HasBones();
         loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
-        meshes[material.get()].push_back(loadedMesh);
+
+        if(usesSkinning) {
+            skinnedMeshes[material->getSlot()].push_back(loadedMesh);
+        } else {
+            staticMeshes[material->getSlot()].push_back(loadedMesh);
+        }
     }
 
     if(scene->HasAnimations()) {
@@ -176,19 +199,24 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
 
     DrawData data;
     data.setUUID(entityID);
-    for(const auto& material : materials) {
-        material->bindForRender(data, pass, renderContext, commands);
-
-        renderContext.renderer.pushConstantBlock<DrawData>("drawData", material->getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
-
-        if(!animations.empty()) {
-            material->getRenderingPipeline().bindDescriptorSets(commands, {animationDescriptorSets[renderContext.swapchainIndex]}, {}, 1);
+    auto draw = [&](auto meshes, auto& pipeline) {
+        for(const auto& [mat, meshList] : meshes) {
+            for(const auto& mesh : meshList) {
+                data.materialIndex = mat;
+                renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
+                mesh->bind(commands);
+                mesh->draw(commands, instanceCount);
+            }
         }
+    };
+    if(!staticMeshes.empty()) {
+        staticMeshesPipeline->bind(pass, renderContext, commands);
+        draw(staticMeshes, *staticMeshesPipeline);
+    }
 
-        for(const auto& mesh : meshes[material.get()]) {
-            mesh->bind(commands);
-            mesh->draw(commands, instanceCount);
-        }
+    if(!skinnedMeshes.empty()) {
+        skinnedMeshesPipeline->bind(pass, renderContext, commands);
+        draw(skinnedMeshes, *skinnedMeshesPipeline);
     }
 }
 
@@ -197,15 +225,25 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
 
     DrawData data;
     data.setUUID(entityID);
-    for(const auto& material : materials) {
-        material->bindForRender(data, pass, renderContext, commands);
 
-        renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", material->getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
-        for(const auto& mesh : meshes[material.get()]) {
-            mesh->bindForIndirect(commands);
-            //mesh->bind(commands);
-            mesh->indirectDraw(commands, *indirectDrawCommands.at(mesh->getMeshID()), drawCount);
+    auto draw = [&](auto meshes, auto& pipeline) {
+        for(const auto& [mat, meshList] : meshes) {
+            for(const auto& mesh : meshList) {
+                data.materialIndex = mat;
+                renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
+                mesh->bindForIndirect(commands);
+                mesh->indirectDraw(commands, *indirectDrawCommands.at(mesh->getMeshID()), drawCount);
+            }
         }
+    };
+    if(!staticMeshes.empty()) {
+        staticMeshesPipeline->bind(pass, renderContext, commands);
+        draw(staticMeshes, *staticMeshesPipeline);
+    }
+
+    if(!skinnedMeshes.empty()) {
+        skinnedMeshesPipeline->bind(pass, renderContext, commands);
+        draw(skinnedMeshes, *skinnedMeshesPipeline);
     }
 }
 
@@ -361,9 +399,9 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
     }
 }
 
-std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
+std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getSkinnedMeshes() const {
     std::vector<std::shared_ptr<Mesh>> result{};
-    for(const auto& [material, meshes] : meshes) {
+    for(const auto& [material, meshes] : skinnedMeshes) {
         for(const auto& mesh : meshes) {
             result.push_back(mesh);
         }
@@ -371,10 +409,12 @@ std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getMeshes() const {
     return result;
 }
 
-const std::map<Carrot::MaterialID, std::vector<std::shared_ptr<Carrot::Mesh>>> Carrot::Model::getMaterialToMeshMap() const {
-    std::map<MaterialID, std::vector<std::shared_ptr<Mesh>>> result{};
-    for(const auto& [material, meshList] : meshes) {
-        result[material->getMaterialID()] = meshList;
+std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getStaticMeshes() const {
+    std::vector<std::shared_ptr<Mesh>> result{};
+    for(const auto& [material, meshes] : staticMeshes) {
+        for(const auto& mesh : meshes) {
+            result.push_back(mesh);
+        }
     }
     return result;
 }
