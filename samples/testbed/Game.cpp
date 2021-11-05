@@ -21,7 +21,7 @@
 #include <engine/ecs/components/Transform.h>
 #include <engine/ecs/components/AnimatedModelInstance.h>
 #include <engine/ecs/components/ForceSinPosition.h>
-#include <engine/ecs/components/RaycastedShadowsLight.h>
+#include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/systems/SystemUpdateAnimatedModelInstance.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemUpdateLightPosition.h>
@@ -150,11 +150,10 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     as.buildBottomLevelAS();
     as.buildTopLevelAS(false, true);
 
-    // TODO: light ID booking system
-    auto& light = engine.getRayTracer().getLightBuffer().lights[0];
+    auto light = GetRenderer().getLighting().create();
     auto dynLight = world.newEntity()
             .addComponent<Transform>()
-            .addComponent<RaycastedShadowsLight>(light)
+            .addComponent<LightComponent>(light)
             .addComponent<ForceSinPosition>();
 
     auto sinPosition = dynLight.getComponent<ForceSinPosition>();
@@ -163,14 +162,14 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
     sinPosition->amplitude = {1, 2, 0.2};
     sinPosition->centerPosition = {2,2,1};
 
-    auto& sun = engine.getRayTracer().getLightBuffer().lights[1];
-    sun.type = Carrot::LightType::Directional;
-    sun.color = glm::vec3(1.0, 1.0, 0.995);
-    sun.direction = glm::vec3(1, 1, -1);
-    sun.intensity = 0.2f;
+    auto sun = GetRenderer().getLighting().create();
+    sun->light.type = Carrot::Render::LightType::Directional;
+    sun->light.color = glm::vec3(1.0, 1.0, 0.995);
+    sun->light.direction = glm::vec3(1, 1, -1);
+    sun->light.intensity = 0.2f;
 
     world.newEntity()
-            .addComponent<RaycastedShadowsLight>(sun);
+            .addComponent<LightComponent>(sun);
 
     // prepare for first frame
     world.tick(0);

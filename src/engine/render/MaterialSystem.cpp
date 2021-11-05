@@ -9,20 +9,20 @@
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 4;
 
-    TextureHandle::TextureHandle(MaterialSystem& system, std::uint32_t index): materialSystem(system), index(index) {
+    TextureHandle::TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
 
     }
 
     void TextureHandle::updateHandle(const Carrot::Render::Context& renderContext) {
         auto& boundTextures = materialSystem.boundTextures[renderContext.swapchainIndex];
         auto imageViewToBind = texture ? texture->getView() : GetRenderer().getDefaultImage()->getView();
-        auto it = boundTextures.find(index);
+        auto it = boundTextures.find(getSlot());
 
         if(it != boundTextures.end() && it->second == imageViewToBind) {
             return;
         }
 
-        boundTextures[index] = imageViewToBind;
+        boundTextures[getSlot()] = imageViewToBind;
         vk::DescriptorImageInfo imageInfo {
                 .sampler = nullptr,
                 .imageView = imageViewToBind,
@@ -31,7 +31,7 @@ namespace Carrot::Render {
         vk::WriteDescriptorSet write {
                 .dstSet = materialSystem.descriptorSets[renderContext.swapchainIndex],
                 .dstBinding = 1,
-                .dstArrayElement = index,
+                .dstArrayElement = getSlot(),
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eSampledImage,
                 .pImageInfo = &imageInfo,
@@ -39,11 +39,7 @@ namespace Carrot::Render {
         GetVulkanDevice().updateDescriptorSets(write, {});
     }
 
-    TextureHandle::~TextureHandle() {
-        materialSystem.free(*this);
-    }
-
-    MaterialHandle::MaterialHandle(MaterialSystem& system, std::uint32_t index): materialSystem(system), index(index) {
+    MaterialHandle::MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
 
     }
 
@@ -52,10 +48,6 @@ namespace Carrot::Render {
         if(diffuseTexture) {
             data->diffuseTexture = diffuseTexture->getSlot();
         }
-    }
-
-    MaterialHandle::~MaterialHandle() {
-        materialSystem.free(*this);
     }
 
     MaterialSystem::MaterialSystem() {
@@ -124,14 +116,6 @@ namespace Carrot::Render {
         reallocateDescriptorSets();
     }
 
-    void MaterialSystem::free(MaterialHandle& handle) {
-        free(handle, materialHandles, freeMaterialSlots);
-    }
-
-    void MaterialSystem::free(TextureHandle& handle) {
-        free(handle, textureHandles, freeTextureSlots);
-    }
-
     void MaterialSystem::onFrame(const Context& renderContext) {
         if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
             auto& set = descriptorSets[renderContext.swapchainIndex];
@@ -189,7 +173,7 @@ namespace Carrot::Render {
         }
 
         auto updateType = [&](auto registry) {
-            std::erase_if(registry, [](auto handlePtr) { return handlePtr.second.expired(); });
+            registry.erase(std::find_if(WHOLE_CONTAINER(registry), [](auto handlePtr) { return handlePtr.second.expired(); }), registry.end());
             for(auto& [slot, handlePtr] : registry) {
                 if(auto handle = handlePtr.lock()) {
                     handle->updateHandle(renderContext);
@@ -217,11 +201,11 @@ namespace Carrot::Render {
     }
 
     MaterialData* MaterialSystem::getData(MaterialHandle& handle) {
-        return &materialDataPtr[handle.index];
+        return &materialDataPtr[handle.getSlot()];
     }
 
     std::shared_ptr<MaterialHandle> MaterialSystem::createMaterialHandle() {
-        auto ptr = create<MaterialHandle>(materialHandles, freeMaterialSlots, nextMaterialID);
+        auto ptr = materialHandles.create(std::ref(*this));
         if(materialHandles.size() >= materialBufferSize) {
             reallocateMaterialBuffer(materialBufferSize*2);
         }
@@ -229,7 +213,7 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<TextureHandle> MaterialSystem::createTextureHandle(Texture::Ref texture) {
-        auto ptr = create<TextureHandle>(textureHandles, freeTextureSlots, nextTextureID);
+        auto ptr = textureHandles.create(std::ref(*this));
         ptr->texture = std::move(texture);
         return ptr;
     }

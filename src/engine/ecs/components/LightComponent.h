@@ -8,11 +8,11 @@
 #include <engine/render/lighting/Lights.h>
 
 namespace Carrot::ECS {
-    struct RaycastedShadowsLight: public IdentifiableComponent<RaycastedShadowsLight> {
-        Light& lightRef;
+    struct LightComponent: public IdentifiableComponent<LightComponent> {
+        std::shared_ptr<Render::LightHandle> lightRef;
 
-        explicit RaycastedShadowsLight(Entity entity, Light& light): IdentifiableComponent<RaycastedShadowsLight>(std::move(entity)), lightRef(light) {
-            light.enabled = true;
+        explicit LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(light) {
+            lightRef->light.enabled = true;
         };
 
         /* not serialisable for the moment
@@ -26,13 +26,13 @@ namespace Carrot::ECS {
         }
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<RaycastedShadowsLight>(newOwner, lightRef);
+            auto result = std::make_unique<LightComponent>(newOwner, lightRef);
             return result;
         }
     };
 }
 
 template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::RaycastedShadowsLight>::getStringRepresentation() {
+inline const char* Carrot::Identifiable<Carrot::ECS::LightComponent>::getStringRepresentation() {
     return "RaycastedShadowsLight";
 }

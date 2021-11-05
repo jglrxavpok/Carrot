@@ -14,6 +14,7 @@
 #include "engine/render/RenderContext.h"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/MaterialSystem.h"
+#include "engine/render/lighting/Lights.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
@@ -111,6 +112,8 @@ namespace Carrot {
 
         Render::MaterialSystem& getMaterialSystem() { return materialSystem; }
 
+        Render::Lighting& getLighting() { return lighting; }
+
     public:
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
@@ -158,6 +161,7 @@ namespace Carrot {
         std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         std::map<std::string, Render::Texture::Ref> textures{};
         Render::MaterialSystem materialSystem;
+        Render::Lighting lighting;
         std::map<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};

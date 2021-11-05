@@ -12,6 +12,7 @@
 #include "engine/vulkan/includes.h"
 #include "engine/render/RenderContext.h"
 #include "resources/Texture.h"
+#include <engine/utils/WeakPool.hpp>
 
 namespace Carrot::Render {
 
@@ -25,46 +26,35 @@ namespace Carrot::Render {
     };
 //#pragma pack(pop)
 
-    class TextureHandle {
+    class TextureHandle: public WeakPoolHandle {
     public:
         Texture::Ref texture;
 
-        /*[[deprecated]] */explicit TextureHandle(MaterialSystem& system, std::uint32_t index);
-        ~TextureHandle();
-
-        std::uint32_t getSlot() const { return index; }
+        /*[[deprecated]] */explicit TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 
         Texture::Ref previousTexture = nullptr;
         MaterialSystem& materialSystem;
-        std::uint32_t index;
         friend class MaterialSystem;
     };
 
-    class MaterialHandle {
+    class MaterialHandle: public WeakPoolHandle {
     public:
         std::shared_ptr<TextureHandle> diffuseTexture;
 
-        /*[[deprecated]] */explicit MaterialHandle(MaterialSystem& system, std::uint32_t index);
-        ~MaterialHandle();
-
-        std::uint32_t getSlot() const { return index; }
+        /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 
         MaterialSystem& materialSystem;
-        std::uint32_t index;
         friend class MaterialSystem;
     };
 
     class MaterialSystem: public SwapchainAware {
     public:
-        template<typename T>
-        using Registry = std::unordered_map<std::uint32_t, std::weak_ptr<T>>;
-
         constexpr static std::uint32_t MaxTextures = 1024;
 
         explicit MaterialSystem();
@@ -83,30 +73,6 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     private:
-        template<typename T>
-        std::shared_ptr<T> create(Registry<T>& registry, std::queue<std::uint32_t>& freeSlots, std::uint32_t& nextID) {
-            std::uint32_t slot;
-            if(!freeSlots.empty()) {
-                slot = freeSlots.back();
-                freeSlots.pop();
-            } else {
-                slot = nextID++;
-            }
-            auto ptr = std::make_shared<T>(*this, slot);
-            registry[slot] = ptr;
-            return ptr;
-        }
-
-        template<typename T>
-        void free(T& handle, Registry<T>& registry, std::queue<std::uint32_t>& freeSlots) {
-            registry.erase(handle.index);
-            freeSlots.push(handle.index);
-        }
-
-        void free(MaterialHandle& handle);
-        void free(TextureHandle& handle);
-
-    private:
         void reallocateDescriptorSets();
         void reallocateMaterialBuffer(std::uint32_t materialCount);
         MaterialData* getData(MaterialHandle& handle);
@@ -118,20 +84,15 @@ namespace Carrot::Render {
         std::vector<bool> descriptorNeedsUpdate;
 
     private:
-        Registry<TextureHandle> textureHandles;
-        std::queue<std::uint32_t> freeTextureSlots;
-        std::uint32_t nextTextureID = 1;
-
         std::vector<std::unordered_map<std::uint32_t, vk::ImageView>> boundTextures;
 
+        WeakPool<TextureHandle> textureHandles;
         vk::ImageView getBoundImageView(std::uint32_t index, const Carrot::Render::Context& renderContext);
 
     private:
         constexpr static std::uint32_t DefaultMaterialBufferSize = 16;
-        Registry<MaterialHandle> materialHandles;
-        std::queue<std::uint32_t> freeMaterialSlots;
-        std::uint32_t nextMaterialID = 1;
 
+        WeakPool<MaterialHandle> materialHandles;
         MaterialData* materialDataPtr = nullptr;
         std::size_t materialBufferSize = 0; // in number of materials
         std::unique_ptr<Carrot::Buffer> materialBuffer = nullptr;

@@ -4,9 +4,11 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
+#include "engine/utils/WeakPool.hpp"
+#include "engine/render/RenderContext.h"
 #include <glm/glm.hpp>
 
-namespace Carrot {
+namespace Carrot::Render {
     using bool32 = uint32_t;
 
     enum class LightType: std::uint32_t {
@@ -26,30 +28,60 @@ namespace Carrot {
         bool32 enabled = false;
     };
 
-    struct RaycastedShadowingLightBuffer {
-        alignas(16) glm::vec3 ambient{0.1f};
+    class Lighting;
+
+    class LightHandle: public WeakPoolHandle {
+    public:
+        Light light;
+
+        /*[[deprecated]] */explicit LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system);
 
     private:
-        std::uint32_t lightCount = 0;
+        void updateHandle(const Carrot::Render::Context& renderContext);
+
+        Lighting& lightingSystem;
+        friend class Lighting;
+    };
+
+    class Lighting {
+    public:
+        explicit Lighting();
 
     public:
-        alignas(16) Light lights[];
+        glm::vec3& getAmbientLight() { return ambientColor; }
 
-        static std::unique_ptr<RaycastedShadowingLightBuffer> create(std::uint32_t lightCount) {
-            auto* lightBuffer = (RaycastedShadowingLightBuffer*) malloc(sizeof(RaycastedShadowingLightBuffer) + lightCount * sizeof(Light));
+        std::shared_ptr<LightHandle> create();
 
-            // default init
-            lightBuffer->ambient = glm::vec3(0.6f);
-            lightBuffer->lightCount = lightCount;
-            for (int i = 0; i < lightCount; ++i) {
-                lightBuffer->lights[i] = Light{};
-            }
+        Buffer& getBuffer() const { return *lightBuffer; }
 
-            return std::unique_ptr<RaycastedShadowingLightBuffer>(lightBuffer);
+    public:
+        void onFrame(const Carrot::Render::Context& renderContext);
+
+    private:
+        Light& getLightData(LightHandle& handle) {
+            auto* lightPtr = reinterpret_cast<Light *>(data + offsetof(Data, lights));
+            return lightPtr[handle.getSlot()];
         }
 
-        size_t getStructSize() const {
-            return sizeof(RaycastedShadowingLightBuffer) + sizeof(Light) * lightCount;
-        }
+        void reallocateBuffer(std::uint32_t lightCount);
+
+    private:
+        constexpr static std::uint32_t DefaultLightBufferSize = 16;
+
+        WeakPool<LightHandle> lightHandles;
+        glm::vec3 ambientColor {1.0f};
+
+        struct Data {
+            alignas(16) glm::vec3 ambient {1.0f};
+            alignas(16) std::uint32_t lightCount;
+            alignas(16) Light lights[];
+        };
+
+        Data* data = nullptr;
+        std::size_t lightBufferSize = 0; // in number of lights
+        std::unique_ptr<Carrot::Buffer> lightBuffer = nullptr;
+
+
+        friend class LightHandle;
     };
 }

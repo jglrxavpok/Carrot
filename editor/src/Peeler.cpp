@@ -10,7 +10,7 @@
 #include <engine/ecs/components/Kinematics.h>
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/AnimatedModelInstance.h>
-#include <engine/ecs/components/RaycastedShadowsLight.h>
+#include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/systems/SpriteRenderSystem.h>
 #include <engine/ecs/systems/ModelRenderSystem.h>
 #include <ImGuizmo.h>

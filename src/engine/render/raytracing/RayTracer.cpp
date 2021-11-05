@@ -37,16 +37,6 @@ void Carrot::RayTracer::generateBuffers() {
                                                    vk::BufferUsageFlagBits::eStorageBuffer,
                                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
     }
-
-    lightBuffer = RaycastedShadowingLightBuffer::create(16);
-
-    lightVkBuffers.resize(renderer.getSwapchainImageCount());
-    for (int i = 0; i < renderer.getSwapchainImageCount(); ++i) {
-        lightVkBuffers[i] = std::make_unique<Buffer>(renderer.getVulkanDriver(),
-                                                     lightBuffer->getStructSize(),
-                                                     vk::BufferUsageFlagBits::eStorageBuffer,
-                                                     vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
-    }
 }
 
 void Carrot::RayTracer::onSwapchainRecreation() {
@@ -78,9 +68,6 @@ void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
         }
     }
     sceneBuffers[renderContext.swapchainIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));
-
-    lightVkBuffers[renderContext.swapchainIndex]->directUpload(lightBuffer.get(), lightBuffer->getStructSize());
-
 }
 
 void Carrot::RayTracer::recordCommands(Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
@@ -287,9 +274,9 @@ void Carrot::RayTracer::createSceneDescriptorSets() {
         };
 
         vk::DescriptorBufferInfo writeLights {
-                .buffer = lightVkBuffers[frameIndex]->getVulkanBuffer(),
+                .buffer = GetRenderer().getLighting().getBuffer().getVulkanBuffer(),
                 .offset = 0,
-                .range = lightBuffer->getStructSize(),
+                .range = VK_WHOLE_SIZE,
         };
 
         std::vector<vk::WriteDescriptorSet> writes = {
@@ -516,11 +503,6 @@ void Carrot::RayTracer::finishInit() {
     }
 
     hasStuffToDraw = true;
-}
-
-Carrot::RaycastedShadowingLightBuffer& Carrot::RayTracer::getLightBuffer() {
-    assert(enabled);
-    return *lightBuffer;
 }
 
 void Carrot::RayTracer::init() {

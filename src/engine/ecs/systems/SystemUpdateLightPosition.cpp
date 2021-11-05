@@ -6,8 +6,8 @@
 
 namespace Carrot::ECS {
     void SystemUpdateLightPosition::tick(double dt) {
-        forEachEntity([&](Entity& entity, Transform& transform, RaycastedShadowsLight& light) {
-            light.lightRef.position = transform.position;
+        forEachEntity([&](Entity& entity, Transform& transform, LightComponent& light) {
+            light.lightRef->light.position = transform.position;
         });
     }
 

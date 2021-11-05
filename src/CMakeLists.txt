@@ -89,6 +89,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Viewport.cpp
         ${EngineRoot}render/RenderContext.cpp
         ${EngineRoot}render/MaterialSystem.cpp
+        ${EngineRoot}render/lighting/Lights.cpp
 
         ${EngineRoot}expressions/Expressions.cpp
         ${EngineRoot}console/Console.cpp

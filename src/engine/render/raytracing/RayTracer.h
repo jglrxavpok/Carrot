@@ -33,8 +33,6 @@ namespace Carrot {
         vk::UniquePipeline pipeline;
         std::unique_ptr<Buffer> sbtBuffer;
         std::vector<std::unique_ptr<Buffer>> sceneBuffers{};
-        std::unique_ptr<RaycastedShadowingLightBuffer> lightBuffer;
-        std::vector<std::unique_ptr<Buffer>> lightVkBuffers{};
         std::size_t vertexBufferIndex = 0;
         std::size_t indexBufferIndex = 0;
 
@@ -68,8 +66,6 @@ namespace Carrot {
 
         void init();
         void finishInit();
-
-        RaycastedShadowingLightBuffer& getLightBuffer();
 
         void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
         void registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length);

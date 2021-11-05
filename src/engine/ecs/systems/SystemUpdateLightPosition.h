@@ -5,13 +5,13 @@
 #pragma once
 #include "engine/ecs/components/Component.h"
 #include "engine/ecs/components/Transform.h"
-#include "engine/ecs/components/RaycastedShadowsLight.h"
+#include "engine/ecs/components/LightComponent.h"
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemUpdateLightPosition: public LogicSystem<Transform, RaycastedShadowsLight> {
+    class SystemUpdateLightPosition: public LogicSystem<Transform, LightComponent> {
     public:
-        explicit SystemUpdateLightPosition(World& world): LogicSystem<Transform, RaycastedShadowsLight>(world) {}
+        explicit SystemUpdateLightPosition(World& world): LogicSystem<Transform, LightComponent>(world) {}
 
         void tick(double dt) override;
 

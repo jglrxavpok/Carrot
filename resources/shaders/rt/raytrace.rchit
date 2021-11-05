@@ -5,6 +5,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #include "raytrace.common.glsl"
+#include "../includes/lights.glsl"
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(location = 0) rayPayloadInEXT hitPayload payload;
@@ -22,20 +23,7 @@ layout(binding = 3, set = 1) buffer IndexBuffers {
     uint indices[];
 } indexBuffers[];
 
-struct Light {
-    vec3 position;
-    float intensity;
-    vec3 direction;
-    uint type;
-    vec3 color;
-    bool enabled;
-};
-
-layout(binding = 4, set = 1) buffer Lights {
-    vec3 ambientColor;
-    uint count;
-    Light l[];
-} lights;
+LIGHT_BUFFER(1, 4)
 
 hitAttributeEXT vec3 attribs;
 

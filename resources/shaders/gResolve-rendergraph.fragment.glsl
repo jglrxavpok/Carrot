@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 #include "includes/gbuffer.glsl"
+#include "includes/lights.glsl"
 
 layout(set = 0, binding = 0) uniform texture2D albedo;
 layout(set = 0, binding = 1) uniform texture2D depth;
@@ -30,10 +31,8 @@ layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
 const vec3 sunDirection = vec3(1,1,1);
-/*
-layout(push_constant) uniform LightingParameters {
-    bool lit;
-} lightParameters;*/
+
+LIGHT_BUFFER(1, 0)
 
 void main() {
     vec4 outColorWorld;
