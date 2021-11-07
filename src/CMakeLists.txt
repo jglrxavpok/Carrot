@@ -240,7 +240,7 @@ if (MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 endif()
 
-set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES})
+set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR)
 
 add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})

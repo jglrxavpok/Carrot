@@ -43,7 +43,7 @@ namespace Carrot::Render {
         friend class Lighting;
     };
 
-    class Lighting {
+    class Lighting: public SwapchainAware {
     public:
         explicit Lighting();
 
@@ -55,7 +55,15 @@ namespace Carrot::Render {
         Buffer& getBuffer() const { return *lightBuffer; }
 
     public:
+        void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
         void onFrame(const Carrot::Render::Context& renderContext);
+
+    public:
+        vk::DescriptorSetLayout getDescriptorSetLayout() const { return *descriptorSetLayout; }
+
+    public:
+        void onSwapchainImageCountChange(size_t newCount) override;
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     private:
         Light& getLightData(LightHandle& handle) {
@@ -64,6 +72,13 @@ namespace Carrot::Render {
         }
 
         void reallocateBuffer(std::uint32_t lightCount);
+        void reallocateDescriptorSets();
+
+    private:
+        vk::UniqueDescriptorSetLayout descriptorSetLayout{};
+        vk::UniqueDescriptorPool descriptorSetPool{};
+        std::vector<vk::DescriptorSet> descriptorSets;
+        std::vector<bool> descriptorNeedsUpdate;
 
     private:
         constexpr static std::uint32_t DefaultLightBufferSize = 16;
@@ -73,7 +88,7 @@ namespace Carrot::Render {
 
         struct Data {
             alignas(16) glm::vec3 ambient {1.0f};
-            alignas(16) std::uint32_t lightCount;
+            std::uint32_t lightCount;
             alignas(16) Light lights[];
         };
 

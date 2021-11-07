@@ -34,6 +34,9 @@
 [submodule "thirdparty/asio"]
     path = thirdparty/asio
     url = https://github.com/chriskohlhoff/asio
-[submodule "thirdparty/asio"]
+[submodule "thirdparty/ImGuizmo"]
     path = thirdparty/ImGuizmo
     url = https://github.com/jglrxavpok/ImGuizmo
+[submodule "thirdparty/openexr"]
+    path = thirdparty/openexr
+    url = https://github.com/AcademySoftwareFoundation/openexr

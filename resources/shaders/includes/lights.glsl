@@ -13,3 +13,5 @@ layout(set = setID, binding = bindingID) buffer Lights { \
     uint count; \
     Light l[]; \
 } lights;
+
+#define LIGHT_SET(setID) LIGHT_BUFFER(setID, 0)

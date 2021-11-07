@@ -847,11 +847,22 @@ namespace Peeler {
         engine.getVulkanDriver().getWindow().setTitle(Carrot::sprintf("Peeler - %s%s", projectName.c_str(), hasUnsavedChanges ? "*" : ""));
     }
 
+    static std::shared_ptr<Carrot::Render::LightHandle> lightHandle = nullptr;
+
     void Application::addDefaultSystems(Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
         scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
+
+
+        GetRenderer().getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
+        lightHandle = GetRenderer().getLighting().create();
+        auto& light = lightHandle->light;
+        light.enabled = true;
+        light.type = Carrot::Render::LightType::Point;
+        light.color = glm::vec3{0, 1, 1};
+        light.intensity = 2;
     }
 
     void Application::updateCurrentFolder(std::filesystem::path path) {

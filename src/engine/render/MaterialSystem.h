@@ -19,12 +19,10 @@ namespace Carrot::Render {
     class MaterialSystem;
 
     /// Data sent to the GPU
-//#pragma pack(push, 1)
     struct MaterialData {
         std::uint32_t diffuseTexture;
-        //std::uint32_t pad;
+        std::uint32_t normalMap;
     };
-//#pragma pack(pop)
 
     class TextureHandle: public WeakPoolHandle {
     public:
@@ -43,6 +41,7 @@ namespace Carrot::Render {
     class MaterialHandle: public WeakPoolHandle {
     public:
         std::shared_ptr<TextureHandle> diffuseTexture;
+        std::shared_ptr<TextureHandle> normalMap;
 
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 
@@ -76,6 +75,19 @@ namespace Carrot::Render {
         void reallocateDescriptorSets();
         void reallocateMaterialBuffer(std::uint32_t materialCount);
         MaterialData* getData(MaterialHandle& handle);
+
+    public:
+        std::shared_ptr<TextureHandle> getWhiteTexture() const { return whiteTextureHandle; }
+        std::shared_ptr<TextureHandle> getBlackTexture() const { return blackTextureHandle; }
+        std::shared_ptr<TextureHandle> getBlueTexture() const { return blueTextureHandle; }
+
+    private:
+        Texture::Ref whiteTexture = nullptr;
+        Texture::Ref blackTexture = nullptr;
+        Texture::Ref blueTexture = nullptr;
+        std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
 
     private:
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};

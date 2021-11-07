@@ -15,21 +15,23 @@ layout(set = 2, binding = 0) uniform CameraBufferObject {
 layout(location = 0) in vec4 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec2 inUV;
-layout(location = 4) in ivec4 boneIDs;
-layout(location = 5) in vec4 boneWeights;
+layout(location = 3) in vec3 inTangent;
+layout(location = 4) in vec2 inUV;
+layout(location = 5) in ivec4 boneIDs;
+layout(location = 6) in vec4 boneWeights;
 
 // Per instance
-layout(location = 6) in vec4 inInstanceColor;
-layout(location = 7) in mat4 inInstanceTransform;
-layout(location = 11) in uint animationIndex;
-layout(location = 12) in float animationTime;
+layout(location = 7) in vec4 inInstanceColor;
+layout(location = 8) in mat4 inInstanceTransform;
+layout(location = 12) in uint animationIndex;
+layout(location = 13) in float animationTime;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
+layout(location = 5) out vec3 outViewTangent;
 
 void main() {
     uv = inUV;
@@ -39,7 +41,8 @@ void main() {
 
     fragColor = inColor;
     instanceColor = inInstanceColor;
-    outViewPos = viewPosition.xyz/viewPosition.w;
+    outViewPos = viewPosition.xyz;
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * inNormal);
+    outViewTangent = normalize((transpose(inverse(mat3(modelview)))) * inTangent);
 }

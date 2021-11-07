@@ -37,7 +37,7 @@ void main() {
 
     fragColor = vec4(1.0);
     instanceColor = inInstanceColor;
-    outViewPos = viewPosition.xyz/viewPosition.w;
+    outViewPos = viewPosition.xyz;
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * vec3(0,0,1));
 

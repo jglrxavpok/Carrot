@@ -19,6 +19,9 @@ namespace Carrot {
         /// Vertex Normal
         alignas(16) glm::vec3 normal;
 
+        /// Vertex tangent
+        alignas(16) glm::vec3 tangent;
+
         /// UV coordinates
         alignas(16) glm::vec2 uv;
 
@@ -58,6 +61,9 @@ namespace Carrot {
 
         /// Vertex normal
         alignas(16) glm::vec3 normal;
+
+        /// Vertex tangent
+        alignas(16) glm::vec3 tangent;
 
         /// UV coordinates
         alignas(16) glm::vec2 uv;

@@ -12,10 +12,21 @@ namespace Carrot::IO {
     enum class FileFormat: std::uint8_t {
         UNKNOWN = 0,
 
+        // stb_image
         PNG,
         JPEG,
+        TGA,
+        BMP,
+        PSD,
+        GIF,
+        HDR,
+        PIC,
+        PNM,
+
+        EXR,
+
         ImageFirst = PNG,
-        ImageLast = JPEG,
+        ImageLast = EXR,
 
         FBX,
         OBJ,
@@ -32,18 +43,33 @@ namespace Carrot::IO {
     }
 
     inline FileFormat getFileFormat(const char* filepath) {
-        if(_stricmp(filepath, ".png") == 0) {
-            return FileFormat::PNG;
-        }
-        if(_stricmp(filepath, ".jpeg") == 0 || _stricmp(filepath, ".jpg") == 0) {
+        std::filesystem::path p = filepath;
+        std::u8string extensionU8 = p.extension().u8string();
+        std::string extension = Carrot::toString(extensionU8);
+#define CHECK(ext) \
+    do {           \
+        if(_stricmp(extension.c_str(), "." #ext) == 0) { \
+            return FileFormat:: ext; \
+        } \
+    } while(0)
+        CHECK(PNG);
+        CHECK(JPEG);
+        if(_stricmp(extension.c_str(), ".jpg") == 0) {
             return FileFormat::JPEG;
         }
-        if(_stricmp(filepath, ".fbx") == 0) {
-            return FileFormat::FBX;
-        }
-        if(_stricmp(filepath, ".obj") == 0) {
-            return FileFormat::OBJ;
-        }
+
+        CHECK(TGA);
+        CHECK(BMP);
+        CHECK(PSD);
+        CHECK(GIF);
+        CHECK(HDR);
+        CHECK(PIC);
+        CHECK(PNM);
+
+        CHECK(EXR);
+
+        CHECK(FBX);
+        CHECK(OBJ);
         return FileFormat::UNKNOWN;
     }
 
@@ -52,7 +78,7 @@ namespace Carrot::IO {
     }
 
     inline bool isImageFormatFromPath(const std::filesystem::path& path) {
-        std::string extension = Carrot::toString(path.extension().u8string());
+        std::string extension = Carrot::toString(path.u8string());
         return isImageFormat(extension.c_str());
     }
 
@@ -61,7 +87,7 @@ namespace Carrot::IO {
     }
 
     inline bool isModelFormatFromPath(const std::filesystem::path& path) {
-        std::string extension = Carrot::toString(path.extension().u8string());
+        std::string extension = Carrot::toString(path.u8string());
         return isModelFormat(extension.c_str());
     }
 }

@@ -7,7 +7,7 @@
 #include "engine/render/particles/Particles.h"
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{10};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{11};
 
     descriptions[0] = {
             .location = 0,
@@ -33,27 +33,34 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDes
     descriptions[3] = {
             .location = 3,
             .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = static_cast<uint32_t>(offsetof(Vertex, uv)),
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(Vertex, tangent)),
     };
 
     descriptions[4] = {
             .location = 4,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(Vertex, uv)),
+    };
+
+    descriptions[5] = {
+            .location = 5,
             .binding = 1,
             .format = vk::Format::eR32G32B32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
     };
 
-    descriptions[5] = {
-            .location = 5,
+    descriptions[6] = {
+            .location = 6,
             .binding = 1,
             .format = vk::Format::eR32G32B32A32Uint,
             .offset = static_cast<uint32_t>(offsetof(InstanceData, uuid)),
     };
 
     for (int i = 0; i < 4; ++i) {
-        descriptions[6+i] = {
-                .location = static_cast<uint32_t>(6+i),
+        descriptions[7+i] = {
+                .location = static_cast<uint32_t>(7+i),
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
@@ -163,7 +170,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SkinnedVertex::getBinding
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{14};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{15};
 
     descriptions[0] = {
             .location = 0,
@@ -189,56 +196,63 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
     descriptions[3] = {
             .location = 3,
             .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, uv)),
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, tangent)),
     };
 
     descriptions[4] = {
             .location = 4,
             .binding = 0,
-            .format = vk::Format::eR32G32B32A32Sint,
-            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, boneIDs)),
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, uv)),
     };
 
     descriptions[5] = {
             .location = 5,
             .binding = 0,
-            .format = vk::Format::eR32G32B32A32Sfloat,
-            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, boneWeights)),
+            .format = vk::Format::eR32G32B32A32Sint,
+            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, boneIDs)),
     };
 
     descriptions[6] = {
             .location = 6,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, boneWeights)),
+    };
+
+    descriptions[7] = {
+            .location = 7,
             .binding = 1,
             .format = vk::Format::eR32G32B32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, color)),
     };
 
-    descriptions[7] = {
-            .location = 7,
+    descriptions[8] = {
+            .location = 8,
             .binding = 1,
             .format = vk::Format::eR32G32B32A32Uint,
             .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, uuid)),
     };
 
     for (int i = 0; i < 4; ++i) {
-        descriptions[8+i] = {
-                .location = static_cast<uint32_t>(8+i),
+        descriptions[9+i] = {
+                .location = static_cast<uint32_t>(9+i),
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, transform)+sizeof(glm::vec4)*i),
         };
     }
 
-    descriptions[11] = {
-            .location = 11,
+    descriptions[12] = {
+            .location = 12,
             .binding = 1,
             .format = vk::Format::eR32Uint,
             .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, animationIndex)),
     };
 
-    descriptions[12] = {
-            .location = 12,
+    descriptions[13] = {
+            .location = 13,
             .binding = 1,
             .format = vk::Format::eR32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, animationTime)),

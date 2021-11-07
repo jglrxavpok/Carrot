@@ -2,11 +2,18 @@
 // Created by jglrxavpok on 28/11/2020.
 //
 
+#include <OpenEXRConfig.h>
+#include <ImfRgbaFile.h>
+#include <ImfArray.h>
+
 #include "Image.h"
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
 #include "engine/utils/Assert.h"
 #include "engine/io/Logging.hpp"
+#include "engine/io/FileFormats.h"
+
+
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount):
@@ -104,27 +111,71 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
     int height;
     int channels;
 
-    auto buffer = resource.readAll();
-    stbi_uc* pixels = stbi_load_from_memory(buffer.get(), resource.getSize(), &width, &height, &channels, STBI_rgb_alpha);
-    if(!pixels) {
-        throw std::runtime_error("Failed to load image "+resource.getName());
+    auto loadThroughStbi = [&]() {
+        auto buffer = resource.readAll();
+        stbi_uc* pixels = stbi_load_from_memory(buffer.get(), resource.getSize(), &width, &height, &channels, STBI_rgb_alpha);
+        if(!pixels) {
+            throw std::runtime_error("Failed to load image "+resource.getName());
+        }
+
+        auto image = std::make_unique<Carrot::Image>(device,
+                                                     vk::Extent3D {
+                                                             .width = static_cast<uint32_t>(width),
+                                                             .height = static_cast<uint32_t>(height),
+                                                             .depth = 1,
+                                                     },
+                                                     vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
+                                                     vk::Format::eR8G8B8A8Unorm);
+
+        image->stageUpload(std::span<std::uint8_t>{pixels, static_cast<std::size_t>((width*height)*4) });
+        image->name(resource.getName());
+
+        stbi_image_free(pixels);
+
+        return std::move(image);
+    };
+
+    if(resource.isFile()) {
+        auto format = IO::getFileFormat(resource.getName().c_str());
+        if(!IO::isImageFormat(format)) {
+            throw std::runtime_error("Unsupported filetype: "+resource.getName());
+        }
+
+        // support for images not supported by stbi will go here
+        if(format == IO::FileFormat::EXR) {
+            using namespace OPENEXR_IMF_NAMESPACE;
+            using namespace IMATH_NAMESPACE;
+            RgbaInputFile file (resource.getName().c_str());
+
+            Box2i dw = file.dataWindow();
+            width = dw.max.x - dw.min.x + 1;
+            height = dw.max.y - dw.min.y + 1;
+
+            std::size_t bufferSize = width * height;
+            std::unique_ptr<Rgba[]> pixelBuffer = std::make_unique<Rgba[]>(bufferSize);
+
+            file.setFrameBuffer (pixelBuffer.get() - dw.min.x - dw.min.y * width, 1, width);
+            file.readPixels (dw.min.y, dw.max.y);
+
+            auto image = std::make_unique<Carrot::Image>(device,
+                                                         vk::Extent3D {
+                                                                 .width = static_cast<uint32_t>(width),
+                                                                 .height = static_cast<uint32_t>(height),
+                                                                 .depth = 1,
+                                                         },
+                                                         vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
+                                                         vk::Format::eR16G16B16A16Sfloat);
+
+            image->stageUpload(std::span<std::uint8_t>{reinterpret_cast<std::uint8_t*>(pixelBuffer.get()), bufferSize * 4 * sizeof(half) });
+            image->name(resource.getName());
+
+            return std::move(image);
+        } else {
+            return loadThroughStbi();
+        }
+    } else {
+        return loadThroughStbi();
     }
-
-    auto image = std::make_unique<Carrot::Image>(device,
-                                        vk::Extent3D {
-                                            .width = static_cast<uint32_t>(width),
-                                            .height = static_cast<uint32_t>(height),
-                                            .depth = 1,
-                                        },
-                                        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
-                                        vk::Format::eR8G8B8A8Unorm);
-
-    image->stageUpload(std::span<std::uint8_t>{pixels, static_cast<std::size_t>((width*height)*4) });
-    image->name(resource.getName());
-
-    stbi_image_free(pixels);
-
-    return std::move(image);
 }
 
 const vk::Extent3D& Carrot::Image::getSize() const {

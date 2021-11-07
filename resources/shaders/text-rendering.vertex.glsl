@@ -21,6 +21,7 @@ layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
+layout(location = 5) out vec3 outViewTangent;
 
 void main() {
     uv = inPosition.xy;
@@ -30,7 +31,8 @@ void main() {
 
     fragColor = vec4(1.0);
     instanceColor = inInstanceColor;
-    outViewPos = viewPosition.xyz/viewPosition.w;
+    outViewPos = viewPosition.xyz;
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * vec3(0,0,1));
+    outViewTangent = normalize((transpose(inverse(mat3(modelview)))) * vec3(1,0,0));
 }

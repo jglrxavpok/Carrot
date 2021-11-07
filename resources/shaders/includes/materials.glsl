@@ -2,6 +2,7 @@
 
 struct Material {
     uint diffuseTexture;
+    uint normalMap;
 };
 
 #define MATERIAL_SYSTEM_SET(setID) \

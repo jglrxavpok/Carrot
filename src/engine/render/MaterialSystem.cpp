@@ -48,6 +48,9 @@ namespace Carrot::Render {
         if(diffuseTexture) {
             data->diffuseTexture = diffuseTexture->getSlot();
         }
+        if(normalMap) {
+            data->normalMap = normalMap->getSlot();
+        }
     }
 
     MaterialSystem::MaterialSystem() {
@@ -114,6 +117,34 @@ namespace Carrot::Render {
                 .pPoolSizes = poolSizes.data(),
         });
         reallocateDescriptorSets();
+
+        std::unique_ptr<Carrot::Image> whiteImage = std::make_unique<Image>(GetVulkanDriver(),
+            vk::Extent3D{.width = 1, .height = 1, .depth = 1},
+            vk::ImageUsageFlagBits::eSampled,
+            vk::Format::eR8G8B8A8Unorm);
+        std::uint8_t whitePixel[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+        whiteImage->stageUpload(std::span{whitePixel, 4});
+
+        std::unique_ptr<Carrot::Image> blackImage = std::make_unique<Image>(GetVulkanDriver(),
+                                                                            vk::Extent3D{.width = 1, .height = 1, .depth = 1},
+                                                                            vk::ImageUsageFlagBits::eSampled,
+                                                                            vk::Format::eR8G8B8A8Unorm);
+        std::uint8_t blackPixel[4] = {0x0, 0x00, 0x00, 0xFF};
+        blackImage->stageUpload(std::span{blackPixel, 4});
+
+        std::unique_ptr<Carrot::Image> blueImage = std::make_unique<Image>(GetVulkanDriver(),
+                                                                            vk::Extent3D{.width = 1, .height = 1, .depth = 1},
+                                                                            vk::ImageUsageFlagBits::eSampled,
+                                                                            vk::Format::eR8G8B8A8Unorm);
+        std::uint8_t bluePixel[4] = {0x00, 0x00, 0xFF, 0xFF};
+        blueImage->stageUpload(std::span{bluePixel, 4});
+
+        whiteTexture = std::make_shared<Texture>(std::move(whiteImage));
+        blackTexture = std::make_shared<Texture>(std::move(blackImage));
+        blueTexture = std::make_shared<Texture>(std::move(blueImage));
+        whiteTextureHandle = createTextureHandle(whiteTexture);
+        blackTextureHandle = createTextureHandle(blackTexture);
+        blueTextureHandle = createTextureHandle(blueTexture);
     }
 
     void MaterialSystem::onFrame(const Context& renderContext) {

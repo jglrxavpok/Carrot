@@ -199,6 +199,7 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
+    lighting.onSwapchainImageCountChange(newCount);
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainImageCountChange(newCount);
     }
@@ -208,6 +209,7 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
     raytracer->onSwapchainSizeChange(newWidth, newHeight);
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(newWidth, newHeight);
+    lighting.onSwapchainSizeChange(newWidth, newHeight);
     for(const auto& [name, pipe]: pipelines) {
         pipe->onSwapchainSizeChange(newWidth, newHeight);
     }
@@ -351,6 +353,7 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
     materialSystem.onFrame(renderContext);
+    lighting.onFrame(renderContext);
 }
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {

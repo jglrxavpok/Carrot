@@ -25,7 +25,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     const aiScene* scene = nullptr;
     {
         verify(file.isFile(), "In-memory models are not supported!");
-        scene = importer.ReadFile(file.getName(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs);
+        scene = importer.ReadFile(file.getName(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
     }
 
     if(!scene) {
@@ -45,21 +45,33 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
         auto handle = materialSystem.createMaterialHandle();
 
-        std::size_t count = mat->GetTextureCount(aiTextureType_DIFFUSE);
-        if(count > 0) {
-            if(count > 1) {
-                Carrot::Log::warn("Model '%s' has %d diffuse textures. Carrot only supports 1. Only the first texture will be used");
+        auto setMaterialTexture = [&](std::shared_ptr<Render::TextureHandle>& toSet, aiTextureType textureType, std::shared_ptr<Render::TextureHandle> defaultHandle) {
+            bool loadedATexture = false;
+            std::size_t count = mat->GetTextureCount(textureType);
+            if(count > 0) {
+                if(count > 1) {
+                    Carrot::Log::warn("Model '%s' has %d textures of type '%s'. Carrot only supports 1. Only the first texture will be used", file.getName().c_str(), count, TextureTypeToString(textureType));
+                }
+                aiString path;
+                mat->GetTexture(textureType, 0, &path);
+                Carrot::IO::Resource from;
+                try {
+                    from = file.relative(std::string(path.C_Str()));
+                    auto texture = materialSystem.createTextureHandle(GetRenderer().getOrCreateTextureFromResource(from));
+                    toSet = texture;
+                    loadedATexture = true;
+                } catch (std::runtime_error& e) {
+                    Carrot::Log::warn("Failed to open texture '%s'", path.C_Str());
+                }
+            } else {
+                toSet = defaultHandle;
             }
-            aiString path;
-            mat->GetTexture(aiTextureType_DIFFUSE, 0, &path);
-            Carrot::IO::Resource from;
-            try {
-                from = file.relative(std::string(path.C_Str()));
-                auto texture = materialSystem.createTextureHandle(GetRenderer().getOrCreateTextureFromResource(from));
-                handle->diffuseTexture = texture;
-            } catch (std::runtime_error& e) {
-                Carrot::Log::warn("Failed to open texture '%s'", path.C_Str());
-            }
+
+            return loadedATexture;
+        };
+        setMaterialTexture(handle->diffuseTexture, aiTextureType_DIFFUSE, materialSystem.getWhiteTexture());
+        if(!setMaterialTexture(handle->normalMap, aiTextureType_NORMALS, materialSystem.getBlueTexture())) {
+            setMaterialTexture(handle->normalMap, aiTextureType_HEIGHT, materialSystem.getBlueTexture());
         }
 
         materialMap[materialIndex] = handle;
@@ -258,6 +270,7 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
         const aiColor4D* vertexColor = mesh->mColors[0];
         const aiVector3D* vertexUVW = mesh->mTextureCoords[0];
         const aiVector3D vertexNormal = mesh->mNormals[vertexIndex];
+        const aiVector3D vertexTangent = mesh->mTangents[vertexIndex];
         glm::vec3 color = {1.0f, 1.0f, 1.0f};
         if(vertexColor) {
             color = {
@@ -281,6 +294,12 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
                 vertexNormal.z,
         };
 
+        glm::vec3 tangent = {
+                vertexTangent.x,
+                vertexTangent.y,
+                vertexTangent.z,
+        };
+
         glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
 
         if(usesSkinning) {
@@ -288,6 +307,7 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
                                         position,
                                         color,
                                         normal,
+                                        tangent,
                                         uv,
                                         glm::ivec4{-1, -1, -1, -1},
                                         glm::vec4{0.0f},
@@ -297,6 +317,7 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
                                         position,
                                         color,
                                         normal,
+                                        tangent,
                                         uv,
                                });
         }

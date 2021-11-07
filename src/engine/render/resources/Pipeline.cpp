@@ -89,7 +89,6 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
     if(description.alphaBlending) {
         pipelineTemplate.colorBlendAttachments = {
-                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 3 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = true,
                         .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
@@ -102,6 +101,19 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                         .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
                 }
         };
+        // R32G32B32 position
+        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                .blendEnable = false,
+
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+        });
+        // R32G32B32 normals
+        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                .blendEnable = false,
+
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+        });
+
         // R32 not blendable
         pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                 .blendEnable = false,
@@ -165,6 +177,10 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             layouts.push_back(driver.getEmptyDescriptorSetLayout());
         }
         layouts.push_back(driver.getRenderer().getCameraDescriptorSetLayout());
+    }
+
+    if(description.type == PipelineType::GResolve) { // FIXME: remove condition
+        layouts.push_back(GetRenderer().getLighting().getDescriptorSetLayout());
     }
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
@@ -294,6 +310,10 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderC
     } else {
         bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
         renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
+    }
+
+    if(description.type == PipelineType::GResolve) {
+        renderContext.renderer.getLighting().bind(renderContext, commands, 3, *layout, bindPoint); // TODO: don't hardcode
     }
 }
 

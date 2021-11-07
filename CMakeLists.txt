@@ -15,10 +15,12 @@ set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Release")
     set(OPENXR-LOADER-LIB openxr_loader)
     set(OPENXR-LOADER-LIB-LOCATION "${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platform}/src/loader/Release/${OPENXR-LOADER-LIB}.lib")
+    set(IS_RELEASE_BUILD True)
     add_compile_definitions(IS_RELEASE_BUILD)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(OPENXR-LOADER-LIB openxr_loaderd)
     set(OPENXR-LOADER-LIB-LOCATION "${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platform}/src/loader/Debug/${OPENXR-LOADER-LIB}.lib")
+    set(IS_DEBUG_BUILD True)
     add_compile_definitions(IS_DEBUG_BUILD)
 endif()
 
@@ -38,6 +40,9 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
+
+set(CMAKE_DEBUG_POSTFIX "")
+set(OPENEXR_FORCE_INTERNAL_IMATH ON CACHE BOOL "" FORCE)
 
 SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
 SET(ASSIMP_BUILD_FBX_IMPORTER TRUE)
@@ -67,6 +72,7 @@ add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 add_subdirectory(thirdparty/assimp)
 
 add_subdirectory(thirdparty/nativefiledialog-extended)
+add_subdirectory(thirdparty/openexr)
 
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git

@@ -105,7 +105,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
            {
-                pass.prerecordable = true;
+                // pass.prerecordable = true; TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
+                // TODO (or it should be re-recorded when changes happen)
                 resolveData.positions = graph.read(opaqueData.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.normals = graph.read(opaqueData.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.albedo = graph.read(opaqueData.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -130,8 +131,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.raytracing, frame.swapchainIndex), 0, 5, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.transparent, frame.swapchainIndex), 0, 6, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 7, nullptr);
 
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 10, nullptr);
+                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 8);
+                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 9);
 
                 resolvePipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
