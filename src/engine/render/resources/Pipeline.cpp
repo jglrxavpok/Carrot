@@ -168,7 +168,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
         layouts.push_back(*descriptorSetLayout1);
     }
-    if(description.vertexFormat == VertexFormat::Vertex) { // FIXME: remove condition
+    if(description.vertexFormat == VertexFormat::Vertex || description.type == PipelineType::GResolve) { // FIXME: remove condition
         layouts.push_back(GetRenderer().getMaterialSystem().getDescriptorSetLayout());
     }
 

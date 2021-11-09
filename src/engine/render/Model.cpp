@@ -16,10 +16,12 @@
 #include <engine/utils/conversions.h>
 #include <engine/io/Logging.hpp>
 #include <engine/render/DrawData.h>
+#include <engine/utils/Profiling.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
     TracyMessageL(file.getName().c_str());
+    Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     Assimp::Importer importer{};
     const aiScene* scene = nullptr;
@@ -46,6 +48,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         auto handle = materialSystem.createMaterialHandle();
 
         auto setMaterialTexture = [&](std::shared_ptr<Render::TextureHandle>& toSet, aiTextureType textureType, std::shared_ptr<Render::TextureHandle> defaultHandle) {
+            Profiling::PrintingScopedTimer _t(Carrot::sprintf("setMaterialTexture(%s)", TextureTypeToString(textureType)));
             bool loadedATexture = false;
             std::size_t count = mat->GetTextureCount(textureType);
             if(count > 0) {

@@ -36,6 +36,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/stringmanip.cpp
         ${EngineRoot}utils/Identifiable.cpp
         ${EngineRoot}utils/UUID.cpp
+        ${EngineRoot}utils/Profiling.cpp
 
         ${EngineRoot}render/resources/Font.cpp
 
@@ -107,6 +108,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}network/packets/HandshakePackets.cpp
 
         ${EngineRoot}async/Coroutines.cpp
+        ${EngineRoot}async/Executors.cpp
 
         ${EngineRoot}scripting/LuaScript.cpp
         ${EngineRoot}scripting/bindings/all.cpp

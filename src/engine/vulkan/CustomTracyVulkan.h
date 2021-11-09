@@ -4,13 +4,13 @@
 //
 //
 // or maybe I don't understand how it works, so let's reinvent the wheel.
+#include "engine/utils/Profiling.h"
 #include "engine/vulkan/includes.h"
 #ifdef TRACY_ENABLE
 
 //#define TRACY_VULKAN_ENABLE
 
-#include <Tracy.hpp>
-#include <client/TracyProfiler.hpp>
+
 #include <iostream>
 #include <vector>
 #include <stack>
@@ -105,13 +105,13 @@ public:
 #define TracyVulkanZone(context, commandBuffer, name)
 #define TracyVulkanZone2(engine, commandBuffer, name)
 #define TracyVulkanNamedZone(context, commandBuffer, name)
-#define FrameMark
+/*#define FrameMark
 #define ZoneScoped
 #define ZoneScopedN
-#define ZoneNamedN(varname, name, active)
+#define ZoneNamedN(varname, name, active)*/
 #define PrepareVulkanTracy(context, commandBuffer)
 #define PrepareVulkanTracy2(engine, commandBuffer)
 #define TracyVulkanCollect(context)
-#define TracyPlot
-#define TracyMessageL(msg)
+/*#define TracyPlot
+#define TracyMessageL(msg)*/
 #endif

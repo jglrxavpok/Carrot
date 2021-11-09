@@ -12,7 +12,8 @@
 #include "engine/utils/Assert.h"
 #include "engine/io/Logging.hpp"
 #include "engine/io/FileFormats.h"
-
+#include "engine/utils/Profiling.h"
+#include "engine/async/Executors.h"
 
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
@@ -145,6 +146,8 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
         if(format == IO::FileFormat::EXR) {
             using namespace OPENEXR_IMF_NAMESPACE;
             using namespace IMATH_NAMESPACE;
+
+            Profiling::PrintingScopedTimer _timer("EXR file load");
             RgbaInputFile file (resource.getName().c_str());
 
             Box2i dw = file.dataWindow();
@@ -152,10 +155,24 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
             height = dw.max.y - dw.min.y + 1;
 
             std::size_t bufferSize = width * height;
-            std::unique_ptr<Rgba[]> pixelBuffer = std::make_unique<Rgba[]>(bufferSize);
+            std::unique_ptr<Rgba[]> pixelBuffer = nullptr;
 
-            file.setFrameBuffer (pixelBuffer.get() - dw.min.x - dw.min.y * width, 1, width);
-            file.readPixels (dw.min.y, dw.max.y);
+            {
+                Profiling::PrintingScopedTimer _timer("EXR allocate memory");
+                pixelBuffer = std::make_unique<Rgba[]>(bufferSize);
+            }
+
+            {
+                Profiling::PrintingScopedTimer _timer("EXR file read pixels");
+                {
+                    Profiling::PrintingScopedTimer _timer("EXR file set framebuffer");
+                    file.setFrameBuffer (pixelBuffer.get() - dw.min.x - dw.min.y * width, 1, width);
+                }
+
+                unsigned int coreCount = std::max(1u, std::thread::hardware_concurrency());
+                setGlobalThreadCount(coreCount);
+                file.readPixels (dw.min.y, dw.max.y);
+            }
 
             auto image = std::make_unique<Carrot::Image>(device,
                                                          vk::Extent3D {
