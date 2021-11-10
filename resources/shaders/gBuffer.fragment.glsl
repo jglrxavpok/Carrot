@@ -14,9 +14,8 @@ layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 viewNormal;
-layout(location = 5) in vec3 viewTangent;
-layout(location = 6) flat in uvec4 uuid;
-layout(location = 7) in mat3 TBN;
+layout(location = 5) flat in uvec4 uuid;
+layout(location = 6) in mat3 TBN;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outViewPosition;

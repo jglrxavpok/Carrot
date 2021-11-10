@@ -26,9 +26,8 @@ layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
-layout(location = 5) out vec3 outViewTangent;
-layout(location = 6) out uvec4 outUUID;
-layout(location = 7) out mat3 TBN;
+layout(location = 5) out uvec4 outUUID;
+layout(location = 6) out mat3 TBN;
 
 void main() {
     uv = inUV;
@@ -43,7 +42,6 @@ void main() {
 #define rotate(vec) normalize((transpose(inverse(mat3(modelview)))) * vec)
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * inNormal);
-    outViewTangent = normalize((transpose(inverse(mat3(modelview)))) * inTangent);
 
     vec3 T = rotate(inTangent);
     vec3 N = rotate(inNormal);

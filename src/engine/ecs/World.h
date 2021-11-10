@@ -85,6 +85,11 @@ namespace Carrot::ECS {
         World& operator=(const World& toCopy);
 
     private:
+        /// updates the systems entity list (based on entity signatures) called each tick and each frame
+        /// (because components can be modified during a tick)
+        void updateEntityLists();
+
+    private:
         std::vector<EntityID> entities;
         std::vector<EntityID> entitiesToAdd;
         std::vector<EntityID> entitiesToRemove;

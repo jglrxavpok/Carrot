@@ -103,22 +103,9 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
     createSwapChain();
     createUniformBuffers();
 
-    vk::DescriptorPoolSize emptySize {
-        .descriptorCount = 0,
-    };
-    emptyDescriptorSetPool = device->createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-            .maxSets = 1,
-            .poolSizeCount = 1,
-            .pPoolSizes = &emptySize,
-    });
     emptyDescriptorSetLayout = device->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
         .bindingCount = 0,
     });
-    emptyDescriptorSet = device->allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-        .descriptorPool = *emptyDescriptorSetPool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &(*emptyDescriptorSetLayout),
-    })[0];
 
     textureRepository = std::make_unique<Render::TextureRepository>(*this);
 }
@@ -378,11 +365,6 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                             .shaderStorageImageArrayDynamicIndexing = true,
                     },
             },
-            vk::PhysicalDeviceDescriptorIndexingFeatures {
-                    .shaderStorageBufferArrayNonUniformIndexing = true,
-                    .descriptorBindingPartiallyBound = true,
-                    .runtimeDescriptorArray = true,
-            },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
                     .rayTracingPipeline = getConfiguration().useRaytracing,
             },
@@ -393,6 +375,10 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .accelerationStructure = getConfiguration().useRaytracing,
             },
             vk::PhysicalDeviceVulkan12Features {
+                    .shaderStorageBufferArrayNonUniformIndexing = true,
+                    .descriptorBindingPartiallyBound = true,
+                    .runtimeDescriptorArray = true,
+
                     .scalarBlockLayout = true,
                     .bufferDeviceAddress = true,
             },

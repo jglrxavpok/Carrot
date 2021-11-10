@@ -101,32 +101,35 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                         .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
                 }
         };
-        // R32G32B32 position
-        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                .blendEnable = false,
 
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-        });
-        // R32G32B32 normals
-        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                .blendEnable = false,
+        if(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer) {
+            // R32G32B32 position
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
 
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-        });
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+            // R32G32B32 normals
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
 
-        // R32 not blendable
-        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                .blendEnable = false,
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
 
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-        });
+            // R32 not blendable
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
 
-        // R32G32B32A32
-        pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                .blendEnable = false,
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
 
-                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-        });
+            // R32G32B32A32
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+        }
     } else {
         pipelineTemplate.colorBlendAttachments = {
                 static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 5 : 1),
@@ -299,16 +302,24 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderC
         renderContext.renderer.bindCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
     }
     if(description.type == PipelineType::Blit || description.type == PipelineType::Skybox) {
-        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+        if(descriptorPool) {
+            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+        }
     } else if(description.type == PipelineType::GBuffer) {
         if(description.vertexFormat == VertexFormat::Vertex || description.vertexFormat == VertexFormat::SkinnedVertex) { // FIXME hack to make sprites work
-            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+            if(descriptorPool) {
+                bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
+            }
             renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
         } else {
-            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+            if(descriptorPool) {
+                bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+            }
         }
     } else {
-        bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+        if(descriptorPool) {
+            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+        }
         renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
     }
 
@@ -347,6 +358,9 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
         });
     }
 
+    if(sizes.empty())
+        return;
+
     vk::DescriptorPoolCreateInfo poolInfo{
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
             .maxSets = imageCount,
@@ -360,11 +374,16 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 }
 
 void Carrot::Pipeline::allocateDescriptorSets() {
-    driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
+    if(descriptorPool) {
+        driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
+    }
     descriptorSets0 = allocateDescriptorSets0();
 }
 
 std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
+    if(!descriptorPool) {
+        return std::vector<vk::DescriptorSet>{driver.getSwapchainImageCount(), vk::DescriptorSet{}};
+    }
     std::vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), *descriptorSetLayout0};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,

@@ -31,7 +31,8 @@ layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
-layout(location = 5) out vec3 outViewTangent;
+layout(location = 5) out uvec4 outUUID;
+layout(location = 6) out mat3 outTBN;
 
 void main() {
     uv = inUV;
@@ -44,5 +45,6 @@ void main() {
     outViewPos = viewPosition.xyz;
 
     outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * inNormal);
-    outViewTangent = normalize((transpose(inverse(mat3(modelview)))) * inTangent);
+    outTBN = mat3(vec3(1,0,0), vec3(0,1,0), vec3(0,0,1));
+    outUUID = uvec4(0);
 }

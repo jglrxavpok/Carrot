@@ -99,6 +99,17 @@ namespace Carrot::ECS {
         return result;
     }
 
+    void World::updateEntityLists() {
+        if(!entitiesUpdated.empty()) {
+            for(const auto& logic : logicSystems) {
+                logic->onEntitiesUpdated(entitiesUpdated);
+            }
+            for(const auto& render : renderSystems) {
+                render->onEntitiesUpdated(entitiesUpdated);
+            }
+        }
+    }
+
     void World::tick(double dt) {
         for(const auto& toAdd : entitiesToAdd) {
             entities.push_back(toAdd);
@@ -111,14 +122,7 @@ namespace Carrot::ECS {
                 render->onEntitiesAdded(entitiesToAdd);
             }
         }
-        if(!entitiesUpdated.empty()) {
-            for(const auto& logic : logicSystems) {
-                logic->onEntitiesUpdated(entitiesUpdated);
-            }
-            for(const auto& render : renderSystems) {
-                render->onEntitiesUpdated(entitiesUpdated);
-            }
-        }
+        updateEntityLists();
         if(!entitiesToRemove.empty()) {
             for(const auto& logic : logicSystems) {
                 logic->onEntitiesRemoved(entitiesToRemove);
@@ -159,6 +163,8 @@ namespace Carrot::ECS {
 
     void World::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
+
+        updateEntityLists();
         {
             ZoneScopedN("Logic");
             for(const auto& logic : logicSystems) {

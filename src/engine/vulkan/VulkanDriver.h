@@ -154,7 +154,6 @@ namespace Carrot {
 
         const Configuration& getConfiguration() { return config; }
 
-        vk::DescriptorSet& getEmptyDescriptorSet() { return emptyDescriptorSet; }
         vk::DescriptorSetLayout& getEmptyDescriptorSetLayout() { return *emptyDescriptorSetLayout; }
 
         Engine& getEngine();
@@ -225,9 +224,7 @@ namespace Carrot {
         vk::Extent2D windowFramebufferExtent{};
         std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
-        vk::UniqueDescriptorPool emptyDescriptorSetPool{};
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
-        vk::DescriptorSet emptyDescriptorSet{};
 
         std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
