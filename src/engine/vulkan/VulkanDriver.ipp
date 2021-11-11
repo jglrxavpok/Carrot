@@ -50,7 +50,6 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
     } else {
         deferCommandBufferDestruction(commandPool, stagingCommands);
     }
-    // TODO: freeCommandBuffer if no wait
 }
 
 template<typename CommandBufferConsumer>

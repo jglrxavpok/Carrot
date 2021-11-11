@@ -459,9 +459,6 @@ namespace Carrot {
 
         void recreateSwapchain();
 
-        /// Update the uniform buffer at index 'imageIndex'
-        void updateUniformBuffer(int imageIndex);
-
         void initGame();
 
         void createCameras();

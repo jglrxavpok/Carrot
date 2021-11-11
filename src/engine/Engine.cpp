@@ -529,24 +529,6 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     this->skyboxCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
 }
 
-void Carrot::Engine::updateUniformBuffer(int imageIndex) {
-    // TODO: remove
-    /*if(config.runInVR) {
-        // TODO: move to viewport?
-        static CameraBufferObject leftCBO{};
-        static CameraBufferObject rightCBO{};
-        leftCBO.update(getMainViewportCamera(Render::Eye::LeftEye));
-        rightCBO.update(getMainViewportCamera(Render::Eye::RightEye));
-
-        vkDriver.getCameraUniformBuffers()[Render::Eye::LeftEye][imageIndex]->directUpload(&leftCBO, sizeof(leftCBO));
-        vkDriver.getCameraUniformBuffers()[Render::Eye::RightEye][imageIndex]->directUpload(&rightCBO, sizeof(rightCBO));
-    } else {
-        static CameraBufferObject cbo{};
-        cbo.update(getMainViewportCamera(Render::Eye::NoVR));
-        vkDriver.getCameraUniformBuffers()[Render::Eye::NoVR][imageIndex]->directUpload(&cbo, sizeof(cbo));
-    }*/
-}
-
 void Carrot::Engine::drawFrame(size_t currentFrame) {
     ZoneScoped;
 
@@ -675,11 +657,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     {
         ZoneScopedN("Record main command buffer");
         recordMainCommandBuffer(imageIndex);
-    }
-
-    {
-        ZoneScopedN("Update uniform buffer");
-        updateUniformBuffer(imageIndex);
     }
 
     {
