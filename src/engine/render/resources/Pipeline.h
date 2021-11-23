@@ -44,6 +44,8 @@ namespace Carrot {
 
         vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 
+        bool tmptmptmpUseMaterialSystem = false;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };

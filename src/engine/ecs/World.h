@@ -71,6 +71,14 @@ namespace Carrot::ECS {
         template<class LogicSystemType, typename... Args>
         void addLogicSystem(Args&&... args);
 
+        /// Removes the given RenderSystem. Does nothing if it was not inside this world
+        template<class RenderSystemType>
+        void removeRenderSystem();
+
+        /// Removes the given LogicSystem. Does nothing if it was not inside this world
+        template<class LogicSystemType>
+        void removeLogicSystem();
+
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);

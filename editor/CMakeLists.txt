@@ -5,6 +5,7 @@ set(EditorSources
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}Scene.cpp
         ${EditorRoot}GridRenderer.cpp
+        ${EditorRoot}ecs/systems/LightEditorRenderer.cpp
         )
 
 set(ImGuizmoSources
@@ -55,6 +56,7 @@ make_tracy_target(Peeler-Tracy)
 
 add_executable(Peeler-Renderdoc ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Renderdoc)
+target_compile_definitions(Peeler-Renderdoc PRIVATE DEBUG_MARKERS=1)
 target_include_directories(Peeler-Renderdoc PUBLIC ../thirdparty/ImGuizmo)
 target_link_libraries(Peeler-Renderdoc PUBLIC Engine-Base-Renderdoc)
 

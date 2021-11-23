@@ -72,6 +72,20 @@ namespace Carrot::ECS {
         logicSystems.push_back(std::move(std::make_unique<LogicSystemType>(*this, args...)));
     }
 
+    template<class LogicSystemType>
+    void World::removeLogicSystem() {
+        Carrot::removeIf(logicSystems, [&](auto& ptr) {
+            return typeid(*ptr) == typeid(LogicSystemType);
+        });
+    }
+
+    template<class RenderSystemType>
+    void World::removeRenderSystem() {
+        Carrot::removeIf(renderSystems, [&](auto& ptr) {
+            return typeid(*ptr) == typeid(RenderSystemType);
+        });
+    }
+
     template<SystemType type, typename... RequiredComponents>
     void SignedSystem<type, RequiredComponents...>::forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action) {
         for(auto& entity : entities) {

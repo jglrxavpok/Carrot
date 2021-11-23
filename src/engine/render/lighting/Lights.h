@@ -14,7 +14,7 @@ namespace Carrot::Render {
     enum class LightType: std::uint32_t {
         Point,
         Directional,
-// TODO:        Spot,
+        Spot,
     };
 
     struct Light {
@@ -26,6 +26,9 @@ namespace Carrot::Render {
 
         alignas(16) glm::vec3 color{1.0f};
         bool32 enabled = false;
+
+        static LightType fromString(std::string_view str);
+        static const char* nameOf(LightType type);
     };
 
     class Lighting;

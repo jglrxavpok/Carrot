@@ -351,7 +351,16 @@ void Carrot::Engine::run() {
         }
 #endif
         if(glfwWindowShouldClose(window.getGLFWPointer())) {
+            if(game->onCloseButtonPressed()) {
+                game->requestShutdown();
+            } else {
+                glfwSetWindowShouldClose(window.getGLFWPointer(), false);
+            }
+        }
+
+        if(game->hasRequestedShutdown()) {
             running = false;
+            break;
         }
 
         renderer.newFrame();
@@ -367,7 +376,10 @@ void Carrot::Engine::run() {
             TracyPlot("Tick lag", lag.count());
             TracyPlot("Estimated FPS", currentFPS);
             ticked = false;
-            while(lag >= timeBetweenUpdates) {
+
+            const std::uint32_t maxCatchupTicks = 10;
+            std::uint32_t caughtUp = 0;
+            while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
                 ticked = true;
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;

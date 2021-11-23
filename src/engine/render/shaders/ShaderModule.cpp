@@ -165,7 +165,6 @@ void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::
     const auto& pushConstant = resources.push_constant_buffers[0];
     const auto& ranges = compiler->get_active_buffer_ranges(pushConstant.id);
     std::string name = pushConstant.name;
-    const auto& range = *std::min_element(WHOLE_CONTAINER(ranges), [&](const auto& a, const auto& b) { return a.index < b.index; });
     const auto& resourceType = compiler->get_type(pushConstant.type_id);
 
     for(const auto& r : ranges) {
@@ -180,7 +179,7 @@ void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::
             existingRange.stageFlags |= stage;
             alreadyPresent = true;
             existingRange.offset = std::min(static_cast<std::uint32_t>(offset), existingRange.offset);
-            existingRange.size = std::min(static_cast<std::uint32_t>(size), existingRange.size);
+            existingRange.size = std::max(static_cast<std::uint32_t>(size), existingRange.size);
             //break;
             return;
        // }

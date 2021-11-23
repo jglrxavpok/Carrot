@@ -1,0 +1,13 @@
+{
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "ScreenSpace",
+  "cull": false,
+  "alphaBlending": true,
+  "reserveSet2ForCamera": true,
+  "depthWrite": true,
+  "depthTest": true,
+  "vertexShader": "resources/shaders/billboards.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/billboards.fragment.glsl.spv",
+  "tmptmptmpUseMaterialSystem": true
+}

@@ -30,7 +30,17 @@ namespace Carrot {
 
         virtual void onSwapchainImageCountChange(std::size_t newCount) override {};
 
+        /// Return false if you want to cancel the event
+        virtual bool onCloseButtonPressed() { return true; };
+
         virtual ~CarrotGame() = default;
+
+    public:
+        void requestShutdown() { requestedShutdown = true; };
+        bool hasRequestedShutdown() const { return requestedShutdown; }
+
+    private:
+        bool requestedShutdown = false;
     };
 
 }

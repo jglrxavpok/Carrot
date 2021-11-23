@@ -119,4 +119,31 @@ namespace Carrot::Render {
     void Lighting::onSwapchainSizeChange(int newWidth, int newHeight) {
         // no-op
     }
+
+    LightType Light::fromString(std::string_view str) {
+        if(_stricmp(str.data(), "point") == 0) {
+            return LightType::Point;
+        }
+        if(_stricmp(str.data(), "directional") == 0) {
+            return LightType::Directional;
+        }
+        if(_stricmp(str.data(), "spot") == 0) {
+            return LightType::Spot;
+        }
+        verify(false, "Unknown light type!");
+    }
+
+    const char* Light::nameOf(LightType type) {
+        switch(type) {
+            case LightType::Point:
+                return "Point";
+
+            case LightType::Directional:
+                return "Directional";
+
+            case LightType::Spot:
+                return "Spot";
+        }
+        verify(false, "Unknown light type!");
+    }
 }

@@ -24,7 +24,7 @@
 #include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/systems/SystemUpdateAnimatedModelInstance.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
-#include <engine/ecs/systems/SystemUpdateLightPosition.h>
+#include <engine/ecs/systems/SystemHandleLights.h>
 #include "UnitColor.h"
 #include <engine/io/Logging.hpp>
 
@@ -66,7 +66,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
 
     world.addRenderSystem<SystemUpdateAnimatedModelInstance>();
     world.addLogicSystem<SystemSinPosition>();
-    world.addLogicSystem<SystemUpdateLightPosition>();
+    world.addLogicSystem<SystemHandleLights>();
 
     for (int i = 0; i < maxInstanceCount * 3; ++i) {
         blasIndices.push_back(i);

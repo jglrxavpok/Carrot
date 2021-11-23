@@ -81,6 +81,12 @@ namespace Tools {
             }
         }
 
+        void openUnsavedChangesPopup(const std::function<void()>& onContinue, const std::function<void()>& onCancel) {
+            this->onContinueAction = onContinue;
+            this->onCancelAction = onCancel;
+            ImGui::OpenPopup(popupName.c_str());
+        }
+
         virtual void onFrame(Carrot::Render::Context renderContext) {
             assert(settings);
             if(cantSavePopup) {
@@ -89,7 +95,14 @@ namespace Tools {
                 ImGui::OpenPopup(cantSavePopupName.c_str());
             }
             if(tryingToOpenFile) {
-                ImGui::OpenPopup(popupName.c_str());
+                openUnsavedChangesPopup([&]() {
+                                            performLoad();
+                                            tryingToOpenFile = false;
+                                        },
+                                        [&]() {
+                                            fileToOpen = "";
+                                            tryingToOpenFile = false;
+                                        });
             }
             if(ImGui::BeginPopupModal(popupName.c_str())) {
                 ImGui::Text("You currently have unsaved changes!");
@@ -97,21 +110,20 @@ namespace Tools {
 
                 if(ImGui::Button("Save")) {
                     if(triggerSave()) {
-                        performLoad();
+                        onContinueAction();
+                    } else {
+                        onCancelAction();
                     }
-                    tryingToOpenFile = false;
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
                 if(ImGui::Button("Don't save")) {
-                    performLoad();
-                    tryingToOpenFile = false;
+                    onContinueAction();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
                 if(ImGui::Button("Cancel")) {
-                    fileToOpen = "";
-                    tryingToOpenFile = false;
+                    onCancelAction();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -234,6 +246,9 @@ namespace Tools {
         std::filesystem::path fileToOpen = EmptyProject;
         std::filesystem::path currentFile = EmptyProject;
         std::string currentProjectName = "Untitled";
+
+        std::function<void()> onContinueAction;
+        std::function<void()> onCancelAction;
 
     private: // popup control
         bool tryingToOpenFile = false;

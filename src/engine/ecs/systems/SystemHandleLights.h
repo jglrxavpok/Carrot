@@ -9,11 +9,11 @@
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemUpdateLightPosition: public LogicSystem<Transform, LightComponent> {
+    class SystemHandleLights: public RenderSystem<Transform, LightComponent> {
     public:
-        explicit SystemUpdateLightPosition(World& world): LogicSystem<Transform, LightComponent>(world) {}
+        explicit SystemHandleLights(World& world): RenderSystem<Transform, LightComponent>(world) {}
 
-        void tick(double dt) override;
+        void onFrame(Carrot::Render::Context) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
     };

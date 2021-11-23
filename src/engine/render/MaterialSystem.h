@@ -85,9 +85,6 @@ namespace Carrot::Render {
         Texture::Ref whiteTexture = nullptr;
         Texture::Ref blackTexture = nullptr;
         Texture::Ref blueTexture = nullptr;
-        std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
 
     private:
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
@@ -97,8 +94,12 @@ namespace Carrot::Render {
 
     private:
         std::vector<std::unordered_map<std::uint32_t, vk::ImageView>> boundTextures;
-
         WeakPool<TextureHandle> textureHandles;
+
+        std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
+
         vk::ImageView getBoundImageView(std::uint32_t index, const Carrot::Render::Context& renderContext);
 
     private:

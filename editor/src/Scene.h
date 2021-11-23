@@ -13,6 +13,11 @@ namespace Peeler {
     public:
         Carrot::ECS::World world;
 
+        struct Lighting {
+            glm::vec3 ambient{1.0f};
+            bool raytracedShadows = true;
+        } lighting;
+
         explicit Scene() = default;
         Scene(const Scene& toCopy) {
             *this = toCopy;
@@ -30,6 +35,6 @@ namespace Peeler {
         rapidjson::Value serialise(rapidjson::Document& dest) const;
 
     public:
-        Scene& operator=(const Scene& toCopy);
+        Scene& operator=(const Scene& toCopy) = default;
     };
 }

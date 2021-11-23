@@ -36,6 +36,8 @@ namespace Carrot::ECS {
         }
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
+
+        glm::vec3 computeFinalPosition() const;
     };
 }
 

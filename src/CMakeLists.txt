@@ -44,10 +44,11 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/Transform.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
+        ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemUpdateAnimatedModelInstance.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
-        ${EngineRoot}ecs/systems/SystemUpdateLightPosition.cpp
+        ${EngineRoot}ecs/systems/SystemHandleLights.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
@@ -90,6 +91,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Viewport.cpp
         ${EngineRoot}render/RenderContext.cpp
         ${EngineRoot}render/MaterialSystem.cpp
+        ${EngineRoot}render/BillboardRenderer.cpp
         ${EngineRoot}render/lighting/Lights.cpp
 
         ${EngineRoot}expressions/Expressions.cpp
@@ -142,6 +144,7 @@ set(VERTEX_SHADERS
         ${ProjectRoot}resources/shaders/screenQuad-transformed.vertex.glsl
         ${ProjectRoot}resources/shaders/text-rendering.vertex.glsl
         ${ProjectRoot}resources/shaders/gBufferSprite.vertex.glsl
+        ${ProjectRoot}resources/shaders/billboards.vertex.glsl
 
         #PARENT_SCOPE
         )
@@ -156,6 +159,7 @@ set(FRAGMENT_SHADERS
         ${ProjectRoot}resources/shaders/composer-blit.fragment.glsl
         ${ProjectRoot}resources/shaders/text-rendering.fragment.glsl
         ${ProjectRoot}resources/shaders/gBufferSprite.fragment.glsl
+        ${ProjectRoot}resources/shaders/billboards.fragment.glsl
 
         #PARENT_SCOPE
         )

@@ -12,7 +12,5 @@
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/grid.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/grid.fragment.glsl.spv",
-  "materialStorageBufferBindingIndex": 2,
-  "texturesBindingIndex": 0
+  "fragmentShader": "resources/shaders/grid.fragment.glsl.spv"
 }

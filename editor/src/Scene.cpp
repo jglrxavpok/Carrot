@@ -3,6 +3,7 @@
 //
 
 #include "Scene.h"
+#include "engine/utils/JSON.h"
 
 namespace Peeler {
     void Scene::tick(double frameTime) {
@@ -11,11 +12,6 @@ namespace Peeler {
 
     void Scene::onFrame(const Carrot::Render::Context& renderContext) {
         world.onFrame(renderContext);
-    }
-
-    Scene& Scene::operator=(const Scene& toCopy) {
-        world = toCopy.world;
-        return *this;
     }
 
     void Scene::clear() {
@@ -49,6 +45,14 @@ namespace Peeler {
         }
 
         dest.AddMember("entities", entitiesMap, doc.GetAllocator());
+
+        rapidjson::Value lightingObj(rapidjson::kObjectType);
+        {
+            lightingObj.AddMember("ambient", Carrot::JSON::write(lighting.ambient, doc), doc.GetAllocator());
+            lightingObj.AddMember("raytracedShadows", lighting.raytracedShadows, doc.GetAllocator());
+        }
+
+        dest.AddMember("lighting", lightingObj, doc.GetAllocator());
         return dest;
     }
 
@@ -75,6 +79,11 @@ namespace Peeler {
                 auto component = lib.deserialise(componentName, componentDataKey, entity);
                 entity.addComponent(std::move(component));
             }
+        }
+
+        if(src.HasMember("lighting")) {
+            lighting.ambient = Carrot::JSON::read<3, float>(src["lighting"]["ambient"]);
+            lighting.raytracedShadows = src["lighting"]["raytracedShadows"].GetBool();
         }
     }
 }

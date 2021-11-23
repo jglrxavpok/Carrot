@@ -34,6 +34,8 @@ namespace Peeler {
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
+        bool onCloseButtonPressed() override;
+
     public: // project management
         void performLoad(std::filesystem::path path) override;
 
@@ -62,11 +64,13 @@ namespace Peeler {
         void duplicateEntity(const Carrot::ECS::Entity& entity);
         void removeEntity(const Carrot::ECS::Entity& entity);
 
-        void addDefaultSystems(Scene& scene);
+        void addDefaultSystems(Scene& scene, bool editingScene);
 
     private: // simulation
         void startSimulation();
         void stopSimulation();
+
+        void updateSettingsBasedOnScene();
 
     private:
         ImGuiID mainDockspace;
@@ -124,6 +128,7 @@ namespace Peeler {
         std::vector<ResourceEntry> resourcesInCurrentFolder;
 
         bool isLookingAtRoots = false;
+        bool tryToClose = false;
 
     private: // simulation state
         bool isPlaying = false;

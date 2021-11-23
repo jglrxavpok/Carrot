@@ -59,4 +59,10 @@ namespace Carrot::ECS {
         obj.AddMember("rotation", JSON::write<4, float>(rotationVec, doc), doc.GetAllocator());
         return obj;
     }
+
+    glm::vec3 Transform::computeFinalPosition() const {
+        glm::vec4 wpos {0, 0, 0, 1.0};
+        wpos = toTransformMatrix() * wpos;
+        return { wpos.x, wpos.y, wpos.z };
+    }
 }

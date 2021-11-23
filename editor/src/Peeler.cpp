@@ -26,6 +26,8 @@
 #include <engine/io/Logging.hpp>
 #include <engine/ecs/systems/SystemKinematics.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
+#include <engine/ecs/systems/SystemHandleLights.h>
+#include "ecs/systems/LightEditorRenderer.h"
 
 namespace Peeler {
 
@@ -53,6 +55,15 @@ namespace Peeler {
 
     void Application::UIEditor(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
+        if(tryToClose) {
+            openUnsavedChangesPopup([&]() {
+                requestShutdown();
+            }, [&]() {
+                tryToClose = false;
+            });
+            tryToClose = false;
+        }
+
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -127,11 +138,25 @@ namespace Peeler {
     void Application::UISceneProperties(const Carrot::Render::Context& renderContext) {
         if(ImGui::CollapsingHeader("Lighting")) {
             if(ImGui::BeginMenu("Ambient color")) {
-                static float color[3] = {0};
+                auto& ambientLight = GetRenderer().getLighting().getAmbientLight();
+                float color[3] = { ambientLight.r, ambientLight.g, ambientLight.b };
                 if(ImGui::ColorPicker3("Ambient color picker", color)) {
-                    // TODO
+                    ambientLight = { color[0], color[1], color[2] };
+                    currentScene.lighting.ambient = ambientLight;
+                    markDirty();
                 }
                 ImGui::EndMenu();
+            }
+
+            bool supportsRaytracing = false;
+            if(!supportsRaytracing) {
+                ImGui::BeginDisabled();
+            }
+            if(ImGui::Checkbox("Raytraced shadows", &currentScene.lighting.raytracedShadows)) {
+                // TODO: tell shader
+            }
+            if(!supportsRaytracing) {
+                ImGui::EndDisabled();
             }
         }
     }
@@ -530,12 +555,21 @@ namespace Peeler {
         isPlaying = true;
         savedScene = currentScene;
         currentScene.world.unfreezeLogic();
+        currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        updateSettingsBasedOnScene();
     }
 
     void Application::stopSimulation() {
         isPlaying = false;
         currentScene = savedScene;
         savedScene.clear();
+        currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        updateSettingsBasedOnScene();
+    }
+
+    void Application::updateSettingsBasedOnScene() {
+        GetRenderer().getLighting().getAmbientLight() = currentScene.lighting.ambient;
+        // TODO: raytraced shadows
     }
 
     void Application::UIPlayBar(const Carrot::Render::Context& renderContext) {
@@ -598,7 +632,7 @@ namespace Peeler {
             editorActions.activate();
         }
 
-        addDefaultSystems(currentScene);
+        addDefaultSystems(currentScene, true);
         currentScene.world.freezeLogic();
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
@@ -637,7 +671,7 @@ namespace Peeler {
             lib.addUniquePtrBased<Carrot::ECS::ModelComponent>();
             //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>();
             lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
-            //lib.addUniquePtrBased<Carrot::ECS::RaycastedShadowsLight>();
+            lib.addUniquePtrBased<Carrot::ECS::LightComponent>();
         }
 
         settings.load();
@@ -672,7 +706,7 @@ namespace Peeler {
     void Application::performLoad(std::filesystem::path fileToOpen) {
         if(fileToOpen == EmptyProject) {
             currentScene.clear();
-            addDefaultSystems(currentScene);
+            addDefaultSystems(currentScene, true);
             hasUnsavedChanges = false;
             settings.currentProject.reset();
             selectedID.reset();
@@ -683,8 +717,9 @@ namespace Peeler {
         description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
 
         currentScene.deserialise(description["scene"].GetObject());
-        addDefaultSystems(currentScene); // TODO: load systems from scene
+        addDefaultSystems(currentScene, true); // TODO: load systems from scene
         currentScene.world.freezeLogic();
+        updateSettingsBasedOnScene();
         if(description.HasMember("camera")) {
             cameraController.deserialise(description["camera"].GetObject());
         }
@@ -849,20 +884,19 @@ namespace Peeler {
 
     static std::shared_ptr<Carrot::Render::LightHandle> lightHandle = nullptr;
 
-    void Application::addDefaultSystems(Scene& scene) {
+    void Application::addDefaultSystems(Scene& scene, bool editingScene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
+        scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
         scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
 
+        if(editingScene) {
+            scene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        }
+
 
         GetRenderer().getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
-        lightHandle = GetRenderer().getLighting().create();
-        auto& light = lightHandle->light;
-        light.enabled = true;
-        light.type = Carrot::Render::LightType::Point;
-        light.color = glm::vec3{0, 1, 1};
-        light.intensity = 2;
     }
 
     void Application::updateCurrentFolder(std::filesystem::path path) {
@@ -874,6 +908,14 @@ namespace Peeler {
         }
 
         isLookingAtRoots = false;
+    }
+
+    bool Application::onCloseButtonPressed() {
+        if(hasUnsavedChanges) {
+            tryToClose = true;
+            return false;
+        }
+        return true;
     }
 
 }

@@ -156,7 +156,9 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     }
 
     std::vector<vk::DescriptorSetLayout> layouts{};
-    layouts.push_back(*descriptorSetLayout0);
+
+    if(!description.tmptmptmpUseMaterialSystem)
+        layouts.push_back(*descriptorSetLayout0);
     if(description.vertexFormat == VertexFormat::SkinnedVertex) {
         vk::DescriptorSetLayoutBinding binding {
                 .binding = 0,
@@ -171,7 +173,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
         layouts.push_back(*descriptorSetLayout1);
     }
-    if(description.vertexFormat == VertexFormat::Vertex || description.type == PipelineType::GResolve) { // FIXME: remove condition
+    if(description.tmptmptmpUseMaterialSystem || description.vertexFormat == VertexFormat::Vertex || description.type == PipelineType::GResolve) { // FIXME: remove condition
         layouts.push_back(GetRenderer().getMaterialSystem().getDescriptorSetLayout());
     }
 
@@ -311,16 +313,20 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderC
                 bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
             }
             renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
-        } else {
+        } else if(!description.tmptmptmpUseMaterialSystem) {
             if(descriptorPool) {
                 bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
             }
         }
-    } else {
+    } else if(!description.tmptmptmpUseMaterialSystem) {
         if(descriptorPool) {
             bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
         }
         renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
+    }
+
+    if(description.tmptmptmpUseMaterialSystem) {
+        renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 0, *layout, bindPoint);
     }
 
     if(description.type == PipelineType::GResolve) {
@@ -524,5 +530,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
         } else {
             verify(false, "Unknown topology: " + topologyStr);
         }
+    }
+
+    if(json.HasMember("tmptmptmpUseMaterialSystem")) {
+        tmptmptmpUseMaterialSystem = json["tmptmptmpUseMaterialSystem"].GetBool();
     }
 }

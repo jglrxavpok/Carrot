@@ -10,6 +10,7 @@
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/MaterialSystem.h"
+#include "engine/io/Logging.hpp"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     ZoneScoped;
@@ -53,6 +54,7 @@ std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTex
         try {
             from = textureName;
         } catch(std::runtime_error& e) {
+            Carrot::Log::error("Could not open texture '%s'", textureName.c_str());
             // in case file could not be opened
             from = "resources/textures/default.png";
         }
