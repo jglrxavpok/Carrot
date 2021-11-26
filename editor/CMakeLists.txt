@@ -17,23 +17,23 @@ set(ImGuizmoSources
         )
 
 set(EditorFragmentShaders
-        resources/shaders/grid.fragment.glsl
+        grid.fragment.glsl
         )
 
 set(EditorVertexShaders
-        resources/shaders/grid.vertex.glsl
+        grid.vertex.glsl
         )
 
 set(EditorShaders "")
 
 foreach(shader ${EditorFragmentShaders})
-    add_spirv_shader(fragment "${CMAKE_CURRENT_SOURCE_DIR}/${shader}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
-    set(EditorShaders "${EditorShaders}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+    add_spirv_shader(fragment "${shader}" "${shader}.spv")
+    set(EditorShaders "${EditorShaders}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
 endforeach()
 
 foreach(shader ${EditorVertexShaders})
-    add_spirv_shader(vertex "${CMAKE_CURRENT_SOURCE_DIR}/${shader}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
-    set(EditorShaders "${EditorShaders}" "${CMAKE_SOURCE_DIR}/${shader}.spv")
+    add_spirv_shader(vertex "${shader}" "${shader}.spv")
+    set(EditorShaders "${EditorShaders}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
 endforeach()
 
 if (MSVC)

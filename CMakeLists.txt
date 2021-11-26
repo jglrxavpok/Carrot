@@ -85,24 +85,34 @@ FetchContent_Declare(openal-soft
         GIT_TAG             1.21.1)
 FetchContent_MakeAvailable(openal-soft)
 
+add_subdirectory(asset_tools)
+
 function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     # TODO: find why incremental compilation no longer works
     # TODO: (maybe related to previous TODO) move to engine CMake?
-    file(RELATIVE_PATH FULL_INPUT "${CMAKE_SOURCE_DIR}" "${INPUT_FILE}")
-    file(RELATIVE_PATH FULL_OUTPUT "${PROJECT_SOURCE_DIR}" "${OUTPUT_FILE}")
-    #set(FULL_OUTPUT "${CMAKE_BINARY_DIR}/${FULL_OUTPUT}")
-    set(FULL_INPUT "${CMAKE_SOURCE_DIR}/${FULL_INPUT}")
-    set(FULL_OUTPUT "${CMAKE_BINARY_DIR}/${FULL_OUTPUT}")
+    #add_custom_command(
+    #        OUTPUT "${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}-copy"
+    #        COMMAND ${CMAKE_COMMAND} -E copy "" "${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}-copy"
+    #        COMMENT "Copying ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE} to ${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}"
+    #        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
+    #)
     add_custom_command(
-            OUTPUT ${OUTPUT_FILE}
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/compute"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/includes"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
-            COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
-            COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
-            MAIN_DEPENDENCY ${FULL_INPUT}
+            OUTPUT "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}"
+            COMMAND shadercompiler "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}" "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}" "${SHADER_STAGE}"
+            COMMENT "Compiling shader ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
     )
+   # add_custom_command(
+   #         OUTPUT ${OUTPUT_FILE}
+   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
+   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/compute"
+   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/includes"
+   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
+   #         COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
+   #         COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
+   #         MAIN_DEPENDENCY ${FULL_INPUT}
+   # )
 endfunction()
 
 function(copy_resources TYPE)
@@ -126,13 +136,8 @@ function(copy_all_resources)
     copy_resources(node_templates)
     copy_resources(particles)
     copy_resources(fonts)
+    copy_resources(shaders)
 endfunction()
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon64.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
-
-copy_all_resources()
 
 if(EXISTS "${OPENXR-LOADER-LIB-LOCATION}")
     set(CAN_SUPPORT_VR true)
@@ -158,7 +163,7 @@ function(make_asan_target Target)
 endfunction()
 
 function(add_includes Target)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}src/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
@@ -176,15 +181,15 @@ function(add_includes Target)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
 endfunction()
 
-add_subdirectory(src)
+add_subdirectory(engine)
 add_subdirectory(samples)
-add_subdirectory(src/tools)
+add_subdirectory(engine/tools)
 add_subdirectory(editor)
 add_subdirectory(tests)
 
 if(AFTERMATH_LIBS)
     set(AFTERMATH_SOURCES
-            src/engine/utils/AftermathIntegration.cpp)
+            engine/engine/utils/AftermathIntegration.cpp)
     add_executable(Carrot-GPUDebug ${ALL_SOURCES} ${AFTERMATH_SOURCES})
     target_include_directories(Carrot-GPUDebug PRIVATE ${AFTERMATH_INCLUDES})
     target_compile_definitions(Carrot-GPUDebug PRIVATE AFTERMATH_ENABLE=1)

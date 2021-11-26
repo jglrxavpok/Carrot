@@ -1,8 +1,4 @@
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-
-// TODO: find cleaner way to include:
-#include "../../../resources/shaders/includes/gbuffer.glsl"
+#include <includes/gbuffer.glsl>
 
 layout(constant_id = 0) const uint MAX_TEXTURES = 1;
 layout(constant_id = 1) const uint MAX_MATERIALS = 1;
@@ -28,7 +24,7 @@ layout(set = 2, binding = 0) uniform CameraBufferObject {
 } cbo;
 
 #include "grid.glsl"
-#include "../../../resources/shaders/includes/math.glsl"
+#include <includes/math.glsl>
 
 layout(location = 0) in vec2 inVertexPosition;
 layout(location = 1) in vec3 inViewPosition;
