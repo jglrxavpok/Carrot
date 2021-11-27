@@ -11,7 +11,7 @@
 #include <set>
 #include <functional>
 #include <engine/render/Skybox.hpp>
-#include "engine/io/Resource.h"
+#include "core/io/Resource.h"
 
 namespace Carrot {
     /// Abstraction over Vulkan images. Manages lifetime and memory

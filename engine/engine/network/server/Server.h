@@ -11,7 +11,7 @@
 #include <asio.hpp>
 #include <engine/network/Packet.hpp>
 #include <engine/network/NetworkInterface.h>
-#include <engine/utils/UUID.h>
+#include <core/utils/UUID.h>
 
 namespace Carrot::Network {
 

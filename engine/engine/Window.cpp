@@ -3,7 +3,7 @@
 //
 
 #include "Window.h"
-#include "engine/exceptions/Exceptions.h"
+#include "core/exceptions/Exceptions.h"
 #include <list>
 #include <vector>
 #include <stb_image.h>

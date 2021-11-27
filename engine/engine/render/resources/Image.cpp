@@ -4,16 +4,14 @@
 
 #include <OpenEXRConfig.h>
 #include <ImfRgbaFile.h>
-#include <ImfArray.h>
 
 #include "Image.h"
 #include "engine/render/resources/Buffer.h"
 #include "stb_image.h"
-#include "engine/utils/Assert.h"
-#include "engine/io/Logging.hpp"
-#include "engine/io/FileFormats.h"
+#include "core/io/Logging.hpp"
+#include "core/io/FileFormats.h"
 #include "engine/utils/Profiling.h"
-#include "engine/async/Executors.h"
+#include "core/async/Executors.h"
 
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,

@@ -7,7 +7,7 @@
 #include "engine/Engine.h"
 #include "engine/render/resources/BufferView.h"
 #include <string>
-#include "engine/io/Resource.h"
+#include "core/io/Resource.h"
 
 namespace Carrot {
     struct ComputeBinding {

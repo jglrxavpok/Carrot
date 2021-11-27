@@ -7,8 +7,8 @@
 #include <unordered_map>
 #include <imgui.h>
 #include "Image.h"
-#include "engine/io/Resource.h"
-#include "engine/io/FileFormats.h"
+#include "core/io/Resource.h"
+#include "core/io/FileFormats.h"
 #include <glm/glm.hpp>
 
 namespace sol {

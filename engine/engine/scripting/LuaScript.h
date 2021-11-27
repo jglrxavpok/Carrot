@@ -5,7 +5,7 @@
 #pragma once
 
 #include "bindings/all.hpp"
-#include <engine/io/Resource.h>
+#include <core/io/Resource.h>
 
 namespace Carrot::Lua {
     class Script: public sol::state {

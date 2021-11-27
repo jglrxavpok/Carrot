@@ -13,7 +13,7 @@
 #include <list>
 #include <cassert>
 #include <strstream>
-#include "engine/utils/stringmanip.h"
+#include "core/utils/stringmanip.h"
 
 namespace Carrot::Log {
     class LogError: public std::exception {

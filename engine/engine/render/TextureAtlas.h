@@ -6,7 +6,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "engine/math/Rect2D.hpp"
+#include "core/math/Rect2D.hpp"
 
 namespace Carrot::Render {
     class TextureAtlas {

@@ -7,14 +7,14 @@
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
 #include <rapidjson/document.h>
-#include "engine/io/IO.h"
+#include "core/io/IO.h"
 #include "engine/render/DrawData.h"
 #include "Vertex.h"
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/MaterialSystem.h"
 #include "Mesh.h"
 #include "Mesh.ipp"
-#include <engine/io/Logging.hpp>
+#include <core/io/Logging.hpp>
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
     Carrot::Pipeline::Pipeline(driver, PipelineDescription(pipelineDescription)) {

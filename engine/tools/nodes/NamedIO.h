@@ -4,8 +4,8 @@
 
 #pragma once
 #include "../EditorNode.h"
-#include "engine/io/IO.h"
-#include "engine/utils/JSON.h"
+#include "core/io/IO.h"
+#include "core/utils/JSON.h"
 #include <filesystem>
 #include "NodeEditorUtils.h"
 

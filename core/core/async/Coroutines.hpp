@@ -10,8 +10,8 @@
 #include <concepts>
 #include <mutex>
 #include <memory>
-#include <engine/utils/Concepts.hpp>
-#include <engine/utils/Macros.h>
+#include <core/utils/Concepts.hpp>
+#include <core/Macros.h>
 #include <iostream>
 
 #ifdef __CLION_IDE_

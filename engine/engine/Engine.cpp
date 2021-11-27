@@ -15,7 +15,7 @@
 #include <vector>
 #include <map>
 #include <set>
-#include <engine/io/IO.h>
+#include <core/io/IO.h>
 #include <engine/render/CameraBufferObject.h>
 #include <engine/render/shaders/ShaderStages.h>
 #include "engine/constants.h"
@@ -39,9 +39,9 @@
 #include "engine/console/Console.h"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
-#include "engine/utils/Macros.h"
+#include "core/Macros.h"
 #include "engine/io/actions/ActionSet.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 
@@ -81,7 +81,6 @@ renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
                                                                    2,1,0,
                                                                    3,2,0,
                                                               })),
-    presentThread(vkDriver),
     config(config)
     {
     ZoneScoped;

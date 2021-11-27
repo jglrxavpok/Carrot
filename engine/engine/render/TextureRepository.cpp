@@ -3,7 +3,7 @@
 //
 
 #include "TextureRepository.h"
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 #include "engine/utils/Macros.h"
 
 #ifdef ENABLE_VR

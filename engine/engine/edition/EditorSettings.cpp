@@ -11,9 +11,9 @@
 #include <rapidjson/filewritestream.h>
 #include <filesystem>
 #include <cstdlib>
-#include <engine/io/IO.h>
-#include <engine/utils/Containers.h>
-#include <engine/utils/JSON.h>
+#include <core/io/IO.h>
+#include <core/utils/Containers.h>
+#include <core/utils/JSON.h>
 #include <rapidjson/prettywriter.h>
 
 std::filesystem::path Tools::ProjectMenuHolder::EmptyProject = "";

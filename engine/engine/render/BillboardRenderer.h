@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/resources/Pipeline.h"
-#include "engine/utils/UUID.h"
+#include "core/utils/UUID.h"
 
 namespace Carrot::Render {
     class BillboardRenderer {

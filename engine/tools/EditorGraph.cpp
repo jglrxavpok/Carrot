@@ -9,10 +9,10 @@
 #include "nodes/Arithmetics.hpp"
 #include "nodes/Constants.hpp"
 #include <engine/utils/ImGuiUtils.hpp>
-#include <engine/utils/Containers.h>
+#include <core/utils/Containers.h>
 #include <filesystem>
 #include <iostream>
-#include <engine/utils/stringmanip.h>
+#include <core/utils/stringmanip.h>
 
 namespace ed = ax::NodeEditor;
 

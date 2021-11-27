@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <engine/utils/Macros.h>
-#include <engine/utils/RNG.h>
+#include <core/Macros.h>
+#include <core/utils/RNG.h>
 
 namespace Carrot::RNG {
 

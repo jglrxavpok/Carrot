@@ -5,8 +5,8 @@
 #include "Client.h"
 #include <engine/utils/Macros.h>
 #include <coroutine>
-#include <engine/utils/stringmanip.h>
-#include <engine/io/Logging.hpp>
+#include <core/utils/stringmanip.h>
+#include <core/io/Logging.hpp>
 #include <engine/network/packets/HandshakePackets.h>
 #include <engine/network/AsioHelpers.h>
 

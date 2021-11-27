@@ -8,7 +8,7 @@
 #endif
 
 #include "engine/constants.h"
-#include "engine/io/Resource.h"
+#include "core/io/Resource.h"
 #include <optional>
 
 namespace Carrot {

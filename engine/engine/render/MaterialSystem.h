@@ -12,7 +12,7 @@
 #include "engine/vulkan/includes.h"
 #include "engine/render/RenderContext.h"
 #include "resources/Texture.h"
-#include <engine/utils/WeakPool.hpp>
+#include <core/utils/WeakPool.hpp>
 
 namespace Carrot::Render {
 

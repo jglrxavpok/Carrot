@@ -5,11 +5,13 @@ Game engine in C++, mostly for my own fun.
 Don't expect support for the moment.
 
 ## Structure
-* `src/engine`: Engine code
-* `src/tools`: Particle editor code. Should move to `editor/` at some point.
+* `core`: Core code. Basic functions such as IO, logging. Also serves as de-duplication of code between offline tools and the engine code.
+* `engine`: Engine code
+  * `engine/engine`: Engine implementation
+  * `engine/resources`: Resources used by the engine (or left over from old code).
+  * `engine/tools`: Particle editor code. Should move to `editor/` at some point.
 * `editor`: Peeler editor code and resources.
 * `samples`: Directories of different samples for Carrot.
-* `resources`: Resources used by the engine (or left over from old code).
 
 ## Dependencies
 

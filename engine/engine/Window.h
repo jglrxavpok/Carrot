@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <engine/io/Resource.h>
+#include <core/io/Resource.h>
 #include <engine/Configuration.h>
 
 namespace Carrot {

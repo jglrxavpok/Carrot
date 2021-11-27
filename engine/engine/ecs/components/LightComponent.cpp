@@ -3,7 +3,7 @@
 //
 #include "LightComponent.h"
 #include "engine/Engine.h"
-#include "engine/utils/JSON.h"
+#include "core/utils/JSON.h"
 
 namespace Carrot::ECS {
     LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(light) {

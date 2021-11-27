@@ -5,8 +5,8 @@
 #include "Template.h"
 #include "tools/EditorGraph.h"
 #include "tools/nodes/NamedIO.h"
-#include "engine/io/Logging.hpp"
-#include "engine/expressions/ExpressionVisitor.h"
+#include "core/io/Logging.hpp"
+#include "core/expressions/ExpressionVisitor.h"
 #include "tools/ParticleEditor.h"
 
 namespace Tools {

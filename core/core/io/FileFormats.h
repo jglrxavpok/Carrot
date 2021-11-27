@@ -6,7 +6,7 @@
 
 #include <filesystem>
 #include <cstdint>
-#include "engine/utils/stringmanip.h"
+#include "core/utils/stringmanip.h"
 
 namespace Carrot::IO {
     enum class FileFormat: std::uint8_t {

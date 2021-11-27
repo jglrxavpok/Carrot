@@ -4,8 +4,8 @@
 
 #include <glm/gtx/quaternion.hpp>
 #include "FreeCameraController.h"
-#include "engine/io/Logging.hpp"
-#include "engine/utils/JSON.h"
+#include "core/io/Logging.hpp"
+#include "core/utils/JSON.h"
 
 namespace Carrot::Edition {
     void FreeCameraController::move(float strafe, float forward, float upward, float rotDx, float rotDy, double dt) {

@@ -2,9 +2,9 @@
 // Created by jglrxavpok on 25/07/2021.
 //
 #include "ActionSet.h"
-#include "engine/utils/Macros.h"
+#include <core/Macros.h>
 #include "engine/Engine.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 
 namespace Carrot::IO {
 

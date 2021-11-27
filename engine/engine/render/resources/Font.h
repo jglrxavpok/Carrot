@@ -5,7 +5,7 @@
 #pragma once
 
 #include <engine/vulkan/VulkanDriver.h>
-#include <engine/io/Resource.h>
+#include <core/io/Resource.h>
 #include <engine/render/resources/Mesh.h>
 #include <glm/glm.hpp>
 #include <stb_truetype.h>

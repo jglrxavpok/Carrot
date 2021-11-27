@@ -7,7 +7,7 @@
 #include <string>
 #include <stdexcept>
 #include "../EditorNode.h"
-#include <engine/expressions/Expressions.h>
+#include <core/expressions/Expressions.h>
 
 #include <spirv.hpp>
 

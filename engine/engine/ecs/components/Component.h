@@ -3,11 +3,11 @@
 //
 
 #pragma once
-#include "engine/utils/Identifiable.h"
+#include "core/utils/Identifiable.h"
 #include <engine/ecs/EntityTypes.h>
 #include <rapidjson/document.h>
 #include <utility>
-#include <engine/utils/Library.hpp>
+#include <core/utils/Library.hpp>
 
 namespace Carrot::Render {
     struct Context;

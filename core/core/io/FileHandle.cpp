@@ -5,7 +5,7 @@
 #include "FileHandle.h"
 #include <stdexcept>
 #include <cassert>
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 
 namespace Carrot::IO {
     static void checkStdError(int err, const std::string& operation) {

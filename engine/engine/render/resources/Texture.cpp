@@ -3,7 +3,7 @@
 //
 
 #include "Texture.h"
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 #include "engine/Engine.h"
 
 namespace Carrot::Render {

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "engine/utils/UUID.h"
-#include "engine/expressions/Expression.h"
+#include "core/utils/UUID.h"
+#include "core/expressions/Expression.h"
 #include <cassert>
 
 namespace Carrot {

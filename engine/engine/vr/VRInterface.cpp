@@ -4,8 +4,8 @@
 #ifdef ENABLE_VR
 #include "VRInterface.h"
 #include "engine/utils/Macros.h"
-#include "engine/io/Logging.hpp"
-#include "engine/utils/stringmanip.h"
+#include "core/io/Logging.hpp"
+#include "core/utils/stringmanip.h"
 
 namespace Carrot::VR {
 

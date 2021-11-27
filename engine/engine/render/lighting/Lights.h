@@ -4,7 +4,7 @@
 
 #pragma once
 #include "engine/vulkan/includes.h"
-#include "engine/utils/WeakPool.hpp"
+#include "core/utils/WeakPool.hpp"
 #include "engine/render/RenderContext.h"
 #include <glm/glm.hpp>
 

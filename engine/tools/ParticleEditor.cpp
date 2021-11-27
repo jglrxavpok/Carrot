@@ -15,8 +15,8 @@
 #include <filesystem>
 #include <cstdlib>
 
-#include "engine/io/IO.h"
-#include "engine/utils/JSON.h"
+#include "core/io/IO.h"
+#include "core/utils/JSON.h"
 #include "tools/generators/ParticleShaderGenerator.h"
 #include "engine/render/particles/ParticleBlueprint.h"
 #include "engine/render/RenderGraph.h"

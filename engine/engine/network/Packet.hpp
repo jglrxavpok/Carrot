@@ -8,8 +8,8 @@
 #include <span>
 #include <vector>
 #include <unordered_map>
-#include <engine/utils/Assert.h>
-#include <engine/io/Serialisation.h>
+#include <core/utils/Assert.h>
+#include <core/io/Serialisation.h>
 
 namespace Carrot::Network {
     using PacketID = std::uint32_t;

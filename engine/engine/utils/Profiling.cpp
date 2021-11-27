@@ -3,7 +3,7 @@
 //
 
 #include "Profiling.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 #include <unordered_map>
 
 namespace Carrot::Profiling {

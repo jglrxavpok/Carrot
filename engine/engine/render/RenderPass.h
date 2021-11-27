@@ -8,7 +8,7 @@
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/RenderContext.h"
 #include "engine/render/resources/Texture.h"
-#include "engine/utils/UUID.h"
+#include "core/utils/UUID.h"
 #include "engine/render/RenderPassData.h"
 #include <any>
 

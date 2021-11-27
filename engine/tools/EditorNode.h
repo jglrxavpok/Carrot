@@ -7,8 +7,8 @@
 #include "engine/Engine.h"
 #include "imgui_node_editor.h"
 #include <rapidjson/document.h>
-#include "engine/utils/UUID.h"
-#include "engine/expressions/Expressions.h"
+#include "core/utils/UUID.h"
+#include "core/expressions/Expressions.h"
 
 namespace Tools {
     namespace ed = ax::NodeEditor;

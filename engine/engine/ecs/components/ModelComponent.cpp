@@ -7,7 +7,7 @@
 #include "engine/utils/ImGuiUtils.hpp"
 #include "imgui.h"
 #include "engine/edition/DragDropTypes.h"
-#include "engine/utils/JSON.h"
+#include "core/utils/JSON.h"
 #include <filesystem>
 
 namespace Carrot::ECS {

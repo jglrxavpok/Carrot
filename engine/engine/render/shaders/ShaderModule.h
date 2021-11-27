@@ -11,7 +11,7 @@
 #include <map>
 #include <engine/render/shaders/Specialization.h>
 #include <engine/render/NamedBinding.h>
-#include <engine/io/Resource.h>
+#include <core/io/Resource.h>
 #include <span>
 
 namespace Carrot {

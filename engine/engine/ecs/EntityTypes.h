@@ -8,8 +8,8 @@
 #include <cstddef>
 #include <string_view>
 #include <cassert>
-#include <engine/memory/OptionalRef.h>
-#include <engine/utils/UUID.h>
+#include <core/memory/OptionalRef.h>
+#include <core/utils/UUID.h>
 
 namespace Carrot::ECS {
     using Tags = std::uint64_t;

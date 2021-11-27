@@ -17,7 +17,7 @@ namespace Carrot {
 #include <engine/vulkan/includes.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
-#include "engine/memory/NakedPtr.hpp"
+#include "core/memory/NakedPtr.hpp"
 #include "engine/render/IDTypes.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/render/DebugBufferObject.h"
@@ -30,9 +30,8 @@ namespace Carrot {
 #include "render/Skybox.hpp"
 #include "render/Composer.h"
 #include "engine/Configuration.h"
-#include "engine/tasks/PresentThread.h"
 #include "engine/io/actions/InputVectors.h"
-#include "engine/async/Coroutines.hpp"
+#include "core/async/Coroutines.hpp"
 
 namespace sol {
     class state;
@@ -380,7 +379,6 @@ namespace Carrot {
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
-        PresentThread presentThread;
         VulkanRenderer renderer;
         std::uint32_t lastFrameIndex = 0;
         std::uint32_t frames = 0;

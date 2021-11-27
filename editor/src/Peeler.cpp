@@ -19,11 +19,11 @@
 #include <utility>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
-#include <engine/io/IO.h>
-#include <engine/io/Files.h>
-#include <engine/utils/stringmanip.h>
+#include <core/io/IO.h>
+#include <core/io/Files.h>
+#include <core/utils/stringmanip.h>
 #include <engine/edition/DragDropTypes.h>
-#include <engine/io/Logging.hpp>
+#include <core/io/Logging.hpp>
 #include <engine/ecs/systems/SystemKinematics.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include "glslang/Public/ShaderLang.h"
 
 namespace ShaderCompiler {
@@ -14,6 +15,8 @@ namespace ShaderCompiler {
         IncludeResult *includeLocal(const char *string, const char *string1, size_t size) override;
 
         void releaseInclude(IncludeResult *result) override;
+
+        std::vector<std::filesystem::path> includedFiles;
 
         ~FileIncluder() override;
     };

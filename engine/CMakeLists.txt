@@ -1,20 +1,10 @@
-#set(EngineRoot src/engine/)
 set(EngineRoot "engine/")
 set(ShadersRoot "${EngineRoot}resources/shaders")
 set(ENGINE-SOURCES
         ${EngineRoot}Window.cpp
 
-        ${EngineRoot}io/IO.cpp
-        ${EngineRoot}io/Logging.cpp
-        ${EngineRoot}io/FileHandle.cpp
-        ${EngineRoot}io/Resource.cpp
-        ${EngineRoot}io/Serialisation.cpp
-        ${EngineRoot}io/Files.cpp
-
         ${EngineRoot}io/actions/ActionSet.cpp
 
-
-        ${EngineRoot}memory/NakedPtr.hpp
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/resources/Mesh.cpp
         ${EngineRoot}render/Model.cpp
@@ -34,10 +24,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/animation/Animation.cpp
 
         ${EngineRoot}utils/conversions.cpp
-        ${EngineRoot}utils/stringmanip.cpp
-        ${EngineRoot}utils/Identifiable.cpp
-        ${EngineRoot}utils/UUID.cpp
-        ${EngineRoot}utils/Profiling.cpp
 
         ${EngineRoot}render/resources/Font.cpp
 
@@ -95,23 +81,16 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/BillboardRenderer.cpp
         ${EngineRoot}render/lighting/Lights.cpp
 
-        ${EngineRoot}expressions/Expressions.cpp
         ${EngineRoot}console/Console.cpp
 
         ${EngineRoot}console/RuntimeOption.cpp
         ${EngineRoot}console/AutocompleteField.cpp
-
-        ${EngineRoot}tasks/PresentThread.cpp
-        ${EngineRoot}tasks/Timer.cpp
 
         ${EngineRoot}network/client/Client.cpp
         ${EngineRoot}network/server/Server.cpp
         ${EngineRoot}network/NetworkInterface.cpp
 
         ${EngineRoot}network/packets/HandshakePackets.cpp
-
-        ${EngineRoot}async/Coroutines.cpp
-        ${EngineRoot}async/Executors.cpp
 
         ${EngineRoot}scripting/LuaScript.cpp
         ${EngineRoot}scripting/bindings/all.cpp
@@ -130,6 +109,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/EditorSettings.cpp
         ${EngineRoot}edition/FreeCameraController.cpp
         ${EngineRoot}edition/DragDropTypes.cpp
+
+        ${EngineRoot}utils/Profiling.cpp
         )
 
 set(VR_SOURCES
@@ -247,7 +228,7 @@ if (MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 endif()
 
-set(ALL_BASE_LIBS Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR)
+set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR)
 
 copy_all_resources()
 file(COPY "resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")

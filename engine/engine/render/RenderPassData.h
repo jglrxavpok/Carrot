@@ -5,7 +5,7 @@
 #pragma once
 
 #include <memory>
-#include "engine/utils/UUID.h"
+#include "core/utils/UUID.h"
 
 namespace Carrot::Render {
     class GraphBuilder;

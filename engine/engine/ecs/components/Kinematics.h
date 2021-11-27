@@ -8,8 +8,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <engine/utils/JSON.h>
-#include <engine/utils/JSON.h>
+#include <core/utils/JSON.h>
+#include <core/utils/JSON.h>
 #include <imgui.h>
 
 namespace Carrot::ECS {

@@ -6,11 +6,11 @@
 #include "GBuffer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/MaterialSystem.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
     ZoneScoped;

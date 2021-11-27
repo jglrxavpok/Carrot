@@ -7,7 +7,7 @@
 #include <glm/vec2.hpp>
 #include <string>
 #include <string_view>
-#include "engine/utils/stringmanip.h"
+#include "core/utils/stringmanip.h"
 #include "engine/io/actions/InputVectors.h"
 
 namespace Carrot::IO {

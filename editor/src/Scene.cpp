@@ -3,7 +3,7 @@
 //
 
 #include "Scene.h"
-#include "engine/utils/JSON.h"
+#include "core/utils/JSON.h"
 
 namespace Peeler {
     void Scene::tick(double frameTime) {

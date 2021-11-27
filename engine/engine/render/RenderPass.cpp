@@ -5,11 +5,11 @@
 #include "RenderPass.h"
 
 #include <utility>
-#include <engine/utils/Containers.h>
+#include <core/utils/Containers.h>
 #include "RenderGraph.h"
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 #include "engine/utils/Macros.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 #include "engine/Engine.h"
 #include "engine/render/TextureRepository.h"
 

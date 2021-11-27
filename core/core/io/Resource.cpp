@@ -3,7 +3,7 @@
 //
 
 #include "Resource.h"
-#include "engine/utils/Assert.h"
+#include "core/utils/Assert.h"
 
 namespace Carrot::IO {
     Resource::Resource(): data(true) {

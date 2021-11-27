@@ -6,7 +6,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/resources/Texture.h"
-#include "engine/math/Rect2D.hpp"
+#include "core/math/Rect2D.hpp"
 #include "engine/render/InstanceData.h"
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/detail/type_quat.hpp>

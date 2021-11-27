@@ -3,13 +3,13 @@
 //
 
 #include "ShaderModule.h"
-#include "engine/io/IO.h"
+#include "core/io/IO.h"
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_parser.hpp>
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 
 Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const std::string& entryPoint)
         : driver(driver), entryPoint(entryPoint) {

@@ -4,8 +4,8 @@
 
 #include "NetworkInterface.h"
 #include "packets/HandshakePackets.h"
-#include "engine/utils/Macros.h"
-#include "engine/io/Logging.hpp"
+#include "core/Macros.h"
+#include "core/io/Logging.hpp"
 
 namespace Carrot::Network {
 

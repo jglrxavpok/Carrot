@@ -3,9 +3,9 @@
 //
 
 #include "Particles.h"
-#include "engine/utils/RNG.h"
+#include "core/utils/RNG.h"
 
-#include "engine/math/Constants.h"
+#include "core/math/Constants.h"
 
 Carrot::ParticleEmitter::ParticleEmitter(Carrot::ParticleSystem& system): system(system) {
 

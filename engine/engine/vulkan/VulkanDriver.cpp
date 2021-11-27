@@ -9,7 +9,7 @@
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Texture.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Logging.hpp"
 #include "engine/render/TextureRepository.h"
 #include "engine/utils/Macros.h"
 #include "engine/render/resources/BufferView.h"

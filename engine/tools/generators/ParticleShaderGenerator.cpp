@@ -3,7 +3,7 @@
 //
 
 #include "ParticleShaderGenerator.h"
-#include "engine/expressions/ExpressionVisitor.h"
+#include "core/expressions/ExpressionVisitor.h"
 #include <stack>
 #include <utility>
 #include "tools/nodes/VariableNodes.h"

@@ -3,8 +3,8 @@
 //
 
 #include "ParticleBlueprint.h"
-#include "engine/io/IO.h"
-#include "engine/io/Resource.h"
+#include "core/io/IO.h"
+#include "core/io/Resource.h"
 #include "engine/render/ComputePipeline.h"
 #include "engine/render/GBuffer.h"
 

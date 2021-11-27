@@ -5,11 +5,11 @@
 #pragma once
 
 #include "engine/Engine.h"
-#include "engine/utils/Containers.h"
+#include "core/utils/Containers.h"
 #include "imgui_node_editor.h"
 #include "EditorNode.h"
-#include "engine/memory/BidirectionalMap.hpp"
-#include "engine/utils/UUID.h"
+#include "core/memory/BidirectionalMap.hpp"
+#include "core/utils/UUID.h"
 #include "nodes/TerminalNodes.h"
 #include "nodes/VariableNodes.h"
 #include "nodes/Template.h"

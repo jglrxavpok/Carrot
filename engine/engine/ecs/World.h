@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <memory>
 #include <unordered_map>
-#include <engine/memory/OptionalRef.h>
+#include <core/memory/OptionalRef.h>
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
 #include "EntityTypes.h"

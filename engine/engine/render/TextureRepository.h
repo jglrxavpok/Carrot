@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderPassData.h"
-#include "engine/utils/UUID.h"
+#include "core/utils/UUID.h"
 
 #ifdef ENABLE_VR
 namespace Carrot::VR {

@@ -4,7 +4,7 @@
 
 #include "TextureAtlas.h"
 #include <stdexcept>
-#include "engine/math/BasicFunctions.h"
+#include "core/math/BasicFunctions.h"
 
 namespace Carrot::Render {
 

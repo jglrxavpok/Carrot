@@ -6,8 +6,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "RuntimeOption.hpp"
-#include "engine/io/Logging.hpp"
-#include "engine/utils/stringmanip.h"
+#include "core/io/Logging.hpp"
+#include "core/utils/stringmanip.h"
 #include <utility>
 
 namespace Carrot {

@@ -3,14 +3,14 @@
 //
 
 #include "Particles.h"
-#include <engine/utils/RNG.h>
+#include <core/utils/RNG.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include "imgui.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/BufferView.h"
-#include "engine/io/Resource.h"
-#include "engine/io/Logging.hpp"
+#include "core/io/Resource.h"
+#include "core/io/Logging.hpp"
 
 #define DEBUG_PARTICLES 1
 

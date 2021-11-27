@@ -10,11 +10,11 @@
 #include <assimp/IOStream.hpp>
 #include "engine/render/resources/Mesh.h"
 #include <iostream>
-#include <engine/utils/stringmanip.h>
+#include <core/utils/stringmanip.h>
 #include "engine/render/resources/Pipeline.h"
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
-#include <engine/io/Logging.hpp>
+#include <core/io/Logging.hpp>
 #include <engine/render/DrawData.h>
 #include <engine/utils/Profiling.h>
 

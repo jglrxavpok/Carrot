@@ -24,4 +24,4 @@ namespace Carrot::Assertions {
 }
 
 #define verify(condition, message) \
-    if(!(condition)) throw Carrot::Assertions::Error(#condition, message, __FILE__, __FUNCTION__, __LINE__);
+    if(!(condition)) throw Carrot::Assertions::Error(#condition, message, __FILE__, __FUNCTION__, __LINE__); else {}

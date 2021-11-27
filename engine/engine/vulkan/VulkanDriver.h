@@ -8,10 +8,10 @@
 #include <optional>
 #include <vector>
 #include <set>
-#include <engine/memory/NakedPtr.hpp>
+#include <core/memory/NakedPtr.hpp>
 #include <GLFW/glfw3.h>
 #include "engine/vulkan/SwapchainAware.h"
-#include "engine/memory/ThreadLocal.hpp"
+#include "core/memory/ThreadLocal.hpp"
 #include "engine/Configuration.h"
 #include "engine/Window.h"
 
