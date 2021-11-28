@@ -4,4 +4,5 @@ add_executable(shadercompiler
 
         ../thirdparty/glslang/StandAlone/ResourceLimits.cpp
 )
-target_link_libraries(shadercompiler PUBLIC glslang SPIRV)
+add_core_includes(shadercompiler)
+target_link_libraries(shadercompiler PUBLIC glslang SPIRV CarrotCore)

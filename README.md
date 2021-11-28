@@ -10,6 +10,7 @@ Don't expect support for the moment.
   * `engine/engine`: Engine implementation
   * `engine/resources`: Resources used by the engine (or left over from old code).
   * `engine/tools`: Particle editor code. Should move to `editor/` at some point.
+* `asset_tools`: Tools used to prepare assets.
 * `editor`: Peeler editor code and resources.
 * `samples`: Directories of different samples for Carrot.
 

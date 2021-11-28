@@ -8,6 +8,10 @@
 #include <fstream>
 #include <filesystem>
 #include "FileIncluder.h"
+#include <core/data/ShaderMetadata.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/filewritestream.h>
+#include <core/utils/stringmanip.h>
 
 // imports from glslang
 #include <StandAlone/ResourceLimits.h>
@@ -148,6 +152,40 @@ int main(int argc, const char** argv) {
 
     std::ofstream outputFile(outputPath, std::ios::binary);
     outputFile.write(reinterpret_cast<const char *>(spirv.data()), spirv.size() * sizeof(std::uint32_t));
+
+    ShaderCompiler::Metadata metadata;
+    for(const auto& includedFile : includer.includedFiles) {
+        metadata.sourceFiles.push_back(std::filesystem::absolute(includedFile));
+    }
+    metadata.sourceFiles.push_back(std::filesystem::absolute(inputFile));
+    std::string command;
+    for (int i = 0; i < argc; ++i) {
+        if(i != 0) {
+            command += " ";
+        }
+        command += "\"";
+        command += argv[i];
+        command += "\"";
+    }
+
+    metadata.command = command;
+
+    auto metadataPath = outputPath;
+    metadataPath.replace_extension(".meta.json");
+    FILE* fp = fopen(Carrot::toString(metadataPath.u8string()).c_str(), "wb"); // non-Windows use "w"
+
+    char writeBuffer[65536];
+    rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+
+    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
+
+    rapidjson::Document document;
+    document.SetObject();
+
+    metadata.writeJSON(document);
+
+    document.Accept(writer);
+    fclose(fp);
 
     return 0;
 }

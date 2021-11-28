@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <engine/async/Coroutines.hpp>
+#include <core/async/Coroutines.hpp>
 
 struct RefCountedObject {
     explicit RefCountedObject() {

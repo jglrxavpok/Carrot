@@ -4,10 +4,13 @@ set(CORE-SOURCES
         ${CoreRoot}async/Coroutines.cpp
         ${CoreRoot}async/Executors.cpp
 
+        ${CoreRoot}data/ShaderMetadata.cpp
+
         ${CoreRoot}expressions/Expressions.cpp
 
         ${CoreRoot}io/FileHandle.cpp
         ${CoreRoot}io/Files.cpp
+        ${CoreRoot}io/FileWatcher.cpp
         ${CoreRoot}io/IO.cpp
         ${CoreRoot}io/Logging.cpp
         ${CoreRoot}io/Resource.cpp

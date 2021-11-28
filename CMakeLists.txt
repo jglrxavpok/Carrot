@@ -85,34 +85,35 @@ FetchContent_Declare(openal-soft
         GIT_TAG             1.21.1)
 FetchContent_MakeAvailable(openal-soft)
 
+function(add_includes Target)
+    add_core_includes(${Target})
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/misc/cpp)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/dr_libs/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
+    target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
+    target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
+
+    target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
+    target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
+endfunction()
+
+add_subdirectory(core)
 add_subdirectory(asset_tools)
 
 function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
-    # TODO: find why incremental compilation no longer works
-    # TODO: (maybe related to previous TODO) move to engine CMake?
-    #add_custom_command(
-    #        OUTPUT "${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}-copy"
-    #        COMMAND ${CMAKE_COMMAND} -E copy "" "${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}-copy"
-    #        COMMENT "Copying ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE} to ${CMAKE_BINARY_DIR}/resources/shaders/${INPUT_FILE}"
-    #        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
-    #)
     add_custom_command(
             OUTPUT "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}"
             COMMAND shadercompiler "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}" "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}" "${SHADER_STAGE}"
             COMMENT "Compiling shader ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
+            DEPENDS shadercompiler
     )
-   # add_custom_command(
-   #         OUTPUT ${OUTPUT_FILE}
-   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/"
-   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/compute"
-   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/includes"
-   #         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/resources/shaders/rt"
-   #         COMMAND echo glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
-   #         COMMAND glslc -g --target-env=vulkan1.2 -fshader-stage=${SHADER_STAGE} "${FULL_INPUT}" -o "${FULL_OUTPUT}"
-   #         MAIN_DEPENDENCY ${FULL_INPUT}
-   # )
 endfunction()
 
 function(copy_resources TYPE)
@@ -162,24 +163,6 @@ function(make_asan_target Target)
     endif()
 endfunction()
 
-function(add_includes Target)
-    add_core_includes(${Target})
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/misc/cpp)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/dr_libs/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
-    target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
-    target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
-
-    target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
-    target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
-endfunction()
-
-add_subdirectory(core)
 add_subdirectory(engine)
 add_subdirectory(samples)
 add_subdirectory(engine/tools)

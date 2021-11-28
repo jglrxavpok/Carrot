@@ -26,6 +26,7 @@ enable_testing()
 add_executable(
         Engine-Tests
         Coroutines.cpp
+        FileWatching.cpp
 )
 target_link_libraries(
         Engine-Tests
