@@ -9,6 +9,7 @@
 #include "engine/render/IDTypes.h"
 #include "engine/render/shaders/ShaderStages.h"
 #include "VertexFormat.h"
+#include "engine/render/shaders/ShaderSource.h"
 
 namespace Carrot {
     class Material;
@@ -25,8 +26,8 @@ namespace Carrot {
     };
 
     struct PipelineDescription {
-        Carrot::IO::Resource vertexShader;
-        Carrot::IO::Resource fragmentShader;
+        Render::ShaderSource vertexShader;
+        Render::ShaderSource fragmentShader;
         PipelineType type = PipelineType::Unknown;
         Carrot::VertexFormat vertexFormat = Carrot::VertexFormat::Invalid;
         std::map<std::string, std::uint32_t> constants;
@@ -69,6 +70,9 @@ namespace Carrot {
         const std::vector<vk::DescriptorSet>& getDescriptorSets0() const;
 
         VertexFormat getVertexFormat() const;
+
+    public:
+        void checkForReloadableShaders();
 
     public:
         PipelineDescription& getDescription() {
@@ -143,5 +147,7 @@ namespace Carrot {
         void allocateDescriptorSets();
 
         vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
+
+        void reloadShaders();
     };
 }

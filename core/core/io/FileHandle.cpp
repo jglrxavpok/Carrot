@@ -6,10 +6,15 @@
 #include <stdexcept>
 #include <cassert>
 #include "core/utils/Assert.h"
+#include "core/utils/stringmanip.h"
 
 namespace Carrot::IO {
     static void checkStdError(int err, const std::string& operation) {
         if(err) throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err));
+    }
+
+    FileHandle::FileHandle(const std::filesystem::path& filepath, OpenMode openMode) {
+        open(Carrot::toString(filepath.u8string()), openMode);
     }
 
     FileHandle::FileHandle(const std::string filename, OpenMode openMode) {

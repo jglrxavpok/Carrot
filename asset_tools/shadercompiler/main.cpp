@@ -158,17 +158,10 @@ int main(int argc, const char** argv) {
         metadata.sourceFiles.push_back(std::filesystem::absolute(includedFile));
     }
     metadata.sourceFiles.push_back(std::filesystem::absolute(inputFile));
-    std::string command;
-    for (int i = 0; i < argc; ++i) {
-        if(i != 0) {
-            command += " ";
-        }
-        command += "\"";
-        command += argv[i];
-        command += "\"";
-    }
 
-    metadata.command = command;
+    metadata.commandArguments[0] = filename;
+    metadata.commandArguments[1] = outFilename;
+    metadata.commandArguments[2] = stageStr;
 
     auto metadataPath = outputPath;
     metadataPath.replace_extension(".meta.json");

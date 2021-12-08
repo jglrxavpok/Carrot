@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <filesystem>
 #include <cstdio>
 #include <memory>
 #include <span>
@@ -53,6 +54,7 @@ namespace Carrot::IO {
     class FileHandle {
     public:
         explicit FileHandle() = default;
+        explicit FileHandle(const std::filesystem::path& filename, OpenMode openMode);
         explicit FileHandle(const std::string filename, OpenMode openMode);
         explicit FileHandle(const char* const filename, OpenMode openMode);
         FileHandle(FileHandle&& toMove);

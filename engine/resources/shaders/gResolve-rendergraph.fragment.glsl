@@ -38,7 +38,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
         #define light lights.l[i]
 
         if(!light.enabled)
-        continue;
+            continue;
 
         // point type
         vec3 lightDirection;
@@ -48,11 +48,14 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
             lightDirection = normalize(lightPosition-worldPos);
         } else if(light.type == 1) {
             lightDirection = -normalize(light.direction);
+        } else if(light.type == 2) {
+            lightDirection = -normalize(light.direction);
         } else {
             // TODO
             lightDirection = -normal;
         }
 
+        // TODO: cutoff angle
 
         if(dot(normal, lightDirection) > 0) {
             // is this point in shadow?

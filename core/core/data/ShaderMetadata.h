@@ -12,7 +12,7 @@
 namespace ShaderCompiler {
     struct Metadata {
         std::vector<std::filesystem::path> sourceFiles; // all source files used to create this shader (original .glsl + included files)
-        std::string command; // command to launch to recompile this shader
+        std::array<std::string, 3> commandArguments; // command to launch to recompile this shader
 
         // Initializes an empty metadata struct
         explicit Metadata() = default;

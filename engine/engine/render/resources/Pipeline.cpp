@@ -23,19 +23,6 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resou
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description): driver(driver), description(description) {
     auto& device = driver.getLogicalDevice();
-    stages = make_unique<Carrot::ShaderStages>(driver,
-                                                std::vector<Carrot::IO::Resource> {
-                                                    description.vertexShader,
-                                                    description.fragmentShader
-                                                },
-                                                std::vector<vk::ShaderStageFlagBits> {
-                                                    vk::ShaderStageFlagBits::eVertex,
-                                                    vk::ShaderStageFlagBits::eFragment
-                                                }
-    );
-
-    descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
-
     pipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
     pipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
 
@@ -147,6 +134,58 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .pAttachments = pipelineTemplate.colorBlendAttachments.data(),
     };
 
+    pipelineTemplate.dynamicStateInfo = {
+            .dynamicStateCount = 2,
+            .pDynamicStates = pipelineTemplate.dynamicStates,
+    };
+
+    pipelineTemplate.viewport = vk::Viewport {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(driver.getFinalRenderSize().width),
+            .height = static_cast<float>(driver.getFinalRenderSize().height),
+
+            .minDepth = -1.0f,
+            .maxDepth = 1.0f,
+    };
+
+    pipelineTemplate.scissor = vk::Rect2D {
+            .offset = {0,0},
+            .extent = {
+                    .width = driver.getFinalRenderSize().width,
+                    .height = driver.getFinalRenderSize().height,
+            }
+    };
+
+    pipelineTemplate.viewportState = vk::PipelineViewportStateCreateInfo {
+            .viewportCount = 1,
+            .pViewports = &pipelineTemplate.viewport,
+
+            .scissorCount = 1,
+            .pScissors = &pipelineTemplate.scissor,
+    };
+
+    stages = make_unique<Carrot::ShaderStages>(driver,
+                                               std::vector<Render::ShaderSource> {
+                                                       description.vertexShader,
+                                                       description.fragmentShader
+                                               },
+                                               std::vector<vk::ShaderStageFlagBits> {
+                                                       vk::ShaderStageFlagBits::eVertex,
+                                                       vk::ShaderStageFlagBits::eFragment
+                                               }
+    );
+
+    reloadShaders();
+}
+
+void Carrot::Pipeline::reloadShaders() {
+    GetVulkanDevice().waitIdle();
+    vkPipelines.clear(); // flush existing pipelines
+    stages->reload();
+
+    descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
+
     std::vector<vk::PushConstantRange> pushConstants{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
         module->addPushConstants(stage, pushConstantMap);
@@ -195,38 +234,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .pPushConstantRanges = pushConstants.data(),
     };
 
-    layout = device.createPipelineLayoutUnique(pipelineLayoutCreateInfo, driver.getAllocationCallbacks());
-
-    pipelineTemplate.dynamicStateInfo = {
-            .dynamicStateCount = 2,
-            .pDynamicStates = pipelineTemplate.dynamicStates,
-    };
-
-    pipelineTemplate.viewport = vk::Viewport {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(driver.getFinalRenderSize().width),
-        .height = static_cast<float>(driver.getFinalRenderSize().height),
-
-        .minDepth = -1.0f,
-        .maxDepth = 1.0f,
-    };
-
-    pipelineTemplate.scissor = vk::Rect2D {
-        .offset = {0,0},
-        .extent = {
-                .width = driver.getFinalRenderSize().width,
-                .height = driver.getFinalRenderSize().height,
-        }
-    };
-
-    pipelineTemplate.viewportState = vk::PipelineViewportStateCreateInfo {
-        .viewportCount = 1,
-        .pViewports = &pipelineTemplate.viewport,
-
-        .scissorCount = 1,
-        .pScissors = &pipelineTemplate.scissor,
-    };
+    layout = GetVulkanDevice().createPipelineLayoutUnique(pipelineLayoutCreateInfo, driver.getAllocationCallbacks());
 
     std::vector<Specialization> specializations{};
 
@@ -280,6 +288,12 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
     };
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
+}
+
+void Carrot::Pipeline::checkForReloadableShaders() {
+    if(stages->shouldReload()) {
+        reloadShaders();
+    }
 }
 
 const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view name) const {

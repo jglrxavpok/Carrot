@@ -15,6 +15,7 @@ namespace Carrot::IO {
         /// Creates empty resource
         explicit Resource();
 
+        Resource(const std::filesystem::path& path);
         Resource(const std::string& filename);
         Resource(const char* const filename);
 

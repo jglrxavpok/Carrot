@@ -47,6 +47,8 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
     ImGui::End();
 #endif
 
+    renderingPipeline->checkForReloadableShaders();
+
     if(gotUpdated) {
         engine.addFrameTask([this, renderContext]() {
             if(usedParticleCount <= 0)

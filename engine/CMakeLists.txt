@@ -16,6 +16,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Texture.cpp
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
+        ${EngineRoot}render/shaders/ShaderSource.cpp
         ${EngineRoot}render/resources/Pipeline.cpp
         ${EngineRoot}render/shaders/Specialization.cpp
         ${EngineRoot}render/InstanceData.cpp

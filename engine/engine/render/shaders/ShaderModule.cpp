@@ -11,26 +11,17 @@
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const IO::Resource file, const std::string& entryPoint)
-        : driver(driver), entryPoint(entryPoint) {
-    auto code = file.readAll();
-    auto& device = driver.getLogicalDevice();
-    vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
-            .codeSize = static_cast<uint32_t>(file.getSize()),
-            .pCode = reinterpret_cast<const uint32_t*>(code.get()),
-    }, driver.getAllocationCallbacks());
-
-    spirv_cross::Parser parser{reinterpret_cast<const uint32_t*>(code.get()), file.getSize()/sizeof(uint32_t)};
-    parser.parse();
-    parsedCode = parser.get_parsed_ir();
-
-    compiler = std::make_unique<spirv_cross::Compiler>(parsedCode);
+Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const Render::ShaderSource& source, const std::string& entryPoint)
+        : driver(driver), entryPoint(entryPoint), source(source) {
+    reload();
 }
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vector<uint8_t>& code, const std::string& entryPoint): driver(driver), entryPoint(entryPoint) {
+void Carrot::ShaderModule::reload() {
+    Carrot::Log::info("[Shader] Loading shader %s", source.getName().c_str());
+    auto code = source.getCode();
     auto& device = driver.getLogicalDevice();
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
-            .codeSize = static_cast<std::uint32_t>(code.size()),
+            .codeSize = static_cast<uint32_t>(code.size()),
             .pCode = reinterpret_cast<const uint32_t*>(code.data()),
     }, driver.getAllocationCallbacks());
 
@@ -39,6 +30,7 @@ Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const std::vect
     parsedCode = parser.get_parsed_ir();
 
     compiler = std::make_unique<spirv_cross::Compiler>(parsedCode);
+    source.clearModifyFlag();
 }
 
 vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const {
@@ -157,7 +149,6 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
 void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const {
     const auto resources = compiler->get_shader_resources();
 
-    // TODO: other types than uint32_t
     if(resources.push_constant_buffers.size() == 0)
         return;
     std::uint32_t offset = std::numeric_limits<std::uint32_t>::max();
@@ -172,25 +163,21 @@ void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::
         size = std::max(static_cast<std::uint32_t>(r.offset+r.range), size);
     }
 
-    bool alreadyPresent = false;
     if(pushConstants.contains(name)) {
         auto& existingRange = pushConstants.at(name);
-//        if(existingRange.offset == offset && existingRange.size == size) {
-            existingRange.stageFlags |= stage;
-            alreadyPresent = true;
-            existingRange.offset = std::min(static_cast<std::uint32_t>(offset), existingRange.offset);
-            existingRange.size = std::max(static_cast<std::uint32_t>(size), existingRange.size);
-            //break;
-            return;
-       // }
+        existingRange.stageFlags |= stage;
+        existingRange.offset = std::min(static_cast<std::uint32_t>(offset), existingRange.offset);
+        existingRange.size = std::max(static_cast<std::uint32_t>(size), existingRange.size);
+        return;
     }
 
-    if(!alreadyPresent) {
-        pushConstants[name] = vk::PushConstantRange {
-                .stageFlags = stage,
-                .offset = offset,
-                .size = size,
-        };
-    }
-    //offset += size;
+    pushConstants[name] = vk::PushConstantRange {
+            .stageFlags = stage,
+            .offset = offset,
+            .size = size,
+    };
+}
+
+bool Carrot::ShaderModule::canBeHotReloaded() const {
+    return source.hasSourceBeenModified();
 }

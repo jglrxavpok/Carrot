@@ -13,6 +13,7 @@ namespace Carrot {
     class Engine;
 }
 
+#include <core/io/FileWatcher.h>
 #include <engine/Window.h>
 #include <engine/vulkan/includes.h>
 #include <engine/vulkan/SwapchainAware.h>
@@ -350,6 +351,11 @@ namespace Carrot {
         /// WARNING: WILL BE WAITED AT THE END OF THE FRAME. DON'T DO ANYTHING THAT COULD FREEZE THE MAIN LOOP
         void addFrameTask(FrameTask&& task);
 
+    public:
+        /// Creates a file watcher while will be automatically be updated inside the main loop (once per loop iteration)
+        ///  The engine object only holds a weak reference to the created file watcher.
+        std::shared_ptr<IO::FileWatcher> createFileWatcher(const IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch);
+
     private: // async private
         void waitForFrameTasks();
 
@@ -516,6 +522,9 @@ namespace Carrot {
 
     private: // async members
         std::list<std::future<void>> frameTaskFutures;
+
+    private:
+        std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;

@@ -349,6 +349,17 @@ void Carrot::Engine::run() {
             vrInterface->pollEvents();
         }
 #endif
+
+        {
+            ZoneScopedN("File watching");
+            Carrot::removeIf(fileWatchers, [](auto p) { return p.expired(); });
+            for(const auto& ref : fileWatchers) {
+                if(auto ptr = ref.lock()) {
+                    ptr->tick();
+                }
+            }
+        }
+
         if(glfwWindowShouldClose(window.getGLFWPointer())) {
             if(game->onCloseButtonPressed()) {
                 game->requestShutdown();
@@ -395,6 +406,8 @@ void Carrot::Engine::run() {
         drawFrame(currentFrame);
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
+
+        Carrot::Log::flush();
 
         nextFrameAwaiter.cleanup();
 
@@ -1231,6 +1244,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
     auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
 
     return gresolvePass;
+}
+
+std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const Carrot::IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch) {
+    auto watcher = std::make_shared<Carrot::IO::FileWatcher>(action, filesToWatch);
+    fileWatchers.emplace_back(watcher);
+    return watcher;
 }
 
 

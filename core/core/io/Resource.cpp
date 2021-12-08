@@ -4,6 +4,7 @@
 
 #include "Resource.h"
 #include "core/utils/Assert.h"
+#include "core/utils/stringmanip.h"
 
 namespace Carrot::IO {
     Resource::Resource(): data(true) {
@@ -13,6 +14,11 @@ namespace Carrot::IO {
     Resource::Resource(const char *const filename): data(false) {
         data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
         name(filename);
+    }
+
+    Resource::Resource(const std::filesystem::path& filename): data(false) {
+        data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
+        name(Carrot::toString(filename.u8string()));
     }
 
     Resource::Resource(const std::string& filename): data(false) {

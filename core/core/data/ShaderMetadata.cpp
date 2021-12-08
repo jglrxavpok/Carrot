@@ -4,6 +4,7 @@
 
 #include "ShaderMetadata.h"
 #include <core/utils/stringmanip.h>
+#include <core/Macros.h>
 
 namespace ShaderCompiler {
 
@@ -13,7 +14,13 @@ namespace ShaderCompiler {
             std::filesystem::path path = sourceFile.GetString();
             sourceFiles.emplace_back(std::move(path));
         }
-        command = json["command"].GetString();
+        auto args = json["command_arguments"].GetArray();
+        verify(args.Size() == commandArguments.size(), "Wrong size for command_arguments");
+        commandArguments = {
+                args[0].GetString(),
+                args[1].GetString(),
+                args[2].GetString(),
+        };
     }
 
     void Metadata::writeJSON(rapidjson::Document& document) const {
@@ -25,8 +32,12 @@ namespace ShaderCompiler {
 
         document.AddMember("source_files", sourceFileArray, document.GetAllocator());
 
-        rapidjson::Value commandKey(command.c_str(), document.GetAllocator());
-        document.AddMember("command", commandKey, document.GetAllocator());
+        rapidjson::Value commandArgumentsArray(rapidjson::kArrayType);
+        for(const auto& arg : commandArguments) {
+            rapidjson::Value argument(arg.c_str(), document.GetAllocator());
+            commandArgumentsArray.PushBack(argument, document.GetAllocator());
+        }
+        document.AddMember("command_arguments", commandArgumentsArray, document.GetAllocator());
     }
 
 

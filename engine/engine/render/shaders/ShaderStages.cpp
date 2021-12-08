@@ -26,9 +26,15 @@ Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vect
     }
 }
 
-Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vector<Carrot::IO::Resource>& resources, const std::vector<vk::ShaderStageFlagBits>& stages): driver(driver) {
+Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vector<Render::ShaderSource>& resources, const std::vector<vk::ShaderStageFlagBits>& stages): driver(driver) {
     for(size_t i = 0; i < resources.size(); i++) {
         this->stages.emplace_back(std::make_pair(stages[i], std::move(std::make_unique<ShaderModule>(driver, resources[i]))));
+    }
+}
+
+void Carrot::ShaderStages::reload() {
+    for(const auto& [stage, module] : stages) {
+        module->reload();
     }
 }
 
@@ -63,4 +69,13 @@ vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(c
 
 const std::vector<std::pair<vk::ShaderStageFlagBits, std::unique_ptr<Carrot::ShaderModule>>>& Carrot::ShaderStages::getModuleMap() const {
     return stages;
+}
+
+bool Carrot::ShaderStages::shouldReload() const {
+    for(const auto& [stage, module] : stages) {
+        if (module->canBeHotReloaded()) {
+            return true;
+        }
+    }
+    return false;
 }

@@ -219,6 +219,10 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
 
 // TODO: thread safety
 void Carrot::VulkanRenderer::preFrame() {
+    for(auto& [name, pipeline] : pipelines) {
+        pipeline->checkForReloadableShaders();
+    }
+
     if(beforeFrameCommands.empty())
         return;
     driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
@@ -228,6 +232,7 @@ void Carrot::VulkanRenderer::preFrame() {
     });
     beforeFrameCommands.clear();
 }
+
 void Carrot::VulkanRenderer::postFrame() {
     if(!afterFrameCommands.empty()) {
         driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
