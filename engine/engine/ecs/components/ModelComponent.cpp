@@ -4,7 +4,7 @@
 
 #include "ModelComponent.h"
 #include "engine/Engine.h"
-#include "engine/utils/ImGuiUtils.hpp"
+#include "core/utils/ImGuiUtils.hpp"
 #include "imgui.h"
 #include "engine/edition/DragDropTypes.h"
 #include "core/utils/JSON.h"

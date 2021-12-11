@@ -27,6 +27,15 @@ namespace Carrot::Render {
         alignas(16) glm::vec3 color{1.0f};
         bool32 enabled = false;
 
+        // point light
+        float constantAttenuation = 1.0f;
+        float linearAttenuation = 0.09f;
+        float quadraticAttenuation = 0.032f;
+
+        // spot light
+        float cutoffCosAngle = glm::cos(glm::pi<float>()/7.0f);
+        float outerCutoffCosAngle = glm::cos(glm::pi<float>()/8.0f);
+
         static LightType fromString(std::string_view str);
         static const char* nameOf(LightType type);
     };

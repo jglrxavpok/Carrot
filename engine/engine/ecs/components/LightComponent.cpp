@@ -4,6 +4,7 @@
 #include "LightComponent.h"
 #include "engine/Engine.h"
 #include "core/utils/JSON.h"
+#include "core/utils/ImGuiUtils.hpp"
 
 namespace Carrot::ECS {
     LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(light) {
@@ -23,6 +24,18 @@ namespace Carrot::ECS {
 
             // TODO: handle invalid data
             light.type = Render::Light::fromString(json["type"].GetString());
+
+            if(json.HasMember("point_light")) {
+                auto params = json["point_light"].GetObject();
+                light.constantAttenuation = params["constant_attenuation"].GetFloat();
+                light.linearAttenuation = params["linear_attenuation"].GetFloat();
+                light.quadraticAttenuation = params["quadratic_attenuation"].GetFloat();
+            }
+            if(json.HasMember("spot_light")) {
+                auto params = json["spot_light"].GetObject();
+                light.cutoffCosAngle = params["cutoff_cos_angle"].GetFloat();
+                light.outerCutoffCosAngle = params["outer_cutoff_cos_angle"].GetFloat();
+            }
         }
     }
 
@@ -37,6 +50,23 @@ namespace Carrot::ECS {
 
             obj.AddMember("color", Carrot::JSON::write(light.color, doc), doc.GetAllocator());
             obj.AddMember("intensity", light.intensity, doc.GetAllocator());
+
+            switch(light.type) {
+                case Render::LightType::Point: {
+                    rapidjson::Value params(rapidjson::kObjectType);
+                    obj.AddMember("constant_attenuation", light.constantAttenuation, doc.GetAllocator());
+                    obj.AddMember("linear_attenuation", light.linearAttenuation, doc.GetAllocator());
+                    obj.AddMember("quadratic_attenuation", light.quadraticAttenuation, doc.GetAllocator());
+                    obj.AddMember("point_light", params, doc.GetAllocator());
+                } break;
+
+                case Render::LightType::Spot: {
+                    rapidjson::Value params(rapidjson::kObjectType);
+                    obj.AddMember("cutoff_cos_angle", light.cutoffCosAngle, doc.GetAllocator());
+                    obj.AddMember("outer_cutoff_cos_angle", light.outerCutoffCosAngle, doc.GetAllocator());
+                    obj.AddMember("spot_light", params, doc.GetAllocator());
+                } break;
+            }
         }
         return obj;
     }
@@ -54,6 +84,27 @@ namespace Carrot::ECS {
 
 
             ImGui::DragFloat("Intensity##inspector lightcomponent", &light.intensity);
+
+            if(ImGui::CollapsingHeader("Parameters")) {
+                switch (light.type) {
+                    case Render::LightType::Spot: {
+                        float cutoffAngle = glm::acos(light.cutoffCosAngle);
+                        float outerCutoffAngle = glm::acos(light.outerCutoffCosAngle);
+                        if(ImGui::DragAngle("Cutoff angle", &cutoffAngle)) {
+                            light.cutoffCosAngle = glm::cos(cutoffAngle);
+                        }
+                        if(ImGui::DragAngle("Outer cutoff angle", &outerCutoffAngle)) {
+                            light.outerCutoffCosAngle = glm::cos(outerCutoffAngle);
+                        }
+                    } break;
+
+                    case Render::LightType::Point: {
+                        ImGui::DragFloat("Constant attenuation", &light.constantAttenuation);
+                        ImGui::DragFloat("Linear attenuation", &light.linearAttenuation);
+                        ImGui::DragFloat("Quadratic attenuation", &light.quadraticAttenuation);
+                    } break;
+                }
+            }
 
             if(ImGui::BeginCombo("Light type##inspector lightcomponent", Render::Light::nameOf(light.type))) {
                 auto selectable = [&](Render::LightType type) {

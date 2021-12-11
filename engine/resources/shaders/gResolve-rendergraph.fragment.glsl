@@ -29,6 +29,33 @@ layout(location = 0) out vec4 outColor;
 
 LIGHT_SET(3)
 
+float computePointLight(vec3 worldPos, vec3 normal, Light light) {
+    vec3 lightPosition = light.position;
+    vec3 point2light = lightPosition-worldPos;
+
+    float distance = length(point2light);
+    float attenutation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
+
+    return max(0, 1.0f / attenutation);
+}
+
+float computeDirectionalLight(vec3 worldPos, vec3 normal, Light light) {
+    vec3 lightDirection = -normalize(light.direction);
+    return max(0, dot(lightDirection, normal));
+}
+
+float computeSpotLight(vec3 worldPos, vec3 normal, Light light) {
+    float cutoffCosAngle = light.cutoffCosAngle;
+    float outerCosCutoffAngle = light.outerCosCutoffAngle;
+
+    vec3 lightPosition = light.position;
+    vec3 point2light = normalize(lightPosition-worldPos);
+    vec3 lightDirection = -normalize(light.direction);
+    float intensity = dot(point2light, lightDirection);
+    float cutoffRange = outerCosCutoffAngle - cutoffCosAngle;
+    return clamp((intensity - outerCosCutoffAngle) / cutoffRange, 0, 1);
+}
+
 vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
     vec3 finalColor = vec3(0.0);
 
@@ -40,61 +67,46 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
         if(!light.enabled)
             continue;
 
-        // point type
-        vec3 lightDirection;
+        // is this point in shadow?
+        float shadowPercent = 1.0f;
 
-        if(light.type == 0) {
-            vec3 lightPosition = light.position;
-            lightDirection = normalize(lightPosition-worldPos);
-        } else if(light.type == 1) {
-            lightDirection = -normalize(light.direction);
-        } else if(light.type == 2) {
-            lightDirection = -normalize(light.direction);
-        } else {
-            // TODO
-            lightDirection = -normal;
+        if(!computeShadows) {
+            shadowPercent = 0.0f;
         }
 
-        // TODO: cutoff angle
-
-        if(dot(normal, lightDirection) > 0) {
-            // is this point in shadow?
-            bool isShadowed = true;
-
-            if(!computeShadows) {
-                isShadowed = false;
-            }
-
-            /* TODO: reintroduce raytracing
-            if(computeShadows) {
-                traceRayEXT(topLevelAS, // AS
-                    rayFlags, // ray flags
-                    0xFF, // cull mask
-                    0, // sbtRecordOffset
-                    0, // sbtRecordStride
-                    1, // missIndex
-                    worldPos, // ray origin
-                    tMin, // ray min range
-                    lightDirection, // ray direction
-                    tMax, // ray max range,
-                    1 // payload location
-                );
-            }
-            */
-
-            /*if(!isShadowed)*/ {
-                // TODO: proper lighting model
-
-                float lightFactor = 1.0f;
-                if(light.type == 0) {
-                    const float maxDist = 3;
-                    float distance = length(light.position-worldPos);
-                    lightFactor = max(0, (maxDist-distance)/maxDist); // TODO: calculate based on intensity, falloff, etc.
-                }
-                lightFactor *= max(0, dot(normal, lightDirection));
-                lightContribution += light.color * lightFactor * light.intensity;
-            }
+        /* TODO: reintroduce raytracing
+        if(computeShadows) {
+            traceRayEXT(topLevelAS, // AS
+                rayFlags, // ray flags
+                0xFF, // cull mask
+                0, // sbtRecordOffset
+                0, // sbtRecordStride
+                1, // missIndex
+                worldPos, // ray origin
+                tMin, // ray min range
+                lightDirection, // ray direction
+                tMax, // ray max range,
+                1 // payload location
+            );
         }
+        */
+
+        float lightFactor = 0.0f;
+        switch(light.type) {
+            case POINT_LIGHT_TYPE:
+                lightFactor = computePointLight(worldPos, normal, light);
+            break;
+
+            case DIRECTIONAL_LIGHT_TYPE:
+                lightFactor = computeDirectionalLight(worldPos, normal, light);
+            break;
+
+            case SPOT_LIGHT_TYPE:
+                lightFactor = computeSpotLight(worldPos, normal, light);
+            break;
+
+        }
+        lightContribution += light.color * lightFactor * light.intensity * (1.0f - shadowPercent);
     }
 
     lightContribution = min(vec3(1.0)-lights.ambientColor, lightContribution);

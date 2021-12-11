@@ -15,7 +15,7 @@
 #include <engine/ecs/systems/ModelRenderSystem.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
-#include <engine/utils/ImGuiUtils.hpp>
+#include <core/utils/ImGuiUtils.hpp>
 #include <utility>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>

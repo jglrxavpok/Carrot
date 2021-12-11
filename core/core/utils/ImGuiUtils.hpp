@@ -8,6 +8,7 @@
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <core/utils/stringmanip.h>
+#include <core/math/Constants.h>
 
 inline ImVec2 operator+(const ImVec2& lhs, const ImVec2& rhs) {
     return ImVec2(lhs.x + rhs.x, lhs.y + rhs.y);
@@ -46,5 +47,17 @@ namespace ImGui {
     inline void UnformattedWText(const std::u8string& wideText) {
         std::string converted = Carrot::toString(wideText);
         ::ImGui::Text("%s", converted.c_str());
+    }
+
+    inline bool DragAngle(const char* label, float* v_rad, float v_speed = 1.0f, float v_degrees_min = 0.0f, float v_degrees_max = 360.0f, const char* format = "%.0f deg", ImGuiSliderFlags flags = 0) {
+        if(format == nullptr) {
+            format = "%.0f deg";
+        }
+        float v_deg = *v_rad * Carrot::Math::Rad2Degrees;
+        if(ImGui::DragFloat(label, &v_deg, v_speed, v_degrees_min, v_degrees_max, format, flags)) {
+            *v_rad = v_deg * Carrot::Math::Degrees2Rad;
+            return true;
+        }
+        return false;
     }
 }
