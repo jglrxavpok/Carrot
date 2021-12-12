@@ -54,16 +54,18 @@ namespace Carrot::ECS {
             switch(light.type) {
                 case Render::LightType::Point: {
                     rapidjson::Value params(rapidjson::kObjectType);
-                    obj.AddMember("constant_attenuation", light.constantAttenuation, doc.GetAllocator());
-                    obj.AddMember("linear_attenuation", light.linearAttenuation, doc.GetAllocator());
-                    obj.AddMember("quadratic_attenuation", light.quadraticAttenuation, doc.GetAllocator());
+                    params.AddMember("constant_attenuation", light.constantAttenuation, doc.GetAllocator());
+                    params.AddMember("linear_attenuation", light.linearAttenuation, doc.GetAllocator());
+                    params.AddMember("quadratic_attenuation", light.quadraticAttenuation, doc.GetAllocator());
+
                     obj.AddMember("point_light", params, doc.GetAllocator());
                 } break;
 
                 case Render::LightType::Spot: {
                     rapidjson::Value params(rapidjson::kObjectType);
-                    obj.AddMember("cutoff_cos_angle", light.cutoffCosAngle, doc.GetAllocator());
-                    obj.AddMember("outer_cutoff_cos_angle", light.outerCutoffCosAngle, doc.GetAllocator());
+                    params.AddMember("cutoff_cos_angle", light.cutoffCosAngle, doc.GetAllocator());
+                    params.AddMember("outer_cutoff_cos_angle", light.outerCutoffCosAngle, doc.GetAllocator());
+
                     obj.AddMember("spot_light", params, doc.GetAllocator());
                 } break;
             }
