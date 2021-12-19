@@ -16,7 +16,8 @@ constexpr int maxInstances = 301;
 static constexpr float ResolutionScale = 0.5f;
 
 Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(renderer) {
-    enabled = renderer.getConfiguration().useRaytracing;
+    //TODO enabled = GetCapabilities().supportsRaytracing;
+    enabled = false;
 
     if(!enabled)
         return;
@@ -104,6 +105,7 @@ std::vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
     return {
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+        VK_KHR_RAY_QUERY_EXTENSION_NAME,
         VK_KHR_MAINTENANCE3_EXTENSION_NAME,
         VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,

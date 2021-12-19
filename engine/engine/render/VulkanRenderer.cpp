@@ -416,6 +416,8 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
 }
 
 void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets) {
+    if(sets.empty())
+        return;
     getVulkanDriver().getLogicalDevice().freeDescriptorSets(*cameraDescriptorPool, sets);
 }
 

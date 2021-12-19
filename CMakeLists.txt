@@ -76,7 +76,7 @@ add_subdirectory(thirdparty/openexr)
 
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
-        GIT_TAG             2021-01-15)
+        GIT_TAG             e9cc6403341baf0edd430a4027b074d0a06b782f)
 FetchContent_MakeAvailable(spirv_cross)
 add_subdirectory(thirdparty/glslang)
 

@@ -305,7 +305,8 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
     if(it == vkPipelines.end()) {
         vk::GraphicsPipelineCreateInfo info = pipelineTemplate.pipelineInfo;
         info.renderPass = pass;
-        vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, driver.getAllocationCallbacks()));
+        Carrot::Log::flush();
+        vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr));
     }
     return *vkPipelines[pass];
 }
@@ -371,7 +372,11 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
         module->addBindingsSet0(stage, bindings, description.constants);
     }
 
-    for(const auto& binding : bindings) {
+    for(auto binding : bindings) {
+        if(binding.vkBinding.descriptorCount == 0) {
+            Carrot::Log::warn("DescriptorCount is set to 0, replacing to 255 not to crash");
+            binding.vkBinding.descriptorCount = 255;
+        }
         sizes.emplace_back(vk::DescriptorPoolSize {
             .type = binding.vkBinding.descriptorType,
             .descriptorCount = imageCount*binding.vkBinding.descriptorCount,
@@ -427,10 +432,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     for(const auto& binding : bindings) {
         for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
             auto& write = writes[writeIndex];
-            write.dstBinding = binding.vkBinding.binding;
-            write.descriptorCount = binding.vkBinding.descriptorCount;
-            write.descriptorType = binding.vkBinding.descriptorType;
-            write.dstSet = sets[i];
+            bool wrote = false;
 
             switch (binding.vkBinding.descriptorType) {
                 case vk::DescriptorType::eUniformBufferDynamic: {
@@ -451,6 +453,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                     write.pBufferInfo = buffers.data()+writeIndex;
 
                     writeIndex++;
+                    wrote = true;
                 }
                 break;
 
@@ -460,8 +463,16 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
                     write.pImageInfo = samplers.data()+writeIndex;
 
                     writeIndex++;
+                    wrote = true;
                 }
                 break;
+            }
+
+            if(wrote) {
+                write.dstBinding = binding.vkBinding.binding;
+                write.descriptorCount = binding.vkBinding.descriptorCount;
+                write.descriptorType = binding.vkBinding.descriptorType;
+                write.dstSet = sets[i];
             }
         }
     }

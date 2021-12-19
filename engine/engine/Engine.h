@@ -31,6 +31,7 @@ namespace Carrot {
 #include "render/Skybox.hpp"
 #include "render/Composer.h"
 #include "engine/Configuration.h"
+#include "engine/Capabilities.h"
 #include "engine/io/actions/InputVectors.h"
 #include "core/async/Coroutines.hpp"
 
@@ -337,6 +338,7 @@ namespace Carrot {
         }
 
     public:
+        const Capabilities& getCapabilities() const { return capabilities; }
         const Configuration& getConfiguration() const { return config; }
 
     public: // async stuff
@@ -371,6 +373,7 @@ namespace Carrot {
         } instanceSetterHack;
 
         Configuration config;
+        Capabilities capabilities;
         Window window;
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -473,6 +476,8 @@ namespace Carrot {
 
         void updateImGuiTextures(std::size_t swapchainLength);
 
+        Capabilities& getModifiableCapabilities() { return capabilities; }
+
     private:
         struct Vec2KeyState {
             bool up = false;
@@ -531,6 +536,8 @@ namespace Carrot {
 
     private:
         static Carrot::Engine* instance;
+
+        friend class VulkanDriver;
     };
 }
 

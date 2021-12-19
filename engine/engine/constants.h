@@ -22,6 +22,7 @@ const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
 const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+        VK_KHR_SPIRV_1_4_EXTENSION_NAME,
 };
 
 #ifdef NO_DEBUG

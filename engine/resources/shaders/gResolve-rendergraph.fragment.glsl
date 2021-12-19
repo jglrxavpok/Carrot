@@ -1,6 +1,12 @@
 #include "includes/gbuffer.glsl"
 #include "includes/lights.glsl"
 
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_ray_query : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_scalar_block_layout : enable
+
 layout(set = 0, binding = 0) uniform texture2D albedo;
 layout(set = 0, binding = 1) uniform texture2D depth;
 layout(set = 0, binding = 2) uniform texture2D viewPos;
@@ -12,9 +18,13 @@ layout(set = 0, binding = 7) uniform texture2D skyboxTexture;
 layout(set = 0, binding = 8) uniform sampler linearSampler;
 layout(set = 0, binding = 9) uniform sampler nearestSampler;
 
-layout(set = 0, binding = 10) uniform Debug {
+layout(binding = 10, set = 0) uniform accelerationStructureEXT topLevelAS;
+
+/*
+layout(set = 0, binding = 11) uniform Debug {
     #include "debugparams.glsl"
-} debug;
+} debug;*/
+
 
 layout(set = 2, binding = 0) uniform CameraBufferObject {
     mat4 projection;
@@ -64,32 +74,52 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
     for(uint i = 0; i < lights.count; i++) {
         #define light lights.l[i]
 
-        if(!light.enabled)
-            continue;
+        if (!light.enabled)
+        continue;
 
         // is this point in shadow?
         float shadowPercent = 1.0f;
 
-        if(!computeShadows) {
+        if (!computeShadows) {
             shadowPercent = 0.0f;
-        }
+        } else {
+            vec3 L = vec3(0, 0, 1);
+            switch (light.type) {
+                case POINT_LIGHT_TYPE:
+                L = light.position - worldPos;
+                break;
 
-        /* TODO: reintroduce raytracing
-        if(computeShadows) {
-            traceRayEXT(topLevelAS, // AS
-                rayFlags, // ray flags
-                0xFF, // cull mask
-                0, // sbtRecordOffset
-                0, // sbtRecordStride
-                1, // missIndex
-                worldPos, // ray origin
-                tMin, // ray min range
-                lightDirection, // ray direction
-                tMax, // ray max range,
-                1 // payload location
-            );
+                case DIRECTIONAL_LIGHT_TYPE:
+                L = -light.direction;
+                break;
+
+                case SPOT_LIGHT_TYPE:
+                L = light.position - worldPos;
+                break;
+            }
+
+            // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
+            float lightDistance = 50.0f;// TODO: compute this value properly
+
+            // Ray Query for shadow
+            vec3  origin    = worldPos;
+            vec3  direction = L;// vector to light
+            float tMin      = 0.01f;
+            float tMax      = lightDistance;
+
+            // Initializes a ray query object but does not start traversal
+            rayQueryEXT rayQuery;
+            rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+
+            // Start traversal: return false if traversal is complete
+            while(rayQueryProceedEXT(rayQuery)) {}
+
+            // Returns type of committed (true) intersection
+            if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+                // Got an intersection == Shadow
+                shadowPercent = 1.0f;
+            }
         }
-        */
 
         float lightFactor = 0.0f;
         switch(light.type) {
@@ -120,14 +150,13 @@ void main() {
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
     vec3 worldPos = (cbo.inverseView * texture(sampler2D(viewPos, linearSampler), uv)).xyz;
     vec3 normal = normalize((cbo.inverseView * vec4(texture(sampler2D(viewNormals, linearSampler), uv).xyz, 0.0)).xyz);
-    vec3 rtLighting = texture(sampler2D(rayTracedLighting, linearSampler), uv).rgb;
     vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
     uint intProperties = texture(intPropertiesInput, uv).r;
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
     if(currDepth < 1.0) {
         if((intProperties & IntPropertiesRayTracedLighting) == IntPropertiesRayTracedLighting) {
-            outColorWorld = vec4(fragmentColor.rgb*rtLighting, fragmentColor.a);
+            outColorWorld = vec4(fragmentColor.rgb, fragmentColor.a);
         } else {
             outColorWorld = fragmentColor;
         }

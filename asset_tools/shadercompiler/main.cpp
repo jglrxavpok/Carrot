@@ -20,7 +20,6 @@
 #include <SPIRV/GlslangToSpv.h>
 #include "glslang/Public/ShaderLang.h"
 
-
 static std::filesystem::path outputList = "shadercompilerlist.txt";
 
 void showUsage() {

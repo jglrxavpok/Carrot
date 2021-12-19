@@ -2,10 +2,11 @@
 // Created by jglrxavpok on 30/11/2020.
 //
 
+#include <spirv_cross.hpp>
+#include <spirv_glsl.hpp>
+#include <spirv_reflect.hpp>
 #include "ShaderModule.h"
 #include "core/io/IO.h"
-#include <spirv_cross/spirv_cross.hpp>
-#include <spirv_cross/spirv_parser.hpp>
 #include <iostream>
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
@@ -20,16 +21,20 @@ void Carrot::ShaderModule::reload() {
     Carrot::Log::info("[Shader] Loading shader %s", source.getName().c_str());
     auto code = source.getCode();
     auto& device = driver.getLogicalDevice();
+
+    std::vector<std::uint32_t> asWords;
+    asWords.resize(code.size() / sizeof(std::uint32_t));
+    std::memcpy(asWords.data(), code.data(), code.size());
+    spirv_cross::Parser parser(std::move(asWords));
+    parser.parse();
+
+    compiler = std::make_unique<spirv_cross::CompilerReflection>(std::move(parser.get_parsed_ir()));
+
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),
             .pCode = reinterpret_cast<const uint32_t*>(code.data()),
     }, driver.getAllocationCallbacks());
 
-    spirv_cross::Parser parser{reinterpret_cast<const uint32_t*>(code.data()), code.size()/sizeof(uint32_t)};
-    parser.parse();
-    parsedCode = parser.get_parsed_ir();
-
-    compiler = std::make_unique<spirv_cross::Compiler>(parsedCode);
     source.clearModifyFlag();
 }
 
@@ -60,6 +65,9 @@ void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, std::v
 
 
     createBindingsSet0(stage, bindings, vk::DescriptorType::eStorageBufferDynamic, resources.storage_buffers, constants);
+
+    createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureKHR, resources.acceleration_structures, constants);
+    //createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureNV, resources.acceleration_structures, constants);
 
     // TODO: other types
 }

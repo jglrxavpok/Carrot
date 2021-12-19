@@ -3,11 +3,12 @@
 //
 
 #pragma once
+
+#include <spirv_cross.hpp>
+#include <spirv_parser.hpp>
 #include <string>
 #include "engine/vulkan/includes.h"
 #include "engine/vulkan/VulkanDriver.h"
-#include <spirv_cross/spirv_cross.hpp>
-#include <spirv_cross/spirv_parser.hpp>
 #include <map>
 #include <engine/render/shaders/Specialization.h>
 #include <engine/render/NamedBinding.h>

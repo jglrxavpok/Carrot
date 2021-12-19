@@ -13,7 +13,7 @@
 
 namespace Carrot {
     struct Configuration {
-        bool useRaytracing = true;
+        bool requiresRaytracing = true;
         bool runInVR = false;
 
         const char* engineName = "Carrot";

@@ -60,4 +60,9 @@ target_compile_definitions(Peeler-Renderdoc PRIVATE DEBUG_MARKERS=1)
 target_include_directories(Peeler-Renderdoc PUBLIC ../thirdparty/ImGuizmo)
 target_link_libraries(Peeler-Renderdoc PUBLIC Engine-Base-Renderdoc)
 
+add_executable(Peeler-ASAN ${EditorSources} ${ImGuizmoSources})
+target_link_libraries(Peeler-ASAN PUBLIC Engine-ASAN)
+target_include_directories(Peeler-ASAN PUBLIC ../thirdparty/ImGuizmo)
+make_asan_target(Peeler-ASAN)
+
 copy_all_resources() # game resources

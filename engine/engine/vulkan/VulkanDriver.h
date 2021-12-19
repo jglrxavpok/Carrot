@@ -252,6 +252,9 @@ namespace Carrot {
         /// Rank physical device based on their capabilities
         int ratePhysicalDevice(const vk::PhysicalDevice& device);
 
+        /// Fills the engine's capabilities based on the current graphics driver & hardware
+        void fillRenderingCapabilities();
+
         /// Create the logical device to interface with Vulkan
         void createLogicalDevice();
 

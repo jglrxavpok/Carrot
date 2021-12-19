@@ -59,7 +59,7 @@ void Tools::Tools::onSwapchainImageCountChange(size_t newCount) {
 
 int main() {
     Carrot::Configuration config;
-    config.useRaytracing = false;
+    config.requiresRaytracing = false;
     config.icon32 = "resources/icon32.png";
     config.icon64 = "resources/icon64.png";
     config.icon128 = "resources/icon128.png";

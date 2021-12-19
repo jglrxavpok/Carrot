@@ -68,6 +68,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
     setupDebugMessenger();
     createSurface();
     pickPhysicalDevice();
+    fillRenderingCapabilities();
     createLogicalDevice();
 
     createTransferCommandPool();
@@ -332,6 +333,34 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
 extern "C++" void initAftermath();
 #endif
 
+void Carrot::VulkanDriver::fillRenderingCapabilities() {
+    const std::vector<vk::ExtensionProperties> available = physicalDevice.enumerateDeviceExtensionProperties(nullptr);
+    std::set<std::string> availableSet;
+
+    for(const auto& e : available) {
+        availableSet.insert(e.extensionName);
+    }
+
+    // check raytracing support
+    Carrot::Log::info("Checking raytracing support...");
+
+    std::vector<const char*> raytracingExtensions = RayTracer::getRequiredDeviceExtensions();
+    std::uint32_t rtCount = 0;
+    for(const auto& ext : raytracingExtensions) {
+        if(availableSet.contains(ext)) {
+            rtCount++;
+        }
+    }
+
+    engine->getModifiableCapabilities().supportsRaytracing = rtCount == raytracingExtensions.size();
+
+    if(engine->getCapabilities().supportsRaytracing) {
+        Carrot::Log::info("Hardware supports raytracing");
+    } else {
+        Carrot::Log::info("Hardware does not support raytracing");
+    }
+}
+
 void Carrot::VulkanDriver::createLogicalDevice() {
     queueFamilies = findQueueFamilies(physicalDevice);
 
@@ -366,15 +395,16 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     },
             },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
-                    .rayTracingPipeline = getConfiguration().useRaytracing,
+                    .rayTracingPipeline = GetCapabilities().supportsRaytracing,
             },
             vk::PhysicalDeviceRayQueryFeaturesKHR {
-                    .rayQuery = getConfiguration().useRaytracing,
+                    .rayQuery = GetCapabilities().supportsRaytracing,
             },
             vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
-                    .accelerationStructure = getConfiguration().useRaytracing,
+                    .accelerationStructure = GetCapabilities().supportsRaytracing,
             },
             vk::PhysicalDeviceVulkan12Features {
+                    .shaderSampledImageArrayNonUniformIndexing  = true,
                     .shaderStorageBufferArrayNonUniformIndexing = true,
                     .descriptorBindingPartiallyBound = true,
                     .runtimeDescriptorArray = true,
@@ -386,7 +416,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 
     std::vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy
 
-    if(getConfiguration().useRaytracing) {
+    if(GetCapabilities().supportsRaytracing) {
         for(const auto& rayTracingExt : RayTracer::getRequiredDeviceExtensions()) {
             deviceExtensions.push_back(rayTracingExt);
         }
@@ -463,7 +493,7 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
 
-    if(getConfiguration().useRaytracing) {
+    if(getConfiguration().requiresRaytracing) {
         for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {
             required.insert(ext);
         }

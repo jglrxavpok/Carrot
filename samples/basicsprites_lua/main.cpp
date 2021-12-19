@@ -102,7 +102,7 @@ int main() {
     std::ios::sync_with_stdio(false);
 
     Carrot::Configuration config;
-    config.useRaytracing = false;
+    config.requiresRaytracing = false;
     Carrot::Engine engine{config};
     engine.run();
 
