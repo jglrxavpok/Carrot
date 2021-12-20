@@ -468,11 +468,7 @@ void Carrot::Engine::initWindow() {
 void Carrot::Engine::initVulkan() {
     createCameras();
 
-    getRayTracer().init();
-
     initGame();
-
-    getRayTracer().finishInit();
 
     createSynchronizationObjects();
 }
@@ -598,10 +594,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ImGui::RadioButton("Position", &gIndex, 1);
             ImGui::RadioButton("Normals", &gIndex, 2);
             ImGui::RadioButton("Depth", &gIndex, 3);
-            ImGui::RadioButton("Raytracing", &gIndex, 4);
-            ImGui::RadioButton("UI", &gIndex, 5);
-            ImGui::RadioButton("Int Properties", &gIndex, 6);
-            ImGui::RadioButton("Transparent", &gIndex, 7);
+            ImGui::RadioButton("UI", &gIndex, 4);
+            ImGui::RadioButton("Int Properties", &gIndex, 5);
+            ImGui::RadioButton("Transparent", &gIndex, 6);
 
             vk::Format format = vk::Format::eR32G32B32A32Sfloat;
             if(gIndex == -1) {
@@ -623,18 +618,14 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 format = vkDriver.getDepthFormat();
             }
             if(gIndex == 4) {
-                textureToDisplay = imguiTextures[lastFrameIndex].raytracing;
-                format = vk::Format::eR8G8B8A8Unorm;
-            }
-            if(gIndex == 5) {
                 textureToDisplay = imguiTextures[lastFrameIndex].ui;
                 format = vk::Format::eR8G8B8A8Unorm;
             }
-            if(gIndex == 6) {
+            if(gIndex == 5) {
                 textureToDisplay = imguiTextures[lastFrameIndex].intProperties;
                 format = vk::Format::eR32Sfloat;
             }
-            if(gIndex == 7) {
+            if(gIndex == 6) {
                 textureToDisplay = imguiTextures[lastFrameIndex].transparent;
                 format = vk::Format::eR8G8B8A8Unorm;
             }
@@ -1157,10 +1148,7 @@ void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
 
         textures.intProperties = &globalFrameGraph->getTexture(gResolvePassData.flags, i);
 
-        textures.raytracing = &globalFrameGraph->getTexture(gResolvePassData.raytracing, i);
-
         textures.transparent = &globalFrameGraph->getTexture(gResolvePassData.transparent, i);
-
     }
 }
 
@@ -1208,8 +1196,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
                                                               vk::CommandBuffer&)> transparentCallback) {
     auto& testTexture = renderer.getOrCreateTexture("default.png");
 
-    auto& rtPass = getRayTracer().appendRTPass(mainGraph, eye);
-
     auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
                                                                            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
                                                                                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
@@ -1241,7 +1227,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         transparentCallback(pass, frame, cmds);
     });
-    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), rtPass.getData(), skyboxPass.getData().output, mainGraph);
+    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph);
 
     return gresolvePass;
 }

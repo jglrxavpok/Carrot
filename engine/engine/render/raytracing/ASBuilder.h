@@ -35,6 +35,26 @@ namespace Carrot {
 
     /// Helpers build Acceleration Structures for raytracing
     class ASBuilder {
+    public:
+        explicit ASBuilder(VulkanRenderer& renderer);
+
+        // TODO: mesh registration
+
+        void addInstance(const InstanceInput input);
+
+        void buildBottomLevelAS(bool enableUpdate = true);
+        void buildTopLevelAS(bool update, bool waitForCompletion = false);
+
+        void updateBottomLevelAS(const std::vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
+        void updateTopLevelAS();
+
+        void startFrame();
+        void waitForCompletion(vk::CommandBuffer& cmds);
+
+        TLAS& getTopLevelAS();
+
+        std::vector<InstanceInput>& getTopLevelInstances();
+
     private:
         VulkanRenderer& renderer;
         bool enabled = false;
@@ -58,41 +78,7 @@ namespace Carrot {
         std::vector<vk::BufferMemoryBarrier2KHR> topLevelBarriers;
 
     private:
-
         vk::AccelerationStructureInstanceKHR convertToVulkanInstance(const InstanceInput& instance);
 
-        void registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
-        void registerIndexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length);
-
-    public:
-        explicit ASBuilder(VulkanRenderer& renderer);
-
-        template<typename VertexType>
-        std::vector<Carrot::GeometryInput*> addModelGeometries(const Model& model, bool skinned);
-
-        ///
-        /// \param indexBuffer
-        /// \param indexOffset
-        /// \param vertexBuffer
-        /// \param vertexOffsets offset of vertices inside the vertex buffer, in bytes
-        template<typename VertexType>
-        Carrot::GeometryInput* addGeometries(const Buffer& indexBuffer, uint64_t indexCount, uint64_t indexOffset, const Buffer& vertexBuffer, uint64_t vertexCount, const std::vector<uint64_t>& vertexOffsets);
-
-        void addInstance(const InstanceInput input);
-
-        void buildBottomLevelAS(bool enableUpdate = true);
-        void buildTopLevelAS(bool update, bool waitForCompletion = false);
-
-        void updateBottomLevelAS(const std::vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
-        void updateTopLevelAS();
-
-        void startFrame();
-        void waitForCompletion(vk::CommandBuffer& cmds);
-
-        TLAS& getTopLevelAS();
-
-        std::vector<InstanceInput>& getTopLevelInstances();
     };
 }
-
-#include "ASBuilder.ipp"

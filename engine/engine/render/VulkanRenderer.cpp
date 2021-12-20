@@ -10,6 +10,8 @@
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/MaterialSystem.h"
+#include "engine/render/resources/Mesh.h"
+#include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
@@ -361,6 +363,12 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
     materialSystem.onFrame(renderContext);
     lighting.onFrame(renderContext);
+
+#ifdef IS_DEBUG_BUILD
+    if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
+        driver.breakOnNextVulkanError();
+    }
+#endif
 }
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {

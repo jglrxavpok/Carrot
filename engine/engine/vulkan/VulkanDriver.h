@@ -161,6 +161,10 @@ namespace Carrot {
 
         void newFrame();
 
+#ifdef IS_DEBUG_BUILD
+        void breakOnNextVulkanError();
+#endif
+
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
 

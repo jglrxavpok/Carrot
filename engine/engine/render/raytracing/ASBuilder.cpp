@@ -468,18 +468,6 @@ void Carrot::ASBuilder::updateTopLevelAS() {
     buildTopLevelAS(true, false);
 }
 
-void Carrot::ASBuilder::registerVertexBuffer(const Buffer& vertexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
-    if(!enabled)
-        return;
-    renderer.getRayTracer().registerVertexBuffer(vertexBuffer, start, length);
-}
-
-void Carrot::ASBuilder::registerIndexBuffer(const Buffer& indexBuffer, vk::DeviceSize start, vk::DeviceSize length) {
-    if(!enabled)
-        return;
-    renderer.getRayTracer().registerIndexBuffer(indexBuffer, start, length);
-}
-
 std::vector<Carrot::InstanceInput>& Carrot::ASBuilder::getTopLevelInstances() {
     assert(enabled);
     return topLevelInstances;

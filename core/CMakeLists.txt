@@ -29,6 +29,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/debugbreak)
 endfunction()
 
 set(ALL_CORE_LIBS glm)

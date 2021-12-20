@@ -422,7 +422,6 @@ namespace Carrot {
             Render::Texture* position = nullptr;
             Render::Texture* normal = nullptr;
             Render::Texture* depth = nullptr;
-            Render::Texture* raytracing = nullptr;
             Render::Texture* transparent = nullptr;
             Render::Texture* ui = nullptr;
             Render::Texture* intProperties = nullptr;

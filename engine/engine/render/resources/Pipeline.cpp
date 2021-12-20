@@ -335,7 +335,7 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderC
         }
     } else if(!description.tmptmptmpUseMaterialSystem) {
         if(descriptorPool) {
-            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
+            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
         }
         renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
     }

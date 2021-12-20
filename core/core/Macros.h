@@ -11,9 +11,9 @@
 #pragma once
 
 #include <stdexcept>
-#include <core/Macros.h>
 #include "utils/Assert.h"
 #include "utils/Containers.h"
+#include <debugbreak.h>
 
 namespace Carrot::Exceptions {
     class TodoException: public std::exception {

@@ -23,6 +23,8 @@
 #include "engine/vr/VRInterface.h"
 #endif
 
+static std::atomic<bool> breakOnVulkanError = false;
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -34,6 +36,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     }
     if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         Carrot::Log::error("Validation layer: %s", pCallbackData->pMessage);
+        if(breakOnVulkanError) {
+            Carrot::Log::flush();
+            debug_break();
+            breakOnVulkanError = false;
+        }
     }
 
     return VK_FALSE;
@@ -840,3 +847,9 @@ void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool command
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
     deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
 }
+
+#ifdef IS_DEBUG_BUILD
+void Carrot::VulkanDriver::breakOnNextVulkanError() {
+    breakOnVulkanError = true;
+}
+#endif
