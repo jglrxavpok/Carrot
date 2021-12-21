@@ -49,7 +49,7 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
     return pipelines[key];
 }
 
-std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
+std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
     auto it = textures.find(textureName);
     if(it == textures.end()) {
         Carrot::IO::Resource from;
@@ -66,7 +66,7 @@ std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTex
     return textures[textureName];
 }
 
-std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
+std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
     if(from.isFile()) {
         const auto& textureName = from.getName();
         auto it = textures.find(textureName);
@@ -81,11 +81,11 @@ std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTex
     }
 }
 
-std::shared_ptr<Carrot::Render::Texture>& Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
+std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
     return getOrCreateTextureFullPath("resources/textures/" + textureName);
 }
 
-std::shared_ptr<Carrot::Model>& Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
+std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
     auto it = models.find(modelPath);
     if(it == models.end()) {
         Carrot::IO::Resource from;

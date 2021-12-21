@@ -6,6 +6,7 @@
 #include "engine/Engine.h"
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
+#include <core/utils/WeakPool.hpp>
 
 namespace Carrot {
     struct GeometryInput {
@@ -29,43 +30,82 @@ namespace Carrot {
         std::uint32_t hitGroup;
     };
 
-    struct TLAS {
+    class BLASHandle: public WeakPoolHandle {
+    public:
+        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const Carrot::Mesh& mesh);
+
+        bool isBuilt() const { return built; }
+        void update();
+
+    private:
+        std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
+        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
+
         std::unique_ptr<AccelerationStructure> as{};
+        const Carrot::Mesh& mesh;
+        bool built = false;
+
+        friend class ASBuilder;
+        friend class InstanceHandle;
+    };
+
+    class InstanceHandle: public WeakPoolHandle {
+    public:
+        InstanceHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, std::weak_ptr<BLASHandle> geometry): WeakPoolHandle(index, std::move(destructor)), geometry(geometry) {}
+
+        bool isBuilt() const { return built; }
+        bool hasBeenModified() const { return modified; }
+        void update();
+
+    public:
+        glm::mat4 transform{1.0f};
+        vk::GeometryInstanceFlagsKHR flags = vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable | vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable;
+        std::uint8_t mask = 0xFF;
+        std::uint32_t customIndex = 0;
+
+    private:
+        glm::mat4 oldTransform{1.0f};
+        vk::AccelerationStructureInstanceKHR instance;
+        std::weak_ptr<BLASHandle> geometry;
+
+        bool modified = false;
+        bool built = false;
+
+        friend class ASBuilder;
     };
 
     /// Helpers build Acceleration Structures for raytracing
+    // TODO: rename to RaytracingScene
     class ASBuilder {
     public:
         explicit ASBuilder(VulkanRenderer& renderer);
 
         // TODO: mesh registration
 
-        void addInstance(const InstanceInput input);
+        std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
 
-        void buildBottomLevelAS(bool enableUpdate = true);
+        std::shared_ptr<BLASHandle> addStaticMesh(const Carrot::Mesh& mesh);
         void buildTopLevelAS(bool update, bool waitForCompletion = false);
 
-        void updateBottomLevelAS(const std::vector<size_t>& blasIndices, vk::Semaphore skinningSemaphore = {});
         void updateTopLevelAS();
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
 
-        TLAS& getTopLevelAS();
+        // TODO TLAS& getTopLevelAS();
 
-        std::vector<InstanceInput>& getTopLevelInstances();
+        void onFrame(const Carrot::Render::Context& renderContext);
+
+    private:
+        void buildBottomLevels(const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry);
 
     private:
         VulkanRenderer& renderer;
         bool enabled = false;
-        std::vector<GeometryInput> bottomLevelGeometries{};
-        std::vector<InstanceInput> topLevelInstances{};
-        std::unique_ptr<AccelerationStructure> topLevelAS{};
-        std::unique_ptr<Buffer> instancesBuffer{};
-        TLAS tlas{};
 
     private: // reuse between builds
         vk::CommandBuffer tlasBuildCommands{};
+        std::unique_ptr<Carrot::Buffer> instancesBuffer = nullptr;
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
 
@@ -73,12 +113,13 @@ namespace Carrot {
         std::size_t lastScratchSize = 0;
         vk::DeviceAddress scratchBufferAddress = 0;
 
+        WeakPool<BLASHandle> staticGeometries;
+        WeakPool<InstanceHandle> instances;
+
+        std::unique_ptr<AccelerationStructure> tlas;
+
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;
         std::vector<vk::BufferMemoryBarrier2KHR> topLevelBarriers;
-
-    private:
-        vk::AccelerationStructureInstanceKHR convertToVulkanInstance(const InstanceInput& instance);
-
     };
 }

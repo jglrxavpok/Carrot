@@ -76,11 +76,11 @@ namespace Carrot {
         /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
         std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& pass);
 
-        std::shared_ptr<Render::Texture>& getOrCreateTexture(const std::string& textureName);
-        std::shared_ptr<Render::Texture>& getOrCreateTextureFullPath(const std::string& textureName);
-        std::shared_ptr<Render::Texture>& getOrCreateTextureFromResource(const Carrot::IO::Resource& from);
+        std::shared_ptr<Render::Texture> getOrCreateTexture(const std::string& textureName);
+        std::shared_ptr<Render::Texture> getOrCreateTextureFullPath(const std::string& textureName);
+        std::shared_ptr<Render::Texture> getOrCreateTextureFromResource(const Carrot::IO::Resource& from);
 
-        std::shared_ptr<Model>& getOrCreateModel(const std::string& modelPath);
+        std::shared_ptr<Model> getOrCreateModel(const std::string& modelPath);
 
         void recreateDescriptorPools(std::size_t frameCount);
 

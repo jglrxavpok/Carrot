@@ -62,7 +62,7 @@ namespace Carrot {
 
     public:
         template<typename... Args>
-        std::shared_ptr<ElementType> create(Args... args) {
+        std::shared_ptr<ElementType> create(Args&&... args) {
             std::uint32_t slot;
             if(!freeSlots.empty()) {
                 slot = freeSlots.front();

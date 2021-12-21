@@ -1194,7 +1194,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
                                            std::function<void(const Carrot::Render::CompiledPass&,
                                                               const Carrot::Render::Context&,
                                                               vk::CommandBuffer&)> transparentCallback) {
-    auto& testTexture = renderer.getOrCreateTexture("default.png");
+    auto testTexture = renderer.getOrCreateTexture("default.png");
 
     auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
                                                                            [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
