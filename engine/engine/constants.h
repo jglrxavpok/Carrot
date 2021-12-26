@@ -30,7 +30,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
     constexpr bool USE_DEBUG_MARKERS = false;
 #else
     const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
-        VK_EXT_DEBUG_MARKER_EXTENSION_NAME
+        //VK_EXT_DEBUG_MARKER_EXTENSION_NAME
     };
 #ifdef IS_DEBUG_BUILD
     constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;

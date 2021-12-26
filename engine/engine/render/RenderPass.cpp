@@ -39,6 +39,7 @@ Carrot::Render::CompiledPass::CompiledPass(
             createFramebuffers();
             if(prerecordable) {
                 createCommandPool();
+                needsRecord.resize(GetEngine().getSwapchainImageCount());
             }
         }
 
@@ -65,6 +66,7 @@ Carrot::Render::CompiledPass::CompiledPass(
             createFramebuffers();
             if(prerecordable) {
                 createCommandPool();
+                needsRecord.resize(GetEngine().getSwapchainImageCount());
             }
         }
 
@@ -109,6 +111,12 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
             if(commandBuffers.empty()) {
                 createCommandBuffers(renderContext);
             }
+
+            if(needsRecord[renderContext.swapchainIndex]) {
+              //  recordCommands(renderContext);
+                needsRecord[renderContext.swapchainIndex] = false;
+            }
+
             cmds.executeCommands(commandBuffers[renderContext.swapchainIndex]);
         } else {
             renderingCode(*this, renderContext, cmds);
@@ -118,6 +126,10 @@ void Carrot::Render::CompiledPass::execute(const Render::Context& renderContext,
             cmds.endRenderPass();
         }
     }
+}
+
+void Carrot::Render::CompiledPass::refresh() {
+    std::fill(needsRecord.begin(), needsRecord.end(), true);
 }
 
 void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
@@ -158,7 +170,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         if(initialLayout != input.expectedLayout) {
             auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resourceID == input.resource.rootID; });
             if(it == prePassTransitions.end()) {
-                prePassTransitions.emplace_back(input.resource.parentID, initialLayout, input.resource.layout, input.aspect);
+                prePassTransitions.emplace_back(input.resource.rootID, initialLayout, input.resource.layout, input.aspect);
             }
         }
     }
@@ -344,6 +356,25 @@ void Carrot::Render::CompiledPass::createCommandPool() {
     });
 }
 
+void Carrot::Render::CompiledPass::recordCommands(const Carrot::Render::Context& renderContext) {
+    auto& cmds = commandBuffers[renderContext.swapchainIndex];
+    vk::CommandBufferInheritanceInfo inheritanceInfo {
+            .renderPass = *renderPass,
+            .subpass = 0, // TODO: modify if subpasses become supported
+            .framebuffer = *framebuffers[renderContext.swapchainIndex],
+    };
+    cmds.begin(vk::CommandBufferBeginInfo {
+            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue,
+            .pInheritanceInfo = &inheritanceInfo,
+    });
+
+    if(rasterized) {
+        getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
+    }
+    renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(renderContext.swapchainIndex, renderContext.viewport, renderContext.eye), cmds);
+    cmds.end();
+}
+
 void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& renderContext) {
     if(!prerecordable)
         return;
@@ -354,21 +385,6 @@ void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& r
     });
 
     for (int i = 0; i < commandBuffers.size(); i++) {
-        auto& cmds = commandBuffers[i];
-        vk::CommandBufferInheritanceInfo inheritanceInfo {
-                .renderPass = *renderPass,
-                .subpass = 0, // TODO: modify if subpasses become supported
-                .framebuffer = *framebuffers[i],
-        };
-        cmds.begin(vk::CommandBufferBeginInfo {
-                .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue,
-                .pInheritanceInfo = &inheritanceInfo,
-        });
-
-        if(rasterized) {
-            getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
-        }
-        renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(i, renderContext.viewport, renderContext.eye), cmds);
-        cmds.end();
+        recordCommands(GetEngine().newRenderContext(i, renderContext.viewport, renderContext.eye));
     }
 }

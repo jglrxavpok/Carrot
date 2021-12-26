@@ -188,6 +188,7 @@ namespace Carrot {
 
         GBuffer& getGBuffer() { return renderer.getGBuffer(); };
 
+        Skybox::Type getSkybox() const;
         void setSkybox(Skybox::Type type);
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;

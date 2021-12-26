@@ -19,7 +19,7 @@ namespace Carrot::Render {
     class CompiledPass;
     class Graph;
 
-    using CompiledPassCallback = std::function<void(const CompiledPass&, const Render::Context&, vk::CommandBuffer&)>;
+    using CompiledPassCallback = std::function<void(CompiledPass&, const Render::Context&, vk::CommandBuffer&)>;
     using SwapchainRecreationCallback = std::function<void(const CompiledPass&)>;
 
     struct ImageTransition {
@@ -75,6 +75,8 @@ namespace Carrot::Render {
 
         std::string_view getName() const { return name; }
 
+        void refresh();
+
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
@@ -84,12 +86,14 @@ namespace Carrot::Render {
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffers(const Render::Context& renderContext);
+        void recordCommands(const Render::Context& renderContext);
         void performTransitions(const Render::Context& renderContext, vk::CommandBuffer& cmds);
 
     private:
         Graph& graph;
         bool rasterized = true;
         bool prerecordable = false;
+        std::vector<bool> needsRecord; // do pre-recorded buffers need to be re-recorded?
         std::vector<vk::UniqueFramebuffer> framebuffers;
         vk::UniqueRenderPass renderPass;
         std::vector<vk::ClearValue> clearValues;
@@ -183,11 +187,16 @@ namespace Carrot::Render {
                       postCompileCallback(postCompileCallback) {};
 
         CompiledPassCallback generateCallback() override {
-            return [executeCallback = executeCallback, data = data, condition = condition](const CompiledPass& pass, const Render::Context& frameData, vk::CommandBuffer& cmds)
+            return [executeCallback = executeCallback, data = data, condition = condition, lastConditionValue = false](CompiledPass& pass, const Render::Context& frameData, vk::CommandBuffer& cmds)
             mutable {
-                if(condition(pass, frameData, data)) {
+                bool conditionValue = condition(pass, frameData, data);
+                if(conditionValue != lastConditionValue) {
+                    pass.refresh();
+                }
+                if(conditionValue) {
                     executeCallback(pass, frameData, data, cmds);
                 }
+                lastConditionValue = conditionValue;
             };
         }
 

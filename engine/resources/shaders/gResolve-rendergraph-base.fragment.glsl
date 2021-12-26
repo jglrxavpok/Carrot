@@ -1,8 +1,11 @@
 #include "includes/gbuffer.glsl"
 #include "includes/lights.glsl"
 
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+#endif
+
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
@@ -18,7 +21,9 @@ layout(set = 0, binding = 7) uniform texture2D skyboxTexture;
 layout(set = 0, binding = 8) uniform sampler linearSampler;
 layout(set = 0, binding = 9) uniform sampler nearestSampler;
 
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
 layout(binding = 10, set = 0) uniform accelerationStructureEXT topLevelAS;
+#endif
 
 /*
 layout(set = 0, binding = 11) uniform Debug {
@@ -98,6 +103,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
                 break;
             }
 
+            #ifdef HARDWARE_SUPPORTS_RAY_TRACING
             // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
             float lightDistance = 50.0f;// TODO: compute this value properly
 
@@ -119,6 +125,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
                 // Got an intersection == Shadow
                 shadowPercent = 1.0f;
             }
+            #endif
         }
 
         float lightFactor = 0.0f;
@@ -162,7 +169,7 @@ void main() {
         }
         outColorWorld.rgb *= calculateLighting(worldPos, normal, false);
     } else {
-        outColorWorld = vec4(skyboxRGB, fragmentColor.a);
+        outColorWorld = vec4(skyboxRGB, 1.0);
     }
 
     vec4 transparentColor = texture(sampler2D(transparent, linearSampler), uv);
@@ -170,4 +177,5 @@ void main() {
     vec3 blended = outColorWorld.rgb * (1.0 - transparentColor.a) + transparentColor.rgb * transparentColor.a;
 
     outColor = vec4(blended, 1.0);
+//    outColor = vec4(currDepth.rrr, 1.0);
 }

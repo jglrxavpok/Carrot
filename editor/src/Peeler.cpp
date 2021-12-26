@@ -159,6 +159,21 @@ namespace Peeler {
                 ImGui::EndDisabled();
             }
         }
+
+        const char* preview = Carrot::Skybox::getName(GetEngine().getSkybox());
+        if(ImGui::BeginCombo("Skybox", preview)) {
+            auto option = [&](Carrot::Skybox::Type skybox) {
+                const char* name = Carrot::Skybox::getName(skybox);
+                bool selected = skybox == GetEngine().getSkybox();
+                if(ImGui::Selectable(name, selected)) {
+                    GetEngine().setSkybox(skybox);
+                }
+            };
+            option(Carrot::Skybox::Type::None);
+            option(Carrot::Skybox::Type::Forest);
+
+            ImGui::EndCombo();
+        }
     }
 
     void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {
@@ -609,6 +624,7 @@ namespace Peeler {
 
 
     {
+        GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 
         {

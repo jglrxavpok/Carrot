@@ -54,4 +54,17 @@ namespace Carrot::Skybox {
                 TODO
         }
     }
+
+    static const char* getName(Type skyboxType) {
+        switch(skyboxType) {
+            case Type::None:
+                return "None";
+
+            case Type::Forest:
+                return "Forest";
+
+            default:
+                TODO
+        }
+    }
 }

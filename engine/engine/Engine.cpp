@@ -1049,6 +1049,10 @@ void Carrot::Engine::takeScreenshot() {
     screenshotBuffer.unmap();
 }
 
+Carrot::Skybox::Type Carrot::Engine::getSkybox() const {
+    return currentSkybox;
+}
+
 void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     static std::vector<SimpleVertex> skyboxVertices = {
             { { 1.0f, -1.0f, -1.0f } },

@@ -27,11 +27,10 @@ namespace Carrot::Render {
                 break;
 
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
-            case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-            case vk::ImageLayout::eDepthAttachmentOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
                 driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
+
 
             default:
                 driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
@@ -52,6 +51,11 @@ namespace Carrot::Render {
         switch(layout) {
             case vk::ImageLayout::eTransferDstOptimal:
                 driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                break;
+
+            case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+            case vk::ImageLayout::eDepthAttachmentOptimal:
+                driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
 
             default:

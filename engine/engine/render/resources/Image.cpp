@@ -250,6 +250,8 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
         case vk::ImageLayout::eDepthStencilAttachmentOptimal:
         case vk::ImageLayout::eDepthAttachmentOptimal:
         case vk::ImageLayout::eStencilAttachmentOptimal:
+        case vk::ImageLayout::eDepthReadOnlyOptimal:
+        case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
         case vk::ImageLayout::eShaderReadOnlyOptimal:
         case vk::ImageLayout::eColorAttachmentOptimal: {
             barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite; // write must be done

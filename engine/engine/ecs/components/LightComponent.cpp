@@ -82,9 +82,24 @@ namespace Carrot::ECS {
                 light.enabled = enabled;
             }
 
+            if(ImGui::BeginCombo("Light type##inspector lightcomponent", Render::Light::nameOf(light.type))) {
+                auto selectable = [&](Render::LightType type) {
+                    std::string id = Render::Light::nameOf(type);
+                    id += "##inspector lightcomponent";
+                    bool selected = type == light.type;
+                    if(ImGui::Selectable(id.c_str(), &selected)) {
+                        light.type = type;
+                    }
+                };
+
+                selectable(Render::LightType::Point);
+                selectable(Render::LightType::Directional);
+                selectable(Render::LightType::Spot);
+
+                ImGui::EndCombo();
+            }
+
             ImGui::BeginDisabled(!enabled);
-
-
             ImGui::DragFloat("Intensity##inspector lightcomponent", &light.intensity);
 
             if(ImGui::CollapsingHeader("Parameters")) {
@@ -106,23 +121,6 @@ namespace Carrot::ECS {
                         ImGui::DragFloat("Quadratic attenuation", &light.quadraticAttenuation);
                     } break;
                 }
-            }
-
-            if(ImGui::BeginCombo("Light type##inspector lightcomponent", Render::Light::nameOf(light.type))) {
-                auto selectable = [&](Render::LightType type) {
-                    std::string id = Render::Light::nameOf(type);
-                    id += "##inspector lightcomponent";
-                    bool selected = type == light.type;
-                    if(ImGui::Selectable(id.c_str(), &selected)) {
-                        light.type = type;
-                    }
-                };
-
-                selectable(Render::LightType::Point);
-                selectable(Render::LightType::Directional);
-                selectable(Render::LightType::Spot);
-
-                ImGui::EndCombo();
             }
 
             float colorArr[3] = { light.color.r, light.color.g, light.color.b };
