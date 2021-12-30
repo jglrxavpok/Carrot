@@ -73,6 +73,7 @@ add_subdirectory(thirdparty/assimp)
 
 add_subdirectory(thirdparty/nativefiledialog-extended)
 add_subdirectory(thirdparty/openexr)
+add_subdirectory(thirdparty/reactphysics3d)
 
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git

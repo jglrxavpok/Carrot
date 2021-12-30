@@ -46,3 +46,6 @@
 [submodule "thirdparty/VulkanMemoryAllocator-Hpp"]
 	path = thirdparty/VulkanMemoryAllocator-Hpp
 	url = https://github.com/malte-v/VulkanMemoryAllocator-Hpp
+[submodule "thirdparty/reactphysics3d"]
+	path = thirdparty/reactphysics3d
+	url = https://github.com/DanielChappuis/reactphysics3d

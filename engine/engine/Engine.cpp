@@ -44,6 +44,7 @@
 #include "core/io/Logging.hpp"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
+#include "engine/physics/PhysicsSystem.h"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -959,6 +960,7 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
     game->tick(deltaTime);
+    GetPhysics().tick(deltaTime);
 }
 
 void Carrot::Engine::takeScreenshot() {

@@ -13,3 +13,5 @@
 #define GetResourceAllocator() GetEngine().getResourceAllocator()
 #define GetVulkanDevice() GetVulkanDriver().getLogicalDevice()
 #define GetCapabilities() GetEngine().getCapabilities()
+
+#define GetPhysics() Carrot::Physics::PhysicsSystem::getInstance()

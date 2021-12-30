@@ -28,6 +28,7 @@
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>
 #include "ecs/systems/LightEditorRenderer.h"
+#include <engine/physics/PhysicsSystem.h>
 
 namespace Peeler {
 
@@ -584,6 +585,7 @@ namespace Peeler {
         currentScene.world.unfreezeLogic();
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
         updateSettingsBasedOnScene();
+        GetPhysics().resume();
     }
 
     void Application::stopSimulation() {
@@ -592,6 +594,7 @@ namespace Peeler {
         savedScene.clear();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
         updateSettingsBasedOnScene();
+        GetPhysics().pause();
     }
 
     void Application::updateSettingsBasedOnScene() {
