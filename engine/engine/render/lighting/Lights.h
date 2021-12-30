@@ -48,6 +48,8 @@ namespace Carrot::Render {
 
         /*[[deprecated]] */explicit LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system);
 
+        ~LightHandle();
+
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 

@@ -19,6 +19,11 @@ namespace Carrot::Render {
         data = light;
     }
 
+    LightHandle::~LightHandle() {
+        auto& data = lightingSystem.getLightData(*this);
+        data.enabled = false;
+    }
+
     Lighting::Lighting() {
         reallocateBuffer(DefaultLightBufferSize);
         vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR;

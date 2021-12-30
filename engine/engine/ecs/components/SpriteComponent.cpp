@@ -67,10 +67,19 @@ namespace Carrot::ECS {
         static std::string path = "<<path>>";
         if(inInspector != this) {
             inInspector = this;
-            path = sprite->getTexture().getOriginatingResource().getName();
+            if(sprite) {
+                path = sprite->getTexture().getOriginatingResource().getName();
+            } else {
+                path = "";
+            }
         }
         if(ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path));
+            auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path);
+            if(!sprite) {
+                sprite = std::make_unique<Carrot::Render::Sprite>(Engine::getInstance().getRenderer(), textureRef);
+            } else {
+                sprite->setTexture(textureRef);
+            }
             modified = true;
         }
         if(ImGui::BeginDragDropTarget()) {
@@ -83,7 +92,12 @@ namespace Carrot::ECS {
 
                 std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    sprite->setTexture(Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str()));
+                    auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
+                    if(!sprite) {
+                        sprite = std::make_unique<Carrot::Render::Sprite>(Engine::getInstance().getRenderer(), textureRef);
+                    } else {
+                        sprite->setTexture(textureRef);
+                    }
                     inInspector = nullptr;
                     modified = true;
                 }
@@ -92,22 +106,24 @@ namespace Carrot::ECS {
             ImGui::EndDragDropTarget();
         }
 
-        auto& region = sprite->getTextureRegion();
-        bool recompute = false;
-        float minU = region.getMinX();
-        float minV = region.getMinY();
-        float maxU = region.getMaxX();
-        float maxV = region.getMaxY();
-        if(ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
-        |  ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
-        |  ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
-        |  ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
-            recompute = true;
-        }
+        if(sprite) {
+            auto& region = sprite->getTextureRegion();
+            bool recompute = false;
+            float minU = region.getMinX();
+            float minV = region.getMinY();
+            float maxU = region.getMaxX();
+            float maxV = region.getMaxY();
+            if(ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
+               |  ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
+               |  ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
+               |  ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
+                recompute = true;
+            }
 
-        if(recompute) {
-            modified = true;
-            region = Math::Rect2Df(minU, minV, maxU, maxV);
+            if(recompute) {
+                modified = true;
+                region = Math::Rect2Df(minU, minV, maxU, maxV);
+            }
         }
     }
 }

@@ -137,4 +137,10 @@ namespace Carrot::ECS {
             ImGui::EndDisabled();
         }
     }
+
+    std::shared_ptr<Render::LightHandle> LightComponent::duplicateLight(const Render::LightHandle& light) {
+        auto clone = GetRenderer().getLighting().create();
+        clone->light = light.light;
+        return clone;
+    }
 }

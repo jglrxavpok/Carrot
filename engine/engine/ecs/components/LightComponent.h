@@ -25,9 +25,12 @@ namespace Carrot::ECS {
         }
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<LightComponent>(newOwner, lightRef);
+            auto result = std::make_unique<LightComponent>(newOwner, duplicateLight(*lightRef));
             return result;
         }
+
+    private:
+        static std::shared_ptr<Render::LightHandle> duplicateLight(const Render::LightHandle& light);
     };
 }
 

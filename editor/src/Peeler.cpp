@@ -352,8 +352,9 @@ namespace Peeler {
         }
 
         if (ImGui::BeginPopupContextWindow("##popup world editor")) {
-            if(ImGui::MenuItem("Add entity")) {
-                addEntity();
+            if(ImGui::BeginMenu("Add entity")) {
+                addEntityMenu();
+                ImGui::EndMenu();
             }
 
             ImGui::EndPopup();
@@ -372,8 +373,9 @@ namespace Peeler {
                 std::string id = "##add child to entity ";
                 id += std::to_string(entity.getID().hash());
                 if(ImGui::BeginPopupContextItem(id.c_str())) {
-                    if(ImGui::MenuItem("Add child##add child to entity world hierarchy")) {
-                        addEntity(entity);
+                    if(ImGui::BeginMenu("Add child##add child to entity world hierarchy")) {
+                        addEntityMenu(entity);
+                        ImGui::EndMenu();
                     }
                     if(ImGui::MenuItem("Duplicate##duplicate entity world hierarchy")) {
                         duplicateEntity(entity);
@@ -848,12 +850,29 @@ namespace Peeler {
         gameRenderingGraph->onSwapchainImageCountChange(newCount);
     }
 
-    void Application::addEntity(std::optional<Carrot::ECS::Entity> parent) {
+    void Application::addEntityMenu(std::optional<Carrot::ECS::Entity> parent) {
+        if(ImGui::MenuItem("Add Cube##add entity menu")) {
+            auto entity = addEntity(parent);
+            entity.addComponent<Carrot::ECS::ModelComponent>();
+            Carrot::ECS::ModelComponent& modelComp = entity.getComponent<Carrot::ECS::ModelComponent>();
+            modelComp.model = GetRenderer().getOrCreateModel("resources/models/simple_cube.obj");
+        }
+
+        if(ImGui::MenuItem("Add Light##add entity menu")) {
+            auto entity = addEntity(parent);
+            entity.addComponent<Carrot::ECS::LightComponent>();
+        }
+
+        ImGui::Separator();
+
+        if(ImGui::MenuItem("Add empty##add entity menu")) {
+            DISCARD(addEntity(parent));
+        }
+    }
+
+    Carrot::ECS::Entity Application::addEntity(std::optional<Carrot::ECS::Entity> parent) {
         auto entity = currentScene.world.newEntity("Entity")
-                .addComponent<Carrot::ECS::Transform>()
-                .addComponent<Carrot::ECS::SpriteComponent>();
-        auto testSprite = std::make_shared<Carrot::Render::Sprite>(engine.getRenderer(), engine.getRenderer().getOrCreateTexture("../icon128.png"));
-        entity.getComponent<Carrot::ECS::SpriteComponent>()->sprite = testSprite;
+                .addComponent<Carrot::ECS::Transform>();
 
         if(parent) {
             entity.setParent(parent);
@@ -862,15 +881,24 @@ namespace Peeler {
         selectedID = entity.getID();
 
         markDirty();
+        return entity;
     }
 
-    void Application::duplicateEntity(const Carrot::ECS::Entity& entity) {
+    void Application::duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent) {
         auto clone = currentScene.world.newEntity(std::string(entity.getName())+" (Copy)");
         for(const auto* comp : entity.getAllComponents()) {
             clone.addComponent(std::move(comp->duplicate(clone)));
         }
 
-        clone.setParent(entity.getParent());
+        for(const auto& child : currentScene.world.getChildren(entity)) {
+            duplicateEntity(child, clone);
+        }
+
+        if(parent) {
+            clone.setParent(*parent);
+        } else {
+            clone.setParent(entity.getParent());
+        }
 
         selectedID = entity.getID();
         markDirty();

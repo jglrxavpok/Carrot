@@ -60,8 +60,9 @@ namespace Peeler {
         void UISceneProperties(const Carrot::Render::Context& renderContext);
 
     private:
-        void addEntity(std::optional<Carrot::ECS::Entity> parent = {});
-        void duplicateEntity(const Carrot::ECS::Entity& entity);
+        void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});
+        Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
+        void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
 
         void addDefaultSystems(Scene& scene, bool editingScene);

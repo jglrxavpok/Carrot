@@ -23,7 +23,9 @@ namespace Carrot::ECS {
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<SpriteComponent>(newOwner);
-            result->sprite = sprite->duplicate();
+            if(sprite) {
+                result->sprite = sprite->duplicate();
+            }
             result->isTransparent = isTransparent;
             return result;
         }
