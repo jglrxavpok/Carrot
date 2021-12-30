@@ -262,7 +262,6 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
     }
 }
 
-// TODO: renderSkinned
 void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
     DrawData data;
 

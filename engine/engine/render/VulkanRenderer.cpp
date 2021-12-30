@@ -14,6 +14,7 @@
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
+#include "core/io/IO.h"
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -374,6 +375,7 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
     materialSystem.beginFrame(renderContext);
     lighting.beginFrame(renderContext);
+    singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
 #ifdef IS_DEBUG_BUILD
     if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
@@ -582,6 +584,8 @@ void Carrot::VulkanRenderer::mergeRenderPackets() {
             ImGui::Separator();
             ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
             ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
+            ImGui::Text("Instance buffer size this frame: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeThisFrame()).c_str());
+            ImGui::Text("Instance buffer size total: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeAllFrames()).c_str());
         }
         ImGui::End();
     }

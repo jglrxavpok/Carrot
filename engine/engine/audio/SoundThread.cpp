@@ -26,6 +26,11 @@ void Carrot::SoundThread::registerSoundSource(const std::shared_ptr<Carrot::Soun
     currentSources.push_back(source);
 }
 
+Carrot::SoundThread& Carrot::SoundThread::instance() {
+    static SoundThread threadInstance{};
+    return threadInstance;
+}
+
 Carrot::SoundThread::~SoundThread() {
     running = false;
     backingThread.join();

@@ -25,6 +25,8 @@ namespace Carrot {
 
             Carrot::BufferView allocateAligned(std::size_t index, vk::DeviceSize size, vk::DeviceSize align = 1);
 
+            vk::DeviceSize getAllocatedSize(std::size_t index) const;
+
         private:
             vk::DeviceSize bufferSize;
             vk::BufferUsageFlags usages;
@@ -43,6 +45,9 @@ namespace Carrot {
     public: // allocations
         Carrot::BufferView getInstanceBuffer(std::size_t size);
 
+    public: // stats
+        vk::DeviceSize getAllocatedSizeThisFrame() const;
+        vk::DeviceSize getAllocatedSizeAllFrames() const;
 
     public: // SwapchainAware
         virtual void onSwapchainImageCountChange(size_t newCount) override;

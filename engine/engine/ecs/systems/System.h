@@ -26,7 +26,7 @@ namespace Carrot::ECS {
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
         virtual void tick(double dt) {};
 
-        // TODO: provide a way to render even in other passes
+        // TODO: provide a way to render even in other passes -> RenderPacket
         virtual void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
         virtual void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 

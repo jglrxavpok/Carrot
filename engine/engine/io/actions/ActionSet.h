@@ -66,7 +66,6 @@ namespace Carrot::IO {
         std::vector<BoolInputAction*> boolInputs;
         std::vector<Vec2InputAction*> vec2Inputs;
 
-        Carrot::Engine* engine = nullptr; // TODO: remove when Engine class becomes singleton
         Carrot::UUID keyCallback;
         Carrot::UUID gamepadButtonCallback;
         Carrot::UUID gamepadAxisCallback;

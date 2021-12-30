@@ -3,6 +3,7 @@
 //
 
 #include "IO.h"
+#include "core/utils/stringmanip.h"
 #include <fstream>
 #include <iostream>
 
@@ -52,5 +53,24 @@ namespace Carrot::IO {
     void writeFile(const std::string& filename, IO::WriteToFileFunction function) {
         std::ofstream file(filename, std::ios::out | std::ios::binary);
         function(file);
+    }
+
+    std::string getHumanReadableFileSize(std::size_t filesize) {
+        const std::size_t kiB = 1024;
+        const std::size_t MiB = 1024 * kiB;
+        const std::size_t GiB = 1024 * MiB;
+        if(filesize < kiB) {
+            return Carrot::sprintf("%llu B", static_cast<std::uint64_t>(filesize));
+        }
+
+        if(filesize < MiB) {
+            return Carrot::sprintf("%0.2f kiB", static_cast<float>(filesize) / kiB);
+        }
+
+        if(filesize < GiB) {
+            return Carrot::sprintf("%0.2f MiB", static_cast<float>(filesize) / MiB);
+        }
+
+        return Carrot::sprintf("%0.2f GiB", static_cast<float>(filesize) / GiB);
     }
 }

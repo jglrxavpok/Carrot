@@ -27,10 +27,6 @@ namespace Carrot {
     public:
         void registerSoundSource(const std::shared_ptr<SoundSource>& source);
 
-        static SoundThread& instance() {
-            // TODO: put in single .cpp, this probably does not work as-is (one instance per .cpp which includes SoundThread.h)
-            static SoundThread threadInstance{};
-            return threadInstance;
-        }
+        static SoundThread& instance();
     };
 }

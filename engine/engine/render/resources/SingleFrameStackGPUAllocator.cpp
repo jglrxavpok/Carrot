@@ -37,6 +37,10 @@ namespace Carrot {
         return Carrot::BufferView(nullptr, *stacks[index], location, size);
     }
 
+    vk::DeviceSize SingleFrameStackGPUAllocator::RingBuffer::getAllocatedSize(std::size_t frameIndex) const {
+        return stackPointers[frameIndex];
+    }
+
     // --
 
     SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize instancingBufferSize):
@@ -51,6 +55,18 @@ namespace Carrot {
 
     Carrot::BufferView SingleFrameStackGPUAllocator::getInstanceBuffer(std::size_t size) {
         return instanceBuffers.allocateAligned(currentFrame, size);
+    }
+
+    vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeThisFrame() const {
+        return instanceBuffers.getAllocatedSize(currentFrame);
+    }
+
+    vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeAllFrames() const {
+        vk::DeviceSize sum = 0;
+        for (std::size_t frameIndex = 0; frameIndex < GetEngine().getSwapchainImageCount(); ++frameIndex) {
+            sum += instanceBuffers.getAllocatedSize(frameIndex);
+        }
+        return sum;
     }
 
     void SingleFrameStackGPUAllocator::onSwapchainImageCountChange(size_t newCount) {

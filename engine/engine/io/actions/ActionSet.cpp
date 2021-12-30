@@ -24,17 +24,15 @@ namespace Carrot::IO {
     ActionSet::~ActionSet() {
         deactivate();
 
-        if(engine) {
-            engine->removeGLFWKeyCallback(keyCallback);
-            engine->removeGLFWMouseButtonCallback(mouseButtonCallback);
-            engine->removeGLFWGamepadButtonCallback(gamepadButtonCallback);
-            engine->removeGLFWGamepadAxisCallback(gamepadAxisCallback);
-            engine->removeGLFWGamepadVec2Callback(gamepadVec2Callback);
-            engine->removeGLFWKeysVec2Callback(keysVec2Callback);
-            engine->removeGLFWMousePositionCallback(mousePositionCallback);
-            engine->removeGLFWMouseDeltaCallback(mouseDeltaCallback);
-            engine->removeGLFWMouseDeltaGrabbedCallback(mouseDeltaGrabbedCallback);
-        }
+        GetEngine().removeGLFWKeyCallback(keyCallback);
+        GetEngine().removeGLFWMouseButtonCallback(mouseButtonCallback);
+        GetEngine().removeGLFWGamepadButtonCallback(gamepadButtonCallback);
+        GetEngine().removeGLFWGamepadAxisCallback(gamepadAxisCallback);
+        GetEngine().removeGLFWGamepadVec2Callback(gamepadVec2Callback);
+        GetEngine().removeGLFWKeysVec2Callback(keysVec2Callback);
+        GetEngine().removeGLFWMousePositionCallback(mousePositionCallback);
+        GetEngine().removeGLFWMouseDeltaCallback(mouseDeltaCallback);
+        GetEngine().removeGLFWMouseDeltaGrabbedCallback(mouseDeltaGrabbedCallback);
 
         getSetList().erase(std::remove(WHOLE_CONTAINER(getSetList()), this), getSetList().end());
     }
@@ -91,8 +89,6 @@ namespace Carrot::IO {
         if(readyForUse)
             return;
 
-        this->engine = &engine;
-
         if(isXRSet) {
 #ifdef ENABLE_VR
             TODO
@@ -144,7 +140,7 @@ namespace Carrot::IO {
                 }
             };
 
-            keyCallback = engine.addGLFWKeyCallback([this, changeButtonInput, changeAxisInput](int key, int scancode, int action, int mods) {
+            keyCallback = GetEngine().addGLFWKeyCallback([this, changeButtonInput, changeAxisInput](int key, int scancode, int action, int mods) {
                 if(!active)
                     return;
 
@@ -165,7 +161,7 @@ namespace Carrot::IO {
                 changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
             });
 
-            gamepadButtonCallback = engine.addGLFWGamepadButtonCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int buttonID, bool pressed) {
+            gamepadButtonCallback = GetEngine().addGLFWGamepadButtonCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int buttonID, bool pressed) {
                 if(!active)
                     return;
 
@@ -178,7 +174,7 @@ namespace Carrot::IO {
                 changeAxisInput(correspondingPath, pressed ? 1.0f : 0.0f);
             });
 
-            gamepadAxisCallback = engine.addGLFWGamepadAxisCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int axisID, float newValue, float oldValue) {
+            gamepadAxisCallback = GetEngine().addGLFWGamepadAxisCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int axisID, float newValue, float oldValue) {
                 if(!active)
                     return;
 
@@ -191,7 +187,7 @@ namespace Carrot::IO {
                 changeAxisInput(correspondingPath, newValue);
             });
 
-            gamepadVec2Callback = engine.addGLFWGamepadVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](int gamepadID, IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
+            gamepadVec2Callback = GetEngine().addGLFWGamepadVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](int gamepadID, IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
                 if(!active)
                     return;
 
@@ -205,7 +201,7 @@ namespace Carrot::IO {
                 changeVec2Input(correspondingPath, newValue);
             });
 
-            keysVec2Callback = engine.addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
+            keysVec2Callback = GetEngine().addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
                 if(!active)
                     return;
 
@@ -219,7 +215,7 @@ namespace Carrot::IO {
                 changeVec2Input(correspondingPath, newValue);
             });
 
-            mouseButtonCallback = engine.addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
+            mouseButtonCallback = GetEngine().addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
                 if(!active)
                     return;
 
@@ -232,7 +228,7 @@ namespace Carrot::IO {
                 changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
             });
 
-            mousePositionCallback = engine.addGLFWMousePositionCallback([this, changeVec2Input](double dx, double dy) {
+            mousePositionCallback = GetEngine().addGLFWMousePositionCallback([this, changeVec2Input](double dx, double dy) {
                 if(!active)
                     return;
 
@@ -241,7 +237,7 @@ namespace Carrot::IO {
                 changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
             });
 
-            mouseDeltaCallback = engine.addGLFWMouseDeltaCallback([this, changeVec2Input](double dx, double dy) {
+            mouseDeltaCallback = GetEngine().addGLFWMouseDeltaCallback([this, changeVec2Input](double dx, double dy) {
                 if(!active)
                     return;
 
@@ -250,7 +246,7 @@ namespace Carrot::IO {
                 changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
             });
 
-            mouseDeltaGrabbedCallback = engine.addGLFWMouseDeltaGrabbedCallback([this, changeVec2Input](double dx, double dy) {
+            mouseDeltaGrabbedCallback = GetEngine().addGLFWMouseDeltaGrabbedCallback([this, changeVec2Input](double dx, double dy) {
                 if(!active)
                     return;
 

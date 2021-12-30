@@ -20,4 +20,6 @@ namespace Carrot::IO {
     using WriteToFileFunction = std::function<void(std::ofstream& out)>;
 
     void writeFile(const std::string& filename, WriteToFileFunction function);
+
+    std::string getHumanReadableFileSize(std::size_t filesize);
 }
