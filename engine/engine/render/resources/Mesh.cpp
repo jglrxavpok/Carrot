@@ -32,6 +32,14 @@ std::uint64_t Carrot::Mesh::getIndexCount() const {
     return indexCount;
 }
 
+std::uint64_t Carrot::Mesh::getVertexSize() const {
+    return vertexCount * sizeofVertex;
+}
+
+std::uint64_t Carrot::Mesh::getIndexSize() const {
+    return indexCount * sizeof(std::uint32_t);
+}
+
 std::uint64_t Carrot::Mesh::getVertexCount() const {
     return vertexCount;
 }
@@ -44,6 +52,14 @@ std::uint64_t Carrot::Mesh::getVertexStartOffset() const {
     return vertexStartOffset;
 }
 
+std::uint64_t Carrot::Mesh::getIndexStartOffset() const {
+    return 0;
+}
+
 Carrot::Buffer& Carrot::Mesh::getBackingBuffer() {
+    return *vertexAndIndexBuffer;
+}
+
+const Carrot::Buffer& Carrot::Mesh::getBackingBuffer() const {
     return *vertexAndIndexBuffer;
 }

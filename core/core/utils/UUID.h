@@ -116,6 +116,8 @@ namespace Carrot {
     private:
         uuids::uuid uuid;
     };
+
+    static_assert(sizeof(UUID) == 16, "UUID class must be of size 16");
 }
 
 namespace std {

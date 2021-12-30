@@ -7,22 +7,32 @@
 #include <engine/render/DrawData.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/InstanceData.h>
+#include <engine/render/RenderPacket.h>
 
 namespace Carrot::ECS {
     void ModelRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        renderModels(renderPass, renderContext, commands, true);
+
     }
 
     void ModelRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        renderModels(renderPass, renderContext, commands, false);
+
     }
 
-    void ModelRenderSystem::renderModels(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, bool isTransparent) {
-        for(const auto& [model, transforms] : isTransparent ? transparentEntities : opaqueEntities) {
+    void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
+/*        for(const auto& [model, transforms] : isTransparent ? transparentEntities : opaqueEntities) {
             auto& instanceBufferMap = isTransparent ? transparentInstancingBuffers : opaqueInstancingBuffers;
             auto& instanceBuffer = instanceBufferMap[model].second;
             model->draw(renderPass, renderContext, commands, *instanceBuffer, transforms.size());
-        }
+        }*/
+        forEachEntity([&](Entity& entity, Transform& transform, ModelComponent& modelComp) {
+            if (modelComp.model && modelComp.isTransparent == isTransparent) {
+                Carrot::InstanceData instanceData;
+                instanceData.transform = transform.toTransformMatrix();
+                instanceData.uuid = entity.getID();
+                Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
+                modelComp.model->renderStatic(renderContext, instanceData, pass);
+            }
+        });
     }
 
     static void allocateBuffer(std::uint32_t instanceCount, std::unique_ptr<Buffer>& out) {
@@ -31,7 +41,7 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
-        opaqueEntities.clear();
+        /*opaqueEntities.clear();
         transparentEntities.clear();
 
         forEachEntity([&](Entity& entity, Transform& transform, ModelComponent& modelComp) {
@@ -64,7 +74,9 @@ namespace Carrot::ECS {
         };
 
         prepareInstancingBuffers(opaqueEntities, opaqueInstancingBuffers);
-        prepareInstancingBuffers(transparentEntities, transparentInstancingBuffers);
+        prepareInstancingBuffers(transparentEntities, transparentInstancingBuffers);*/
+        renderModels(renderContext, true);
+        renderModels(renderContext, false);
     }
 
     std::unique_ptr<System> ModelRenderSystem::duplicate(World& newOwner) const {

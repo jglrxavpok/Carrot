@@ -15,6 +15,8 @@
 #include "engine/render/RenderGraph.h"
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/lighting/Lights.h"
+#include "engine/render/RenderPacket.h"
+#include "engine/render/resources/SingleFrameStackGPUAllocator.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 
@@ -119,7 +121,9 @@ namespace Carrot {
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
+        void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
+        void endFrame(const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
@@ -144,6 +148,14 @@ namespace Carrot {
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
+
+    public:
+        void render(const Render::Packet& packet);
+
+    public:
+        Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
+        void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
 
     public:
         Render::Texture::Ref getDefaultImage();
@@ -180,6 +192,9 @@ namespace Carrot {
 
         std::unordered_map<BindingKey, vk::Image> boundTextures;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
+        std::vector<Render::Packet> renderPackets;
+        std::vector<Render::Packet> preparedRenderPackets;
+        SingleFrameStackGPUAllocator singleFrameAllocator;
 
         void createCameraSetResources();
 
@@ -192,6 +207,11 @@ namespace Carrot {
         void createRayTracer();
 
         void initImGui();
+
+    private:
+        std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const;
+        void sortRenderPackets();
+        void mergeRenderPackets();
     };
 }
 

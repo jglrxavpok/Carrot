@@ -3,6 +3,7 @@
 
 template<typename VertexType>
 Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& vertices, const std::vector<std::uint32_t>& indices): meshID(currentMeshID++), driver(driver) {
+    sizeofVertex = sizeof(VertexType);
     const auto& queueFamilies = driver.getQueueFamilies();
     // create and allocate underlying buffer
     std::set<std::uint32_t> families = {

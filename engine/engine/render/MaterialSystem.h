@@ -62,7 +62,7 @@ namespace Carrot::Render {
         std::shared_ptr<MaterialHandle> createMaterialHandle();
 
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
-        void onFrame(const Context& renderContext);
+        void beginFrame(const Context& renderContext);
 
     public:
         vk::DescriptorSetLayout getDescriptorSetLayout() const { return *descriptorSetLayout; }

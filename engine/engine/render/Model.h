@@ -13,6 +13,8 @@
 #include "engine/render/animation/Animation.h"
 #include "engine/Engine.h"
 #include "engine/render/MaterialSystem.h"
+#include "engine/render/PassEnum.h"
+#include "engine/render/InstanceData.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -20,6 +22,10 @@ namespace Carrot {
     class Engine;
     class Material;
     class Buffer;
+
+    namespace Render {
+        class Packet;
+    }
 
     class Model {
     public:
@@ -41,6 +47,10 @@ namespace Carrot {
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getSkinnedMeshes() const;
 
         Carrot::Buffer& getAnimationDataBuffer();
+
+    public:
+        void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
+        void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
 
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }

@@ -22,7 +22,7 @@ namespace Carrot::Render {
                                                                      }
                                                              ),
                                                              "tick", &Sprite::tick,
-                                                             "onFrame", &Sprite::onFrame,
+                                                             "beginFrame", &Sprite::onFrame,
                                                              "soloGBufferRender", &Sprite::soloGBufferRender,
                                                              "size", &Sprite::size,
                                                              "rotation", &Sprite::rotation,

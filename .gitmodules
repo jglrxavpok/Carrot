@@ -43,3 +43,6 @@
 [submodule "thirdparty/debugbreak"]
     path = thirdparty/debugbreak
     url = https://github.com/scottt/debugbreak
+[submodule "thirdparty/VulkanMemoryAllocator-Hpp"]
+	path = thirdparty/VulkanMemoryAllocator-Hpp
+	url = https://github.com/malte-v/VulkanMemoryAllocator-Hpp

@@ -123,11 +123,13 @@ void Carrot::Engine::init() {
                                      [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                          ZoneScopedN("CPU RenderGraph Opaque GPass");
                                          game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         renderer.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      },
                                      [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                          ZoneScopedN("CPU RenderGraph Opaque GPass");
                                          game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                     });
+                                         renderer.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                    });
 
         composers[eye]->add(gResolvePass.getData().resolved);
         auto& composerPass = composers[eye]->appendPass(mainGraph);
@@ -661,13 +663,15 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
-        renderer.onFrame(newRenderContext(imageIndex, getMainViewport()));
+        renderer.beginFrame(newRenderContext(imageIndex, getMainViewport()));
         for(auto& v : viewports) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
             v.onFrame(renderContext);
             getRayTracer().onFrame(renderContext);
             game->onFrame(renderContext);
+            renderer.onFrame(renderContext);
         }
+        renderer.endFrame(newRenderContext(imageIndex, getMainViewport()));
     }
     {
         ZoneScopedN("Record main command buffer");

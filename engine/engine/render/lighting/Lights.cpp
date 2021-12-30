@@ -74,7 +74,7 @@ namespace Carrot::Render {
         cmds.bindDescriptorSets(bindPoint, pipelineLayout, index, {descriptorSets[renderContext.swapchainIndex]}, {});
     }
 
-    void Lighting::onFrame(const Context& renderContext) {
+    void Lighting::beginFrame(const Context& renderContext) {
         lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
         data->lightCount = lightBufferSize;
         data->ambient = ambientColor;

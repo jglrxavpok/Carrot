@@ -147,7 +147,7 @@ namespace Carrot::Render {
         blueTextureHandle = createTextureHandle(blueTexture);
     }
 
-    void MaterialSystem::onFrame(const Context& renderContext) {
+    void MaterialSystem::beginFrame(const Context& renderContext) {
         if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
             auto& set = descriptorSets[renderContext.swapchainIndex];
             auto materialBufferInfo = materialBuffer->getWholeView().asBufferInfo();

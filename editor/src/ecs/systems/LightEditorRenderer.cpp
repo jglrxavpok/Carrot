@@ -15,6 +15,10 @@ namespace Peeler::ECS {
     }
 
     void LightEditorRenderer::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+
+    }
+
+    void LightEditorRenderer::onFrame(Carrot::Render::Context renderContext) {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::Transform& transform, Carrot::ECS::LightComponent& lightComponent) {
             auto& lightHandle = lightComponent.lightRef;
             if(!lightHandle)
@@ -22,12 +26,8 @@ namespace Peeler::ECS {
             const float scale = 0.5f;
 
             const auto& textureHandle = lightHandle->light.enabled ? textureHandleOn : textureHandleOff;
-            billboardRenderer.gBufferDraw(transform.computeFinalPosition(), scale, *textureHandle, renderPass, renderContext, commands, lightHandle->light.color, entity.getID());
+            billboardRenderer.render(transform.computeFinalPosition(), scale, *textureHandle, renderContext, lightHandle->light.color, entity.getID());
         });
-    }
-
-    void LightEditorRenderer::onFrame(Carrot::Render::Context renderContext) {
-
     }
 
     std::unique_ptr<Carrot::ECS::System> LightEditorRenderer::duplicate(Carrot::ECS::World& newOwner) const {

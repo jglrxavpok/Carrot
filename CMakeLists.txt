@@ -95,6 +95,7 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui-node-editor/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/asio/asio/include/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/VulkanMemoryAllocator-Hpp)
     target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
 

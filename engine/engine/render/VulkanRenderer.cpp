@@ -6,6 +6,7 @@
 #include "GBuffer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
+#include "engine/console/RuntimeOption.hpp"
 #include "core/utils/Assert.h"
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
@@ -14,7 +15,13 @@
 #include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
 
-Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config) {
+static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
+static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
+
+Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
+
+                                                                                    singleFrameAllocator(SingleFrameAllocatorSize)
+{
     ZoneScoped;
     fullscreenQuad = std::make_unique<Mesh>(driver,
                                        std::vector<ScreenSpaceVertex>{
@@ -337,6 +344,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
 void Carrot::VulkanRenderer::newFrame() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+
+    std::size_t previousCapacity = renderPackets.capacity();
+    renderPackets.clear();
+    renderPackets.reserve(previousCapacity);
 }
 
 void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
@@ -360,15 +371,24 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
     cmds.blitImage(source.getVulkanImage(), vk::ImageLayout::eTransferSrcOptimal, destination.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, blitInfo, vk::Filter::eNearest);
 }
 
-void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
-    materialSystem.onFrame(renderContext);
-    lighting.onFrame(renderContext);
+void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
+    materialSystem.beginFrame(renderContext);
+    lighting.beginFrame(renderContext);
 
 #ifdef IS_DEBUG_BUILD
     if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
 #endif
+}
+
+void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderContext) {
+    sortRenderPackets();
+    mergeRenderPackets();
+}
+
+void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
+
 }
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
@@ -459,4 +479,123 @@ void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Ca
 
 Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
     return getOrCreateTexture("default.png");
+}
+
+void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    Carrot::Render::Viewport* viewport = &renderContext.viewport;
+    verify(viewport, "Viewport cannot be null");
+
+    auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::OpaqueGBuffer);
+    for(const auto& p : packets) {
+        p.record(pass, renderContext, commands);
+    }
+}
+
+void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    Carrot::Render::Viewport* viewport = &renderContext.viewport;
+    verify(viewport, "Viewport cannot be null");
+
+    auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::TransparentGBuffer);
+    for(const auto& p : packets) {
+        p.record(pass, renderContext, commands);
+    }
+}
+
+std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const {
+    auto predicate = [&](const auto& packet) {
+        return packet.viewport == viewport && packet.pass == pass;
+    };
+    auto first = std::find_if(preparedRenderPackets.begin(), preparedRenderPackets.end(), predicate);
+    if(first == preparedRenderPackets.end())
+        return {};
+    std::size_t startIndex = std::distance(preparedRenderPackets.begin(), first);
+    std::size_t endIndexInclusive = startIndex;
+    for (std::size_t index = startIndex; index < preparedRenderPackets.size(); ++index) {
+        if(!predicate(preparedRenderPackets[index])) {
+            break;
+        }
+
+        endIndexInclusive = index;
+    }
+
+    return std::span<const Render::Packet> { &preparedRenderPackets[startIndex], static_cast<std::size_t>(endIndexInclusive - startIndex + 1) };
+}
+
+void Carrot::VulkanRenderer::sortRenderPackets() {
+    // sort by viewport, pass, then pipeline, then mesh
+    std::sort(renderPackets.begin(), renderPackets.end(), [&](const Render::Packet& a, const Render::Packet& b) {
+        if(a.viewport != b.viewport) {
+            return a.viewport < b.viewport;
+        }
+
+        if(a.pass != b.pass) {
+            return a.pass < b.pass;
+        }
+
+        if(a.pipeline != b.pipeline) {
+            return a.pipeline < b.pipeline;
+        }
+
+        return a.vertexBuffer.getVulkanBuffer() < b.vertexBuffer.getVulkanBuffer();
+    });
+}
+
+void Carrot::VulkanRenderer::mergeRenderPackets() {
+    std::size_t previousCapacity = preparedRenderPackets.capacity();
+    preparedRenderPackets.clear();
+    preparedRenderPackets.reserve(previousCapacity);
+
+    if(renderPackets.empty()) {
+        return;
+    }
+
+    static bool doMerge = true;
+    float mergeTime = 0.0f;
+
+    {
+        Carrot::Profiling::ScopedTimer mergeTimer("Merge timer");
+        Render::Packet mergeResult = renderPackets[0];
+        for(std::size_t i = 1; i < renderPackets.size(); i++) {
+            const Render::Packet& currentPacket = renderPackets[i];
+            if(!doMerge || !mergeResult.merge(currentPacket)) {
+                preparedRenderPackets.push_back(mergeResult);
+                mergeResult = currentPacket;
+            }
+        }
+
+        preparedRenderPackets.push_back(mergeResult);
+
+        mergeTime = mergeTimer.getTime();
+    }
+
+    if(DebugRenderPacket) {
+        bool open = true;
+        if(ImGui::Begin("Debug Render Packets", &open)) {
+            if(!open) {
+                DebugRenderPacket.setValue(false);
+            }
+
+            ImGui::Checkbox("Merge Render Packets with instancing", &doMerge);
+            ImGui::Text("Total render packets count: %llu", renderPackets.size());
+            ImGui::Text("Merged render packets count: %llu", preparedRenderPackets.size());
+            float ratio = static_cast<float>(preparedRenderPackets.size()) / static_cast<float>(renderPackets.size());
+            ImGui::Separator();
+            ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
+            ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
+        }
+        ImGui::End();
+    }
+}
+
+void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
+    verify(packet.pipeline, "Pipeline must not be null");
+    verify(packet.pass != Render::PassEnum::Undefined, "Render pass must be defined");
+    verify(packet.vertexBuffer, "Vertex buffer must not be null");
+    verify(packet.indexBuffer, "Index buffer must not be null");
+    verify(packet.viewport, "Viewport must not be null");
+    renderPackets.push_back(packet);
+}
+
+Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(std::size_t bytes) {
+    return singleFrameAllocator.getInstanceBuffer(bytes);
 }

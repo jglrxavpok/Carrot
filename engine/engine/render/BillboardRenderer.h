@@ -14,12 +14,10 @@ namespace Carrot::Render {
     public:
         explicit BillboardRenderer();
 
-        void gBufferDraw(const glm::vec3& position,
+        void render(const glm::vec3& position,
                   float scale,
                   const TextureHandle& texture,
-                  vk::RenderPass pass,
                   const Carrot::Render::Context& renderContext,
-                  vk::CommandBuffer& cmds,
                   const glm::vec3& color = glm::vec3{1.0f},
                   const Carrot::UUID& uuid = Carrot::UUID::null()
                   );

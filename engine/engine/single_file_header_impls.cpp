@@ -18,3 +18,6 @@
 #include "dr_mp3.h"
 
 #include "stb_vorbis.c"
+
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.hpp>

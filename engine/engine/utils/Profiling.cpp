@@ -23,6 +23,10 @@ namespace Carrot::Profiling {
         start = std::chrono::steady_clock::now();
     }
 
+    float ScopedTimer::getTime() const {
+        return duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start)).count();
+    }
+
     ScopedTimer::~ScopedTimer() {
         auto elapsed = duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start));
         times[name] += elapsed;

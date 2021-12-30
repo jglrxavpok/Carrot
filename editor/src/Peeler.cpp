@@ -44,6 +44,16 @@ namespace Peeler {
             cameraController.applyTo(glm::vec2{ viewportSize.width, viewportSize.height }, gameViewport.getCamera());
 
             currentScene.onFrame(renderContext);
+
+            float gridSize = 100.0f;
+            float cellSize = 1.0f;
+            float lineWidth = 0.005f;
+            glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
+            gridRenderer.render(renderContext, gridColor, lineWidth, cellSize, gridSize);
+
+            gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
+            gridRenderer.render(renderContext, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
+
             engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 gameRenderingGraph->execute(renderContext, cmds);
                 auto& texture = gameRenderingGraph->getTexture(gameTexture, renderContext.swapchainIndex);
@@ -655,18 +665,12 @@ namespace Peeler {
 
         auto& resolvePass = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         float gridSize = 100.0f;
-                                         float cellSize = 1.0f;
-                                         float lineWidth = 0.005f;
-                                         glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
-                                         gridRenderer.drawGrid(pass.getRenderPass(), frame, cmds, gridColor, lineWidth, cellSize, gridSize);
-
-                                         gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
-                                         gridRenderer.drawGrid(pass.getRenderPass(), frame, cmds, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
                                          currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         GetRenderer().recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                      },
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
                                          currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                         GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
         gameTexture = resolvePass.getData().resolved;
 

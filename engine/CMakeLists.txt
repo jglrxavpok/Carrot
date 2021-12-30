@@ -14,6 +14,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Image.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
         ${EngineRoot}render/resources/Texture.cpp
+        ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
         ${EngineRoot}render/shaders/ShaderSource.cpp
@@ -23,6 +24,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Camera.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
         ${EngineRoot}render/animation/Animation.cpp
+        ${EngineRoot}render/RenderPacket.cpp
 
         ${EngineRoot}utils/conversions.cpp
 

@@ -16,6 +16,7 @@
 #include <engine/utils/conversions.h>
 #include <core/io/Logging.hpp>
 #include <engine/render/DrawData.h>
+#include <engine/render/RenderPacket.h>
 #include <engine/utils/Profiling.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
@@ -258,6 +259,58 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
     if(!skinnedMeshes.empty()) {
         skinnedMeshesPipeline->bind(pass, renderContext, commands);
         draw(skinnedMeshes, *skinnedMeshesPipeline);
+    }
+}
+
+// TODO: renderSkinned
+void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
+    DrawData data;
+
+    Render::Packet packet(renderPass);
+    packet.pipeline = staticMeshesPipeline;
+    packet.viewport = &renderContext.viewport;
+    packet.transparentGBuffer.zOrder = 0.0f;
+
+    Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
+    pushConstant.id = "drawDataPush";
+    pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
+
+    packet.useInstance(instanceData);
+
+    for (const auto&[mat, meshList]: staticMeshes) {
+        for (const auto& mesh: meshList) {
+            data.materialIndex = mat;
+            packet.useMesh(*mesh);
+
+            pushConstant.setData(data); // template operator=
+
+            renderContext.renderer.render(packet);
+        }
+    }
+}
+
+void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
+    DrawData data;
+
+    Render::Packet packet(renderPass);
+    packet.pipeline = skinnedMeshesPipeline;
+    packet.transparentGBuffer.zOrder = 0.0f;
+
+    Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
+    pushConstant.id = "drawDataPush";
+    pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
+
+    packet.useInstance(instanceData);
+
+    for (const auto&[mat, meshList]: skinnedMeshes) {
+        for (const auto& mesh: meshList) {
+            data.materialIndex = mat;
+            packet.useMesh(*mesh);
+
+            pushConstant.setData(data); // template operator=
+
+            renderContext.renderer.render(packet);
+        }
     }
 }
 

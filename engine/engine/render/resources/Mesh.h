@@ -10,6 +10,31 @@
 
 namespace Carrot {
     class Mesh: public DebugNameable {
+    public:
+        template<typename VertexType>
+        explicit Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
+
+        void bind(const vk::CommandBuffer& buffer) const;
+        /// Does not bind the original vertex buffer (but does bind the index buffer)
+        void bindForIndirect(const vk::CommandBuffer& buffer) const;
+        void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
+        void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
+
+        std::uint64_t getIndexCount() const;
+        std::size_t getIndexSize() const;
+        std::uint64_t getVertexCount() const;
+        std::size_t getVertexSize() const;
+        std::uint64_t getVertexStartOffset() const;
+        std::uint64_t getIndexStartOffset() const;
+
+        Carrot::Buffer& getBackingBuffer();
+        const Carrot::Buffer& getBackingBuffer() const;
+
+        std::uint64_t getMeshID() const;
+
+    protected:
+        void setDebugNames(const std::string& name) override;
+
     private:
         static uint64_t currentMeshID;
 
@@ -26,26 +51,8 @@ namespace Carrot {
 
         std::uint64_t meshID = 0;
 
-    protected:
-        void setDebugNames(const std::string& name) override;
+        std::size_t sizeofVertex = 0;
 
-    public:
-        template<typename VertexType>
-        explicit Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& vertices, const std::vector<uint32_t>& indices);
-
-        void bind(const vk::CommandBuffer& buffer) const;
-        /// Does not bind the original vertex buffer (but does bind the index buffer)
-        void bindForIndirect(const vk::CommandBuffer& buffer) const;
-        void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
-        void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
-
-        std::uint64_t getIndexCount() const;
-        std::uint64_t getVertexCount() const;
-        std::uint64_t getVertexStartOffset() const;
-
-        Carrot::Buffer& getBackingBuffer();
-
-        std::uint64_t getMeshID() const;
     };
 }
 

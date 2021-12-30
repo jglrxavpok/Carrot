@@ -26,6 +26,6 @@ namespace Carrot::ECS {
         std::unordered_map<Carrot::Model*, std::pair<std::uint32_t, std::unique_ptr<Buffer>>> opaqueInstancingBuffers;
         std::unordered_map<Carrot::Model*, std::pair<std::uint32_t, std::unique_ptr<Buffer>>> transparentInstancingBuffers;
 
-        void renderModels(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, bool isTransparent);
+        void renderModels(const Carrot::Render::Context& renderContext, bool isTransparent);
     };
 }

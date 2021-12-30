@@ -23,7 +23,7 @@ function init(engine)
 end
 
 function onFrame(renderContext)
-    mySprite:onFrame(renderContext)
+    mySprite:beginFrame(renderContext)
 end
 
 function tick(frameTime)
@@ -69,7 +69,7 @@ end
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
-        script["onFrame"](renderContext);
+        script["beginFrame"](renderContext);
     }
 
     void tick(double frameTime) override {

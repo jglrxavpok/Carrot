@@ -23,6 +23,7 @@ namespace Carrot {
         explicit BufferView(): buffer(nullptr), start(0), size(0), allocator(nullptr) {};
         BufferView(const BufferView&) = default;
 
+        bool operator==(const BufferView&) const;
         BufferView& operator=(const BufferView&) = default;
 
         [[nodiscard]] vk::DeviceSize getStart() const { return start; };
@@ -32,7 +33,15 @@ namespace Carrot {
         [[nodiscard]] const Buffer& getBuffer() const { return *buffer; };
         [[nodiscard]] const vk::Buffer& getVulkanBuffer() const { return getBuffer().getVulkanBuffer(); };
 
+        /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
+        /// Only use for host-visible and host-coherent memory
+        void directUpload(const void* data, vk::DeviceSize length);
+
         [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;
+
+        explicit operator bool() const {
+            return !!buffer;
+        }
 
         void flushMappedMemory();
 

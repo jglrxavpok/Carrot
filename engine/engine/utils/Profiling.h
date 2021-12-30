@@ -17,6 +17,8 @@ namespace Carrot::Profiling {
         explicit ScopedTimer(std::string_view name);
         virtual ~ScopedTimer();
 
+        float getTime() const;
+
     protected:
         std::string name;
         std::chrono::steady_clock::time_point start;

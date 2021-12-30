@@ -6,19 +6,21 @@
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/resources/Mesh.h"
+#include "engine/render/RenderPacket.h"
 
 namespace Carrot::Render {
     BillboardRenderer::BillboardRenderer() {
         pipeline = GetRenderer().getOrCreatePipeline("billboards");
     }
 
-    void BillboardRenderer::gBufferDraw(const glm::vec3& position, float scale, const TextureHandle& texture, vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const glm::vec3& color, const Carrot::UUID& uuid) {
+    void BillboardRenderer::render(const glm::vec3& position, float scale, const TextureHandle& texture, const Carrot::Render::Context& renderContext, const glm::vec3& color, const Carrot::UUID& uuid) {
+        // TODO: this push constant prevents merging render packets, modify pipeline to allow to use instance buffer instead
         struct {
-            glm::vec3 pos;
-            float scale;
+            glm::vec3 pos{0.0f};
+            float scale = 1.0f;
             glm::uvec4 uuid;
             glm::vec3 color;
-            std::uint32_t textureID;
+            std::uint32_t textureID = -1;
         } pushConstant;
         static_assert(sizeof(pushConstant) == 48, "Must be same size than inside shader");
         pushConstant.pos = position;
@@ -27,11 +29,14 @@ namespace Carrot::Render {
         pushConstant.textureID = texture.getSlot();
         pushConstant.color = color;
 
-        pipeline->bind(pass, renderContext, cmds);
-        GetRenderer().pushConstantBlock("billboard", *pipeline, renderContext, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, cmds, pushConstant);
+        Render::Packet packet(Render::PassEnum::OpaqueGBuffer);
+        packet.pipeline = pipeline;
+        packet.viewport = &renderContext.viewport;
+        packet.useMesh(GetRenderer().getFullscreenQuad());
 
-        auto& mesh = GetRenderer().getFullscreenQuad();
-        mesh.bind(cmds);
-        mesh.draw(cmds);
+        auto& billboardPushConstant = packet.addPushConstant("billboard", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+        billboardPushConstant.setData(pushConstant);
+
+        renderContext.renderer.render(std::move(packet));
     }
 }

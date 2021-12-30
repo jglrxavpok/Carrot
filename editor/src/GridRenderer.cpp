@@ -3,6 +3,7 @@
 //
 
 #include "GridRenderer.h"
+#include <engine/render/RenderPacket.h>
 
 namespace Peeler {
     GridRenderer::GridRenderer(): gridMesh(Carrot::Engine::getInstance().getVulkanDriver(),
@@ -20,9 +21,8 @@ namespace Peeler {
         renderingPipeline = Carrot::Engine::getInstance().getRenderer().getOrCreatePipeline("grid");
     }
 
-    void GridRenderer::drawGrid(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds,
+    void GridRenderer::render(const Carrot::Render::Context& renderContext,
                                 const glm::vec4& color, float lineWidth, float cellSize, float size) {
-        renderingPipeline->bind(renderPass, renderContext, cmds);
         struct {
             glm::vec4 color; // RGBA
             vk::Extent2D screenSize; // in pixels
@@ -35,8 +35,15 @@ namespace Peeler {
         gridData.lineWidth = lineWidth;
         gridData.cellSize = cellSize;
         gridData.size = size;
-        renderContext.renderer.pushConstantBlock("grid", *renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, cmds, gridData);
-        gridMesh.bind(cmds);
-        gridMesh.draw(cmds);
+
+        Carrot::Render::Packet renderPacket(Carrot::Render::PassEnum::OpaqueGBuffer);
+        renderPacket.pipeline = renderingPipeline;
+        renderPacket.viewport = &renderContext.viewport;
+        renderPacket.useMesh(gridMesh);
+
+        auto& pushConstant = renderPacket.addPushConstant("grid", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+        pushConstant.setData(gridData);
+
+        renderContext.renderer.render(renderPacket);
     }
 }
