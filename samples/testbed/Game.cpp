@@ -18,7 +18,7 @@
 #include <engine/render/raytracing/RayTracer.h>
 
 #include <engine/ecs/components/Component.h>
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/AnimatedModelInstance.h>
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/LightComponent.h>

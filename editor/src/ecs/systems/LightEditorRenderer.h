@@ -5,12 +5,12 @@
 #pragma once
 
 #include <engine/ecs/systems/System.h>
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/LightComponent.h>
 #include <engine/render/BillboardRenderer.h>
 
 namespace Peeler::ECS {
-    class LightEditorRenderer: public Carrot::ECS::RenderSystem<Carrot::ECS::Transform, Carrot::ECS::LightComponent> {
+    class LightEditorRenderer: public Carrot::ECS::RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::LightComponent> {
     public:
         explicit LightEditorRenderer(Carrot::ECS::World& world);
 

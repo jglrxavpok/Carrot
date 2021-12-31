@@ -4,14 +4,14 @@
 
 #pragma once
 #include "engine/ecs/components/Component.h"
-#include "engine/ecs/components/Transform.h"
+#include "engine/ecs/components/TransformComponent.h"
 #include "engine/ecs/components/LightComponent.h"
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemHandleLights: public RenderSystem<Transform, LightComponent> {
+    class SystemHandleLights: public RenderSystem<TransformComponent, LightComponent> {
     public:
-        explicit SystemHandleLights(World& world): RenderSystem<Transform, LightComponent>(world) {}
+        explicit SystemHandleLights(World& world): RenderSystem<TransformComponent, LightComponent>(world) {}
 
         void onFrame(Carrot::Render::Context) override;
 

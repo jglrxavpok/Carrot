@@ -2,18 +2,18 @@
 // Created by jglrxavpok on 27/02/2021.
 //
 
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include "SystemUpdateAnimatedModelInstance.h"
 
 namespace Carrot::ECS {
     void SystemUpdateAnimatedModelInstance::onFrame(Carrot::Render::Context renderContext) {
-        forEachEntity([&](Entity& entity, Transform& transform, AnimatedModelInstance& model) {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelInstance& model) {
             model.instanceData.transform = transform.toTransformMatrix();
         });
     }
 
     void SystemUpdateAnimatedModelInstance::tick(double dt) {
-        forEachEntity([&](Entity& entity, Transform& transform, AnimatedModelInstance& model) {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelInstance& model) {
             model.instanceData.animationTime += dt;
         });
     }

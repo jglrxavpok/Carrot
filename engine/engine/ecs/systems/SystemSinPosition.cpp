@@ -8,10 +8,10 @@ namespace Carrot::ECS {
     void SystemSinPosition::tick(double dt) {
         time += dt;
 
-        forEachEntity([&](Entity& entity, Transform& transform, ForceSinPosition& forceSinPosition) {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, ForceSinPosition& forceSinPosition) {
             auto sinArguments =
                     forceSinPosition.angularFrequency * ((float) time) + forceSinPosition.angularOffset;
-            transform.position =
+            transform.transform.position =
                     glm::sin(sinArguments) * forceSinPosition.amplitude + forceSinPosition.centerPosition;
         });
     }

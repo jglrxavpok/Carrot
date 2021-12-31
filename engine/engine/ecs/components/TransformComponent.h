@@ -5,19 +5,18 @@
 #pragma once
 
 #include "Component.h"
+#include <engine/math/Transform.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 namespace Carrot::ECS {
-    struct Transform: public IdentifiableComponent<Transform> {
-        glm::vec3 position{};
-        glm::vec3 scale{1.0f};
-        glm::quat rotation = glm::identity<glm::quat>();
+    struct TransformComponent: public IdentifiableComponent<TransformComponent> {
+        Carrot::Math::Transform transform;
 
-        explicit Transform(Entity entity): IdentifiableComponent<Transform>(std::move(entity)) {};
+        explicit TransformComponent(Entity entity): IdentifiableComponent<TransformComponent>(std::move(entity)) {};
 
-        explicit Transform(const rapidjson::Value& json, Entity entity);
+        explicit TransformComponent(const rapidjson::Value& json, Entity entity);
 
         rapidjson::Value toJSON(rapidjson::Document& doc) const override;
 
@@ -28,10 +27,8 @@ namespace Carrot::ECS {
         }
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
-            auto result = std::make_unique<Transform>(newOwner);
-            result->position = position;
-            result->scale = scale;
-            result->rotation = rotation;
+            auto result = std::make_unique<TransformComponent>(newOwner);
+            result->transform = transform;
             return result;
         }
 
@@ -42,6 +39,6 @@ namespace Carrot::ECS {
 }
 
 template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::Transform>::getStringRepresentation() {
+inline const char* Carrot::Identifiable<Carrot::ECS::TransformComponent>::getStringRepresentation() {
     return "Transform";
 }

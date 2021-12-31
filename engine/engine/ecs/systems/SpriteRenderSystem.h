@@ -5,13 +5,13 @@
 #pragma once
 
 #include <engine/ecs/systems/System.h>
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/SpriteComponent.h>
 
 namespace Carrot::ECS {
-    class SpriteRenderSystem: public RenderSystem<Transform, Carrot::ECS::SpriteComponent> {
+    class SpriteRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::SpriteComponent> {
     public:
-        explicit SpriteRenderSystem(World& world): RenderSystem<Transform, SpriteComponent>(world) {}
+        explicit SpriteRenderSystem(World& world): RenderSystem<TransformComponent, SpriteComponent>(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -24,6 +24,6 @@ namespace Carrot::ECS {
 
     private:
         void setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands);
-        void updateSprite(Carrot::Render::Context renderContext, const Transform& transform, Carrot::Render::Sprite& sprite);
+        void updateSprite(Carrot::Render::Context renderContext, const TransformComponent& transform, Carrot::Render::Sprite& sprite);
     };
 }

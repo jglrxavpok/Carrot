@@ -4,14 +4,14 @@
 
 #pragma once
 #include "engine/ecs/components/Component.h"
-#include "engine/ecs/components/Transform.h"
+#include "engine/ecs/components/TransformComponent.h"
 #include "engine/ecs/components/Kinematics.h"
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemKinematics: public LogicSystem<Transform, Kinematics> {
+    class SystemKinematics: public LogicSystem<TransformComponent, Kinematics> {
     public:
-        explicit SystemKinematics(World& world): LogicSystem<Transform, Kinematics>(world) {}
+        explicit SystemKinematics(World& world): LogicSystem<TransformComponent, Kinematics>(world) {}
 
         void tick(double dt) override;
 

@@ -8,9 +8,9 @@
 #include "engine/ecs/systems/System.h"
 
 namespace Carrot::ECS {
-    class SystemUpdateAnimatedModelInstance: public RenderSystem<Transform, AnimatedModelInstance> {
+    class SystemUpdateAnimatedModelInstance: public RenderSystem<TransformComponent, AnimatedModelInstance> {
     public:
-        explicit SystemUpdateAnimatedModelInstance(World& world): RenderSystem<Transform, AnimatedModelInstance>(world) {}
+        explicit SystemUpdateAnimatedModelInstance(World& world): RenderSystem<TransformComponent, AnimatedModelInstance>(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

@@ -28,6 +28,14 @@ namespace Carrot::Physics {
         }
     }
 
+    reactphysics3d::PhysicsWorld& PhysicsSystem::getPhysicsWorld() {
+        return *world;
+    }
+
+    const reactphysics3d::PhysicsWorld& PhysicsSystem::getPhysicsWorld() const {
+        return *world;
+    }
+
     void PhysicsSystem::pause() {
         paused = true;
     }

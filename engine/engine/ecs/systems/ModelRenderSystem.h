@@ -5,13 +5,13 @@
 #pragma once
 
 #include <engine/ecs/systems/System.h>
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/ModelComponent.h>
 
 namespace Carrot::ECS {
-    class ModelRenderSystem: public RenderSystem<Transform, Carrot::ECS::ModelComponent> {
+    class ModelRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::ModelComponent> {
     public:
-        explicit ModelRenderSystem(World& world): RenderSystem<Transform, ModelComponent>(world) {}
+        explicit ModelRenderSystem(World& world): RenderSystem<TransformComponent, ModelComponent>(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

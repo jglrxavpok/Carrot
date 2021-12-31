@@ -9,7 +9,7 @@
 
 namespace Peeler::ECS {
 
-    LightEditorRenderer::LightEditorRenderer(Carrot::ECS::World& world): RenderSystem<Carrot::ECS::Transform, Carrot::ECS::LightComponent>(world) {
+    LightEditorRenderer::LightEditorRenderer(Carrot::ECS::World& world): RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::LightComponent>(world) {
         textureHandleOn = GetRenderer().getMaterialSystem().createTextureHandle(GetRenderer().getOrCreateTexture("ui/lightbulb_active.png"));
         textureHandleOff = GetRenderer().getMaterialSystem().createTextureHandle(GetRenderer().getOrCreateTexture("ui/lightbulb_inactive.png"));
     }
@@ -19,7 +19,7 @@ namespace Peeler::ECS {
     }
 
     void LightEditorRenderer::onFrame(Carrot::Render::Context renderContext) {
-        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::Transform& transform, Carrot::ECS::LightComponent& lightComponent) {
+        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::ECS::LightComponent& lightComponent) {
             auto& lightHandle = lightComponent.lightRef;
             if(!lightHandle)
                 return;

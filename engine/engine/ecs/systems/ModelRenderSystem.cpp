@@ -19,12 +19,7 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
-/*        for(const auto& [model, transforms] : isTransparent ? transparentEntities : opaqueEntities) {
-            auto& instanceBufferMap = isTransparent ? transparentInstancingBuffers : opaqueInstancingBuffers;
-            auto& instanceBuffer = instanceBufferMap[model].second;
-            model->draw(renderPass, renderContext, commands, *instanceBuffer, transforms.size());
-        }*/
-        forEachEntity([&](Entity& entity, Transform& transform, ModelComponent& modelComp) {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             if (modelComp.model && modelComp.isTransparent == isTransparent) {
                 Carrot::InstanceData instanceData;
                 instanceData.transform = transform.toTransformMatrix();
@@ -41,40 +36,6 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
-        /*opaqueEntities.clear();
-        transparentEntities.clear();
-
-        forEachEntity([&](Entity& entity, Transform& transform, ModelComponent& modelComp) {
-            if(modelComp.model) {
-                auto& entityMap = modelComp.isTransparent ? transparentEntities : opaqueEntities;
-                entityMap[modelComp.model.get()].push_back(entity);
-            }
-        });
-        auto prepareInstancingBuffers = [&](std::unordered_map<Carrot::Model*, std::vector<Carrot::ECS::Entity>>& entityMap,
-                                            std::unordered_map<Carrot::Model*, std::pair<std::uint32_t, std::unique_ptr<Buffer>>>& buffers) {
-            for(auto& [model, entities] : entityMap) {
-                auto& pair = buffers[model];
-                if(pair.first < entities.size()) {
-                    allocateBuffer(entities.size(), pair.second);
-                    pair.first = entities.size();
-                }
-
-                auto& buffer = *pair.second;
-                auto* instanceData = buffer.map<InstanceData>();
-                for (int i = 0; i < entities.size(); ++i) {
-                    auto& entity = entities[i];
-                    Transform& transform = entity.getComponent<Transform>();
-                    ModelComponent& comp = entity.getComponent<ModelComponent>();
-                    auto& instance = instanceData[i];
-                    instance.color = comp.color;
-                    instance.uuid = glm::u32vec4 { entity.getID().data0(), entity.getID().data1(), entity.getID().data2(), entity.getID().data3() };
-                    instance.transform = transform.toTransformMatrix();
-                }
-            }
-        };
-
-        prepareInstancingBuffers(opaqueEntities, opaqueInstancingBuffers);
-        prepareInstancingBuffers(transparentEntities, transparentInstancingBuffers);*/
         renderModels(renderContext, true);
         renderModels(renderContext, false);
     }

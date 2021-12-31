@@ -13,6 +13,9 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <assimp/types.h>
+#include <reactphysics3d/mathematics/Vector2.h>
+#include <reactphysics3d/mathematics/Vector3.h>
+#include <reactphysics3d/mathematics/Quaternion.h>
 
 #ifdef ENABLE_VR
 #include "engine/vr/includes.h"
@@ -20,6 +23,14 @@
 
 namespace Carrot {
     glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);
+
+    glm::vec2 glmVecFromReactPhysics(const reactphysics3d::Vector2& vec);
+    glm::vec3 glmVecFromReactPhysics(const reactphysics3d::Vector3& vec);
+    glm::quat glmQuatFromReactPhysics(const reactphysics3d::Quaternion& vec);
+
+    reactphysics3d::Vector2 reactPhysicsVecFromGlm(const glm::vec2& vec);
+    reactphysics3d::Vector3 reactPhysicsVecFromGlm(const glm::vec3& vec);
+    reactphysics3d::Quaternion reactPhysicsQuatFromGlm(const glm::quat& vec);
 
 #ifdef ENABLE_VR
     // From https://github.com/jherico/Vulkan/blob/experimental/openxr/examples/vr_openxr/vr_openxr.cpp

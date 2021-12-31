@@ -19,6 +19,10 @@ namespace Carrot::Physics {
         void pause();
         void resume();
 
+    public:
+        reactphysics3d::PhysicsWorld& getPhysicsWorld();
+        const reactphysics3d::PhysicsWorld& getPhysicsWorld() const;
+
     private:
         explicit PhysicsSystem();
         ~PhysicsSystem();

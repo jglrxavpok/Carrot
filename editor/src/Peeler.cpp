@@ -5,7 +5,7 @@
 #include "Peeler.h"
 #include <engine/render/resources/Texture.h>
 #include <engine/render/TextureRepository.h>
-#include <engine/ecs/components/Transform.h>
+#include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/SpriteComponent.h>
 #include <engine/ecs/components/Kinematics.h>
 #include <engine/ecs/components/ForceSinPosition.h>
@@ -447,7 +447,7 @@ namespace Peeler {
 
         bool usingGizmo = false;
         if(selectedID.has_value()) {
-            auto transformRef = currentScene.world.getComponent<Carrot::ECS::Transform>(selectedID.value());
+            auto transformRef = currentScene.world.getComponent<Carrot::ECS::TransformComponent>(selectedID.value());
             if(transformRef) {
                 glm::mat4 transformMatrix = transformRef->toTransformMatrix();
 
@@ -517,7 +517,7 @@ namespace Peeler {
                     glm::mat4 parentMatrix = glm::identity<glm::mat4>();
                     auto parentEntity = transformRef->getEntity().getParent();
                     if(parentEntity) {
-                        auto parentTransform = parentEntity->getComponent<Carrot::ECS::Transform>();
+                        auto parentTransform = parentEntity->getComponent<Carrot::ECS::TransformComponent>();
                         if(parentTransform) {
                             parentMatrix = parentTransform->toTransformMatrix();
                         }
@@ -529,9 +529,9 @@ namespace Peeler {
                     float rotation[3] = {0.0f};
                     ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransform), translation, rotation, scale);
 
-                    transformRef->position = glm::vec3(translation[0], translation[1], translation[2]);
-                    transformRef->rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
-                    transformRef->scale = glm::vec3(scale[0], scale[1], scale[2]);
+                    transformRef->transform.position = glm::vec3(translation[0], translation[1], translation[2]);
+                    transformRef->transform.rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
+                    transformRef->transform.scale = glm::vec3(scale[0], scale[1], scale[2]);
 
                     markDirty();
                 }
@@ -690,7 +690,7 @@ namespace Peeler {
         // register components for serialisation
         {
             auto& lib = Carrot::ECS::getComponentLibrary();
-            lib.addUniquePtrBased<Carrot::ECS::Transform>();
+            lib.addUniquePtrBased<Carrot::ECS::TransformComponent>();
             lib.addUniquePtrBased<Carrot::ECS::Kinematics>();
             lib.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
             lib.addUniquePtrBased<Carrot::ECS::ModelComponent>();
@@ -875,7 +875,7 @@ namespace Peeler {
 
     Carrot::ECS::Entity Application::addEntity(std::optional<Carrot::ECS::Entity> parent) {
         auto entity = currentScene.world.newEntity("Entity")
-                .addComponent<Carrot::ECS::Transform>();
+                .addComponent<Carrot::ECS::TransformComponent>();
 
         if(parent) {
             entity.setParent(parent);
