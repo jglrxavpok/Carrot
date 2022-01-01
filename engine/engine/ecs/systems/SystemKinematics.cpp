@@ -7,7 +7,7 @@
 namespace Carrot::ECS {
     void SystemKinematics::tick(double dt) {
         forEachEntity([&](Entity& ent, TransformComponent& transform, Kinematics& kinematics) {
-            transform.transform.position += kinematics.velocity * static_cast<float>(dt);
+            transform.localTransform.position += kinematics.velocity * static_cast<float>(dt);
         });
     }
 

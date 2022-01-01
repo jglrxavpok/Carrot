@@ -67,6 +67,14 @@ namespace Carrot::Physics {
         body->setTransform(transform);
     }
 
+    reactphysics3d::BodyType RigidBody::getBodyType() const {
+        return body->getType();
+    }
+
+    void RigidBody::setBodyType(reactphysics3d::BodyType type) {
+        body->setType(type);
+    }
+
     RigidBody::~RigidBody() {
         if(body) {
             GetPhysics().getPhysicsWorld().destroyRigidBody(body);

@@ -11,7 +11,7 @@ namespace Carrot::ECS {
         forEachEntity([&](Entity& entity, TransformComponent& transform, ForceSinPosition& forceSinPosition) {
             auto sinArguments =
                     forceSinPosition.angularFrequency * ((float) time) + forceSinPosition.angularOffset;
-            transform.transform.position =
+            transform.localTransform.position =
                     glm::sin(sinArguments) * forceSinPosition.amplitude + forceSinPosition.centerPosition;
         });
     }

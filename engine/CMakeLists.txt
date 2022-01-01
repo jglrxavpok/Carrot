@@ -43,6 +43,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
+        ${EngineRoot}ecs/systems/RigidBodySystem.cpp
         ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/Signature.cpp
 

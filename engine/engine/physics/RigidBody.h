@@ -21,6 +21,10 @@ namespace Carrot::Physics {
         ~RigidBody();
 
     public:
+        reactphysics3d::BodyType getBodyType() const;
+        void setBodyType(reactphysics3d::BodyType type);
+
+    public:
         Carrot::Math::Transform getTransform() const;
         /// Forces the given transform. Only use for static bodies, kinematic and dynamic bodies may have trouble adapting to the new transform
         void setTransform(const Carrot::Math::Transform& transform);

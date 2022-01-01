@@ -12,7 +12,7 @@
 
 namespace Carrot::ECS {
     struct TransformComponent: public IdentifiableComponent<TransformComponent> {
-        Carrot::Math::Transform transform;
+        Carrot::Math::Transform localTransform;
 
         explicit TransformComponent(Entity entity): IdentifiableComponent<TransformComponent>(std::move(entity)) {};
 
@@ -28,13 +28,19 @@ namespace Carrot::ECS {
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<TransformComponent>(newOwner);
-            result->transform = transform;
+            result->localTransform = localTransform;
             return result;
         }
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
 
         glm::vec3 computeFinalPosition() const;
+
+        /// Computes the global transform of this entity, taking into account the hierarchy
+        Carrot::Math::Transform computeGlobalTransform() const;
+
+        /// Sets up the transform of the entity to match with the given transform, even when parent transforms are taken into account
+        void setGlobalTransform(const Carrot::Math::Transform& transform);
     };
 }
 

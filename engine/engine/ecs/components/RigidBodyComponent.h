@@ -29,6 +29,14 @@ namespace Carrot::ECS {
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
 
+    private:
+        static const char* getTypeName(reactphysics3d::BodyType type);
+        static reactphysics3d::BodyType getTypeFromName(const std::string& name);
+
+    private:
+        bool firstTick = true;
+
+        friend class RigidBodySystem;
     };
 }
 

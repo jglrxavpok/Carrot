@@ -11,8 +11,10 @@
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/AnimatedModelInstance.h>
 #include <engine/ecs/components/LightComponent.h>
+#include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/systems/SpriteRenderSystem.h>
 #include <engine/ecs/systems/ModelRenderSystem.h>
+#include <engine/ecs/systems/RigidBodySystem.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <core/utils/ImGuiUtils.hpp>
@@ -529,9 +531,9 @@ namespace Peeler {
                     float rotation[3] = {0.0f};
                     ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransform), translation, rotation, scale);
 
-                    transformRef->transform.position = glm::vec3(translation[0], translation[1], translation[2]);
-                    transformRef->transform.rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
-                    transformRef->transform.scale = glm::vec3(scale[0], scale[1], scale[2]);
+                    transformRef->localTransform.position = glm::vec3(translation[0], translation[1], translation[2]);
+                    transformRef->localTransform.rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
+                    transformRef->localTransform.scale = glm::vec3(scale[0], scale[1], scale[2]);
 
                     markDirty();
                 }
@@ -697,6 +699,7 @@ namespace Peeler {
             //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>();
             lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
             lib.addUniquePtrBased<Carrot::ECS::LightComponent>();
+            lib.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
         }
 
         settings.load();
@@ -941,6 +944,7 @@ namespace Peeler {
         scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
         scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
+        scene.world.addLogicSystem<Carrot::ECS::RigidBodySystem>();
 
         if(editingScene) {
             scene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
