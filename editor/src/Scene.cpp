@@ -86,4 +86,12 @@ namespace Peeler {
             lighting.raytracedShadows = src["lighting"]["raytracedShadows"].GetBool();
         }
     }
+
+    void Scene::load() {
+        world.reloadSystems();
+    }
+
+    void Scene::unload() {
+        world.unloadSystems();
+    }
 }

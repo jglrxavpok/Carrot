@@ -16,6 +16,10 @@ namespace Carrot::ECS {
         void onFrame(Carrot::Render::Context) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
+
+        void reload() override;
+
+        void unload() override;
     };
 }
 

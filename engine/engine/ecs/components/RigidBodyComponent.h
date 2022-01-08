@@ -24,10 +24,15 @@ namespace Carrot::ECS {
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<RigidBodyComponent>(newOwner);
             result->rigidbody = rigidbody;
+            result->wasActive = wasActive;
+            result->firstTick = firstTick;
             return result;
         }
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
+
+        void reload();
+        void unload();
 
     private:
         static const char* getTypeName(reactphysics3d::BodyType type);
@@ -35,6 +40,7 @@ namespace Carrot::ECS {
 
     private:
         bool firstTick = true;
+        bool wasActive = true;
 
         friend class RigidBodySystem;
     };

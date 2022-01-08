@@ -584,6 +584,9 @@ namespace Peeler {
     void Application::startSimulation() {
         isPlaying = true;
         savedScene = currentScene;
+
+        savedScene.unload();
+
         currentScene.world.unfreezeLogic();
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
         updateSettingsBasedOnScene();
@@ -592,6 +595,7 @@ namespace Peeler {
 
     void Application::stopSimulation() {
         isPlaying = false;
+        savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();

@@ -26,4 +26,16 @@ namespace Carrot::ECS {
     std::unique_ptr<System> RigidBodySystem::duplicate(World& newOwner) const {
         return std::make_unique<RigidBodySystem>(newOwner);
     }
+
+    void RigidBodySystem::reload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
+            rigidBodyComp.reload();
+        });
+    }
+
+    void RigidBodySystem::unload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
+            rigidBodyComp.unload();
+        });
+    }
 }

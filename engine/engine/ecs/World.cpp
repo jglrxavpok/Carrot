@@ -392,4 +392,22 @@ namespace Carrot::ECS {
 
         return *this;
     }
+
+    void World::reloadSystems() {
+        for(auto& s : logicSystems) {
+            s->reload();
+        }
+        for(auto& s : renderSystems) {
+            s->reload();
+        }
+    }
+
+    void World::unloadSystems() {
+        for(auto& s : renderSystems) {
+            s->unload();
+        }
+        for(auto& s : logicSystems) {
+            s->unload();
+        }
+    }
 }

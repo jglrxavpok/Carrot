@@ -13,6 +13,11 @@ namespace Carrot::ECS {
     void System::onEntitiesAdded(const std::vector<EntityID>& added) {
         for(const auto& e : added) {
             auto obj = Entity(e, world);
+            auto it = std::find_if(entities.begin(), entities.end(), [&](const auto& entity) {
+                return entity.getID() == e;
+            });
+            if(it != entities.end())
+                continue;
             if((world.getSignature(obj) & getSignature()) == getSignature()) {
                 onEntityAdded(obj);
                 entities.push_back(obj);

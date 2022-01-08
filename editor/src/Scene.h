@@ -35,6 +35,16 @@ namespace Peeler {
         rapidjson::Value serialise(rapidjson::Document& dest) const;
 
     public:
+        /// Unload the systems of this scene, freeing engine resources (eg lights, rigidbodies)
+        void unload();
+
+        /// Loads the systems of this scene, allocating engine resources (eg lights, rigidbodies). Automatically in this state when constructing or deserialising the scene
+        void load();
+
+    public:
         Scene& operator=(const Scene& toCopy) = default;
+
+    private:
+        bool loaded = true;
     };
 }

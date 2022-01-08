@@ -34,6 +34,9 @@ namespace Carrot::ECS {
         void onEntitiesRemoved(const std::vector<EntityID>& entities);
         void onEntitiesUpdated(const std::vector<EntityID>& entities);
 
+        virtual void reload() {};
+        virtual void unload() {};
+
         virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
 
         virtual ~System() = default;

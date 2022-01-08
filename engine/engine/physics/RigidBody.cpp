@@ -75,6 +75,14 @@ namespace Carrot::Physics {
         body->setType(type);
     }
 
+    bool RigidBody::isActive() const {
+        return body->isActive();
+    }
+
+    void RigidBody::setActive(bool active) {
+        body->setIsActive(active);
+    }
+
     RigidBody::~RigidBody() {
         if(body) {
             GetPhysics().getPhysicsWorld().destroyRigidBody(body);

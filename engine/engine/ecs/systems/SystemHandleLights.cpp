@@ -19,4 +19,16 @@ namespace Carrot::ECS {
         auto system = std::make_unique<SystemHandleLights>(newOwner);
         return system;
     }
+
+    void SystemHandleLights::reload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
+            light.reload();
+        });
+    }
+
+    void SystemHandleLights::unload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, LightComponent& light) {
+            light.unload();
+        });
+    }
 }

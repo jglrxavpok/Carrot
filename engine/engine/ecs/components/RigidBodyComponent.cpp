@@ -60,4 +60,13 @@ namespace Carrot::ECS {
         return reactphysics3d::BodyType::DYNAMIC;
     }
 
+    void RigidBodyComponent::reload() {
+        rigidbody.setActive(wasActive);
+    }
+
+    void RigidBodyComponent::unload() {
+        wasActive = rigidbody.isActive();
+        rigidbody.setActive(false);
+    }
+
 }

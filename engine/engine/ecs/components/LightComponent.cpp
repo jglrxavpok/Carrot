@@ -7,7 +7,7 @@
 #include "core/utils/ImGuiUtils.hpp"
 
 namespace Carrot::ECS {
-    LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(light) {
+    LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(std::move(light)) {
         if(!lightRef) {
             lightRef = GetRenderer().getLighting().create();
             lightRef->light.enabled = true;
@@ -142,5 +142,16 @@ namespace Carrot::ECS {
         auto clone = GetRenderer().getLighting().create();
         clone->light = light.light;
         return clone;
+    }
+
+    void LightComponent::reload() {
+        lightRef = GetRenderer().getLighting().create();
+        verify(savedLight, "Don't unload if there is no light");
+        lightRef->light = savedLight.value();
+    }
+
+    void LightComponent::unload() {
+        savedLight = lightRef->light;
+        lightRef = nullptr;
     }
 }

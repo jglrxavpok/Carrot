@@ -25,6 +25,10 @@ namespace Carrot::Physics {
         void setBodyType(reactphysics3d::BodyType type);
 
     public:
+        bool isActive() const;
+        void setActive(bool active);
+
+    public:
         Carrot::Math::Transform getTransform() const;
         /// Forces the given transform. Only use for static bodies, kinematic and dynamic bodies may have trouble adapting to the new transform
         void setTransform(const Carrot::Math::Transform& transform);

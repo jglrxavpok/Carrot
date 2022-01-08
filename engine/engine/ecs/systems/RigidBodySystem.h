@@ -16,5 +16,9 @@ namespace Carrot::ECS {
         void tick(double dt) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
+
+        void reload() override;
+
+        void unload() override;
     };
 }

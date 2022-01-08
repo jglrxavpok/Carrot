@@ -64,6 +64,12 @@ namespace Carrot::ECS {
         void freezeLogic() { frozenLogic = true; }
         void unfreezeLogic() { frozenLogic = false; }
 
+        /// Loads the systems of this world, allocating engine resources (eg lights, rigidbodies). Automatically in this state when constructing
+        void reloadSystems();
+
+        /// Unloads the systems of this world, freeing engine resources (eg lights, rigidbodies).
+        void unloadSystems();
+
     public:
         template<class RenderSystemType, typename... Args>
         void addRenderSystem(Args&&... args);
