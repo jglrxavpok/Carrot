@@ -29,4 +29,8 @@ namespace Carrot::Render {
     void Context::renderWireframeCuboid(const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
         renderer.renderWireframeCuboid(*this, position, halfExtents, color, objectID);
     }
+
+    void Context::renderWireframeCapsule(const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeCapsule(*this, position, radius, height, color, objectID);
+    }
 }

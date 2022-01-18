@@ -55,7 +55,6 @@ namespace Carrot::ECS {
         }
 
         auto drawColliderUI = [&](Physics::Collider& collider) {
-            // TODO: local transform
             ImGui::PushID(&collider);
             ImGui::Text("%s", Physics::ColliderTypeNames[collider.getType()]);
             ImGui::SameLine();
@@ -83,6 +82,28 @@ namespace Carrot::ECS {
                     if(ImGui::SliderFloat3("Half extents", halfExtentsArray, 0.001f, 100)) {
                         modified = true;
                         box.setHalfExtents({ halfExtentsArray[0], halfExtentsArray[1], halfExtentsArray[2] });
+                    }
+                }
+                break;
+
+                case Physics::ColliderType::Capsule: {
+                    auto& capsule = static_cast<Physics::CapsuleCollisionShape&>(shape);
+
+                    float radius = capsule.getRadius();
+                    float height = capsule.getHeight();
+                    if(ImGui::DragFloat("Radius", &radius, 0.1f, 0.001f)) {
+                        if(radius <= 0) {
+                            radius = 10e-6f;
+                        }
+                        modified = true;
+                        capsule.setRadius(radius);
+                    }
+                    if(ImGui::DragFloat("Height", &height, 0.1f, 0.001f)) {
+                        if(height <= 0) {
+                            height = 10e-6f;
+                        }
+                        modified = true;
+                        capsule.setHeight(height);
                     }
                 }
                 break;
@@ -118,7 +139,11 @@ namespace Carrot::ECS {
                     modified = true;
                 }
                 if(ImGui::MenuItem("Box Collider##rigidbodycomponent colliders")) {
-                    rigidbody.addCollider(Physics::BoxCollisionShape(glm::vec3(1.0f)));
+                    rigidbody.addCollider(Physics::BoxCollisionShape(glm::vec3(0.5f)));
+                    modified = true;
+                }
+                if(ImGui::MenuItem("Capsule Collider##rigidbodycomponent colliders")) {
+                    rigidbody.addCollider(Physics::CapsuleCollisionShape(1.0f, 1.0f));
                     modified = true;
                 }
 

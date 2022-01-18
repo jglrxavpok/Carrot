@@ -114,6 +114,43 @@ namespace Carrot::Physics {
         reactphysics3d::SphereShape* shape = nullptr;
     };
 
+    class CapsuleCollisionShape: public CollisionShape {
+    public:
+        explicit CapsuleCollisionShape(const rapidjson::Value& json);
+        explicit CapsuleCollisionShape(float radius, float height);
+        explicit CapsuleCollisionShape(const CapsuleCollisionShape&) = delete;
+
+        ~CapsuleCollisionShape();
+
+    public:
+        virtual ColliderType getType() const override {
+            return ColliderType::Capsule;
+        }
+
+        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const override;
+
+        virtual std::unique_ptr<CollisionShape> duplicate() const override {
+            return std::make_unique<CapsuleCollisionShape>(getRadius(), getHeight());
+        }
+
+        virtual reactphysics3d::CollisionShape* getReactShape() const {
+            return shape;
+        }
+
+    public:
+        [[nodiscard]] float getRadius() const;
+        void setRadius(float radius);
+
+        [[nodiscard]] float getHeight() const;
+        void setHeight(float height);
+
+    private:
+        CapsuleCollisionShape();
+
+    private:
+        reactphysics3d::CapsuleShape* shape = nullptr;
+    };
+
     class Collider {
     public:
         static std::unique_ptr<Collider> loadFromJSON(const rapidjson::Value& object);

@@ -154,6 +154,7 @@ namespace Carrot {
 
     public:
         void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void render(const Render::Packet& packet);
 
@@ -202,6 +203,7 @@ namespace Carrot {
 
         std::shared_ptr<Carrot::Model> unitSphereModel;
         std::shared_ptr<Carrot::Model> unitCubeModel;
+        std::shared_ptr<Carrot::Model> unitCapsuleModel;
         std::shared_ptr<Carrot::Render::MaterialHandle> whiteMaterial;
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
@@ -224,6 +226,7 @@ namespace Carrot {
         std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const;
         void sortRenderPackets();
         void mergeRenderPackets();
+        void renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
     };
 }
 

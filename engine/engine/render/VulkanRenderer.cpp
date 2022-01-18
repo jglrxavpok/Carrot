@@ -48,6 +48,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
 void Carrot::VulkanRenderer::lateInit() {
     unitSphereModel = getOrCreateModel("resources/models/simple_sphere.obj");
     unitCubeModel = getOrCreateModel("resources/models/simple_cube.obj");
+    unitCapsuleModel = getOrCreateModel("resources/models/simple_capsule.obj");
     wireframeGBufferPipeline = getOrCreatePipeline("gBufferWireframe");
     gBufferPipeline = getOrCreatePipeline("gBuffer");
     whiteMaterial = getMaterialSystem().createMaterialHandle();
@@ -602,35 +603,27 @@ void Carrot::VulkanRenderer::mergeRenderPackets() {
 }
 
 void Carrot::VulkanRenderer::renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Carrot::Render::Packet packet(Carrot::Render::PassEnum::OpaqueGBuffer);
-    Carrot::DrawData data;
-    data.materialIndex = whiteMaterial->getSlot();
+    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(radius) * 2.0f);
+    renderWireframe(*unitSphereModel, renderContext, position, transform, color, objectID);
+}
 
-    packet.viewport = &renderContext.viewport;
-    packet.useMesh(*unitSphereModel->getStaticMeshes()[0]); // TODO: find a better way to load individual meshes
-    packet.pipeline = wireframeGBufferPipeline;
-
-    Carrot::Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
-    pushConstant.id = "drawDataPush";
-    pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
-
-    pushConstant.setData(data);
-
-    Carrot::InstanceData instance;
-    instance.uuid = objectID;
-    instance.color = color;
-    instance.transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(radius) * 2.0f);
-    packet.useInstance(instance);
-    render(packet);
+void Carrot::VulkanRenderer::renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(radius * 2.0f, radius * 2.0f, height));
+    renderWireframe(*unitCapsuleModel, renderContext, position, transform, color, objectID);
 }
 
 void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(halfExtents) * 2.0f);
+    renderWireframe(*unitCubeModel, renderContext, position, transform, color, objectID);
+}
+
+void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
     Carrot::Render::Packet packet(Carrot::Render::PassEnum::OpaqueGBuffer);
     Carrot::DrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
     packet.viewport = &renderContext.viewport;
-    packet.useMesh(*unitCubeModel->getStaticMeshes()[0]); // TODO: find a better way to load individual meshes
+    packet.useMesh(*model.getStaticMeshes()[0]); // TODO: find a better way to load individual meshes
     packet.pipeline = wireframeGBufferPipeline;
 
     Carrot::Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
@@ -642,7 +635,7 @@ void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context
     Carrot::InstanceData instance;
     instance.uuid = objectID;
     instance.color = color;
-    instance.transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(halfExtents) * 2.0f);
+    instance.transform = transform;
     packet.useInstance(instance);
     render(packet);
 }

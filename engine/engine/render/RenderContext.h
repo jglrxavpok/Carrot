@@ -33,6 +33,7 @@ namespace Carrot::Render {
 
         void renderWireframeSphere(const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderWireframeCapsule(const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
 
         static void registerUsertype(sol::state& destination);
     };

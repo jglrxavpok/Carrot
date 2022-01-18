@@ -87,7 +87,7 @@ namespace Carrot::Physics {
         return Carrot::glmVecFromReactPhysics(shape->getHalfExtents());
     }
 
-    void BoxCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>& allocator) const {
+    void BoxCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
         object.AddMember("half_extents", JSON::write(getHalfExtents(), allocator), allocator);
     }
 
@@ -116,11 +116,52 @@ namespace Carrot::Physics {
         return shape->getRadius();
     }
 
-    void SphereCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>& allocator) const {
+    void SphereCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
         object.AddMember("radius", getRadius(), allocator);
     }
 
     SphereCollisionShape::~SphereCollisionShape() {
         GetPhysics().getCommons().destroySphereShape(shape);
+    }
+
+    CapsuleCollisionShape::CapsuleCollisionShape() {
+        shape = GetPhysics().getCommons().createCapsuleShape(1.0f, 1.0f);
+    }
+
+    CapsuleCollisionShape::CapsuleCollisionShape(const rapidjson::Value& json): CapsuleCollisionShape() {
+        setRadius(json["radius"].GetFloat());
+        setHeight(json["height"].GetFloat());
+    }
+
+    CapsuleCollisionShape::CapsuleCollisionShape(float radius, float height): CapsuleCollisionShape() {
+        setRadius(radius);
+        setHeight(height);
+    }
+
+    void CapsuleCollisionShape::setRadius(float radius) {
+        verify(radius > 0, "radius must be > 0");
+        shape->setRadius(radius);
+    }
+
+    float CapsuleCollisionShape::getRadius() const {
+        return shape->getRadius();
+    }
+    
+    void CapsuleCollisionShape::setHeight(float height) {
+        verify(height > 0, "height must be > 0");
+        shape->setHeight(height);
+    }
+
+    float CapsuleCollisionShape::getHeight() const {
+        return shape->getHeight();
+    }
+
+    void CapsuleCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
+        object.AddMember("radius", getRadius(), allocator);
+        object.AddMember("height", getHeight(), allocator);
+    }
+
+    CapsuleCollisionShape::~CapsuleCollisionShape() {
+        GetPhysics().getCommons().destroyCapsuleShape(shape);
     }
 }

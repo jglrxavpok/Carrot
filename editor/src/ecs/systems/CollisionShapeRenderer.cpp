@@ -39,6 +39,11 @@ namespace Peeler::ECS {
                             renderContext.renderWireframeCuboid(position, asBox.getHalfExtents(), ColliderColor, selected);
                         } break;
 
+                        case Carrot::Physics::ColliderType::Capsule: {
+                            const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
+                            renderContext.renderWireframeCapsule(position, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
+                        } break;
+
                         default:
                             // TODO
                             break;
