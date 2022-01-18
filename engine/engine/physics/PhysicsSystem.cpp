@@ -48,6 +48,10 @@ namespace Carrot::Physics {
         return paused;
     }
 
+    reactphysics3d::PhysicsCommon& PhysicsSystem::getCommons() {
+        return physics;
+    }
+
     PhysicsSystem::~PhysicsSystem() {
         physics.destroyPhysicsWorld(world);
     }

@@ -70,6 +70,9 @@ namespace Carrot {
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
 
+        /// Init everything that is not immediately needed during construction. Allows to initialise resources during a loading screen
+        void lateInit();
+
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Instance offset can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
         std::shared_ptr<Pipeline> getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset = 0);
@@ -150,6 +153,8 @@ namespace Carrot {
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
 
     public:
+        void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void render(const Render::Packet& packet);
 
     public:
@@ -194,8 +199,15 @@ namespace Carrot {
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
         std::vector<Render::Packet> renderPackets;
         std::vector<Render::Packet> preparedRenderPackets;
+
+        std::shared_ptr<Carrot::Model> unitSphereModel;
+        std::shared_ptr<Carrot::Model> unitCubeModel;
+        std::shared_ptr<Carrot::Render::MaterialHandle> whiteMaterial;
+        std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
+        std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
         SingleFrameStackGPUAllocator singleFrameAllocator;
 
+    private:
         void createCameraSetResources();
 
         void createUIResources();

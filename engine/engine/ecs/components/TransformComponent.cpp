@@ -44,19 +44,11 @@ namespace Carrot::ECS {
     }
 
     TransformComponent::TransformComponent(const rapidjson::Value& json, Entity entity): TransformComponent(std::move(entity)) {
-        localTransform.position = JSON::read<3, float>(json["position"]);
-        localTransform.scale = JSON::read<3, float>(json["scale"]);
-        auto rotVec = JSON::read<4, float>(json["rotation"]);
-        localTransform.rotation = glm::quat { rotVec.w, rotVec.x, rotVec.y, rotVec.z };
+        localTransform.loadJSON(json);
     };
 
     rapidjson::Value TransformComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj(rapidjson::kObjectType);
-        obj.AddMember("position", JSON::write<3, float>(localTransform.position, doc), doc.GetAllocator());
-        obj.AddMember("scale", JSON::write<3, float>(localTransform.scale, doc), doc.GetAllocator());
-        glm::vec4 rotationVec { localTransform.rotation.x, localTransform.rotation.y, localTransform.rotation.z, localTransform.rotation.w };
-        obj.AddMember("rotation", JSON::write<4, float>(rotationVec, doc), doc.GetAllocator());
-        return obj;
+        return localTransform.toJSON(doc.GetAllocator());
     }
 
     void TransformComponent::setGlobalTransform(const Carrot::Math::Transform& newTransform) {

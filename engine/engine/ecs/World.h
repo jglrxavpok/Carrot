@@ -77,6 +77,12 @@ namespace Carrot::ECS {
         template<class LogicSystemType, typename... Args>
         void addLogicSystem(Args&&... args);
 
+        template<class RenderSystemType>
+        RenderSystemType* getRenderSystem();
+
+        template<class LogicSystemType>
+        LogicSystemType* getLogicSystem();
+
         /// Removes the given RenderSystem. Does nothing if it was not inside this world
         template<class RenderSystemType>
         void removeRenderSystem();

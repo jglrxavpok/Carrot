@@ -8,6 +8,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include "reactphysics3d/mathematics/Transform.h"
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
 
 namespace Carrot::Math {
     /// Represents a position, non-uniform scale and rotation of an object.
@@ -24,9 +26,21 @@ namespace Carrot::Math {
         Transform& operator=(const Transform&) = default;
 
         Transform(const reactphysics3d::Transform&);
-        Transform& operator=(const reactphysics3d::Transform&);
 
+    public:
+        Transform& operator=(const reactphysics3d::Transform&);
         operator reactphysics3d::Transform() const;
+
+        /// Combines this transform with another to produce a new Transform which will be the composite of this transform, then 'other'.
+        Transform operator*(const Transform& other) const;
+
+    public:
+        void loadJSON(const rapidjson::Value& json);
+        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& json) const;
+
+    public:
+        /// Decomposes the given 4x4 matrix and stores the result inside this transform
+        void fromMatrix(const glm::mat4& matrix);
 
         /// A 4x4 homogeneous transformation matrix representing this transform.
         /// A parent Transform can optionally be passed as an argument to represent this transform inside the parent's space.

@@ -5,6 +5,7 @@
 #include "RigidBody.h"
 #include <engine/utils/Macros.h>
 #include <engine/physics/PhysicsSystem.h>
+#include <engine/utils/conversions.h>
 
 namespace Carrot::Physics {
     RigidBody::RigidBody() {
@@ -46,6 +47,15 @@ namespace Carrot::Physics {
         body->setLocalInertiaTensor(toCopy.body->getLocalInertiaTensor());
         body->setType(toCopy.body->getType());
         body->setUserData(this);
+
+        for (std::size_t index = 0; index < toCopy.getColliderCount(); index++) {
+            auto& colliderToCopy = toCopy.getCollider(index);
+            auto& collider = addCollider(colliderToCopy.getShape(), colliderToCopy.getLocalTransform());
+            /* TODO collider.setIsTrigger(colliderToCopy.getIsTrigger());
+            collider.setCollideWithMaskBits(colliderToCopy.getCollideWithMaskBits());
+            collider.setCollisionCategoryBits(colliderToCopy.getCollisionCategoryBits());
+             */
+        }
         return *this;
     }
 
@@ -55,6 +65,52 @@ namespace Carrot::Physics {
         body->setUserData(this);
         toMove.body = nullptr;
         return *this;
+    }
+
+    void RigidBody::addColliderDirectly(std::unique_ptr<Collider>&& collider) {
+        collider->addToBody(*this);
+
+        colliders.emplace_back(std::move(collider));
+    }
+
+    Collider& RigidBody::addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform) {
+        verify(body, "Used after std::move");
+        addColliderDirectly(std::make_unique<Collider>(shape.duplicate(), localTransform));
+
+        auto& collider = colliders.back();
+        return *collider;
+    }
+
+    void RigidBody::removeCollider(std::size_t index) {
+        verify(body, "Used after std::move");
+        verify(index >= 0 && index < getColliderCount(), "Out of bounds");
+        body->removeCollider(body->getCollider(index));
+        colliders.erase(colliders.begin() + index);
+    }
+
+    std::size_t RigidBody::getColliderCount() const {
+        verify(body, "Used after std::move");
+        return body->getNbColliders();
+    }
+
+    std::vector<std::unique_ptr<Collider>>& RigidBody::getColliders() {
+        verify(body, "Used after std::move");
+        return colliders;
+    }
+
+    const std::vector<std::unique_ptr<Collider>>& RigidBody::getColliders() const {
+        verify(body, "Used after std::move");
+        return colliders;
+    }
+
+    Collider& RigidBody::getCollider(std::size_t index) {
+        verify(body, "Used after std::move");
+        return *colliders[index];
+    }
+
+    const Collider& RigidBody::getCollider(std::size_t index) const {
+        verify(body, "Used after std::move");
+        return *colliders[index];
     }
 
     Carrot::Math::Transform RigidBody::getTransform() const {
@@ -81,6 +137,30 @@ namespace Carrot::Physics {
 
     void RigidBody::setActive(bool active) {
         body->setIsActive(active);
+    }
+
+    float RigidBody::getMass() const {
+        return body->getMass();
+    }
+
+    void RigidBody::setMass(float mass) {
+        body->setMass(mass);
+    }
+
+    glm::vec3 RigidBody::getLocalCenterOfMass() const {
+        return Carrot::glmVecFromReactPhysics(body->getLocalCenterOfMass());
+    }
+
+    void RigidBody::setLocalCenterOfMass(const glm::vec3& center) {
+        body->setLocalCenterOfMass(Carrot::reactPhysicsVecFromGlm(center));
+    }
+
+    glm::vec3 RigidBody::getLocalInertiaTensor() const {
+        return Carrot::glmVecFromReactPhysics(body->getLocalInertiaTensor());
+    }
+
+    void RigidBody::setLocalInertiaTensor(const glm::vec3& inertia) {
+        body->setLocalInertiaTensor(Carrot::reactPhysicsVecFromGlm(inertia));
     }
 
     RigidBody::~RigidBody() {

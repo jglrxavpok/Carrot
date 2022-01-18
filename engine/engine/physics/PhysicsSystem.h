@@ -20,6 +20,7 @@ namespace Carrot::Physics {
         void resume();
 
     public:
+        reactphysics3d::PhysicsCommon& getCommons();
         reactphysics3d::PhysicsWorld& getPhysicsWorld();
         const reactphysics3d::PhysicsWorld& getPhysicsWorld() const;
 

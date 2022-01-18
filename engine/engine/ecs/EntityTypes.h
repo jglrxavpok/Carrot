@@ -10,6 +10,7 @@
 #include <cassert>
 #include <core/memory/OptionalRef.h>
 #include <core/utils/UUID.h>
+#include "Signature.hpp"
 
 namespace Carrot::ECS {
     using Tags = std::uint64_t;
@@ -75,6 +76,8 @@ namespace Carrot::ECS {
         const EntityID& getID() const {
             return internalEntity;
         }
+
+        Signature getSignature() const;
 
         std::string_view getName() const;
         std::string& getName();

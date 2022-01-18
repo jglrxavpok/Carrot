@@ -6,6 +6,7 @@
 
 #include "RenderEye.h"
 #include "Viewport.h"
+#include "core/utils/UUID.h"
 
 namespace sol {
     class state;
@@ -29,6 +30,9 @@ namespace Carrot::Render {
         /// Returns a copy of this RenderContext, with swapchainIndex = lastSwapchainIndex. Calling it again on the
         /// resulting object won't have any effect (outside of creating a new object)
         Context lastFrame() const;
+
+        void renderWireframeSphere(const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderWireframeCuboid(const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
 
         static void registerUsertype(sol::state& destination);
     };

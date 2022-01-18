@@ -46,12 +46,17 @@ namespace Carrot {
         }
 
         template<glm::length_t len, typename Elem, glm::qualifier qualifier = glm::qualifier::defaultp>
-        inline rapidjson::Value write(const glm::vec<len, Elem, qualifier>& vec, rapidjson::Document& doc) {
+        inline rapidjson::Value write(const glm::vec<len, Elem, qualifier>& vec, rapidjson::Document::AllocatorType& allocator) {
             rapidjson::Value arr(rapidjson::kArrayType);
             for (glm::length_t i = 0; i < len; ++i) {
-                arr.PushBack(vec[i], doc.GetAllocator());
+                arr.PushBack(vec[i], allocator);
             }
             return arr;
+        }
+
+        template<glm::length_t len, typename Elem, glm::qualifier qualifier = glm::qualifier::defaultp>
+        inline rapidjson::Value write(const glm::vec<len, Elem, qualifier>& vec, rapidjson::Document& allocator) {
+            return write<len, Elem, qualifier>(vec, allocator.GetAllocator());
         }
     }
 }

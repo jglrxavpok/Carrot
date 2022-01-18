@@ -78,6 +78,10 @@ namespace Carrot::ECS {
         return *this;
     }
 
+    Signature Entity::getSignature() const {
+        return worldRef.getSignature(*this);
+    }
+
     World::World() {}
 
     Tags World::getTags(const Entity& entity) const {

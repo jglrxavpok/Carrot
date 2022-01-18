@@ -4,6 +4,7 @@
 
 #include "RenderContext.h"
 #include "Viewport.h"
+#include "VulkanRenderer.h"
 
 namespace Carrot::Render {
     vk::DescriptorSet Context::getCameraDescriptorSet() const {
@@ -19,5 +20,13 @@ namespace Carrot::Render {
             .swapchainIndex = lastSwapchainIndex, // <-- only change
             .lastSwapchainIndex = lastSwapchainIndex,
         };
+    }
+
+    void Context::renderWireframeSphere(const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeSphere(*this, position, radius, color, objectID);
+    }
+
+    void Context::renderWireframeCuboid(const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeCuboid(*this, position, halfExtents, color, objectID);
     }
 }

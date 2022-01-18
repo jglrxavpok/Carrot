@@ -47,6 +47,8 @@ namespace Carrot {
 
         bool tmptmptmpUseMaterialSystem = false;
 
+        vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };

@@ -86,6 +86,26 @@ namespace Carrot::ECS {
         });
     }
 
+    template<class LogicSystemType>
+    LogicSystemType* World::getLogicSystem() {
+        for(auto& system : logicSystems) {
+            if(typeid(*system) == typeid(LogicSystemType)) {
+                return static_cast<LogicSystemType*>(system.get());
+            }
+        }
+        return nullptr;
+    }
+
+    template<class RenderSystemType>
+    RenderSystemType* World::getRenderSystem() {
+        for(auto& system : renderSystems) {
+            if(typeid(*system) == typeid(RenderSystemType)) {
+                return static_cast<RenderSystemType*>(system.get());
+            }
+        }
+        return nullptr;
+    }
+
     template<SystemType type, typename... RequiredComponents>
     void SignedSystem<type, RequiredComponents...>::forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action) {
         for(auto& entity : entities) {

@@ -27,6 +27,7 @@ add_executable(
         Engine-Tests
         Coroutines.cpp
         FileWatching.cpp
+        Lookup.cpp
 )
 target_link_libraries(
         Engine-Tests

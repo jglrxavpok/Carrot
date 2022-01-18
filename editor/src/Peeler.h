@@ -67,6 +67,9 @@ namespace Peeler {
 
         void addDefaultSystems(Scene& scene, bool editingScene);
 
+        void selectEntity(const Carrot::ECS::EntityID& entity);
+        void deselectAllEntities();
+
     private: // simulation
         void startSimulation();
         void stopSimulation();

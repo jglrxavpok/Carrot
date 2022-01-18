@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <bitset>
 #include <mutex>
-#include "engine/ecs/components/Component.h"
 
 namespace Carrot {
     using ComponentID = std::size_t;

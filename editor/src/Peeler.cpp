@@ -30,6 +30,7 @@
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>
 #include "ecs/systems/LightEditorRenderer.h"
+#include "ecs/systems/CollisionShapeRenderer.h"
 #include <engine/physics/PhysicsSystem.h>
 
 namespace Peeler {
@@ -351,7 +352,7 @@ namespace Peeler {
     void Application::UIWorldHierarchy(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
         if(ImGui::IsItemClicked()) {
-            selectedID.reset();
+            deselectAllEntities();
         }
 
         if (ImGui::BeginPopupContextWindow("##popup world editor")) {
@@ -394,8 +395,8 @@ namespace Peeler {
                 if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str())) {
                     addChildMenu();
                     if(ImGui::IsItemClicked()) {
-                        selectedID.reset(); // TODO: multi-select
-                        selectedID = entity.getID();
+                        deselectAllEntities(); // TODO: multi-select
+                        selectEntity(entity.getID());
                     }
 
                     for(auto& c : children) {
@@ -410,8 +411,8 @@ namespace Peeler {
 
                 addChildMenu();
                 if(ImGui::IsItemClicked()) {
-                    selectedID.reset(); // TODO: multi-select
-                    selectedID = entity.getID();
+                    deselectAllEntities(); // TODO: multi-select
+                    selectEntity(entity.getID());
                 }
             }
         };
@@ -555,7 +556,7 @@ namespace Peeler {
         }
 
         if(!usingGizmo && ImGui::IsItemClicked()) {
-            selectedID.reset();
+            deselectAllEntities(); // TODO: multi-select
             const auto gbufferPass = gameRenderingGraph->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
             const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
             glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
@@ -566,7 +567,7 @@ namespace Peeler {
             glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
             Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
             if(currentScene.world.exists(uuid)) {
-                selectedID = uuid;
+                selectEntity(uuid);
             }
         }
 
@@ -589,6 +590,7 @@ namespace Peeler {
 
         currentScene.world.unfreezeLogic();
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         updateSettingsBasedOnScene();
         GetPhysics().resume();
     }
@@ -598,6 +600,7 @@ namespace Peeler {
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
+        currentScene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
@@ -741,7 +744,7 @@ namespace Peeler {
             addDefaultSystems(currentScene, true);
             hasUnsavedChanges = false;
             settings.currentProject.reset();
-            selectedID.reset();
+            deselectAllEntities();
             updateWindowTitle();
             return;
         }
@@ -780,12 +783,12 @@ namespace Peeler {
         if(description.HasMember("selected")) {
             auto wantedSelection = Carrot::UUID::fromString(description["selected"].GetString());
             if(currentScene.world.exists(wantedSelection)) {
-                selectedID = wantedSelection;
+                selectEntity(wantedSelection);
             } else {
-                selectedID.reset();
+                deselectAllEntities();
             }
         } else {
-            selectedID.reset();
+            deselectAllEntities();
         }
         updateWindowTitle();
     }
@@ -888,7 +891,7 @@ namespace Peeler {
             entity.setParent(parent);
         }
 
-        selectedID = entity.getID();
+        selectEntity(entity.getID());
 
         markDirty();
         return entity;
@@ -910,13 +913,31 @@ namespace Peeler {
             clone.setParent(entity.getParent());
         }
 
-        selectedID = entity.getID();
+        selectEntity(entity.getID());
         markDirty();
+    }
+
+    void Application::selectEntity(const Carrot::ECS::EntityID& entity) {
+        selectedID = entity;
+
+        auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
+        if(shapeRenderer) {
+            shapeRenderer->setSelected(selectedID);
+        }
+    }
+
+    void Application::deselectAllEntities() {
+        selectedID.reset();
+
+        auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
+        if(shapeRenderer) {
+            shapeRenderer->setSelected(selectedID);
+        }
     }
 
     void Application::removeEntity(const Carrot::ECS::Entity& entity) {
         if(selectedID.has_value() && entity.getID() == selectedID.value()) {
-            selectedID.reset();
+            deselectAllEntities();
         }
         currentScene.world.removeEntity(entity);
         markDirty();
@@ -952,6 +973,7 @@ namespace Peeler {
 
         if(editingScene) {
             scene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
+            scene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         }
 
 

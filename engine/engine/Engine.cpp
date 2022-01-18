@@ -469,6 +469,8 @@ void Carrot::Engine::initWindow() {
 }
 
 void Carrot::Engine::initVulkan() {
+    renderer.lateInit();
+
     createCameras();
 
     initGame();

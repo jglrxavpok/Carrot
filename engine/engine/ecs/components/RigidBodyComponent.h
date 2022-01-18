@@ -36,6 +36,7 @@ namespace Carrot::ECS {
 
     private:
         static const char* getTypeName(reactphysics3d::BodyType type);
+        static const char* getShapeName(reactphysics3d::CollisionShapeType type);
         static reactphysics3d::BodyType getTypeFromName(const std::string& name);
 
     private:

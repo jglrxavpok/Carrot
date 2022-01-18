@@ -15,6 +15,13 @@
 #include "Mesh.h"
 #include "Mesh.ipp"
 #include <core/io/Logging.hpp>
+#include <core/utils/Lookup.hpp>
+
+static Carrot::Lookup PolygonModes = std::array {
+        Carrot::LookupEntry<vk::PolygonMode>(vk::PolygonMode::eFill, "fill"),
+        Carrot::LookupEntry<vk::PolygonMode>(vk::PolygonMode::eLine, "wireframe"),
+        Carrot::LookupEntry<vk::PolygonMode>(vk::PolygonMode::eFill, "point_cloud"),
+};
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
     Carrot::Pipeline::Pipeline(driver, PipelineDescription(pipelineDescription)) {
@@ -45,7 +52,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
             .rasterizerDiscardEnable = false,
 
-            .polygonMode = vk::PolygonMode::eFill,
+            .polygonMode = description.polygonMode,
 
             .cullMode = description.cull ? vk::CullModeFlagBits::eFront : vk::CullModeFlagBits::eNone,
             .frontFace = vk::FrontFace::eClockwise,
@@ -555,6 +562,10 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
         } else {
             verify(false, "Unknown topology: " + topologyStr);
         }
+    }
+
+    if(json.HasMember("fillMode")) {
+        polygonMode = PolygonModes[json["fillMode"].GetString()];
     }
 
     if(json.HasMember("tmptmptmpUseMaterialSystem")) {

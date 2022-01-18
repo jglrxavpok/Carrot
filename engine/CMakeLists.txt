@@ -119,6 +119,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}utils/Profiling.cpp
 
+        ${EngineRoot}physics/Colliders.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp
         ${EngineRoot}physics/RigidBody.cpp
         )
@@ -137,6 +138,7 @@ set(VERTEX_SHADERS
         text-rendering.vertex.glsl
         gBufferSprite.vertex.glsl
         billboards.vertex.glsl
+        gBufferWireframe.vertex.glsl
 
         #PARENT_SCOPE
         )

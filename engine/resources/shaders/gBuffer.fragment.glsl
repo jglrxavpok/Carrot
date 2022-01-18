@@ -29,7 +29,7 @@ void main() {
     if(texColor.a < 0.01) {
         discard;
     }
-    outColor = vec4(texColor.rgb * fragColor, 1.0);
+    outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, 1.0);
     outViewPosition = vec4(viewPosition, 1.0);
 
     vec3 mappedNormal = texture(sampler2D(textures[nonuniformEXT(material.normalMap)], linearSampler), uv).xyz;
