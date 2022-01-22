@@ -31,7 +31,7 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::vecto
 
 
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this, 0);
+    stagingBuffer.copyTo(*this, 0, 0);
 
     // stagingBuffer will be destroyed, and resources freed after this point
 }
@@ -46,7 +46,7 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 
 
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this, offset);
+    stagingBuffer.copyTo(*this, 0, offset);
 }
 
 template<typename T>

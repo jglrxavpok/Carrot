@@ -11,6 +11,10 @@
 
 namespace Carrot::Physics {
 
+    Collider::Collider(std::unique_ptr<CollisionShape>&& collisionShape, const Carrot::Math::Transform& localTransform): shape(std::move(collisionShape)), localTransform(localTransform) {
+        shape->setCollider(this);
+    }
+
     std::unique_ptr<Collider> Collider::loadFromJSON(const rapidjson::Value& object) {
         ColliderType colliderType = ColliderTypeNames[object["type"].GetString()];
 
@@ -22,6 +26,14 @@ namespace Carrot::Physics {
 
             case ColliderType::Sphere:
                 collisionShape = std::make_unique<SphereCollisionShape>(object);
+                break;
+
+            case ColliderType::Capsule:
+                collisionShape = std::make_unique<CapsuleCollisionShape>(object);
+                break;
+
+            case ColliderType::StaticConcaveTriangleMesh:
+                collisionShape = std::make_unique<StaticConcaveMeshCollisionShape>(object);
                 break;
 
             default:
@@ -48,7 +60,14 @@ namespace Carrot::Physics {
     }
 
     void Collider::addToBody(RigidBody& body) {
+        rigidbody = &body;
         collider = body.body->addCollider(shape->getReactShape(), localTransform);
+    }
+
+    void Collider::removeFromBody(RigidBody& body) {
+        verify(collider, "Must already be on a body");
+        body.body->removeCollider(collider);
+        rigidbody = nullptr;
     }
 
     Carrot::Math::Transform Collider::getLocalTransform() const {
@@ -65,6 +84,27 @@ namespace Carrot::Physics {
 
     [[nodiscard]] CollisionShape& Collider::getShape() const {
         return *shape;
+    }
+
+    void Collider::reattach() {
+        verify(collider, "Must already be attached!");
+        verify(rigidbody, "Must be associated to a RigidBody");
+
+        // modifies the reactphysics rigidbody, without modifying the engine representation
+        RigidBody* body = rigidbody;
+        removeFromBody(*body);
+        addToBody(*body);
+    }
+
+    // ---- Collision shapes ----
+
+    void CollisionShape::reattachCollider() {
+        verify(owner, "Must be linked to a Collider!");
+        owner->reattach();
+    }
+
+    void CollisionShape::setCollider(Collider* collider) {
+        this->owner = collider;
     }
 
     BoxCollisionShape::BoxCollisionShape() {

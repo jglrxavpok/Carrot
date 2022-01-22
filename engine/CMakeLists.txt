@@ -120,6 +120,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/Profiling.cpp
 
         ${EngineRoot}physics/Colliders.cpp
+        ${EngineRoot}physics/MeshCollisionShape.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp
         ${EngineRoot}physics/RigidBody.cpp
         )

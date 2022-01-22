@@ -7,6 +7,7 @@
 #include "engine/vulkan/includes.h"
 #include "Buffer.h"
 #include <memory>
+#include <span>
 
 namespace Carrot {
     class ResourceAllocator;
@@ -36,6 +37,9 @@ namespace Carrot {
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
         void directUpload(const void* data, vk::DeviceSize length);
+
+        /// Copies the contents of this buffer to the given memory
+        void download(const std::span<std::uint8_t>& data, std::uint32_t offset = 0) const;
 
         [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;
 

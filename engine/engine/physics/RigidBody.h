@@ -26,8 +26,16 @@ namespace Carrot::Physics {
         ~RigidBody();
 
     public:
-        Collider& addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform = {});
+        ///
+        /// \param shape
+        /// \param localTransform
+        /// \param insertionIndex used to add a collider at a given index. Used to preserve order when removing and re-adding a collider (sometimes required for MeshCollisionShapes-based colliders)
+        /// \return
+        Collider& addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform = {}, std::size_t insertionIndex = std::numeric_limits<std::size_t>::max());
         void removeCollider(std::size_t index);
+
+        /// Removes the given collider and reattaches it. Required for some CollisionShapes that need a full "reload" when changed.
+        void reattach(std::size_t index);
 
         std::size_t getColliderCount() const;
         std::vector<std::unique_ptr<Collider>>& getColliders();
@@ -59,7 +67,8 @@ namespace Carrot::Physics {
         /// Forces the given transform. Only use for static bodies, kinematic and dynamic bodies may have trouble adapting to the new transform
         void setTransform(const Carrot::Math::Transform& transform);
 
-        void addColliderDirectly(std::unique_ptr<Collider>&& collider);
+        /// \param insertionIndex used to add a collider at a given index. Used to preserve order when removing and re-adding a collider (sometimes required for MeshCollisionShapes-based colliders)
+        void addColliderDirectly(std::unique_ptr<Collider>&& collider, std::size_t insertionIndex = std::numeric_limits<std::size_t>::max());
 
     private:
         rp3d::RigidBody* body = nullptr;

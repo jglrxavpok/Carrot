@@ -12,14 +12,27 @@ namespace Carrot::ECS {
     }
 
     void RigidBodySystem::tick(double dt) {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
+        forEachEntity([&](Entity& entity, TransformComponent& transformComponent, RigidBodyComponent& rigidBodyComp) {
             if(rigidBodyComp.firstTick) {
-                rigidBodyComp.rigidbody.setTransform(transform.computeGlobalTransform());
+                rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalTransform());
                 rigidBodyComp.firstTick = false;
             }
-            transform.setGlobalTransform(rigidBodyComp.rigidbody.getTransform());
+            auto transform = rigidBodyComp.rigidbody.getTransform();
+            transform.scale = transformComponent.computeGlobalTransform().scale; // preserve scale
+            transformComponent.setGlobalTransform(transform);
 
-            // TODO: handle collider updates
+            for(auto& colliderPtr : rigidBodyComp.rigidbody.getColliders()) {
+                auto& shape = colliderPtr->getShape();
+                switch(shape.getType()) {
+                    case Physics::ColliderType::StaticConcaveTriangleMesh: {
+                        auto& asMesh = static_cast<Physics::StaticConcaveMeshCollisionShape&>(shape);
+                        asMesh.setScale(transform.scale);
+                    }
+                    break;
+
+                    // TODO: DynamicConvexTriangleMesh
+                }
+            }
         });
     }
 

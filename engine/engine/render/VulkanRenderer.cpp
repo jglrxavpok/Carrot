@@ -649,6 +649,11 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     renderPackets.push_back(packet);
 }
 
-Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(std::size_t bytes) {
-    return singleFrameAllocator.getInstanceBuffer(bytes);
+Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes) {
+    return singleFrameAllocator.allocate(bytes);
+}
+
+Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize bytes) {
+    // TODO: use different allocator? (even if only for tracking)
+    return singleFrameAllocator.allocate(bytes);
 }

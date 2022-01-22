@@ -6,9 +6,15 @@
 #include "engine/utils/Macros.h"
 #include "engine/physics/PhysicsSystem.h"
 #include <core/utils/JSON.h>
+#include <core/io/Logging.hpp>
+#include <engine/render/Model.h>
+#include <engine/Engine.h>
+#include <engine/edition/DragDropTypes.h>
 #include <engine/utils/conversions.h>
+#include <core/utils/ImGuiUtils.hpp>
 #include <imgui.h>
 #include <map>
+#include <filesystem>
 
 namespace Carrot::ECS {
 
@@ -54,7 +60,7 @@ namespace Carrot::ECS {
             ImGui::EndCombo();
         }
 
-        auto drawColliderUI = [&](Physics::Collider& collider) {
+        auto drawColliderUI = [&](Physics::Collider& collider, std::size_t index) {
             ImGui::PushID(&collider);
             ImGui::Text("%s", Physics::ColliderTypeNames[collider.getType()]);
             ImGui::SameLine();
@@ -108,8 +114,44 @@ namespace Carrot::ECS {
                 }
                 break;
 
+                case Physics::ColliderType::StaticConcaveTriangleMesh: {
+                    auto& meshShape = static_cast<Physics::StaticConcaveMeshCollisionShape&>(shape);
+
+                    auto setModel = [&](const std::string& modelPath) {
+                        auto model = Engine::getInstance().getRenderer().getOrCreateModel(modelPath);
+                        if(model) {
+                            meshShape.setModel(model);
+                            modified = true;
+                        } else {
+                            Carrot::Log::error("Could not open model for collisions: %s", modelPath.c_str());
+                        }
+                    };
+                    std::string path = meshShape.getModel().getOriginatingResource().getName();
+                    if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        setModel(path);
+                    }
+
+                    if(ImGui::BeginDragDropTarget()) {
+                        if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                            std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                            std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                            buffer.get()[payload->DataSize] = '\0';
+
+                            std::filesystem::path newPath = buffer.get();
+
+                            std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
+                            if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
+                                setModel(Carrot::toString(fsPath.u8string()));
+                            }
+                        }
+
+                        ImGui::EndDragDropTarget();
+                    }
+                }
+                break;
+
                 default:
-                    // TODO
+                    TODO
                     break;
             }
 
@@ -123,7 +165,7 @@ namespace Carrot::ECS {
                 if(index != 0) {
                     ImGui::Separator();
                 }
-                bool remove = drawColliderUI(rigidbody.getCollider(index));
+                bool remove = drawColliderUI(rigidbody.getCollider(index), index);
                 if(remove) {
                     rigidbody.removeCollider(index);
                     index--;
@@ -146,6 +188,11 @@ namespace Carrot::ECS {
                     rigidbody.addCollider(Physics::CapsuleCollisionShape(1.0f, 1.0f));
                     modified = true;
                 }
+                if(ImGui::MenuItem("Static Concave Mesh Collider##rigidbodycomponent colliders")) {
+                    rigidbody.addCollider(Physics::StaticConcaveMeshCollisionShape(GetRenderer().getOrCreateModel("resources/models/simple_cube.obj")));
+                    modified = true;
+                }
+                // TODO: convex
 
                 ImGui::EndMenu();
             }

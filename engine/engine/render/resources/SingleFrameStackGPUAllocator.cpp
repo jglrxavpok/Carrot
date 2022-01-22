@@ -44,7 +44,7 @@ namespace Carrot {
     // --
 
     SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize instancingBufferSize):
-        instanceBuffers(instancingBufferSize, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
+        instanceBuffers(instancingBufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
         instanceBuffers.resize(GetEngine().getSwapchainImageCount());
     }
 
@@ -53,7 +53,7 @@ namespace Carrot {
         instanceBuffers.clear(currentFrame);
     }
 
-    Carrot::BufferView SingleFrameStackGPUAllocator::getInstanceBuffer(std::size_t size) {
+    Carrot::BufferView SingleFrameStackGPUAllocator::allocate(std::size_t size) {
         return instanceBuffers.allocateAligned(currentFrame, size);
     }
 

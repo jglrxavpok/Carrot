@@ -117,6 +117,8 @@ namespace Carrot {
 
         Render::MaterialSystem& getMaterialSystem() { return materialSystem; }
 
+        const Render::MaterialHandle& getWhiteMaterial() const { return *whiteMaterial; }
+
         Render::Lighting& getLighting() { return lighting; }
 
     public:
@@ -159,6 +161,8 @@ namespace Carrot {
         void render(const Render::Packet& packet);
 
     public:
+        /// Returns a portion of buffer that can be used for the current frame
+        Carrot::BufferView getSingleFrameBuffer(vk::DeviceSize size);
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);

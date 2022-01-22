@@ -25,7 +25,7 @@ namespace Carrot {
         uint64_t getSize() const;
 
         /// Copies this buffer to 'other' as a transfer operation
-        void copyTo(Buffer& other, vk::DeviceSize offset) const;
+        void copyTo(Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const;
 
         /// Copies the content of this buffer to the given buffer, as a transfer operation.
         void copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const;
@@ -67,8 +67,13 @@ namespace Carrot {
         // TODO: make const asap
         BufferView getWholeView();
 
+        bool isDeviceLocal() const {
+            return deviceLocal;
+        }
+
     private:
         VulkanDriver& driver;
+        bool deviceLocal = false;
         uint64_t size;
         void* mappedPtr = nullptr;
         vk::UniqueBuffer vkBuffer{};

@@ -36,6 +36,14 @@ std::uint64_t Carrot::Mesh::getVertexSize() const {
     return vertexCount * sizeofVertex;
 }
 
+Carrot::BufferView Carrot::Mesh::getVertexBuffer() {
+    return BufferView(nullptr, getBackingBuffer(), static_cast<vk::DeviceSize>(getVertexStartOffset()), static_cast<vk::DeviceSize>(getVertexSize()));
+}
+
+Carrot::BufferView Carrot::Mesh::getIndexBuffer() {
+    return BufferView(nullptr, getBackingBuffer(), static_cast<vk::DeviceSize>(getIndexStartOffset()), static_cast<vk::DeviceSize>(getIndexSize()));
+}
+
 std::uint64_t Carrot::Mesh::getIndexSize() const {
     return indexCount * sizeof(std::uint32_t);
 }

@@ -67,15 +67,19 @@ namespace Carrot::Physics {
         return *this;
     }
 
-    void RigidBody::addColliderDirectly(std::unique_ptr<Collider>&& collider) {
+    void RigidBody::addColliderDirectly(std::unique_ptr<Collider>&& collider, std::size_t insertionIndex) {
         collider->addToBody(*this);
 
-        colliders.emplace_back(std::move(collider));
+        if(insertionIndex < colliders.size()) {
+            colliders.insert(colliders.begin() + insertionIndex, std::move(collider));
+        } else {
+            colliders.emplace_back(std::move(collider));
+        }
     }
 
-    Collider& RigidBody::addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform) {
+    Collider& RigidBody::addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform, std::size_t insertionIndex) {
         verify(body, "Used after std::move");
-        addColliderDirectly(std::make_unique<Collider>(shape.duplicate(), localTransform));
+        addColliderDirectly(std::make_unique<Collider>(shape.duplicate(), localTransform), insertionIndex);
 
         auto& collider = colliders.back();
         return *collider;
@@ -84,7 +88,7 @@ namespace Carrot::Physics {
     void RigidBody::removeCollider(std::size_t index) {
         verify(body, "Used after std::move");
         verify(index >= 0 && index < getColliderCount(), "Out of bounds");
-        body->removeCollider(body->getCollider(index));
+        getCollider(index).removeFromBody(*this);
         colliders.erase(colliders.begin() + index);
     }
 
@@ -165,6 +169,9 @@ namespace Carrot::Physics {
 
     RigidBody::~RigidBody() {
         if(body) {
+            while (getColliderCount() > 0) {
+                removeCollider(0);
+            }
             GetPhysics().getPhysicsWorld().destroyRigidBody(body);
         }
     }

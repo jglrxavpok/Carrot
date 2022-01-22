@@ -12,6 +12,8 @@
 
 Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
                        vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
+    deviceLocal = (properties & vk::MemoryPropertyFlagBits::eDeviceLocal) == vk::MemoryPropertyFlagBits::eDeviceLocal;
+
     auto& queueFamilies = driver.getQueueFamilies();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());
@@ -48,12 +50,12 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
     driver.getLogicalDevice().bindBufferMemory(*vkBuffer, *memory, 0);
 }
 
-void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize offset) const {
+void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
     driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
         vk::BufferCopy copyRegion = {
-                .srcOffset = 0,
-                .dstOffset = offset,
-                .size = size,
+                .srcOffset = srcOffset,
+                .dstOffset = dstOffset,
+                .size = other.size - dstOffset,
         };
         stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
     });

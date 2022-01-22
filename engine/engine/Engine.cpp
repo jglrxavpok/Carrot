@@ -672,6 +672,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             v.onFrame(renderContext);
             getRayTracer().onFrame(renderContext);
             game->onFrame(renderContext);
+            GetPhysics().onFrame(renderContext);
             renderer.onFrame(renderContext);
         }
         renderer.endFrame(newRenderContext(imageIndex, getMainViewport()));
