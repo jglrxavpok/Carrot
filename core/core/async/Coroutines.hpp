@@ -12,6 +12,7 @@
 #include <memory>
 #include <core/utils/Concepts.hpp>
 #include <core/Macros.h>
+#include <core/async/Counter.h>
 #include <iostream>
 
 #ifdef __CLION_IDE_
@@ -21,6 +22,16 @@
 namespace Carrot::Async {
     template<typename Awaiter>
     concept IsAwaiter = requires(Awaiter a, std::coroutine_handle<> h) {
+        { a.await_ready() } -> std::convertible_to<bool>;
+        { a.await_suspend(h) };
+        { a.await_resume() } -> std::convertible_to<void>;
+    };
+
+    template<typename T>
+    struct CoroutinePromiseType;
+    
+    template<typename TaskAwaiter, typename T>
+    concept IsTaskAwaiter = requires(TaskAwaiter a, std::coroutine_handle<CoroutinePromiseType<T>> h) {
         { a.await_ready() } -> std::convertible_to<bool>;
         { a.await_suspend(h) };
         { a.await_resume() } -> std::convertible_to<void>;
@@ -36,6 +47,15 @@ namespace Carrot::Async {
 
     template<typename Value>
     struct CoroutinePromiseType;
+
+    class AlwaysSuspend {
+    public:
+        constexpr bool await_ready() const noexcept { return false; }
+
+        void await_suspend(std::coroutine_handle<> h) {}
+
+        constexpr void await_resume() const noexcept {}
+    };
 
     class DeferringAwaiter {
     public:
@@ -105,18 +125,22 @@ namespace Carrot::Async {
         std::mutex handlesToAddAccess;
     };
 
+    struct BasePromise {
+        Counter* waitOnCounter = nullptr;
+    };
+
     template<typename Value>
     struct PromiseTypeReturn;
 
     template<>
-    struct PromiseTypeReturn<void> {
+    struct PromiseTypeReturn<void>: public BasePromise {
         void return_void() {
 
         }
     };
 
     template<typename Value>
-    struct PromiseTypeReturn {
+    struct PromiseTypeReturn: public BasePromise {
         Value value;
 
         template<std::convertible_to<Value> From>
@@ -178,6 +202,37 @@ namespace Carrot::Async {
             return awaiter;
         }
 
+        auto await_transform(Counter& counter)
+        {
+            struct task_awaitable
+            {
+                CoroutinePromiseType<Value>& promise;
+                Counter& counter;
+
+                // check if this task already has value computed
+                bool await_ready()
+                {
+                    return counter.isIdle();
+                }
+
+                // h - is a handle to coroutine that calls co_await
+                // store coroutine handle to be resumed after computing task value
+                void await_suspend(std::coroutine_handle<> h)
+                {
+                    counter.onCoroutineSuspend(h);
+                    promise.waitOnCounter = &counter;
+                }
+
+                // when ready return value to a consumer
+                auto await_resume()
+                {
+                    return;
+                }
+            };
+
+            return task_awaitable{*this, counter};
+        }
+
         // also we can await other task<T>
         template<typename U>
         auto await_transform(const Task<U>& task)
@@ -222,7 +277,7 @@ namespace Carrot::Async {
         }
 
         void unhandled_exception() {
-            // TODO std::current_exception();
+            throw;
         }
 
         // called when coroutine_handle::destroy is called
@@ -242,6 +297,8 @@ namespace Carrot::Async {
         using promise_type = CoroutinePromiseType<Value>;
 
         std::coroutine_handle<promise_type> coroutineHandle;
+
+        Task() = default;
 
         // copy not allowed
         Task(const Task<Value>&) = delete;
@@ -264,18 +321,31 @@ namespace Carrot::Async {
         }
 
         [[nodiscard]] bool done() const {
+            verify(coroutineHandle, "Must have an handle");
             return coroutineHandle.done();
         }
 
-        void operator()() {
-            coroutineHandle();
+        explicit operator bool() const {
+            return !!coroutineHandle;
         }
 
-        void resume() {
+        /// Resumes the coroutine if possible. If the coroutine is waiting for a counter, this will return 'false', and not resume the coroutine
+        bool operator()() {
+            return resume();
+        }
+
+        /// Resumes the coroutine if possible. If the coroutine is waiting for a counter, this will return 'false', and not resume the coroutine
+        bool resume() {
+            verify(coroutineHandle, "Must have an handle");
+            if(coroutineHandle.promise().waitOnCounter && !coroutineHandle.promise().waitOnCounter->isIdle()) {
+                return false;
+            }
             coroutineHandle();
+            return true;
         }
 
         Value getValue() const requires Carrot::Concepts::NotSame<void, Value> {
+            verify(coroutineHandle, "Must have an handle");
             return coroutineHandle.promise().value;
         }
 

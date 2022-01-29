@@ -57,3 +57,13 @@ TEST(Coroutines, TransferOwnership) {
 
     ASSERT_EQ(RefCountedObject::references, 0);
 }
+
+Carrot::Async::Task<> taskThatThrows() {
+    verify(false, "hi");
+    co_return;
+}
+
+TEST(Coroutines, ThrowingCoroutine) {
+    auto task = taskThatThrows();
+    ASSERT_THROW(task(), Carrot::Assertions::Error);
+}

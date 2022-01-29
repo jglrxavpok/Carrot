@@ -21,12 +21,13 @@
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
-    TracyMessageL(file.getName().c_str());
+    ZoneText(file.getName().c_str(), file.getName().size());
     Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     Assimp::Importer importer{};
     const aiScene* scene = nullptr;
     {
+        ZoneScopedN("Read file - Assimp");
         verify(file.isFile(), "In-memory models are not supported!");
         scene = importer.ReadFile(file.getName(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
     }
@@ -45,6 +46,9 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     for(std::size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
         const aiMaterial* mat = scene->mMaterials[materialIndex];
         std::string materialName = mat->GetName().data;
+
+        ZoneScopedN("Loading material");
+        ZoneText(materialName.c_str(), materialName.size());
 
         auto handle = materialSystem.createMaterialHandle();
 
@@ -88,6 +92,10 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
         const aiMesh* mesh = scene->mMeshes[meshIndex];
+
+        ZoneScopedN("Loading mesh");
+        ZoneText(mesh->mName.C_Str(), mesh->mName.length);
+
         auto loadedMesh = loadMesh(mesh, boneMapping, offsetMatrices);
         auto& material = materialMap[mesh->mMaterialIndex];
         bool usesSkinning = mesh->HasBones();
@@ -115,6 +123,9 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
     for(int animationIndex = 0; animationIndex < scene->mNumAnimations; animationIndex++) {
         aiAnimation* anim = scene->mAnimations[animationIndex];
         std::string name = anim->mName.data;
+
+        ZoneScopedN("Loading animation");
+        ZoneText(name.c_str(), name.size());
 
         // collect all timestamps
         std::set<float> timestampSet{};

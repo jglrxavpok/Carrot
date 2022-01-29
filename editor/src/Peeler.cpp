@@ -637,6 +637,28 @@ namespace Peeler {
         ImGui::PopStyleVar(3);
     }
 
+    static Carrot::Async::Task<> testTask1() {
+        Carrot::Log::info("hi from task 1");
+        co_return;
+    }
+
+    static Carrot::Async::Task<> testTask2() {
+        std::uint32_t n = 100;
+        while (n-- > 0) {
+            Carrot::Log::info("hi from task 2 - %lu", n);
+            co_await std::suspend_always{};
+        }
+        co_return;
+    }
+
+    static Carrot::Async::Task<> taskEnd() {
+        Carrot::Log::info("end of tasks");
+        co_return;
+    }
+
+    Carrot::Async::Counter endOfTask1;
+    Carrot::Async::Counter endOfTask2;
+
     Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(), settings("peeler"), gameViewport(engine.createViewport()),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
@@ -650,6 +672,26 @@ namespace Peeler {
 
 
     {
+
+        GetTaskScheduler().schedule({
+                                            .name = "My test task",
+                                            .task = testTask1(),
+                                            .joiner = &endOfTask1,
+        });
+
+        GetTaskScheduler().schedule({
+                                            .name = "My test task 2",
+                                            .task = testTask2(),
+                                            .dependency = &endOfTask1,
+                                            .joiner = &endOfTask2,
+                                    });
+
+        GetTaskScheduler().schedule({
+                                            .name = "My test task 3",
+                                            .task = taskEnd(),
+                                            .dependency = &endOfTask2,
+                                    });
+
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 

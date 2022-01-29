@@ -11,7 +11,6 @@ set(Arch "x64")
 set(Platform "win64") # TODO: auto-detect
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 
-
 if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Release")
     set(OPENXR-LOADER-LIB openxr_loader)
     set(OPENXR-LOADER-LIB-LOCATION "${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platform}/src/loader/Release/${OPENXR-LOADER-LIB}.lib")
@@ -102,6 +101,9 @@ function(add_includes Target)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
+    if(IS_DEBUG_BUILD)
+        target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
+    endif()
 endfunction()
 
 add_subdirectory(core)
@@ -148,10 +150,6 @@ if(EXISTS "${OPENXR-LOADER-LIB-LOCATION}")
 else()
     set(CAN_SUPPORT_VR false)
 endif()
-
-function(make_tracy_target Target)
-    target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
-endfunction()
 
 function(make_asan_target Target)
     if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")

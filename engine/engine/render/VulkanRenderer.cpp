@@ -46,6 +46,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
 }
 
 void Carrot::VulkanRenderer::lateInit() {
+    ZoneScoped;
     unitSphereModel = getOrCreateModel("resources/models/simple_sphere.obj");
     unitCubeModel = getOrCreateModel("resources/models/simple_cube.obj");
     unitCapsuleModel = getOrCreateModel("resources/models/simple_capsule.obj");
@@ -63,6 +64,8 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
     auto key = std::make_pair(name, instanceOffset);
     auto it = pipelines.find(key);
     if(it == pipelines.end()) {
+        ZoneScopedN("Loading pipeline");
+        ZoneText(name.c_str(), name.size());
         pipelines[key] = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
     }
     return pipelines[key];
@@ -71,6 +74,8 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
     auto it = textures.find(textureName);
     if(it == textures.end()) {
+        ZoneScopedN("Loading texture");
+        ZoneText(textureName.c_str(), textureName.size());
         Carrot::IO::Resource from;
         try {
             from = textureName;
@@ -88,6 +93,8 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
     if(from.isFile()) {
         const auto& textureName = from.getName();
+        ZoneScopedN("Loading texture");
+        ZoneText(textureName.c_str(), textureName.size());
         auto it = textures.find(textureName);
         if(it == textures.end()) {
             auto texture = std::make_unique<Carrot::Render::Texture>(driver, std::move(from));
@@ -107,6 +114,9 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
     auto it = models.find(modelPath);
     if(it == models.end()) {
+        ZoneScopedN("Loading model");
+        ZoneText(modelPath.c_str(), modelPath.size());
+
         Carrot::IO::Resource from;
         try {
             from = modelPath;

@@ -117,12 +117,15 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/FreeCameraController.cpp
         ${EngineRoot}edition/DragDropTypes.cpp
 
-        ${EngineRoot}utils/Profiling.cpp
 
         ${EngineRoot}physics/Colliders.cpp
         ${EngineRoot}physics/MeshCollisionShape.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp
         ${EngineRoot}physics/RigidBody.cpp
+
+        ${EngineRoot}task/TaskScheduler.cpp
+
+        ${EngineRoot}utils/Profiling.cpp
         )
 
 set(VR_SOURCES
@@ -263,11 +266,6 @@ add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)
-
-add_library(Engine-Tracy ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
-target_link_libraries(Engine-Tracy PUBLIC ${ALL_BASE_LIBS})
-make_tracy_target(Engine-Tracy)
-add_includes(Engine-Tracy)
 
 if(CAN_SUPPORT_VR)
     add_library(Engine-VR ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES} ${VR_SOURCES})

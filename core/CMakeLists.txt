@@ -2,6 +2,7 @@ set(CoreRoot "core/")
 set(CORE-SOURCES
 
         ${CoreRoot}async/Coroutines.cpp
+        ${CoreRoot}async/Counter.cpp
         ${CoreRoot}async/Executors.cpp
 
         ${CoreRoot}data/ShaderMetadata.cpp

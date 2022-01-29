@@ -1251,6 +1251,10 @@ std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const
     return watcher;
 }
 
+Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
+    return taskScheduler;
+}
+
 
 #ifdef TRACY_ENABLE
 void* operator new(std::size_t count) {

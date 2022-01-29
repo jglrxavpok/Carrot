@@ -34,6 +34,7 @@ namespace Carrot {
 #include "engine/Capabilities.h"
 #include "engine/io/actions/InputVectors.h"
 #include "core/async/Coroutines.hpp"
+#include "engine/task/TaskScheduler.h"
 
 namespace sol {
     class state;
@@ -354,6 +355,8 @@ namespace Carrot {
         /// WARNING: WILL BE WAITED AT THE END OF THE FRAME. DON'T DO ANYTHING THAT COULD FREEZE THE MAIN LOOP
         void addFrameTask(FrameTask&& task);
 
+        TaskScheduler& getTaskScheduler();
+
     public:
         /// Creates a file watcher while will be automatically be updated inside the main loop (once per loop iteration)
         ///  The engine object only holds a weak reference to the created file watcher.
@@ -527,6 +530,7 @@ namespace Carrot {
 
     private: // async members
         std::list<std::future<void>> frameTaskFutures;
+        TaskScheduler taskScheduler;
 
     private:
         std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;

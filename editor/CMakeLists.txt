@@ -49,12 +49,6 @@ add_includes(Peeler)
 target_include_directories(Peeler PUBLIC ../thirdparty/ImGuizmo)
 target_link_libraries(Peeler PUBLIC Engine-Base)
 
-add_executable(Peeler-Tracy ${EditorSources} ${ImGuizmoSources})
-add_includes(Peeler-Tracy)
-target_include_directories(Peeler-Tracy PUBLIC ../thirdparty/ImGuizmo)
-target_link_libraries(Peeler-Tracy PUBLIC Engine-Tracy)
-make_tracy_target(Peeler-Tracy)
-
 add_executable(Peeler-Renderdoc ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Renderdoc)
 target_compile_definitions(Peeler-Renderdoc PRIVATE DEBUG_MARKERS=1)

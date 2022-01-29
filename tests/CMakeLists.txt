@@ -28,6 +28,7 @@ add_executable(
         Coroutines.cpp
         FileWatching.cpp
         Lookup.cpp
+        Counters.cpp
 )
 target_link_libraries(
         Engine-Tests
