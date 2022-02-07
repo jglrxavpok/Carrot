@@ -43,6 +43,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         }
     }
 
+    if(strstr(pCallbackData->pMessage, "Threading-MultipleThreads") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "FreeMemory-memory") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdDrawIndexed-None-02699") != nullptr) {
+        //debug_break();
+    }
+
     return VK_FALSE;
 }
 
@@ -846,6 +854,35 @@ void Carrot::VulkanDriver::newFrame() {
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
     deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
+}
+
+void Carrot::VulkanDriver::submitGraphics(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+    graphicsQueue.submit(submit, completeFence);
+}
+
+void Carrot::VulkanDriver::submitCompute(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+    computeQueue.submit(submit, completeFence);
+}
+
+void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+    transferQueue.submit(submit, completeFence);
+}
+
+void Carrot::VulkanDriver::waitGraphics() {
+    GetVulkanDriver().getGraphicsQueue().waitIdle();
+}
+
+void Carrot::VulkanDriver::waitTransfer() {
+    GetVulkanDriver().getTransferQueue().waitIdle();
+}
+
+void Carrot::VulkanDriver::waitDeviceIdle() {
+    std::lock_guard l { deviceMutex };
+    getLogicalDevice().waitIdle();
+}
+
+std::mutex& Carrot::VulkanDriver::getDeviceMutex() {
+    return deviceMutex;
 }
 
 #ifdef IS_DEBUG_BUILD

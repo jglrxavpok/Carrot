@@ -316,7 +316,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
     ZoneScoped;
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
-    engine.getComputeQueue().submit(vk::SubmitInfo {
+    GetVulkanDriver().submitCompute(vk::SubmitInfo {
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = nullptr,
             .pWaitDstStageMask = nullptr,

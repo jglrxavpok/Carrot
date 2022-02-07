@@ -209,7 +209,7 @@ void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCount
     dispatchSizes->z = groupCountZ;
 
     engine.getLogicalDevice().resetFences(*finishedFence);
-    engine.getComputeQueue().submit(vk::SubmitInfo {
+    GetVulkanDriver().submitCompute(vk::SubmitInfo {
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = nullptr,
             .pWaitDstStageMask = nullptr,

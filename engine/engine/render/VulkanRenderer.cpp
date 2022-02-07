@@ -62,18 +62,50 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassS
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset) {
     auto key = std::make_pair(name, instanceOffset);
-    auto it = pipelines.find(key);
-    if(it == pipelines.end()) {
+
+    {
+        Async::LockGuard l{ pipelinesMutex.read() };
+        auto it = pipelines.find(key);
+        if(it != pipelines.end()) {
+            return it->second;
+        }
+    }
+
+    {
+        Async::LockGuard l{ pipelinesMutex.write() };
+
+        // another thread may have written the value
+        auto it = pipelines.find(key);
+        if(it != pipelines.end()) {
+            return it->second;
+        }
+
         ZoneScopedN("Loading pipeline");
         ZoneText(name.c_str(), name.size());
-        pipelines[key] = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+        auto pipeline = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+        pipelines[key] = pipeline;
+        return pipeline;
     }
-    return pipelines[key];
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
-    auto it = textures.find(textureName);
-    if(it == textures.end()) {
+    {
+        Async::LockGuard l{ texturesMutex.read() };
+        auto it = textures.find(textureName);
+        if(it != textures.end()) {
+            return it->second;
+        }
+    }
+
+    {
+        Async::LockGuard l{ texturesMutex.write() };
+
+        // another thread may have written the value
+        auto it = textures.find(textureName);
+        if(it != textures.end()) {
+            return it->second;
+        }
+
         ZoneScopedN("Loading texture");
         ZoneText(textureName.c_str(), textureName.size());
         Carrot::IO::Resource from;
@@ -84,10 +116,10 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
             // in case file could not be opened
             from = "resources/textures/default.png";
         }
-        auto texture = std::make_unique<Carrot::Render::Texture>(driver, std::move(from));
-        textures[textureName] = move(texture);
+        auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+        textures[textureName] = texture;
+        return texture;
     }
-    return textures[textureName];
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
@@ -95,12 +127,27 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
         const auto& textureName = from.getName();
         ZoneScopedN("Loading texture");
         ZoneText(textureName.c_str(), textureName.size());
-        auto it = textures.find(textureName);
-        if(it == textures.end()) {
-            auto texture = std::make_unique<Carrot::Render::Texture>(driver, std::move(from));
-            textures[textureName] = move(texture);
+
+        {
+            Async::LockGuard l{ texturesMutex.read() };
+            auto it = textures.find(textureName);
+            if(it != textures.end()) {
+                return it->second;
+            }
         }
-        return textures[textureName];
+
+        {
+            Async::LockGuard l{ texturesMutex.write() };
+
+            auto it = textures.find(textureName);
+            if(it != textures.end()) {
+                return it->second;
+            }
+
+            auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+            textures[textureName] = texture;
+            return texture;
+        }
     } else {
         auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
         return texture;
@@ -112,8 +159,22 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
 }
 
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
-    auto it = models.find(modelPath);
-    if(it == models.end()) {
+    {
+        Async::LockGuard l{ modelsMutex.read() };
+        auto it = models.find(modelPath);
+        if(it != models.end()) {
+            return it->second;
+        }
+    }
+
+    {
+        Async::LockGuard l{ modelsMutex.write() };
+
+        auto it = models.find(modelPath);
+        if(it != models.end()) {
+            return it->second;
+        }
+
         ZoneScopedN("Loading model");
         ZoneText(modelPath.c_str(), modelPath.size());
 
@@ -124,10 +185,10 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const st
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
         }
-        auto model = std::make_unique<Carrot::Model>(getEngine(), std::move(from));
-        models[modelPath] = move(model);
+        auto model = std::make_shared<Carrot::Model>(getEngine(), std::move(from));
+        models[modelPath] = model;
+        return model;
     }
-    return models[modelPath];
 }
 
 void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {
@@ -197,7 +258,7 @@ void Carrot::VulkanRenderer::initImGui() {
     imguiInitInfo.PhysicalDevice = driver.getPhysicalDevice();
     imguiInitInfo.Device = driver.getLogicalDevice();
     imguiInitInfo.QueueFamily = driver.getQueueFamilies().graphicsFamily.value();
-    imguiInitInfo.Queue = driver.getGraphicsQueue();
+    imguiInitInfo.Queue = driver.getGraphicsQueue().getQueueUnsafe();
     imguiInitInfo.PipelineCache = nullptr;
     imguiInitInfo.DescriptorPool = *imguiDescriptorPool;
     imguiInitInfo.Allocator = nullptr;
@@ -666,4 +727,8 @@ Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize b
 Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize bytes) {
     // TODO: use different allocator? (even if only for tracking)
     return singleFrameAllocator.allocate(bytes);
+}
+
+Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(std::string name) {
+    co_return getOrCreateModel(name);
 }

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <source_location>
 #include <list>
 #include "resources/Buffer.h"
 #include "resources/BufferView.h"
@@ -55,7 +56,7 @@ namespace Carrot::Render {
         TransparentPassData transparentGBuffer;
 
     public:
-        explicit Packet(PassEnum pass);
+        explicit Packet(PassEnum pass, std::source_location location = std::source_location::current());
 
         Packet(const Packet&) = default;
         Packet(Packet&& toMove);
@@ -78,6 +79,7 @@ namespace Carrot::Render {
         void record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
 
     private:
+        std::source_location source;
         std::vector<std::uint8_t> instancingDataBuffer;
         std::list<PushConstant> pushConstants;
     };

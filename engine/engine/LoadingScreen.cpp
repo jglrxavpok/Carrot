@@ -153,7 +153,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .pSignalSemaphores = nullptr,
     };
 
-    engine.getGraphicsQueue().submit(submitInfo, nullptr);
+    GetVulkanDriver().submitGraphics(submitInfo, nullptr);
     engine.getGraphicsQueue().waitIdle();
 
     vk::SwapchainKHR swapchains[] = { engine.getVulkanDriver().getSwapchain() };

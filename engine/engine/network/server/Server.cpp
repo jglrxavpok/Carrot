@@ -9,6 +9,7 @@
 #include <iostream>
 #include <engine/network/packets/HandshakePackets.h>
 #include <engine/network/AsioHelpers.h>
+#include <core/async/OSThreads.h>
 
 namespace Carrot::Network {
 
@@ -20,6 +21,7 @@ namespace Carrot::Network {
         networkThread = std::thread([this] {
             threadFunction();
         });
+        Carrot::Threads::setName(networkThread, "Server Network thread");
     }
 
     Server::~Server() {

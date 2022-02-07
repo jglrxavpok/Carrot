@@ -4,6 +4,8 @@ set(CORE-SOURCES
         ${CoreRoot}async/Coroutines.cpp
         ${CoreRoot}async/Counter.cpp
         ${CoreRoot}async/Executors.cpp
+        ${CoreRoot}async/Locks.cpp
+        ${CoreRoot}async/OSThreads.cpp
 
         ${CoreRoot}data/ShaderMetadata.cpp
 
@@ -17,6 +19,7 @@ set(CORE-SOURCES
         ${CoreRoot}io/Resource.cpp
         ${CoreRoot}io/Serialisation.cpp
 
+        ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp
 
         ${CoreRoot}utils/Identifiable.cpp

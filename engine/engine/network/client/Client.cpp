@@ -9,6 +9,7 @@
 #include <core/io/Logging.hpp>
 #include <engine/network/packets/HandshakePackets.h>
 #include <engine/network/AsioHelpers.h>
+#include <core/async/OSThreads.h>
 
 namespace Carrot::Network {
     Client::Client(std::u32string_view username): username(username), tcpSocket(ioContext), udpSocket(ioContext) {}
@@ -82,6 +83,7 @@ namespace Carrot::Network {
         networkThread = std::thread([this]() {
             threadFunction();
         });
+        Carrot::Threads::setName(networkThread, "Client Network thread");
     }
 
     void Client::onDisconnect() {

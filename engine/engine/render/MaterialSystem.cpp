@@ -213,6 +213,11 @@ namespace Carrot::Render {
         };
         updateType(materialHandles);
         updateType(textureHandles);
+
+        if(materialHandles.size() >= materialBufferSize) {
+            WaitDeviceIdle();
+            reallocateMaterialBuffer(materialBufferSize*2);
+        }
     }
 
     void MaterialSystem::bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint) {
@@ -236,14 +241,13 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<MaterialHandle> MaterialSystem::createMaterialHandle() {
+        Async::LockGuard l { accessLock };
         auto ptr = materialHandles.create(std::ref(*this));
-        if(materialHandles.size() >= materialBufferSize) {
-            reallocateMaterialBuffer(materialBufferSize*2);
-        }
         return ptr;
     }
 
     std::shared_ptr<TextureHandle> MaterialSystem::createTextureHandle(Texture::Ref texture) {
+        Async::LockGuard l { accessLock };
         auto ptr = textureHandles.create(std::ref(*this));
         ptr->texture = std::move(texture);
         return ptr;

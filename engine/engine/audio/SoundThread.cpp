@@ -3,10 +3,12 @@
 //
 
 #include "SoundThread.h"
+#include <core/async/OSThreads.h>
 
 Carrot::SoundThread::SoundThread() {
     running = true;
     backingThread = std::thread([&](){ threadCode(); });
+    Carrot::Threads::setName(backingThread, "Audio");
 }
 
 void Carrot::SoundThread::threadCode() {

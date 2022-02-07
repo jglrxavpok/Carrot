@@ -5,12 +5,14 @@
 #pragma once
 
 #include "includes.h"
+#include <functional>
 #include <optional>
 #include <vector>
 #include <set>
 #include <core/memory/NakedPtr.hpp>
 #include <GLFW/glfw3.h>
 #include "engine/vulkan/SwapchainAware.h"
+#include "engine/vulkan/SynchronizedQueue.h"
 #include "core/memory/ThreadLocal.hpp"
 #include "engine/Configuration.h"
 #include "engine/Window.h"
@@ -75,11 +77,11 @@ namespace Carrot {
 
         const vk::AllocationCallbacks* getAllocationCallbacks() { return allocator; };
 
-        vk::Queue& getPresentQueue() { return presentQueue; };
-        vk::Queue& getTransferQueue() { return transferQueue; };
-        vk::Queue& getGraphicsQueue() { return graphicsQueue; };
+        Vulkan::SynchronizedQueue& getPresentQueue() { return presentQueue; };
+        Vulkan::SynchronizedQueue& getTransferQueue() { return transferQueue; };
+        Vulkan::SynchronizedQueue& getGraphicsQueue() { return graphicsQueue; };
         std::uint32_t getGraphicsQueueIndex() { return graphicsQueueIndex; };
-        vk::Queue& getComputeQueue() { return computeQueue; };
+        Vulkan::SynchronizedQueue& getComputeQueue() { return computeQueue; };
 
         vk::SurfaceKHR getSurface() { return surface; };
 
@@ -92,9 +94,6 @@ namespace Carrot {
         vk::CommandPool& getThreadComputeCommandPool() { return *computeCommandPool.get(); };
         vk::CommandPool& getThreadGraphicsCommandPool() { return *graphicsCommandPool.get(); };
         vk::CommandPool& getThreadTransferCommandPool() { return *transferCommandPool.get(); };
-
-        template<typename CommandBufferConsumer>
-        void performSingleTimeCommands(vk::CommandPool& commandPool, vk::Queue& queue, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, CommandBufferConsumer consumer);
 
         /// Performs a transfer operation on the transfer queue.
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
@@ -191,6 +190,8 @@ namespace Carrot {
         Window& window;
         Configuration config;
 
+        std::mutex deviceMutex;
+
         const vk::AllocationCallbacks* allocator = nullptr;
         std::int32_t framebufferWidth;
         std::int32_t framebufferHeight;
@@ -207,10 +208,10 @@ namespace Carrot {
         QueueFamilies queueFamilies{};
 
         std::uint32_t graphicsQueueIndex = -1;
-        vk::Queue graphicsQueue{};
-        vk::Queue presentQueue{};
-        vk::Queue transferQueue{};
-        vk::Queue computeQueue{};
+        Vulkan::SynchronizedQueue graphicsQueue;
+        Vulkan::SynchronizedQueue presentQueue;
+        Vulkan::SynchronizedQueue transferQueue;
+        Vulkan::SynchronizedQueue computeQueue;
         vk::SurfaceKHR surface{};
 
         ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
@@ -291,6 +292,24 @@ namespace Carrot {
 
         /// Choose resolution of swap chain images
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+    public:
+        void submitGraphics(const vk::SubmitInfo& info, const vk::Fence& fence = {});
+        void submitTransfer(const vk::SubmitInfo& info, const vk::Fence& fence = {});
+        void submitCompute(const vk::SubmitInfo& info, const vk::Fence& fence = {});
+
+        std::mutex& getDeviceMutex();
+
+        /// Synchronized call to waitIdle of the logical device
+        void waitDeviceIdle();
+
+    private:
+        template<typename CommandBufferConsumer>
+        void performSingleTimeCommands(vk::CommandPool& commandPool, const std::function<void(const vk::SubmitInfo&, const vk::Fence&)>& submitAction, const std::function<void()>& waitAction, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, CommandBufferConsumer consumer);
+
+        // used by performSingleTimeCommands
+        static void waitGraphics();
+        static void waitTransfer();
     };
 }
 

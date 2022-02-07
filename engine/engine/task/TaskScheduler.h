@@ -4,19 +4,16 @@
 
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 #include <core/ThreadSafeQueue.hpp>
 #include <core/async/Counter.h>
 #include <core/async/Coroutines.hpp>
+#include <core/data/Hashes.h>
+#include <core/tasks/Tasks.h>
 
 namespace Carrot {
     class Engine;
-
-    /// Represents different group on which a task can run
-    enum class TaskLane {
-        /// Group of threads that run parallel to the main thread
-        Parallel,
-    };
 
     struct TaskDescription {
         /// Name/Description of the task.
@@ -36,18 +33,38 @@ namespace Carrot {
     class TaskScheduler {
     public:
         /// Schedule a task for execution. The task will be executed as soon as possible on the given lane.
-        void schedule(TaskDescription&& description, TaskLane lane = TaskLane::Parallel);
+        void schedule(TaskDescription&& description, Async::TaskLane lane = TaskScheduler::Parallel);
+
+        /// Schedule a task for execution. Call from the main loop
+        void scheduleMainLoop();
+
+        /// Schedule a task for execution. Call at the beginning of rendering
+        void scheduleRendering();
+
+    public:
+        /// Group of threads that run parallel to the main thread
+        static Async::TaskLane Parallel;
+
+        /// Run tasks at each iteration of the main loop
+        static Async::TaskLane MainLoop;
+
+        /// Run tasks at the beginning of each frame
+        static Async::TaskLane Rendering;
 
     private:
         TaskScheduler();
         ~TaskScheduler();
 
+        [[nodiscard]] Async::Task<> coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane lane);
         void threadProc();
 
     private:
-        ThreadSafeQueue<TaskDescription> tasks;
+        std::unordered_map<Async::TaskLane, ThreadSafeQueue<TaskDescription>> taskQueues;
         std::atomic<bool> running = true;
         std::vector<std::thread> parallelThreads;
+
+        Async::Task<> mainLoopScheduling;
+        Async::Task<> renderingScheduling;
 
         friend class Engine;
     };

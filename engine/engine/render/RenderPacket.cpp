@@ -9,7 +9,7 @@
 
 
 namespace Carrot::Render {
-    Packet::Packet(PassEnum pass): pass(pass) {
+    Packet::Packet(PassEnum pass, std::source_location sourceLocation): source(sourceLocation), pass(pass) {
         viewport = &GetEngine().getMainViewport();
     };
 

@@ -23,46 +23,45 @@ namespace Carrot::ECS {
 
             if(modelData.HasMember("modelPath")) {
                 std::string modelPath = modelData["modelPath"].GetString();
-                model = Engine::getInstance().getRenderer().getOrCreateModel(modelPath);
+                asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(modelPath)));
             } else {
                 TODO // cannot load non-file models at the moment
             }
+        } else {
+            TODO // missing model
         }
     }
 
     rapidjson::Value ModelComponent::toJSON(rapidjson::Document& doc) const {
+        asyncModel.forceWait();
+
         rapidjson::Value obj{rapidjson::kObjectType};
 
         obj.AddMember("isTransparent", isTransparent, doc.GetAllocator());
         obj.AddMember("color", JSON::write(color, doc), doc.GetAllocator());
-        if(model) {
-            rapidjson::Value modelData(rapidjson::kObjectType);
-            auto& resource = model->getOriginatingResource();
 
-            if(resource.isFile()) {
-                rapidjson::Value modelPath{resource.getName(), doc.GetAllocator()};
-                modelData.AddMember("modelPath", modelPath, doc.GetAllocator());
-            }
+        rapidjson::Value modelData(rapidjson::kObjectType);
+        auto& resource = asyncModel->getOriginatingResource();
 
-
-            obj.AddMember("model", modelData, doc.GetAllocator());
+        if(resource.isFile()) {
+            rapidjson::Value modelPath{resource.getName(), doc.GetAllocator()};
+            modelData.AddMember("modelPath", modelPath, doc.GetAllocator());
         }
+
+
+        obj.AddMember("model", modelData, doc.GetAllocator());
 
         return obj;
     }
 
     void ModelComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        static std::string path = "<<path>>";
-        if(inInspector != this) {
-            inInspector = this;
-            if(model) {
-                path = model->getOriginatingResource().getName();
-            } else {
-                path = "";
-            }
+        if(!asyncModel.isReady()) {
+            ImGui::Text("Model is loading...");
+            return;
         }
+        std::string path = asyncModel->getOriginatingResource().getName();
         if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            model = Engine::getInstance().getRenderer().getOrCreateModel(path);
+            asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(path)));
             modified = true;
         }
 
@@ -76,7 +75,7 @@ namespace Carrot::ECS {
 
                 std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
-                    model = Engine::getInstance().getRenderer().getOrCreateModel(Carrot::toString(fsPath.u8string()));
+                    asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(Carrot::toString(fsPath.u8string()))));
                     inInspector = nullptr;
                     modified = true;
                 }

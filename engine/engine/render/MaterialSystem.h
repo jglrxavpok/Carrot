@@ -13,6 +13,7 @@
 #include "engine/render/RenderContext.h"
 #include "resources/Texture.h"
 #include <core/utils/WeakPool.hpp>
+#include <core/async/Locks.h>
 
 namespace Carrot::Render {
 
@@ -109,6 +110,7 @@ namespace Carrot::Render {
         MaterialData* materialDataPtr = nullptr;
         std::size_t materialBufferSize = 0; // in number of materials
         std::unique_ptr<Carrot::Buffer> materialBuffer = nullptr;
+        Async::SpinLock accessLock;
 
     private:
         friend class TextureHandle;

@@ -5,10 +5,11 @@
 #pragma once
 #include "engine/ecs/components/Component.h"
 #include "engine/render/Model.h"
+#include "engine/render/AsyncResource.hpp"
 
 namespace Carrot::ECS {
     struct ModelComponent: public IdentifiableComponent<ModelComponent> {
-        std::shared_ptr<Carrot::Model> model;
+        AsyncModelResource asyncModel;
         glm::vec4 color = glm::vec4{1.0f};
         bool isTransparent = false;
 
@@ -24,7 +25,8 @@ namespace Carrot::ECS {
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<ModelComponent>(newOwner);
-            result->model = model;
+            asyncModel.forceWait();
+            result->asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(asyncModel->getOriginatingResource().getName())));
             result->isTransparent = isTransparent;
             result->color = color;
             return result;

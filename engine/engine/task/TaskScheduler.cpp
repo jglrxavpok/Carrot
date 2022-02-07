@@ -4,16 +4,25 @@
 
 #include "TaskScheduler.h"
 #include "engine/utils/Profiling.h"
+#include <core/async/OSThreads.h>
 
 namespace Carrot {
+    Async::TaskLane TaskScheduler::Parallel;
+    Async::TaskLane TaskScheduler::MainLoop;
+    Async::TaskLane TaskScheduler::Rendering;
+
     TaskScheduler::TaskScheduler() {
         std::size_t availableThreads = std::thread::hardware_concurrency() - 1 /* main thread */;
         parallelThreads.resize(availableThreads);
         for (std::size_t i = 0; i < availableThreads; i++) {
             parallelThreads[i] = std::thread([this]() {
-               threadProc();
+                threadProc();
             });
+            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("ParallelTask #%d", i+1));
         }
+
+        mainLoopScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::MainLoop], TaskScheduler::MainLoop);
+        renderingScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::Rendering], TaskScheduler::Rendering);
     }
 
     TaskScheduler::~TaskScheduler() {
@@ -23,49 +32,72 @@ namespace Carrot {
         }
     }
 
-    void TaskScheduler::threadProc() {
+    [[nodiscard]] Async::Task<> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane) {
         TaskDescription toRun;
-        while(running) {
-            if(!tasks.popSafe(toRun)) {
-                std::this_thread::yield();
-                continue;
-            }
+        while(true) {
+            if(taskQueue.popSafe(toRun)) {
+                bool canRun = true;
 
-            bool canRun = true;
-            if(toRun.dependency) {
-                if(!toRun.dependency->isIdle()) {
-                    tasks.push(std::move(toRun));
+                const Async::TaskLane wantedLane = toRun.task.wantedLane();
+                if (wantedLane != Async::TaskLane::Undefined && wantedLane != localLane) {
                     canRun = false;
-                }
-            }
-
-            if(canRun) {
-                {
-                    ZoneScopedN("Run task");
-                    ZoneText(toRun.name.c_str(), toRun.name.size());
-                    toRun.task();
+                    schedule(std::move(toRun), wantedLane);
                 }
 
-                if(toRun.task.done()) {
-                    if(toRun.joiner) {
-                        toRun.joiner->decrement();
+                if (canRun && toRun.dependency) {
+                    if (!toRun.dependency->isIdle()) {
+                        taskQueue.push(std::move(toRun));
+                        canRun = false;
                     }
-                } else {
-                    tasks.push(std::move(toRun));
+                }
+
+                if (canRun) {
+                    {
+                        ZoneScopedN("Run task");
+                        ZoneText(toRun.name.c_str(), toRun.name.size());
+                        toRun.task();
+                    }
+
+                    if (toRun.task.done()) {
+                        if (toRun.joiner) {
+                            toRun.joiner->decrement();
+                        }
+                    } else {
+                        taskQueue.push(std::move(toRun));
+                    }
                 }
             }
+            co_await std::suspend_always{};
+        }
+        co_return;
+    }
 
+    void TaskScheduler::threadProc() {
+        auto scheduleTask = coscheduleSingleTask(taskQueues[TaskScheduler::Parallel], TaskScheduler::Parallel);
+        while(running) {
+            scheduleTask();
             std::this_thread::yield();
         }
     }
 
-    void TaskScheduler::schedule(TaskDescription&& description, TaskLane lane) {
-        verify(lane == TaskLane::Parallel, "No other lanes supported at the moment");
+    void TaskScheduler::scheduleMainLoop() {
+        mainLoopScheduling();
+    }
+
+    void TaskScheduler::scheduleRendering() {
+        renderingScheduling();
+    }
+
+    void TaskScheduler::schedule(TaskDescription&& description, Async::TaskLane lane) {
+        verify(lane == TaskScheduler::Parallel
+               || lane == TaskScheduler::MainLoop
+               || lane == TaskScheduler::Rendering
+               , "No other lanes supported at the moment");
         verify(description.task, "No valid task");
         verify(!description.task.done(), "Task is already done");
         if(description.joiner) {
             description.joiner->increment();
         }
-        tasks.push(std::move(description));
+        taskQueues[lane].push(std::move(description));
     }
 }

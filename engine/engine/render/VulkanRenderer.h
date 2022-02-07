@@ -19,6 +19,8 @@
 #include "engine/render/resources/SingleFrameStackGPUAllocator.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
+#include <core/async/Coroutines.hpp>
+#include <core/async/Locks.h>
 
 namespace sol {
     class state;
@@ -73,6 +75,9 @@ namespace Carrot {
         /// Init everything that is not immediately needed during construction. Allows to initialise resources during a loading screen
         void lateInit();
 
+        void recreateDescriptorPools(std::size_t frameCount);
+
+    public: // resource creation
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Instance offset can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
         std::shared_ptr<Pipeline> getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset = 0);
@@ -87,7 +92,8 @@ namespace Carrot {
 
         std::shared_ptr<Model> getOrCreateModel(const std::string& modelPath);
 
-        void recreateDescriptorPools(std::size_t frameCount);
+        /// Loads a model on a coroutine
+        Async::Task<std::shared_ptr<Model>> coloadModel(std::string modelPath);
 
     public:
         void beforeFrameCommand(const CommandBufferConsumer& command);
@@ -184,6 +190,10 @@ namespace Carrot {
         std::map<std::string, Render::Texture::Ref> textures{};
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;
+
+        Async::ReadWriteLock modelsMutex;
+        Async::ReadWriteLock texturesMutex;
+        Async::ReadWriteLock pipelinesMutex;
         std::map<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};

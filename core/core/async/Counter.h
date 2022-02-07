@@ -14,6 +14,14 @@ namespace Carrot::Async {
     template<class T>
     struct CoroutinePromiseType;
 
+    class Counter;
+    class TaskLane;
+
+    struct CounterLanePair {
+        Counter& counter;
+        const TaskLane& lane;
+    };
+
     /// Counter to determine when tasks are done
     class Counter {
     public:
@@ -46,6 +54,8 @@ namespace Carrot::Async {
 
     public: // support for coroutines
         void onCoroutineSuspend(std::coroutine_handle<> h);
+
+        CounterLanePair resumeOnLane(const TaskLane& lane);
 
     private:
         std::atomic_uint32_t internalCounter;

@@ -187,7 +187,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 }
 
 void Carrot::Pipeline::reloadShaders() {
-    GetVulkanDevice().waitIdle();
+    WaitDeviceIdle();
     vkPipelines.clear(); // flush existing pipelines
     stages->reload();
 

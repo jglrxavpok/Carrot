@@ -190,7 +190,7 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
         cmds.end();
     }
 
-    renderer.getVulkanDriver().getGraphicsQueue().submit(vk::SubmitInfo {
+    GetVulkanDriver().submitGraphics(vk::SubmitInfo {
         .commandBufferCount = static_cast<uint32_t>(buildCommands.size()),
         .pCommandBuffers = buildCommands.data(),
     });
@@ -233,7 +233,7 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
             compactedAS.emplace_back(move(compactAS));
             cmds.end();
         }
-        renderer.getVulkanDriver().getGraphicsQueue().submit(vk::SubmitInfo {
+        GetVulkanDriver().submitGraphics(vk::SubmitInfo {
             .commandBufferCount = static_cast<uint32_t>(buildCommands.size()),
             .pCommandBuffers = buildCommands.data(),
         });
@@ -381,7 +381,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
 
     buildCommand.end();
 
-    renderer.getVulkanDriver().getGraphicsQueue().submit(vk::SubmitInfo {
+    GetVulkanDriver().submitGraphics(vk::SubmitInfo {
        .commandBufferCount = 1,
        .pCommandBuffers = &buildCommand,
     });

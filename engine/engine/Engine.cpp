@@ -150,12 +150,16 @@ void Carrot::Engine::init() {
                                                                      // uses ImGui, so no pre-record: pass.prerecordable = false;
                                                                      builder.present(data.output);
                                                                  },
-                                                                 [](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
+                                                                 [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                                      ZoneScopedN("CPU RenderGraph present");
                                                                      auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                                                                      auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                                      frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
-                                                                     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+
+                                                                     {
+                                                                         std::lock_guard l { getGraphicsQueue().getMutexUnsafe() };
+                                                                         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+                                                                     }
 
                                                                      //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                                      //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
@@ -200,12 +204,16 @@ void Carrot::Engine::init() {
                                                // uses ImGui, so no pre-record: pass.prerecordable = false;
                                                builder.present(data.output);
                                            },
-                                           [](const Render::CompiledPass& pass, const Render::Context& frame, const Render::PassData::Present& data, vk::CommandBuffer& cmds) {
+                                           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Render::PassData::Present& data, vk::CommandBuffer& cmds) {
                                                ZoneScopedN("CPU RenderGraph present");
                                                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                                                auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
-                                               ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+
+                                               {
+                                                   std::lock_guard l { getGraphicsQueue().getMutexUnsafe() };
+                                                   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+                                               }
 
                                                //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
@@ -394,6 +402,7 @@ void Carrot::Engine::run() {
             std::uint32_t caughtUp = 0;
             while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
                 ticked = true;
+                GetTaskScheduler().scheduleMainLoop();
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
             }
@@ -421,7 +430,7 @@ void Carrot::Engine::run() {
 
     glfwHideWindow(window.getGLFWPointer());
 
-    getLogicalDevice().waitIdle();
+    WaitDeviceIdle();
 }
 
 void Carrot::Engine::stop() {
@@ -667,6 +676,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
         renderer.beginFrame(newRenderContext(imageIndex, getMainViewport()));
+        GetTaskScheduler().scheduleRendering();
         for(auto& v : viewports) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
             v.onFrame(renderContext);
@@ -719,7 +729,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
             waitForFrameTasks();
 
-            getGraphicsQueue().submit(submitInfo, *inFlightFences[currentFrame]);
+            GetVulkanDriver().submitGraphics(submitInfo, *inFlightFences[currentFrame]);
             vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
 
             vk::PresentInfoKHR presentInfo{
@@ -734,7 +744,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
             {
                 ZoneScopedN("PresentKHR");
-                DISCARD(vkDriver.getPresentQueue().presentKHR(&presentInfo));
+                vkDriver.getPresentQueue().presentKHR(presentInfo);
             }
         }
 
@@ -787,7 +797,7 @@ void Carrot::Engine::recreateSwapchain() {
 
     framebufferResized = false;
 
-    getLogicalDevice().waitIdle();
+    WaitDeviceIdle();
 
     std::size_t previousImageCount = getSwapchainImageCount();
     vkDriver.cleanupSwapchain();
@@ -828,15 +838,15 @@ vk::CommandPool& Carrot::Engine::getComputeCommandPool() {
     return vkDriver.getThreadComputeCommandPool();
 }
 
-vk::Queue& Carrot::Engine::getTransferQueue() {
+Carrot::Vulkan::SynchronizedQueue& Carrot::Engine::getTransferQueue() {
     return vkDriver.getTransferQueue();
 }
 
-vk::Queue& Carrot::Engine::getGraphicsQueue() {
+Carrot::Vulkan::SynchronizedQueue& Carrot::Engine::getGraphicsQueue() {
     return vkDriver.getGraphicsQueue();
 }
 
-vk::Queue& Carrot::Engine::getPresentQueue() {
+Carrot::Vulkan::SynchronizedQueue& Carrot::Engine::getPresentQueue() {
     return vkDriver.getPresentQueue();
 }
 
@@ -948,11 +958,11 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 
 void Carrot::Engine::createTracyContexts() {
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue(), getQueueFamilies().graphicsFamily.value())));
+        tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), getQueueFamilies().graphicsFamily.value())));
     }
 }
 
-vk::Queue& Carrot::Engine::getComputeQueue() {
+Carrot::Vulkan::SynchronizedQueue& Carrot::Engine::getComputeQueue() {
     return vkDriver.getComputeQueue();
 }
 

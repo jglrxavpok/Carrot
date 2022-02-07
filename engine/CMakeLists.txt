@@ -126,6 +126,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}task/TaskScheduler.cpp
 
         ${EngineRoot}utils/Profiling.cpp
+
+        ${EngineRoot}vulkan/SynchronizedQueue.cpp
         )
 
 set(VR_SOURCES

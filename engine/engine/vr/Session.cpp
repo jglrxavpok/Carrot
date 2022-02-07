@@ -294,7 +294,7 @@ namespace Carrot::VR {
 
 
             ZoneScopedN("Submit");
-            vr.getEngine().getGraphicsQueue().submit(vk::SubmitInfo {
+            GetVulkanDriver().submitGraphics(vk::SubmitInfo {
                     .commandBufferCount = 1,
                     .pCommandBuffers = &blitCommandBuffers[xrSwapchainIndex],
             }, *renderFences[xrSwapchainIndex]);

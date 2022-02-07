@@ -14,10 +14,13 @@
 #include <core/Macros.h>
 #include <core/async/Counter.h>
 #include <iostream>
+#include <core/tasks/Tasks.h>
 
 #ifdef __CLION_IDE_
 #include <experimental/coroutine>
 #endif
+
+// TODO: Add a way to debug coroutines that are suspended while holding a lock
 
 namespace Carrot::Async {
     template<typename Awaiter>
@@ -27,16 +30,11 @@ namespace Carrot::Async {
         { a.await_resume() } -> std::convertible_to<void>;
     };
 
+    static_assert(IsAwaiter<std::suspend_always>, "suspend_always must be considered an awaiter.");
+
     template<typename T>
     struct CoroutinePromiseType;
     
-    template<typename TaskAwaiter, typename T>
-    concept IsTaskAwaiter = requires(TaskAwaiter a, std::coroutine_handle<CoroutinePromiseType<T>> h) {
-        { a.await_ready() } -> std::convertible_to<bool>;
-        { a.await_suspend(h) };
-        { a.await_resume() } -> std::convertible_to<void>;
-    };
-
     template<typename Value = void>
     class Task;
 
@@ -126,7 +124,7 @@ namespace Carrot::Async {
     };
 
     struct BasePromise {
-        Counter* waitOnCounter = nullptr;
+        const Counter* waitOnCounter = nullptr;
     };
 
     template<typename Value>
@@ -163,6 +161,7 @@ namespace Carrot::Async {
     template<typename Value>
     struct CoroutinePromiseType: public PromiseTypeReturn<Value> {
         std::coroutine_handle<> awaiting;
+        TaskLane wantedLane = TaskLane::Undefined;
 
         Task<Value> get_return_object() {
             return Task<Value>(std::coroutine_handle<CoroutinePromiseType<Value>>::from_promise(*this));
@@ -198,8 +197,8 @@ namespace Carrot::Async {
         }
 
         template<typename Awaiter>
-        Awaiter& await_transform(Awaiter& awaiter) requires IsAwaiter<Awaiter> {
-            return awaiter;
+        Awaiter&& await_transform(Awaiter&& awaiter) requires IsAwaiter<Awaiter> {
+            return std::forward<Awaiter&&>(awaiter);
         }
 
         auto await_transform(Counter& counter)
@@ -233,6 +232,61 @@ namespace Carrot::Async {
             return task_awaitable{*this, counter};
         }
 
+        /// Wait for a counter and ask to be rescheduled on a different lane
+        auto await_transform(CounterLanePair& counterLanePair) {
+            struct task_awaitable {
+                CoroutinePromiseType<Value>& promise;
+                TaskLane lane;
+                Counter& counter;
+
+                // check if this task already has value computed
+                bool await_ready() {
+                    return false;
+                }
+
+                // h - is a handle to coroutine that calls co_await
+                // store coroutine handle to be resumed after computing task value
+                void await_suspend(std::coroutine_handle<> h) {
+                    counter.onCoroutineSuspend(h);
+                    promise.waitOnCounter = &counter;
+                    promise.lane = lane;
+                }
+
+                // when ready return value to a consumer
+                auto await_resume() {
+                    return;
+                }
+            };
+
+            return task_awaitable{*this, counterLanePair.lane, counterLanePair.counter};
+        }
+
+        /// Ask to be rescheduled on a different lane
+        auto await_transform(TaskLane gotoLane) {
+            struct task_awaitable {
+                CoroutinePromiseType<Value>& promise;
+                TaskLane lane;
+
+                // check if this task already has value computed
+                bool await_ready() {
+                    return false;
+                }
+
+                // h - is a handle to coroutine that calls co_await
+                // store coroutine handle to be resumed after computing task value
+                void await_suspend(std::coroutine_handle<> h) {
+                    promise.lane = lane;
+                }
+
+                // when ready return value to a consumer
+                auto await_resume() {
+                    return;
+                }
+            };
+
+            return task_awaitable{*this, gotoLane};
+        }
+
         // also we can await other task<T>
         template<typename U>
         auto await_transform(const Task<U>& task)
@@ -260,6 +314,7 @@ namespace Carrot::Async {
                 void await_suspend(std::coroutine_handle<> h)
                 {
                     handle.promise().awaiting = h;
+                    handle.resume();
                 }
 
                 // when ready return value to a consumer
@@ -329,15 +384,22 @@ namespace Carrot::Async {
             return !!coroutineHandle;
         }
 
-        /// Resumes the coroutine if possible. If the coroutine is waiting for a counter, this will return 'false', and not resume the coroutine
-        bool operator()() {
-            return resume();
+        TaskLane wantedLane() const {
+            return coroutineHandle.promise().wantedLane;
         }
 
         /// Resumes the coroutine if possible. If the coroutine is waiting for a counter, this will return 'false', and not resume the coroutine
-        bool resume() {
+        bool operator()(TaskLane currentLane = TaskLane::Undefined) {
+            return resume(currentLane);
+        }
+
+        /// Resumes the coroutine if possible. If the coroutine is waiting for a counter, this will return 'false', and not resume the coroutine
+        bool resume(TaskLane currentLane = TaskLane::Undefined) {
             verify(coroutineHandle, "Must have an handle");
             if(coroutineHandle.promise().waitOnCounter && !coroutineHandle.promise().waitOnCounter->isIdle()) {
+                return false;
+            }
+            if(coroutineHandle.promise().wantedLane != TaskLane::Undefined && currentLane != coroutineHandle.promise().wantedLane) {
                 return false;
             }
             coroutineHandle();

@@ -20,12 +20,12 @@ namespace Carrot::ECS {
 
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
-            if (modelComp.model && modelComp.isTransparent == isTransparent) {
+            if (modelComp.asyncModel.isReady() && modelComp.isTransparent == isTransparent) {
                 Carrot::InstanceData instanceData;
                 instanceData.transform = transform.toTransformMatrix();
                 instanceData.uuid = entity.getID();
                 Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
-                modelComp.model->renderStatic(renderContext, instanceData, pass);
+                modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
             }
         });
     }

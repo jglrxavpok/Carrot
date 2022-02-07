@@ -66,4 +66,11 @@ namespace Carrot::Async {
         toContinue = h;
     }
 
+    CounterLanePair Counter::resumeOnLane(const TaskLane& lane) {
+        return {
+            .counter = *this,
+            .lane = lane,
+        };
+    }
+
 }
