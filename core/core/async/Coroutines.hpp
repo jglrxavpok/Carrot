@@ -5,6 +5,7 @@
 #pragma once
 
 #include <coroutine>
+#include <functional>
 #include <vector>
 #include <list>
 #include <concepts>
@@ -420,6 +421,16 @@ namespace Carrot::Async {
         explicit Task(std::coroutine_handle<promise_type> h): coroutineHandle(h) {}
 
         friend promise_type;
+    };
+
+    template<typename ReturnType>
+    inline Task<ReturnType> AsTask(std::function<ReturnType()> function) {
+        if constexpr(std::is_same_v<void, ReturnType>) {
+            function();
+            co_return;
+        } else {
+            co_return function();
+        }
     };
 
 }

@@ -12,6 +12,9 @@
 #include "core/io/FileFormats.h"
 #include "engine/utils/Profiling.h"
 #include "core/async/Executors.h"
+#include "core/async/Coroutines.hpp"
+#include "engine/task/TaskScheduler.h"
+#include "engine/Engine.h"
 
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
@@ -356,21 +359,53 @@ void Carrot::Image::setDebugNames(const std::string& name) {
 }
 
 std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier) {
-    int w, h, n;
-    int firstWidth, firstHeight;
-    stbi_uc* pixelsNX = stbi_load(textureSupplier(Skybox::Direction::NegativeX).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    firstWidth = w;
-    firstHeight = h;
-    stbi_uc* pixelsNY = stbi_load(textureSupplier(Skybox::Direction::NegativeY).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    assert(w == firstWidth && h == firstHeight);
-    stbi_uc* pixelsNZ = stbi_load(textureSupplier(Skybox::Direction::NegativeZ).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    assert(w == firstWidth && h == firstHeight);
-    stbi_uc* pixelsPX = stbi_load(textureSupplier(Skybox::Direction::PositiveX).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    assert(w == firstWidth && h == firstHeight);
-    stbi_uc* pixelsPY = stbi_load(textureSupplier(Skybox::Direction::PositiveY).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    assert(w == firstWidth && h == firstHeight);
-    stbi_uc* pixelsPZ = stbi_load(textureSupplier(Skybox::Direction::PositiveZ).c_str(), &w, &h, &n, STBI_rgb_alpha);
-    assert(w == firstWidth && h == firstHeight);
+    std::array<stbi_uc*, 6> allPixels {
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+    };
+    std::array<glm::ivec2, 6> allSizes {
+            glm::ivec2 {-1,-1},
+            glm::ivec2 {-1,-1},
+            glm::ivec2 {-1,-1},
+            glm::ivec2 {-1,-1},
+            glm::ivec2 {-1,-1},
+            glm::ivec2 {-1,-1},
+    };
+
+    Async::Counter waitForPixelReads;
+    for(Skybox::Direction direction : { Skybox::Direction::NegativeX, Skybox::Direction::PositiveX, Skybox::Direction::NegativeY, Skybox::Direction::PositiveY, Skybox::Direction::NegativeZ, Skybox::Direction::PositiveZ }) {
+        std::string textureName = textureSupplier(direction);
+        Carrot::TaskDescription task {
+                .name = Carrot::sprintf("Read cubemap face %s", textureName.c_str()),
+                .task = Async::AsTask<void>([direction, &allSizes, &allPixels, &textureSupplier]() -> void {
+                    auto index = static_cast<std::size_t>(direction);
+                    int w, h, n;
+                    stbi_uc* pixels = stbi_load(textureSupplier(direction).c_str(), &w, &h, &n, STBI_rgb_alpha);
+                    allSizes[index] = { w, h };
+                    allPixels[index] = pixels;
+                }),
+                .joiner = &waitForPixelReads,
+        };
+        GetTaskScheduler().schedule(std::move(task));
+    }
+    waitForPixelReads.sleepWait();
+
+    int firstWidth = allSizes[0].x;
+    int firstHeight = allSizes[0].y;
+    verify(allPixels[0] != nullptr, "Failed to load for direction 0");
+    for (int i = 1; i < 6; i++) {
+        int w = allSizes[i].x;
+        int h = allSizes[i].y;
+        verify(w == firstWidth && h == firstHeight, Carrot::sprintf("All face dimensions must match! Here expected %d x %d, got %d x %d", firstWidth, firstHeight, w, h));
+        verify(allPixels[i] != nullptr, Carrot::sprintf("Failed to load for direction %d", i));
+    }
+
+    int w = firstWidth;
+    int h = firstHeight;
 
     vk::Extent3D extent {
         .width = static_cast<uint32_t>(w),
@@ -387,19 +422,19 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
                                     vk::ImageType::e2D,
                                     6);
 
-    image->stageUpload(std::span<uint8_t>{pixelsPX, imageSize}, 0);
-    image->stageUpload(std::span<uint8_t>{pixelsNX, imageSize}, 1);
-    image->stageUpload(std::span<uint8_t>{pixelsPY, imageSize}, 2);
-    image->stageUpload(std::span<uint8_t>{pixelsNY, imageSize}, 3);
-    image->stageUpload(std::span<uint8_t>{pixelsPZ, imageSize}, 4);
-    image->stageUpload(std::span<uint8_t>{pixelsNZ, imageSize}, 5);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveX)], imageSize}, 0);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeX)], imageSize}, 1);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveY)], imageSize}, 2);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeY)], imageSize}, 3);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveX)], imageSize}, 4);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeZ)], imageSize}, 5);
 
-    stbi_image_free(pixelsPZ);
-    stbi_image_free(pixelsPY);
-    stbi_image_free(pixelsPX);
-    stbi_image_free(pixelsNZ);
-    stbi_image_free(pixelsNY);
-    stbi_image_free(pixelsNX);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveX)]);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeX)]);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveY)]);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeY)]);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveZ)]);
+    stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeZ)]);
 
     return image;
 }
