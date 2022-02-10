@@ -21,6 +21,7 @@
 #include "backends/imgui_impl_glfw.h"
 #include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
+#include <core/async/ParallelMap.hpp>
 
 namespace sol {
     class state;
@@ -49,6 +50,18 @@ namespace std {
             hash = key.swapchainIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
+            return hash;
+        }
+    };
+
+    template<>
+    struct hash<std::pair<std::string, std::uint64_t>> {
+        std::size_t operator()(const std::pair<std::string, std::uint64_t>& p) const {
+            const std::size_t prime = 31;
+            std::hash<std::string> stringHasher;
+
+            std::size_t hash = stringHasher(p.first);
+            hash = p.second + hash * prime;
             return hash;
         }
     };
@@ -186,15 +199,12 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
 
-        std::map<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
-        std::map<std::string, Render::Texture::Ref> textures{};
+        Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
+        Async::ParallelMap<std::string, Render::Texture::Ref> textures{};
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;
 
-        Async::ReadWriteLock modelsMutex;
-        Async::ReadWriteLock texturesMutex;
-        Async::ReadWriteLock pipelinesMutex;
-        std::map<std::string, std::shared_ptr<Model>> models{};
+        Async::ParallelMap<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 

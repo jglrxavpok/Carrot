@@ -61,53 +61,18 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassS
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset) {
+    ZoneScopedN("Loading pipeline");
+    ZoneText(name.c_str(), name.size());
     auto key = std::make_pair(name, instanceOffset);
-
-    {
-        Async::LockGuard l{ pipelinesMutex.read() };
-        auto it = pipelines.find(key);
-        if(it != pipelines.end()) {
-            return it->second;
-        }
-    }
-
-    {
-        Async::LockGuard l{ pipelinesMutex.write() };
-
-        // another thread may have written the value
-        auto it = pipelines.find(key);
-        if(it != pipelines.end()) {
-            return it->second;
-        }
-
-        ZoneScopedN("Loading pipeline");
-        ZoneText(name.c_str(), name.size());
-        auto pipeline = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
-        pipelines[key] = pipeline;
-        return pipeline;
-    }
+    return pipelines.getOrCompute(key, [&]() {
+        return std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+    });
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFullPath(const std::string& textureName) {
-    {
-        Async::LockGuard l{ texturesMutex.read() };
-        auto it = textures.find(textureName);
-        if(it != textures.end()) {
-            return it->second;
-        }
-    }
-
-    {
-        Async::LockGuard l{ texturesMutex.write() };
-
-        // another thread may have written the value
-        auto it = textures.find(textureName);
-        if(it != textures.end()) {
-            return it->second;
-        }
-
-        ZoneScopedN("Loading texture");
-        ZoneText(textureName.c_str(), textureName.size());
+    ZoneScopedN("Loading texture");
+    ZoneText(textureName.c_str(), textureName.size());
+    return textures.getOrCompute(textureName, [&]() {
         Carrot::IO::Resource from;
         try {
             from = textureName;
@@ -116,10 +81,9 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
             // in case file could not be opened
             from = "resources/textures/default.png";
         }
-        auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
-        textures[textureName] = texture;
-        return texture;
-    }
+
+        return std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+    });
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTextureFromResource(const Carrot::IO::Resource& from) {
@@ -127,27 +91,9 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
         const auto& textureName = from.getName();
         ZoneScopedN("Loading texture");
         ZoneText(textureName.c_str(), textureName.size());
-
-        {
-            Async::LockGuard l{ texturesMutex.read() };
-            auto it = textures.find(textureName);
-            if(it != textures.end()) {
-                return it->second;
-            }
-        }
-
-        {
-            Async::LockGuard l{ texturesMutex.write() };
-
-            auto it = textures.find(textureName);
-            if(it != textures.end()) {
-                return it->second;
-            }
-
-            auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
-            textures[textureName] = texture;
-            return texture;
-        }
+        return textures.getOrCompute(textureName, [&]() {
+            return std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+        });
     } else {
         auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
         return texture;
@@ -159,24 +105,9 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
 }
 
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
-    {
-        Async::LockGuard l{ modelsMutex.read() };
-        auto it = models.find(modelPath);
-        if(it != models.end()) {
-            return it->second;
-        }
-    }
-
-    {
-        Async::LockGuard l{ modelsMutex.write() };
-
-        auto it = models.find(modelPath);
-        if(it != models.end()) {
-            return it->second;
-        }
-
-        ZoneScopedN("Loading model");
-        ZoneText(modelPath.c_str(), modelPath.size());
+    ZoneScopedN("Loading model");
+    ZoneText(modelPath.c_str(), modelPath.size());
+    return models.getOrCompute(modelPath, [&]() {
 
         Carrot::IO::Resource from;
         try {
@@ -185,15 +116,13 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const st
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
         }
-        auto model = std::make_shared<Carrot::Model>(getEngine(), std::move(from));
-        models[modelPath] = model;
-        return model;
-    }
+        return std::make_shared<Carrot::Model>(getEngine(), std::move(from));
+    });
 }
 
 void Carrot::VulkanRenderer::recreateDescriptorPools(size_t frameCount) {
-    for(const auto& [name, pipeline] : pipelines) {
-        pipeline->recreateDescriptorPool(frameCount);
+    for(const auto& [nameHash, pipelinePtrPtr] : pipelines.snapshot()) {
+        (*pipelinePtrPtr)->recreateDescriptorPool(frameCount);
     }
 }
 
@@ -294,8 +223,8 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
     lighting.onSwapchainImageCountChange(newCount);
-    for(const auto& [name, pipe]: pipelines) {
-        pipe->onSwapchainImageCountChange(newCount);
+    for(const auto& [name, pipePtrPtr]: pipelines.snapshot()) {
+        (*pipePtrPtr)->onSwapchainImageCountChange(newCount);
     }
 }
 
@@ -304,15 +233,15 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(newWidth, newHeight);
     lighting.onSwapchainSizeChange(newWidth, newHeight);
-    for(const auto& [name, pipe]: pipelines) {
-        pipe->onSwapchainSizeChange(newWidth, newHeight);
+    for(const auto& [name, pipePtrPtr]: pipelines.snapshot()) {
+        (*pipePtrPtr)->onSwapchainSizeChange(newWidth, newHeight);
     }
 }
 
 // TODO: thread safety
 void Carrot::VulkanRenderer::preFrame() {
-    for(auto& [name, pipeline] : pipelines) {
-        pipeline->checkForReloadableShaders();
+    for(auto& [name, pipePtrPtr] : pipelines.snapshot()) {
+        (*pipePtrPtr)->checkForReloadableShaders();
     }
 
     if(beforeFrameCommands.empty())
