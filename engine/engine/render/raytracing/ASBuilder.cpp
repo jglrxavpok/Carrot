@@ -11,10 +11,40 @@
 #include "RayTracer.h"
 
 namespace Carrot {
-    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const Carrot::Mesh& mesh):
+    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes):
     WeakPoolHandle(index, std::move(destructor)),
-    mesh(mesh) {
-        TODO // prepare geometries
+    meshes(meshes) {
+        geometries.reserve(meshes.size());
+        buildRanges.reserve(meshes.size());
+
+        for(auto& meshPtr : meshes) {
+            verify(meshPtr->getSizeOfSingleVertex() == sizeof(Carrot::Vertex), "Only Carrot::Vertex structure is supported for the moment");
+            // TODO: support SkinnedVertex format
+
+            auto& device = GetRenderer().getLogicalDevice();
+            auto vertexIndexAddress = device.getBufferAddress({ .buffer = meshPtr->getBackingBuffer().getVulkanBuffer() });
+            auto primitiveCount = meshPtr->getIndexCount() / 3; // all triangles
+
+            auto& geometry = geometries.emplace_back();
+            geometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+            geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
+                    // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors) TODO: pass said attributes
+                    .vertexFormat = vk::Format::eR32G32B32Sfloat,
+                    .vertexData = vertexIndexAddress + meshPtr->getVertexStartOffset(),
+                    .vertexStride = sizeof(Carrot::Vertex),
+                    .maxVertex = static_cast<uint32_t>(meshPtr->getVertexCount()),
+                    .indexType = vk::IndexType::eUint32,
+                    .indexData = vertexIndexAddress + meshPtr->getIndexStartOffset(),
+                    .transformData = {},
+            };
+
+            buildRanges.emplace_back(vk::AccelerationStructureBuildRangeInfoKHR {
+                    .primitiveCount = static_cast<uint32_t>(primitiveCount),
+                    .primitiveOffset = 0,
+                    .firstVertex = 0,
+                    .transformOffset = 0,
+            });
+        }
     }
 
     void BLASHandle::update() {
@@ -58,15 +88,18 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
     enabled = GetCapabilities().supportsRaytracing;
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addStaticMesh(const Carrot::Mesh& mesh) {
+std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes) {
     if(!enabled)
         return nullptr;
-    return staticGeometries.create(mesh);
+    return staticGeometries.create(meshes);
 }
 
 void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     if(!enabled)
         return;
+    if(&renderContext.viewport != &GetEngine().getMainViewport()) {
+        return;
+    }
     auto purge = [](auto& pool) {
         pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto a) { return a.second.expired(); }), pool.end());
     };
@@ -82,9 +115,32 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
-    buildBottomLevels(toBuild, false);
-    for(auto& v : toBuild) {
-        v->built = true;
+    for(auto& [slot, valuePtr] : instances) {
+        if(auto value = valuePtr.lock()) {
+            if(value->enabled) {
+                value->update();
+            }
+        }
+    }
+
+    if(!toBuild.empty()) {
+        buildBottomLevels(toBuild, false);
+        for(auto& v : toBuild) {
+            v->built = true;
+        }
+
+        buildTopLevelAS(false, true);
+        framesBeforeRebuildingTLAS = 10;
+    } else {
+        if(framesBeforeRebuildingTLAS == 0 || !tlas) {
+            buildTopLevelAS(false, true);
+            framesBeforeRebuildingTLAS = 10;
+        } else {
+            if(framesBeforeRebuildingTLAS > 0) {
+                framesBeforeRebuildingTLAS--;
+            }
+            buildTopLevelAS(true, true);
+        }
     }
 }
 
@@ -162,17 +218,17 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
         });
         buildInfo[index].scratchData.deviceAddress = scratchAddress;
 
-        std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges{toBuild[index]->buildRanges.size()};
+        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> pBuildRanges{toBuild[index]->buildRanges.size()};
         for(size_t i = 0; i < toBuild[index]->buildRanges.size(); i++) {
-            pBuildRanges[i] = &toBuild[index]->buildRanges[i];
+            pBuildRanges[i] = toBuild[index]->buildRanges[i];
         }
 
 #ifdef AFTERMATH_ENABLE
         cmds.setCheckpointNV("Before AS build");
 #endif
-        assert(pBuildRanges.size() == 1);
+       // assert(pBuildRanges.size() == 1);
         // build AS
-        cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges);
+        cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
 #ifdef AFTERMATH_ENABLE
         cmds.setCheckpointNV("After AS build");
 #endif
@@ -276,9 +332,17 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
         ZoneScopedN("Convert to vulkan instances");
         for(const auto& [slot, v] : instances) {
             if(auto instance = v.lock()) {
-                vkInstances.push_back(instance->instance);
+                if(instance->enabled) {
+                    vkInstances.push_back(instance->instance);
+                }
             }
         }
+        vkInstances.shrink_to_fit();
+    }
+
+    if(vkInstances.empty()) {
+        tlas = nullptr;
+        return;
     }
 
     buildCommand.begin(vk::CommandBufferBeginInfo {
@@ -288,7 +352,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     if(!instancesBuffer || lastInstanceCount < vkInstances.size()) {
         instancesBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                    vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
-                                                   vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst,
+                                                   vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
 
@@ -324,7 +388,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
             .geometryCount = 1,
             .pGeometries = &topASGeometry,
     };
-    size_t count = instances.size();
+    size_t count = vkInstances.size();
     vk::AccelerationStructureBuildSizesInfoKHR sizeInfo = renderer.getLogicalDevice().getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, count);
 
     if( ! update) {
@@ -339,7 +403,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) {
         scratchBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                  sizeInfo.buildScratchSize,
-                                                 vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                                 vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
                                                  vk::MemoryPropertyFlagBits::eDeviceLocal
         );
         lastScratchSize = sizeInfo.buildScratchSize;
@@ -354,7 +418,7 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
 
     // one build offset per instance
     vk::AccelerationStructureBuildRangeInfoKHR buildOffsetInfo {
-        .primitiveCount = static_cast<uint32_t>(instances.size())
+        .primitiveCount = static_cast<uint32_t>(vkInstances.size())
     };
 
     bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
@@ -518,4 +582,9 @@ void Carrot::ASBuilder::updateTopLevelAS() {
     if(!enabled)
         return;
     buildTopLevelAS(true, false);
+}
+
+std::unique_ptr<Carrot::AccelerationStructure>& Carrot::ASBuilder::getTopLevelAS() {
+    verify(GetCapabilities().supportsRaytracing, "Raytracing is not supported");
+    return tlas;
 }

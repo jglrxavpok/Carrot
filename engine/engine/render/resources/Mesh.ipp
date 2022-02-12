@@ -21,7 +21,7 @@ Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& 
     vertexCount = vertices.size();
     vertexAndIndexBuffer = std::make_unique<Carrot::Buffer>(driver,
                                                             vertexStartOffset + sizeof(VertexType) * vertices.size(),
-                                                            vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                            vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                             vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                             families);
 

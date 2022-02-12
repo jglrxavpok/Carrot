@@ -420,6 +420,9 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
                     .accelerationStructure = GetCapabilities().supportsRaytracing,
             },
+            vk::PhysicalDeviceSynchronization2FeaturesKHR  {
+                    .synchronization2 = true,
+            },
             vk::PhysicalDeviceVulkan12Features {
                     .shaderSampledImageArrayNonUniformIndexing  = true,
                     .shaderStorageBufferArrayNonUniformIndexing = true,

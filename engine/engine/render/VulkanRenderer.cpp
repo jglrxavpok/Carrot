@@ -16,6 +16,7 @@
 #include "core/io/Logging.hpp"
 #include "core/io/IO.h"
 #include "engine/render/DrawData.h"
+#include "engine/render/resources/Buffer.h"
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -300,6 +301,38 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
     bindTexture(pipeline, frame, textureToBind, setID, bindingID, driver.getLinearSampler(), aspect, viewType, arrayIndex);
 }
 
+void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, Carrot::AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
+    if(boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == as.getVulkanAS()) {
+        return;
+    }
+    boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = as.getVulkanAS();
+    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
+
+    vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
+            .accelerationStructureCount = 1,
+            .pAccelerationStructures = &as.getVulkanAS(),
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eAccelerationStructureKHR;
+
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .pNext = &asInfo,
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
 void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
     ZoneScoped;
     verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
@@ -401,7 +434,7 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
-
+    asBuilder->onFrame(renderContext);
 }
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {

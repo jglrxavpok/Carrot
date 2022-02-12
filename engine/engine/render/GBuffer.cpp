@@ -3,6 +3,7 @@
 //
 
 #include "GBuffer.h"
+#include "engine/render/raytracing/ASBuilder.h"
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
 
@@ -133,6 +134,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
 
                 renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 8);
                 renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 9);
+
+                auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
+                if(tlas) {
+                    renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 10);
+                }
 
                 resolvePipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

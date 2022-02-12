@@ -32,7 +32,7 @@ namespace Carrot {
 
     class BLASHandle: public WeakPoolHandle {
     public:
-        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const Carrot::Mesh& mesh);
+        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes);
 
         bool isBuilt() const { return built; }
         void update();
@@ -42,7 +42,7 @@ namespace Carrot {
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
         std::unique_ptr<AccelerationStructure> as{};
-        const Carrot::Mesh& mesh;
+        std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
         bool built = false;
 
         friend class ASBuilder;
@@ -62,6 +62,7 @@ namespace Carrot {
         vk::GeometryInstanceFlagsKHR flags = vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable | vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable;
         std::uint8_t mask = 0xFF;
         std::uint32_t customIndex = 0;
+        bool enabled = true;
 
     private:
         glm::mat4 oldTransform{1.0f};
@@ -74,17 +75,15 @@ namespace Carrot {
         friend class ASBuilder;
     };
 
-    /// Helpers build Acceleration Structures for raytracing
+    /// Helpers to build Acceleration Structures for raytracing
     // TODO: rename to RaytracingScene
     class ASBuilder {
     public:
         explicit ASBuilder(VulkanRenderer& renderer);
 
-        // TODO: mesh registration
-
         std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
 
-        std::shared_ptr<BLASHandle> addStaticMesh(const Carrot::Mesh& mesh);
+        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes);
         void buildTopLevelAS(bool update, bool waitForCompletion = false);
 
         void updateTopLevelAS();
@@ -92,7 +91,7 @@ namespace Carrot {
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
 
-        // TODO TLAS& getTopLevelAS();
+        std::unique_ptr<AccelerationStructure>& getTopLevelAS();
 
         void onFrame(const Carrot::Render::Context& renderContext);
 
@@ -117,6 +116,8 @@ namespace Carrot {
         WeakPool<InstanceHandle> instances;
 
         std::unique_ptr<AccelerationStructure> tlas;
+
+        std::uint8_t framesBeforeRebuildingTLAS = 0;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;

@@ -20,12 +20,20 @@ namespace Carrot::ECS {
 
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
-            if (modelComp.asyncModel.isReady() && modelComp.isTransparent == isTransparent) {
-                Carrot::InstanceData instanceData;
-                instanceData.transform = transform.toTransformMatrix();
-                instanceData.uuid = entity.getID();
-                Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
-                modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
+            if(modelComp.isTransparent == isTransparent) {
+                modelComp.loadTLASIfPossible();
+                if (modelComp.asyncModel.isReady()) {
+                    Carrot::InstanceData instanceData;
+                    instanceData.transform = transform.toTransformMatrix();
+                    instanceData.uuid = entity.getID();
+                    Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
+                    modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
+
+                    if(modelComp.tlas) {
+                        modelComp.tlas->transform = instanceData.transform;
+                        modelComp.tlas->customIndex = 0; // TODO
+                    }
+                }
             }
         });
     }
@@ -42,5 +50,17 @@ namespace Carrot::ECS {
 
     std::unique_ptr<System> ModelRenderSystem::duplicate(World& newOwner) const {
         return std::make_unique<ModelRenderSystem>(newOwner);
+    }
+
+    void ModelRenderSystem::reload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
+            modelComp.enableTLAS();
+        });
+    }
+
+    void ModelRenderSystem::unload() {
+        forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
+            modelComp.disableTLAS();
+        });
     }
 }

@@ -20,6 +20,10 @@ namespace Carrot::ECS {
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 
+        void reload() override;
+
+        void unload() override;
+
     private:
         std::unordered_map<Carrot::Model*, std::vector<Carrot::ECS::Entity>> opaqueEntities;
         std::unordered_map<Carrot::Model*, std::vector<Carrot::ECS::Entity>> transparentEntities;

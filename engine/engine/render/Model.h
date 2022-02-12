@@ -23,6 +23,8 @@ namespace Carrot {
     class Material;
     class Buffer;
 
+    class BLASHandle;
+
     namespace Render {
         class Packet;
     }
@@ -48,6 +50,9 @@ namespace Carrot {
 
         Carrot::Buffer& getAnimationDataBuffer();
 
+        std::shared_ptr<BLASHandle> getStaticBLAS();
+        std::shared_ptr<BLASHandle> getSkinnedBLAS();
+
     public:
         void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
         void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
@@ -62,6 +67,9 @@ namespace Carrot {
         std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> staticMeshes{};
         std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
+
+        std::shared_ptr<BLASHandle> staticBLAS;
+        std::shared_ptr<BLASHandle> skinnedBLAS;
 
         // TODO: move animations somewhere else?
         std::map<std::string, Animation*> animations{};

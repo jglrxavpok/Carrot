@@ -6,12 +6,18 @@
 #include "engine/ecs/components/Component.h"
 #include "engine/render/Model.h"
 #include "engine/render/AsyncResource.hpp"
+#include "engine/render/raytracing/ASBuilder.h"
+
+namespace Carrot {
+    class InstanceHandle; // Raytracing Top Level Acceleration Structure
+}
 
 namespace Carrot::ECS {
     struct ModelComponent: public IdentifiableComponent<ModelComponent> {
         AsyncModelResource asyncModel;
         glm::vec4 color = glm::vec4{1.0f};
         bool isTransparent = false;
+        std::shared_ptr<InstanceHandle> tlas = nullptr;
 
         explicit ModelComponent(Entity entity): IdentifiableComponent<ModelComponent>(std::move(entity)) {}
 
@@ -34,8 +40,20 @@ namespace Carrot::ECS {
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
 
+        void setFile(const std::filesystem::path& path);
+
     private:
         static ModelComponent* inInspector;
+
+    private:
+        void loadTLASIfPossible();
+        void enableTLAS();
+        void disableTLAS();
+
+    private:
+        bool tlasIsWaitingForModel = true;
+
+        friend class ModelRenderSystem;
     };
 }
 

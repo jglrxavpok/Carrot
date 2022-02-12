@@ -18,6 +18,7 @@
 #include <engine/render/DrawData.h>
 #include <engine/render/RenderPacket.h>
 #include <engine/utils/Profiling.h>
+#include "engine/render/raytracing/ASBuilder.h"
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
@@ -105,6 +106,19 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
             skinnedMeshes[material->getSlot()].push_back(loadedMesh);
         } else {
             staticMeshes[material->getSlot()].push_back(loadedMesh);
+        }
+    }
+
+    if(GetCapabilities().supportsRaytracing) {
+        auto& builder = GetRenderer().getASBuilder();
+        auto staticMeshesList = getStaticMeshes();
+        if(!staticMeshesList.empty()) {
+            staticBLAS = builder.addBottomLevel(staticMeshesList);
+        }
+
+        auto skinnedMeshesList = getSkinnedMeshes();
+        if(!skinnedMeshesList.empty()) {
+            skinnedBLAS = builder.addBottomLevel(skinnedMeshesList);
         }
     }
 
@@ -509,3 +523,10 @@ Carrot::Buffer& Carrot::Model::getAnimationDataBuffer() {
     return *animationData;
 }
 
+std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getStaticBLAS() {
+    return staticBLAS;
+}
+
+std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
+    return skinnedBLAS;
+}

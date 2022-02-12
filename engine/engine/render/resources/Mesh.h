@@ -20,6 +20,7 @@ namespace Carrot {
         void draw(const vk::CommandBuffer& buffer, uint32_t instanceCount = 1) const;
         void indirectDraw(const vk::CommandBuffer& buffer, const Carrot::Buffer& indirectDraw, uint32_t drawCount) const;
 
+        std::size_t getSizeOfSingleVertex() const;
         std::uint64_t getVertexCount() const;
         std::size_t getVertexSize() const;
         std::uint64_t getVertexStartOffset() const;

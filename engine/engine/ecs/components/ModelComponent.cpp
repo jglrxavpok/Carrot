@@ -23,7 +23,7 @@ namespace Carrot::ECS {
 
             if(modelData.HasMember("modelPath")) {
                 std::string modelPath = modelData["modelPath"].GetString();
-                asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(modelPath)));
+                setFile(modelPath);
             } else {
                 TODO // cannot load non-file models at the moment
             }
@@ -61,7 +61,7 @@ namespace Carrot::ECS {
         }
         std::string path = asyncModel->getOriginatingResource().getName();
         if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(path)));
+            setFile(path);
             modified = true;
         }
 
@@ -75,7 +75,7 @@ namespace Carrot::ECS {
 
                 std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
-                    asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(Carrot::toString(fsPath.u8string()))));
+                    setFile(fsPath);
                     inInspector = nullptr;
                     modified = true;
                 }
@@ -88,6 +88,36 @@ namespace Carrot::ECS {
         if(ImGui::ColorPicker4("Model color", colorArr)) {
             color = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
             modified = true;
+        }
+    }
+
+    void ModelComponent::loadTLASIfPossible() {
+        if(!GetCapabilities().supportsRaytracing) {
+            return;
+        }
+        if(tlasIsWaitingForModel && asyncModel.isReady()) {
+            tlasIsWaitingForModel = false;
+            tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
+            tlas->enabled = true;
+        }
+    }
+
+    void ModelComponent::setFile(const std::filesystem::path& path) {
+        asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(Carrot::toString(path.u8string()))));
+        if(GetCapabilities().supportsRaytracing) {
+            tlasIsWaitingForModel = true;
+        }
+    }
+
+    void ModelComponent::enableTLAS() {
+        if(tlas) {
+            tlas->enabled = true;
+        }
+    }
+
+    void ModelComponent::disableTLAS() {
+        if(tlas) {
+            tlas->enabled = false;
         }
     }
 }

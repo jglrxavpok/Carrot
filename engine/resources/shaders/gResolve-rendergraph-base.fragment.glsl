@@ -83,7 +83,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
         continue;
 
         // is this point in shadow?
-        float shadowPercent = 1.0f;
+        float shadowPercent = 0.0f;
 
         if (!computeShadows) {
             shadowPercent = 0.0f;
@@ -95,7 +95,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
                 break;
 
                 case DIRECTIONAL_LIGHT_TYPE:
-                L = -light.direction;
+                L = light.direction;
                 break;
 
                 case SPOT_LIGHT_TYPE:
@@ -105,17 +105,21 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
 
             #ifdef HARDWARE_SUPPORTS_RAY_TRACING
             // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
-            float lightDistance = 50.0f;// TODO: compute this value properly
+            float lightDistance = 5000.0f;// TODO: compute this value properly
+
+            if(light.type != DIRECTIONAL_LIGHT_TYPE) {
+                lightDistance = min(lightDistance, length(L));
+            }
 
             // Ray Query for shadow
             vec3  origin    = worldPos;
-            vec3  direction = L;// vector to light
-            float tMin      = 0.01f;
+            vec3  direction = normalize(L);// vector to light
+            float tMin      = 0.001f;
             float tMax      = lightDistance;
 
             // Initializes a ray query object but does not start traversal
             rayQueryEXT rayQuery;
-            rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+            rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullBackFacingTrianglesEXT , 0xFF, origin, tMin, direction, tMax);
 
             // Start traversal: return false if traversal is complete
             while(rayQueryProceedEXT(rayQuery)) {}
@@ -155,7 +159,7 @@ void main() {
     vec4 outColorWorld;
 
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
-    vec3 worldPos = (cbo.inverseView * texture(sampler2D(viewPos, linearSampler), uv)).xyz;
+    vec3 worldPos = (cbo.inverseView * vec4(texture(sampler2D(viewPos, linearSampler), uv).xyz, 1.0)).xyz;
     vec3 normal = normalize((cbo.inverseView * vec4(texture(sampler2D(viewNormals, linearSampler), uv).xyz, 0.0)).xyz);
     vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
@@ -167,7 +171,7 @@ void main() {
         } else {
             outColorWorld = fragmentColor;
         }
-        outColorWorld.rgb *= calculateLighting(worldPos, normal, false);
+        outColorWorld.rgb *= calculateLighting(worldPos, normal, true);
     } else {
         outColorWorld = vec4(skyboxRGB, 1.0);
     }

@@ -70,6 +70,7 @@ namespace std {
 namespace Carrot {
     class GBuffer;
     class ASBuilder;
+    class AccelerationStructure;
     class RayTracer;
     class Mesh;
     class Engine;
@@ -163,6 +164,7 @@ namespace Carrot {
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
+        void bindAccelerationStructure(Pipeline& pipeline, const Render::Context& data, AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID);
 
         template<typename ConstantBlock>
         void pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
@@ -199,6 +201,8 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
 
+        std::unique_ptr<ASBuilder> asBuilder = nullptr;
+
         Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         Async::ParallelMap<std::string, Render::Texture::Ref> textures{};
         Render::MaterialSystem materialSystem;
@@ -209,7 +213,6 @@ namespace Carrot {
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 
         std::unique_ptr<RayTracer> raytracer = nullptr;
-        std::unique_ptr<ASBuilder> asBuilder = nullptr;
         std::unique_ptr<GBuffer> gBuffer = nullptr;
 
         std::list<CommandBufferConsumer> beforeFrameCommands;
@@ -221,6 +224,7 @@ namespace Carrot {
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
 
         std::unordered_map<BindingKey, vk::Image> boundTextures;
+        std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
         std::vector<Render::Packet> renderPackets;
         std::vector<Render::Packet> preparedRenderPackets;
