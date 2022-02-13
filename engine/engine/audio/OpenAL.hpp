@@ -36,7 +36,7 @@ namespace AL {
             ALenum error = alGetError();
             if(error != AL_NO_ERROR) {
                 std::string humanReadableCode = getHumanReadableCode(error);
-                throw std::runtime_error("OpenAL error: " + std::to_string(error)); // TODO: human readable name
+                throw std::runtime_error("OpenAL error: " + std::to_string(error));
             }
         }
     }

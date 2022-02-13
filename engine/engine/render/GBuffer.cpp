@@ -122,7 +122,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GResolve& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph GResolve");
-                const char* shader = GetCapabilities().supportsRaytracing ? "gResolve-rendergraph-raytracing" : "gResolve-rendergraph-noraytracing";
+                bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
+                if(useRaytracingVersion) {
+                    useRaytracingVersion &= !!frame.renderer.getASBuilder().getTopLevelAS();
+                }
+                const char* shader = useRaytracingVersion ? "gResolve-rendergraph-raytracing" : "gResolve-rendergraph-noraytracing";
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);
@@ -135,9 +139,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 8);
                 renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 9);
 
-                auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
-                if(tlas) {
-                    renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 10);
+                if(useRaytracingVersion) {
+                    auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
+                    if(tlas) {
+                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 10);
+                    }
                 }
 
                 resolvePipeline->bind(pass.getRenderPass(), frame, buffer);

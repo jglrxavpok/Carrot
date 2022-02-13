@@ -66,7 +66,6 @@ namespace Carrot::Network {
 
         virtual void writeAdditional(std::vector<std::uint8_t>& data) const = 0;
         virtual void readAdditional(const std::vector<std::uint8_t>& data) = 0;
-        // TODO
 
         PacketID getPacketID() const { return packetType; }
 

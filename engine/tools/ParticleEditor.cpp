@@ -232,8 +232,8 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
 void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& filename) {
     auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
     auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
-    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, getCurrentProjectName()); // TODO: use project name
-    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, getCurrentProjectName()); // TODO: use project name
+    ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, getCurrentProjectName());
+    ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, getCurrentProjectName());
 
     auto computeShader = updateGenerator.compileToSPIRV(updateExpressions);
     auto fragmentShader = fragmentGenerator.compileToSPIRV(fragmentExpressions);

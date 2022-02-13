@@ -1,9 +1,10 @@
 #include <cstdio>
+#include <memory>
 #include "engine/Engine.h"
-#include "engine/io/IO.h"
-#include "engine/io/Resource.h"
+#include <core/io/IO.h>
+#include <core/io/Resource.h>
 #include "engine/CarrotGame.h"
-#include "engine/utils/Assert.h"
+#include <core/utils/Assert.h>
 #include <iostream>
 
 namespace Game {
@@ -36,7 +37,7 @@ int main() {
         verify(resource.getSize() == 1620, "");
 
         auto buffer = resource.readAll();
-        auto readWithIfstream = readFile("resources/shaders/screenQuad.vertex.glsl.spv");
+        auto readWithIfstream = Carrot::IO::readFile("resources/shaders/screenQuad.vertex.glsl.spv");
         for (int i = 0; i < resource.getSize(); ++i) {
             verify(buffer[i] == readWithIfstream[i], "mismatched input.");
         }
@@ -48,5 +49,5 @@ int main() {
 }
 
 void Carrot::Engine::initGame() {
-    game = make_unique<Game::Game>(*this);
+    game = std::make_unique<Game::Game>(*this);
 }

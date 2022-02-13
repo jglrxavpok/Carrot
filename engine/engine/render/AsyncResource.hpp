@@ -33,7 +33,6 @@ namespace Carrot {
                 // TODO: joiner counter?
             };
             GetTaskScheduler().schedule(std::move(desc));
-            //asTask(storage->initializer, storage.get()).resume();
         }
 
         bool isReady() const {
