@@ -48,6 +48,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(strstr(pCallbackData->pMessage, "FreeMemory-memory") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkDestroyDevice-device-00378") != nullptr) {
+        //debug_break();
+    } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-QueryNotReset") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdDrawIndexed-None-02699") != nullptr) {
         //debug_break();

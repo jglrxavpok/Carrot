@@ -216,6 +216,9 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
                 .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
                 .pInheritanceInfo = nullptr,
         });
+
+        cmds.resetQueryPool(*queryPool, index, 1);
+
         buildInfo[index].scratchData.deviceAddress = scratchAddress;
 
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> pBuildRanges{toBuild[index]->buildRanges.size()};
@@ -226,7 +229,6 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
 #ifdef AFTERMATH_ENABLE
         cmds.setCheckpointNV("Before AS build");
 #endif
-       // assert(pBuildRanges.size() == 1);
         // build AS
         cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
 #ifdef AFTERMATH_ENABLE
@@ -313,6 +315,12 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
     if(!enabled)
         return;
     ZoneScoped;
+
+    if(!update && tlas) {
+        ZoneScopedN("WaitDeviceIdle");
+        WaitDeviceIdle();
+    }
+
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
     if(!tlasBuildCommands) {

@@ -426,7 +426,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
     image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeX)], imageSize}, 1);
     image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveY)], imageSize}, 2);
     image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeY)], imageSize}, 3);
-    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveX)], imageSize}, 4);
+    image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveZ)], imageSize}, 4);
     image->stageUpload(std::span<uint8_t>{allPixels[static_cast<std::size_t>(Skybox::Direction::NegativeZ)], imageSize}, 5);
 
     stbi_image_free(allPixels[static_cast<std::size_t>(Skybox::Direction::PositiveX)]);
