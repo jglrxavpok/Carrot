@@ -10,6 +10,10 @@
 #include <engine/render/RenderPacket.h>
 
 namespace Carrot::ECS {
+    ModelRenderSystem::ModelRenderSystem(const rapidjson::Value& json, World& world): RenderSystem<TransformComponent, ModelComponent>(world) {
+
+    }
+
     void ModelRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
 
     }

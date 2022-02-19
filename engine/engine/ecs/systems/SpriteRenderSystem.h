@@ -9,9 +9,10 @@
 #include <engine/ecs/components/SpriteComponent.h>
 
 namespace Carrot::ECS {
-    class SpriteRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::SpriteComponent> {
+    class SpriteRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::SpriteComponent>, public Identifiable<SpriteRenderSystem> {
     public:
         explicit SpriteRenderSystem(World& world): RenderSystem<TransformComponent, SpriteComponent>(world) {}
+        explicit SpriteRenderSystem(const rapidjson::Value& json, World& world): SpriteRenderSystem(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -21,6 +22,15 @@ namespace Carrot::ECS {
         void tick(double dt) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
+
+    public:
+        inline static const char* getStringRepresentation() {
+            return "SpriteRender";
+        }
+
+        virtual const char* getName() const override {
+            return getStringRepresentation();
+        }
 
     private:
         void setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands);

@@ -21,6 +21,14 @@ namespace Peeler::ECS {
 
         void setSelected(const std::optional<Carrot::ECS::EntityID>& id);
 
+        virtual bool shouldBeSerialized() const override {
+            return false;
+        }
+
+        virtual const char* getName() const override {
+            return "CollisionShapeRenderer";
+        }
+
     private:
         std::shared_ptr<Carrot::Model> sphereMesh;
         std::shared_ptr<Carrot::Pipeline> pipeline;

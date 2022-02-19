@@ -54,4 +54,8 @@ namespace Carrot::ECS {
         }
     }
 
+    SystemLibrary& getSystemLibrary() {
+        static SystemLibrary lib;
+        return lib;
+    }
 }

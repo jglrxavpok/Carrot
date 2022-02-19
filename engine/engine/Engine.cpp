@@ -46,6 +46,25 @@
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
 
+#include "engine/ecs/systems/System.h"
+#include "engine/ecs/systems/ModelRenderSystem.h"
+#include "engine/ecs/systems/RigidBodySystem.h"
+#include "engine/ecs/systems/SpriteRenderSystem.h"
+#include "engine/ecs/systems/SystemHandleLights.h"
+#include "engine/ecs/systems/SystemKinematics.h"
+#include "engine/ecs/systems/SystemSinPosition.h"
+#include "engine/ecs/systems/SystemUpdateAnimatedModelInstance.h"
+
+#include "engine/ecs/components/Component.h"
+#include "engine/ecs/components/AnimatedModelInstance.h"
+#include "engine/ecs/components/ForceSinPosition.h"
+#include "engine/ecs/components/Kinematics.h"
+#include "engine/ecs/components/LightComponent.h"
+#include "engine/ecs/components/ModelComponent.h"
+#include "engine/ecs/components/RigidBodyComponent.h"
+#include "engine/ecs/components/SpriteComponent.h"
+#include "engine/ecs/components/TransformComponent.h"
+
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
 #endif
@@ -482,9 +501,36 @@ void Carrot::Engine::initVulkan() {
 
     createCameras();
 
+    initECS();
     initGame();
 
     createSynchronizationObjects();
+}
+
+void Carrot::Engine::initECS() {
+    auto& components = Carrot::ECS::getComponentLibrary();
+    auto& systems = Carrot::ECS::getSystemLibrary();
+
+    {
+        components.addUniquePtrBased<Carrot::ECS::TransformComponent>();
+        components.addUniquePtrBased<Carrot::ECS::Kinematics>();
+        components.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
+        components.addUniquePtrBased<Carrot::ECS::ModelComponent>();
+        //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>(); // TODO: reintroduce once animated models are reintroduced
+        components.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
+        components.addUniquePtrBased<Carrot::ECS::LightComponent>();
+        components.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
+    }
+
+    {
+        systems.addUniquePtrBased<Carrot::ECS::ModelRenderSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::RigidBodySystem>();
+        systems.addUniquePtrBased<Carrot::ECS::SpriteRenderSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemHandleLights>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemKinematics>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemSinPosition>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
+    }
 }
 
 Carrot::Engine::~Engine() {

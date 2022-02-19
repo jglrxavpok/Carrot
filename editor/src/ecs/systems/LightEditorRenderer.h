@@ -20,6 +20,14 @@ namespace Peeler::ECS {
 
         std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
+        virtual bool shouldBeSerialized() const override {
+            return false;
+        }
+
+        virtual const char* getName() const override {
+            return "LightEditorRenderer";
+        }
+
     private:
         Carrot::Render::BillboardRenderer billboardRenderer;
         std::shared_ptr<Carrot::Render::TextureHandle> textureHandleOff;

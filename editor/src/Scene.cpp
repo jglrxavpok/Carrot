@@ -53,6 +53,24 @@ namespace Peeler {
         }
 
         dest.AddMember("lighting", lightingObj, doc.GetAllocator());
+
+        rapidjson::Value logicSystems{ rapidjson::kObjectType };
+        for(auto& system : world.getLogicSystems()) {
+            if(system->shouldBeSerialized()) {
+                rapidjson::Value key(system->getName(), doc.GetAllocator());
+                logicSystems.AddMember(key, system->toJSON(doc.GetAllocator()), doc.GetAllocator());
+            }
+        }
+        dest.AddMember("logic_systems", logicSystems, doc.GetAllocator());
+
+        rapidjson::Value renderSystems{ rapidjson::kObjectType };
+        for(auto& system : world.getRenderSystems()) {
+            if(system->shouldBeSerialized()) {
+                rapidjson::Value key(system->getName(), doc.GetAllocator());
+                renderSystems.AddMember(key, system->toJSON(doc.GetAllocator()), doc.GetAllocator());
+            }
+        }
+        dest.AddMember("render_systems", renderSystems, doc.GetAllocator());
         return dest;
     }
 
@@ -60,7 +78,8 @@ namespace Peeler {
         assert(src.IsObject());
         clear();
         const auto entityMap = src["entities"].GetObject();
-        auto& lib = Carrot::ECS::getComponentLibrary();
+        auto& componentLib = Carrot::ECS::getComponentLibrary();
+        auto& systemLib = Carrot::ECS::getSystemLibrary();
         for(const auto& [key, entityData] : entityMap) {
             Carrot::UUID uuid { key.GetString() };
             auto data = entityData.GetObject();
@@ -76,7 +95,7 @@ namespace Peeler {
                 if(componentName == "name" || componentName == "parent") {
                     continue;
                 }
-                auto component = lib.deserialise(componentName, componentDataKey, entity);
+                auto component = componentLib.deserialise(componentName, componentDataKey, entity);
                 entity.addComponent(std::move(component));
             }
         }
@@ -84,6 +103,20 @@ namespace Peeler {
         if(src.HasMember("lighting")) {
             lighting.ambient = Carrot::JSON::read<3, float>(src["lighting"]["ambient"]);
             lighting.raytracedShadows = src["lighting"]["raytracedShadows"].GetBool();
+        }
+
+        auto renderSystems = src["render_systems"].GetObject();
+        for(const auto& [key, data] : renderSystems) {
+            std::string systemName = key.GetString();
+            auto system = systemLib.deserialise(systemName, data, world);
+            world.addRenderSystem(std::move(system));
+        }
+
+        auto logicSystems = src["logic_systems"].GetObject();
+        for(const auto& [key, data] : logicSystems) {
+            std::string systemName = key.GetString();
+            auto system = systemLib.deserialise(systemName, data, world);
+            world.addLogicSystem(std::move(system));
         }
     }
 

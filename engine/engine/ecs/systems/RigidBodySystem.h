@@ -9,9 +9,10 @@
 #include <engine/ecs/components/RigidBodyComponent.h>
 
 namespace Carrot::ECS {
-    class RigidBodySystem: public LogicSystem<TransformComponent, Carrot::ECS::RigidBodyComponent> {
+    class RigidBodySystem: public LogicSystem<TransformComponent, Carrot::ECS::RigidBodyComponent>, public Identifiable<RigidBodySystem> {
     public:
         explicit RigidBodySystem(World& world);
+        explicit RigidBodySystem(const rapidjson::Value& json, World& world): RigidBodySystem(world) {}
 
         void tick(double dt) override;
 
@@ -20,5 +21,14 @@ namespace Carrot::ECS {
         void reload() override;
 
         void unload() override;
+
+    public:
+        inline static const char* getStringRepresentation() {
+            return "RigidBodies";
+        }
+
+        virtual const char* getName() const override {
+            return getStringRepresentation();
+        }
     };
 }

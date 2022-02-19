@@ -7,6 +7,7 @@
 #include "engine/ecs/EntityTypes.h"
 #include "engine/render/RenderContext.h"
 #include <engine/render/RenderPass.h>
+#include <core/utils/Library.hpp>
 
 namespace Carrot::ECS {
 
@@ -20,6 +21,7 @@ namespace Carrot::ECS {
     class System {
     public:
         explicit System(World& world);
+        explicit System(const rapidjson::Value& json, World& world): System(world) {};
 
         [[nodiscard]] const Signature& getSignature() const;
 
@@ -39,6 +41,17 @@ namespace Carrot::ECS {
 
         virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
 
+        virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const {
+            return rapidjson::Value(rapidjson::kObjectType);
+        };
+
+        /// Is this system supposed to be serialized? This can be used for debug systems that are only present if the code says so.
+        virtual bool shouldBeSerialized() const {
+            return true;
+        }
+
+        virtual const char* getName() const = 0;
+
         virtual ~System() = default;
 
     protected:
@@ -55,6 +68,7 @@ namespace Carrot::ECS {
     class SignedSystem: public System {
     public:
         explicit SignedSystem(World& world);
+        explicit SignedSystem(const rapidjson::Value& json, World& world): SignedSystem(world) {};
 
         /// Calls 'action' of each entity in this system. Immediately called, so capturing on the stack is safe.
         void forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action);
@@ -64,6 +78,7 @@ namespace Carrot::ECS {
     class LogicSystem: public SignedSystem<SystemType::Logic, RequiredComponents...> {
     public:
         explicit LogicSystem(World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
+        explicit LogicSystem(const rapidjson::Value& json, World& world): LogicSystem<RequiredComponents...>(world) {};
 
         void onFrame(Carrot::Render::Context renderContext) override {};
     };
@@ -72,9 +87,14 @@ namespace Carrot::ECS {
     class RenderSystem: public SignedSystem<SystemType::Render, RequiredComponents...> {
     public:
         explicit RenderSystem(World& world): SignedSystem<SystemType::Render, RequiredComponents...>(world) {};
+        explicit RenderSystem(const rapidjson::Value& json, World& world): RenderSystem<RequiredComponents...>(world) {};
 
         void tick(double dt) override {};
     };
+
+    using SystemLibrary = Library<std::unique_ptr<System>, World&>;
+
+    SystemLibrary& getSystemLibrary();
 
 }
 

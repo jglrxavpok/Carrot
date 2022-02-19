@@ -471,6 +471,9 @@ namespace Carrot {
 
         void initGame();
 
+        /// Fill system & component libraries with engine provided systems and components
+        void initECS();
+
         void createCameras();
 
         void createTracyContexts();

@@ -77,6 +77,9 @@ namespace Carrot::ECS {
         template<class LogicSystemType, typename... Args>
         void addLogicSystem(Args&&... args);
 
+        void addRenderSystem(std::unique_ptr<System>&& system);
+        void addLogicSystem(std::unique_ptr<System>&& system);
+
         template<class RenderSystemType>
         RenderSystemType* getRenderSystem();
 
@@ -90,6 +93,12 @@ namespace Carrot::ECS {
         /// Removes the given LogicSystem. Does nothing if it was not inside this world
         template<class LogicSystemType>
         void removeLogicSystem();
+
+        std::vector<System*> getLogicSystems();
+        std::vector<System*> getRenderSystems();
+
+        std::vector<const System*> getLogicSystems() const;
+        std::vector<const System*> getRenderSystems() const;
 
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.

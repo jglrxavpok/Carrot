@@ -65,7 +65,9 @@ namespace Peeler {
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
 
-        void addDefaultSystems(Scene& scene, bool editingScene);
+        void addDefaultSystems(Scene& scene);
+        void addEditingSystems();
+        void removeEditingSystems();
 
         void selectEntity(const Carrot::ECS::EntityID& entity);
         void deselectAllEntities();

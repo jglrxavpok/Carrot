@@ -9,9 +9,10 @@
 #include "System.h"
 
 namespace Carrot::ECS {
-    class SystemHandleLights: public RenderSystem<TransformComponent, LightComponent> {
+    class SystemHandleLights: public RenderSystem<TransformComponent, LightComponent>, public Identifiable<SystemHandleLights> {
     public:
         explicit SystemHandleLights(World& world): RenderSystem<TransformComponent, LightComponent>(world) {}
+        explicit SystemHandleLights(const rapidjson::Value& json, World& world): SystemHandleLights(world) {}
 
         void onFrame(Carrot::Render::Context) override;
 
@@ -20,6 +21,15 @@ namespace Carrot::ECS {
         void reload() override;
 
         void unload() override;
+
+    public:
+        inline static const char* getStringRepresentation() {
+            return "HandleLights";
+        }
+
+        virtual const char* getName() const override {
+            return getStringRepresentation();
+        }
     };
 }
 

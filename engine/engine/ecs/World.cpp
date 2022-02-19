@@ -414,4 +414,49 @@ namespace Carrot::ECS {
             s->unload();
         }
     }
+
+    void World::addRenderSystem(std::unique_ptr<System>&& system) {
+        verify(system, "System must not be nullptr");
+        system->onEntitiesAdded(entities);
+        renderSystems.push_back(std::move(system));
+    }
+
+    void World::addLogicSystem(std::unique_ptr<System>&& system) {
+        verify(system, "System must not be nullptr");
+        system->onEntitiesAdded(entities);
+        logicSystems.push_back(std::move(system));
+    }
+
+    std::vector<System*> World::getLogicSystems() {
+        std::vector<System*> result{ logicSystems.size() };
+        for(std::size_t i = 0; i < result.size(); i++) {
+            result[i] = logicSystems[i].get();
+        }
+        return result;
+    }
+
+    std::vector<System*> World::getRenderSystems() {
+        std::vector<System*> result{ renderSystems.size() };
+        for(std::size_t i = 0; i < result.size(); i++) {
+            result[i] = renderSystems[i].get();
+        }
+        return result;
+    }
+
+    std::vector<const System*> World::getLogicSystems() const {
+        std::vector<const System*> result{ logicSystems.size() };
+        for(std::size_t i = 0; i < result.size(); i++) {
+            result[i] = logicSystems[i].get();
+        }
+        return result;
+    }
+
+    std::vector<const System*> World::getRenderSystems() const {
+        std::vector<const System*> result{ renderSystems.size() };
+        for(std::size_t i = 0; i < result.size(); i++) {
+            result[i] = renderSystems[i].get();
+        }
+        return result;
+    }
+
 }

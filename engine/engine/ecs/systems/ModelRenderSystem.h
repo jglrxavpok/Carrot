@@ -9,9 +9,10 @@
 #include <engine/ecs/components/ModelComponent.h>
 
 namespace Carrot::ECS {
-    class ModelRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::ModelComponent> {
+    class ModelRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::ModelComponent>, public Identifiable<ModelRenderSystem> {
     public:
         explicit ModelRenderSystem(World& world): RenderSystem<TransformComponent, ModelComponent>(world) {}
+        explicit ModelRenderSystem(const rapidjson::Value& json, World& world);
 
         void onFrame(Carrot::Render::Context renderContext) override;
 
@@ -23,6 +24,15 @@ namespace Carrot::ECS {
         void reload() override;
 
         void unload() override;
+
+    public:
+        inline static const char* getStringRepresentation() {
+            return "ModelRender";
+        }
+
+        virtual const char* getName() const override {
+            return getStringRepresentation();
+        }
 
     private:
         std::unordered_map<Carrot::Model*, std::vector<Carrot::ECS::Entity>> opaqueEntities;

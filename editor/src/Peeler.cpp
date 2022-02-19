@@ -591,8 +591,7 @@ namespace Peeler {
         savedScene.unload();
 
         currentScene.world.unfreezeLogic();
-        currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
-        currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
+        removeEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().resume();
     }
@@ -602,10 +601,19 @@ namespace Peeler {
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
-        currentScene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
-        currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        addEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
+    }
+
+    void Application::addEditingSystems() {
+        currentScene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
+        currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
+    }
+
+    void Application::removeEditingSystems() {
+        currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
     }
 
     void Application::updateSettingsBasedOnScene() {
@@ -716,7 +724,7 @@ namespace Peeler {
             editorActions.activate();
         }
 
-        addDefaultSystems(currentScene, true);
+        addDefaultSystems(currentScene);
         currentScene.world.freezeLogic();
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
@@ -740,17 +748,13 @@ namespace Peeler {
 
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
 
-        // register components for serialisation
+        // register components & systems for serialisation
         {
-            auto& lib = Carrot::ECS::getComponentLibrary();
-            lib.addUniquePtrBased<Carrot::ECS::TransformComponent>();
-            lib.addUniquePtrBased<Carrot::ECS::Kinematics>();
-            lib.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
-            lib.addUniquePtrBased<Carrot::ECS::ModelComponent>();
-            //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>();
-            lib.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
-            lib.addUniquePtrBased<Carrot::ECS::LightComponent>();
-            lib.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
+            auto& systems = Carrot::ECS::getSystemLibrary();
+            // CollisionShapeRenderer is not serializable
+            // LightEditorRenderer is not serializable
+
+
         }
 
         settings.load();
@@ -785,7 +789,7 @@ namespace Peeler {
     void Application::performLoad(std::filesystem::path fileToOpen) {
         if(fileToOpen == EmptyProject) {
             currentScene.clear();
-            addDefaultSystems(currentScene, true);
+            addDefaultSystems(currentScene);
             hasUnsavedChanges = false;
             settings.currentProject.reset();
             deselectAllEntities();
@@ -794,9 +798,8 @@ namespace Peeler {
         }
         rapidjson::Document description;
         description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
-
         currentScene.deserialise(description["scene"].GetObject());
-        addDefaultSystems(currentScene, true); // TODO: load systems from scene
+        addEditingSystems();
         currentScene.world.freezeLogic();
         updateSettingsBasedOnScene();
         if(description.HasMember("camera")) {
@@ -1007,7 +1010,7 @@ namespace Peeler {
 
     static std::shared_ptr<Carrot::Render::LightHandle> lightHandle = nullptr;
 
-    void Application::addDefaultSystems(Scene& scene, bool editingScene) {
+    void Application::addDefaultSystems(Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();
@@ -1015,11 +1018,8 @@ namespace Peeler {
         scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
         scene.world.addLogicSystem<Carrot::ECS::RigidBodySystem>();
 
-        if(editingScene) {
-            scene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
-            scene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
-        }
-
+        // editing only systems
+        addEditingSystems();
 
         GetRenderer().getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
     }
