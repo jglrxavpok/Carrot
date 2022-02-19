@@ -586,6 +586,9 @@ namespace Peeler {
 
     void Application::startSimulation() {
         isPlaying = true;
+        isPaused = false;
+        requestedSingleStep = false;
+        hasDoneSingleStep = false;
         savedScene = currentScene;
 
         savedScene.unload();
@@ -598,12 +601,27 @@ namespace Peeler {
 
     void Application::stopSimulation() {
         isPlaying = false;
+        isPaused = false;
+        requestedSingleStep = false;
+        hasDoneSingleStep = false;
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
         addEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
+    }
+
+    void Application::pauseSimulation() {
+        isPaused = true;
+        GetPhysics().pause();
+        currentScene.world.freezeLogic();
+    }
+
+    void Application::resumeSimulation() {
+        currentScene.world.unfreezeLogic();
+        GetPhysics().resume();
+        isPaused = false;
     }
 
     void Application::addEditingSystems() {
@@ -623,7 +641,6 @@ namespace Peeler {
 
     void Application::UIPlayBar(const Carrot::Render::Context& renderContext) {
         float smallestDimension = std::min(ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y);
-        auto& textureToDisplay = isPlaying ? stopButtonIcon : playButtonIcon;
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0,0));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0.1,0.6));
@@ -632,14 +649,54 @@ namespace Peeler {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, 0.0f));
 
-        ImGui::SameLine((ImGui::GetContentRegionMax().x - smallestDimension) / 2.0f );
-        if(ImGui::ImageButton(textureToDisplay.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
-            if(isPlaying) {
-                stopSimulation();
-            } else {
+        // If editing:
+        // - Play: Start game
+        // - Step: Start the game and steps once
+        // - Pause: Don't do anything (disabled)
+        // - Stop: Don't do anything (disabled)
+
+        // If playing:
+        // - Play: Resumes the game if paused. Changes color depending on state
+        // - Step: Pause the game if not paused already, and steps once
+        // - Pause: Pause the game. Changes color depending on state
+        // - Stop: Stop the simulation and go back to editing.
+
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        const bool isEditing = !isPlaying;
+
+        ImGui::SameLine((ImGui::GetContentRegionMax().x - smallestDimension * 4.0f + spacing * 3.0f) / 2.0f );
+        if(ImGui::ImageButton((isPlaying && !isPaused ? playActiveButtonIcon : playButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+            if(!isPlaying) {
                 startSimulation();
+            } else if(isPaused) {
+                resumeSimulation();
             }
         }
+
+        ImGui::SameLine();
+        if(ImGui::ImageButton(stepButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+            if(!isPlaying) {
+                startSimulation();
+            }
+            pauseSimulation();
+            requestedSingleStep = true;
+        }
+
+        ImGui::SameLine();
+        ImGui::BeginDisabled(isEditing);
+        if(ImGui::ImageButton((isPaused ? pauseActiveButtonIcon : pauseButtonIcon).getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+            if(!isPaused) {
+                pauseSimulation();
+            }
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        ImGui::BeginDisabled(isEditing);
+        if(ImGui::ImageButton(stopButtonIcon.getImguiID(), ImVec2(smallestDimension, smallestDimension))) {
+            stopSimulation();
+        }
+        ImGui::EndDisabled();
 
         ImGui::PopStyleColor(3);
         ImGui::PopStyleVar(3);
@@ -669,6 +726,10 @@ namespace Peeler {
 
     Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(), settings("peeler"), gameViewport(engine.createViewport()),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
+        playActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button_playing.png"),
+        pauseButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button.png"),
+        pauseActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button_paused.png"),
+        stepButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/step_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         translateIcon(engine.getVulkanDriver(), "resources/textures/ui/translate.png"),
         rotateIcon(engine.getVulkanDriver(), "resources/textures/ui/rotate.png"),
@@ -767,6 +828,16 @@ namespace Peeler {
     }
 
     void Application::tick(double frameTime) {
+        if(isPlaying && requestedSingleStep) {
+            if(!hasDoneSingleStep) {
+                resumeSimulation();
+                hasDoneSingleStep = true;
+            } else {
+                pauseSimulation();
+                hasDoneSingleStep = false;
+                requestedSingleStep = false;
+            }
+        }
         currentScene.tick(frameTime);
 
         if(movingGameViewCamera) {

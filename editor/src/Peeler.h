@@ -74,6 +74,8 @@ namespace Peeler {
 
     private: // simulation
         void startSimulation();
+        void pauseSimulation();
+        void resumeSimulation();
         void stopSimulation();
 
         void updateSettingsBasedOnScene();
@@ -86,6 +88,10 @@ namespace Peeler {
         std::unique_ptr<Carrot::Render::Graph> gameRenderingGraph;
 
         Carrot::Render::Texture playButtonIcon;
+        Carrot::Render::Texture playActiveButtonIcon;
+        Carrot::Render::Texture pauseButtonIcon;
+        Carrot::Render::Texture pauseActiveButtonIcon;
+        Carrot::Render::Texture stepButtonIcon;
         Carrot::Render::Texture stopButtonIcon;
         Carrot::Render::Texture translateIcon;
         Carrot::Render::Texture rotateIcon;
@@ -138,6 +144,9 @@ namespace Peeler {
 
     private: // simulation state
         bool isPlaying = false;
+        bool isPaused = false;
+        bool requestedSingleStep = false;
+        bool hasDoneSingleStep = false;
     };
 
 }
