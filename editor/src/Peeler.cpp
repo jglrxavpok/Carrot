@@ -190,6 +190,70 @@ namespace Peeler {
 
             ImGui::EndCombo();
         }
+
+        ImGui::Separator();
+
+        auto drawSystems = [&](
+                const char* title,
+                const std::vector<Carrot::ECS::System*>& systems,
+                std::function<void(std::unique_ptr<Carrot::ECS::System>&&)> add,
+                std::function<void(Carrot::ECS::System*)> remove
+            ) {
+            Carrot::ECS::System* toRemove = nullptr;
+
+            ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if(ImGui::TreeNodeEx(title, nodeFlags, "%s", title)) {
+                nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                for(auto* system : systems) {
+                    const char* id = system->getName();
+                    ImGui::TreeNodeEx(system, nodeFlags, "%s", id);
+                    if(ImGui::BeginPopupContextItem(id)) {
+                        if(ImGui::MenuItem("Remove##remove system")) {
+                            toRemove = system;
+                        }
+                        ImGui::EndPopup();
+                    }
+                }
+
+                if(ImGui::BeginMenu(Carrot::sprintf("Add##add system to %s", title).c_str())) {
+                    auto& systemLib = Carrot::ECS::getSystemLibrary();
+                    for(const auto& systemName : systemLib.getAllIDs()) {
+                        if(ImGui::MenuItem(systemName.c_str())) {
+                            add(systemLib.create(systemName, currentScene.world));
+                        }
+                    }
+
+                    ImGui::EndMenu();
+                }
+
+                ImGui::TreePop();
+            }
+            if(toRemove != nullptr) {
+                remove(toRemove);
+            }
+        };
+        drawSystems("Render Systems", currentScene.world.getRenderSystems(),
+            [&](std::unique_ptr<Carrot::ECS::System>&& ptr) {
+                std::string nameToMatch = ptr->getName();
+                for(const auto& s : currentScene.world.getRenderSystems()) {
+                    if(nameToMatch == s->getName()) {
+                        return;
+                    }
+                }
+                currentScene.world.addRenderSystem(std::move(ptr));
+            },
+            [&](Carrot::ECS::System* ptr) { currentScene.world.removeRenderSystem(ptr); });
+        drawSystems("Logic Systems", currentScene.world.getLogicSystems(),
+            [&](std::unique_ptr<Carrot::ECS::System>&& ptr) {
+                std::string nameToMatch = ptr->getName();
+                for(const auto& s : currentScene.world.getLogicSystems()) {
+                    if(nameToMatch == s->getName()) {
+                        return;
+                    }
+                }
+                currentScene.world.addLogicSystem(std::move(ptr));
+            },
+            [&](Carrot::ECS::System* ptr) { currentScene.world.removeLogicSystem(ptr); });
     }
 
     void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {
@@ -607,7 +671,6 @@ namespace Peeler {
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
-        addEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
     }
@@ -1086,7 +1149,7 @@ namespace Peeler {
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
-        scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
+        //scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
         scene.world.addLogicSystem<Carrot::ECS::RigidBodySystem>();
 
         // editing only systems

@@ -94,6 +94,12 @@ namespace Carrot::ECS {
         template<class LogicSystemType>
         void removeLogicSystem();
 
+        /// Removes the given RenderSystem. Does nothing if it was not inside this world
+        void removeRenderSystem(System* system);
+
+        /// Removes the given LogicSystem. Does nothing if it was not inside this world
+        void removeLogicSystem(System* system);
+
         std::vector<System*> getLogicSystems();
         std::vector<System*> getRenderSystems();
 

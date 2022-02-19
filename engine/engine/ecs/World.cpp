@@ -427,6 +427,18 @@ namespace Carrot::ECS {
         logicSystems.push_back(std::move(system));
     }
 
+    void World::removeLogicSystem(System* system) {
+        Carrot::removeIf(logicSystems, [&](auto& ptr) {
+            return ptr.get() == system;
+        });
+    }
+
+    void World::removeRenderSystem(System* system) {
+        Carrot::removeIf(renderSystems, [&](auto& ptr) {
+            return ptr.get() == system;
+        });
+    }
+
     std::vector<System*> World::getLogicSystems() {
         std::vector<System*> result{ logicSystems.size() };
         for(std::size_t i = 0; i < result.size(); i++) {
