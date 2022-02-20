@@ -54,9 +54,11 @@
 #include "engine/ecs/systems/SystemKinematics.h"
 #include "engine/ecs/systems/SystemSinPosition.h"
 #include "engine/ecs/systems/SystemUpdateAnimatedModelInstance.h"
+#include "engine/ecs/systems/CameraSystem.h"
 
 #include "engine/ecs/components/Component.h"
 #include "engine/ecs/components/AnimatedModelInstance.h"
+#include "engine/ecs/components/CameraComponent.h"
 #include "engine/ecs/components/ForceSinPosition.h"
 #include "engine/ecs/components/Kinematics.h"
 #include "engine/ecs/components/LightComponent.h"
@@ -520,6 +522,7 @@ void Carrot::Engine::initECS() {
         components.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
         components.addUniquePtrBased<Carrot::ECS::LightComponent>();
         components.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
+        components.addUniquePtrBased<Carrot::ECS::CameraComponent>();
     }
 
     {
@@ -530,6 +533,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SystemKinematics>();
         systems.addUniquePtrBased<Carrot::ECS::SystemSinPosition>();
         systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
+        systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
     }
 }
 

@@ -49,6 +49,11 @@ namespace Peeler {
 
             currentScene.onFrame(renderContext);
 
+            if(!isPlaying) {
+                // override any primary camera the game might have
+                cameraController.applyTo(glm::vec2{ viewportSize.width, viewportSize.height }, gameViewport.getCamera());
+            }
+
             float gridSize = 100.0f;
             float cellSize = 1.0f;
             float lineWidth = 0.005f;
@@ -903,7 +908,7 @@ namespace Peeler {
         }
         currentScene.tick(frameTime);
 
-        if(movingGameViewCamera) {
+        if(movingGameViewCamera && !isPlaying) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
                 turnCamera.getValue().x, turnCamera.getValue().y,
                 frameTime);
