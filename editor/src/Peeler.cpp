@@ -5,16 +5,6 @@
 #include "Peeler.h"
 #include <engine/render/resources/Texture.h>
 #include <engine/render/TextureRepository.h>
-#include <engine/ecs/components/TransformComponent.h>
-#include <engine/ecs/components/SpriteComponent.h>
-#include <engine/ecs/components/Kinematics.h>
-#include <engine/ecs/components/ForceSinPosition.h>
-#include <engine/ecs/components/AnimatedModelInstance.h>
-#include <engine/ecs/components/LightComponent.h>
-#include <engine/ecs/components/RigidBodyComponent.h>
-#include <engine/ecs/systems/SpriteRenderSystem.h>
-#include <engine/ecs/systems/ModelRenderSystem.h>
-#include <engine/ecs/systems/RigidBodySystem.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <core/utils/ImGuiUtils.hpp>
@@ -26,12 +16,25 @@
 #include <core/utils/stringmanip.h>
 #include <engine/edition/DragDropTypes.h>
 #include <core/io/Logging.hpp>
+#include <engine/physics/PhysicsSystem.h>
+
+#include <engine/ecs/components/TransformComponent.h>
+#include <engine/ecs/components/SpriteComponent.h>
+#include <engine/ecs/components/Kinematics.h>
+#include <engine/ecs/components/ForceSinPosition.h>
+#include <engine/ecs/components/AnimatedModelInstance.h>
+#include <engine/ecs/components/LightComponent.h>
+#include <engine/ecs/components/RigidBodyComponent.h>
+
+#include <engine/ecs/systems/SpriteRenderSystem.h>
+#include <engine/ecs/systems/ModelRenderSystem.h>
+#include <engine/ecs/systems/RigidBodySystem.h>
 #include <engine/ecs/systems/SystemKinematics.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>
 #include "ecs/systems/LightEditorRenderer.h"
 #include "ecs/systems/CollisionShapeRenderer.h"
-#include <engine/physics/PhysicsSystem.h>
+#include "ecs/systems/CameraRenderer.h"
 
 namespace Peeler {
 
@@ -693,6 +696,7 @@ namespace Peeler {
     }
 
     void Application::addEditingSystems() {
+        currentScene.world.addRenderSystem<Peeler::ECS::CameraRenderer>();
         currentScene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
     }
@@ -700,6 +704,7 @@ namespace Peeler {
     void Application::removeEditingSystems() {
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
+        currentScene.world.removeRenderSystem<Peeler::ECS::CameraRenderer>();
     }
 
     void Application::updateSettingsBasedOnScene() {

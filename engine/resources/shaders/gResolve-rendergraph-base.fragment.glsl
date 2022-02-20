@@ -22,7 +22,8 @@ layout(set = 0, binding = 8) uniform sampler linearSampler;
 layout(set = 0, binding = 9) uniform sampler nearestSampler;
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-layout(binding = 10, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 10) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 11) uniform texture2D noiseTexture;
 #endif
 
 /*

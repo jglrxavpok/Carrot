@@ -6,7 +6,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
-
+    blueNoise = renderer.getOrCreateTexture("FreeBlueNoiseTextures/LDR_RGB1_54.png");
 }
 
 void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
@@ -143,6 +143,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
                         renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 10);
+                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 11, nullptr);
                     }
                 }
 

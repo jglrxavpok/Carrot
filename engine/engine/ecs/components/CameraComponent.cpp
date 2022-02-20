@@ -33,7 +33,9 @@ namespace Carrot::ECS {
         if(isOrthographic) {
             return glm::ortho(-orthoSize.x / 2.0f, orthoSize.x / 2.0f, -orthoSize.y / 2.0f, orthoSize.y / 2.0f, 0.0f, orthoSize.z);
         } else {
-            return glm::perspective(perspectiveFov, PerspectiveAspectRatio, perspectiveNear, perspectiveFar);
+            glm::mat4 projectionMatrix = glm::perspective(perspectiveFov, PerspectiveAspectRatio, perspectiveNear, perspectiveFar);
+            projectionMatrix[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
+            return projectionMatrix;
         }
     }
 }
