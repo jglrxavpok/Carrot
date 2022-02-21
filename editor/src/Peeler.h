@@ -103,6 +103,10 @@ namespace Peeler {
 
         GridRenderer gridRenderer;
 
+    private:
+        std::uint32_t gameViewWidth = 1;
+        std::uint32_t gameViewHeight = 1;
+
     private: // Scene manipulation
 
         std::optional<Carrot::ECS::EntityID> selectedID;

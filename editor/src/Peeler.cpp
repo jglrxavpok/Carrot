@@ -48,13 +48,13 @@ namespace Peeler {
         if(&renderContext.viewport == &gameViewport) {
             ZoneScopedN("Game viewport");
             auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
-            cameraController.applyTo(glm::vec2{ viewportSize.width, viewportSize.height }, gameViewport.getCamera());
+            cameraController.applyTo(glm::vec2{ gameViewWidth, gameViewHeight }, gameViewport.getCamera());
 
             currentScene.onFrame(renderContext);
 
             if(!isPlaying) {
                 // override any primary camera the game might have
-                cameraController.applyTo(glm::vec2{ viewportSize.width, viewportSize.height }, gameViewport.getCamera());
+                cameraController.applyTo(glm::vec2{ gameViewWidth, gameViewHeight }, gameViewport.getCamera());
             }
 
             float gridSize = 100.0f;
@@ -645,15 +645,14 @@ namespace Peeler {
             }
         }
 
-        /* TODO: fix resize of game view
-        bool requireResize = entireRegion.x != previousGameViewWidth || entireRegion.y != previousGameViewHeight;
+        /* TODO: fix resize of game view*/
+        bool requireResize = entireRegion.x != gameViewWidth || entireRegion.y != gameViewHeight;
         if(requireResize) {
             gameRenderingGraph->onSwapchainSizeChange(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
 
-            previousGameViewWidth = entireRegion.x;
-            previousGameViewHeight = entireRegion.y;
-
-        }*/
+            gameViewWidth = entireRegion.x;
+            gameViewHeight = entireRegion.y;
+        }
     }
 
     void Application::startSimulation() {
