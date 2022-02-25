@@ -39,10 +39,17 @@ namespace Carrot::Render {
         }
         cameraDescriptorSets = renderer.createDescriptorSetForCamera(cameraUniformBuffers);
         renderer.createDescriptorSetForCamera(cameraUniformBuffers);
+
+        if(renderGraph) {
+            renderGraph->onSwapchainImageCountChange(newCount);
+        }
     }
 
     void Viewport::onSwapchainSizeChange(int newWidth, int newHeight) {
-        // no op
+        if(followSwapchainSize) {
+            resize(newWidth, newHeight);
+            followSwapchainSize = true;
+        }
     }
 
     vk::DescriptorSet Viewport::getCameraDescriptorSet(const Carrot::Render::Context& context) const {
@@ -73,6 +80,45 @@ namespace Carrot::Render {
             obj.update(getCamera());
 
             buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
+        }
+    }
+
+    void Viewport::render(const Carrot::Render::Context& context, vk::CommandBuffer& cmds) {
+        if(renderGraph) {
+            renderGraph->execute(context, cmds);
+        }
+    }
+
+    Render::Graph* Viewport::getRenderGraph() {
+        return renderGraph.get();
+    }
+
+    void Viewport::setRenderGraph(std::unique_ptr<Render::Graph>&& renderGraph) {
+        this->renderGraph = std::move(renderGraph);
+    }
+
+    void Viewport::resize(std::uint32_t w, std::uint32_t h) {
+        this->width = w;
+        this->height = h;
+        if(renderGraph) {
+            renderGraph->onSwapchainSizeChange(w, h);
+        }
+        followSwapchainSize = false;
+    }
+
+    std::uint32_t Viewport::getWidth() const {
+        if(followSwapchainSize) {
+            return GetVulkanDriver().getFinalRenderSize().width;
+        } else {
+            return width;
+        }
+    }
+
+    std::uint32_t Viewport::getHeight() const {
+        if(followSwapchainSize) {
+            return GetVulkanDriver().getFinalRenderSize().height;
+        } else {
+            return height;
         }
     }
 }

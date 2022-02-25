@@ -16,21 +16,25 @@ namespace Carrot::VR {
 #endif
 
 namespace Carrot::Render {
-    class TextureRepository: public SwapchainAware {
+    class TextureRepository {
     public:
         TextureRepository(VulkanDriver& driver): driver(driver) {}
 
     public:
-        Texture& create(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages);
+        Texture& create(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         Texture& get(const FrameResource& texture, size_t swapchainIndex);
         Texture& get(const Carrot::UUID& id, size_t swapchainIndex);
-        Texture& getOrCreate(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages);
+        Texture::Ref getRef(const FrameResource& texture, size_t swapchainIndex);
+        Texture::Ref getRef(const Carrot::UUID& id, size_t swapchainIndex);
+        Texture& getOrCreate(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
         vk::ImageUsageFlags& getUsages(const Carrot::UUID& id);
 
-    public:
-        void onSwapchainImageCountChange(size_t newCount) override;
+        /// Which render pass is the creator of the texture with the given ID? Throws if no texture corresponds. Returns Carrot::UUID::null() if no creator has been set.
+        Carrot::UUID getCreatorID(const Carrot::UUID& id) const;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+    public:
+        /// Removes all textures which belong to this render pass ID.
+        void removeBelongingTo(const Carrot::UUID& id);
 
 #ifdef ENABLE_VR
     public:
@@ -38,13 +42,20 @@ namespace Carrot::Render {
 #endif
 
     private:
+        /// Sets which render pass is the creator of the texture with the given ID
+        void setCreatorID(const Carrot::UUID& resourceID, const Carrot::UUID& creatorID);
+
+    private:
         VulkanDriver& driver;
         std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;
+        std::unordered_map<Carrot::UUID, Carrot::UUID> textureOwners;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> usages;
 
 #ifdef ENABLE_VR
         VR::Session* vrSession = nullptr;
 #endif
+
+        friend class GraphBuilder;
     };
 }
 

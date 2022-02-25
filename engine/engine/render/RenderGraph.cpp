@@ -81,6 +81,8 @@ namespace Carrot::Render {
         r.updateLayout(layout);
         currentPass->finalLayouts[r.id] = layout;
 
+        driver.getTextureRepository().setCreatorID(r.rootID, currentPass->passID);
+
         auto aspect = static_cast<vk::ImageAspectFlags>(0);
 
         switch (layout) {
@@ -151,12 +153,12 @@ namespace Carrot::Render {
         return driver.getTextureRepository().get(resourceID, frameIndex);
     }
 
-    Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex) {
-        return driver.getTextureRepository().create(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID));
+    Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
+        return driver.getTextureRepository().create(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID), viewportSize);
     }
 
-    Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex) {
-        return driver.getTextureRepository().getOrCreate(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID));
+    Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
+        return driver.getTextureRepository().getOrCreate(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID), viewportSize);
     }
 
     void Graph::onSwapchainImageCountChange(size_t newCount) {

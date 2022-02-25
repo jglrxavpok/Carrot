@@ -821,11 +821,10 @@ bool Carrot::QueueFamilies::isComplete() const {
 
 void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
     /*re-*/ createUniformBuffers();
-    textureRepository->onSwapchainImageCountChange(newCount);
 }
 
 void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
-    textureRepository->onSwapchainSizeChange(newWidth, newHeight);
+
 }
 
 const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize() const {

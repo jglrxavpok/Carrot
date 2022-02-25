@@ -85,7 +85,6 @@ namespace Peeler {
         Tools::EditorSettings settings;
         Carrot::Render::Viewport& gameViewport;
         Carrot::Render::FrameResource gameTexture;
-        std::unique_ptr<Carrot::Render::Graph> gameRenderingGraph;
 
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture playActiveButtonIcon;
@@ -101,11 +100,10 @@ namespace Peeler {
         Carrot::Render::Texture parentFolderIcon;
         Carrot::Render::Texture driveIcon;
 
-        GridRenderer gridRenderer;
+        // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
+        Carrot::Render::Texture::Ref gameTextureRef;
 
-    private:
-        std::uint32_t gameViewWidth = 1;
-        std::uint32_t gameViewHeight = 1;
+        GridRenderer gridRenderer;
 
     private: // Scene manipulation
 

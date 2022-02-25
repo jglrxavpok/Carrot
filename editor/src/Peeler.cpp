@@ -48,13 +48,13 @@ namespace Peeler {
         if(&renderContext.viewport == &gameViewport) {
             ZoneScopedN("Game viewport");
             auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
-            cameraController.applyTo(glm::vec2{ gameViewWidth, gameViewHeight }, gameViewport.getCamera());
+            cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
 
             currentScene.onFrame(renderContext);
 
             if(!isPlaying) {
                 // override any primary camera the game might have
-                cameraController.applyTo(glm::vec2{ gameViewWidth, gameViewHeight }, gameViewport.getCamera());
+                cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
             }
 
             float gridSize = 100.0f;
@@ -65,13 +65,6 @@ namespace Peeler {
 
             gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
             gridRenderer.render(renderContext, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
-
-            engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
-                gameRenderingGraph->execute(renderContext, cmds);
-                auto& texture = gameRenderingGraph->getTexture(gameTexture, renderContext.swapchainIndex);
-                texture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
-                texture.transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
-            }, false);
         }
     }
 
@@ -502,11 +495,12 @@ namespace Peeler {
         ImGuizmo::BeginFrame();
         
         ImVec2 entireRegion = ImGui::GetContentRegionAvail();
-        auto& texture = gameRenderingGraph->getTexture(gameTexture, renderContext.swapchainIndex);
+        verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
+        gameTextureRef = GetVulkanDriver().getTextureRepository().getRef(gameTexture, renderContext.swapchainIndex);
 
         float startX = ImGui::GetCursorScreenPos().x;
         float startY = ImGui::GetCursorScreenPos().y;
-        ImGui::Image(texture.getImguiID(), entireRegion);
+        ImGui::Image(gameTextureRef->getImguiID(), entireRegion);
         movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
         auto& camera = gameViewport.getCamera();
@@ -631,7 +625,8 @@ namespace Peeler {
 
         if(!usingGizmo && ImGui::IsItemClicked()) {
             deselectAllEntities(); // TODO: multi-select
-            const auto gbufferPass = gameRenderingGraph->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
+            verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
+            const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
             const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
             glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
             uv -= glm::vec2 { startX, startY };
@@ -646,12 +641,10 @@ namespace Peeler {
         }
 
         /* TODO: fix resize of game view*/
-        bool requireResize = entireRegion.x != gameViewWidth || entireRegion.y != gameViewHeight;
+        bool requireResize = entireRegion.x != gameViewport.getWidth() || entireRegion.y != gameViewport.getHeight();
         if(requireResize) {
-            gameRenderingGraph->onSwapchainSizeChange(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
-
-            gameViewWidth = entireRegion.x;
-            gameViewHeight = entireRegion.y;
+            WaitDeviceIdle();
+            gameViewport.resize(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
         }
     }
 
@@ -813,7 +806,6 @@ namespace Peeler {
 
 
     {
-
         GetTaskScheduler().schedule({
                                             .name = "My test task",
                                             .task = testTask1(),
@@ -877,7 +869,22 @@ namespace Peeler {
         const auto gbufferPass = graphBuilder.getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
         engine.getVulkanDriver().getTextureRepository().getUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
 
-        gameRenderingGraph = std::move(graphBuilder.compile());
+        struct TransitionData {
+            Carrot::Render::FrameResource textureToTransition;
+        };
+        graphBuilder.addPass<TransitionData>("transition for ImGui",
+            [&](Carrot::Render::GraphBuilder& graph, Carrot::Render::Pass<TransitionData>& pass, TransitionData& data) {
+                data.textureToTransition = gameTexture;
+                pass.rasterized = false;
+            },
+            [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, const TransitionData& data, vk::CommandBuffer& cmds) {
+                auto& texture = pass.getGraph().getTexture(data.textureToTransition, renderContext.swapchainIndex);
+                texture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
+                texture.transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
+            }
+        );
+
+        gameViewport.setRenderGraph(std::move(graphBuilder.compile()));
 
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
 
@@ -1046,11 +1053,11 @@ namespace Peeler {
     }
 
     void Application::onSwapchainSizeChange(int newWidth, int newHeight) {
-        gameRenderingGraph->onSwapchainSizeChange(newWidth, newHeight); // TODO: fix resize of game view
+
     }
 
     void Application::onSwapchainImageCountChange(std::size_t newCount) {
-        gameRenderingGraph->onSwapchainImageCountChange(newCount);
+
     }
 
     void Application::addEntityMenu(std::optional<Carrot::ECS::Entity> parent) {

@@ -434,7 +434,6 @@ namespace Carrot {
         std::vector<ImGuiTextures> imguiTextures;
 
         Carrot::Render::PassData::GResolve gResolvePassData;
-        std::unique_ptr<Render::Graph> globalFrameGraph = nullptr;
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 

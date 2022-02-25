@@ -245,13 +245,13 @@ void Carrot::Engine::init() {
                                            }
         );
 
-        globalFrameGraph = std::move(mainGraph.compile());
+        getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     } else {
         Render::GraphBuilder mainGraph(vkDriver);
 
         fillGraphBuilder(mainGraph, true);
 
-        globalFrameGraph = std::move(mainGraph.compile());
+        getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     }
     updateImGuiTextures(getSwapchainImageCount());
 
@@ -587,8 +587,17 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     }
 
     {
-        ZoneScopedN("Render complete frame");
-        globalFrameGraph->execute(newRenderContext(i, getMainViewport()), mainCommandBuffers[i]);
+        ZoneScopedN("Render viewports");
+        for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
+            ZoneScopedN("Render single viewport");
+            auto& viewport = *it;
+            if(config.runInVR) {
+                viewport.render(newRenderContext(i, viewport, Render::Eye::LeftEye), mainCommandBuffers[i]);
+                viewport.render(newRenderContext(i, viewport, Render::Eye::RightEye), mainCommandBuffers[i]);
+            } else {
+                viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
+            }
+        }
     }
 
     mainCommandBuffers[i].end();
@@ -1179,7 +1188,9 @@ void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
         leftEyeGlobalFrameGraph->onSwapchainImageCountChange(newCount);
         rightEyeGlobalFrameGraph->onSwapchainImageCountChange(newCount);
     }
-    globalFrameGraph->onSwapchainImageCountChange(newCount);
+    for(auto& v : viewports) {
+        v.onSwapchainImageCountChange(newCount);
+    }
 
     createSynchronizationObjects();
 
@@ -1197,8 +1208,13 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
         leftEyeGlobalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
         rightEyeGlobalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
     }
-
-    globalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
+    getMainViewport().onSwapchainSizeChange(newWidth, newHeight);
+    for(auto& v : viewports) {
+        if(&v == &getMainViewport()) {
+            continue;
+        }
+        v.onSwapchainSizeChange(newWidth, newHeight);
+    }
 
     game->onSwapchainSizeChange(newWidth, newHeight);
 
@@ -1207,21 +1223,22 @@ void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
 
 void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
     imguiTextures.resize(swapchainLength);
+    verify(getMainViewport().getRenderGraph() != nullptr, "No render graph associated to main viewport");
     for (int i = 0; i < swapchainLength; ++i) {
         auto& textures = imguiTextures[i];
-        textures.allChannels = &globalFrameGraph->getTexture(gResolvePassData.resolved, i);
+        textures.allChannels = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.resolved, i);
 
-        textures.albedo = &globalFrameGraph->getTexture(gResolvePassData.albedo, i);
+        textures.albedo = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.albedo, i);
 
-        textures.position = &globalFrameGraph->getTexture(gResolvePassData.positions, i);
+        textures.position = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.positions, i);
 
-        textures.normal = &globalFrameGraph->getTexture(gResolvePassData.normals, i);
+        textures.normal = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.normals, i);
 
-        textures.depth = &globalFrameGraph->getTexture(gResolvePassData.depthStencil, i);
+        textures.depth = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.depthStencil, i);
 
-        textures.intProperties = &globalFrameGraph->getTexture(gResolvePassData.flags, i);
+        textures.intProperties = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.flags, i);
 
-        textures.transparent = &globalFrameGraph->getTexture(gResolvePassData.transparent, i);
+        textures.transparent = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.transparent, i);
     }
 }
 

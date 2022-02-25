@@ -33,7 +33,7 @@ namespace Carrot::Render {
 
     class CompiledPass: public SwapchainAware {
     public:
-        using InitCallback = std::function<std::vector<vk::UniqueFramebuffer>(CompiledPass&, vk::Extent2D&)>;
+        using InitCallback = std::function<std::vector<vk::UniqueFramebuffer>(CompiledPass&, const vk::Extent2D&, vk::Extent2D&)>;
 
         /// Constructor for rasterized passes
         explicit CompiledPass(
@@ -45,7 +45,8 @@ namespace Carrot::Render {
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
                 SwapchainRecreationCallback swapchainCallback,
-                bool prerecordable
+                bool prerecordable,
+                const Carrot::UUID& passID
         );
 
         /// Constructor for non-rasterized passes
@@ -56,7 +57,8 @@ namespace Carrot::Render {
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
                 SwapchainRecreationCallback swapchainCallback,
-                bool prerecordable
+                bool prerecordable,
+                const Carrot::UUID& passID
         );
 
     public:
@@ -103,6 +105,9 @@ namespace Carrot::Render {
         SwapchainRecreationCallback swapchainRecreationCallback;
         std::string name;
         vk::Extent2D renderSize;
+        // used to create textures that match the viewport size
+        vk::Extent2D viewportSize;
+        Carrot::UUID passID; // used to tell texture repository which textures belong to this pass
 
     private: // Pre-recording
         vk::UniqueCommandPool commandPool;
@@ -157,6 +162,7 @@ namespace Carrot::Render {
 
     protected:
         std::string name;
+        Carrot::UUID passID; // used to track which textures this pass creates
 
         virtual CompiledPassCallback generateCallback() = 0;
         virtual SwapchainRecreationCallback generateSwapchainCallback() = 0;
