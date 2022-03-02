@@ -23,6 +23,14 @@ static Carrot::Lookup PolygonModes = std::array {
         Carrot::LookupEntry<vk::PolygonMode>(vk::PolygonMode::eFill, "point_cloud"),
 };
 
+static Carrot::Lookup DescriptorSetType = std::array {
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Autofill, "autofill"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Empty, "empty"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Camera, "camera"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Materials, "materials"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Lights, "lights"),
+};
+
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
     Carrot::Pipeline::Pipeline(driver, PipelineDescription(pipelineDescription)) {
 
@@ -191,7 +199,28 @@ void Carrot::Pipeline::reloadShaders() {
     vkPipelines.clear(); // flush existing pipelines
     stages->reload();
 
-    descriptorSetLayout0 = stages->createDescriptorSetLayout0(description.constants);
+    std::vector<vk::DescriptorSetLayout> layouts{};
+    descriptorSetLayouts.clear();
+    descriptorSetLayouts.resize(description.setCount);
+    for (std::uint32_t i = 0; i < description.setCount; ++i) {
+        auto setIt = description.descriptorSets.find(i);
+        if(setIt == description.descriptorSets.end()) {
+            description.descriptorSets[i].setID = i;
+            setIt = description.descriptorSets.find(i);
+        }
+        const auto& set = setIt->second;
+        switch(set.type) {
+            case PipelineDescription::DescriptorSet::Type::Autofill: {
+                descriptorSetLayouts[i] = stages->createDescriptorSetLayout(i, description.constants);
+                layouts.push_back(*descriptorSetLayouts[i]);
+            } break;
+
+            default:
+                descriptorSetLayouts[i].reset();
+                layouts.push_back(getDescriptorSetLayout(i));
+                break;
+        }
+    }
 
     std::vector<vk::PushConstantRange> pushConstants{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
@@ -199,39 +228,6 @@ void Carrot::Pipeline::reloadShaders() {
     }
     for(const auto& [_, range] : pushConstantMap) {
         pushConstants.push_back(range);
-    }
-
-    std::vector<vk::DescriptorSetLayout> layouts{};
-
-    if(!description.tmptmptmpUseMaterialSystem)
-        layouts.push_back(*descriptorSetLayout0);
-    if(description.vertexFormat == VertexFormat::SkinnedVertex) {
-        vk::DescriptorSetLayoutBinding binding {
-                .binding = 0,
-                .descriptorType = vk::DescriptorType::eStorageBuffer,
-                .descriptorCount = 1,
-                .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eRaygenKHR,
-        };
-        descriptorSetLayout1 = driver.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
-                .bindingCount = 1,
-                .pBindings = &binding,
-        }, driver.getAllocationCallbacks());
-
-        layouts.push_back(*descriptorSetLayout1);
-    }
-    if(description.tmptmptmpUseMaterialSystem || description.vertexFormat == VertexFormat::Vertex || description.type == PipelineType::GResolve) { // FIXME: remove condition
-        layouts.push_back(GetRenderer().getMaterialSystem().getDescriptorSetLayout());
-    }
-
-    if(description.reserveSet2ForCamera) {
-        while(layouts.size() < 2) {
-            layouts.push_back(driver.getEmptyDescriptorSetLayout());
-        }
-        layouts.push_back(driver.getRenderer().getCameraDescriptorSetLayout());
-    }
-
-    if(description.type == PipelineType::GResolve) { // FIXME: remove condition
-        layouts.push_back(GetRenderer().getLighting().getDescriptorSetLayout());
     }
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
@@ -246,12 +242,6 @@ void Carrot::Pipeline::reloadShaders() {
     std::vector<Specialization> specializations{};
 
     for(const auto& [constantName, constantValue] : description.constants) {
-        if("MAX_MATERIALS" == constantName) {
-            maxMaterialID = constantValue;
-        }
-        if("MAX_TEXTURES" == constantName) {
-            maxTextureID = constantValue;
-        }
         Carrot::Log::info("Specializing constant %s to value %lu", constantName.c_str(), constantValue);
         specializations.push_back(Specialization {
                 .offset = static_cast<std::uint32_t>(specializations.size()*sizeof(uint32_t)),
@@ -321,62 +311,51 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
 void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
     auto& pipeline = getOrCreatePipelineForRenderPass(pass);
     commands.bindPipeline(bindPoint, pipeline);
-    if(description.reserveSet2ForCamera && description.vertexFormat != VertexFormat::SkinnedVertex) {
-        //bindDescriptorSets(commands, {driver.getEmptyDescriptorSet()}, {}, 1);
-        renderContext.renderer.bindCameraSet(bindPoint, getPipelineLayout(), renderContext, commands);
-    }
-    if(description.type == PipelineType::Blit || description.type == PipelineType::Skybox) {
-        if(descriptorPool) {
-            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
-        }
-    } else if(description.type == PipelineType::GBuffer) {
-        if(description.vertexFormat == VertexFormat::Vertex || description.vertexFormat == VertexFormat::SkinnedVertex) { // FIXME hack to make sprites work
-            if(descriptorPool) {
-                bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
-            }
-            renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
-        } else if(!description.tmptmptmpUseMaterialSystem) {
-            if(descriptorPool) {
-                bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {0});
-            }
-        }
-    } else if(!description.tmptmptmpUseMaterialSystem) {
-        if(descriptorPool) {
-            bindDescriptorSets(commands, {descriptorSets0[renderContext.swapchainIndex]}, {});
-        }
-        renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 1, *layout, bindPoint);
+
+    std::vector<vk::DescriptorSet> setsToBind { description.setCount, VK_NULL_HANDLE };
+    for(std::uint32_t i = 0; i < setsToBind.size(); i++) {
+        setsToBind[i] = getDescriptorSets(renderContext, i)[renderContext.swapchainIndex];
     }
 
-    if(description.tmptmptmpUseMaterialSystem) {
-        renderContext.renderer.getMaterialSystem().bind(renderContext, commands, 0, *layout, bindPoint);
-    }
-
-    if(description.type == PipelineType::GResolve) {
-        renderContext.renderer.getLighting().bind(renderContext, commands, 3, *layout, bindPoint); // TODO: don't hardcode
-    }
+    commands.bindDescriptorSets(bindPoint, *layout, 0, setsToBind, {});
 }
 
 const vk::PipelineLayout& Carrot::Pipeline::getPipelineLayout() const {
     return *layout;
 }
 
-const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout() const {
-    return *descriptorSetLayout0;
-}
+const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uint32_t setID) const {
+    const auto& set = description.descriptorSets.at(setID);
+    switch(set.type) {
+        case PipelineDescription::DescriptorSet::Type::Autofill:
+            return *descriptorSetLayouts[setID];
 
-void Carrot::Pipeline::bindDescriptorSets(vk::CommandBuffer& commands,
-                                          const std::vector<vk::DescriptorSet>& descriptors,
-                                          const std::vector<std::uint32_t>& dynamicOffsets,
-                                          std::uint32_t firstSet) const {
-    commands.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout, firstSet, descriptors, dynamicOffsets);
+        case PipelineDescription::DescriptorSet::Type::Empty:
+            return GetVulkanDriver().getEmptyDescriptorSetLayout();
+
+        case PipelineDescription::DescriptorSet::Type::Materials:
+            return GetRenderer().getMaterialSystem().getDescriptorSetLayout();
+
+        case PipelineDescription::DescriptorSet::Type::Camera:
+            return GetRenderer().getCameraDescriptorSetLayout();
+
+        case PipelineDescription::DescriptorSet::Type::Lights:
+            return GetRenderer().getLighting().getDescriptorSetLayout();
+
+        default:
+            std::terminate();
+            return *((vk::DescriptorSetLayout*)nullptr);
+    }
 }
 
 void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     std::vector<vk::DescriptorPoolSize> sizes{};
 
     std::vector<NamedBinding> bindings{};
-    for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindingsSet0(stage, bindings, description.constants);
+    for(std::uint32_t setID = 0; setID < description.setCount; setID++) {
+        for(const auto& [stage, module] : stages->getModuleMap()) {
+            module->addBindingsSet(stage, setID, bindings, description.constants);
+        }
     }
 
     for(auto binding : bindings) {
@@ -409,14 +388,29 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     if(descriptorPool) {
         driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     }
-    descriptorSets0 = allocateDescriptorSets0();
+    for(auto& set : descriptorSets) {
+        if(!set.empty()) {
+            GetVulkanDevice().freeDescriptorSets(*descriptorPool, set);
+            set.clear();
+        }
+    }
+    descriptorSets.clear();
+    descriptorSets.resize(description.setCount);
+    for (std::uint32_t i = 0; i < description.setCount; ++i) {
+        auto setIt = description.descriptorSets.find(i);
+        if(setIt != description.descriptorSets.end()) { // not an empty set
+            if(setIt->second.type == PipelineDescription::DescriptorSet::Type::Autofill) {
+                descriptorSets[i] = allocateAutofillDescriptorSets(i);
+            }
+        }
+    }
 }
 
-std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
+std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(std::uint32_t setID) {
     if(!descriptorPool) {
         return std::vector<vk::DescriptorSet>{driver.getSwapchainImageCount(), vk::DescriptorSet{}};
     }
-    std::vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), *descriptorSetLayout0};
+    std::vector<vk::DescriptorSetLayout> layouts{driver.getSwapchainImageCount(), getDescriptorSetLayout(setID)};
     vk::DescriptorSetAllocateInfo allocateInfo {
         .descriptorPool = *descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
@@ -426,7 +420,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
 
     std::vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {
-        module->addBindingsSet0(stage, bindings, description.constants);
+        module->addBindingsSet(stage, setID, bindings, description.constants);
     }
 
     // allocate default values
@@ -488,8 +482,34 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateDescriptorSets0() {
     return sets;
 }
 
-const std::vector<vk::DescriptorSet>& Carrot::Pipeline::getDescriptorSets0() const {
-    return descriptorSets0;
+std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render::Context& renderContext, std::uint32_t setID) const {
+    const auto& set = description.descriptorSets.at(setID);
+    switch(set.type) {
+        case PipelineDescription::DescriptorSet::Type::Autofill:
+            return descriptorSets[setID];
+
+        case PipelineDescription::DescriptorSet::Type::Materials:
+            return GetRenderer().getMaterialSystem().getDescriptorSets();
+
+        case PipelineDescription::DescriptorSet::Type::Camera:
+        {
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.viewport.getCameraDescriptorSet(renderContext) };
+            return sets;
+        }
+
+        case PipelineDescription::DescriptorSet::Type::Lights:
+        {
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getLighting().getCameraDescriptorSet(renderContext) };
+            return sets;
+        }
+
+        case PipelineDescription::DescriptorSet::Type::Empty:
+        default:
+        {
+            std::terminate(); // not allowed for this set type
+            return *((std::vector<vk::DescriptorSet>*)nullptr);
+        }
+    }
 }
 
 Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
@@ -523,21 +543,32 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     rapidjson::Document json;
     json.Parse(jsonFile.readText().c_str());
 
-    if(json.HasMember("texturesBindingIndex"))
-        texturesBindingIndex = json["texturesBindingIndex"].GetUint64();
-    if(json.HasMember("materialStorageBufferBindingIndex"))
-        materialStorageBufferBindingIndex = json["materialStorageBufferBindingIndex"].GetUint64();
+    if(json.HasMember("_import")) {
+        Carrot::IO::Resource imported = jsonFile.relative(json["_import"].GetString());
+        *this = PipelineDescription(imported);
+    }
 
-    subpassIndex = json["subpassIndex"].GetUint64();
-    vertexShader = json["vertexShader"].GetString();
-    fragmentShader = json["fragmentShader"].GetString();
-    vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());
-    type = Pipeline::getPipelineType(json["type"].GetString());
+    if(json.HasMember("subpassIndex")) {
+        subpassIndex = json["subpassIndex"].GetUint64();
+    }
+    if(json.HasMember("vertexShader")) {
+        vertexShader = json["vertexShader"].GetString();
+    }
+    if(json.HasMember("fragmentShader")) {
+        fragmentShader = json["fragmentShader"].GetString();
+    }
+    if(json.HasMember("vertexFormat")) {
+        vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());
+    }
+    if(json.HasMember("type")) {
+        type = Pipeline::getPipelineType(json["type"].GetString());
+    }
 
-    depthWrite = json["depthWrite"].GetBool();
-    depthTest = json["depthTest"].GetBool();
-    if(json.HasMember("reserveSet2ForCamera")) {
-        reserveSet2ForCamera = json["reserveSet2ForCamera"].GetBool();
+    if(json.HasMember("depthWrite")) {
+        depthWrite = json["depthWrite"].GetBool();
+    }
+    if(json.HasMember("depthTest")) {
+        depthTest = json["depthTest"].GetBool();
     }
 
     if(json.HasMember("constants")) {
@@ -568,7 +599,19 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
         polygonMode = PolygonModes[json["fillMode"].GetString()];
     }
 
-    if(json.HasMember("tmptmptmpUseMaterialSystem")) {
-        tmptmptmpUseMaterialSystem = json["tmptmptmpUseMaterialSystem"].GetBool();
+    if(json.HasMember("descriptorSets")) {
+        setCount = 0;
+        auto sets = json["descriptorSets"].GetArray();
+        for(const auto& setData : sets) {
+            const auto set = setData.GetObject();
+            const DescriptorSet::Type descriptorType = DescriptorSetType[set["type"].GetString()];
+            const std::uint32_t setID = set["setID"].GetUint();
+            descriptorSets[setID] = DescriptorSet {
+                .type = descriptorType,
+                .setID = setID,
+            };
+
+            setCount = std::max(setCount, setID+1);
+        }
     }
 }

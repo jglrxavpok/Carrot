@@ -9,5 +9,14 @@
   "depthTest": true,
   "vertexShader": "resources/shaders/billboards.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/billboards.fragment.glsl.spv",
-  "tmptmptmpUseMaterialSystem": true
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "materials",
+      "setID": 1
+    }
+  ]
 }

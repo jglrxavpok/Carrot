@@ -11,5 +11,10 @@
   "cull": false,
   "vertexShader": "resources/shaders/screenQuad-transformed.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/composer-blit.fragment.glsl.spv",
-  "texturesBindingIndex": 1
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ]
 }

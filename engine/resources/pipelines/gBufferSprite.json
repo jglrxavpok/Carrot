@@ -8,11 +8,8 @@
     "MAX_TEXTURES": 1,
     "MAX_MATERIALS": 1
   },
-  "reserveSet2ForCamera": true,
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/gBufferSprite.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gBufferSprite.fragment.glsl.spv",
-  "materialStorageBufferBindingIndex": 2,
-  "texturesBindingIndex": 0
+  "fragmentShader": "resources/shaders/gBufferSprite.fragment.glsl.spv"
 }

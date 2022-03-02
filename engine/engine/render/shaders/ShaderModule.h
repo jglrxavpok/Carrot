@@ -32,7 +32,7 @@ namespace Carrot {
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
-        void addBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings, const std::map<std::string, uint32_t>& constants);
+        void addBindingsSet(vk::ShaderStageFlagBits stage, std::uint32_t setID, std::vector<NamedBinding>& bindings, const std::map<std::string, uint32_t>& constants);
 
         void addPushConstants(vk::ShaderStageFlagBits stage, std::unordered_map<std::string, vk::PushConstantRange>& pushConstants) const;
 
@@ -48,10 +48,12 @@ namespace Carrot {
         Render::ShaderSource source;
 
         void
-        createBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings,
-                           vk::DescriptorType type,
-                           const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                           const std::map<std::string, uint32_t>& constants);
+        createBindingsSet(vk::ShaderStageFlagBits stage,
+                          std::uint32_t setID,
+                          std::vector<NamedBinding>& bindings,
+                          vk::DescriptorType type,
+                          const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
+                          const std::map<std::string, uint32_t>& constants);
 
         void reload();
 

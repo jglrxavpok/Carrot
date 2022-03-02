@@ -254,6 +254,7 @@ namespace Carrot::Render {
     }
 
     void MaterialSystem::reallocateDescriptorSets() {
+        GetVulkanDevice().resetDescriptorPool(*descriptorSetPool);
         std::vector<vk::DescriptorSetLayout> layouts{GetEngine().getSwapchainImageCount(), *descriptorSetLayout};
         descriptorSets = GetVulkanDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *descriptorSetPool,

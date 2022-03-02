@@ -46,13 +46,13 @@ std::vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipel
     return creates;
 }
 
-vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout0(const std::map<std::string, std::uint32_t>& constants) const {
+vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout(std::uint32_t setID, const std::map<std::string, std::uint32_t>& constants) const {
     auto& device = driver.getLogicalDevice();
 
     std::vector<NamedBinding> bindings{};
 
     for(const auto& [stage, module] : stages) {
-        module->addBindingsSet0(stage, bindings, constants);
+        module->addBindingsSet(stage, setID, bindings, constants);
     }
 
     std::vector<vk::DescriptorSetLayoutBinding> vkBindings{bindings.size()};

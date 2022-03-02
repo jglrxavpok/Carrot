@@ -161,7 +161,7 @@ bool Carrot::ParticleSystem::isOpaque() const {
 void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
     renderingPipeline->onSwapchainImageCountChange(newCount);
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
-        auto set = renderingPipeline->getDescriptorSets0()[i];
+        auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, GetEngine().getMainViewport()), 0)[i];
 
         vk::DescriptorBufferInfo bufferInfo {
             .buffer = particleBuffer.getVulkanBuffer(),

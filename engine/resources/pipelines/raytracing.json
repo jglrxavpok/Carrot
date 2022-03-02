@@ -1,8 +1,0 @@
-{
-  "type": "raytracing",
-  "__comment": "This file exists simply to show subpass index, the raytracing pipeline is done in code",
-  "subpassIndex": 1,
-  "vertexFormat": "dummy",
-  "vertexShader": "dummy",
-  "fragmentShader": "dummy"
-}

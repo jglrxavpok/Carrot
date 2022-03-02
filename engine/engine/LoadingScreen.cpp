@@ -6,6 +6,7 @@
 #include "render/resources/Buffer.h"
 #include "render/resources/Pipeline.h"
 #include "render/resources/Mesh.h"
+#include "engine/Engine.h"
 
 Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     loadingImage = Image::fromFile(engine.getVulkanDriver(), "resources/splash.png");
@@ -76,7 +77,8 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
-    auto& set = pipeline.getDescriptorSets0()[imageIndex];
+    auto renderContext = GetEngine().newRenderContext(imageIndex, GetEngine().getMainViewport());
+    auto set = pipeline.getDescriptorSets(renderContext, 0)[imageIndex];
     vk::WriteDescriptorSet writeLoadingImage {
             .dstSet = set,
             .dstBinding = 0,

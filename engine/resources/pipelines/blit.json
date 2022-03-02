@@ -10,5 +10,10 @@
   "depthTest": false,
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/blit.fragment.glsl.spv",
-  "texturesBindingIndex": 0
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ]
 }

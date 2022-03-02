@@ -4,13 +4,14 @@
   "vertexFormat": "SimpleVertex",
   "cull": false,
   "alphaBlending": true,
-  "constants": {
-    "MAX_TEXTURES": 1,
-    "MAX_MATERIALS": 1
-  },
-  "reserveSet2ForCamera": true,
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/grid.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/grid.fragment.glsl.spv"
+  "fragmentShader": "resources/shaders/grid.fragment.glsl.spv",
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    }
+  ]
 }

@@ -73,7 +73,8 @@ namespace Carrot::Render {
         void beginFrame(const Carrot::Render::Context& renderContext);
 
     public:
-        vk::DescriptorSetLayout getDescriptorSetLayout() const { return *descriptorSetLayout; }
+        const vk::DescriptorSetLayout& getDescriptorSetLayout() const { return *descriptorSetLayout; }
+        vk::DescriptorSet getCameraDescriptorSet(const Render::Context& context) { return descriptorSets[context.swapchainIndex]; }
 
     public:
         void onSwapchainImageCountChange(size_t newCount) override;

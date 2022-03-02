@@ -9,5 +9,10 @@
   "depthTest": true,
   "vertexShader": "resources/shaders/particles.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/particles.fragment.glsl.spv",
-  "reserveSet2ForCamera": false
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    }
+  ]
 }

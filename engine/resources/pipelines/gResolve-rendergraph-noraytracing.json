@@ -1,10 +1,4 @@
 {
-  "type": "gResolve",
-  "subpassIndex": 0,
-  "vertexFormat": "ScreenSpace",
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gResolve-rendergraph-noraytracing.fragment.glsl.spv",
-  "reserveSet2ForCamera": true,
-  "depthWrite": false,
-  "depthTest": false
+  "_import": "gResolve.json",
+  "fragmentShader": "resources/shaders/gResolve-rendergraph-noraytracing.fragment.glsl.spv"
 }

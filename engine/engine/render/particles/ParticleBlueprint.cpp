@@ -78,11 +78,8 @@ std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipel
     desc.type = PipelineType::Particles;
     desc.subpassIndex = 0;
     desc.vertexFormat = VertexFormat::Particle;
-    desc.materialStorageBufferBindingIndex = -1;
-    desc.texturesBindingIndex = -1;
     desc.vertexShader = "resources/shaders/particles.vertex.glsl.spv";
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
-    desc.reserveSet2ForCamera = true;
     desc.alphaBlending = true;
     desc.depthWrite = false;
     desc.depthTest = true;

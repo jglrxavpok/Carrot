@@ -4,15 +4,18 @@
   "vertexFormat": "Vertex",
   "cull": false,
   "alphaBlending": true,
-  "constants": {
-    "MAX_TEXTURES": 16,
-    "MAX_MATERIALS": 16
-  },
-  "reserveSet2ForCamera": true,
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "materials",
+      "setID": 1
+    }
+  ],
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gBuffer.fragment.glsl.spv",
-  "materialStorageBufferBindingIndex": 3,
-  "texturesBindingIndex": 1
+  "fragmentShader": "resources/shaders/gBuffer.fragment.glsl.spv"
 }

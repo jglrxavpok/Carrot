@@ -3,7 +3,7 @@
 #include "includes/materials.glsl"
 #include "includes/billboards.glsl"
 
-MATERIAL_SYSTEM_SET(0)
+MATERIAL_SYSTEM_SET(1)
 
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec3 viewPosition;

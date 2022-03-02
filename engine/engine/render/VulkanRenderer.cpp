@@ -275,12 +275,11 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
 }
 
 void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
-    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     if(boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == samplerToBind) {
         return;
     }
     boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = samplerToBind;
-    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo samplerInfo {
             .sampler = samplerToBind,
@@ -303,12 +302,11 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
 
 void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, Carrot::AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
-    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     if(boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == as.getVulkanAS()) {
         return;
     }
     boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = as.getVulkanAS();
-    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
+    auto descriptorSet = pipeline.getDescriptorSets(frame, 0)[frame.swapchainIndex];
 
     vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
             .accelerationStructureCount = 1,
@@ -335,12 +333,11 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
 
 void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
     ZoneScoped;
-    verify(setID == 0, "Engine does not support automatically reading sets beyond set 0... yet");
     if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == textureToBind.getVulkanImage()) {
         return;
     }
     boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = textureToBind.getVulkanImage();
-    auto& descriptorSet = pipeline.getDescriptorSets0()[frame.swapchainIndex];
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
         .sampler = sampler,
@@ -397,6 +394,7 @@ void Carrot::VulkanRenderer::newFrame() {
 
 void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
     auto cameraSet = data.getCameraDescriptorSet();
+    TODO
     cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
 }
 
@@ -507,7 +505,7 @@ void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Ca
             .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     };
 
-    auto& set = pipeline->getDescriptorSets0()[frame.swapchainIndex];
+    auto set = pipeline->getDescriptorSets(frame, 0)[frame.swapchainIndex];
     vk::WriteDescriptorSet writeImage {
             .dstSet = set,
             .dstBinding = 0,

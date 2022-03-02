@@ -2,7 +2,6 @@
   "type": "gbuffer",
   "subpassIndex": 0,
   "vertexFormat": "SimpleVertexWithInstanceData",
-  "reserveSet2ForCamera": true,
   "depthWrite": true,
   "depthTest": true,
   "cull": false,
@@ -13,6 +12,14 @@
   },
   "vertexShader": "resources/shaders/text-rendering.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/text-rendering.fragment.glsl.spv",
-  "materialStorageBufferBindingIndex": 2,
-  "texturesBindingIndex": 0
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "camera",
+      "setID": 1
+    }
+  ]
 }

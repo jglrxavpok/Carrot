@@ -10,6 +10,7 @@
 #include "engine/render/shaders/ShaderStages.h"
 #include "VertexFormat.h"
 #include "engine/render/shaders/ShaderSource.h"
+#include <core/utils/Lookup.hpp>
 
 namespace Carrot {
     class Material;
@@ -26,26 +27,39 @@ namespace Carrot {
     };
 
     struct PipelineDescription {
+        struct DescriptorSet {
+            enum class Type {
+                Autofill,
+                Empty,
+                Camera,
+                Materials,
+                Lights,
+
+                CountOf = Materials
+            };
+
+            // --
+            Type type = Type::Autofill;
+            std::uint32_t setID = -1;
+        };
+
         Render::ShaderSource vertexShader;
         Render::ShaderSource fragmentShader;
         PipelineType type = PipelineType::Unknown;
         Carrot::VertexFormat vertexFormat = Carrot::VertexFormat::Invalid;
         std::map<std::string, std::uint32_t> constants;
+        std::unordered_map<std::uint32_t, DescriptorSet> descriptorSets;
+        std::uint32_t setCount = 0; // how many sets this pipeline uses. May be higher than descriptorSets.size() if IDs are skipped (eg sets 0, 2, and 3 are used, but not 1)
 
-        std::uint64_t texturesBindingIndex = -1;
-        std::uint64_t materialStorageBufferBindingIndex = -1;
         std::uint64_t subpassIndex = -1;
 
         bool depthTest = true;
         bool depthWrite = true;
-        bool reserveSet2ForCamera = false; // descriptor set 0 is for the camera. Can be used to switch camera information without changing other sets (VR)
 
         bool cull = true;
         bool alphaBlending = false;
 
         vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-
-        bool tmptmptmpUseMaterialSystem = false;
 
         vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 
@@ -60,16 +74,14 @@ namespace Carrot {
 
         void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
-        void bindDescriptorSets(vk::CommandBuffer& commands, const std::vector<vk::DescriptorSet>& descriptors, const std::vector<std::uint32_t>& dynamicOffsets, std::uint32_t firstSet = 0) const;
-
         void recreateDescriptorPool(std::uint32_t imageCount);
 
         const vk::PushConstantRange& getPushConstant(std::string_view name) const;
 
     public:
         [[nodiscard]] const vk::PipelineLayout& getPipelineLayout() const;
-        [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout() const;
-        const std::vector<vk::DescriptorSet>& getDescriptorSets0() const;
+        [[nodiscard]] const vk::DescriptorSetLayout& getDescriptorSetLayout(std::uint32_t setID) const;
+        std::vector<vk::DescriptorSet> getDescriptorSets(const Render::Context& renderContext, std::uint32_t setID) const;
 
         VertexFormat getVertexFormat() const;
 
@@ -124,27 +136,18 @@ namespace Carrot {
         } pipelineTemplate;
 
         Carrot::VulkanDriver& driver;
-        vk::UniqueDescriptorSetLayout descriptorSetLayout0{};
-        /// can be nullptr, used for animations
-        vk::UniqueDescriptorSetLayout descriptorSetLayout1{};
         vk::UniquePipelineLayout layout{};
         vk::UniqueDescriptorPool descriptorPool{};
         std::unique_ptr<ShaderStages> stages = nullptr;
-        std::vector<vk::DescriptorSet> descriptorSets0{};
-        MaterialID materialID = 0;
-        MaterialID maxMaterialID = 16;
-
-        TextureID textureID = 0;
-        TextureID maxTextureID = 16;
+        std::vector<std::vector<vk::DescriptorSet>> descriptorSets{};
+        std::vector<vk::UniqueDescriptorSetLayout> descriptorSetLayouts{};
 
         PipelineDescription description;
-        std::unique_ptr<Carrot::Buffer> materialStorageBuffer = nullptr;
-        std::unordered_map<TextureID, vk::ImageView> reservedTextures{};
         mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
 
         mutable std::unordered_map<std::string, vk::PushConstantRange> pushConstantMap{};
 
-        std::vector<vk::DescriptorSet> allocateDescriptorSets0();
+        std::vector<vk::DescriptorSet> allocateAutofillDescriptorSets(std::uint32_t setID);
 
         void allocateDescriptorSets();
 

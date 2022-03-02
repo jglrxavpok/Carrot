@@ -1,10 +1,22 @@
 {
   "type": "gResolve",
-  "subpassIndex": 1,
+  "subpassIndex": 0,
   "vertexFormat": "ScreenSpace",
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gResolve.fragment.glsl.spv",
-  "reserveSet2ForCamera": true,
   "depthWrite": false,
-  "depthTest": false
+  "depthTest": false,
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "camera",
+      "setID": 1
+    },
+    {
+      "type": "lights",
+      "setID": 2
+    }
+  ]
 }

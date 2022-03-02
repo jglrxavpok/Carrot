@@ -47,41 +47,42 @@ vk::PipelineShaderStageCreateInfo Carrot::ShaderModule::createPipelineShaderStag
     };
 }
 
-void Carrot::ShaderModule::addBindingsSet0(vk::ShaderStageFlagBits stage, std::vector<NamedBinding>& bindings, const std::map<std::string, std::uint32_t>& constants) {
+void Carrot::ShaderModule::addBindingsSet(vk::ShaderStageFlagBits stage, std::uint32_t setID, std::vector<NamedBinding>& bindings, const std::map<std::string, std::uint32_t>& constants) {
     const auto resources = compiler->get_shader_resources();
 
     // buffers
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eUniformBufferDynamic, resources.uniform_buffers, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eUniformBuffer, resources.uniform_buffers, constants);
 
     // samplers
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eSampler, resources.separate_samplers, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eSampler, resources.separate_samplers, constants);
 
     // sampled images
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eCombinedImageSampler, resources.sampled_images, constants);
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eSampledImage, resources.separate_images, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eCombinedImageSampler, resources.sampled_images, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eSampledImage, resources.separate_images, constants);
 
 
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eInputAttachment, resources.subpass_inputs, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eInputAttachment, resources.subpass_inputs, constants);
 
 
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eStorageBufferDynamic, resources.storage_buffers, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eStorageBuffer, resources.storage_buffers, constants);
 
-    createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureKHR, resources.acceleration_structures, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eAccelerationStructureKHR, resources.acceleration_structures, constants);
     //createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureNV, resources.acceleration_structures, constants);
 
     // TODO: other types
 }
 
-void Carrot::ShaderModule::createBindingsSet0(vk::ShaderStageFlagBits stage,
-                                              std::vector<NamedBinding>& bindings,
-                                              vk::DescriptorType type,
-                                              const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
-                                              const std::map<std::string, std::uint32_t>& constants) {
+void Carrot::ShaderModule::createBindingsSet(vk::ShaderStageFlagBits stage,
+                                             std::uint32_t setID,
+                                             std::vector<NamedBinding>& bindings,
+                                             vk::DescriptorType type,
+                                             const spirv_cross::SmallVector<spirv_cross::Resource>& resources,
+                                             const std::map<std::string, std::uint32_t>& constants) {
     for(const auto& resource : resources) {
         const auto bindingID = compiler->get_decoration(resource.id, spv::DecorationBinding);
         const auto& resourceType = compiler->get_type(resource.type_id);
         const auto setIndex = compiler->get_decoration(resource.id, spv::DecorationDescriptorSet);
-        if(setIndex != 0) { // TODO: avoid manually referencing non-0 sets
+        if(setIndex != setID) {
             continue;
         }
         uint32_t count = 1;

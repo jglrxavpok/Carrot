@@ -1,22 +1,6 @@
 #include <includes/gbuffer.glsl>
 
-layout(constant_id = 0) const uint MAX_TEXTURES = 1;
-layout(constant_id = 1) const uint MAX_MATERIALS = 1;
-
-struct MaterialData {
-    uint textureIndex;
-    bool ignoresInstanceColor;
-};
-
-layout(set = 0, binding = 0) uniform texture2D textures[MAX_TEXTURES];
-layout(set = 0, binding = 1) uniform sampler linearSampler;
-
-// unused, but required for GBuffer pipelines
-layout(set = 0, binding = 2) buffer MaterialBuffer {
-    MaterialData materials[MAX_MATERIALS];
-};
-
-layout(set = 2, binding = 0) uniform CameraBufferObject {
+layout(set = 0, binding = 0) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;

@@ -1297,9 +1297,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
                                                                            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
                                                                                ZoneScopedN("CPU RenderGraph skybox");
                                                                                auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                                                                               renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
-                                                                                                      buffer);
-                                                                               renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+                                                                               /*renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
+                                                                                                      buffer);*/
+                                                                               renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
                                                                                skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
                                                                                skyboxMesh->bind(buffer);
                                                                                skyboxMesh->draw(buffer);

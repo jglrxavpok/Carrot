@@ -32,7 +32,7 @@ layout(set = 0, binding = 11) uniform Debug {
 } debug;*/
 
 
-layout(set = 2, binding = 0) uniform CameraBufferObject {
+layout(set = 1, binding = 0) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
     mat4 inverseView;
@@ -43,7 +43,8 @@ layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
 
-LIGHT_SET(3)
+LIGHT_SET(2)
+
 
 float computePointLight(vec3 worldPos, vec3 normal, Light light) {
     vec3 lightPosition = light.position;
