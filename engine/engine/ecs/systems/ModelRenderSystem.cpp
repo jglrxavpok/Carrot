@@ -30,6 +30,7 @@ namespace Carrot::ECS {
                     Carrot::InstanceData instanceData;
                     instanceData.transform = transform.toTransformMatrix();
                     instanceData.uuid = entity.getID();
+                    instanceData.color = modelComp.color;
                     Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
                     modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
 

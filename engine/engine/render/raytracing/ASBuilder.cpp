@@ -115,6 +115,14 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
+    if(!toBuild.empty()) {
+        buildBottomLevels(toBuild, false);
+        for(auto& v : toBuild) {
+            v->built = true;
+        }
+
+    }
+
     for(auto& [slot, valuePtr] : instances) {
         if(auto value = valuePtr.lock()) {
             if(value->enabled) {
@@ -124,11 +132,6 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     if(!toBuild.empty()) {
-        buildBottomLevels(toBuild, false);
-        for(auto& v : toBuild) {
-            v->built = true;
-        }
-
         buildTopLevelAS(false, true);
         framesBeforeRebuildingTLAS = 10;
     } else {

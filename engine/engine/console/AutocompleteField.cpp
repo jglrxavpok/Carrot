@@ -74,7 +74,7 @@ namespace Carrot {
                 }
                 break;
 
-            case ImGuiInputTextFlags_CallbackResize:
+/*            case ImGuiInputTextFlags_CallbackResize:
                 // from imgui_demo.cpp
                 if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
                     auto* my_str = (ImVector<char>*)data->UserData;
@@ -82,7 +82,7 @@ namespace Carrot {
                     my_str->resize(data->BufSize); // NB: On resizing calls, generally data->BufSize == data->BufTextLen + 1
                     data->Buf = my_str->begin();
                 }
-                break;
+                break;*/
         }
 
         return 0;
@@ -101,11 +101,14 @@ namespace Carrot {
         // TODO: modify to customise contents
         auto& entry = getCurrentSuggestions()[entryIndex];
 
-        imguiInputBuffer = entry;
+        //imguiInputBuffer = entry;
+        inputToSet = entry;
+        modifiedInCallback = true;
     }
 
 
     void AutocompleteField::drawField() {
+        modifiedInCallback = false;
         ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue    |
                                     ImGuiInputTextFlags_CallbackAlways      |
                                     ImGuiInputTextFlags_CallbackCharFilter  |
@@ -114,7 +117,10 @@ namespace Carrot {
 
         auto prevInput = imguiInputBuffer;
         bool pressedEnter = ImGui::InputText("Command##autocomplete", &imguiInputBuffer, flags, InputCallback, this);
-        if(prevInput != imguiInputBuffer) {
+        if(modifiedInCallback) {
+            imguiInputBuffer = inputToSet;
+        }
+        if(prevInput != imguiInputBuffer && !modifiedInCallback) {
             refreshSuggestions();
         }
         if(pressedEnter) {

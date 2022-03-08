@@ -11,7 +11,8 @@ namespace Carrot::ECS {
         auto parent = getEntity().getParent();
         if(parent) {
             if(auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {
-                return localTransform.toTransformMatrix(&parentTransform->localTransform);
+                glm::mat4 parentGlobalTransform = parentTransform->toTransformMatrix();
+                return parentGlobalTransform * localTransform.toTransformMatrix();
             }
         }
         return localTransform.toTransformMatrix();
@@ -58,18 +59,19 @@ namespace Carrot::ECS {
                 glm::mat4 inverseParent = glm::inverse(parentTransform->toTransformMatrix());
                 glm::vec4 localTranslationH = inverseParent * glm::vec4{ newTransform.position, 1.0 };
                 glm::vec3 localTranslation = { localTranslationH.x, localTranslationH.y, localTranslationH.z };
-                glm::quat localRotation = glm::toQuat(inverseParent) * newTransform.rotation;
+                glm::quat parentRotation = glm::toQuat(inverseParent);
+                glm::quat localRotation = parentRotation * newTransform.rotation;
 
                 glm::vec3 parentInverseScale;
-                glm::quat parentRotation;
+                glm::quat parentRotationFromMatrix;
                 glm::vec3 translation;
                 glm::vec3 skew;
                 glm::vec4 perspective;
-                glm::decompose(inverseParent, parentInverseScale, parentRotation, translation, skew,perspective);
+                glm::decompose(inverseParent, parentInverseScale, parentRotationFromMatrix, translation, skew,perspective);
 
                 localTransform.position = localTranslation;
                 localTransform.scale = parentInverseScale * newTransform.scale;
-                localTransform.rotation = localRotation * newTransform.rotation;
+                localTransform.rotation = localRotation;
                 return;
             }
         }
@@ -88,17 +90,22 @@ namespace Carrot::ECS {
         if(parent) {
             if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {
                 glm::mat4 finalTransform = toTransformMatrix();
-                glm::vec3 globalScale;
-                glm::quat globalRotation;
-                glm::vec3 globalTranslation;
-                glm::vec3 skew;
-                glm::vec4 perspective;
-                glm::decompose(finalTransform, globalScale, globalRotation, globalTranslation, skew,perspective);
+
+                glm::vec4 globalTranslation{ 0, 0, 0, 1 };
+                glm::vec4 forward { 0, 0, -1, 0 };
+                glm::vec4 up { 0, 1, 0, 0 };
+
+                globalTranslation = finalTransform * globalTranslation;
+                forward = glm::normalize(finalTransform * forward);
+                up = glm::normalize(finalTransform * up);
 
                 Carrot::Math::Transform computedGlobalTransform;
-                computedGlobalTransform.position = globalTranslation;
+                computedGlobalTransform.rotation = glm::quatLookAt(glm::vec3{forward.x, forward.y, forward.z }, glm::vec3{ up.x, up.y, up.z });
+
+                computedGlobalTransform.position = glm::vec3{ globalTranslation.x, globalTranslation.y, globalTranslation.z };
+
+                glm::vec3 globalScale = {1, 1, 1}; // TODO
                 computedGlobalTransform.scale = globalScale;
-                computedGlobalTransform.rotation = globalRotation;
                 return computedGlobalTransform;
             }
         }

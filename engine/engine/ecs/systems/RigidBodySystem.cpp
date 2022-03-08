@@ -13,13 +13,14 @@ namespace Carrot::ECS {
 
     void RigidBodySystem::tick(double dt) {
         forEachEntity([&](Entity& entity, TransformComponent& transformComponent, RigidBodyComponent& rigidBodyComp) {
+            auto transform = rigidBodyComp.rigidbody.getTransform();
             if(rigidBodyComp.firstTick) {
                 rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalTransform());
                 rigidBodyComp.firstTick = false;
+            } else {
+                transform.scale = transformComponent.computeGlobalTransform().scale; // preserve scale
+                transformComponent.setGlobalTransform(transform);
             }
-            auto transform = rigidBodyComp.rigidbody.getTransform();
-            transform.scale = transformComponent.computeGlobalTransform().scale; // preserve scale
-            transformComponent.setGlobalTransform(transform);
 
             for(auto& colliderPtr : rigidBodyComp.rigidbody.getColliders()) {
                 auto& shape = colliderPtr->getShape();

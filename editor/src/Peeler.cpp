@@ -293,6 +293,7 @@ namespace Peeler {
         ImGuiTableFlags tableFlags = ImGuiTableFlags_NoBordersInBody;
         if(ImGui::BeginTable("##resources table", columnCount, tableFlags)) {
             ImGui::TableNextRow();
+            std::uint32_t columnIndex = 0;
             std::uint32_t index = 0;
 
             std::optional<std::filesystem::path> updateToPath;
@@ -343,10 +344,11 @@ namespace Peeler {
                 }
                 ImGui::PopID();
 
-                if(++index == columnCount) {
-                    index = 0;
+                if(++columnIndex == columnCount) {
+                    columnIndex = 0;
                     ImGui::TableNextRow();
                 }
+                index++;
             }
 
             if(updateToPath) {
@@ -944,6 +946,7 @@ namespace Peeler {
             settings.currentProject.reset();
             deselectAllEntities();
             updateWindowTitle();
+            currentScene.world.freezeLogic();
             return;
         }
         rapidjson::Document description;

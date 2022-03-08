@@ -60,6 +60,7 @@ namespace Carrot::Async {
                 Async::LockGuard l { storageAccess.read() };
                 for(auto& node : storage) {
                     if(node.hashedKey == hashedKey) {
+                        verify(key == node.key, "Collision!");
                         if(node.value.has_value()) {
                             return node.value.value();
                         } else {

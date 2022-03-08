@@ -78,7 +78,35 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
             return loadedATexture;
         };
-        setMaterialTexture(handle->diffuseTexture, aiTextureType_DIFFUSE, materialSystem.getWhiteTexture());
+        if(!setMaterialTexture(handle->diffuseTexture, aiTextureType_DIFFUSE, materialSystem.getWhiteTexture())) {
+            aiColor4D diffuse;
+            if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
+                std::uint8_t red = static_cast<std::uint8_t>(diffuse.r * 255.0f) & 0xFF;
+                std::uint8_t green = static_cast<std::uint8_t>(diffuse.g * 255.0f) & 0xFF;
+                std::uint8_t blue = static_cast<std::uint8_t>(diffuse.b * 255.0f) & 0xFF;
+                std::uint8_t alpha = static_cast<std::uint8_t>(diffuse.a * 255.0f) & 0xFF;
+
+                if(red == 0 && green == 0 && blue == 0 && alpha == 255) {
+                    handle->diffuseTexture = GetRenderer().getMaterialSystem().getBlackTexture();
+                } else if(red == 255 && green == 255 && blue == 255 && alpha == 255) {
+                    handle->diffuseTexture = GetRenderer().getMaterialSystem().getWhiteTexture();
+                } else {
+                    std::unique_ptr<Carrot::Image> image = std::make_unique<Carrot::Image>(
+                            GetVulkanDriver(),
+                            vk::Extent3D {
+                                    .width = 1,
+                                    .height = 1,
+                                    .depth = 1,
+                            },
+                            vk::ImageUsageFlagBits::eSampled,
+                            vk::Format::eR8G8B8A8Unorm
+                    );
+                    std::uint8_t pixel[] = { red, green, blue, alpha };
+                    image->stageUpload(std::span<std::uint8_t>(pixel, 4));
+                    handle->diffuseTexture = materialSystem.createTextureHandle(std::make_shared<Render::Texture>(std::move(image)));
+                }
+            }
+        }
         if(!setMaterialTexture(handle->normalMap, aiTextureType_NORMALS, materialSystem.getBlueTexture())) {
             setMaterialTexture(handle->normalMap, aiTextureType_HEIGHT, materialSystem.getBlueTexture());
         }

@@ -103,6 +103,7 @@ function(add_includes Target)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
     if(IS_DEBUG_BUILD)
         target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
+        target_compile_definitions("${Target}" PRIVATE TRACY_ON_DEMAND=1)
     endif()
 endfunction()
 
