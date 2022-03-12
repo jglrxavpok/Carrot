@@ -13,8 +13,7 @@ namespace Peeler::ECS {
     }
 
     void CameraRenderer::onFrame(Carrot::Render::Context renderContext) {
-        Carrot::Render::Packet packet(Carrot::Render::PassEnum::OpaqueGBuffer);
-        packet.viewport = &renderContext.viewport;
+        Carrot::Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
         packet.useMesh(*cameraModel->getStaticMeshes()[0]);
 
         static glm::mat4 scaling = glm::scale(glm::mat4{ 1.0f }, glm::vec3 { 0.1f, 0.1f, 0.1f });

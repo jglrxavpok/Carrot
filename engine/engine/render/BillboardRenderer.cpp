@@ -29,9 +29,8 @@ namespace Carrot::Render {
         pushConstant.textureID = texture.getSlot();
         pushConstant.color = color;
 
-        Render::Packet packet(Render::PassEnum::OpaqueGBuffer);
+        Render::Packet& packet = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
         packet.pipeline = pipeline;
-        packet.viewport = &renderContext.viewport;
         packet.useMesh(GetRenderer().getFullscreenQuad());
 
         auto& billboardPushConstant = packet.addPushConstant("billboard", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);

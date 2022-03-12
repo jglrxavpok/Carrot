@@ -172,6 +172,8 @@ namespace Carrot::ECS {
         {
             ZoneScopedN("Logic");
             for(const auto& logic : logicSystems) {
+                ZoneScopedN("LogicSystem");
+                ZoneText(typeid(*logic).name(), std::strlen(typeid(*logic).name()));
                 logic->onFrame(renderContext);
             }
         }
@@ -179,6 +181,8 @@ namespace Carrot::ECS {
         {
             ZoneScopedN("Prepare render");
             for(const auto& render : renderSystems) {
+                ZoneScopedN("RenderSystem");
+                ZoneText(typeid(*render).name(), std::strlen(typeid(*render).name()));
                 render->onFrame(renderContext);
             }
         }

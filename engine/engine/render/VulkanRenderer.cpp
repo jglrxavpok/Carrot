@@ -17,6 +17,7 @@
 #include "core/io/IO.h"
 #include "engine/render/DrawData.h"
 #include "engine/render/resources/Buffer.h"
+#include <execution>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -415,6 +416,7 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 }
 
 void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
+    renderPacketStorage.beginFrame();
     materialSystem.beginFrame(renderContext);
     lighting.beginFrame(renderContext);
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
@@ -526,6 +528,7 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
 }
 
 void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScoped;
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
@@ -536,6 +539,7 @@ void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot
 }
 
 void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    ZoneScoped;
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
@@ -566,8 +570,9 @@ std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets
 }
 
 void Carrot::VulkanRenderer::sortRenderPackets() {
+    ZoneScoped;
     // sort by viewport, pass, then pipeline, then mesh
-    std::sort(renderPackets.begin(), renderPackets.end(), [&](const Render::Packet& a, const Render::Packet& b) {
+    std::sort(std::execution::par_unseq, renderPackets.begin(), renderPackets.end(), [&](const Render::Packet& a, const Render::Packet& b) {
         if(a.viewport != b.viewport) {
             return a.viewport < b.viewport;
         }
@@ -585,6 +590,7 @@ void Carrot::VulkanRenderer::sortRenderPackets() {
 }
 
 void Carrot::VulkanRenderer::mergeRenderPackets() {
+    ZoneScoped;
     std::size_t previousCapacity = preparedRenderPackets.capacity();
     preparedRenderPackets.clear();
     preparedRenderPackets.reserve(previousCapacity);
@@ -624,6 +630,7 @@ void Carrot::VulkanRenderer::mergeRenderPackets() {
             ImGui::Text("Merged render packets count: %llu", preparedRenderPackets.size());
             float ratio = static_cast<float>(preparedRenderPackets.size()) / static_cast<float>(renderPackets.size());
             ImGui::Separator();
+            // TODO: add sorting time
             ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
             ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
             ImGui::Text("Instance buffer size this frame: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeThisFrame()).c_str());
@@ -649,11 +656,10 @@ void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context
 }
 
 void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Carrot::Render::Packet packet(Carrot::Render::PassEnum::OpaqueGBuffer);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
     Carrot::DrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
-    packet.viewport = &renderContext.viewport;
     packet.useMesh(*model.getStaticMeshes()[0]); // TODO: find a better way to load individual meshes
     packet.pipeline = wireframeGBufferPipeline;
 
@@ -671,7 +677,13 @@ void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const C
     render(packet);
 }
 
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport) {
+    return renderPacketStorage.make(pass, &viewport);
+}
+
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
+    // TODO: allow parallelization
+    ZoneScopedN("Queue RenderPacket");
     verify(packet.pipeline, "Pipeline must not be null");
     verify(packet.pass != Render::PassEnum::Undefined, "Render pass must be defined");
     verify(packet.vertexBuffer, "Vertex buffer must not be null");

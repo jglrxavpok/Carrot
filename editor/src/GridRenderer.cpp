@@ -36,9 +36,8 @@ namespace Peeler {
         gridData.cellSize = cellSize;
         gridData.size = size;
 
-        Carrot::Render::Packet renderPacket(Carrot::Render::PassEnum::OpaqueGBuffer);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
         renderPacket.pipeline = renderingPipeline;
-        renderPacket.viewport = &renderContext.viewport;
         renderPacket.useMesh(gridMesh);
 
         auto& pushConstant = renderPacket.addPushConstant("grid", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);

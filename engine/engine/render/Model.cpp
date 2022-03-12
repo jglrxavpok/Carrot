@@ -316,21 +316,25 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
 }
 
 void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
+    ZoneScoped;
     DrawData data;
 
-    Render::Packet packet(renderPass);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
     packet.pipeline = staticMeshesPipeline;
-    packet.viewport = &renderContext.viewport;
     packet.transparentGBuffer.zOrder = 0.0f;
 
     Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
     pushConstant.id = "drawDataPush";
     pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
 
-    packet.useInstance(instanceData);
+    {
+        ZoneScopedN("instance use");
+        packet.useInstance(instanceData);
+    }
 
     for (const auto&[mat, meshList]: staticMeshes) {
         for (const auto& mesh: meshList) {
+            ZoneScopedN("mesh use");
             data.materialIndex = mat;
             packet.useMesh(*mesh);
 
@@ -344,7 +348,7 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
 void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
     DrawData data;
 
-    Render::Packet packet(renderPass);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
     packet.pipeline = skinnedMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 

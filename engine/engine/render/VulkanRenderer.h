@@ -19,6 +19,7 @@
 #include "engine/render/resources/SingleFrameStackGPUAllocator.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
+#include "RenderPacketContainer.h"
 #include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
@@ -176,6 +177,9 @@ namespace Carrot {
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
 
     public:
+        /// Reference is valid only for the current frame
+        Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport);
+
         void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
@@ -226,6 +230,8 @@ namespace Carrot {
         std::unordered_map<BindingKey, vk::Image> boundTextures;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
+
+        Render::PacketContainer renderPacketStorage;
         std::vector<Render::Packet> renderPackets;
         std::vector<Render::Packet> preparedRenderPackets;
 

@@ -22,6 +22,8 @@ namespace Carrot {
 }
 
 namespace Carrot::Render {
+    class PacketContainer;
+
     class Packet {
     public:
         struct TransparentPassData {
@@ -30,17 +32,30 @@ namespace Carrot::Render {
 
         class PushConstant {
         public:
-            PushConstant() = default;
-
             std::string id;
             vk::ShaderStageFlags stages = static_cast<vk::ShaderStageFlags>(0);
-            std::vector<std::uint8_t> pushData;
+            std::span<std::uint8_t> pushData;
 
+        public:
+            PushConstant(PacketContainer& container): container(container) {}
+
+            ~PushConstant();
+
+            PushConstant& operator=(const PushConstant& other);
+            PushConstant& operator=(PushConstant&& other);
+
+        public:
             template<typename T>
             void setData(T&& data) {
-                pushData.resize(sizeof(data));
+                pushData = allocateGeneric(sizeof(data));
                 std::memcpy(pushData.data(), &data, sizeof(data));
             }
+
+        private:
+            std::span<std::uint8_t> allocateGeneric(std::size_t size);
+
+        private:
+            PacketContainer& container;
         };
 
     public:
@@ -56,19 +71,21 @@ namespace Carrot::Render {
         TransparentPassData transparentGBuffer;
 
     public:
-        explicit Packet(PassEnum pass, std::source_location location = std::source_location::current());
+        explicit Packet(PacketContainer& container, PassEnum pass, std::source_location location = std::source_location::current());
 
-        Packet(const Packet&) = default;
+        Packet(const Packet&);
         Packet(Packet&& toMove);
 
-        Packet& operator=(Packet&& toMove) = default;
-        Packet& operator=(const Packet& toCopy) = default;
+        ~Packet();
+
+        Packet& operator=(Packet&& toMove);
+        Packet& operator=(const Packet& toCopy);
 
         void useMesh(Carrot::Mesh& mesh);
 
         template<typename T>
         void useInstance(T&& instance) {
-            instancingDataBuffer.resize(sizeof(instance));
+            instancingDataBuffer = allocateGeneric(sizeof(instance));
             std::memcpy(instancingDataBuffer.data(), &instance, sizeof(instance));
         }
 
@@ -79,8 +96,12 @@ namespace Carrot::Render {
         void record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
 
     private:
+        std::span<std::uint8_t> allocateGeneric(std::size_t size);
+
+    private:
+        PacketContainer& container;
         std::source_location source;
-        std::vector<std::uint8_t> instancingDataBuffer;
-        std::list<PushConstant> pushConstants;
+        std::span<std::uint8_t> instancingDataBuffer;
+        std::list<PushConstant*> pushConstants;
     };
 }

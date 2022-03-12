@@ -23,7 +23,9 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
+        // TODO: parallelize?
         forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
+            ZoneScopedN("Per entity");
             if(modelComp.isTransparent == isTransparent) {
                 modelComp.loadTLASIfPossible();
                 if (modelComp.asyncModel.isReady()) {
@@ -32,6 +34,7 @@ namespace Carrot::ECS {
                     instanceData.uuid = entity.getID();
                     instanceData.color = modelComp.color;
                     Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
+
                     modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
 
                     if(modelComp.tlas) {

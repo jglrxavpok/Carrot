@@ -82,12 +82,13 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/ComputePipeline.cpp
 
         ${EngineRoot}render/AnimatedSprite.cpp
+        ${EngineRoot}render/BillboardRenderer.cpp
+        ${EngineRoot}render/MaterialSystem.cpp
+        ${EngineRoot}render/RenderContext.cpp
+        ${EngineRoot}render/RenderPacketContainer.cpp
         ${EngineRoot}render/Sprite.cpp
         ${EngineRoot}render/TextureAtlas.cpp
         ${EngineRoot}render/Viewport.cpp
-        ${EngineRoot}render/RenderContext.cpp
-        ${EngineRoot}render/MaterialSystem.cpp
-        ${EngineRoot}render/BillboardRenderer.cpp
         ${EngineRoot}render/lighting/Lights.cpp
 
         ${EngineRoot}console/Console.cpp

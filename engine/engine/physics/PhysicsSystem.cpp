@@ -64,8 +64,7 @@ namespace Carrot::Physics {
             return;
 
         auto& triangles = world->getDebugRenderer().getTriangles();
-        Carrot::Render::Packet renderPacket(Carrot::Render::PassEnum::TransparentGBuffer);
-        renderPacket.viewport = debugViewport;
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::TransparentGBuffer, *debugViewport);
         renderPacket.pipeline = debugTrianglesPipeline;
 
         Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameBuffer(triangles.size() * 3 * sizeof(Carrot::Vertex));
