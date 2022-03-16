@@ -7,6 +7,7 @@
 #include "engine/render/Model.h"
 #include "engine/render/AsyncResource.hpp"
 #include "engine/render/raytracing/ASBuilder.h"
+#include <core/async/Locks.h>
 
 namespace Carrot {
     class InstanceHandle; // Raytracing Top Level Acceleration Structure
@@ -51,6 +52,7 @@ namespace Carrot::ECS {
         void disableTLAS();
 
     private:
+        Async::SpinLock tlasAccess;
         bool tlasIsWaitingForModel = true;
 
         friend class ModelRenderSystem;

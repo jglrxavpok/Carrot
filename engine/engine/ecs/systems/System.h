@@ -9,6 +9,10 @@
 #include <engine/render/RenderPass.h>
 #include <core/utils/Library.hpp>
 
+namespace Carrot::Async {
+    class Counter;
+}
+
 namespace Carrot::ECS {
 
     class World;
@@ -55,6 +59,10 @@ namespace Carrot::ECS {
         virtual ~System() = default;
 
     protected:
+        void parallelSubmit(const std::function<void()>& action);
+
+    protected:
+
         World& world;
         Signature signature;
         std::vector<Entity> entities;
@@ -72,6 +80,11 @@ namespace Carrot::ECS {
 
         /// Calls 'action' of each entity in this system. Immediately called, so capturing on the stack is safe.
         void forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action);
+
+        /// Calls 'action' of each entity in this system, using a different Task for each entity.
+        ///  It is up to the user to ensure no data race arise from performing the action concurrently and on other threads.
+        ///  Immediately called, so capturing on the stack is safe.
+        void parallelForEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action);
     };
 
     template<typename... RequiredComponents>

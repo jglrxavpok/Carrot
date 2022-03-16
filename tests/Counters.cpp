@@ -80,3 +80,16 @@ TEST(Counters, BusyWaitDuration) {
     ASSERT_TRUE(c.isIdle());
     ASSERT_TRUE(returned);
 }
+
+TEST(Counters, SleepWait) {
+    Counter c;
+    c.increment();
+    ASSERT_FALSE(c.isIdle());
+    auto f = std::async(std::launch::async, [&]() {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        c.decrement();
+    });
+    ASSERT_FALSE(c.isIdle());
+    c.sleepWait(); // decrement in another thread
+    ASSERT_TRUE(c.isIdle());
+}

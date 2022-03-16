@@ -360,11 +360,14 @@ namespace Carrot::Async {
         Task(const Task<Value>&) = delete;
         Task& operator=(const Task<Value>&) = delete;
 
-        Task(Task<Value>&& toMove): coroutineHandle(toMove.coroutineHandle) {
-            toMove.coroutineHandle = nullptr;
+        Task(Task<Value>&& toMove) {
+            *this = std::move(toMove);
         }
 
-        Task& operator=(Task<Value>&& toMove) {
+        Task& operator=(Task<Value>&& toMove)  noexcept {
+            if(coroutineHandle) {
+                coroutineHandle.destroy();
+            }
             coroutineHandle = toMove.coroutineHandle;
             toMove.coroutineHandle = nullptr;
             return *this;
@@ -373,6 +376,7 @@ namespace Carrot::Async {
         ~Task() {
             if(coroutineHandle) {
                 coroutineHandle.destroy();
+                coroutineHandle = nullptr;
             }
         }
 

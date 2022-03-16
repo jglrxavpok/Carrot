@@ -385,12 +385,23 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
 }
 
 void Carrot::VulkanRenderer::newFrame() {
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ZoneScoped;
+
+    {
+        ZoneScopedN("ImGui_Impl new frame");
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+    }
 
     std::size_t previousCapacity = renderPackets.capacity();
-    renderPackets.clear();
-    renderPackets.reserve(previousCapacity);
+    {
+        ZoneScopedN("renderPackets.clear()");
+        renderPackets.clear();
+    }
+    {
+        ZoneScopedN("renderPackets.reserve(previousCapacity)");
+        renderPackets.reserve(previousCapacity);
+    }
 }
 
 void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
@@ -682,14 +693,14 @@ Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnu
 }
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
-    // TODO: allow parallelization
     ZoneScopedN("Queue RenderPacket");
     verify(packet.pipeline, "Pipeline must not be null");
     verify(packet.pass != Render::PassEnum::Undefined, "Render pass must be defined");
     verify(packet.vertexBuffer, "Vertex buffer must not be null");
     verify(packet.indexBuffer, "Index buffer must not be null");
     verify(packet.viewport, "Viewport must not be null");
-    renderPackets.push_back(packet);
+    Async::LockGuard l { renderPacketSubmitMutex };
+    renderPackets.emplace_back(packet);
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes) {

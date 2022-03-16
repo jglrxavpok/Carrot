@@ -231,6 +231,7 @@ namespace Carrot {
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
 
+        Async::SpinLock renderPacketSubmitMutex;
         Render::PacketContainer renderPacketStorage;
         std::vector<Render::Packet> renderPackets;
         std::vector<Render::Packet> preparedRenderPackets;

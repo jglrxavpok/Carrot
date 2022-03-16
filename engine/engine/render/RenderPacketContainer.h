@@ -21,21 +21,25 @@ namespace Carrot::Render {
         public:
             explicit Storage() {}
 
+            ~Storage() {
+                deleteStorage();
+            }
+
             /// Completely reset the storage as if it was brand new (ie 0 elements)
             void reset() {
                 Async::LockGuard l { lock };
-                cursor = 0;
                 clearStorage();
+                deleteStorage();
                 dynamicStorage.resize(0);
             }
 
             /// Signals the start of a new frame. The storage is resized and its capacity is increased if necessary
             void beginFrame() {
                 Async::LockGuard l { lock };
-                cursor = 0;
+                clearStorage();
                 if(!dynamicStorage.empty()) {
                     std::size_t previousSize = staticStorageSize;
-                    clearStorage();
+                    deleteStorage();
                     staticStorage = static_cast<StoredType*>(malloc((previousSize + dynamicStorage.size()) * sizeof(StoredType)));
                     verifyTerminate(staticStorage != nullptr, "allocation error!");
                     staticStorageSize = previousSize + dynamicStorage.size();
@@ -56,6 +60,15 @@ namespace Carrot::Render {
             }
         private:
             void clearStorage() {
+                if(staticStorage != nullptr) {
+                    for (std::size_t i = 0; i < cursor; i++) {
+                        staticStorage[i].~StoredType();
+                    }
+                }
+                cursor = 0;
+            }
+
+            void deleteStorage() {
                 if(staticStorage != nullptr) {
                     free(staticStorage);
                     staticStorage = nullptr;
@@ -91,6 +104,7 @@ namespace Carrot::Render {
         Storage<Render::Packet> renderPackets;
         Storage<Render::Packet::PushConstant> pushConstants;
 
+        Async::SpinLock genericDataAccess;
         std::size_t genericCursor = 0;
         std::vector<std::uint8_t> genericStaticStorage;
         std::list<std::vector<std::uint8_t>> genericDynamicStorage;

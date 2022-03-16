@@ -154,8 +154,9 @@ namespace Carrot::Render {
 
         source = toCopy.source;
 
+        instancingDataBuffer = toCopy.instancingDataBuffer;
+        pushConstants = toCopy.pushConstants;
         // deep copies
-        instancingDataBuffer = container.copyGeneric(toCopy.instancingDataBuffer);
         pushConstants.clear();
         for(const auto& pPushConstant : toCopy.pushConstants) {
             auto& pushConstant = container.makePushConstant();

@@ -2,6 +2,9 @@
 // Created by jglrxavpok on 27/02/2021.
 //
 #include "System.h"
+#include <core/async/Counter.h>
+#include <engine/Engine.h>
+#include <engine/task/TaskScheduler.h>
 
 namespace Carrot::ECS {
     System::System(World& world): world(world), signature() {}
@@ -52,6 +55,14 @@ namespace Carrot::ECS {
                 }
             }
         }
+    }
+
+    void System::parallelSubmit(const std::function<void()>& action) {
+        TaskDescription description {
+            .name = "parallelSubmit",
+            .task = Async::AsTask(action),
+        };
+        GetTaskScheduler().schedule(std::move(description));
     }
 
     SystemLibrary& getSystemLibrary() {

@@ -23,12 +23,11 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
-        // TODO: parallelize?
-        forEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
+        parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if(modelComp.isTransparent == isTransparent) {
-                modelComp.loadTLASIfPossible();
                 if (modelComp.asyncModel.isReady()) {
+                    modelComp.loadTLASIfPossible();
                     Carrot::InstanceData instanceData;
                     instanceData.transform = transform.toTransformMatrix();
                     instanceData.uuid = entity.getID();

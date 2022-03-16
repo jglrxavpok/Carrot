@@ -405,9 +405,20 @@ void Carrot::Engine::run() {
             break;
         }
 
-        renderer.newFrame();
-        ImGui::NewFrame();
-        nextFrameAwaiter.resume_all();
+        {
+            ZoneScopedN("Setup frame");
+            renderer.newFrame();
+
+            {
+                ZoneScopedN("ImGui::NewFrame()");
+                ImGui::NewFrame();
+            }
+
+            {
+                ZoneScopedN("nextFrameAwaiter.resume_all()");
+                nextFrameAwaiter.resume_all();
+            }
+        }
 
         if(showInputDebug) {
             Carrot::IO::debugDrawActions();

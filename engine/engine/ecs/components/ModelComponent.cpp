@@ -96,26 +96,32 @@ namespace Carrot::ECS {
             return;
         }
         if(tlasIsWaitingForModel && asyncModel.isReady()) {
-            tlasIsWaitingForModel = false;
-            tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
-            tlas->enabled = true;
+            Async::LockGuard l{ tlasAccess };
+            if(tlasIsWaitingForModel) {
+                tlasIsWaitingForModel = false;
+                tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
+                tlas->enabled = true;
+            }
         }
     }
 
     void ModelComponent::setFile(const std::filesystem::path& path) {
         asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(Carrot::toString(path.u8string()))));
         if(GetCapabilities().supportsRaytracing) {
+            Async::LockGuard l{ tlasAccess };
             tlasIsWaitingForModel = true;
         }
     }
 
     void ModelComponent::enableTLAS() {
+        Async::LockGuard l{ tlasAccess };
         if(tlas) {
             tlas->enabled = true;
         }
     }
 
     void ModelComponent::disableTLAS() {
+        Async::LockGuard l{ tlasAccess };
         if(tlas) {
             tlas->enabled = false;
         }

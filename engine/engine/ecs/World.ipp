@@ -1,5 +1,6 @@
 #include "World.h"
 #include <algorithm>
+#include <core/async/Counter.h>
 
 namespace Carrot::ECS {
     template<class Comp>
@@ -115,4 +116,20 @@ namespace Carrot::ECS {
         }
     }
 
+    template<SystemType type, typename... RequiredComponents>
+    void SignedSystem<type, RequiredComponents...>::parallelForEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action) {
+        Async::Counter counter;
+        counter.increment(entities.size());
+        for(auto& entity : entities) {
+            parallelSubmit([&]() {
+                if (entity) {
+                    action(entity, (world.getComponent<RequiredComponents>(entity).asRef())...);
+                }
+                counter.decrement();
+            });
+        }
+
+        std::atomic_thread_fence(std::memory_order_acquire);
+        counter.busyWait();
+    }
 }

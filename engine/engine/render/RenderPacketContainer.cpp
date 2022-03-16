@@ -8,18 +8,21 @@ namespace Carrot::Render {
     PacketContainer::PacketContainer() {}
 
     void PacketContainer::beginFrame() {
-        if(!genericDynamicStorage.empty()) {
-            std::size_t additionalSize = 0;
-            for(const auto& v : genericDynamicStorage) {
-                additionalSize += v.size();
-            }
-            genericStaticStorage.resize(genericStaticStorage.size() + additionalSize);
-            genericDynamicStorage.clear();
-        }
-        genericCursor = 0;
-
         renderPackets.beginFrame();
         pushConstants.beginFrame();
+
+        {
+            Async::LockGuard l{genericDataAccess};
+            if (!genericDynamicStorage.empty()) {
+                std::size_t additionalSize = 0;
+                for (const auto& v: genericDynamicStorage) {
+                    additionalSize += v.size();
+                }
+                genericStaticStorage.resize(genericStaticStorage.size() + additionalSize);
+                genericDynamicStorage.clear();
+            }
+            genericCursor = 0;
+        }
     }
 
     /// Makes a new RenderPacket. The returned reference is valid only for the current frame
@@ -34,6 +37,7 @@ namespace Carrot::Render {
     }
 
     std::span<std::uint8_t> PacketContainer::allocateGeneric(std::size_t size) {
+        Async::LockGuard l { genericDataAccess };
         if(genericCursor + size <= genericStaticStorage.size()) {
             std::uint8_t* ptr = genericStaticStorage.data() + genericCursor;
             genericCursor += size;

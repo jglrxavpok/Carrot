@@ -7,6 +7,7 @@
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
 #include <core/utils/WeakPool.hpp>
+#include <core/async/Locks.h>
 
 namespace Carrot {
     struct GeometryInput {
@@ -100,6 +101,7 @@ namespace Carrot {
 
     private:
         VulkanRenderer& renderer;
+        Async::SpinLock access;
         bool enabled = false;
 
     private: // reuse between builds

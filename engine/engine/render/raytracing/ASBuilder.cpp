@@ -91,6 +91,7 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
 std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes) {
     if(!enabled)
         return nullptr;
+    Async::LockGuard l { access };
     return staticGeometries.create(meshes);
 }
 
@@ -100,6 +101,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     if(&renderContext.viewport != &GetEngine().getMainViewport()) {
         return;
     }
+    Async::LockGuard l { access };
     auto purge = [](auto& pool) {
         pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto a) { return a.second.expired(); }), pool.end());
     };
@@ -311,6 +313,7 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
 std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
     if(!enabled)
         return nullptr;
+    Async::LockGuard l { access };
     return instances.create(correspondingGeometry);
 }
 

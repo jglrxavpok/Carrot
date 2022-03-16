@@ -6,9 +6,12 @@
 
 #include <atomic>
 #include <coroutine>
+#include <condition_variable>
 #include <chrono>
 #include <mutex>
+#include <source_location>
 #include <core/Macros.h>
+#include "Locks.h"
 
 namespace Carrot::Async {
     template<class T>
@@ -25,7 +28,7 @@ namespace Carrot::Async {
     /// Counter to determine when tasks are done
     class Counter {
     public:
-        Counter() = default;
+        Counter(std::source_location source = std::source_location::current()): source(source) {};
         ~Counter();
 
         Counter(Counter&&);
@@ -46,11 +49,16 @@ namespace Carrot::Async {
         /// Increments this counter
         void increment();
 
+        /// Increments this counter
+        void increment(std::uint32_t amount);
+
         /// Decrements this counter
         void decrement();
 
         /// Is this counter at 0 ?
         bool isIdle() const;
+
+        Counter& operator=(const Counter& other) = delete;
 
     public: // support for coroutines
         void onCoroutineSuspend(std::coroutine_handle<> h);
@@ -59,10 +67,13 @@ namespace Carrot::Async {
 
     private:
         std::atomic_uint32_t internalCounter;
-        std::coroutine_handle<> toContinue;
+        std::coroutine_handle<> toContinue = nullptr;
 
         std::mutex sleepLock;
-        std::condition_variable sleepCondition;
+        std::condition_variable_any sleepCondition;
+
+        mutable ReadWriteLock counterLock;
+        std::source_location source; // helps debug
 
         template<typename T>
         friend class CoroutinePromiseType;

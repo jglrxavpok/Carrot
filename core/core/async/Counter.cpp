@@ -7,7 +7,7 @@
 
 namespace Carrot::Async {
     Counter::~Counter() {
-        verify(internalCounter == 0, "Destroying a counter that has not yet reached 0");
+        verifyTerminate(internalCounter == 0, "Destroying a counter that has not yet reached 0");
     }
 
     Counter::Counter(Counter&& toMove) {
@@ -18,14 +18,21 @@ namespace Carrot::Async {
     }
 
     void Counter::increment() {
-        internalCounter++;
+        increment(1);
+    }
+
+    void Counter::increment(std::uint32_t amount) {
+        LockGuard l { counterLock.write() };
+        verify(amount > 0, "Cannot be < 1");
+        internalCounter += amount;
     }
 
     void Counter::decrement() {
-        verify(internalCounter > 0, "Cannot decrement a counter that is at 0!");
-        internalCounter--;
+        LockGuard l { counterLock.write() };
+        std::uint32_t currentValue = internalCounter--;
+        verify(currentValue > 0, "Trying to decrement counter at 0");
 
-        if(internalCounter == 0) {
+        if(currentValue == 1) {
             sleepCondition.notify_one();
             if(toContinue) {
                 toContinue();
@@ -34,30 +41,40 @@ namespace Carrot::Async {
     }
 
     bool Counter::isIdle() const {
+        LockGuard l { counterLock.read() };
         return internalCounter == 0;
     }
 
     void Counter::busyWait() {
-        while(internalCounter != 0) {
+        std::uint32_t value = -1;
+        do {
             std::this_thread::yield();
-        }
+            LockGuard l { counterLock.read() };
+            value = internalCounter;
+        } while(value != 0);
     }
 
     bool Counter::busyWaitFor(const std::chrono::duration<float>& duration) {
         auto start = std::chrono::steady_clock::now();
-        while(internalCounter != 0) {
+
+        std::uint32_t value = -1;
+        do {
+            std::this_thread::yield();
+            LockGuard l { counterLock.read() };
+            value = internalCounter;
             auto now = std::chrono::steady_clock::now();
             if(now - start >= duration) {
                 return false;
             }
-            std::this_thread::yield();
-        }
+        } while(value != 0);
         return true;
     }
 
     void Counter::sleepWait() {
-        std::unique_lock lk(sleepLock);
-        sleepCondition.wait(lk, [&]{ return internalCounter == 0; });
+        std::unique_lock<Async::BasicLock> lk{ counterLock.read() };
+        sleepCondition.wait(lk, [&] {
+            return isIdle();
+        });
     }
 
     void Counter::onCoroutineSuspend(std::coroutine_handle<> h) {

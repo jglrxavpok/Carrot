@@ -10,4 +10,5 @@ namespace Carrot::ECS {
     SignedSystem<type, RequiredComponents...>::SignedSystem(World& world): System(world) {
         signature.addComponents<RequiredComponents...>();
     }
+
 }
