@@ -59,7 +59,7 @@ namespace Carrot::ECS {
         virtual ~System() = default;
 
     protected:
-        void parallelSubmit(const std::function<void()>& action);
+        void parallelSubmit(const std::function<void()>& action, Async::Counter& counter);
 
     protected:
 

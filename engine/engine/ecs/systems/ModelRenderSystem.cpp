@@ -43,6 +43,7 @@ namespace Carrot::ECS {
                 }
             }
         });
+
     }
 
     static void allocateBuffer(std::uint32_t instanceCount, std::unique_ptr<Buffer>& out) {
