@@ -11,6 +11,18 @@ set(Arch "x64")
 set(Platform "win64") # TODO: auto-detect
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 
+# Live++ support
+if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    if(EXISTS "${ProjectRoot}LivePP/API/LPP_API.h")
+        set(HAS_LIVEPP true)
+        file(COPY ${ProjectRoot}LivePP/ DESTINATION LivePP/)
+        message("Live++ support activated.")
+    else()
+        set(HAS_LIVEPP false)
+        message("No Live++ support.")
+    endif()
+endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Release")
     set(OPENXR-LOADER-LIB openxr_loader)
     set(OPENXR-LOADER-LIB-LOCATION "${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platform}/src/loader/Release/${OPENXR-LOADER-LIB}.lib")
@@ -98,6 +110,16 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/VulkanMemoryAllocator-Hpp)
     target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
+
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        target_link_options(${Target} PRIVATE "/FUNCTIONPADMIN" "/SAFESEH:NO" "/OPT:NOREF" "/OPT:NOICF" "/DEBUG:FULL")
+        if(HAS_LIVEPP)
+            target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=1)
+            target_include_directories(${Target} PUBLIC ${ProjectRoot}LivePP/API/)
+        endif()
+        target_compile_options(${Target} PRIVATE "/Z7")
+    endif()
+
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)

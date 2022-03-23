@@ -5,6 +5,7 @@
 #pragma once
 
 #include <filesystem>
+#include <array>
 #include <string>
 #include <core/io/Resource.h>
 #include <core/utils/JSON.h>

@@ -81,6 +81,12 @@ static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
+#ifdef USE_LIVEPP
+#include <windows.h>
+#include "LPP_API.h"
+static HMODULE livePP = NULL;
+#endif
+
 Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
 instanceSetterHack(this),
 #ifdef ENABLE_VR
@@ -107,6 +113,13 @@ renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
     {
     ZoneScoped;
     instance = this;
+
+#ifdef USE_LIVEPP
+    std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
+    livePP = lpp::lppLoadAndRegister(livePPPath.wstring().c_str(), "Carrot");
+
+    lpp::lppEnableAllCallingModulesAsync(livePP);
+#endif
 
 #ifndef ENABLE_VR
     if(config.runInVR) {
@@ -363,6 +376,10 @@ void Carrot::Engine::run() {
     const auto timeBetweenUpdates = std::chrono::duration<float>(1.0f/60.0f); // 60 Hz
     bool ticked = false;
     while(running) {
+#ifdef USE_LIVEPP
+        lpp::lppSyncPoint(livePP);
+#endif
+
         auto frameStartTime = std::chrono::steady_clock::now();
         std::chrono::duration<float> timeElapsed = frameStartTime-previous;
         currentFPS = 1.0f / timeElapsed.count();
@@ -554,6 +571,11 @@ Carrot::Engine::~Engine() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     tracyCtx.clear();
+
+#ifdef USE_LIVEPP
+    lpp::lppShutdown(livePP);
+    ::FreeLibrary(livePP);
+#endif
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         TracyVkDestroy(tracyCtx[i]);
     }*/
