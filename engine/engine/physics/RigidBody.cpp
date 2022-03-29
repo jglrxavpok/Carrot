@@ -167,6 +167,30 @@ namespace Carrot::Physics {
         body->setLocalInertiaTensor(Carrot::reactPhysicsVecFromGlm(inertia));
     }
 
+    glm::vec3 RigidBody::getVelocity() const {
+        return Carrot::glmVecFromReactPhysics(body->getLinearVelocity());
+    }
+
+    void RigidBody::setVelocity(const glm::vec3& velocity) {
+        body->setLinearVelocity(Carrot::reactPhysicsVecFromGlm(velocity));
+    }
+
+    glm::vec3 RigidBody::getTranslationAxes() const {
+        return Carrot::glmVecFromReactPhysics(body->getLinearLockAxisFactor());
+    }
+
+    void RigidBody::setTranslationAxes(const glm::vec3& freeAxes) {
+        body->setLinearLockAxisFactor(Carrot::reactPhysicsVecFromGlm(freeAxes));
+    }
+
+    glm::vec3 RigidBody::getRotationAxes() const {
+        return Carrot::glmVecFromReactPhysics(body->getAngularLockAxisFactor());
+    }
+
+    void RigidBody::setRotationAxes(const glm::vec3& freeAxes) {
+        body->setAngularLockAxisFactor(Carrot::reactPhysicsVecFromGlm(freeAxes));
+    }
+
     RigidBody::~RigidBody() {
         if(body) {
             while (getColliderCount() > 0) {

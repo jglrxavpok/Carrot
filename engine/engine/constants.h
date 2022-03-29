@@ -19,25 +19,8 @@ const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
 #endif
 };
 
-const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-        VK_KHR_SPIRV_1_4_EXTENSION_NAME,
-};
-
 #ifdef NO_DEBUG
-    constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
-    constexpr bool USE_DEBUG_MARKERS = false;
 #else
-    const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
-        //VK_EXT_DEBUG_MARKER_EXTENSION_NAME
-    };
-#ifdef IS_DEBUG_BUILD
-    constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-#else
-    constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
-#endif
-
     #ifdef DEBUG_MARKERS
         constexpr bool USE_DEBUG_MARKERS = true;
     #else

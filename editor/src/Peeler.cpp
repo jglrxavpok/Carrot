@@ -36,6 +36,9 @@
 #include "ecs/systems/CollisionShapeRenderer.h"
 #include "ecs/systems/CameraRenderer.h"
 
+#include "game_specific/ecs/CharacterControllerComponent.h"
+#include "game_specific/ecs/CharacterControllerSystem.h"
+
 namespace Peeler {
 
     void Application::onFrame(Carrot::Render::Context renderContext) {
@@ -896,7 +899,10 @@ namespace Peeler {
             // CollisionShapeRenderer is not serializable
             // LightEditorRenderer is not serializable
 
+            systems.addUniquePtrBased<Game::ECS::CharacterControllerSystem>();
 
+            auto& components = Carrot::ECS::getComponentLibrary();
+            components.addUniquePtrBased<Game::ECS::CharacterControllerComponent>();
         }
 
         settings.load();

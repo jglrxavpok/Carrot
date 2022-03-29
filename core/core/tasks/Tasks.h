@@ -6,7 +6,7 @@
 
 #include <atomic>
 #include <compare>
-#include <xhash>
+#include <functional>
 
 namespace Carrot::Async {
     /// Represents different group on which a task can run

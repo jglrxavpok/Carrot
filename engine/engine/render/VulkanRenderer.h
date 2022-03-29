@@ -183,6 +183,8 @@ namespace Carrot {
         void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+
+        /// Must be called between startFrame and endFrame. Otherwise it is not safe.
         void render(const Render::Packet& packet);
 
     public:
@@ -194,6 +196,15 @@ namespace Carrot {
 
     public:
         Render::Texture::Ref getDefaultImage();
+
+    public:
+        struct ThreadPackets {
+            std::vector<Carrot::Render::Packet> unsorted;
+            std::vector<Carrot::Render::Packet> sorted;
+        };
+
+        /// Must be called before any call to VulkanRenderer::render in a given thread. Allows for fast rendering submission
+        void makeCurrentThreadRenderCapable();
 
     public:
         static void registerUsertype(sol::state& destination);
@@ -209,6 +220,7 @@ namespace Carrot {
 
         Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         Async::ParallelMap<std::string, Render::Texture::Ref> textures{};
+
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;
 
@@ -231,8 +243,10 @@ namespace Carrot {
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
 
-        Async::SpinLock renderPacketSubmitMutex;
-        Render::PacketContainer renderPacketStorage;
+        Async::SpinLock threadRegistrationLock;
+
+        Async::ParallelMap<std::thread::id, ThreadPackets> threadRenderPackets{};
+        Async::ParallelMap<std::thread::id, std::unique_ptr<Render::PacketContainer>> perThreadPacketStorage{};
         std::vector<Render::Packet> renderPackets;
         std::vector<Render::Packet> preparedRenderPackets;
 
@@ -259,8 +273,9 @@ namespace Carrot {
 
     private:
         std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const;
-        void sortRenderPackets();
-        void mergeRenderPackets();
+        void collectRenderPackets();
+        void sortRenderPackets(std::vector<Carrot::Render::Packet>& packets);
+        void mergeRenderPackets(const std::vector<Carrot::Render::Packet>& inputPackets, std::vector<Carrot::Render::Packet>& outputPackets);
         void renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
     };
 }

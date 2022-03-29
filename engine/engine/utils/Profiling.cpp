@@ -4,13 +4,16 @@
 
 #include "Profiling.h"
 #include "core/io/Logging.hpp"
+#include "core/async/Locks.h"
 #include <unordered_map>
 
 namespace Carrot::Profiling {
+    static Async::SpinLock timesAccess;
     static std::unordered_map<std::string, std::chrono::duration<float>> times{};
     static std::unordered_map<std::string, std::chrono::duration<float>> lastFrameTimes{};
 
     void beginFrame() {
+        Async::LockGuard lk { timesAccess };
         lastFrameTimes = std::move(times);
         times.clear();
     }
@@ -28,8 +31,10 @@ namespace Carrot::Profiling {
     }
 
     ScopedTimer::~ScopedTimer() {
+        Async::LockGuard lk { timesAccess };
         auto elapsed = duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start));
-        times[name] += elapsed;
+        auto strcpy = name;
+        times[strcpy] += elapsed;
     }
 
     PrintingScopedTimer::~PrintingScopedTimer() {

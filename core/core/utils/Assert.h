@@ -14,7 +14,7 @@ namespace Carrot::Assertions {
             whatMessage = condition + ", " + message + " in " + file + " " + function + " L" + std::to_string(line);
         }
 
-        const char *what() const override {
+        const char *what() const noexcept override {
             return whatMessage.c_str();
         }
 

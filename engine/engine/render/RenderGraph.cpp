@@ -55,6 +55,8 @@ namespace Carrot::Render {
 
             case vk::ImageLayout::eDepthStencilAttachmentOptimal:
             case vk::ImageLayout::eDepthAttachmentOptimal:
+            case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+            case vk::ImageLayout::eDepthReadOnlyOptimal:
                 driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
 

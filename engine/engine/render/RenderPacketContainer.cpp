@@ -3,11 +3,13 @@
 //
 
 #include "RenderPacketContainer.h"
+#include <engine/utils/Profiling.h>
 
 namespace Carrot::Render {
     PacketContainer::PacketContainer() {}
 
     void PacketContainer::beginFrame() {
+        ZoneScoped;
         renderPackets.beginFrame();
         pushConstants.beginFrame();
 
@@ -27,6 +29,7 @@ namespace Carrot::Render {
 
     /// Makes a new RenderPacket. The returned reference is valid only for the current frame
     Packet& PacketContainer::make(Carrot::Render::PassEnum pass, Carrot::Render::Viewport* viewport, std::source_location location) {
+        ZoneScoped;
         auto& r = renderPackets.allocate(*this, pass, location);
         r.viewport = viewport;
         return r;

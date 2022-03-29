@@ -214,7 +214,10 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
             if(finalLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal
                || finalLayout == vk::ImageLayout::eDepthAttachmentOptimal
-               || finalLayout == vk::ImageLayout::eStencilAttachmentOptimal) {
+               || finalLayout == vk::ImageLayout::eStencilAttachmentOptimal
+               || finalLayout == vk::ImageLayout::eDepthStencilReadOnlyOptimal
+               || finalLayout == vk::ImageLayout::eDepthReadOnlyOptimal
+               || finalLayout == vk::ImageLayout::eStencilReadOnlyOptimal) {
                 verify(!depthAttachmentRef, "Only one depth-stencil is allowed at once.");
                 depthAttachmentRef = std::make_unique<vk::AttachmentReference>(vk::AttachmentReference{
                         .attachment = static_cast<uint32_t>(attachments.size()-1),

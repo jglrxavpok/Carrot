@@ -71,11 +71,11 @@ namespace Carrot::Render {
         }
 
         explicit FrameResource(const FrameResource* parent) {
+            rootID = parent->rootID;
+            parentID = parent->id;
             size = parent->size;
             format = parent->format;
             imageOrigin = parent->imageOrigin;
-            rootID = parent->rootID;
-            parentID = parent->id;
             owner = parent->owner;
             previousLayout = parent->previousLayout;
             layout = parent->layout;

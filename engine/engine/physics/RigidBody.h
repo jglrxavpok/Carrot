@@ -58,6 +58,16 @@ namespace Carrot::Physics {
         glm::vec3 getLocalInertiaTensor() const;
         void setLocalInertiaTensor(const glm::vec3& inertia);
 
+        glm::vec3 getVelocity() const;
+        void setVelocity(const glm::vec3& velocity);
+
+    public: // axes on which translation & rotation are allowed
+        glm::vec3 getTranslationAxes() const;
+        void setTranslationAxes(const glm::vec3& freeAxes);
+
+        glm::vec3 getRotationAxes() const;
+        void setRotationAxes(const glm::vec3& freeAxes);
+
     public:
         bool isActive() const;
         void setActive(bool active);

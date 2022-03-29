@@ -96,6 +96,7 @@ namespace Carrot::Render {
     }
 
     void Packet::record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& cmds) const {
+        ZoneScoped;
         auto& renderer = renderContext.renderer;
 
         pipeline->bind(pass, renderContext, cmds);
@@ -123,6 +124,7 @@ namespace Carrot::Render {
     }
 
     Packet& Packet::operator=(Packet&& toMove) {
+        ZoneScopedN("Packet::operator= move");
         pipeline = std::move(toMove.pipeline);
         pass = std::move(toMove.pass);
         viewport = std::move(toMove.viewport);
@@ -141,6 +143,7 @@ namespace Carrot::Render {
     }
 
     Packet& Packet::operator=(const Packet& toCopy) {
+        ZoneScopedN("Packet::operator= copy");
         pipeline = toCopy.pipeline;
         pass = toCopy.pass;
         viewport = toCopy.viewport;
@@ -155,7 +158,6 @@ namespace Carrot::Render {
         source = toCopy.source;
 
         instancingDataBuffer = toCopy.instancingDataBuffer;
-        pushConstants = toCopy.pushConstants;
         // deep copies
         pushConstants.clear();
         for(const auto& pPushConstant : toCopy.pushConstants) {

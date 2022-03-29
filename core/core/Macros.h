@@ -20,7 +20,7 @@ namespace Carrot::Exceptions {
     public:
         TodoException() = default;
 
-        const char * what() const override {
+        const char * what() const noexcept override {
             return "A feature is not yet implemented";
         }
     };

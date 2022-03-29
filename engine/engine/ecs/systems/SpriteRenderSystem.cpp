@@ -27,6 +27,7 @@ namespace Carrot::ECS {
 
     void SpriteRenderSystem::setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
         DrawData entityData;
+        entityData.materialIndex = 0;
         entityData.setUUID(entity.getID());
         renderContext.renderer.pushConstantBlock("drawDataPush", sprite.getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, entityData);
     }

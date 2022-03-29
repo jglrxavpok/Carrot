@@ -140,10 +140,10 @@ int main(int argc, const char** argv) {
     glslang::SpvOptions spvOptions;
 
     // TODO: argument
-//    spvOptions.generateDebugInfo = true;
-    spvOptions.stripDebugInfo = true;
+    spvOptions.generateDebugInfo = true;
+    spvOptions.stripDebugInfo = false;
 
-    spvOptions.disableOptimizer = false;
+    spvOptions.disableOptimizer = true;
     spvOptions.optimizeSize = false;
     spvOptions.disassemble = false;
     spvOptions.validate = true;

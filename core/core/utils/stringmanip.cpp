@@ -5,6 +5,7 @@
 #include "stringmanip.h"
 #include <cctype>
 #include <codecvt>
+#include <core/Macros.h>
 
 std::vector<std::string> Carrot::splitString(const std::string& toSplit, const std::string& delimiter) {
     std::vector<std::string> parts{};

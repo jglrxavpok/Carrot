@@ -5,6 +5,9 @@
 #include "TaskScheduler.h"
 #include "engine/utils/Profiling.h"
 #include <core/async/OSThreads.h>
+#include "engine/utils/Macros.h"
+#include "engine/Engine.h"
+#include "engine/render/VulkanRenderer.h"
 
 namespace Carrot {
     Async::TaskLane TaskScheduler::Parallel;
@@ -16,6 +19,7 @@ namespace Carrot {
         parallelThreads.resize(availableThreads);
         for (std::size_t i = 0; i < availableThreads; i++) {
             parallelThreads[i] = std::thread([this]() {
+                GetRenderer().makeCurrentThreadRenderCapable();
                 threadProc();
             });
             Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("ParallelTask #%d", i+1));
@@ -98,6 +102,9 @@ namespace Carrot {
         if(description.joiner) {
             description.joiner->increment();
         }
-        taskQueues[lane].push(std::move(description));
+        {
+            ZoneScopedN("Push task description to queue");
+            taskQueues[lane].push(std::move(description));
+        }
     }
 }

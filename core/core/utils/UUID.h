@@ -5,7 +5,7 @@
 #pragma once
 
 #include <uuid.h>
-#include <xhash>
+#include <functional>
 #include "core/Macros.h"
 
 namespace Carrot {

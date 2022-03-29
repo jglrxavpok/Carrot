@@ -22,6 +22,9 @@
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
 
+static thread_local Carrot::VulkanRenderer::ThreadPackets* threadLocalRenderPackets = nullptr;
+static thread_local Carrot::Render::PacketContainer* threadLocalPacketStorage = nullptr;
+
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
 
                                                                                     singleFrameAllocator(SingleFrameAllocatorSize)
@@ -45,6 +48,8 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     createGBuffer();
 
     initImGui();
+
+    makeCurrentThreadRenderCapable();
 }
 
 void Carrot::VulkanRenderer::lateInit() {
@@ -221,6 +226,7 @@ void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
 }
 
 void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
+    boundTextures.clear();
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
@@ -231,6 +237,7 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
 }
 
 void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
+    boundTextures.clear();
     raytracer->onSwapchainSizeChange(newWidth, newHeight);
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(newWidth, newHeight);
@@ -427,21 +434,23 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 }
 
 void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
-    renderPacketStorage.beginFrame();
+    Async::LockGuard lk { threadRegistrationLock };
+    for (auto& pair : perThreadPacketStorage.snapshot()) {
+        (*pair.second)->beginFrame();
+    }
     materialSystem.beginFrame(renderContext);
     lighting.beginFrame(renderContext);
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
-#ifdef IS_DEBUG_BUILD
     if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
-#endif
 }
 
 void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderContext) {
-    sortRenderPackets();
-    mergeRenderPackets();
+    collectRenderPackets();
+    sortRenderPackets(renderPackets);
+    mergeRenderPackets(renderPackets, preparedRenderPackets);
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -561,6 +570,7 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
 }
 
 std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const {
+    ZoneScoped;
     auto predicate = [&](const auto& packet) {
         return packet.viewport == viewport && packet.pass == pass;
     };
@@ -580,10 +590,36 @@ std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets
     return std::span<const Render::Packet> { &preparedRenderPackets[startIndex], static_cast<std::size_t>(endIndexInclusive - startIndex + 1) };
 }
 
-void Carrot::VulkanRenderer::sortRenderPackets() {
+void Carrot::VulkanRenderer::collectRenderPackets() {
+    ZoneScoped;
+    Async::LockGuard lk { threadRegistrationLock };
+
+    auto snapshot = threadRenderPackets.snapshot();
+
+    for(const auto& [threadID, packets] : snapshot) {
+        {
+            ZoneScopedN("Move thread local packets to global vector");
+            for(auto& p : packets->unsorted) {
+                renderPackets.emplace_back(std::move(p));
+            }
+        }
+
+        std::size_t previousCapacity = packets->unsorted.capacity();
+        {
+            ZoneScopedN("thread local packets.clear()");
+            packets->unsorted.clear();
+        }
+        {
+            ZoneScopedN("thread local packets.reserve(previousCapacity)");
+            packets->unsorted.reserve(previousCapacity);
+        }
+    }
+}
+
+void Carrot::VulkanRenderer::sortRenderPackets(std::vector<Carrot::Render::Packet>& inputPackets) {
     ZoneScoped;
     // sort by viewport, pass, then pipeline, then mesh
-    std::sort(std::execution::par_unseq, renderPackets.begin(), renderPackets.end(), [&](const Render::Packet& a, const Render::Packet& b) {
+    std::sort(std::execution::par_unseq, inputPackets.begin(), inputPackets.end(), [&](const Render::Packet& a, const Render::Packet& b) {
         if(a.viewport != b.viewport) {
             return a.viewport < b.viewport;
         }
@@ -600,13 +636,13 @@ void Carrot::VulkanRenderer::sortRenderPackets() {
     });
 }
 
-void Carrot::VulkanRenderer::mergeRenderPackets() {
+void Carrot::VulkanRenderer::mergeRenderPackets(const std::vector<Carrot::Render::Packet>& inputPackets, std::vector<Carrot::Render::Packet>& outputPackets) {
     ZoneScoped;
-    std::size_t previousCapacity = preparedRenderPackets.capacity();
-    preparedRenderPackets.clear();
-    preparedRenderPackets.reserve(previousCapacity);
+    std::size_t previousCapacity = outputPackets.capacity();
+    outputPackets.clear();
+    outputPackets.reserve(previousCapacity);
 
-    if(renderPackets.empty()) {
+    if(inputPackets.empty()) {
         return;
     }
 
@@ -615,16 +651,16 @@ void Carrot::VulkanRenderer::mergeRenderPackets() {
 
     {
         Carrot::Profiling::ScopedTimer mergeTimer("Merge timer");
-        Render::Packet mergeResult = renderPackets[0];
-        for(std::size_t i = 1; i < renderPackets.size(); i++) {
-            const Render::Packet& currentPacket = renderPackets[i];
+        Render::Packet mergeResult = inputPackets[0];
+        for(std::size_t i = 1; i < inputPackets.size(); i++) {
+            const Render::Packet& currentPacket = inputPackets[i];
             if(!doMerge || !mergeResult.merge(currentPacket)) {
-                preparedRenderPackets.push_back(mergeResult);
+                outputPackets.push_back(mergeResult);
                 mergeResult = currentPacket;
             }
         }
 
-        preparedRenderPackets.push_back(mergeResult);
+        outputPackets.push_back(mergeResult);
 
         mergeTime = mergeTimer.getTime();
     }
@@ -632,14 +668,15 @@ void Carrot::VulkanRenderer::mergeRenderPackets() {
     if(DebugRenderPacket) {
         bool open = true;
         if(ImGui::Begin("Debug Render Packets", &open)) {
+            // TODO: separate per thread
             if(!open) {
                 DebugRenderPacket.setValue(false);
             }
 
             ImGui::Checkbox("Merge Render Packets with instancing", &doMerge);
-            ImGui::Text("Total render packets count: %llu", renderPackets.size());
-            ImGui::Text("Merged render packets count: %llu", preparedRenderPackets.size());
-            float ratio = static_cast<float>(preparedRenderPackets.size()) / static_cast<float>(renderPackets.size());
+            ImGui::Text("Total render packets count: %llu", inputPackets.size());
+            ImGui::Text("Merged render packets count: %llu", outputPackets.size());
+            float ratio = static_cast<float>(outputPackets.size()) / static_cast<float>(inputPackets.size());
             ImGui::Separator();
             // TODO: add sorting time
             ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
@@ -689,7 +726,7 @@ void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const C
 }
 
 Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport) {
-    return renderPacketStorage.make(pass, &viewport);
+    return threadLocalPacketStorage->make(pass, &viewport);
 }
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
@@ -699,8 +736,8 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     verify(packet.vertexBuffer, "Vertex buffer must not be null");
     verify(packet.indexBuffer, "Index buffer must not be null");
     verify(packet.viewport, "Viewport must not be null");
-    Async::LockGuard l { renderPacketSubmitMutex };
-    renderPackets.emplace_back(packet);
+    verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
+    threadLocalRenderPackets->unsorted.emplace_back(packet);
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes) {
@@ -714,4 +751,12 @@ Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize byte
 
 Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(std::string name) {
     co_return getOrCreateModel(name);
+}
+
+void Carrot::VulkanRenderer::makeCurrentThreadRenderCapable() {
+    Async::LockGuard lk { threadRegistrationLock };
+    auto& packetsEntry = threadRenderPackets.getOrCompute(std::this_thread::get_id(), [](){ return ThreadPackets{}; });
+    auto& storageEntry = perThreadPacketStorage.getOrCompute(std::this_thread::get_id(), [](){ return std::make_unique<Render::PacketContainer>(); });
+    threadLocalRenderPackets = &packetsEntry;
+    threadLocalPacketStorage = storageEntry.get();
 }

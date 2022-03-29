@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <xhash>
+#include <functional>
 #include <string>
 #include <filesystem>
 #include "core/utils/stringmanip.h"

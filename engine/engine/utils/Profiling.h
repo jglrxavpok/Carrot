@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Tracy.hpp>
+#include <TracyVulkan.hpp>
 #include <client/TracyProfiler.hpp>
 #include <chrono>
 #include <unordered_map>

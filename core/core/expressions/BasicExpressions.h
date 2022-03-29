@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Expression.h"
+#include <cmath>
 #include <stdexcept>
 #include <functional>
 #include <vector>
@@ -162,7 +163,7 @@ namespace Carrot {
 
     struct fmodstruct {
         float operator()(const float& x, const float& y) const {
-            return fmod(x, y);
+            return std::fmod(x, y);
         }
     };
 

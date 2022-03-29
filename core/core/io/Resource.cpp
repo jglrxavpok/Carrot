@@ -3,6 +3,7 @@
 //
 
 #include "Resource.h"
+#include <cstring>
 #include "core/utils/Assert.h"
 #include "core/utils/stringmanip.h"
 

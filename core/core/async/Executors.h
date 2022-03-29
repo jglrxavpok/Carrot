@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <functional>
 #include <future>
+#include <list>
 
 namespace Carrot::Async {
     class StdAsyncExecutor {

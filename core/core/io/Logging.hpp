@@ -20,7 +20,7 @@ namespace Carrot::Log {
     public:
         explicit LogError(std::string message): message(std::move(message)) {}
 
-        const char *what() const override {
+        const char *what() const noexcept override {
             return message.c_str();
         }
 

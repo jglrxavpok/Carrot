@@ -23,8 +23,12 @@ layout(location = 4) out uvec4 entityID;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
-    #define material materials[nonuniformEXT(instanceDrawData.materialIndex)]
-    vec4 texColor = texture(sampler2D(textures[nonuniformEXT(material.diffuseTexture)], linearSampler), uv);
+    //#define material (materials[instanceDrawData.materialIndex])
+
+    Material material = materials[instanceDrawData.materialIndex];
+    uint diffuseTexture = nonuniformEXT(material.diffuseTexture);
+    uint normalMap = nonuniformEXT(material.normalMap);
+    vec4 texColor = texture(sampler2D(textures[diffuseTexture], linearSampler), uv);
     texColor.a = 1.0;
     if(texColor.a < 0.01) {
         discard;
@@ -32,7 +36,7 @@ void main() {
     outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, 1.0);
     outViewPosition = vec4(viewPosition, 1.0);
 
-    vec3 mappedNormal = texture(sampler2D(textures[nonuniformEXT(material.normalMap)], linearSampler), uv).xyz;
+    vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
     mappedNormal = mappedNormal * 2 - 1;
     outNormal = vec4(normalize(TBN * mappedNormal), 1.0);
 

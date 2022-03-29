@@ -570,6 +570,9 @@ Carrot::Engine::~Engine() {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    for(auto& ctx : tracyCtx) {
+        TracyVkDestroy(ctx);
+    }
     tracyCtx.clear();
 
 #ifdef USE_LIVEPP
@@ -593,44 +596,45 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
     };
 
     {
-        ZoneScopedN("ImGui Render");
-        Console::instance().renderToImGui(*this);
-        ImGui::Render();
-    }
-
-    {
-        ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
-        mainCommandBuffers[i].begin(beginInfo);
-    }
-    {
-        ZoneScopedN("PrepareVulkanTracy");
-
-        PrepareVulkanTracy(tracyCtx[i], mainCommandBuffers[i]);
-    }
-
-    if(config.runInVR) {
         {
-            ZoneScopedN("VR Left eye render");
-            leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
+            ZoneScopedN("ImGui Render");
+            Console::instance().renderToImGui(*this);
+            ImGui::Render();
         }
-        {
-            ZoneScopedN("VR Right eye render");
-            rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
-        }
-    }
 
-    {
-        ZoneScopedN("Render viewports");
-        for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
-            ZoneScopedN("Render single viewport");
-            auto& viewport = *it;
-            if(config.runInVR) {
-                viewport.render(newRenderContext(i, viewport, Render::Eye::LeftEye), mainCommandBuffers[i]);
-                viewport.render(newRenderContext(i, viewport, Render::Eye::RightEye), mainCommandBuffers[i]);
-            } else {
-                viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
+        {
+            ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
+            mainCommandBuffers[i].begin(beginInfo);
+        }
+
+        TracyVkZone(tracyCtx[i], mainCommandBuffers[i], "Main command buffer");
+
+        if(config.runInVR) {
+            {
+                ZoneScopedN("VR Left eye render");
+                leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
+            }
+            {
+                ZoneScopedN("VR Right eye render");
+                rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
             }
         }
+
+        {
+            ZoneScopedN("Render viewports");
+            for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
+                ZoneScopedN("Render single viewport");
+                auto& viewport = *it;
+                if(config.runInVR) {
+                    viewport.render(newRenderContext(i, viewport, Render::Eye::LeftEye), mainCommandBuffers[i]);
+                    viewport.render(newRenderContext(i, viewport, Render::Eye::RightEye), mainCommandBuffers[i]);
+                } else {
+                    viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
+                }
+            }
+        }
+
+        TracyVkCollect(tracyCtx[i], mainCommandBuffers[i]);
     }
 
     mainCommandBuffers[i].end();
@@ -669,7 +673,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
         }
 
-        TracyVulkanCollect(tracyCtx[lastFrameIndex]);
+        //TracyVulkanCollect(tracyCtx[lastFrameIndex]);
 
         {
             ZoneScopedN("acquireNextImageKHR");
@@ -1049,8 +1053,18 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 }
 
 void Carrot::Engine::createTracyContexts() {
+    vk::DynamicLoader dl;
+    tracyCtx = std::vector<TracyVkCtx>{ getSwapchainImageCount(), nullptr };
+    PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT = dl.getProcAddress<PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT>("vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+    PFN_vkGetCalibratedTimestampsEXT ptr_vkGetCalibratedTimestampsEXT = dl.getProcAddress<PFN_vkGetCalibratedTimestampsEXT>("vkGetCalibratedTimestampsEXT");
+
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), getQueueFamilies().graphicsFamily.value())));
+        //tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), getQueueFamilies().graphicsFamily.value())));
+        if(ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT != nullptr && ptr_vkGetCalibratedTimestampsEXT != nullptr) {
+            tracyCtx[i] = TracyVkContextCalibrated(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), mainCommandBuffers[i], ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, ptr_vkGetCalibratedTimestampsEXT);
+        } else {
+            tracyCtx[i] = TracyVkContext(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), mainCommandBuffers[i]);
+        }
     }
 }
 

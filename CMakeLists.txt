@@ -13,6 +13,7 @@ set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 
 # Live++ support
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
     if(EXISTS "${ProjectRoot}LivePP/API/LPP_API.h")
         set(HAS_LIVEPP true)
         file(COPY ${ProjectRoot}LivePP/ DESTINATION LivePP/)
@@ -123,10 +124,8 @@ function(add_includes Target)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
-    if(IS_DEBUG_BUILD)
-        target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
-        target_compile_definitions("${Target}" PRIVATE TRACY_ON_DEMAND=1)
-    endif()
+    target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
+    target_compile_definitions("${Target}" PRIVATE TRACY_ON_DEMAND=1)
 endfunction()
 
 add_subdirectory(core)

@@ -8,6 +8,7 @@
 #include <rapidjson/document.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <glm/glm.hpp>
 
 namespace Carrot {

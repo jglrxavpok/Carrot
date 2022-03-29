@@ -89,7 +89,7 @@ namespace Carrot {
     public:
         using FrameTask = std::function<void()>;
 
-        std::vector<std::unique_ptr<TracyVulkanContext>> tracyCtx{};
+        std::vector<TracyVkCtx> tracyCtx{};
 
         static Carrot::Engine& getInstance() { return *instance; }
 

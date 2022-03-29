@@ -70,7 +70,7 @@ namespace Carrot::ECS {
                 glm::decompose(inverseParent, parentInverseScale, parentRotationFromMatrix, translation, skew,perspective);
 
                 localTransform.position = localTranslation;
-                localTransform.scale = parentInverseScale * newTransform.scale;
+                //localTransform.scale = parentInverseScale * newTransform.scale;
                 localTransform.rotation = localRotation;
                 return;
             }
@@ -103,9 +103,6 @@ namespace Carrot::ECS {
                 computedGlobalTransform.rotation = glm::quatLookAt(glm::vec3{forward.x, forward.y, forward.z }, glm::vec3{ up.x, up.y, up.z });
 
                 computedGlobalTransform.position = glm::vec3{ globalTranslation.x, globalTranslation.y, globalTranslation.z };
-
-                glm::vec3 globalScale = {1, 1, 1}; // TODO
-                computedGlobalTransform.scale = globalScale;
                 return computedGlobalTransform;
             }
         }

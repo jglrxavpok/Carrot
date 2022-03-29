@@ -5,6 +5,7 @@
 #pragma once
 
 #include <vector>
+#include <bit>
 #include <cstdint>
 #include <string>
 #include <glm/glm.hpp>

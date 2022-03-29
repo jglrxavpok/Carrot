@@ -30,16 +30,16 @@ namespace Carrot::Threads {
     void setName(std::thread& thread, std::string_view name) {
         // https://stackoverflow.com/questions/10121560/stdthread-naming-your-thread
 
-#ifdef _WIN32
+#ifdef _MSC_VER
         std::wstring stemp = s2ws(name); // Temporary buffer is required
         LPCWSTR description = stemp.c_str();
-        HRESULT hr = SetThreadDescription(static_cast<HANDLE>(thread.native_handle()), description);
+        HRESULT hr = SetThreadDescription(static_cast<HANDLE>(reinterpret_cast<void*>(thread.native_handle())), description);
         verify(!FAILED(hr), "Failed to set thread name");
 #elif __has_include(<unistd.h>)
-        auto handle = thread->native_handle();
-        pthread_setname_np(handle,threadName);
+        auto handle = thread.native_handle();
+        pthread_setname_np(handle, name.data());
 #else
-#error Don't know how to set thread name on this OS. Please fix.
+#error "Don't know how to set thread name on this OS. Please fix."
 #endif
     }
 }
