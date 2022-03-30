@@ -98,7 +98,11 @@ void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::D
         throw std::runtime_error("Failed to map memory!");
     }
     std::memcpy(reinterpret_cast<uint8_t*>(pData), data, length);
-    driver.getLogicalDevice().unmapMemory(*memory);
+
+    {
+        ZoneScopedN("unmapMemory");
+        driver.getLogicalDevice().unmapMemory(*memory);
+    }
 }
 
 uint64_t Carrot::Buffer::getSize() const {

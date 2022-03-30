@@ -309,6 +309,11 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
 }
 
 void Carrot::Pipeline::bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
+    ZoneScopedN("Bind pipeline");
+#ifdef TRACY_ENABLE
+    std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str());
+    ZoneText(zoneText.c_str(), zoneText.size());
+#endif
     auto& pipeline = getOrCreatePipelineForRenderPass(pass);
     commands.bindPipeline(bindPoint, pipeline);
 

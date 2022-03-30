@@ -42,6 +42,10 @@ namespace Carrot {
         void scheduleRendering();
 
     public:
+        /// How many threads can we use for the task scheduler?
+        static std::size_t parallelismAmount();
+
+    public:
         /// Group of threads that run parallel to the main thread
         static Async::TaskLane Parallel;
 

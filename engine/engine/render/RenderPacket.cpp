@@ -33,8 +33,10 @@ namespace Carrot::Render {
     }
 
     Packet::PushConstant& Packet::addPushConstant(const std::string& id, vk::ShaderStageFlags stages) {
-        pushConstants.emplace_back(&container.makePushConstant());
-        auto& result = pushConstants.back();
+        verify(pushConstantCount < MAX_PUSH_CONSTANTS, "Too many push constants. Lower your usage, or update the engine");
+        std::size_t pushConstantIndex = pushConstantCount++;
+        pushConstants[pushConstantIndex] = &container.makePushConstant();
+        auto& result = pushConstants[pushConstantIndex];
         result->id = id;
         result->stages = stages;
         return *result;
@@ -49,16 +51,11 @@ namespace Carrot::Render {
         if(indexBuffer != other.indexBuffer) return false;
         if(indexCount != other.indexCount) return false;
 
-        if(pushConstants.size() != other.pushConstants.size()) return false;
+        if(pushConstantCount != other.pushConstantCount) return false;
 
-        auto it = pushConstants.begin();
-        auto otherIt = other.pushConstants.begin();
-        auto end = pushConstants.end();
-        while(it != end) {
-            verify(otherIt != other.pushConstants.end(), "check that pushConstants.size() == other.pushConstants.size()");
-
-            const auto& pushConstant = *(*it);
-            const auto& otherPushConstant = *(*otherIt);
+        for(std::size_t pushConstantIndex = 0; pushConstantIndex < pushConstantCount; pushConstantIndex++) {
+            const auto& pushConstant = *pushConstants[pushConstantIndex];
+            const auto& otherPushConstant = *other.pushConstants[pushConstantIndex];
             if(pushConstant.stages != otherPushConstant.stages) {
                 return false;
             }
@@ -79,9 +76,6 @@ namespace Carrot::Render {
                     return false;
                 }
             }
-
-            it++;
-            otherIt++;
         }
 
         // everything verified, merge packets
@@ -95,18 +89,24 @@ namespace Carrot::Render {
         return true;
     }
 
-    void Packet::record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& cmds) const {
+    void Packet::record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& cmds, bool skipPipelineBind) const {
         ZoneScoped;
         auto& renderer = renderContext.renderer;
 
-        pipeline->bind(pass, renderContext, cmds);
-        for(const auto& pushConstant : pushConstants) {
-            const auto& layout = pipeline->getPipelineLayout();
-            const auto& range = pipeline->getPushConstant(pushConstant->id);
-            cmds.pushConstants(layout, pushConstant->stages, range.offset, pushConstant->pushData.size(), pushConstant->pushData.data());
+        if(!skipPipelineBind) {
+            pipeline->bind(pass, renderContext, cmds);
+        }
+        {
+            ZoneScopedN("Add push constants");
+            for(std::size_t index = 0; index < pushConstantCount; index++) {
+                const auto& layout = pipeline->getPipelineLayout();
+                const auto& range = pipeline->getPushConstant(pushConstants[index]->id);
+                cmds.pushConstants(layout, pushConstants[index]->stages, range.offset, pushConstants[index]->pushData.size(), pushConstants[index]->pushData.data());
+            }
         }
 
         if(!instancingDataBuffer.empty()) {
+            ZoneScopedN("Upload instance buffer");
             Carrot::BufferView instanceBuffer = renderer.getInstanceBuffer(instancingDataBuffer.size());
             instanceBuffer.directUpload(instancingDataBuffer.data(), instancingDataBuffer.size());
 
@@ -138,7 +138,10 @@ namespace Carrot::Render {
 
         source = std::move(toMove.source);
         instancingDataBuffer = std::move(toMove.instancingDataBuffer);
-        pushConstants = std::move(toMove.pushConstants);
+        pushConstantCount = std::exchange(toMove.pushConstantCount, 0);
+        for(std::size_t i = 0; i < pushConstantCount; i++) {
+            pushConstants[i] = std::exchange(toMove.pushConstants[i], nullptr);
+        }
         return *this;
     }
 
@@ -159,11 +162,11 @@ namespace Carrot::Render {
 
         instancingDataBuffer = toCopy.instancingDataBuffer;
         // deep copies
-        pushConstants.clear();
-        for(const auto& pPushConstant : toCopy.pushConstants) {
+        pushConstantCount = toCopy.pushConstantCount;
+        for(std::size_t pushConstantIndex = 0; pushConstantIndex < pushConstantCount; pushConstantIndex++) {
             auto& pushConstant = container.makePushConstant();
-            pushConstant = *pPushConstant;
-            pushConstants.emplace_back(&pushConstant);
+            pushConstant = *toCopy.pushConstants[pushConstantIndex];
+            pushConstants[pushConstantIndex] = &pushConstant;
         }
         return *this;
     }

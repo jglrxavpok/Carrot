@@ -213,6 +213,8 @@ namespace Carrot {
         VulkanDriver& driver;
         Configuration config;
 
+        Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
+
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
 

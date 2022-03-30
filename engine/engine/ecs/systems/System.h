@@ -60,6 +60,7 @@ namespace Carrot::ECS {
 
     protected:
         void parallelSubmit(const std::function<void()>& action, Async::Counter& counter);
+        static std::size_t concurrency(); // avoids to include TaskScheduler
 
     protected:
 

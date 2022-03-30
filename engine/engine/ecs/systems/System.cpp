@@ -66,6 +66,10 @@ namespace Carrot::ECS {
         GetTaskScheduler().schedule(std::move(description));
     }
 
+    std::size_t System::concurrency() {
+        return TaskScheduler::parallelismAmount();
+    }
+
     SystemLibrary& getSystemLibrary() {
         static SystemLibrary lib;
         return lib;

@@ -26,6 +26,8 @@ namespace Carrot::Render {
 
     class Packet {
     public:
+        constexpr static std::size_t MAX_PUSH_CONSTANTS = 4;
+
         struct TransparentPassData {
             float zOrder = 0.0f;
         };
@@ -93,7 +95,12 @@ namespace Carrot::Render {
 
         bool merge(const Packet& other);
 
-        void record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
+        ///
+        /// \param pass
+        /// \param renderContext
+        /// \param commands
+        /// \param skipPipelineBind if you know the proper pipeline is already bound, you can skip its bind with this parameter to save time
+        void record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, bool skipPipelineBind = false) const;
 
     private:
         std::span<std::uint8_t> allocateGeneric(std::size_t size);
@@ -102,6 +109,7 @@ namespace Carrot::Render {
         PacketContainer& container;
         std::source_location source;
         std::span<std::uint8_t> instancingDataBuffer;
-        std::list<PushConstant*> pushConstants;
+        std::size_t pushConstantCount = 0;
+        PushConstant* pushConstants[MAX_PUSH_CONSTANTS];
     };
 }

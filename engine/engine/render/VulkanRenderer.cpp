@@ -434,23 +434,172 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 }
 
 void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
+    {
+        ZoneScopedN("Waiting on tasks required before starting the frame");
+        mustBeDoneByNextFrameCounter.busyWait();
+    }
     Async::LockGuard lk { threadRegistrationLock };
+
+    Async::Counter prepareThreadRenderPackets;
     for (auto& pair : perThreadPacketStorage.snapshot()) {
-        (*pair.second)->beginFrame();
+        TaskDescription task {
+            .name = "Reset thread local render packet storage",
+            .task = Async::AsTask<void>([&]() {
+                (*pair.second)->beginFrame();
+            }),
+            .joiner = &prepareThreadRenderPackets,
+        };
+        GetTaskScheduler().schedule(std::move(task));
     }
     materialSystem.beginFrame(renderContext);
     lighting.beginFrame(renderContext);
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
+    prepareThreadRenderPackets.busyWait();
     if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
 }
 
+struct PacketKey {
+    Carrot::Pipeline* pipeline = nullptr;
+
+    Carrot::Render::PassEnum pass = Carrot::Render::PassEnum::Undefined;
+    Carrot::Render::Viewport* viewport = nullptr;
+
+    Carrot::BufferView vertexBuffer;
+    Carrot::BufferView indexBuffer;
+    std::uint32_t indexCount = 0;
+    // TODO: transparent GBuffer stuff
+
+    bool operator==(const PacketKey& o) const = default;
+};
+
+template<>
+struct std::hash<PacketKey> {
+    std::size_t operator()(const PacketKey& key) const {
+        const std::size_t p = 31;
+#define hash_r(member) h *= p; h += reinterpret_cast<std::size_t>((member));
+#define hash_s(member) h *= p; h += static_cast<std::size_t>((member));
+        std::size_t h = 0;
+        hash_r(key.pipeline);
+        hash_s(key.pass);
+        hash_r(key.viewport);
+        hash_r((VkBuffer)key.vertexBuffer.getVulkanBuffer());
+        hash_r((VkBuffer)key.vertexBuffer.getStart());
+        hash_r((VkBuffer)key.vertexBuffer.getSize());
+        hash_r((VkBuffer)key.indexBuffer.getVulkanBuffer());
+        hash_r((VkBuffer)key.indexBuffer.getStart());
+        hash_r((VkBuffer)key.indexBuffer.getSize());
+        hash_s(key.indexCount);
+        return 0;
+    }
+};
+
+PacketKey makeKey(const Carrot::Render::Packet& p) {
+    return PacketKey {
+        .pipeline = p.pipeline.get(),
+        .pass = p.pass,
+        .viewport = p.viewport,
+
+        .vertexBuffer = p.vertexBuffer,
+        .indexBuffer = p.indexBuffer,
+        .indexCount = p.indexCount,
+    };
+}
+
 void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderContext) {
-    collectRenderPackets();
+    /*collectRenderPackets();
     sortRenderPackets(renderPackets);
-    mergeRenderPackets(renderPackets, preparedRenderPackets);
+    mergeRenderPackets(renderPackets, preparedRenderPackets);*/
+    ZoneScoped;
+    Async::LockGuard lk { threadRegistrationLock };
+
+    // TODO: fewer allocations
+    std::unordered_map<PacketKey, std::vector<Carrot::Render::Packet>> packetBins;
+    auto snapshot = threadRenderPackets.snapshot();
+
+    auto placeInBin = [&](Carrot::Render::Packet&& toPlace) -> void {
+        auto key = makeKey(toPlace);
+        auto& bin = packetBins[key];
+
+        for(auto& packet : bin) {
+            // TODO: force merge(std::move(toPlace)) ?
+            if(packet.merge(toPlace)) {
+                return;
+            }
+        }
+
+        // was not merged, brand new packet
+        bin.emplace_back(std::move(toPlace));
+    };
+
+    bool open = true;
+    bool debugRender = false;
+    std::size_t totalPacketCount = 0;
+    if(DebugRenderPacket) {
+        debugRender = ImGui::Begin("Debug Render Packets", &open);
+        if(!open) {
+            DebugRenderPacket.setValue(false);
+        }
+    }
+
+    for(const auto& [threadID, packets] : snapshot) {
+        {
+            ZoneScopedN("Move thread local packets to global bins");
+            if(debugRender) {
+                std::size_t packetCount = packets->unsorted.size();
+                ImGui::Text("%llu packets from thread", packetCount);
+                totalPacketCount += packetCount;
+            }
+            for(auto& p : packets->unsorted) {
+                placeInBin(std::move(p));
+            }
+        }
+
+        TaskDescription task {
+                .name = "Cleanup thread local render packets",
+                .task = Carrot::Async::AsTask<void>([pPackets = &packets]() {
+                    std::size_t previousCapacity = (*pPackets)->unsorted.capacity();
+                    {
+                        ZoneScopedN("thread local packets.clear()");
+                        (*pPackets)->unsorted.clear();
+                    }
+                    {
+                        ZoneScopedN("thread local packets.reserve(previousCapacity)");
+                        (*pPackets)->unsorted.reserve(previousCapacity);
+                    }
+                }),
+                .joiner = &mustBeDoneByNextFrameCounter,
+        };
+        GetTaskScheduler().schedule(std::move(task));
+    }
+
+    std::size_t previousCapacity = preparedRenderPackets.capacity();
+    preparedRenderPackets.clear();
+    preparedRenderPackets.reserve(previousCapacity);
+
+    for(auto& [key, bin] : packetBins) {
+        for(auto& packetOfBin : bin) {
+            preparedRenderPackets.emplace_back(std::move(packetOfBin));
+        }
+    }
+
+    sortRenderPackets(preparedRenderPackets);
+
+    if(debugRender) {
+        ImGui::Text("Render packet bin count: %llu", packetBins.size());
+        ImGui::Text("Total render packets count: %llu", totalPacketCount);
+        ImGui::Text("Merged render packets count: %llu", preparedRenderPackets.size());
+        float ratio = static_cast<float>(preparedRenderPackets.size()) / static_cast<float>(totalPacketCount);
+        ImGui::Separator();
+        // TODO: add sorting time
+//        ImGui::Text("Time for Render Packet merge: %0.3f ms", mergeTime*1000.0f);
+        ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
+        ImGui::Text("Instance buffer size this frame: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeThisFrame()).c_str());
+        ImGui::Text("Instance buffer size total: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeAllFrames()).c_str());
+
+    }
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -553,8 +702,11 @@ void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot
     verify(viewport, "Viewport cannot be null");
 
     auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::OpaqueGBuffer);
+    Carrot::Pipeline* currentlyBoundPipeline = nullptr;
     for(const auto& p : packets) {
-        p.record(pass, renderContext, commands);
+        bool skipPipelineBind = p.pipeline.get() == currentlyBoundPipeline;
+        p.record(pass, renderContext, commands, skipPipelineBind);
+        currentlyBoundPipeline = p.pipeline.get();
     }
 }
 
@@ -564,8 +716,11 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
     verify(viewport, "Viewport cannot be null");
 
     auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::TransparentGBuffer);
+    Carrot::Pipeline* currentlyBoundPipeline = nullptr;
     for(const auto& p : packets) {
-        p.record(pass, renderContext, commands);
+        bool skipPipelineBind = p.pipeline.get() == currentlyBoundPipeline;
+        p.record(pass, renderContext, commands, skipPipelineBind);
+        currentlyBoundPipeline = p.pipeline.get();
     }
 }
 

@@ -14,8 +14,12 @@ namespace Carrot {
     Async::TaskLane TaskScheduler::MainLoop;
     Async::TaskLane TaskScheduler::Rendering;
 
+    std::size_t TaskScheduler::parallelismAmount() {
+        return std::thread::hardware_concurrency() - 1 /* main thread */;
+    }
+
     TaskScheduler::TaskScheduler() {
-        std::size_t availableThreads = std::thread::hardware_concurrency() - 1 /* main thread */;
+        std::size_t availableThreads = parallelismAmount();
         parallelThreads.resize(availableThreads);
         for (std::size_t i = 0; i < availableThreads; i++) {
             parallelThreads[i] = std::thread([this]() {
