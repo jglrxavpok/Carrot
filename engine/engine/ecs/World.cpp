@@ -39,6 +39,14 @@ namespace Carrot::ECS {
         return worldRef.getParent(*this);
     }
 
+    std::optional<Entity> Entity::getNamedChild(std::string_view name, bool recurse) {
+        return worldRef.getNamedChild(name, *this, recurse);
+    }
+
+    std::optional<const Entity> Entity::getNamedChild(std::string_view name, bool recurse) const {
+        return worldRef.getNamedChild(name, *this, recurse);
+    }
+
     void Entity::setParent(std::optional<Entity> parent) {
         worldRef.setParent(*this, parent);
     }
@@ -292,17 +300,47 @@ namespace Carrot::ECS {
         }
     }
 
-    const std::vector<Entity> World::getChildren(const Entity& parent) const {
-        auto it = entityChildren.find(parent);
-        if(it != entityChildren.end()) {
-            std::vector<Entity> children;
-            for(auto& entityID : it->second) {
-                children.emplace_back(entityID, const_cast<World&>(*this));
+    std::vector<Entity> World::getChildren(const Entity& parent, bool recurse) const {
+        std::vector<Entity> children;
+        std::function<void(const Entity&)> iterateChildren = [&](const Entity& parent) {
+            auto it = entityChildren.find(parent);
+            if(it != entityChildren.end()) {
+                for(auto& entityID : it->second) {
+                    Entity child { entityID, const_cast<World&>(*this) };
+                    children.emplace_back(child);
+
+                    if(recurse) {
+                        iterateChildren(child);
+                    }
+                }
             }
-            return children;
-        }
-        static std::vector<Entity> empty;
-        return empty;
+        };
+
+        iterateChildren(parent);
+        return children;
+    }
+
+    std::optional<Entity> World::getNamedChild(std::string_view name, const Entity& parent, bool recurse) const {
+        std::function<std::optional<Entity>(const Entity&)> iterateChildren = [&](const Entity& parent) -> std::optional<Entity> {
+            auto it = entityChildren.find(parent);
+            if(it != entityChildren.end()) {
+                for(auto& entityID : it->second) {
+                    Entity child { entityID, const_cast<World&>(*this) };
+                    if(child.getName() == name)
+                        return child;
+
+                    if(recurse) {
+                        auto potentialMatch = iterateChildren(child);
+                        if(potentialMatch.has_value()) {
+                            return potentialMatch;
+                        }
+                    }
+                }
+            }
+            return {};
+        };
+
+        return iterateChildren(parent);
     }
 
     void World::removeEntity(const Entity& ent) {

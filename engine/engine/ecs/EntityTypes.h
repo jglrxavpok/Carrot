@@ -61,6 +61,8 @@ namespace Carrot::ECS {
 
         Tags getTags() const;
 
+        std::optional<Entity> getNamedChild(std::string_view name, bool recurse = true);
+        std::optional<const Entity> getNamedChild(std::string_view name, bool recurse = true) const;
         std::optional<Entity> getParent();
         std::optional<const Entity> getParent() const;
 

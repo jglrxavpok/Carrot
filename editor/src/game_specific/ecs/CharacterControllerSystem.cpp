@@ -3,6 +3,7 @@
 //
 
 #include "CharacterControllerSystem.h"
+#include <engine/ecs/components/TransformComponent.h>
 
 namespace Game::ECS {
     CharacterControllerSystem::CharacterControllerSystem(Carrot::ECS::World& world): Carrot::ECS::LogicSystem<Carrot::ECS::RigidBodyComponent, Game::ECS::CharacterControllerComponent>(world) {
@@ -22,11 +23,31 @@ namespace Game::ECS {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::RigidBodyComponent& rigidBodyComponent, Game::ECS::CharacterControllerComponent& characterControllerComponent) {
             auto& rigidbody = rigidBodyComponent.rigidbody;
 
-            rigidbody.setBodyType(reactphysics3d::BodyType::DYNAMIC);
-            rigidbody.setRotationAxes(glm::vec3(0, 0, 1)); // only rotate around UP vector
+            auto headEntity = entity.getNamedChild(characterControllerComponent.headChildName);
 
-            glm::vec3 forward = rigidbody.getTransform().rotation * glm::vec3{0, 1, 0};
-            glm::vec3 strafe = rigidbody.getTransform().rotation * glm::vec3{1, 0, 0};
+            if(!headEntity)
+                return;
+
+            const float yawSpeed = 1.0f;
+            const float pitchSpeed = 1.0f;
+            float& yaw = characterControllerComponent.yaw;
+            float& pitch = characterControllerComponent.pitch;
+            yaw -= deltaTime * lookInput.getValue().x * yawSpeed;
+            pitch -= deltaTime * lookInput.getValue().y * pitchSpeed;
+
+            pitch = std::min(glm::pi<float>(), std::max(0.0f, pitch));
+
+            rigidbody.setBodyType(reactphysics3d::BodyType::DYNAMIC);
+            rigidbody.setRotationAxes(glm::vec3(0, 0, 0)); // only the player is allowed to rotate the entity
+
+            glm::vec3 forward { -glm::sin(yaw), glm::cos(yaw), 0.0 };
+            glm::vec3 strafe { glm::cos(yaw), glm::sin(yaw), 0.0 };
+
+            glm::vec3 eulerAngles{ 0.0f };
+            eulerAngles.x = characterControllerComponent.pitch;
+            eulerAngles.z = characterControllerComponent.yaw;
+
+            headEntity->getComponent<Carrot::ECS::TransformComponent>()->localTransform.rotation = glm::quat(eulerAngles);
 
             forward.z = 0.0f;
             strafe.z = 0.0f;
@@ -38,7 +59,7 @@ namespace Game::ECS {
             if(glm::length2(direction) > 0.001) {
                 direction = glm::normalize(direction);
             }
-            rigidbody.setVelocity(direction * speedFactor);
+            rigidbody.setVelocity(static_cast<float>(deltaTime) * direction * speedFactor);
         });
     }
 

@@ -14,17 +14,17 @@
 namespace Game::ECS {
     class CharacterControllerComponent: public Carrot::ECS::IdentifiableComponent<CharacterControllerComponent> {
     public:
+        float pitch = glm::pi<float>() / 2.0f;
+        float yaw = 0.0f;
+
+        // TODO: Drag & drop (and store as UUID)
+        std::string headChildName;
+
         explicit CharacterControllerComponent(Carrot::ECS::Entity entity): Carrot::ECS::IdentifiableComponent<CharacterControllerComponent>(std::move(entity)) {};
 
-        explicit CharacterControllerComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity): CharacterControllerComponent(std::move(entity)) {
+        explicit CharacterControllerComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
 
-        };
-
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
-
-            return obj;
-        }
+        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
 
         const char *const getName() const override {
             return "CharacterController";
@@ -32,6 +32,9 @@ namespace Game::ECS {
 
         std::unique_ptr<Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override {
             auto result = std::make_unique<CharacterControllerComponent>(newOwner);
+            result->headChildName = headChildName;
+            result->yaw = yaw;
+            result->pitch = pitch;
             return result;
         }
 

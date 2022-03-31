@@ -41,6 +41,6 @@ namespace Game::ECS {
 
         Carrot::IO::ActionSet inputSet { "Character Controller" };
 
-        float speedFactor = 1.0f;
+        float speedFactor = 60.0f;
     };
 }
