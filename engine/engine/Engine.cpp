@@ -775,10 +775,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         GetTaskScheduler().scheduleRendering();
         for(auto& v : viewports) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
-            v.onFrame(renderContext);
             getRayTracer().onFrame(renderContext);
             game->onFrame(renderContext);
             GetPhysics().onFrame(renderContext);
+            v.onFrame(renderContext); // update cameras only once all render systems are updated
             renderer.onFrame(renderContext);
         }
         renderer.endFrame(newRenderContext(imageIndex, getMainViewport()));
