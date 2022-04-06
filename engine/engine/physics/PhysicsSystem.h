@@ -5,6 +5,7 @@
 #pragma once
 
 #include <reactphysics3d/reactphysics3d.h>
+#include <glm/glm.hpp>
 
 namespace Carrot {
     class Pipeline;
@@ -36,6 +37,11 @@ namespace Carrot::Physics {
         reactphysics3d::PhysicsCommon& getCommons();
         reactphysics3d::PhysicsWorld& getPhysicsWorld();
         const reactphysics3d::PhysicsWorld& getPhysicsWorld() const;
+
+    public: // queries
+        using RaycastCallback = std::function<float(const rp3d::RaycastInfo& raycastInfo)>;
+
+        void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback) const;
 
     private:
         explicit PhysicsSystem();

@@ -37,6 +37,7 @@
 #include "ecs/systems/CameraRenderer.h"
 
 #include "game_specific/ecs/CharacterControllerComponent.h"
+#include "game_specific/ecs/PageComponent.h"
 #include "game_specific/ecs/CharacterControllerSystem.h"
 
 namespace Peeler {
@@ -366,6 +367,10 @@ namespace Peeler {
         ZoneScoped;
         if(selectedID.has_value()) {
             auto& entityID = selectedID.value();
+            if(!currentScene.world.exists(entityID)) {
+                ImGui::Text("Entity no longer exists!");
+                return;
+            }
             auto entity = currentScene.world.wrap(entityID);
             auto& str = entity.getName();
             ImGui::InputText("Entity name##entity name field inspector", str);
@@ -443,7 +448,7 @@ namespace Peeler {
             if(selectedID.has_value() && selectedID.value() == entity.getID()) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
-            auto children = currentScene.world.getChildren(entity);
+            auto children = currentScene.world.getChildren(entity, Carrot::ShouldRecurse::NoRecursion);
 
             auto addChildMenu = [&]() {
                 std::string id = "##add child to entity ";
@@ -903,6 +908,7 @@ namespace Peeler {
 
             auto& components = Carrot::ECS::getComponentLibrary();
             components.addUniquePtrBased<Game::ECS::CharacterControllerComponent>();
+            components.addUniquePtrBased<Game::ECS::PageComponent>();
         }
 
         settings.load();

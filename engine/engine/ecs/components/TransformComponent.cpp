@@ -85,7 +85,7 @@ namespace Carrot::ECS {
         return { wpos.x, wpos.y, wpos.z };
     }
 
-    Carrot::Math::Transform TransformComponent::computeGlobalTransform() const {
+    Carrot::Math::Transform TransformComponent::computeGlobalReactPhysicsTransform() const {
         auto parent = getEntity().getParent();
         if(parent) {
             if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {

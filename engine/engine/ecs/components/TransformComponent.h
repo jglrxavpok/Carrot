@@ -37,7 +37,7 @@ namespace Carrot::ECS {
         glm::vec3 computeFinalPosition() const;
 
         /// Computes the global transform of this entity, taking into account the hierarchy
-        Carrot::Math::Transform computeGlobalTransform() const;
+        Carrot::Math::Transform computeGlobalReactPhysicsTransform() const;
 
         /// Sets up the transform of the entity to match with the given transform, even when parent transforms are taken into account
         void setGlobalTransform(const Carrot::Math::Transform& transform);

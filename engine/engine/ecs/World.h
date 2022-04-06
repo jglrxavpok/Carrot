@@ -114,10 +114,10 @@ namespace Carrot::ECS {
         std::optional<Entity> getParent(const Entity& of) const;
 
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
-        std::vector<Entity> getChildren(const Entity& parent, bool recurse = true) const;
+        std::vector<Entity> getChildren(const Entity& parent, ShouldRecurse recurse = ShouldRecurse::Recursion) const;
 
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
-        std::optional<Entity> getNamedChild(std::string_view name, const Entity& parent, bool recurse = true) const;
+        std::optional<Entity> getNamedChild(std::string_view name, const Entity& parent, ShouldRecurse recurse = ShouldRecurse::Recursion) const;
 
     public:
         World& operator=(const World& toCopy);

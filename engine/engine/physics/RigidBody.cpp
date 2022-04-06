@@ -191,6 +191,14 @@ namespace Carrot::Physics {
         body->setAngularLockAxisFactor(Carrot::reactPhysicsVecFromGlm(freeAxes));
     }
 
+    void RigidBody::setUserData(void* pData) {
+        userData = pData;
+    }
+
+    void* RigidBody::getUserData() const {
+        return userData;
+    }
+
     RigidBody::~RigidBody() {
         if(body) {
             while (getColliderCount() > 0) {

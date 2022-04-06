@@ -80,9 +80,14 @@ namespace Carrot::Physics {
         /// \param insertionIndex used to add a collider at a given index. Used to preserve order when removing and re-adding a collider (sometimes required for MeshCollisionShapes-based colliders)
         void addColliderDirectly(std::unique_ptr<Collider>&& collider, std::size_t insertionIndex = std::numeric_limits<std::size_t>::max());
 
+    public: // user-specified data (not forwarded to ReactPhysics, RP3D bodies will have this instance as user-data)
+        void* getUserData() const;
+        void setUserData(void* pData);
+
     private:
         rp3d::RigidBody* body = nullptr;
         std::vector<std::unique_ptr<Collider>> colliders;
+        void* userData = nullptr;
 
         friend class Collider;
     };

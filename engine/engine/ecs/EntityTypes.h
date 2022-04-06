@@ -10,6 +10,7 @@
 #include <cassert>
 #include <core/memory/OptionalRef.h>
 #include <core/utils/UUID.h>
+#include <core/utils/Types.h>
 #include "Signature.hpp"
 
 namespace Carrot::ECS {
@@ -61,8 +62,8 @@ namespace Carrot::ECS {
 
         Tags getTags() const;
 
-        std::optional<Entity> getNamedChild(std::string_view name, bool recurse = true);
-        std::optional<const Entity> getNamedChild(std::string_view name, bool recurse = true) const;
+        std::optional<Entity> getNamedChild(std::string_view name, ShouldRecurse recurse = ShouldRecurse::Recursion);
+        std::optional<const Entity> getNamedChild(std::string_view name, ShouldRecurse recurse = ShouldRecurse::Recursion) const;
         std::optional<Entity> getParent();
         std::optional<const Entity> getParent() const;
 

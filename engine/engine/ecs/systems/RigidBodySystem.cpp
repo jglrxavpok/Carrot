@@ -5,6 +5,7 @@
 #include "RigidBodySystem.h"
 #include <engine/vulkan/CustomTracyVulkan.h>
 #include <engine/utils/Macros.h>
+#include <engine/ecs/World.h>
 
 namespace Carrot::ECS {
     RigidBodySystem::RigidBodySystem(World& world): LogicSystem<TransformComponent, RigidBodyComponent>(world) {
@@ -13,12 +14,14 @@ namespace Carrot::ECS {
 
     void RigidBodySystem::tick(double dt) {
         forEachEntity([&](Entity& entity, TransformComponent& transformComponent, RigidBodyComponent& rigidBodyComp) {
+            rigidBodyComp.rigidbody.setUserData((void *) &entity.getID());
+
             auto transform = rigidBodyComp.rigidbody.getTransform();
             if(rigidBodyComp.firstTick) {
-                rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalTransform());
+                rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalReactPhysicsTransform());
                 rigidBodyComp.firstTick = false;
             } else {
-                transform.scale = transformComponent.computeGlobalTransform().scale; // preserve scale
+                transform.scale = transformComponent.computeGlobalReactPhysicsTransform().scale; // preserve scale
                 transformComponent.setGlobalTransform(transform);
             }
 
@@ -51,5 +54,21 @@ namespace Carrot::ECS {
         forEachEntity([&](Entity& entity, TransformComponent& transform, RigidBodyComponent& rigidBodyComp) {
             rigidBodyComp.unload();
         });
+    }
+
+    /*static*/ std::optional<Entity> RigidBodySystem::entityFromReactPhysicsBody(const Carrot::ECS::World& world, const rp3d::CollisionBody& body) {
+        void* pData = body.getUserData();
+        if(!pData) {
+            return {};
+        }
+
+        Physics::RigidBody* rigidbody = (Physics::RigidBody*) pData;
+        void* pData2 = rigidbody->getUserData();
+        if(!pData2) {
+            return {};
+        }
+
+        const EntityID* pID = (EntityID*) pData2;
+        return world.wrap(*pID);
     }
 }

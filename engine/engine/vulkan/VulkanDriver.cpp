@@ -79,6 +79,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-DescriptorSetNotBound") != nullptr) {
         debug_break();
+    } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-Descriptor index out of bounds") != nullptr) {
+        debug_break();
     }
 
     return VK_FALSE;

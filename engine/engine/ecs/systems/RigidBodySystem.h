@@ -7,6 +7,7 @@
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
+#include <reactphysics3d/reactphysics3d.h>
 
 namespace Carrot::ECS {
     class RigidBodySystem: public LogicSystem<TransformComponent, Carrot::ECS::RigidBodyComponent>, public Identifiable<RigidBodySystem> {
@@ -30,5 +31,8 @@ namespace Carrot::ECS {
         virtual const char* getName() const override {
             return getStringRepresentation();
         }
+
+    public:
+        static std::optional<Entity> entityFromReactPhysicsBody(const Carrot::ECS::World& world, const rp3d::CollisionBody& body);
     };
 }

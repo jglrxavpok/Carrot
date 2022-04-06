@@ -39,11 +39,11 @@ namespace Carrot::ECS {
         return worldRef.getParent(*this);
     }
 
-    std::optional<Entity> Entity::getNamedChild(std::string_view name, bool recurse) {
+    std::optional<Entity> Entity::getNamedChild(std::string_view name, ShouldRecurse recurse) {
         return worldRef.getNamedChild(name, *this, recurse);
     }
 
-    std::optional<const Entity> Entity::getNamedChild(std::string_view name, bool recurse) const {
+    std::optional<const Entity> Entity::getNamedChild(std::string_view name, ShouldRecurse recurse) const {
         return worldRef.getNamedChild(name, *this, recurse);
     }
 
@@ -300,7 +300,7 @@ namespace Carrot::ECS {
         }
     }
 
-    std::vector<Entity> World::getChildren(const Entity& parent, bool recurse) const {
+    std::vector<Entity> World::getChildren(const Entity& parent, ShouldRecurse recurse) const {
         std::vector<Entity> children;
         std::function<void(const Entity&)> iterateChildren = [&](const Entity& parent) {
             auto it = entityChildren.find(parent);
@@ -309,7 +309,7 @@ namespace Carrot::ECS {
                     Entity child { entityID, const_cast<World&>(*this) };
                     children.emplace_back(child);
 
-                    if(recurse) {
+                    if(recurse == ShouldRecurse::Recursion) {
                         iterateChildren(child);
                     }
                 }
@@ -320,7 +320,7 @@ namespace Carrot::ECS {
         return children;
     }
 
-    std::optional<Entity> World::getNamedChild(std::string_view name, const Entity& parent, bool recurse) const {
+    std::optional<Entity> World::getNamedChild(std::string_view name, const Entity& parent, ShouldRecurse recurse) const {
         std::function<std::optional<Entity>(const Entity&)> iterateChildren = [&](const Entity& parent) -> std::optional<Entity> {
             auto it = entityChildren.find(parent);
             if(it != entityChildren.end()) {
@@ -329,7 +329,7 @@ namespace Carrot::ECS {
                     if(child.getName() == name)
                         return child;
 
-                    if(recurse) {
+                    if(recurse == ShouldRecurse::Recursion) {
                         auto potentialMatch = iterateChildren(child);
                         if(potentialMatch.has_value()) {
                             return potentialMatch;

@@ -4,6 +4,7 @@
 
 #include "PhysicsSystem.h"
 #include "engine/utils/Macros.h"
+#include "engine/utils/conversions.h"
 #include "engine/Engine.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/DrawData.h"
@@ -13,6 +14,16 @@
 #include "engine/render/VulkanRenderer.h"
 
 namespace Carrot::Physics {
+    struct ReactPhysics3DRaycastCallbackWrapper: public rp3d::RaycastCallback {
+        PhysicsSystem::RaycastCallback callbackFunc;
+
+        explicit ReactPhysics3DRaycastCallbackWrapper(const PhysicsSystem::RaycastCallback& callback): callbackFunc(callback) {}
+
+        reactphysics3d::decimal notifyRaycastHit(const reactphysics3d::RaycastInfo& raycastInfo) override {
+            return callbackFunc(raycastInfo);
+        }
+    };
+
     PhysicsSystem& PhysicsSystem::getInstance() {
         static PhysicsSystem system;
         return system;
@@ -41,6 +52,17 @@ namespace Carrot::Physics {
 
     const reactphysics3d::PhysicsWorld& PhysicsSystem::getPhysicsWorld() const {
         return *world;
+    }
+
+    void PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback) const {
+        ReactPhysics3DRaycastCallbackWrapper wrapper { callback };
+        rp3d::Vector3 pointA = Carrot::reactPhysicsVecFromGlm(origin);
+        rp3d::Vector3 pointB = Carrot::reactPhysicsVecFromGlm(origin + glm::normalize(direction) * maxDistance);
+
+        rp3d::Ray ray { pointA, pointB, 1.0f };
+
+        // TODO: mask
+        world->raycast(ray, &wrapper);
     }
 
     void PhysicsSystem::pause() {

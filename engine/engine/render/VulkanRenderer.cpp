@@ -444,7 +444,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     for (auto& pair : perThreadPacketStorage.snapshot()) {
         TaskDescription task {
             .name = "Reset thread local render packet storage",
-            .task = Async::AsTask<void>([&]() {
+            .task = Async::AsTask<void>([pair]() {
                 (*pair.second)->beginFrame();
             }),
             .joiner = &prepareThreadRenderPackets,
