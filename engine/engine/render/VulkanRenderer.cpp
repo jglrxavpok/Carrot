@@ -17,6 +17,7 @@
 #include "core/io/IO.h"
 #include "engine/render/DrawData.h"
 #include "engine/render/resources/Buffer.h"
+#include "engine/math/Transform.h"
 #include <execution>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
@@ -843,22 +844,19 @@ void Carrot::VulkanRenderer::mergeRenderPackets(const std::vector<Carrot::Render
     }
 }
 
-void Carrot::VulkanRenderer::renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(radius) * 2.0f);
-    renderWireframe(*unitSphereModel, renderContext, position, transform, color, objectID);
+void Carrot::VulkanRenderer::renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderWireframe(*unitSphereModel, renderContext, transform, color, objectID);
 }
 
-void Carrot::VulkanRenderer::renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(radius * 2.0f, radius * 2.0f, height));
-    renderWireframe(*unitCapsuleModel, renderContext, position, transform, color, objectID);
+void Carrot::VulkanRenderer::renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderWireframe(*unitCapsuleModel, renderContext, transform, color, objectID);
 }
 
-void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), glm::vec3(halfExtents) * 2.0f);
-    renderWireframe(*unitCubeModel, renderContext, position, transform, color, objectID);
+void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderWireframe(*unitCubeModel, renderContext, transform, color, objectID);
 }
 
-void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::vec3& position, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
+void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
     Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
     Carrot::DrawData data;
     data.materialIndex = whiteMaterial->getSlot();

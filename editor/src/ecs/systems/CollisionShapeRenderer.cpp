@@ -26,22 +26,21 @@ namespace Peeler::ECS {
                 for(const auto& colliderPtr : rigidBodyComponent.rigidbody.getColliders()) {
                     const auto& collider = *colliderPtr;
 
-                    glm::vec4 finalPositionH = transformComponent.toTransformMatrix() * collider.getLocalTransform().toTransformMatrix() * glm::vec4 { 0, 0, 0, 1 };
-                    glm::vec3 position = glm::vec3 { finalPositionH.x, finalPositionH.y, finalPositionH.z };
+                    glm::mat4 transform = transformComponent.toTransformMatrix();
                     switch(collider.getType()) {
                         case Carrot::Physics::ColliderType::Sphere: {
                             const auto& asSphere = static_cast<Carrot::Physics::SphereCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeSphere(position, asSphere.getRadius(), ColliderColor, selected);
+                            renderContext.renderWireframeSphere(transform, asSphere.getRadius(), ColliderColor, selected);
                         } break;
 
                         case Carrot::Physics::ColliderType::Box: {
                             const auto& asBox = static_cast<Carrot::Physics::BoxCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeCuboid(position, asBox.getHalfExtents(), ColliderColor, selected);
+                            renderContext.renderWireframeCuboid(transform, asBox.getHalfExtents(), ColliderColor, selected);
                         } break;
 
                         case Carrot::Physics::ColliderType::Capsule: {
                             const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeCapsule(position, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
+                            renderContext.renderWireframeCapsule(transform, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
                         } break;
 
                         default:

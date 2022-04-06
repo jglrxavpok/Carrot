@@ -22,15 +22,15 @@ namespace Carrot::Render {
         };
     }
 
-    void Context::renderWireframeSphere(const glm::vec3& position, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
-        renderer.renderWireframeSphere(*this, position, radius, color, objectID);
+    void Context::renderWireframeSphere(const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeSphere(*this, transform, radius, color, objectID);
     }
 
-    void Context::renderWireframeCuboid(const glm::vec3& position, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
-        renderer.renderWireframeCuboid(*this, position, halfExtents, color, objectID);
+    void Context::renderWireframeCuboid(const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeCuboid(*this, transform, halfExtents, color, objectID);
     }
 
-    void Context::renderWireframeCapsule(const glm::vec3& position, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
-        renderer.renderWireframeCapsule(*this, position, radius, height, color, objectID);
+    void Context::renderWireframeCapsule(const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+        renderer.renderWireframeCapsule(*this, transform, radius, height, color, objectID);
     }
 }
