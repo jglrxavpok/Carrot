@@ -10,6 +10,7 @@ namespace Game::ECS {
         yaw = json["yaw"].GetFloat();
         pitch = json["pitch"].GetFloat();
         headChildName = json["headChildEntity"].GetString();
+        heldPages = json["heldPages"].GetUint();
     };
 
     rapidjson::Value CharacterControllerComponent::toJSON(rapidjson::Document& doc) const {
@@ -18,6 +19,7 @@ namespace Game::ECS {
         obj.AddMember("headChildEntity", headChildName, doc.GetAllocator());
         obj.AddMember("yaw", yaw, doc.GetAllocator());
         obj.AddMember("pitch", pitch, doc.GetAllocator());
+        obj.AddMember("heldPages", heldPages, doc.GetAllocator());
 
         return obj;
     }

@@ -17,6 +17,8 @@ namespace Game::ECS {
         float pitch = glm::pi<float>() / 2.0f;
         float yaw = 0.0f;
 
+        std::uint8_t heldPages = 0;
+
         // TODO: Drag & drop (and store as UUID)
         std::string headChildName;
 
@@ -35,6 +37,7 @@ namespace Game::ECS {
             result->headChildName = headChildName;
             result->yaw = yaw;
             result->pitch = pitch;
+            result->heldPages = heldPages;
             return result;
         }
 
