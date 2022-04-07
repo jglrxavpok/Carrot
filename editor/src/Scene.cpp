@@ -4,6 +4,7 @@
 
 #include "Scene.h"
 #include "core/utils/JSON.h"
+#include "core/io/Logging.hpp"
 
 namespace Peeler {
     void Scene::tick(double frameTime) {
@@ -53,6 +54,7 @@ namespace Peeler {
         }
 
         dest.AddMember("lighting", lightingObj, doc.GetAllocator());
+        dest.AddMember("skybox", rapidjson::Value(Carrot::Skybox::getName(skybox), doc.GetAllocator()), doc.GetAllocator());
 
         rapidjson::Value logicSystems{ rapidjson::kObjectType };
         for(auto& system : world.getLogicSystems()) {
@@ -103,6 +105,13 @@ namespace Peeler {
         if(src.HasMember("lighting")) {
             lighting.ambient = Carrot::JSON::read<3, float>(src["lighting"]["ambient"]);
             lighting.raytracedShadows = src["lighting"]["raytracedShadows"].GetBool();
+        }
+
+        if(src.HasMember("skybox")) {
+            std::string skyboxStr = src["skybox"].GetString();
+            if(!Carrot::Skybox::safeFromName(skyboxStr, skybox)) {
+                Carrot::Log::error("Unknown skybox: %s", skyboxStr.c_str());
+            }
         }
 
         auto renderSystems = src["render_systems"].GetObject();

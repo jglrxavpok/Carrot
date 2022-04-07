@@ -18,6 +18,8 @@ namespace Peeler {
             bool raytracedShadows = true;
         } lighting;
 
+        Carrot::Skybox::Type skybox = Carrot::Skybox::Type::None;
+
         explicit Scene() = default;
         Scene(const Scene& toCopy) {
             *this = toCopy;

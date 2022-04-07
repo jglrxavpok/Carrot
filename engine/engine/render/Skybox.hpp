@@ -67,4 +67,15 @@ namespace Carrot::Skybox {
                 TODO
         }
     }
+
+    static bool safeFromName(std::string_view name, Type& outSkyboxType) {
+        if(name == "None") {
+            outSkyboxType = Type::None;
+            return true;
+        } else if(name == "Forest") {
+            outSkyboxType = Type::Forest;
+            return true;
+        }
+        return false;
+    }
 }

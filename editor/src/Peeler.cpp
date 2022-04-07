@@ -187,6 +187,7 @@ namespace Peeler {
                 const char* name = Carrot::Skybox::getName(skybox);
                 bool selected = skybox == GetEngine().getSkybox();
                 if(ImGui::Selectable(name, selected)) {
+                    currentScene.skybox = skybox;
                     GetEngine().setSkybox(skybox);
                 }
             };
@@ -711,6 +712,7 @@ namespace Peeler {
 
     void Application::updateSettingsBasedOnScene() {
         GetRenderer().getLighting().getAmbientLight() = currentScene.lighting.ambient;
+        GetEngine().setSkybox(currentScene.skybox);
         // TODO: raytraced shadows
     }
 
