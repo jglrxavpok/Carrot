@@ -70,6 +70,8 @@ namespace Carrot {
                        vk::Format format,
                        std::uint32_t layerCount = 1);
 
+        ~Image() noexcept;
+
         const vk::Image& getVulkanImage() const;
         const vk::DeviceMemory& getMemory() const;
         const vk::Extent3D& getSize() const;
@@ -95,8 +97,6 @@ namespace Carrot {
         static std::unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);
 
         static std::unique_ptr<Image> cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier);
-
-        ~Image() = default;
 
     protected:
         void setDebugNames(const std::string& name) override;

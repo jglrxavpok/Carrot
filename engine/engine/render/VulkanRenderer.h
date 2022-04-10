@@ -78,6 +78,10 @@ namespace Carrot {
     class BufferView;
     class Model;
 
+    namespace Render {
+        class Font;
+    }
+
     using CommandBufferConsumer = std::function<void(vk::CommandBuffer&)>;
 
     class VulkanRenderer: public SwapchainAware {
@@ -104,6 +108,8 @@ namespace Carrot {
         std::shared_ptr<Render::Texture> getOrCreateTexture(const std::string& textureName);
         std::shared_ptr<Render::Texture> getOrCreateTextureFullPath(const std::string& textureName);
         std::shared_ptr<Render::Texture> getOrCreateTextureFromResource(const Carrot::IO::Resource& from);
+
+        std::shared_ptr<Render::Font> getOrCreateFront(const Carrot::IO::Resource& from);
 
         std::shared_ptr<Model> getOrCreateModel(const std::string& modelPath);
 
@@ -222,6 +228,7 @@ namespace Carrot {
 
         Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
         Async::ParallelMap<std::string, Render::Texture::Ref> textures{};
+        Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
 
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;

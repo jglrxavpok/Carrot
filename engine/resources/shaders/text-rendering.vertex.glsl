@@ -10,7 +10,8 @@ layout(location = 0) in vec3 inPosition;
 
 // Per instance
 layout(location = 1) in vec4 inInstanceColor;
-layout(location = 2) in mat4 inInstanceTransform;
+layout(location = 2) in uvec4 inUUID;
+layout(location = 3) in mat4 inInstanceTransform;
 
 
 layout(location = 0) out vec4 fragColor;

@@ -54,6 +54,33 @@ namespace Carrot {
         std::vector<vk::PresentModeKHR> presentModes;
     };
 
+    template<typename TResource>
+    class DeferredDestruction {
+    public:
+        explicit DeferredDestruction(TResource&& toDestroy, std::size_t framesBeforeDestruction): countdown(framesBeforeDestruction) {
+            resource = std::move(toDestroy);
+        };
+        explicit DeferredDestruction(TResource&& toDestroy): DeferredDestruction(std::move(toDestroy), MAX_FRAMES_IN_FLIGHT+10) {};
+
+        bool isReadyForDestruction() const {
+            return countdown == 0;
+        }
+
+        void tickDown() {
+            if(countdown > 0)
+                countdown--;
+        }
+
+    private:
+        TResource resource{};
+        std::size_t countdown = 0; /* number of frames before destruction (swapchain image count by default)*/
+    };
+
+    using DeferredImageDestruction = DeferredDestruction<vk::UniqueImage>;
+    using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
+    using DeferredMemoryDestruction = DeferredDestruction<vk::UniqueDeviceMemory>;
+    using DeferredBufferDestruction = DeferredDestruction<vk::UniqueBuffer>;
+
     class VulkanDriver: public SwapchainAware {
     public:
         VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine
@@ -158,9 +185,15 @@ namespace Carrot {
         Engine& getEngine();
         VulkanRenderer& getRenderer();
 
-        void newFrame();
+        void newFrame(const Carrot::Render::Context& renderContext);
 
         void breakOnNextVulkanError();
+
+    public:
+        void deferDestroy(vk::UniqueImage&& image);
+        void deferDestroy(vk::UniqueImageView&& imageView);
+        void deferDestroy(vk::UniqueDeviceMemory&& memory);
+        void deferDestroy(vk::UniqueBuffer&& resource);
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
@@ -211,6 +244,11 @@ namespace Carrot {
         Vulkan::SynchronizedQueue transferQueue;
         Vulkan::SynchronizedQueue computeQueue;
         vk::SurfaceKHR surface{};
+
+        std::list<DeferredImageDestruction> deferredImageDestructions;
+        std::list<DeferredImageViewDestruction> deferredImageViewDestructions;
+        std::list<DeferredMemoryDestruction> deferredMemoryDestructions;
+        std::list<DeferredBufferDestruction> deferredBufferDestructions;
 
         ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
         ThreadLocal<vk::UniqueCommandPool> transferCommandPool;

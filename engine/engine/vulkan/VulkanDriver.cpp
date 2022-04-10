@@ -876,13 +876,58 @@ Carrot::VulkanRenderer& Carrot::VulkanDriver::getRenderer() {
     return engine->getRenderer();
 }
 
-void Carrot::VulkanDriver::newFrame() {
+void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
     for(const auto& [pool, buffer] : deferredCommandBufferDestructions[swapchainIndex]) {
         device->freeCommandBuffers(pool, buffer);
     }
     deferredCommandBufferDestructions[swapchainIndex].clear();
+
+    {
+        ZoneScopedN("Deferred destruction of resources");
+        for(auto& resource : deferredImageDestructions) {
+            resource.tickDown();
+        }
+        for(auto& resource : deferredImageViewDestructions) {
+            resource.tickDown();
+        }
+        for(auto& resource : deferredBufferDestructions) {
+            resource.tickDown();
+        }
+        for(auto& resource : deferredMemoryDestructions) {
+            resource.tickDown();
+        }
+
+        std::erase_if(deferredImageViewDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+        std::erase_if(deferredImageDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+        std::erase_if(deferredBufferDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+        std::erase_if(deferredMemoryDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+    }
+}
+
+void Carrot::VulkanDriver::deferDestroy(vk::UniqueImage&& resource) {
+    deferredImageDestructions.push_back(std::move(DeferredImageDestruction(std::move(resource))));
+}
+
+void Carrot::VulkanDriver::deferDestroy(vk::UniqueImageView&& resource) {
+    deferredImageViewDestructions.push_back(std::move(DeferredImageViewDestruction(std::move(resource))));
+}
+
+void Carrot::VulkanDriver::deferDestroy(vk::UniqueBuffer&& resource) {
+    deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(std::move(resource))));
+}
+
+void Carrot::VulkanDriver::deferDestroy(vk::UniqueDeviceMemory&& resource) {
+    deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {

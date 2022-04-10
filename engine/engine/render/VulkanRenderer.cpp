@@ -17,6 +17,7 @@
 #include "core/io/IO.h"
 #include "engine/render/DrawData.h"
 #include "engine/render/resources/Buffer.h"
+#include "engine/render/resources/Font.h"
 #include "engine/math/Transform.h"
 #include <execution>
 
@@ -100,16 +101,30 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
         ZoneScopedN("Loading texture");
         ZoneText(textureName.c_str(), textureName.size());
         return textures.getOrCompute(textureName, [&]() {
-            return std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+            return std::make_shared<Carrot::Render::Texture>(driver, from);
         });
     } else {
-        auto texture = std::make_shared<Carrot::Render::Texture>(driver, std::move(from));
+        auto texture = std::make_shared<Carrot::Render::Texture>(driver, from);
         return texture;
     }
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
     return getOrCreateTextureFullPath("resources/textures/" + textureName);
+}
+
+std::shared_ptr<Carrot::Render::Font> Carrot::VulkanRenderer::getOrCreateFront(const Carrot::IO::Resource& from) {
+    if(from.isFile()) {
+        const auto& fontName = from.getName();
+        ZoneScopedN("Loading font");
+        ZoneText(fontName.c_str(), fontName.size());
+        return fonts.getOrCompute(fontName, [&]() {
+            return std::make_shared<Carrot::Render::Font>(*this, from);
+        });
+    } else {
+        auto font = std::make_shared<Carrot::Render::Font>(*this, from);
+        return font;
+    }
 }
 
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const std::string& modelPath) {
@@ -439,6 +454,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         ZoneScopedN("Waiting on tasks required before starting the frame");
         mustBeDoneByNextFrameCounter.busyWait();
     }
+
     Async::LockGuard lk { threadRegistrationLock };
 
     Async::Counter prepareThreadRenderPackets;
@@ -452,8 +468,6 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         };
         GetTaskScheduler().schedule(std::move(task));
     }
-    materialSystem.beginFrame(renderContext);
-    lighting.beginFrame(renderContext);
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
     prepareThreadRenderPackets.busyWait();
@@ -510,10 +524,11 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
 }
 
 void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderContext) {
-    /*collectRenderPackets();
-    sortRenderPackets(renderPackets);
-    mergeRenderPackets(renderPackets, preparedRenderPackets);*/
     ZoneScoped;
+
+    materialSystem.beginFrame(renderContext);
+    lighting.beginFrame(renderContext);
+
     Async::LockGuard lk { threadRegistrationLock };
 
     // TODO: fewer allocations
@@ -560,15 +575,15 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
 
         TaskDescription task {
                 .name = "Cleanup thread local render packets",
-                .task = Carrot::Async::AsTask<void>([pPackets = &packets]() {
-                    std::size_t previousCapacity = (*pPackets)->unsorted.capacity();
+                .task = Carrot::Async::AsTask<void>([pPackets = packets]() {
+                    std::size_t previousCapacity = pPackets->unsorted.capacity();
                     {
                         ZoneScopedN("thread local packets.clear()");
-                        (*pPackets)->unsorted.clear();
+                        pPackets->unsorted.clear();
                     }
                     {
                         ZoneScopedN("thread local packets.reserve(previousCapacity)");
-                        (*pPackets)->unsorted.reserve(previousCapacity);
+                        pPackets->unsorted.reserve(previousCapacity);
                     }
                 }),
                 .joiner = &mustBeDoneByNextFrameCounter,

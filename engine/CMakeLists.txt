@@ -36,16 +36,18 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
+        ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
         ${EngineRoot}ecs/systems/CameraSystem.cpp
+        ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemHandleLights.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
         ${EngineRoot}ecs/systems/SystemUpdateAnimatedModelInstance.cpp
-        ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
+        ${EngineRoot}ecs/systems/TextRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
         ${EngineRoot}ecs/World.cpp

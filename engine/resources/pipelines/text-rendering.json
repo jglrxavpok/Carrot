@@ -14,7 +14,7 @@
   "fragmentShader": "resources/shaders/text-rendering.fragment.glsl.spv",
   "descriptorSets": [
     {
-      "type": "autofill",
+      "type": "materials",
       "setID": 0
     },
     {

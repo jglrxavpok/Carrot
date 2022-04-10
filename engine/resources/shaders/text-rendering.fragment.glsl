@@ -1,20 +1,10 @@
+#extension GL_EXT_nonuniform_qualifier : enable
+
+#include "includes/materials.glsl"
 #include "includes/gbuffer.glsl"
+#include "draw_data.glsl"
 
-layout(constant_id = 0) const uint MAX_TEXTURES = 1;
-layout(constant_id = 1) const uint MAX_MATERIALS = 1;
-
-struct MaterialData {
-    uint textureIndex;
-    bool ignoresInstanceColor;
-};
-
-layout(set = 0, binding = 0) uniform texture2D textures[MAX_TEXTURES];
-layout(set = 0, binding = 1) uniform sampler linearSampler;
-
-// unused, but required for GBuffer pipelines
-layout(set = 0, binding = 2) buffer MaterialBuffer {
-    MaterialData materials[MAX_MATERIALS];
-};
+MATERIAL_SYSTEM_SET(0)
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 uv;
@@ -28,7 +18,10 @@ layout(location = 2) out vec3 outNormal;
 layout(location = 3) out uint intProperty;
 
 void main() {
-    float color = texture(sampler2D(textures[0], linearSampler), uv).r;
+    DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
+    Material material = materials[instanceDrawData.materialIndex];
+    uint diffuseTexture = nonuniformEXT(material.diffuseTexture);
+    float color = texture(sampler2D(textures[diffuseTexture], linearSampler), uv).r;
     if(color < 0.01) {
         discard;
     }

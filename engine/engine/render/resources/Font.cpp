@@ -3,6 +3,7 @@
 //
 
 #include "Font.h"
+#include "engine/render/DrawData.h"
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
 #include <engine/render/InstanceData.h>
@@ -18,8 +19,7 @@ namespace Carrot::Render {
                const Carrot::IO::Resource& ttfFile,
                const std::vector<std::uint64_t>& renderableCodepoints
                ):
-               renderer(renderer),
-               instanceBuffer(renderer.getEngine().getResourceAllocator().allocateBuffer(Font::MaxInstances * sizeof(Carrot::InstanceData), vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent))
+               renderer(renderer)
     {
         data = ttfFile.readAll();
         if(!stbtt_InitFont(&fontInfo, reinterpret_cast<const unsigned char*>(data.get()), 0)) {
@@ -27,13 +27,9 @@ namespace Carrot::Render {
             msg += ttfFile.getName();
             throw std::runtime_error(msg);
         }
-
-        instances = instanceBuffer.map<Carrot::InstanceData>();
     }
 
     RenderableText Font::bake(std::u32string_view text, float pixelSize) {
-        if(instanceCount >= MaxInstances)
-            throw std::runtime_error("Hit limit of instances available through this Font object");
         // TODO: this does not take newlines into account, nor any other control character
         std::uint32_t w = 0;
         std::uint32_t h = 0;
@@ -57,7 +53,7 @@ namespace Carrot::Render {
             // todo: kerning
         }
         w = static_cast<std::uint32_t>(xpos);
-        auto bitmap = std::make_unique<Carrot::Render::Texture>(renderer.getVulkanDriver(), vk::Extent3D { w, h, 1 }, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8Unorm);
+        auto bitmap = std::make_shared<Carrot::Render::Texture>(renderer.getVulkanDriver(), vk::Extent3D { w, h, 1 }, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst, vk::Format::eR8Unorm);
         std::vector<unsigned char> pixels;
         pixels.resize(w*h);
 
@@ -82,7 +78,9 @@ namespace Carrot::Render {
         bitmap->getImage().stageUpload({pixels.data(), pixels.size()});
         stbi_write_png("test-font.png", w, h, 1, pixels.data(), w);
 
-        auto material = renderer.getOrCreatePipeline("text-rendering", static_cast<std::uint64_t>(instanceCount));
+        auto material = GetRenderer().getMaterialSystem().createMaterialHandle();
+        auto textureHandle = GetRenderer().getMaterialSystem().createTextureHandle(bitmap);
+        material->diffuseTexture = textureHandle;
         auto mesh = std::make_unique<Carrot::Mesh>(renderer.getVulkanDriver(),
                                                    std::vector<Carrot::SimpleVertexWithInstanceData>{
                                                            {{0, 0, 0}},
@@ -90,18 +88,18 @@ namespace Carrot::Render {
                                                            {{1, 1, 0}},
                                                            {{1, 0, 0}},
                                                    },
-                                                   std::vector<std::uint32_t>{ 0,1,2, 2,3,0 }
+                                                   std::vector<std::uint32_t>{ 2,1,0, 3,2,0 }
         );
-        std::uint32_t instanceIndex = instanceCount++;
-        instances[instanceIndex].color = glm::vec4{1.0f};
-        instances[instanceIndex].transform = glm::scale(glm::mat4{1.0f}, glm::vec3{w, h, 0.0f});
+        Carrot::InstanceData instanceData;
+        instanceData.color = glm::vec4{1.0f};
+        instanceData.transform = glm::scale(glm::mat4{1.0f}, glm::vec3{w, h, 0.0f});
         TextMetrics metrics {
             .width = static_cast<float>(w),
             .height = static_cast<float>(h),
             .baseline = static_cast<float>(baseline),
             .basePixelSize = pixelSize,
         };
-        return std::move(RenderableText(metrics, instanceBuffer, instanceIndex, std::move(bitmap), std::move(mesh), material, &instances[instanceIndex]));
+        return std::move(RenderableText(metrics, std::move(instanceData), std::move(mesh), material));
     }
 
     std::vector<std::uint64_t>& Font::getAsciiCodepoints() {
@@ -116,32 +114,40 @@ namespace Carrot::Render {
         TODO
     }
 
-    void RenderableText::onFrame(Carrot::Render::Context renderContext) {
-        auto& renderer = renderContext.renderer;
-        renderer.bindTexture(*pipeline, renderContext, *bitmap, 0, 0, nullptr);
+    void RenderableText::render(Carrot::Render::Context renderContext) {
+        if(!mesh)
+            return;
+        auto& renderPacket = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
 
-    }
+        renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering");
+        renderPacket.useMesh(*mesh);
+        renderPacket.instanceCount = 1;
+        renderPacket.useInstance(instance);
 
-    void RenderableText::render(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer cmds) {
-        pipeline->bind(pass, renderContext, cmds);
-        mesh->bind(cmds);
-        cmds.bindVertexBuffers(1, sourceInstanceBuffer->getVulkanBuffer(), sourceInstanceBuffer->getStart() + sizeof(Carrot::InstanceData) * instanceIndex);
-        mesh->draw(cmds);
+        Render::Packet::PushConstant& pushConstant = renderPacket.addPushConstant();
+        pushConstant.id = "drawDataPush";
+        pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
+        Carrot::DrawData data;
+        data.materialIndex = material->getSlot();
+
+        pushConstant.setData(data); // template operator=
+
+        GetRenderer().render(renderPacket);
     }
 
     glm::mat4& RenderableText::getTransform() {
-        return instance->transform;
+        return instance.transform;
     }
 
     glm::vec4& RenderableText::getColor() {
-        return instance->color;
+        return instance.color;
     }
 
     const glm::mat4& RenderableText::getTransform() const {
-        return instance->transform;
+        return instance.transform;
     }
 
     const glm::vec4& RenderableText::getColor() const {
-        return instance->color;
+        return instance.color;
     }
 }

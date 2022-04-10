@@ -65,6 +65,13 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3
     imageData.asView.vkImage = toView;
 }
 
+Carrot::Image::~Image() noexcept {
+    if(imageData.ownsImage) {
+        GetVulkanDriver().deferDestroy(std::move(imageData.asOwned.memory));
+        GetVulkanDriver().deferDestroy(std::move(imageData.asOwned.vkImage));
+    }
+}
+
 const vk::Image& Carrot::Image::getVulkanImage() const {
     if(imageData.ownsImage) {
         return *imageData.asOwned.vkImage;

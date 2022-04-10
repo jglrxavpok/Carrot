@@ -48,3 +48,8 @@ std::string Carrot::toString(std::u32string_view u32str) {
     static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
     return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1] + sizeof(char32_t));
 }
+
+std::u32string Carrot::toU32String(std::string_view str) {
+    static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
+    return converter.from_bytes(str.data());
+}

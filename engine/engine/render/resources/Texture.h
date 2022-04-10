@@ -58,6 +58,8 @@ namespace Carrot::Render {
         /// Create a texture from a Carrot::Image unique_ptr. Owns the image
         explicit Texture(std::unique_ptr<Carrot::Image>&& image);
 
+        ~Texture();
+
     public:
         Carrot::Image& getImage();
         const Carrot::Image& getImage() const;

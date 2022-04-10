@@ -16,6 +16,7 @@ namespace Carrot {
 
     std::string toString(std::u32string_view u32str);
     std::string toString(std::u8string_view wstr);
+    std::u32string toU32String(std::string_view str);
 
     template<typename... Args>
     inline std::string sprintf(std::string_view format, Args... args) {

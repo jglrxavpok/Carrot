@@ -21,8 +21,8 @@ namespace Carrot::Render {
 
     /// Data sent to the GPU
     struct MaterialData {
-        std::uint32_t diffuseTexture;
-        std::uint32_t normalMap;
+        std::uint32_t diffuseTexture = -1;
+        std::uint32_t normalMap = -1;
     };
 
     class TextureHandle: public WeakPoolHandle {
@@ -30,6 +30,8 @@ namespace Carrot::Render {
         Texture::Ref texture;
 
         /*[[deprecated]] */explicit TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
+
+        ~TextureHandle();
 
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
@@ -45,6 +47,8 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> normalMap;
 
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
+
+        ~MaterialHandle();
 
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
@@ -77,6 +81,7 @@ namespace Carrot::Render {
         void reallocateDescriptorSets();
         void reallocateMaterialBuffer(std::uint32_t materialCount);
         MaterialData* getData(MaterialHandle& handle);
+        void updateDescriptorSets(const Carrot::Render::Context& renderContext);
 
     public:
         std::shared_ptr<TextureHandle> getWhiteTexture() const { return whiteTextureHandle; }
@@ -95,12 +100,9 @@ namespace Carrot::Render {
         std::vector<bool> descriptorNeedsUpdate;
 
     private:
+        Carrot::Render::Texture::Ref invalidTexture = nullptr;
         std::vector<std::unordered_map<std::uint32_t, vk::ImageView>> boundTextures;
         WeakPool<TextureHandle> textureHandles;
-
-        std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
 
         vk::ImageView getBoundImageView(std::uint32_t index, const Carrot::Render::Context& renderContext);
 
@@ -112,6 +114,14 @@ namespace Carrot::Render {
         std::size_t materialBufferSize = 0; // in number of materials
         std::unique_ptr<Carrot::Buffer> materialBuffer = nullptr;
         Async::SpinLock accessLock;
+
+    private: // need to be destroyed before the corresponding WeakPoolHandle
+        std::shared_ptr<MaterialHandle> invalidMaterialHandle = nullptr;
+        std::shared_ptr<TextureHandle> invalidTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
+
 
     private:
         friend class TextureHandle;

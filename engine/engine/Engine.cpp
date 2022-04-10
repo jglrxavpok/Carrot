@@ -55,6 +55,7 @@
 #include "engine/ecs/systems/SystemSinPosition.h"
 #include "engine/ecs/systems/SystemUpdateAnimatedModelInstance.h"
 #include "engine/ecs/systems/CameraSystem.h"
+#include "engine/ecs/systems/TextRenderSystem.h"
 
 #include "engine/ecs/components/Component.h"
 #include "engine/ecs/components/AnimatedModelInstance.h"
@@ -65,6 +66,7 @@
 #include "engine/ecs/components/ModelComponent.h"
 #include "engine/ecs/components/RigidBodyComponent.h"
 #include "engine/ecs/components/SpriteComponent.h"
+#include "engine/ecs/components/TextComponent.h"
 #include "engine/ecs/components/TransformComponent.h"
 
 #ifdef ENABLE_VR
@@ -551,6 +553,7 @@ void Carrot::Engine::initECS() {
         components.addUniquePtrBased<Carrot::ECS::LightComponent>();
         components.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
         components.addUniquePtrBased<Carrot::ECS::CameraComponent>();
+        components.addUniquePtrBased<Carrot::ECS::TextComponent>();
     }
 
     {
@@ -562,6 +565,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SystemSinPosition>();
         systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
         systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
     }
 }
 
@@ -692,7 +696,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
     }
 
-    vkDriver.newFrame();
+    Carrot::Render::Context mainRenderContext = newRenderContext(imageIndex, getMainViewport());
+    vkDriver.newFrame(mainRenderContext);
 
     static DebugBufferObject debug{};
     static int32_t gIndex = -1;
@@ -771,7 +776,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
-        renderer.beginFrame(newRenderContext(imageIndex, getMainViewport()));
+        renderer.beginFrame(mainRenderContext);
         GetTaskScheduler().scheduleRendering();
         for(auto& v : viewports) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
@@ -781,7 +786,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             v.onFrame(renderContext); // update cameras only once all render systems are updated
             renderer.onFrame(renderContext);
         }
-        renderer.endFrame(newRenderContext(imageIndex, getMainViewport()));
+        renderer.endFrame(mainRenderContext);
     }
     {
         ZoneScopedN("Record main command buffer");

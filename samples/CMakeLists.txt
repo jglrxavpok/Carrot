@@ -1,5 +1,6 @@
 add_subdirectory(basicsprites)
 add_subdirectory(basicsprites_lua)
+add_subdirectory(fontrendering)
 add_subdirectory(testbed)
 add_subdirectory(imgui_demo)
 add_subdirectory(reactphysics3d)

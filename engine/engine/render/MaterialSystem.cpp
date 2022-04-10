@@ -5,6 +5,7 @@
 #include "MaterialSystem.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/Engine.h"
+#include <core/io/Logging.hpp>
 
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 4;
@@ -39,6 +40,13 @@ namespace Carrot::Render {
         GetVulkanDevice().updateDescriptorSets(write, {});
     }
 
+    TextureHandle::~TextureHandle() noexcept {
+        for(std::size_t index = 0; index < GetEngine().getSwapchainImageCount(); index++) {
+            materialSystem.boundTextures[index][getSlot()] = materialSystem.invalidTexture->getView();
+        }
+        materialSystem.descriptorNeedsUpdate = std::vector<bool>(materialSystem.descriptorSets.size(), true);
+    }
+
     MaterialHandle::MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
 
     }
@@ -47,10 +55,20 @@ namespace Carrot::Render {
         auto* data = materialSystem.getData(*this);
         if(diffuseTexture) {
             data->diffuseTexture = diffuseTexture->getSlot();
+        } else {
+            data->diffuseTexture = materialSystem.whiteTextureHandle->getSlot();
         }
         if(normalMap) {
             data->normalMap = normalMap->getSlot();
+        } else {
+            data->normalMap = materialSystem.blueTextureHandle->getSlot();
         }
+    }
+
+    MaterialHandle::~MaterialHandle() noexcept {
+        Carrot::Render::MaterialData* data = materialSystem.getData(*this);
+        data->diffuseTexture = materialSystem.invalidMaterialHandle->diffuseTexture->getSlot();
+        data->normalMap = materialSystem.invalidMaterialHandle->normalMap->getSlot();
     }
 
     MaterialSystem::MaterialSystem() {
@@ -142,12 +160,19 @@ namespace Carrot::Render {
         whiteTexture = std::make_shared<Texture>(std::move(whiteImage));
         blackTexture = std::make_shared<Texture>(std::move(blackImage));
         blueTexture = std::make_shared<Texture>(std::move(blueImage));
+
+        invalidTexture = GetRenderer().getOrCreateTexture("invalid_texture_reference.png");
+        invalidTextureHandle = createTextureHandle(invalidTexture);
+        invalidMaterialHandle = createMaterialHandle();
+        invalidMaterialHandle->diffuseTexture = invalidTextureHandle;
+        invalidMaterialHandle->normalMap = invalidTextureHandle;
+
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
         blueTextureHandle = createTextureHandle(blueTexture);
     }
 
-    void MaterialSystem::beginFrame(const Context& renderContext) {
+    void MaterialSystem::updateDescriptorSets(const Carrot::Render::Context& renderContext) {
         if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
             auto& set = descriptorSets[renderContext.swapchainIndex];
             auto materialBufferInfo = materialBuffer->getWholeView().asBufferInfo();
@@ -202,9 +227,16 @@ namespace Carrot::Render {
             GetVulkanDevice().updateDescriptorSets(writes, {});
             descriptorNeedsUpdate[renderContext.swapchainIndex] = false;
         }
+    }
+
+    void MaterialSystem::beginFrame(const Context& renderContext) {
+        Async::LockGuard g { accessLock };
+        if(materialHandles.size() >= materialBufferSize) {
+            WaitDeviceIdle();
+            reallocateMaterialBuffer(materialBufferSize*2);
+        }
 
         auto updateType = [&](auto registry) {
-            registry.erase(std::find_if(WHOLE_CONTAINER(registry), [](auto handlePtr) { return handlePtr.second.expired(); }), registry.end());
             for(auto& [slot, handlePtr] : registry) {
                 if(auto handle = handlePtr.lock()) {
                     handle->updateHandle(renderContext);
@@ -214,10 +246,7 @@ namespace Carrot::Render {
         updateType(materialHandles);
         updateType(textureHandles);
 
-        if(materialHandles.size() >= materialBufferSize) {
-            WaitDeviceIdle();
-            reallocateMaterialBuffer(materialBufferSize*2);
-        }
+        updateDescriptorSets(renderContext);
     }
 
     void MaterialSystem::bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint) {
@@ -233,6 +262,15 @@ namespace Carrot::Render {
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
         materialDataPtr = materialBuffer->map<MaterialData>();
+        for (std::size_t i = 0; i < materialCount; i++) {
+            if(invalidTextureHandle) {
+                materialDataPtr[i].diffuseTexture = invalidTextureHandle->getSlot();
+                materialDataPtr[i].normalMap = invalidTextureHandle->getSlot();
+            } else {
+                materialDataPtr[i].diffuseTexture = 0;
+                materialDataPtr[i].normalMap = 0;
+            }
+        }
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
 

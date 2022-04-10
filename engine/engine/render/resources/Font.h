@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 #include <stb_truetype.h>
 #include <engine/render/resources/BufferView.h>
+#include "engine/render/InstanceData.h"
 
 namespace Carrot::Render {
     struct TextMetrics {
@@ -24,8 +25,7 @@ namespace Carrot::Render {
         RenderableText(RenderableText&& text) = default;
         explicit RenderableText() = default;
 
-        void onFrame(Carrot::Render::Context renderContext);
-        void render(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer cmds);
+        void render(Carrot::Render::Context renderContext);
 
         glm::mat4& getTransform();
         const glm::mat4& getTransform() const;
@@ -39,21 +39,15 @@ namespace Carrot::Render {
     private:
         explicit RenderableText(
                 TextMetrics metrics,
-                Carrot::BufferView& instancesBuffer,
-                std::uint32_t instanceIndex,
-                std::unique_ptr<Carrot::Render::Texture>&& bitmap,
+                Carrot::InstanceData&& instanceData,
                 std::unique_ptr<Carrot::Mesh>&& mesh,
-                std::shared_ptr<Carrot::Pipeline> pipeline,
-                Carrot::InstanceData* instance
+                std::shared_ptr<Carrot::Render::MaterialHandle> material
                 ):
-            metrics(metrics), instanceIndex(instanceIndex), sourceInstanceBuffer(&instancesBuffer), bitmap(std::move(bitmap)), mesh(std::move(mesh)), pipeline(std::move(pipeline)), instance(instance) {};
-        std::unique_ptr<Carrot::Render::Texture> bitmap = nullptr;
-        std::unique_ptr<Carrot::Mesh> mesh = nullptr;
-        Carrot::InstanceData* instance = nullptr;
-        Carrot::BufferView* sourceInstanceBuffer = nullptr;
-        std::uint32_t instanceIndex = 0;
+            metrics(metrics), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)) {};
+        Carrot::InstanceData instance;
+        std::unique_ptr<Carrot::Mesh> mesh = nullptr; // TODO: use generic square mesh
 
-        std::shared_ptr<Carrot::Pipeline> pipeline = nullptr;
+        std::shared_ptr<Carrot::Render::MaterialHandle> material = nullptr;
         TextMetrics metrics;
 
         friend class Font;
@@ -61,6 +55,8 @@ namespace Carrot::Render {
 
     class Font {
     public:
+        using Ref = std::shared_ptr<Font>;
+
         static constexpr std::uint32_t MaxInstances = 256;
 
         // TODO: Support font fallback
@@ -76,10 +72,7 @@ namespace Carrot::Render {
     private:
         std::unique_ptr<std::uint8_t[]> data = nullptr; // must be kept alive for stb_truetype to work
         Carrot::VulkanRenderer& renderer;
-        Carrot::BufferView instanceBuffer;
-        std::uint32_t instanceCount = 0;
         stbtt_fontinfo fontInfo;
-        Carrot::InstanceData* instances = nullptr;
     };
 
 }

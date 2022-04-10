@@ -113,6 +113,8 @@ Carrot::Buffer::~Buffer() {
     if(mappedPtr) {
         unmap();
     }
+    GetVulkanDriver().deferDestroy(std::move(vkBuffer));
+    GetVulkanDriver().deferDestroy(std::move(memory));
 }
 
 void Carrot::Buffer::setDebugNames(const std::string& name) {

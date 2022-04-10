@@ -46,6 +46,12 @@ namespace Carrot::Render {
         currentLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
     }
 
+    Texture::~Texture() {
+        for(auto& [k, imageView] : views) {
+            GetVulkanDriver().deferDestroy(std::move(imageView));
+        }
+    }
+
     Carrot::Image& Texture::getImage() {
         verify(image, "Texture not initialized!");
         return *image;

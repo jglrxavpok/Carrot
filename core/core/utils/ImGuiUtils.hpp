@@ -39,6 +39,10 @@ namespace ImGui {
         return ::ImGui::InputText(label, &str, flags, StdStringInputCallback);
     }
 
+    inline bool InputTextMultiline(const char* label, std::string& str, ImGuiInputTextFlags flags = ImGuiInputTextFlags_None) {
+        return ::ImGui::InputTextMultiline(label, &str, ImVec2(0,0), flags, StdStringInputCallback);
+    }
+
     inline void UnformattedWTextWrapped(std::u8string_view wideText) {
         std::string converted = Carrot::toString(wideText);
         ::ImGui::TextWrapped("%s", converted.c_str());
