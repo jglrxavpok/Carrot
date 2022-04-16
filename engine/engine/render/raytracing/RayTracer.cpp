@@ -31,20 +31,7 @@ void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     if(&renderContext.viewport != &renderer.getEngine().getMainViewport())
         return;
     ZoneScoped;
-    // TODO: proper size
     renderer.getASBuilder().startFrame();
-    // TODO: reconstruct AS if needed
-/*    std::vector<SceneElement> sceneElements(maxInstances);
-    auto& topLevel = renderer.getASBuilder().getTopLevelInstances();
-    std::size_t maxInstance = topLevel.size();
-    for (int i = 0; i < maxInstances; ++i) {
-        sceneElements[i].mappedIndex = i;
-        if(i < maxInstance) {
-            sceneElements[i].transform = glm::inverse(topLevel[i].transform);
-            sceneElements[i].transformIT = glm::transpose(glm::inverse(topLevel[i].transform));
-        }
-    }
-    sceneBuffers[renderContext.swapchainIndex]->directUpload(sceneElements.data(), sceneElements.size()*sizeof(SceneElement));*/
 }
 
 std::vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {

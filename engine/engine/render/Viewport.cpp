@@ -68,6 +68,8 @@ namespace Carrot::Render {
 
             objLeftEye.update(getCamera(Carrot::Render::Eye::LeftEye));
             objRightEye.update(getCamera(Carrot::Render::Eye::RightEye));
+            getCamera(Carrot::Render::Eye::RightEye).swapMatrices();
+            getCamera(Carrot::Render::Eye::LeftEye).swapMatrices();
 
             auto& leftBuffer = cameraUniformBuffers[context.swapchainIndex * 2];
             auto& rightBuffer = cameraUniformBuffers[context.swapchainIndex * 2 + 1];
@@ -78,6 +80,7 @@ namespace Carrot::Render {
             auto& buffer = cameraUniformBuffers[context.swapchainIndex];
 
             obj.update(getCamera());
+            getCamera().swapMatrices();
 
             buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
         }

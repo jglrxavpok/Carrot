@@ -119,6 +119,9 @@ namespace Carrot::ECS {
         /// Gets the children of 'parent'. Can return an empty vector if it has no children
         std::optional<Entity> getNamedChild(std::string_view name, const Entity& parent, ShouldRecurse recurse = ShouldRecurse::Recursion) const;
 
+        /// Gets the first entity with the given name
+        std::optional<Entity> findEntityByName(std::string_view name) const;
+
     public:
         World& operator=(const World& toCopy);
 

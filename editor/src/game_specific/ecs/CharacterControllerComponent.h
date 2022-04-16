@@ -21,6 +21,7 @@ namespace Game::ECS {
 
         // TODO: Drag & drop (and store as UUID)
         std::string headChildName;
+        std::string scoreEntityName;
 
         explicit CharacterControllerComponent(Carrot::ECS::Entity entity): Carrot::ECS::IdentifiableComponent<CharacterControllerComponent>(std::move(entity)) {};
 
@@ -35,6 +36,7 @@ namespace Game::ECS {
         std::unique_ptr<Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override {
             auto result = std::make_unique<CharacterControllerComponent>(newOwner);
             result->headChildName = headChildName;
+            result->scoreEntityName = scoreEntityName;
             result->yaw = yaw;
             result->pitch = pitch;
             result->heldPages = heldPages;

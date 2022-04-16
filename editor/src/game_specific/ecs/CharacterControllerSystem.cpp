@@ -9,6 +9,7 @@
 #include <engine/ecs/systems/RigidBodySystem.h>
 #include <core/io/Logging.hpp>
 #include "PageComponent.h"
+#include "engine/ecs/components/TextComponent.h"
 
 namespace Game::ECS {
     CharacterControllerSystem::CharacterControllerSystem(Carrot::ECS::World& world): Carrot::ECS::LogicSystem<Carrot::ECS::RigidBodyComponent, Game::ECS::CharacterControllerComponent>(world) {
@@ -33,16 +34,18 @@ namespace Game::ECS {
 
             // Movement
             auto headEntity = entity.getNamedChild(characterControllerComponent.headChildName, Carrot::ShouldRecurse::Recursion);
+            auto scoreEntity = entity.getWorld().findEntityByName(characterControllerComponent.scoreEntityName);
 
             if(!headEntity)
+                return;
+
+            if(!scoreEntity)
                 return;
 
             const float yawSpeed = 1.0f;
             const float pitchSpeed = 1.0f;
             float& yaw = characterControllerComponent.yaw;
             float& pitch = characterControllerComponent.pitch;
-            yaw -= deltaTime * lookInput.getValue().x * yawSpeed;
-            pitch -= deltaTime * lookInput.getValue().y * pitchSpeed;
 
             pitch = std::min(glm::pi<float>(), std::max(0.0f, pitch));
 
@@ -58,6 +61,10 @@ namespace Game::ECS {
 
             Carrot::ECS::TransformComponent& headTransform = headEntity->getComponent<Carrot::ECS::TransformComponent>();
             headTransform.localTransform.rotation = glm::quat(eulerAngles);
+
+            // updating the angles after writing to the head rotation might be weird,
+            yaw -= deltaTime * lookInput.getValue().x * yawSpeed;
+            pitch -= deltaTime * lookInput.getValue().y * pitchSpeed;
 
             forward.z = 0.0f;
             strafe.z = 0.0f;
@@ -85,7 +92,10 @@ namespace Game::ECS {
                     if(entityHit) {
                         auto potentialPage = entityHit->getComponent<PageComponent>();
                         if(potentialPage) {
-                            Carrot::Log::info("Hit: %s", entityHit->getName().c_str());
+                            characterControllerComponent.heldPages++;
+                            Carrot::ECS::TextComponent& textComponent = scoreEntity->getComponent<Carrot::ECS::TextComponent>();
+                            textComponent.setText(Carrot::sprintf("Pages collected: %llu / 4", characterControllerComponent.heldPages));
+
                             world.removeEntity(entityHit.value());
                         }
                     }

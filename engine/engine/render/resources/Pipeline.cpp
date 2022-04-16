@@ -393,12 +393,6 @@ void Carrot::Pipeline::allocateDescriptorSets() {
     if(descriptorPool) {
         driver.getLogicalDevice().resetDescriptorPool(*descriptorPool);
     }
-    for(auto& set : descriptorSets) {
-        if(!set.empty()) {
-            GetVulkanDevice().freeDescriptorSets(*descriptorPool, set);
-            set.clear();
-        }
-    }
     descriptorSets.clear();
     descriptorSets.resize(description.setCount);
     for (std::uint32_t i = 0; i < description.setCount; ++i) {

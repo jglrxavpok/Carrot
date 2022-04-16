@@ -73,10 +73,16 @@ namespace Peeler {
         void deselectAllEntities();
 
     private: // simulation
-        void startSimulation();
         void pauseSimulation();
         void resumeSimulation();
+
+        // launch a request
+        void startSimulation();
         void stopSimulation();
+
+        // process the request, don't call mid-frame
+        void performSimulationStart();
+        void performSimulationStop();
 
         void updateSettingsBasedOnScene();
 
@@ -143,6 +149,11 @@ namespace Peeler {
 
         bool isLookingAtRoots = false;
         bool tryToClose = false;
+
+    private:
+        // don't actually start/stop the simulation mid-frame! We might have live objects that need to still be alive at the end of the frame
+        bool stopSimulationRequested = false;
+        bool startSimulationRequested = false;
 
     private: // simulation state
         bool isPlaying = false;

@@ -6,6 +6,7 @@
 #extension GL_EXT_ray_query : enable
 #endif
 
+
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
@@ -161,7 +162,8 @@ void main() {
     vec4 outColorWorld;
 
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
-    vec3 worldPos = (cbo.inverseView * vec4(texture(sampler2D(viewPos, linearSampler), uv).xyz, 1.0)).xyz;
+    vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
+    vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
     vec3 normal = normalize((cbo.inverseView * vec4(texture(sampler2D(viewNormals, linearSampler), uv).xyz, 0.0)).xyz);
     vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
@@ -173,7 +175,14 @@ void main() {
         } else {
             outColorWorld = fragmentColor;
         }
+
         outColorWorld.rgb *= calculateLighting(worldPos, normal, true);
+
+        float distanceToCamera = length(viewPos);
+
+        float fogFactor = clamp((distanceToCamera - lights.fogDistance) / lights.fogDepth, 0, 1);
+
+        outColorWorld.rgb = mix(outColorWorld.rgb, lights.fogColor, fogFactor);
     } else {
         outColorWorld = vec4(skyboxRGB, 1.0);
     }

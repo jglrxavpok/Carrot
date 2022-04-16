@@ -902,7 +902,9 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     verify(packet.pipeline, "Pipeline must not be null");
     verify(packet.pass != Render::PassEnum::Undefined, "Render pass must be defined");
     verify(packet.vertexBuffer, "Vertex buffer must not be null");
+    verify(((VkBuffer)packet.vertexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Vertex buffer must not be null");
     verify(packet.indexBuffer, "Index buffer must not be null");
+    verify(((VkBuffer)packet.indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null");
     verify(packet.viewport, "Viewport must not be null");
     verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
     threadLocalRenderPackets->unsorted.emplace_back(packet);

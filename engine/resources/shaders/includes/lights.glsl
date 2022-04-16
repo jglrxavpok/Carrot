@@ -20,6 +20,9 @@ struct Light {
 layout(set = setID, binding = bindingID) buffer Lights { \
     vec3 ambientColor; \
     uint count; \
+    vec3 fogColor; \
+    float fogDistance; \
+    float fogDepth; \
     Light l[]; \
 } lights;
 

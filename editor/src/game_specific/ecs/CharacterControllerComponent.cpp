@@ -10,6 +10,7 @@ namespace Game::ECS {
         yaw = json["yaw"].GetFloat();
         pitch = json["pitch"].GetFloat();
         headChildName = json["headChildEntity"].GetString();
+        scoreEntityName = json["scoreEntityName"].GetString();
         heldPages = json["heldPages"].GetUint();
     };
 
@@ -17,6 +18,7 @@ namespace Game::ECS {
         rapidjson::Value obj(rapidjson::kObjectType);
 
         obj.AddMember("headChildEntity", headChildName, doc.GetAllocator());
+        obj.AddMember("scoreEntityName", scoreEntityName, doc.GetAllocator());
         obj.AddMember("yaw", yaw, doc.GetAllocator());
         obj.AddMember("pitch", pitch, doc.GetAllocator());
         obj.AddMember("heldPages", heldPages, doc.GetAllocator());
@@ -26,6 +28,9 @@ namespace Game::ECS {
 
     void CharacterControllerComponent::drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) {
         if(ImGui::InputText("Head child entity name##CharacterControllerComponent child name", headChildName, ImGuiInputTextFlags_EnterReturnsTrue)) {
+
+        }
+        if(ImGui::InputText("Score entity name##CharacterControllerComponent child name", scoreEntityName, ImGuiInputTextFlags_EnterReturnsTrue)) {
 
         }
     }

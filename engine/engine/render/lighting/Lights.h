@@ -82,7 +82,7 @@ namespace Carrot::Render {
 
     private:
         Light& getLightData(LightHandle& handle) {
-            auto* lightPtr = reinterpret_cast<Light *>(data + offsetof(Data, lights));
+            auto* lightPtr = data->lights;
             return lightPtr[handle.getSlot()];
         }
 
@@ -102,14 +102,31 @@ namespace Carrot::Render {
         glm::vec3 ambientColor {1.0f};
 
         struct Data {
-            alignas(16) glm::vec3 ambient {1.0f};
+            alignas(alignof(glm::vec4)) glm::vec3 ambient {1.0f};
             std::uint32_t lightCount;
-            alignas(16) Light lights[];
+
+            // Color of fog
+            glm::vec3 fogColor { 0.0 };
+            float fogDistance = std::numeric_limits<float>::infinity();
+
+            // Distance over which fog fades out
+            float fogDepth = 1.0f;
+
+            alignas(alignof(glm::vec4)) Light lights[];
         };
 
         Data* data = nullptr;
         std::size_t lightBufferSize = 0; // in number of lights
         std::unique_ptr<Carrot::Buffer> lightBuffer = nullptr;
+
+        // Distance at which fog starts
+        float fogDistance = std::numeric_limits<float>::infinity();
+
+        // Distance over which fog fades out
+        float fogDepth = 1.0f;
+
+        // Color of fog
+        glm::vec3 fogColor { 0.0 };
 
 
         friend class LightHandle;

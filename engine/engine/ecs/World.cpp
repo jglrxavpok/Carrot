@@ -513,4 +513,12 @@ namespace Carrot::ECS {
         return result;
     }
 
+    std::optional<Entity> World::findEntityByName(std::string_view name) const {
+        for(const auto& [entity, entityName] : entityNames) {
+            if(entityName == name) {
+                return wrap(entity);
+            }
+        }
+        return {};
+    }
 }

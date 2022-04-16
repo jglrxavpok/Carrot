@@ -51,6 +51,13 @@ namespace Peeler {
         }
         if(&renderContext.viewport == &gameViewport) {
             ZoneScopedN("Game viewport");
+
+            if(stopSimulationRequested) {
+                performSimulationStop();
+            } else if(startSimulationRequested) {
+                performSimulationStart();
+            }
+
             auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
             cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
 
@@ -660,6 +667,11 @@ namespace Peeler {
     }
 
     void Application::startSimulation() {
+        startSimulationRequested = true;
+    }
+
+    void Application::performSimulationStart() {
+        verify(startSimulationRequested, "Don't call performSimulationStart directly!");
         isPlaying = true;
         isPaused = false;
         requestedSingleStep = false;
@@ -672,9 +684,17 @@ namespace Peeler {
         removeEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().resume();
+
+        startSimulationRequested = false;
     }
 
     void Application::stopSimulation() {
+        stopSimulationRequested = true;
+    }
+
+    void Application::performSimulationStop() {
+        verify(stopSimulationRequested, "Don't call performSimulationStop directly!");
+
         isPlaying = false;
         isPaused = false;
         requestedSingleStep = false;
@@ -684,6 +704,8 @@ namespace Peeler {
         savedScene.clear();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
+
+        stopSimulationRequested = false;
     }
 
     void Application::pauseSimulation() {
