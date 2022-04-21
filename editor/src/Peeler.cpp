@@ -48,6 +48,13 @@ namespace Peeler {
             ZoneScopedN("Main viewport");
             UIEditor(renderContext);
             Tools::ProjectMenuHolder::onFrame(renderContext);
+
+            // TODO: do it more cleanly with shortcuts for multiple actions
+            if(glfwGetKey(GetVulkanDriver().getWindow().getGLFWPointer(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(GetVulkanDriver().getWindow().getGLFWPointer(), GLFW_KEY_S) == GLFW_PRESS) {
+                if(canSave()) {
+                    this->triggerSave();
+                }
+            }
         }
         if(&renderContext.viewport == &gameViewport) {
             ZoneScopedN("Game viewport");
