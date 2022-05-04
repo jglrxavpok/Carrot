@@ -16,8 +16,10 @@ set(CORE-SOURCES
         ${CoreRoot}io/FileWatcher.cpp
         ${CoreRoot}io/IO.cpp
         ${CoreRoot}io/Logging.cpp
+        ${CoreRoot}io/Path.cpp
         ${CoreRoot}io/Resource.cpp
         ${CoreRoot}io/Serialisation.cpp
+        ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
         ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp

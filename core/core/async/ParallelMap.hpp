@@ -8,6 +8,7 @@
 #include <optional>
 #include <list>
 #include <xhash>
+#include "core/Macros.h"
 #include "core/async/Locks.h"
 #include "core/utils/Concepts.hpp"
 
@@ -15,7 +16,7 @@ namespace Carrot::Async {
     /// Specialized data structure that allows concurrent access to its values, via getOrCompute.
     ///  Access to different keys can be done in multiple threads, with minimal blocking.
     ///  Access to the same key can be done in multiple threads, but will block if generation started
-    ///  Once created, values are never moved. Erasing a value via its key and then re-set a value
+    ///  Once created, values are never moved. Erase a value via its key and then re-set a value
     /// KeyType: must be hashable
     /// ValueType: must meet std::is_move_constructible_v
     template<typename KeyType, typename ValueType> requires Concepts::IsMoveable<ValueType> && Concepts::Hashable<KeyType>
@@ -30,9 +31,10 @@ namespace Carrot::Async {
             std::optional<ValueType> value;
         };
 
+        template<bool isConst>
         class Snapshot {
         public:
-            using ElementType = std::pair<KeyType, ValueType*>;
+            using ElementType = std::pair<KeyType, std::conditional_t<isConst, const ValueType*, ValueType*>>;
 
             auto begin() {
                 return keyValuePairs.begin();
@@ -46,6 +48,9 @@ namespace Carrot::Async {
             std::vector<ElementType> keyValuePairs;
             friend class ParallelMap<KeyType, ValueType>;
         };
+
+        using NonConstSnapshot = Snapshot<false>;
+        using ConstSnapshot = Snapshot<true>;
 
     public:
         /// Creates an empty map
@@ -121,11 +126,61 @@ namespace Carrot::Async {
             return false;
         }
 
+        ValueType* find(const KeyType& key) {
+            Hash hashedKey = hasher(key);
+
+            Node *existingNode = nullptr;
+            {
+                Async::LockGuard l{storageAccess.read()};
+                for (auto& node: storage) {
+                    if (node.hashedKey == hashedKey) {
+                        if (node.value.has_value()) {
+                            return &node.value.value();
+                        }
+                    }
+                }
+            }
+            return nullptr;
+        }
+
+        const ValueType* find(const KeyType& key) const {
+            Hash hashedKey = hasher(key);
+
+            Node* existingNode = nullptr;
+            {
+                Async::LockGuard l { storageAccess.read() };
+                for(auto& node : storage) {
+                    if(node.hashedKey == hashedKey) {
+                        if(node.value.has_value()) {
+                            return &node.value.value();
+                        }
+                    }
+                }
+            }
+            return nullptr;
+        }
+
         /// Provides a copy of this map's contents. Can be used to iterate over this structure
-        Snapshot snapshot() {
+        NonConstSnapshot snapshot() {
             Async::LockGuard l { storageAccess.read() };
 
-            Snapshot result;
+            NonConstSnapshot result;
+            result.keyValuePairs.reserve(storage.size());
+            for(auto& node : storage) {
+                if(node.value.has_value()) {
+                    result.keyValuePairs.emplace_back(node.key, &node.value.value());
+                }
+            }
+            result.keyValuePairs.shrink_to_fit();
+
+            return result;
+        }
+
+        /// Provides a copy of this map's contents. Can be used to iterate over this structure
+        ConstSnapshot snapshot() const {
+            Async::LockGuard l { storageAccess.read() };
+
+            ConstSnapshot result;
             result.keyValuePairs.reserve(storage.size());
             for(auto& node : storage) {
                 if(node.value.has_value()) {
@@ -138,7 +193,7 @@ namespace Carrot::Async {
         }
 
     private:
-        Async::ReadWriteLock storageAccess{};
+        mutable Async::ReadWriteLock storageAccess{};
         std::list<Node> storage{};
         std::hash<KeyType> hasher{};
     };

@@ -1,9 +1,10 @@
 set(AllTests "")
 
 function(make_test Test)
-    list(APPEND AllTests ${Test})
-    add_executable("Carrot-Test${Test}" ${Test}.cpp)
-    target_link_libraries("Carrot-Test${Test}" PUBLIC Engine-Base)
+    string(REPLACE "/" "-" TestName "${Test}")
+    list(APPEND AllTests ${TestName})
+    add_executable("Carrot-Test${TestName}" ${Test}.cpp)
+    target_link_libraries("Carrot-Test${TestName}" PUBLIC Engine-Base)
 endfunction()
 
 FetchContent_Declare(
@@ -14,25 +15,37 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-make_test(Audio)
-make_test(Resources)
-make_test(Network-Client)
-make_test(Network-Server)
-make_test(Lua)
-make_test(GeneralMaterials)
+make_test(engine/Audio)
+make_test(engine/Resources)
+make_test(engine/Network-Client)
+make_test(engine/Network-Server)
+make_test(engine/Lua)
+make_test(engine/GeneralMaterials)
 
 enable_testing()
 
 add_executable(
         Engine-Tests
-        Coroutines.cpp
-        FileWatching.cpp
-        Lookup.cpp
-        Counters.cpp
+        engine/test_game_main.inc
+)
+
+add_executable(
+        Core-Tests
+        core/Coroutines.cpp
+        core/FileWatching.cpp
+        core/Lookup.cpp
+        core/Counters.cpp
+        core/Paths.cpp
+        core/VFS.cpp
 )
 target_link_libraries(
         Engine-Tests
         PUBLIC Engine-Base
+        gtest_main
+)
+target_link_libraries(
+        Core-Tests
+        PUBLIC CarrotCore
         gtest_main
 )
 

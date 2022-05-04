@@ -1,8 +1,9 @@
 //
 // Created by jglrxavpok on 26/01/2022.
 //
-#include "test_game_main.inc"
 #include <gtest/gtest.h>
+#include <future>
+#include <core/async/Coroutines.hpp>
 #include <core/async/Counter.h>
 
 using namespace Carrot::Async;

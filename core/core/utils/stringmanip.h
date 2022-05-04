@@ -7,9 +7,11 @@
 #include <string>
 #include <memory>
 #include <utility>
+#include <span>
 
 namespace Carrot {
     std::vector<std::string> splitString(const std::string& toSplit, const std::string& delimiter);
+    std::string joinStrings(const std::span<std::string_view>& toJoin, std::string_view joiner);
 
     std::string toLowerCase(const std::string& str);
     std::string toUpperCase(const std::string& str);

@@ -23,6 +23,26 @@ std::vector<std::string> Carrot::splitString(const std::string& toSplit, const s
     return parts;
 }
 
+std::string Carrot::joinStrings(const std::span<std::string_view>& toJoin, std::string_view joiner) {
+    std::size_t totalSize = 0;
+    for(const auto& part : toJoin) {
+        totalSize += part.size();
+    }
+
+    std::string result;
+    result.reserve(totalSize + (toJoin.size() - 1) * joiner.size());
+    bool first = true;
+    for(const auto& part : toJoin) {
+        if(!first) {
+            result += joiner;
+        }
+        result += part;
+
+        first = false;
+    }
+    return result;
+}
+
 std::string Carrot::toLowerCase(const std::string& str) {
     std::string result = str;
     for(auto& c : result) {
