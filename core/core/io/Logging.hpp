@@ -60,10 +60,10 @@ namespace Carrot::Log {
     }
 
     inline void log(Severity severity, const std::string& message, std::ostream& out = std::cout) {
-#ifndef IS_DEBUG_BUILD
+/*#ifndef IS_DEBUG_BUILD
         if(severity == Severity::Debug)
             return;
-#endif
+#endif*/
         // TODO: write to file?
 
         const auto timestamp = std::chrono::system_clock::now() - getStartTime();

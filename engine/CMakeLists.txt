@@ -4,6 +4,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}Window.cpp
 
         ${EngineRoot}io/actions/ActionSet.cpp
+        ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/resources/Mesh.cpp

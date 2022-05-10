@@ -10,7 +10,9 @@
 
 namespace Carrot::IO {
     static void checkStdError(int err, const std::string& operation) {
-        if(err) throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err));
+        if(err) {
+            throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err));
+        }
     }
 
     FileHandle::FileHandle(const std::filesystem::path& filepath, OpenMode openMode) {

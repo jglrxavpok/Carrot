@@ -333,7 +333,8 @@ namespace Carrot::Async {
         }
 
         void unhandled_exception() {
-            throw;
+            auto exception = std::current_exception();
+            std::rethrow_exception(exception);
         }
 
         // called when coroutine_handle::destroy is called

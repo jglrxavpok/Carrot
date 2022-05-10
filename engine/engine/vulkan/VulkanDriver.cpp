@@ -34,7 +34,7 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
 //constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 

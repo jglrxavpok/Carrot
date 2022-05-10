@@ -982,6 +982,7 @@ namespace Peeler {
     }
 
     void Application::performLoad(std::filesystem::path fileToOpen) {
+        GetVFS().removeRoot("game");
         if(fileToOpen == EmptyProject) {
             currentScene.clear();
             addDefaultSystems(currentScene);
@@ -992,6 +993,7 @@ namespace Peeler {
             currentScene.world.freezeLogic();
             return;
         }
+        GetVFS().addRoot("game", std::filesystem::absolute(fileToOpen).parent_path());
         rapidjson::Document description;
         description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
         currentScene.deserialise(description["scene"].GetObject());

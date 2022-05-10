@@ -8,23 +8,24 @@
 #include "core/utils/stringmanip.h"
 
 namespace Carrot::IO {
+    VirtualFileSystem* Resource::vfsToUse = nullptr;
+
     Resource::Resource(): data(true) {
         data.raw = std::make_shared<std::vector<std::uint8_t>>();
     }
 
-    Resource::Resource(const char *const filename): data(false) {
-        data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
-        name(filename);
-    }
+    Resource::Resource(const char* path): Resource::Resource(VFS::Path(path)) {}
+    Resource::Resource(const std::string& path): Resource::Resource(VFS::Path(path)) {}
 
-    Resource::Resource(const std::filesystem::path& filename): data(false) {
-        data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
-        name(Carrot::toString(filename.u8string()));
-    }
-
-    Resource::Resource(const std::string& filename): data(false) {
-        data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
-        name(filename);
+    Resource::Resource(const VFS::Path& path): data(false) {
+        if(vfsToUse != nullptr) {
+            std::filesystem::path fullPath = vfsToUse->resolve(path);
+            data.fileHandle = std::make_unique<FileHandle>(fullPath, OpenMode::Read);
+            name(path.toString());
+        } else {
+            data.fileHandle = std::make_unique<FileHandle>(path.toString(), OpenMode::Read);
+            name(path.toString());
+        }
     }
 
     Resource::Resource(const std::vector<std::uint8_t>& data): data(true) {
@@ -187,12 +188,12 @@ namespace Carrot::IO {
 
     Carrot::IO::Resource Resource::relative(const std::filesystem::path& path) const {
         if(!isFile() || path.is_absolute()) {
-            return { path.string() };
+            return Resource{ VFS::Path(path.string()) };
         }
         std::filesystem::path fullPath = getName();
         fullPath = fullPath.parent_path();
         fullPath /= path;
-        return { fullPath.string() };
+        return Resource{ VFS::Path(fullPath.string()) };
     }
 
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {}

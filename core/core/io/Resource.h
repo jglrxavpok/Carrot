@@ -8,16 +8,21 @@
 #include <vector>
 #include <memory>
 #include "FileHandle.h"
+#include "vfs/VirtualFileSystem.h"
 
 namespace Carrot::IO {
+    class VirtualFileSystem;
+
     class Resource {
     public:
+        static VirtualFileSystem* vfsToUse;
+
         /// Creates empty resource
         explicit Resource();
 
-        Resource(const std::filesystem::path& path);
-        Resource(const std::string& filename);
-        Resource(const char* const filename);
+        Resource(const char* path);
+        Resource(const std::string& path);
+        Resource(const VFS::Path& path);
 
         /// Copies data inside a shared vector
         explicit Resource(const std::vector<std::uint8_t>& data);

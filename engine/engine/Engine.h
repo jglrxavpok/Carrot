@@ -35,6 +35,7 @@ namespace Carrot {
 #include "engine/io/actions/InputVectors.h"
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
+#include <core/io/vfs/VirtualFileSystem.h>
 
 namespace sol {
     class state;
@@ -358,6 +359,8 @@ namespace Carrot {
         TaskScheduler& getTaskScheduler();
 
     public:
+        IO::VFS& getVFS() { return vfs; }
+
         /// Creates a file watcher while will be automatically be updated inside the main loop (once per loop iteration)
         ///  The engine object only holds a weak reference to the created file watcher.
         std::shared_ptr<IO::FileWatcher> createFileWatcher(const IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch);
@@ -369,11 +372,11 @@ namespace Carrot {
         static void registerUsertype(sol::state& destination);
 
     private:
+        IO::VFS vfs;
+
         /// allows to set the 'instance' static variable during construction. Big hack, but lets systems access the engine during their construction
         struct SetterHack {
-            explicit SetterHack(Carrot::Engine* e) {
-                Carrot::Engine::instance = e;
-            }
+            explicit SetterHack(Carrot::Engine* e);
         } instanceSetterHack;
 
         Configuration config;

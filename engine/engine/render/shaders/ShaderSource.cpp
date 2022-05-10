@@ -49,12 +49,14 @@ namespace Carrot::Render {
         verify(fromFile, "Must be from file");
         std::filesystem::path metadataPath = filepath;
         metadataPath.replace_extension(".meta.json");
-        std::string contents = Carrot::IO::Resource(metadataPath).readText();
+        std::string contents = Carrot::IO::Resource(metadataPath.string()).readText();
 
         rapidjson::Document json;
         json.Parse(contents.c_str());
 
         ShaderCompiler::Metadata metadata(json);
+
+        Carrot::Log::debug("Creating watcher on file '%s'", filepath.u8string().c_str());
 
         watcher = GetEngine().createFileWatcher([this, commandArgs = metadata.commandArguments](const std::filesystem::path& p) {
             std::string command = "shadercompiler";
@@ -82,7 +84,7 @@ namespace Carrot::Render {
         if(!fromFile) {
             return rawData;
         } else {
-            Carrot::IO::Resource resource(filepath);
+            Carrot::IO::Resource resource(filepath.string());
             std::vector<std::uint8_t> data;
             data.resize(resource.getSize());
             resource.readAll(data.data());

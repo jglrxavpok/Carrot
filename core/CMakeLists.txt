@@ -13,6 +13,7 @@ set(CORE-SOURCES
 
         ${CoreRoot}io/FileHandle.cpp
         ${CoreRoot}io/Files.cpp
+        ${CoreRoot}io/FileSystemOS.cpp
         ${CoreRoot}io/FileWatcher.cpp
         ${CoreRoot}io/IO.cpp
         ${CoreRoot}io/Logging.cpp

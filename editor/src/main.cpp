@@ -13,8 +13,13 @@ int main() {
             .applicationName = "Peeler",
             .applicationVersion = VK_MAKE_VERSION(0,0,1),
     };
-    Carrot::Engine engine{config};
-    engine.run();
+    try {
+        Carrot::Engine engine{config};
+        engine.run();
+    } catch(const std::exception& e) {
+        std::cerr << "Application died with exception:\n" << e.what() << std::endl;
+        throw e;
+    }
     return 0;
 }
 

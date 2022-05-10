@@ -24,6 +24,9 @@ std::vector<std::string> Carrot::splitString(const std::string& toSplit, const s
 }
 
 std::string Carrot::joinStrings(const std::span<std::string_view>& toJoin, std::string_view joiner) {
+    if(toJoin.empty()) {
+        return "";
+    }
     std::size_t totalSize = 0;
     for(const auto& part : toJoin) {
         totalSize += part.size();

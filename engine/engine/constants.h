@@ -13,7 +13,7 @@ constexpr const char* WINDOW_TITLE = "Carrot";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
-        "VK_LAYER_KHRONOS_validation",
+        //"VK_LAYER_KHRONOS_validation",
 #ifndef NO_DEBUG
         //"VK_LAYER_LUNARG_monitor",
 #endif

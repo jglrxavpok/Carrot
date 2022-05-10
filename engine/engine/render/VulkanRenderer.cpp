@@ -919,7 +919,8 @@ Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize byte
     return singleFrameAllocator.allocate(bytes);
 }
 
-Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(std::string name) {
+Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(
+        /* not a ref because we need the string to be alive inside the coroutine*/ std::string name) {
     co_return getOrCreateModel(name);
 }
 

@@ -11,7 +11,7 @@ namespace Carrot::ECS {
     /// Not meant for quickly changing text
     class TextComponent : public IdentifiableComponent<TextComponent> {
     public:
-        explicit TextComponent(Entity entity, const std::filesystem::path& fontFile = "resources/fonts/Roboto-Medium.ttf"): IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile)) {};
+        explicit TextComponent(Entity entity, const std::filesystem::path& fontFile = "resources/fonts/Roboto-Medium.ttf"): IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {};
 
         explicit TextComponent(const rapidjson::Value& json, Entity entity);
 

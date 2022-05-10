@@ -5,6 +5,7 @@
 #include "VirtualFileSystem.h"
 #include "core/exceptions/Exceptions.h"
 #include "core/utils/stringmanip.h"
+#include "core/io/Logging.hpp"
 #include <regex>
 
 namespace Carrot::IO {
@@ -21,6 +22,8 @@ namespace Carrot::IO {
         if(!root.is_absolute()) {
             throw std::invalid_argument(Carrot::sprintf("Root path must be absolute: %s", root.u8string().c_str()));
         }
+
+        Carrot::Log::debug("Added root %s at %s", std::string(identifier).c_str(), root.string().c_str());
 
         bool newRoot = false;
         auto& rootPath = roots.getOrCompute(std::string(identifier), [&]() -> std::filesystem::path {
@@ -69,7 +72,13 @@ namespace Carrot::IO {
         return std::optional<VirtualFileSystem::Path> {};
     }
 
+    bool VirtualFileSystem::exists(const VirtualFileSystem::Path& path) const {
+        return std::filesystem::exists(resolve(path));
+    }
+
     // Path
+
+    VirtualFileSystem::Path::Path(): Path("") {}
 
     VirtualFileSystem::Path::Path(std::string_view uri) {
         std::size_t separatorPosition = uri.find(':');
@@ -97,6 +106,9 @@ namespace Carrot::IO {
     }
 
     std::string VirtualFileSystem::Path::toString() const {
+        if(root.empty()) {
+            return path.asString();
+        }
         return Carrot::sprintf("%s://%s", root.c_str(), path.c_str());
     }
 

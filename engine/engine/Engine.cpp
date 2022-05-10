@@ -42,6 +42,7 @@
 #include "core/Macros.h"
 #include "engine/io/actions/ActionSet.h"
 #include "core/io/Logging.hpp"
+#include "core/io/FileSystemOS.h"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -83,11 +84,20 @@ static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
+#undef USE_LIVEPP
 #ifdef USE_LIVEPP
 #include <windows.h>
 #include "LPP_API.h"
 static HMODULE livePP = NULL;
 #endif
+
+Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
+    Carrot::Engine::instance = e;
+    Carrot::IO::Resource::vfsToUse = &e->vfs;
+    auto exePath = Carrot::IO::getExecutablePath();
+    e->vfs.addRoot("engine", exePath.parent_path());
+    std::filesystem::current_path(exePath.parent_path());
+}
 
 Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
 instanceSetterHack(this),
@@ -477,6 +487,8 @@ void Carrot::Engine::run() {
         currentFrame = (currentFrame+1) % MAX_FRAMES_IN_FLIGHT;
 
         FrameMark;
+
+        std::this_thread::yield();
     }
 
     glfwHideWindow(window.getGLFWPointer());

@@ -21,10 +21,18 @@ namespace Carrot::Assertions {
     private:
         std::string whatMessage;
     };
+
+    void printVerify(const std::string& condition, const std::string& message);
 }
 
 #define verify(condition, message) \
-    if(!(condition)) throw Carrot::Assertions::Error(#condition, message, __FILE__, __FUNCTION__, __LINE__); else {}
+    if(!(condition)) {             \
+        Carrot::Assertions::printVerify(#condition, message);       \
+        throw Carrot::Assertions::Error(#condition, message, __FILE__, __FUNCTION__, __LINE__); \
+    } else {}
 
 #define verifyTerminate(condition, message) \
-    if(!(condition)) std::terminate();
+    if(!(condition)) {             \
+        Carrot::Assertions::printVerify(#condition, message);       \
+        std::terminate(); \
+    } else {}

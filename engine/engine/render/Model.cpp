@@ -20,12 +20,16 @@
 #include <engine/utils/Profiling.h>
 #include "engine/render/raytracing/ASBuilder.h"
 
+#include "engine/io/AssimpCompatibilityLayer.h"
+
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
     Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     Assimp::Importer importer{};
+
+    importer.SetIOHandler(new Carrot::IO::CarrotIOSystem(file));
     const aiScene* scene = nullptr;
     {
         ZoneScopedN("Read file - Assimp");

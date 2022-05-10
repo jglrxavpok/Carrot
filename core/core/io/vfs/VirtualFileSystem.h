@@ -24,6 +24,7 @@ namespace Carrot::IO {
         ///  - resources/models/main_character.fbx -> search through all roots
         class Path {
         public:
+            Path();
             Path(std::string_view uri);
             Path(std::string_view root, const NormalizedPath& path);
 
@@ -63,6 +64,8 @@ namespace Carrot::IO {
         /// Attempts to represent the given path inside this VFS. Path must be absolute
         ///  If no root matched the given path, returns an empty optional.
         std::optional<Path> represent(const std::filesystem::path& path) const;
+
+        bool exists(const Path& path) const;
 
     public: // root management
         /// Adds a new root to the VFS with the given identifier. The identifier must match [a-z0-9_].

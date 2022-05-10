@@ -15,5 +15,6 @@
 #define WaitDeviceIdle() GetVulkanDriver().waitDeviceIdle()
 #define GetCapabilities() GetEngine().getCapabilities()
 #define GetTaskScheduler() GetEngine().getTaskScheduler()
+#define GetVFS() GetEngine().getVFS()
 
 #define GetPhysics() Carrot::Physics::PhysicsSystem::getInstance()
