@@ -23,7 +23,7 @@ namespace Carrot {
                 if( state.isPopupOpen && state.activeIndex != -1 )
                 {
                     // Tab was pressed, grab the item's text
-                    field.setInputFromActiveIndex( state.activeIndex );
+                    field.setInputFromActiveIndex( data, state.activeIndex );
                 }
 
                 state.isPopupOpen       = false;
@@ -97,37 +97,38 @@ namespace Carrot {
         return currentState.isPopupOpen ? ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus : 0;
     }
 
-    void AutocompleteField::setInputFromActiveIndex( int entryIndex ) {
-        // TODO: modify to customise contents
+    void AutocompleteField::setInputFromActiveIndex( ImGuiInputTextCallbackData* data, int entryIndex ) {
         auto& entry = getCurrentSuggestions()[entryIndex];
+        const size_t length = entry.size();
 
-        //imguiInputBuffer = entry;
-        inputToSet = entry;
-        modifiedInCallback = true;
+        memmove( data->Buf, entry.c_str(), length + 1 );
+
+        data->BufTextLen = (int)length;
+        data->BufDirty   = true;
+        data->CursorPos = data->BufTextLen;
     }
 
 
     void AutocompleteField::drawField() {
-        modifiedInCallback = false;
         ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue    |
                                     ImGuiInputTextFlags_CallbackAlways      |
                                     ImGuiInputTextFlags_CallbackCharFilter  |
                                     ImGuiInputTextFlags_CallbackCompletion  |
                                     ImGuiInputTextFlags_CallbackHistory;
 
+        char inputBuffer[256] = { '\0' };
+        strcpy_s(inputBuffer, imguiInputBuffer.c_str());
         auto prevInput = imguiInputBuffer;
-        bool pressedEnter = ImGui::InputText("Command##autocomplete", &imguiInputBuffer, flags, InputCallback, this);
-        if(modifiedInCallback) {
-            imguiInputBuffer = inputToSet;
-        }
-        if(prevInput != imguiInputBuffer && !modifiedInCallback) {
+        bool pressedEnter = ImGui::InputText("Command##autocomplete", inputBuffer, sizeof(inputBuffer), flags, InputCallback, this);
+        imguiInputBuffer = inputBuffer;
+        if(prevInput != imguiInputBuffer) {
             refreshSuggestions();
         }
         if(pressedEnter) {
             ImGui::SetKeyboardFocusHere(-1);
 
             if (currentState.isPopupOpen && currentState.activeIndex != -1) {
-                // This means that enter was pressed whilst a
+                // This means that enter was pressed whilst
                 // the popup was open and we had an 'active' item.
                 // So we copy the entry to the input buffer here
                 imguiInputBuffer = currentSuggestions[currentState.activeIndex];
@@ -159,7 +160,8 @@ namespace Carrot {
             // modify the buffer, therefore we simply restore keyboard input instead
 
             // The user has clicked an item, grab the item text
-            setInputFromActiveIndex(currentState.clickedIndex);
+            imguiInputBuffer = getCurrentSuggestions()[currentState.clickedIndex];
+            //setInputFromActiveIndex(currentState.clickedIndex);
 
             // Hide the popup
             currentState.isPopupOpen = false;

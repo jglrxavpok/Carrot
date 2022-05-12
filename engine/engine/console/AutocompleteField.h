@@ -37,7 +37,7 @@ namespace Carrot {
         void refreshSuggestions();
         std::vector<std::string>& getCurrentSuggestions();
         State& getState();
-        void setInputFromActiveIndex(int entryIndex);
+        void setInputFromActiveIndex(ImGuiInputTextCallbackData* data, int entryIndex);
 
     private:
 
@@ -46,7 +46,6 @@ namespace Carrot {
         ImVec2 popupPosition;
         ImVec2 popupSize;
         bool isWindowFocused = false;
-        bool modifiedInCallback = false;
 
         std::function<void(const std::string&)> callback;
         std::function<void(std::vector<std::string>&, const std::string&)> updateSuggestions;
@@ -54,6 +53,5 @@ namespace Carrot {
         std::vector<std::string> currentSuggestions;
 
         std::string imguiInputBuffer;
-        std::string inputToSet;
     };
 }
