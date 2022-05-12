@@ -23,6 +23,22 @@
 #include "engine/vr/VRInterface.h"
 #endif
 
+const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
+        "VK_LAYER_KHRONOS_validation",
+#ifndef NO_DEBUG
+        //"VK_LAYER_LUNARG_monitor",
+#endif
+};
+
+#ifdef NO_DEBUG
+#else
+    #ifdef DEBUG_MARKERS
+        constexpr bool USE_DEBUG_MARKERS = true;
+    #else
+        constexpr bool USE_DEBUG_MARKERS = false;
+    #endif
+#endif
+
 #ifdef NO_DEBUG
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
     constexpr bool USE_DEBUG_MARKERS = false;
@@ -675,6 +691,7 @@ vk::SurfaceFormatKHR Carrot::VulkanDriver::chooseSwapSurfaceFormat(const std::ve
 }
 
 vk::PresentModeKHR Carrot::VulkanDriver::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes) {
+    // TODO: don't use Mailbox for VSync
     for(const auto& mode : presentModes) {
         if(mode == vk::PresentModeKHR::eMailbox) {
             return mode;
@@ -966,4 +983,8 @@ std::mutex& Carrot::VulkanDriver::getDeviceMutex() {
 
 void Carrot::VulkanDriver::breakOnNextVulkanError() {
     breakOnVulkanError = true;
+}
+
+bool Carrot::VulkanDriver::hasDebugNames() const {
+    return USE_DEBUG_MARKERS;
 }

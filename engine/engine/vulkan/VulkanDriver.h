@@ -180,6 +180,8 @@ namespace Carrot {
 
         const Configuration& getConfiguration() { return config; }
 
+        bool hasDebugNames() const;
+
         vk::DescriptorSetLayout& getEmptyDescriptorSetLayout() { return *emptyDescriptorSetLayout; }
 
         Engine& getEngine();

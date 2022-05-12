@@ -15,8 +15,7 @@ namespace Carrot {
 
         template<typename VulkanType>
         void nameSingle(VulkanDriver& driver, const std::string& name, const VulkanType& object) {
-#ifndef NO_DEBUG
-            if(USE_DEBUG_MARKERS) {
+            if(driver.hasDebugNames()) {
                 vk::DebugMarkerObjectNameInfoEXT nameInfo {
                         .objectType = VulkanType::debugReportObjectType,
                         .object = (uint64_t) ((typename VulkanType::CType&) object),
@@ -24,7 +23,6 @@ namespace Carrot {
                 };
                 driver.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
             }
-#endif
         }
 
     public:

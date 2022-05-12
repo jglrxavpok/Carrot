@@ -9,4 +9,6 @@
 
 namespace Carrot::Threads {
     void setName(std::thread& thread, std::string_view name);
+
+    void reduceCPULoad();
 }

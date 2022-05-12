@@ -16,6 +16,7 @@
 #include <map>
 #include <set>
 #include <core/io/IO.h>
+#include <core/async/OSThreads.h>
 #include <engine/render/CameraBufferObject.h>
 #include <engine/render/shaders/ShaderStages.h>
 #include "engine/constants.h"
@@ -488,7 +489,7 @@ void Carrot::Engine::run() {
 
         FrameMark;
 
-        std::this_thread::yield();
+        Carrot::Threads::reduceCPULoad();
     }
 
     glfwHideWindow(window.getGLFWPointer());

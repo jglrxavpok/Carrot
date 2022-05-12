@@ -11,19 +11,3 @@ constexpr unsigned int WINDOW_WIDTH = 1200;
 constexpr unsigned int WINDOW_HEIGHT = 780;
 constexpr const char* WINDOW_TITLE = "Carrot";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-
-const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
-        //"VK_LAYER_KHRONOS_validation",
-#ifndef NO_DEBUG
-        //"VK_LAYER_LUNARG_monitor",
-#endif
-};
-
-#ifdef NO_DEBUG
-#else
-    #ifdef DEBUG_MARKERS
-        constexpr bool USE_DEBUG_MARKERS = true;
-    #else
-        constexpr bool USE_DEBUG_MARKERS = false;
-    #endif
-#endif

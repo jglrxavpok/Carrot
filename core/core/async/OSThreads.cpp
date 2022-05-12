@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 04/02/2022.
 //
 
+#include <chrono>
 #include <core/Macros.h>
 #include "OSThreads.h"
 
@@ -41,5 +42,9 @@ namespace Carrot::Threads {
 #else
 #error "Don't know how to set thread name on this OS. Please fix."
 #endif
+    }
+
+    void reduceCPULoad() {
+        std::this_thread::yield();
     }
 }
