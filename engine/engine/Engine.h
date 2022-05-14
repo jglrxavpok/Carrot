@@ -205,15 +205,9 @@ namespace Carrot {
             }
         }
 
-        void grabCursor() {
-            grabbingCursor = true;
-            glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
+        void grabCursor();
 
-        void ungrabCursor() {
-            grabbingCursor = false;
-            glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
+        void ungrabCursor();
 
         bool hasPreviousFrame() const {
             return frames > 0;

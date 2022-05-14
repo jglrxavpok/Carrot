@@ -39,6 +39,7 @@ namespace Game::ECS {
         Carrot::IO::Vec2InputAction movementInput{ "Move" };
         Carrot::IO::Vec2InputAction lookInput{ "Look" };
         Carrot::IO::BoolInputAction interactInput{ "Interact" };
+        Carrot::IO::BoolInputAction ungrabCursorInput{ "Free mouse cursor" };
 
         Carrot::IO::ActionSet inputSet { "Character Controller" };
 

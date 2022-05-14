@@ -638,14 +638,16 @@ namespace Peeler {
 
         movingGameViewCamera &= !usingGizmo;
 
-        if(movingGameViewCamera) {
-            if(!engine.isGrabbingCursor()) {
-                engine.grabCursor();
+        if(!isPlaying) {
+            if(movingGameViewCamera) {
+                if(!engine.isGrabbingCursor()) {
+                    engine.grabCursor();
+                }
+            } else if(!ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+                engine.ungrabCursor();
+            } else if(engine.isGrabbingCursor()) {
+                movingGameViewCamera = true;
             }
-        } else if(!ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-            engine.ungrabCursor();
-        } else if(engine.isGrabbingCursor()) {
-            movingGameViewCamera = true;
         }
 
         if(!usingGizmo && ImGui::IsItemClicked()) {
@@ -665,7 +667,6 @@ namespace Peeler {
             }
         }
 
-        /* TODO: fix resize of game view*/
         bool requireResize = entireRegion.x != gameViewport.getWidth() || entireRegion.y != gameViewport.getHeight();
         if(requireResize) {
             WaitDeviceIdle();
@@ -679,6 +680,7 @@ namespace Peeler {
 
     void Application::performSimulationStart() {
         verify(startSimulationRequested, "Don't call performSimulationStart directly!");
+        GetEngine().ungrabCursor();
         isPlaying = true;
         isPaused = false;
         requestedSingleStep = false;
@@ -711,13 +713,15 @@ namespace Peeler {
         savedScene.clear();
         updateSettingsBasedOnScene();
         GetPhysics().pause();
-
+        GetEngine().ungrabCursor();
         stopSimulationRequested = false;
     }
 
     void Application::pauseSimulation() {
         isPaused = true;
+
         GetPhysics().pause();
+        GetEngine().ungrabCursor();
         currentScene.world.freezeLogic();
     }
 

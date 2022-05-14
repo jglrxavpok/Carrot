@@ -399,12 +399,6 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
         previous = frameStartTime;
 
-        // Reset input actions based mouse dx/dy
-        onMouseMove(mouseX, mouseY, true);
-        Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
-        glfwPollEvents();
-        pollKeysVec2();
-        pollGamepads();
 #ifdef ENABLE_VR
         if(config.runInVR) {
             ZoneScopedN("VR poll events");
@@ -463,6 +457,16 @@ void Carrot::Engine::run() {
             const std::uint32_t maxCatchupTicks = 10;
             std::uint32_t caughtUp = 0;
             while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
+                // make sure each tick has the proper inputs
+
+                onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
+                Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
+                glfwPollEvents();
+                pollKeysVec2();
+                pollGamepads();
+
+
+
                 ticked = true;
                 GetTaskScheduler().scheduleMainLoop();
                 tick(timeBetweenUpdates.count());
@@ -520,7 +524,9 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
     auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
     app->onKeyEvent(key, scancode, action, mods);
 
-    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+    if(!app->isGrabbingCursor()) {
+        ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+    }
 }
 
 static void joystickCallback(int joystickID, int event) {
@@ -1404,6 +1410,20 @@ std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const
 
 Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
     return taskScheduler;
+}
+
+void Carrot::Engine::grabCursor() {
+    grabbingCursor = true;
+    glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+}
+
+void Carrot::Engine::ungrabCursor() {
+    grabbingCursor = false;
+    glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 }
 
 

@@ -19,17 +19,25 @@ namespace Game::ECS {
         interactInput.suggestBinding(GLFWGamepadButtonBinding(GLFW_JOYSTICK_1, GLFW_GAMEPAD_BUTTON_A));
 
         movementInput.suggestBinding(GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType::WASD));
+        ungrabCursorInput.suggestBinding(GLFWKeyBinding(GLFW_KEY_ESCAPE));
         lookInput.suggestBinding(GLFWMouseDeltaBinding);
         interactInput.suggestBinding(GLFWMouseButtonBinding(GLFW_MOUSE_BUTTON_LEFT));
 
         inputSet.add(movementInput);
         inputSet.add(lookInput);
         inputSet.add(interactInput);
+        inputSet.add(ungrabCursorInput);
         inputSet.activate();
     }
 
     void CharacterControllerSystem::tick(double deltaTime) {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::RigidBodyComponent& rigidBodyComponent, Game::ECS::CharacterControllerComponent& characterControllerComponent) {
+            if(!ungrabCursorInput.isPressed()) {
+                GetEngine().grabCursor();
+            } else {
+                GetEngine().ungrabCursor();
+            }
+
             auto& rigidbody = rigidBodyComponent.rigidbody;
 
             // Movement
@@ -42,8 +50,9 @@ namespace Game::ECS {
             if(!scoreEntity)
                 return;
 
-            const float yawSpeed = 1.0f;
-            const float pitchSpeed = 1.0f;
+            const float dt = static_cast<float>(deltaTime);
+            const float yawSpeed = 60.0f * dt;
+            const float pitchSpeed = 60.0f * dt;
             float& yaw = characterControllerComponent.yaw;
             float& pitch = characterControllerComponent.pitch;
 
