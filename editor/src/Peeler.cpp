@@ -989,6 +989,7 @@ namespace Peeler {
         GetVFS().removeRoot("game");
         if(fileToOpen == EmptyProject) {
             currentScene.clear();
+            scenePath = "game://scenes/main.json";
             addDefaultSystems(currentScene);
             hasUnsavedChanges = false;
             settings.currentProject.reset();
@@ -1000,7 +1001,14 @@ namespace Peeler {
         GetVFS().addRoot("game", std::filesystem::absolute(fileToOpen).parent_path());
         rapidjson::Document description;
         description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
-        currentScene.deserialise(description["scene"].GetObject());
+
+        rapidjson::Document scene;
+        {
+            scenePath = description["scene"].GetString();
+            Carrot::IO::Resource sceneData = scenePath;
+            scene.Parse(sceneData.readText());
+            currentScene.deserialise(scene);
+        }
         addEditingSystems();
         currentScene.world.freezeLogic();
         updateSettingsBasedOnScene();
@@ -1042,20 +1050,39 @@ namespace Peeler {
         updateWindowTitle();
     }
 
-    void Application::saveToFile(std::filesystem::path path) {
-        FILE* fp = fopen(path.string().c_str(), "wb"); // non-Windows use "w"
+    static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {
+        if(!std::filesystem::exists(targetFile.parent_path())) {
+            std::filesystem::create_directories(targetFile.parent_path());
+        }
+        FILE* fp = fopen(targetFile.string().c_str(), "wb"); // non-Windows use "w"
 
         char writeBuffer[65536];
         rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
         rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
+        toWrite.Accept(writer);
+        fclose(fp);
+    }
+
+    void Application::saveToFile(std::filesystem::path path) {
         rapidjson::Document document;
         document.SetObject();
 
         {
             rapidjson::Value scene(rapidjson::kObjectType);
-            document.AddMember("scene", currentScene.serialise(document), document.GetAllocator());
+            rapidjson::Document sceneData;
+            sceneData.SetObject();
+
+            currentScene.serialise(sceneData);
+
+            if(scenePath.isGeneric()) {
+                scenePath = Carrot::IO::VFS::Path("game", scenePath.getPath());
+            }
+
+            writeJSON(GetVFS().resolve(scenePath), sceneData);
+
+            document.AddMember("scene", scenePath.toString(), document.GetAllocator());
         }
 
         if(selectedID) {
@@ -1087,8 +1114,7 @@ namespace Peeler {
             document.AddMember("window", windowObj, document.GetAllocator());
         }
 
-        document.Accept(writer);
-        fclose(fp);
+        writeJSON(path, document);
 
         hasUnsavedChanges = false;
         settings.currentProject = path;

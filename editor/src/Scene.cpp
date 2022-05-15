@@ -19,9 +19,7 @@ namespace Peeler {
         *this = Scene();
     }
 
-    rapidjson::Value Scene::serialise(rapidjson::Document& doc) const {
-        rapidjson::Value dest(rapidjson::kObjectType);
-
+    void Scene::serialise(rapidjson::Document& dest) const {
         rapidjson::Value entitiesMap(rapidjson::kObjectType);
         for(const auto& entity : world.getAllEntities()) {
             rapidjson::Value entityData(rapidjson::kObjectType);
@@ -29,51 +27,50 @@ namespace Peeler {
             auto components = world.getAllComponents(entity);
 
             for(const auto& comp : components) {
-                rapidjson::Value key(comp->getName(), doc.GetAllocator());
-                entityData.AddMember(key, comp->toJSON(doc), doc.GetAllocator());
+                rapidjson::Value key(comp->getName(), dest.GetAllocator());
+                entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
             }
 
             if(auto parent = entity.getParent()) {
-                rapidjson::Value parentID(parent->getID().toString(), doc.GetAllocator());
-                entityData.AddMember("parent", parentID, doc.GetAllocator());
+                rapidjson::Value parentID(parent->getID().toString(), dest.GetAllocator());
+                entityData.AddMember("parent", parentID, dest.GetAllocator());
             }
 
-            rapidjson::Value nameKey(std::string(entity.getName()), doc.GetAllocator());
-            entityData.AddMember("name", nameKey, doc.GetAllocator());
+            rapidjson::Value nameKey(std::string(entity.getName()), dest.GetAllocator());
+            entityData.AddMember("name", nameKey, dest.GetAllocator());
 
-            rapidjson::Value key(entity.getID().toString(), doc.GetAllocator());
-            entitiesMap.AddMember(key, entityData, doc.GetAllocator());
+            rapidjson::Value key(entity.getID().toString(), dest.GetAllocator());
+            entitiesMap.AddMember(key, entityData, dest.GetAllocator());
         }
 
-        dest.AddMember("entities", entitiesMap, doc.GetAllocator());
+        dest.AddMember("entities", entitiesMap, dest.GetAllocator());
 
         rapidjson::Value lightingObj(rapidjson::kObjectType);
         {
-            lightingObj.AddMember("ambient", Carrot::JSON::write(lighting.ambient, doc), doc.GetAllocator());
-            lightingObj.AddMember("raytracedShadows", lighting.raytracedShadows, doc.GetAllocator());
+            lightingObj.AddMember("ambient", Carrot::JSON::write(lighting.ambient, dest), dest.GetAllocator());
+            lightingObj.AddMember("raytracedShadows", lighting.raytracedShadows, dest.GetAllocator());
         }
 
-        dest.AddMember("lighting", lightingObj, doc.GetAllocator());
-        dest.AddMember("skybox", rapidjson::Value(Carrot::Skybox::getName(skybox), doc.GetAllocator()), doc.GetAllocator());
+        dest.AddMember("lighting", lightingObj, dest.GetAllocator());
+        dest.AddMember("skybox", rapidjson::Value(Carrot::Skybox::getName(skybox), dest.GetAllocator()), dest.GetAllocator());
 
         rapidjson::Value logicSystems{ rapidjson::kObjectType };
         for(auto& system : world.getLogicSystems()) {
             if(system->shouldBeSerialized()) {
-                rapidjson::Value key(system->getName(), doc.GetAllocator());
-                logicSystems.AddMember(key, system->toJSON(doc.GetAllocator()), doc.GetAllocator());
+                rapidjson::Value key(system->getName(), dest.GetAllocator());
+                logicSystems.AddMember(key, system->toJSON(dest.GetAllocator()), dest.GetAllocator());
             }
         }
-        dest.AddMember("logic_systems", logicSystems, doc.GetAllocator());
+        dest.AddMember("logic_systems", logicSystems, dest.GetAllocator());
 
         rapidjson::Value renderSystems{ rapidjson::kObjectType };
         for(auto& system : world.getRenderSystems()) {
             if(system->shouldBeSerialized()) {
-                rapidjson::Value key(system->getName(), doc.GetAllocator());
-                renderSystems.AddMember(key, system->toJSON(doc.GetAllocator()), doc.GetAllocator());
+                rapidjson::Value key(system->getName(), dest.GetAllocator());
+                renderSystems.AddMember(key, system->toJSON(dest.GetAllocator()), dest.GetAllocator());
             }
         }
-        dest.AddMember("render_systems", renderSystems, doc.GetAllocator());
-        return dest;
+        dest.AddMember("render_systems", renderSystems, dest.GetAllocator());
     }
 
     void Scene::deserialise(const rapidjson::Value& src) {

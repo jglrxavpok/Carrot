@@ -34,7 +34,7 @@ namespace Peeler {
 
     public:
         void deserialise(const rapidjson::Value& src);
-        rapidjson::Value serialise(rapidjson::Document& dest) const;
+        void serialise(rapidjson::Document& dest) const;
 
     public:
         /// Unload the systems of this scene, freeing engine resources (eg lights, rigidbodies)

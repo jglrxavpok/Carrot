@@ -12,6 +12,7 @@
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
 #include <optional>
+#include <core/io/vfs/VirtualFileSystem.h>
 #include "Scene.h"
 #include "GridRenderer.h"
 
@@ -118,6 +119,7 @@ namespace Peeler {
 
         bool hasUnsavedChanges = false;
 
+        Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
         Scene currentScene;
         Scene savedScene;
 
