@@ -457,6 +457,24 @@ namespace Carrot::ECS {
         }
     }
 
+    void World::broadcastStartEvent() {
+        for(auto& s : renderSystems) {
+            s->broadcastStartEvent();
+        }
+        for(auto& s : logicSystems) {
+            s->broadcastStartEvent();
+        }
+    }
+
+    void World::broadcastStopEvent() {
+        for(auto& s : renderSystems) {
+            s->broadcastStopEvent();
+        }
+        for(auto& s : logicSystems) {
+            s->broadcastStopEvent();
+        }
+    }
+
     void World::addRenderSystem(std::unique_ptr<System>&& system) {
         verify(system, "System must not be nullptr");
         system->onEntitiesAdded(entities);

@@ -81,3 +81,12 @@ namespace Carrot::IO {
 
     using VFS = VirtualFileSystem;
 }
+
+namespace std {
+    template<>
+    struct hash<Carrot::IO::VFS::Path> {
+        size_t operator()(const Carrot::IO::VFS::Path& o) const {
+            return std::hash<std::string>{}(o.toString());
+        }
+    };
+}

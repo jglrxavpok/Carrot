@@ -106,6 +106,10 @@ namespace Carrot::ECS {
         std::vector<const System*> getLogicSystems() const;
         std::vector<const System*> getRenderSystems() const;
 
+    public:
+        void broadcastStartEvent();
+        void broadcastStopEvent();
+
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);

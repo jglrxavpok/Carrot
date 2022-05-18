@@ -64,12 +64,14 @@
 #include "engine/ecs/components/CameraComponent.h"
 #include "engine/ecs/components/ForceSinPosition.h"
 #include "engine/ecs/components/Kinematics.h"
+#include "engine/ecs/components/LuaScriptComponent.h"
 #include "engine/ecs/components/LightComponent.h"
 #include "engine/ecs/components/ModelComponent.h"
 #include "engine/ecs/components/RigidBodyComponent.h"
 #include "engine/ecs/components/SpriteComponent.h"
 #include "engine/ecs/components/TextComponent.h"
 #include "engine/ecs/components/TransformComponent.h"
+#include "engine/ecs/systems/LuaSystems.h"
 
 #ifdef ENABLE_VR
 #include "vr/VRInterface.h"
@@ -573,6 +575,7 @@ void Carrot::Engine::initECS() {
         components.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
         components.addUniquePtrBased<Carrot::ECS::CameraComponent>();
         components.addUniquePtrBased<Carrot::ECS::TextComponent>();
+        components.addUniquePtrBased<Carrot::ECS::LuaScriptComponent>();
     }
 
     {
@@ -585,6 +588,9 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
         systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
         systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
+
+        systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();
     }
 }
 

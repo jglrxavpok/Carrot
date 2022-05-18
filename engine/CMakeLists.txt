@@ -34,6 +34,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
+        ${EngineRoot}ecs/components/LuaScriptComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
@@ -41,6 +42,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
         ${EngineRoot}ecs/systems/CameraSystem.cpp
+        ${EngineRoot}ecs/systems/LuaSystems.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemHandleLights.cpp

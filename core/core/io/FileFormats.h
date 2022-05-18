@@ -32,6 +32,10 @@ namespace Carrot::IO {
         OBJ,
         ModelFirst = FBX,
         ModelLast = OBJ,
+
+        LUA,
+        ScriptFirst = LUA,
+        ScriptLast = LUA
     };
 
     constexpr bool isImageFormat(FileFormat format) {
@@ -40,6 +44,10 @@ namespace Carrot::IO {
 
     constexpr bool isModelFormat(FileFormat format) {
         return format >= FileFormat::ModelFirst && format <= FileFormat::ModelLast;
+    }
+
+    constexpr bool isScriptFormat(FileFormat format) {
+        return format >= FileFormat::ScriptFirst && format <= FileFormat::ScriptLast;
     }
 
     inline FileFormat getFileFormat(const char* filepath) {
@@ -70,6 +78,8 @@ namespace Carrot::IO {
 
         CHECK(FBX);
         CHECK(OBJ);
+
+        CHECK(LUA);
         return FileFormat::UNKNOWN;
     }
 
@@ -89,5 +99,14 @@ namespace Carrot::IO {
     inline bool isModelFormatFromPath(const std::filesystem::path& path) {
         std::string extension = Carrot::toString(path.u8string());
         return isModelFormat(extension.c_str());
+    }
+
+    inline bool isScriptFormat(const char* filepath) {
+        return isScriptFormat(getFileFormat(filepath));
+    }
+
+    inline bool isScriptFormatFromPath(const std::filesystem::path& path) {
+        std::string extension = Carrot::toString(path.u8string());
+        return isScriptFormat(extension.c_str());
     }
 }

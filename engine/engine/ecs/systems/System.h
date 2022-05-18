@@ -54,6 +54,9 @@ namespace Carrot::ECS {
             return true;
         }
 
+        virtual void broadcastStartEvent() {};
+        virtual void broadcastStopEvent() {};
+
         virtual const char* getName() const = 0;
 
         virtual ~System() = default;

@@ -32,6 +32,7 @@
 #include <engine/ecs/systems/SystemKinematics.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>
+#include <engine/ecs/systems/LuaSystems.h>
 #include "ecs/systems/LightEditorRenderer.h"
 #include "ecs/systems/CollisionShapeRenderer.h"
 #include "ecs/systems/CameraRenderer.h"
@@ -690,6 +691,7 @@ namespace Peeler {
         savedScene.unload();
 
         currentScene.world.unfreezeLogic();
+        currentScene.world.broadcastStartEvent();
         removeEditingSystems();
         updateSettingsBasedOnScene();
         GetPhysics().resume();
@@ -708,6 +710,7 @@ namespace Peeler {
         isPaused = false;
         requestedSingleStep = false;
         hasDoneSingleStep = false;
+        currentScene.world.broadcastStopEvent();
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
@@ -1242,9 +1245,12 @@ namespace Peeler {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();
+        scene.world.addRenderSystem<Carrot::ECS::LuaRenderSystem>();
+
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
         //scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
         scene.world.addLogicSystem<Carrot::ECS::RigidBodySystem>();
+        scene.world.addLogicSystem<Carrot::ECS::LuaUpdateSystem>();
 
         // editing only systems
         addEditingSystems();
