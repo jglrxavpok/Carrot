@@ -114,6 +114,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/bindings/glm.cpp
         ${EngineRoot}scripting/bindings/Engine.cpp
 
+        ${EngineRoot}scripting/bindings/ecs/ECS.cpp
+
         ${EngineRoot}scripting/bindings/vulkan/VulkanDriver.cpp
         ${EngineRoot}scripting/bindings/vulkan/vulkan.cpp
 

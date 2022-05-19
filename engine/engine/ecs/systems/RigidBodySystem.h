@@ -36,3 +36,8 @@ namespace Carrot::ECS {
         static std::optional<Entity> entityFromReactPhysicsBody(const Carrot::ECS::World& world, const rp3d::CollisionBody& body);
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::RigidBodySystem>::getStringRepresentation() {
+    return Carrot::ECS::RigidBodySystem::getStringRepresentation();
+}

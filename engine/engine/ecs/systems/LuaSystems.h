@@ -52,3 +52,13 @@ namespace Carrot::ECS {
         }
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::LuaRenderSystem>::getStringRepresentation() {
+    return Carrot::ECS::LuaRenderSystem::getStringRepresentation();
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::LuaUpdateSystem>::getStringRepresentation() {
+    return Carrot::ECS::LuaUpdateSystem::getStringRepresentation();
+}

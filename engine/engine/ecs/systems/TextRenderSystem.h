@@ -28,3 +28,8 @@ namespace Carrot::ECS {
         }
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::TextRenderSystem>::getStringRepresentation() {
+    return Carrot::ECS::TextRenderSystem::getStringRepresentation();
+}

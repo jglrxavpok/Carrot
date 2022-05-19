@@ -5,6 +5,7 @@
 #include "LuaScriptComponent.h"
 #include "core/io/FileFormats.h"
 #include "engine/edition/DragDropTypes.h"
+#include "core/io/Logging.hpp"
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/Engine.h>
 #include <engine/utils/Macros.h>
@@ -25,7 +26,9 @@ namespace Carrot::ECS {
 
         rapidjson::Value paths{rapidjson::kArrayType};
         for(const auto& [path, script] : scripts) {
-            paths.PushBack(rapidjson::Value(path.toString().c_str(), doc.GetAllocator()), doc.GetAllocator());
+            rapidjson::Value scriptObject{rapidjson::kObjectType};
+            scriptObject.AddMember("path", rapidjson::Value(path.toString().c_str(), doc.GetAllocator()), doc.GetAllocator());
+            paths.PushBack(scriptObject, doc.GetAllocator());
         }
 
         data.AddMember("scripts", paths, doc.GetAllocator());
@@ -45,16 +48,15 @@ namespace Carrot::ECS {
         ImGui::PushID("LuaScriptComponent");
         std::vector<IO::VFS::Path> toRemove;
         std::size_t index = 0;
-        for(auto& [path, _] : scripts) {
+        for(auto& [path, script] : scripts) {
             ImGui::PushID(index);
 
-            // TODO: RELOAD BUTTON
             ImGui::Text("[%llu]", index);
             ImGui::SameLine();
 
             std::string pathStr = path.toString();
             if(ImGui::InputText("Filepath", pathStr, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                std::unique_ptr<Lua::Script> script = nullptr;
+                script = nullptr;
                 IO::VFS::Path vfsPath = IO::VFS::Path(pathStr);
                 if(GetVFS().exists(vfsPath)) {
                     script = std::make_unique<Lua::Script>(vfsPath);
@@ -73,18 +75,19 @@ namespace Carrot::ECS {
 
                     std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                     if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isScriptFormatFromPath(fsPath)) {
-                        std::unique_ptr<Lua::Script> script = nullptr;
-                        TODO
-                        /*
-                         * TODO
-                        IO::VFS::Path vfsPath = IO::VFS::Path(fsPath);
-                        if(GetVFS().exists(vfsPath)) {
-                            script = std::make_unique<Lua::Script>(vfsPath);
+                        script = nullptr;
+                        auto inVFS = GetVFS().represent(fsPath);
+                        if(inVFS.has_value()) {
+                            const auto& vfsPath = inVFS.value();
+                            if(GetVFS().exists(vfsPath)) {
+                                script = std::make_unique<Lua::Script>(vfsPath);
+                            }
+                            script = std::move(script);
+                            path = vfsPath;
+                            modified = true;
+                        } else {
+                            Carrot::Log::error("Not inside VFS: %s", fsPath.u8string().c_str());
                         }
-                        script = std::move(script);
-                        path = vfsPath;
-                        */
-                        modified = true;
                     }
                 }
 
@@ -94,6 +97,15 @@ namespace Carrot::ECS {
             ImGui::SameLine();
             if(ImGui::Button("x")) {
                 toRemove.push_back(path);
+            }
+
+            ImGui::SameLine();
+            if(ImGui::Button("Reload")) {
+                script = nullptr;
+                if(GetVFS().exists(path)) {
+                    script = std::make_unique<Lua::Script>(path);
+                }
+                script = std::move(script);
             }
 
             ImGui::PopID();

@@ -21,14 +21,18 @@ namespace Carrot::ECS {
         forEachEntity([&](Entity& entity, LuaScriptComponent& component) {
             if(component.firstTick) {
                 for(const auto& [p, pScript] : component.scripts) {
-                    runFunction(p, (*pScript)["start"], entity);
+                    if(pScript) {
+                        runFunction(p, (*pScript)["start"], entity);
+                    }
                 }
 
                 component.firstTick = false;
             }
 
             for(const auto& [p, pScript] : component.scripts) {
-                runFunction(p, (*pScript)["eachTick"], entity, dt);
+                if(pScript) {
+                    runFunction(p, (*pScript)["eachTick"], entity, dt);
+                }
             }
         });
     }
@@ -39,7 +43,9 @@ namespace Carrot::ECS {
     void LuaUpdateSystem::broadcastStopEvent() {
         forEachEntity([&](Entity& entity, LuaScriptComponent& component) {
             for(const auto& [p, pScript] : component.scripts) {
-                runFunction(p, (*pScript)["stop"], entity);
+                if(pScript) {
+                    runFunction(p, (*pScript)["stop"], entity);
+                }
             }
         });
     }
@@ -47,7 +53,9 @@ namespace Carrot::ECS {
     void LuaRenderSystem::onFrame(Carrot::Render::Context renderContext) {
         forEachEntity([&](Entity& entity, LuaScriptComponent& component) {
             for(const auto& [p, pScript] : component.scripts) {
-                runFunction(p, (*pScript)["eachFrame"], entity, renderContext);
+                if(pScript) {
+                    runFunction(p, (*pScript)["eachFrame"], entity, renderContext);
+                }
             }
         });
     }

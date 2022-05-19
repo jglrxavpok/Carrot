@@ -49,6 +49,8 @@ namespace Carrot::ECS {
         template<typename Comp>
         Memory::OptionalRef<Comp> getComponent();
 
+        Memory::OptionalRef<Component> getComponent(ComponentID component) const;
+
         std::vector<Component*> getAllComponents() const;
 
         template<typename Comp>

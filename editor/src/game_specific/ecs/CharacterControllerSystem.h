@@ -32,7 +32,7 @@ namespace Game::ECS {
         }
 
         virtual const char* getName() const override {
-            return getStringRepresentation();
+            return "CharacterControllers";
         }
 
     private:
@@ -45,4 +45,10 @@ namespace Game::ECS {
 
         float speedFactor = 60.0f;
     };
+}
+
+template<>
+inline const char* Carrot::Identifiable<Game::ECS::CharacterControllerSystem>::getStringRepresentation() {
+    //return Game::ECS::CharacterControllerSystem::getStringRepresentation();
+    return "CharacterControllers";
 }

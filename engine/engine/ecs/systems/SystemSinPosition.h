@@ -32,4 +32,7 @@ namespace Carrot::ECS {
     };
 }
 
-
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::SystemSinPosition>::getStringRepresentation() {
+    return Carrot::ECS::SystemSinPosition::getStringRepresentation();
+}

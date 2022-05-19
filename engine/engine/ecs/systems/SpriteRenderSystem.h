@@ -37,3 +37,8 @@ namespace Carrot::ECS {
         void updateSprite(Carrot::Render::Context renderContext, const TransformComponent& transform, Carrot::Render::Sprite& sprite);
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::SpriteRenderSystem>::getStringRepresentation() {
+    return Carrot::ECS::SpriteRenderSystem::getStringRepresentation();
+}

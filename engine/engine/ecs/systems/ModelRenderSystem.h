@@ -43,3 +43,8 @@ namespace Carrot::ECS {
         void renderModels(const Carrot::Render::Context& renderContext, bool isTransparent);
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::ModelRenderSystem>::getStringRepresentation() {
+    return Carrot::ECS::ModelRenderSystem::getStringRepresentation();
+}

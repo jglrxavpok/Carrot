@@ -29,6 +29,10 @@ namespace Carrot::ECS {
         template<class Comp>
         Memory::OptionalRef<Comp> getComponent(const EntityID& entityID) const;
 
+        Memory::OptionalRef<Component> getComponent(const Entity& entity, ComponentID component) const;
+
+        Memory::OptionalRef<Component> getComponent(const EntityID& entityID, ComponentID component) const;
+
         Tags getTags(const Entity& entity) const;
 
         std::vector<Entity> getEntitiesWithTags(Tags tags) const;

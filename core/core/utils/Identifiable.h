@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <atomic>
 #include <utility>
+#include <map>
+#include <core/async/ParallelMap.hpp>
 
 namespace Carrot {
 
@@ -25,6 +27,11 @@ namespace Carrot {
         { Type::getID() } -> std::convertible_to<ComponentID>;
         { Type::getStringRepresentation() } -> std::convertible_to<const char*>;
     };
+
+    std::optional<Carrot::ComponentID> getIDFromName(std::string_view name);
+
+    extern Async::ParallelMap<Carrot::ComponentID, std::string> IdentifiableNames;
+    extern Async::ParallelMap<std::string, Carrot::ComponentID> IdentifiableIDs;
 }
 extern std::atomic<Carrot::ComponentID> LastComponentID;
 

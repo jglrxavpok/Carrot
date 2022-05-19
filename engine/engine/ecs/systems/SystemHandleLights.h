@@ -33,4 +33,7 @@ namespace Carrot::ECS {
     };
 }
 
-
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::SystemHandleLights>::getStringRepresentation() {
+    return Carrot::ECS::SystemHandleLights::getStringRepresentation();
+}

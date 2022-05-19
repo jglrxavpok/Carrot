@@ -34,3 +34,8 @@ namespace Carrot::ECS {
 
     };
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::CameraSystem>::getStringRepresentation() {
+    return Carrot::ECS::CameraSystem::getStringRepresentation();
+}

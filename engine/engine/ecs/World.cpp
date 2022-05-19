@@ -75,6 +75,10 @@ namespace Carrot::ECS {
         return worldRef.getAllComponents(*this);
     }
 
+    Memory::OptionalRef<Component> Entity::getComponent(ComponentID component) const {
+        return worldRef.getComponent(*this, component);
+    }
+
     Entity& Entity::removeComponent(Component& component) {
         return removeComponent(component.getComponentTypeID());
     }
@@ -398,6 +402,27 @@ namespace Carrot::ECS {
             comps.push_back(comp.get());
         }
         return comps;
+    }
+
+    Memory::OptionalRef<Component> World::getComponent(const Entity& entity, ComponentID component) const {
+        return getComponent(entity.getID(), component);
+    }
+
+    Memory::OptionalRef<Component> World::getComponent(const EntityID& entityID, ComponentID component) const {
+        auto componentMapLocation = this->entityComponents.find(entityID);
+        if(componentMapLocation == this->entityComponents.end()) {
+            // no such entity
+            return {};
+        }
+
+        auto& componentMap = componentMapLocation->second;
+        auto componentLocation = componentMap.find(component);
+
+        if(componentLocation == componentMap.end()) {
+            // no such component
+            return {};
+        }
+        return componentLocation->second.get();
     }
 
     Entity World::wrap(EntityID id) const {

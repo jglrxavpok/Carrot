@@ -35,3 +35,8 @@ namespace Carrot::ECS {
     };
 
 }
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::SystemUpdateAnimatedModelInstance>::getStringRepresentation() {
+    return Carrot::ECS::SystemUpdateAnimatedModelInstance::getStringRepresentation();
+}

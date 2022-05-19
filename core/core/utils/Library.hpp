@@ -29,6 +29,7 @@ namespace Carrot {
 
         template<typename Type> requires IsIdentifiable<Type>
         void add(const DeserialiseFunction& deserialise, const CreateNewFunction& create) {
+            Type::getID();
             deserialisers[Type::getStringRepresentation()] = deserialise;
             creationFunctions[Type::getStringRepresentation()] = create;
         }
