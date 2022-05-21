@@ -8,7 +8,7 @@ namespace Carrot::Lua {
 
     Script::Script(const Carrot::IO::Resource& resource) {
         // open some common libraries
-        open_libraries(sol::lib::base, sol::lib::package);
+        open_libraries(sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::string);
 
         registerAllUsertypes(*this);
         safe_script(resource.readText(), sol::script_throw_on_error);

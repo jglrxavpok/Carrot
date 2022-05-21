@@ -6,6 +6,7 @@
 #include "glm.hpp"
 #include "vulkan/vulkan.hpp"
 #include "ecs/ECS.h"
+#include "math/bindings.h"
 #include "engine/ecs/components/Component.h"
 #include "engine/ecs/systems/System.h"
 #include "engine/render/Sprite.h"
@@ -24,6 +25,7 @@ namespace Carrot::Lua {
         Carrot::VulkanRenderer::registerUsertype(destination);
         Carrot::Render::Texture::registerUsertype(destination);
         Carrot::Render::Sprite::registerUsertype(destination);
+        Carrot::Math::registerUsertypes(destination);
 
         Carrot::ECS::registerBindings(destination);
     }

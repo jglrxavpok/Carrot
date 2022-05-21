@@ -93,7 +93,7 @@ namespace Carrot::ECS {
 
                 glm::vec4 globalTranslation{ 0, 0, 0, 1 };
                 glm::vec4 forward { 0, 0, -1, 0 };
-                glm::vec4 up { 0, 1, 0, 0 };
+                glm::vec4 up { 0, 1, 0, 0 }; // warning: up is different from engine default (+Z up)
 
                 globalTranslation = finalTransform * globalTranslation;
                 forward = glm::normalize(finalTransform * forward);
@@ -111,7 +111,10 @@ namespace Carrot::ECS {
     }
 
     void TransformComponent::registerUsertype(sol::state& d) {
-        d.new_usertype<ECS::TransformComponent>("Transform", sol::no_constructor);
-        // TODO
+        d.new_usertype<ECS::TransformComponent>("Transform", sol::no_constructor,
+                                                "localTransform", &TransformComponent::localTransform,
+                                                "toTransformMatrix", &TransformComponent::toTransformMatrix,
+                                                "computeFinalPosition", &TransformComponent::computeFinalPosition
+                                                );
     }
 }

@@ -26,14 +26,6 @@ namespace Carrot::Lua {
                                                             return a - b;
                                                         }
                                                 ),
-                                                sol::meta_function::division, sol::overload(
-                                                        [](vec& a, vec& b) {
-                                                            return a / b;
-                                                        },
-                                                        [](vec& a, Elem f) {
-                                                            return a / f;
-                                                        }
-                                                ),
                                                 sol::meta_function::multiplication, sol::overload(
                                                         [](vec& a, vec& b) {
                                                             return a * b;
@@ -43,6 +35,16 @@ namespace Carrot::Lua {
                                                         }
                                                 )
         );
+        if constexpr(!std::same_as<bool, std::decay_t<Elem>>) {
+            userType.set(sol::meta_function::division, sol::overload(
+                    [](vec& a, vec& b) {
+                        return a / b;
+                    },
+                    [](vec& a, Elem f) {
+                        return a / f;
+                    }
+            ));
+        }
         if constexpr (dim >= 2) {
             userType["y"] = &vec::y;
             userType["g"] = &vec::g;
