@@ -945,8 +945,8 @@ namespace Peeler {
             systems.addUniquePtrBased<Game::ECS::CharacterControllerSystem>();
 
             auto& components = Carrot::ECS::getComponentLibrary();
-            components.addUniquePtrBased<Game::ECS::CharacterControllerComponent>();
-            components.addUniquePtrBased<Game::ECS::PageComponent>();
+            components.add<Game::ECS::CharacterControllerComponent>();
+            components.add<Game::ECS::PageComponent>();
         }
 
         settings.load();

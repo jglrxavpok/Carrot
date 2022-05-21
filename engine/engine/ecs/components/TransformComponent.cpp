@@ -109,4 +109,9 @@ namespace Carrot::ECS {
 
         return localTransform;
     }
+
+    void TransformComponent::registerUsertype(sol::state& d) {
+        d.new_usertype<ECS::TransformComponent>("Transform", sol::no_constructor);
+        // TODO
+    }
 }

@@ -41,6 +41,9 @@ namespace Carrot::ECS {
 
         /// Sets up the transform of the entity to match with the given transform, even when parent transforms are taken into account
         void setGlobalTransform(const Carrot::Math::Transform& transform);
+
+    public:
+        static void registerUsertype(sol::state& destination);
     };
 }
 

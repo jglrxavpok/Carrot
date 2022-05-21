@@ -10,48 +10,12 @@
 #pragma optimize("", off)
 
 namespace Carrot::ECS {
-    class ComponentWrapper {
-    public:
-        ComponentWrapper(Component* component): component(component) {}
-
-        bool isPresent() const {
-            return component != nullptr;
-        }
-
-        Component* get() const {
-            return component;
-        }
-
-    private:
-        Component* component;
-    };
-
-    struct ComponentsWrapper {
-        Entity entity;
-
-        explicit ComponentsWrapper(Entity e): entity(e) {}
-    };
-
     void registerBindings(sol::state& destination) {
         auto carrotNamespace = destination["Carrot"].get_or_create<sol::table>();
         auto ecsNamespace = carrotNamespace["ECS"].get_or_create<sol::table>();
 
-        ecsNamespace.new_usertype<ComponentWrapper>("ComponentWrapper", sol::no_constructor,
-                                                                            "present", sol::property([](ComponentWrapper& w) { return w.isPresent(); }),
-                                                                            "value", sol::property([](ComponentWrapper& w) { return w.get(); })
-        );
-
         auto componentListWrapper = ecsNamespace.new_usertype<ComponentsWrapper>("ComponentsWrapper", sol::no_constructor);
-        for(const auto& id : getComponentLibrary().getAllIDs()) {
-            auto compID = Carrot::getIDFromName(id);
-            verify(compID.has_value(), Carrot::sprintf("Missing mapping between id and name for name: %s", id.c_str()));
-
-            componentListWrapper.set(id, sol::property([compID](ComponentsWrapper& w) {
-                auto compRef = w.entity.getComponent(compID.value());
-                Component* componentPtr = compRef.hasValue() ? compRef.asPtr() : nullptr;
-                return ComponentWrapper(componentPtr);
-            }));
-        }
+        getComponentLibrary().registerBindings(destination, componentListWrapper);
 
         ecsNamespace.new_usertype<Carrot::ECS::Entity>("Entity", sol::no_constructor,
                                                        "exists", &ECS::Entity::exists,
@@ -65,4 +29,5 @@ namespace Carrot::ECS {
 
         );
     }
+
 }

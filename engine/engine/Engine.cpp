@@ -565,17 +565,17 @@ void Carrot::Engine::initECS() {
     auto& systems = Carrot::ECS::getSystemLibrary();
 
     {
-        components.addUniquePtrBased<Carrot::ECS::TransformComponent>();
-        components.addUniquePtrBased<Carrot::ECS::Kinematics>();
-        components.addUniquePtrBased<Carrot::ECS::SpriteComponent>();
-        components.addUniquePtrBased<Carrot::ECS::ModelComponent>();
+        components.add<Carrot::ECS::TransformComponent>();
+        components.add<Carrot::ECS::Kinematics>();
+        components.add<Carrot::ECS::SpriteComponent>();
+        components.add<Carrot::ECS::ModelComponent>();
         //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>(); // TODO: reintroduce once animated models are reintroduced
-        components.addUniquePtrBased<Carrot::ECS::ForceSinPosition>();
-        components.addUniquePtrBased<Carrot::ECS::LightComponent>();
-        components.addUniquePtrBased<Carrot::ECS::RigidBodyComponent>();
-        components.addUniquePtrBased<Carrot::ECS::CameraComponent>();
-        components.addUniquePtrBased<Carrot::ECS::TextComponent>();
-        components.addUniquePtrBased<Carrot::ECS::LuaScriptComponent>();
+        components.add<Carrot::ECS::ForceSinPosition>();
+        components.add<Carrot::ECS::LightComponent>();
+        components.add<Carrot::ECS::RigidBodyComponent>();
+        components.add<Carrot::ECS::CameraComponent>();
+        components.add<Carrot::ECS::TextComponent>();
+        components.add<Carrot::ECS::LuaScriptComponent>();
     }
 
     {
