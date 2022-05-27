@@ -116,6 +116,8 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}scripting/bindings/ecs/ECS.cpp
 
+        ${EngineRoot}scripting/bindings/io/InputSystem.cpp
+
         ${EngineRoot}scripting/bindings/math/bindings.cpp
 
         ${EngineRoot}scripting/bindings/vulkan/VulkanDriver.cpp

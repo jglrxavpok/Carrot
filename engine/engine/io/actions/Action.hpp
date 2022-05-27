@@ -28,8 +28,6 @@ namespace Carrot::IO {
 
     template<ActionType type>
     class Action {
-
-
     public:
         explicit Action(std::string_view name): name(name) {
             std::memset(&state, 0, sizeof(state));

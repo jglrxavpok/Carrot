@@ -4,8 +4,8 @@
 //
 //
 // or maybe I don't understand how it works, so let's reinvent the wheel.
-#include "engine/utils/Profiling.h"
 #include "engine/vulkan/includes.h"
+#include "engine/utils/Profiling.h"
 #ifdef TRACY_ENABLE
 
 //#define TRACY_VULKAN_ENABLE

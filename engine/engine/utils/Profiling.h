@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "engine/vulkan/includes.h"
 #include <Tracy.hpp>
 #include <TracyVulkan.hpp>
 #include <client/TracyProfiler.hpp>

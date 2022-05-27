@@ -7,8 +7,6 @@
 #include "engine/ecs/systems/System.h"
 #include "core/io/Logging.hpp"
 
-#pragma optimize("", off)
-
 namespace Carrot::ECS {
     void registerBindings(sol::state& destination) {
         auto carrotNamespace = destination["Carrot"].get_or_create<sol::table>();

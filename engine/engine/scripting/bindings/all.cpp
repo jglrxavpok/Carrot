@@ -7,6 +7,7 @@
 #include "vulkan/vulkan.hpp"
 #include "ecs/ECS.h"
 #include "math/bindings.h"
+#include "io/InputSystem.h"
 #include "engine/ecs/components/Component.h"
 #include "engine/ecs/systems/System.h"
 #include "engine/render/Sprite.h"
@@ -28,5 +29,6 @@ namespace Carrot::Lua {
         Carrot::Math::registerUsertypes(destination);
 
         Carrot::ECS::registerBindings(destination);
+        Carrot::IO::registerIOUsertypes(destination);
     }
 }

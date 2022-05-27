@@ -60,6 +60,16 @@ namespace Carrot {
             return at(str);
         }
 
+        constexpr const LookupEntry<T>* begin() const {
+            static_assert(Size > 0);
+            return &storage[0];
+        }
+
+        constexpr const LookupEntry<T>* end() const {
+            static_assert(Size > 0);
+            return &storage[Size-1];
+        }
+
     private:
         LookupEntry<T> storage[Size];
     };
