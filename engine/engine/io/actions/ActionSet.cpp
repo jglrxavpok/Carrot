@@ -54,30 +54,28 @@ namespace Carrot::IO {
         }
     }
 
-    void ActionSet::updatePrePoll(bool setPreviousValues) {
+    void ActionSet::updatePrePoll() {
         if(!active)
             return;
-        if(setPreviousValues) {
-            for(auto& input : boolInputs) {
-                input->state.bPreviousValue = input->state.bValue;
-            }
-            for(auto& input : floatInputs) {
-                input->state.fPreviousValue = input->state.fValue;
-            }
-            for(auto& input : vec2Inputs) {
-                input->state.vPreviousValue = input->state.vValue;
-            }
+        for(auto& input : boolInputs) {
+            input->state.bPreviousValue = input->state.bValue;
+        }
+        for(auto& input : floatInputs) {
+            input->state.fPreviousValue = input->state.fValue;
+        }
+        for(auto& input : vec2Inputs) {
+            input->state.vPreviousValue = input->state.vValue;
         }
     }
 
-    void ActionSet::updatePrePollAllSets(Carrot::Engine& engine, bool setPreviousValues) {
+    void ActionSet::updatePrePollAllSets(Carrot::Engine& engine) {
         for(auto* set : getSetList()) {
             if(!set->isActive())
                 continue;
             if(!set->readyForUse) {
                 set->prepareForUse(engine);
             }
-            set->updatePrePoll(setPreviousValues);
+            set->updatePrePoll();
         }
 
 #ifdef ENABLE_VR

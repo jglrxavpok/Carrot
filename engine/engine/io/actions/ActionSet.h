@@ -49,11 +49,11 @@ namespace Carrot::IO {
         const std::vector<Vec2InputAction*>& getVec2Inputs() const { return vec2Inputs; }
 
     public:
-        static void updatePrePollAllSets(Carrot::Engine& engine, bool setPreviousValues);
+        static void updatePrePollAllSets(Carrot::Engine& engine);
         static std::vector<ActionSet*>& getSetList();
 
     private:
-        void updatePrePoll(bool setPreviousValues);
+        void updatePrePoll();
         void prepareForUse(Carrot::Engine& engine);
 
     private:

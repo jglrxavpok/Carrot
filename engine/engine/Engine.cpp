@@ -454,7 +454,6 @@ void Carrot::Engine::run() {
             ZoneScopedN("Tick");
             TracyPlot("Tick lag", lag.count());
             TracyPlot("Estimated FPS", currentFPS);
-            ticked = false;
 
             const std::uint32_t maxCatchupTicks = 10;
             std::uint32_t caughtUp = 0;
@@ -462,14 +461,11 @@ void Carrot::Engine::run() {
                 // make sure each tick has the proper inputs
 
                 onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
-                Carrot::IO::ActionSet::updatePrePollAllSets(*this, ticked);
+                Carrot::IO::ActionSet::updatePrePollAllSets(*this);
                 glfwPollEvents();
                 pollKeysVec2();
                 pollGamepads();
 
-
-
-                ticked = true;
                 GetTaskScheduler().scheduleMainLoop();
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
