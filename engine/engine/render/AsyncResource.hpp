@@ -35,6 +35,10 @@ namespace Carrot {
             GetTaskScheduler().schedule(std::move(desc));
         }
 
+        bool isEmpty() const {
+            return !storage->initializer && !storage->initialized;
+        }
+
         bool isReady() const {
             return storage->initialized && !!storage->value;
         }

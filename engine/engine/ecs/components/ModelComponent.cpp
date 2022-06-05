@@ -55,11 +55,11 @@ namespace Carrot::ECS {
     }
 
     void ModelComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        if(!asyncModel.isReady()) {
+        if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
             ImGui::Text("Model is loading...");
             return;
         }
-        std::string path = asyncModel->getOriginatingResource().getName();
+        std::string path = asyncModel.isEmpty() ? "" : asyncModel->getOriginatingResource().getName();
         if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             setFile(path);
             modified = true;
