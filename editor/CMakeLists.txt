@@ -5,6 +5,9 @@ set(EditorSources
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}Scene.cpp
         ${EditorRoot}GridRenderer.cpp
+
+        ${EditorRoot}panels/ResourcePanel.cpp
+
         ${EditorRoot}ecs/systems/CameraRenderer.cpp
         ${EditorRoot}ecs/systems/CollisionShapeRenderer.cpp
         ${EditorRoot}ecs/systems/LightEditorRenderer.cpp

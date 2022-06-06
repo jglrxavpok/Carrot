@@ -15,6 +15,7 @@
 #include <core/io/vfs/VirtualFileSystem.h>
 #include "Scene.h"
 #include "GridRenderer.h"
+#include "panels/ResourcePanel.h"
 
 namespace Peeler {
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
@@ -57,7 +58,6 @@ namespace Peeler {
         void UIPlayBar(const Carrot::Render::Context& renderContext);
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UIInspector(const Carrot::Render::Context& renderContext);
-        void UIResourcesPanel(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
 
     private:
@@ -102,18 +102,15 @@ namespace Peeler {
         Carrot::Render::Texture translateIcon;
         Carrot::Render::Texture rotateIcon;
         Carrot::Render::Texture scaleIcon;
-        Carrot::Render::Texture genericFileIcon;
-        Carrot::Render::Texture folderIcon;
-        Carrot::Render::Texture parentFolderIcon;
-        Carrot::Render::Texture driveIcon;
 
         // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
         Carrot::Render::Texture::Ref gameTextureRef;
 
         GridRenderer gridRenderer;
 
-    private: // Scene manipulation
+        ResourcePanel resourcePanel;
 
+    private: // Scene manipulation
         std::optional<Carrot::ECS::EntityID> selectedID;
         bool movingGameViewCamera = false;
 
@@ -132,30 +129,12 @@ namespace Peeler {
 
         Carrot::Edition::FreeCameraController cameraController;
 
-    private: // resources
-        void updateCurrentFolder(std::filesystem::path path);
-
-        enum class ResourceType {
-            GenericFile,
-            Folder,
-            Drive,
-            // TODO: images, shaders, scenes, etc.
-        };
-
-        struct ResourceEntry {
-            ResourceType type = ResourceType::GenericFile;
-            std::filesystem::path path;
-        };
-        std::filesystem::path currentFolder = "";
-        std::vector<ResourceEntry> resourcesInCurrentFolder;
-
-        bool isLookingAtRoots = false;
-        bool tryToClose = false;
-
     private:
         // don't actually start/stop the simulation mid-frame! We might have live objects that need to still be alive at the end of the frame
         bool stopSimulationRequested = false;
         bool startSimulationRequested = false;
+
+        bool tryToClose = false;
 
     private: // simulation state
         bool isPlaying = false;

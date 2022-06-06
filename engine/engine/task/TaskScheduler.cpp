@@ -63,7 +63,11 @@ namespace Carrot {
                     {
                         ZoneScopedN("Run task");
                         ZoneText(toRun.name.c_str(), toRun.name.size());
-                        toRun.task();
+                        try {
+                            toRun.task();
+                        } catch (const std::exception& e) {
+                            throw e;
+                        }
                     }
 
                     if (toRun.task.done()) {

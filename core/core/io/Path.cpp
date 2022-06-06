@@ -158,6 +158,15 @@ namespace Carrot::IO {
         return path == other.path;
     }
 
+    std::string_view Path::getFilename() const {
+        std::size_t lastSeparator = path.find_last_of('/');
+        if(lastSeparator == std::string::npos) {
+            return path;
+        }
+        std::string_view pathView = path;
+        return pathView.substr(lastSeparator+1);
+    }
+
     // -- NormalizedPath
     NormalizedPath::NormalizedPath(): Path::Path() {}
 

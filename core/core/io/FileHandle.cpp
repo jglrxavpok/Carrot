@@ -9,12 +9,6 @@
 #include "core/utils/stringmanip.h"
 
 namespace Carrot::IO {
-    static void checkStdError(int err, const std::string& operation) {
-        if(err) {
-            throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err));
-        }
-    }
-
     FileHandle::FileHandle(const std::filesystem::path& filepath, OpenMode openMode) {
         open(Carrot::toString(filepath.u8string()), openMode);
     }
@@ -61,10 +55,10 @@ namespace Carrot::IO {
             case OpenMode::Invalid:
                 throw std::runtime_error("Cannot open file with mode 'Invalid'");
         }
+        currentFilename = filename;
         checkStdError(fopen_s(&handle, filename.c_str(), mode), "open");
         opened = true;
         currentOpenMode = openMode;
-        currentFilename = filename;
 
         seekEnd();
         fileSize = getCurrentPosition();
@@ -165,5 +159,9 @@ namespace Carrot::IO {
         return read(getSize());
     }
 
-
+    void FileHandle::checkStdError(int err, const std::string& operation) {
+        if(err) {
+            throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err) + ", " + currentFilename);
+        }
+    }
 }

@@ -120,3 +120,10 @@ TEST(Paths, NormalizeGoesBackUp) {
     ASSERT_EQ(Path("a/b/c/../../file").normalize(), Path("a/file"));
     ASSERT_THROW(Path("a/../..").normalize(), std::invalid_argument); // must not go outside of root
 }
+
+TEST(Paths, GetFilename) {
+    ASSERT_EQ(std::string(Path("").getFilename()), "");
+    ASSERT_EQ(std::string(Path("/a").getFilename()), "a");
+    ASSERT_EQ(std::string(Path("/a/").getFilename()), "");
+    ASSERT_EQ(std::string(Path("abc").getFilename()), "abc");
+}

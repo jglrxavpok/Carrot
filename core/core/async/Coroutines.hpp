@@ -163,9 +163,16 @@ namespace Carrot::Async {
     struct CoroutinePromiseType: public PromiseTypeReturn<Value> {
         std::coroutine_handle<> awaiting;
         TaskLane wantedLane = TaskLane::Undefined;
+        std::exception_ptr caughtException;
 
         Task<Value> get_return_object() {
             return Task<Value>(std::coroutine_handle<CoroutinePromiseType<Value>>::from_promise(*this));
+        }
+
+        void rethrow_if_needed() {
+            if(caughtException) {
+                std::rethrow_exception(caughtException);
+            }
         }
 
         std::suspend_always initial_suspend() { return {}; }
@@ -176,6 +183,8 @@ namespace Carrot::Async {
         // value
         auto final_suspend() noexcept
         {
+            //rethrow_if_needed();
+
             // if there is a coroutine that is awaiting on this coroutine resume it
             struct transfer_awaitable
             {
@@ -192,7 +201,7 @@ namespace Carrot::Async {
                     // nothing
                     return awaiting_coroutine ? awaiting_coroutine : std::noop_coroutine();
                 }
-                void await_resume() noexcept {}
+                void await_resume() noexcept { }
             };
             return transfer_awaitable{this->awaiting};
         }
@@ -226,6 +235,7 @@ namespace Carrot::Async {
                 // when ready return value to a consumer
                 auto await_resume()
                 {
+                    promise.rethrow_if_needed();
                     return;
                 }
             };
@@ -255,6 +265,7 @@ namespace Carrot::Async {
 
                 // when ready return value to a consumer
                 auto await_resume() {
+                    promise.rethrow_if_needed();
                     return;
                 }
             };
@@ -281,6 +292,7 @@ namespace Carrot::Async {
 
                 // when ready return value to a consumer
                 auto await_resume() {
+                    promise.rethrow_if_needed();
                     return;
                 }
             };
@@ -321,6 +333,7 @@ namespace Carrot::Async {
                 // when ready return value to a consumer
                 auto await_resume()
                 {
+                    handle.promise().rethrow_if_needed();
                     if constexpr(std::is_same_v<void, U>) {
                         return;
                     } else {
@@ -333,8 +346,7 @@ namespace Carrot::Async {
         }
 
         void unhandled_exception() {
-            auto exception = std::current_exception();
-            std::rethrow_exception(exception);
+            caughtException = std::current_exception();
         }
 
         // called when coroutine_handle::destroy is called
@@ -408,7 +420,14 @@ namespace Carrot::Async {
             if(coroutineHandle.promise().wantedLane != TaskLane::Undefined && currentLane != coroutineHandle.promise().wantedLane) {
                 return false;
             }
-            coroutineHandle();
+            try {
+                coroutineHandle();
+                if(coroutineHandle.promise().caughtException) {
+                    std::rethrow_exception(coroutineHandle.promise().caughtException);
+                }
+            } catch (std::exception& e) {
+                throw e;
+            }
             return true;
         }
 

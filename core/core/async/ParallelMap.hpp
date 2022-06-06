@@ -44,6 +44,10 @@ namespace Carrot::Async {
                 return keyValuePairs.end();
             }
 
+            std::size_t size() const {
+                return keyValuePairs.size();
+            }
+
         private:
             std::vector<ElementType> keyValuePairs;
             friend class ParallelMap<KeyType, ValueType>;

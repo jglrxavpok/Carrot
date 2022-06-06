@@ -151,7 +151,7 @@ namespace Peeler {
         ImGui::End();
 
         if(ImGui::Begin("Resources")) {
-            UIResourcesPanel(renderContext);
+            resourcePanel.draw(renderContext);
         }
         ImGui::End();
 
@@ -275,108 +275,6 @@ namespace Peeler {
                 currentScene.world.addLogicSystem(std::move(ptr));
             },
             [&](Carrot::ECS::System* ptr) { currentScene.world.removeLogicSystem(ptr); });
-    }
-
-    void Application::UIResourcesPanel(const Carrot::Render::Context& renderContext) {
-        if(currentFolder.has_parent_path()) {
-            bool isAtRoot = Carrot::IO::Files::isRootFolder(currentFolder);
-            if(ImGui::ImageButton(parentFolderIcon.getImguiID(), ImVec2(16, 16))) {
-                if(isAtRoot) {
-                    auto roots = Carrot::IO::Files::enumerateRoots();
-                    if(roots.size() == 1) {
-                        updateCurrentFolder(roots[0]);
-                    } else { // Windows can have multiple drives
-                        isLookingAtRoots = true;
-                        resourcesInCurrentFolder.clear();
-                        for(const auto& root : roots) {
-                            resourcesInCurrentFolder.emplace_back(ResourceType::Drive, root);
-                        }
-                    }
-                } else {
-                    updateCurrentFolder(currentFolder.parent_path());
-                }
-            }
-        }
-        ImGui::SameLine();
-        ImGui::UnformattedWText(currentFolder.u8string());
-
-        // Thanks Hazel
-        // https://github.com/TheCherno/Hazel/blob/f627b9c90923382f735350cd3060892bbd4b1e75/Hazelnut/src/Panels/ContentBrowserPanel.cpp#L30
-        static float padding = 8.0f;
-        static float thumbnailSize = 64.0f;
-        float cellSize = thumbnailSize + padding;
-        float panelWidth = ImGui::GetContentRegionAvail().x;
-        int columnCount = (int)(panelWidth / cellSize);
-        if (columnCount < 1)
-            columnCount = 1;
-
-        ImGuiTableFlags tableFlags = ImGuiTableFlags_NoBordersInBody;
-        if(ImGui::BeginTable("##resources table", columnCount, tableFlags)) {
-            ImGui::TableNextRow();
-            std::uint32_t columnIndex = 0;
-            std::uint32_t index = 0;
-
-            std::optional<std::filesystem::path> updateToPath;
-            for(const auto& entry : resourcesInCurrentFolder) {
-                ImGui::TableNextColumn();
-
-                ImTextureID texture = nullptr;
-                switch(entry.type) {
-                    case ResourceType::GenericFile:
-                        texture = genericFileIcon.getImguiID();
-                        break;
-
-                    case ResourceType::Folder:
-                        texture = folderIcon.getImguiID();
-                        break;
-
-                    case ResourceType::Drive:
-                        texture = driveIcon.getImguiID();
-                        break;
-
-                    default:
-                        TODO // missing a resource type
-                }
-                std::u8string filename = entry.path.u8string();
-                ImGui::PushID(index);
-                {
-                    ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
-
-                    if(ImGui::BeginDragDropSource()) {
-                        ImGui::UnformattedWText(filename);
-                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length()*sizeof(char8_t));
-                        ImGui::EndDragDropSource();
-                    }
-
-                    if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                        if(std::filesystem::is_directory(entry.path)) {
-                            updateToPath = entry.path;
-                        }
-                    }
-
-                    std::u8string smallFilename;
-                    if(!isLookingAtRoots) {
-                        smallFilename = entry.path.filename().u8string();
-                    } else {
-                        smallFilename = entry.path.u8string();
-                    }
-                    ImGui::UnformattedWTextWrapped(smallFilename);
-                }
-                ImGui::PopID();
-
-                if(++columnIndex == columnCount) {
-                    columnIndex = 0;
-                    ImGui::TableNextRow();
-                }
-                index++;
-            }
-
-            if(updateToPath) {
-                updateCurrentFolder(updateToPath.value());
-            }
-
-            ImGui::EndTable();
-        }
     }
 
     void Application::UIInspector(const Carrot::Render::Context& renderContext) {
@@ -847,12 +745,7 @@ namespace Peeler {
         translateIcon(engine.getVulkanDriver(), "resources/textures/ui/translate.png"),
         rotateIcon(engine.getVulkanDriver(), "resources/textures/ui/rotate.png"),
         scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png"),
-        folderIcon(engine.getVulkanDriver(), "resources/textures/ui/folder.png"),
-        genericFileIcon(engine.getVulkanDriver(), "resources/textures/ui/file.png"),
-        parentFolderIcon(engine.getVulkanDriver(), "resources/textures/ui/parent_folder.png"),
-        driveIcon(engine.getVulkanDriver(), "resources/textures/ui/drive.png")
-
-
+        resourcePanel(*this)
     {
         GetTaskScheduler().schedule({
                                             .name = "My test task",
@@ -955,7 +848,7 @@ namespace Peeler {
             scheduleLoad(settings.currentProject.value());
         }
 
-        updateCurrentFolder(std::filesystem::current_path() / "resources");
+        resourcePanel.updateCurrentFolder("game://");
     }
 
     void Application::tick(double frameTime) {
@@ -1256,17 +1149,6 @@ namespace Peeler {
         addEditingSystems();
 
         GetRenderer().getLighting().getAmbientLight() = glm::vec3 {0.1,0.1,0.1};
-    }
-
-    void Application::updateCurrentFolder(std::filesystem::path path) {
-        currentFolder = std::move(path);
-        resourcesInCurrentFolder.clear();
-        for(const auto& file : std::filesystem::directory_iterator(currentFolder)) {
-            ResourceType type = file.is_directory() ? ResourceType::Folder : ResourceType::GenericFile;
-            resourcesInCurrentFolder.emplace_back(type, file.path());
-        }
-
-        isLookingAtRoots = false;
     }
 
     bool Application::onCloseButtonPressed() {

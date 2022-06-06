@@ -9,6 +9,7 @@
 #include "engine/edition/DragDropTypes.h"
 #include "core/utils/JSON.h"
 #include <filesystem>
+#include <string>
 
 namespace Carrot::ECS {
     ModelComponent* ModelComponent::inInspector = nullptr;
@@ -23,7 +24,7 @@ namespace Carrot::ECS {
 
             if(modelData.HasMember("modelPath")) {
                 std::string modelPath = modelData["modelPath"].GetString();
-                setFile(modelPath);
+                setFile(IO::VFS::Path(modelPath));
             } else {
                 TODO // cannot load non-file models at the moment
             }
@@ -61,7 +62,7 @@ namespace Carrot::ECS {
         }
         std::string path = asyncModel.isEmpty() ? "" : asyncModel->getOriginatingResource().getName();
         if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            setFile(path);
+            setFile(IO::VFS::Path(path));
             modified = true;
         }
 
@@ -71,11 +72,15 @@ namespace Carrot::ECS {
                 std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
                 buffer.get()[payload->DataSize] = '\0';
 
-                std::filesystem::path newPath = buffer.get();
+                std::u8string str = buffer.get();
+                std::string s = Carrot::toString(str);
 
-                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
-                    setFile(fsPath);
+                auto vfsPath = IO::VFS::Path(s);
+
+                // TODO: no need to go through disk again
+                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
+                    setFile(vfsPath);
                     inInspector = nullptr;
                     modified = true;
                 }
@@ -105,8 +110,8 @@ namespace Carrot::ECS {
         }
     }
 
-    void ModelComponent::setFile(const std::filesystem::path& path) {
-        asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(Carrot::toString(path.u8string()))));
+    void ModelComponent::setFile(const IO::VFS::Path& path) {
+        asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(path.toString())));
         if(GetCapabilities().supportsRaytracing) {
             Async::LockGuard l{ tlasAccess };
             tlasIsWaitingForModel = true;

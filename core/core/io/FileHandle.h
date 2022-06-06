@@ -89,6 +89,9 @@ namespace Carrot::IO {
         std::unique_ptr<uint8_t[]> readAll();
 
     private:
+        void checkStdError(int err, const std::string& operation);
+
+    private:
         std::FILE* handle = nullptr;
         bool opened = false;
         uint64_t fileSize = 0;

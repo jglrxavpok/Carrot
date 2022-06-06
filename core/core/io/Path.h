@@ -64,6 +64,12 @@ namespace Carrot::IO {
         const char* c_str() const { return get(); }
         const std::string& asString() const { return path; }
 
+        /**
+         * Returns a string_view representing the filename inside the path, extracted from the last separator to the end of the path
+         * @return
+         */
+        std::string_view getFilename() const;
+
         friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
             return os << bar.path;
         }

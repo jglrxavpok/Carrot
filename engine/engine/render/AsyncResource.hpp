@@ -104,7 +104,11 @@ namespace Carrot {
             verify(!targetStorage->initialized, "Resource must not already be initialized");
             verify(!targetStorage->value, "Resource must not already be initialized");
             targetStorage->running = true;
-            targetStorage->value = co_await targetStorage->initializer;
+            try {
+                targetStorage->value = co_await targetStorage->initializer;
+            } catch (...) {
+                std::rethrow_exception(std::current_exception());
+            }
             targetStorage->initializer = {};
             targetStorage->running = false;
             targetStorage->initialized = true;

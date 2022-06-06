@@ -76,6 +76,16 @@ namespace Carrot::IO {
         return std::filesystem::exists(resolve(path));
     }
 
+    std::vector<std::string> VirtualFileSystem::getRoots() const {
+        std::vector<std::string> rootIDs;
+        auto snapshot = roots.snapshot();
+        rootIDs.reserve(snapshot.size());
+        for(const auto& [rootID, _] : snapshot) {
+            rootIDs.push_back(rootID);
+        }
+        return rootIDs;
+    }
+
     // Path
 
     VirtualFileSystem::Path::Path(): Path("") {}

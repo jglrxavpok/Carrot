@@ -67,6 +67,11 @@ namespace Carrot::IO {
 
         bool exists(const Path& path) const;
 
+        /**
+         * Returns a copy of the current roots when called.
+         */
+        std::vector<std::string> getRoots() const;
+
     public: // root management
         /// Adds a new root to the VFS with the given identifier. The identifier must match [a-z0-9_].
         ///  Identifier must also not exist already
