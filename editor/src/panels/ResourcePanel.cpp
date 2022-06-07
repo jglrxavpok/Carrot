@@ -53,7 +53,29 @@ namespace Peeler {
         ImGui::DockSpace(mainNode);
 
         if(ImGui::Begin(treeViewID)) {
-            ImGui::Text("TODO");
+            ImGuiDockNodeFlags_ flags = ImGuiDockNodeFlags_None;
+            std::function<void(const std::filesystem::path&, const std::string&)> showFileHierarchy = [&](const std::filesystem::path& folder, const std::string& toDisplay) -> void {
+                ImGui::PushID(folder.string().c_str());
+                if(ImGui::TreeNodeEx(folder.string().c_str(), flags, "%s", toDisplay.c_str())) {
+                    std::error_code ec; // TODO: check
+                    std::filesystem::directory_options options = std::filesystem::directory_options::none;
+                    for(const auto& child : std::filesystem::directory_iterator(folder, options, ec)) {
+                        std::string childName = child.path().filename().string();
+                        if(child.is_directory()) {
+                            showFileHierarchy(child.path(), childName);
+                        } else {
+                            ImGui::BulletText("%s", childName.c_str());
+                        }
+                    }
+
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            };
+
+            for(const auto& root : GetVFS().getRoots()) {
+                showFileHierarchy(GetVFS().resolve(Carrot::IO::VFS::Path(root, "")), root);
+            }
         }
         ImGui::End();
 
