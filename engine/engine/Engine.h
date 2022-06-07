@@ -117,6 +117,8 @@ namespace Carrot {
 
         void onMouseButton(int button, int action, int mods);
 
+        void onScroll(double xScroll, double yScroll);
+
     public:
 
         /// Cleanup resources

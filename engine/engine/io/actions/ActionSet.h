@@ -50,10 +50,17 @@ namespace Carrot::IO {
 
     public:
         static void updatePrePollAllSets(Carrot::Engine& engine);
+        static void resetAllDeltas();
         static std::vector<ActionSet*>& getSetList();
 
     private:
+        // TODO: actually allow remapping, for the moment only use suggested binding
+        const std::vector<std::string>& getMappedBindings(auto& action) {
+            return action->getSuggestedBindings();
+        };
+
         void updatePrePoll();
+        void resetDeltas();
         void prepareForUse(Carrot::Engine& engine);
 
     private:

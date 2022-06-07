@@ -432,6 +432,15 @@ void Carrot::Engine::run() {
         }
 
         {
+            ZoneScopedN("Poll inputs");
+            glfwPollEvents();
+            pollKeysVec2();
+            pollGamepads();
+
+            onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
+        }
+
+        {
             ZoneScopedN("Setup frame");
             renderer.newFrame();
 
@@ -458,17 +467,13 @@ void Carrot::Engine::run() {
             const std::uint32_t maxCatchupTicks = 10;
             std::uint32_t caughtUp = 0;
             while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
-                // make sure each tick has the proper inputs
-
-                onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
                 Carrot::IO::ActionSet::updatePrePollAllSets(*this);
-                glfwPollEvents();
-                pollKeysVec2();
-                pollGamepads();
 
                 GetTaskScheduler().scheduleMainLoop();
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
+
+                Carrot::IO::ActionSet::resetAllDeltas();
             }
         }
 
@@ -535,6 +540,15 @@ static void joystickCallback(int joystickID, int event) {
     }
 }
 
+static void scrollCallback(GLFWwindow* window, double xScroll, double yScroll) {
+    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
+    app->onScroll(xScroll, yScroll);
+
+    if(!app->isGrabbingCursor()) {
+        ImGui_ImplGlfw_ScrollCallback(window, xScroll, yScroll);
+    }
+}
+
 void Carrot::Engine::initWindow() {
     glfwSetWindowUserPointer(window.getGLFWPointer(), this);
     glfwSetFramebufferSizeCallback(window.getGLFWPointer(), windowResize);
@@ -542,6 +556,7 @@ void Carrot::Engine::initWindow() {
     glfwSetCursorPosCallback(window.getGLFWPointer(), mouseMove);
     glfwSetMouseButtonCallback(window.getGLFWPointer(), mouseButton);
     glfwSetKeyCallback(window.getGLFWPointer(), keyCallback);
+    glfwSetScrollCallback(window.getGLFWPointer(), scrollCallback);
     glfwSetJoystickCallback(joystickCallback);
 }
 
@@ -1085,6 +1100,10 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 
 
     // TODO: pass input to game
+}
+
+void Carrot::Engine::onScroll(double xScroll, double yScroll) {
+    // TODO: expose to input API
 }
 
 void Carrot::Engine::createTracyContexts() {

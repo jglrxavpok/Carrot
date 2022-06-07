@@ -100,12 +100,7 @@ namespace Carrot::IO {
             updateActions(vec2Inputs);
 #endif
         } else {
-            // TODO: actually allow remapping, for the moment only use suggested binding
-            auto getMappedBindings = [](auto& action) {
-                return action->getSuggestedBindings();
-            };
-
-            auto changeButtonInput = [this, getMappedBindings](std::string_view bindingPath, bool isPressed, bool isReleased) {
+            auto changeButtonInput = [this](std::string_view bindingPath, bool isPressed, bool isReleased) {
                 for(auto& input : boolInputs) {
                     const auto& bindings = getMappedBindings(input);
                     if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
@@ -118,7 +113,7 @@ namespace Carrot::IO {
                 }
             };
 
-            auto changeAxisInput = [this, getMappedBindings](std::string_view bindingPath, float newValue) {
+            auto changeAxisInput = [this](std::string_view bindingPath, float newValue) {
                 for(auto& input : floatInputs) {
                     const auto& bindings = getMappedBindings(input);
                     if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
@@ -128,12 +123,16 @@ namespace Carrot::IO {
                 }
             };
 
-            auto changeVec2Input = [this, getMappedBindings](std::string_view bindingPath, const glm::vec2& newValue) {
+            auto changeVec2Input = [this](std::string_view bindingPath, const glm::vec2& newValue, bool additive) {
                 for(auto& input : vec2Inputs) {
                     const auto& bindings = getMappedBindings(input);
                     if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
                         // TODO: handle case if multiple physical inputs are bound to this action
-                        input->state.vValue = newValue;
+                        if(additive) {
+                            input->state.vValue += newValue;
+                        } else {
+                            input->state.vValue = newValue;
+                        }
                     }
                 }
             };
@@ -196,7 +195,7 @@ namespace Carrot::IO {
 
                 changeButtonInput(correspondingPath, isPressed, isReleased);
                 changeAxisInput(correspondingPath, glm::length(newValue));
-                changeVec2Input(correspondingPath, newValue);
+                changeVec2Input(correspondingPath, newValue, false);
             });
 
             keysVec2Callback = GetEngine().addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
@@ -210,7 +209,7 @@ namespace Carrot::IO {
 
                 changeButtonInput(correspondingPath, isPressed, isReleased);
                 changeAxisInput(correspondingPath, glm::length(newValue));
-                changeVec2Input(correspondingPath, newValue);
+                changeVec2Input(correspondingPath, newValue, false);
             });
 
             mouseButtonCallback = GetEngine().addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
@@ -232,7 +231,7 @@ namespace Carrot::IO {
 
                 const auto correspondingPath = Carrot::IO::GLFWMousePositionBinding;
 
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
+                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, false);
             });
 
             mouseDeltaCallback = GetEngine().addGLFWMouseDeltaCallback([this, changeVec2Input](double dx, double dy) {
@@ -241,7 +240,7 @@ namespace Carrot::IO {
 
                 const auto correspondingPath = Carrot::IO::GLFWMouseDeltaBinding;
 
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
+                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
             });
 
             mouseDeltaGrabbedCallback = GetEngine().addGLFWMouseDeltaGrabbedCallback([this, changeVec2Input](double dx, double dy) {
@@ -250,11 +249,28 @@ namespace Carrot::IO {
 
                 const auto correspondingPath = Carrot::IO::GLFWGrabbedMouseDeltaBinding;
 
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)});
+                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
             });
 
         }
 
         readyForUse = true;
+    }
+
+    void ActionSet::resetAllDeltas() {
+        for(auto* set : getSetList()) {
+            set->resetDeltas();
+        }
+    }
+
+    void ActionSet::resetDeltas() {
+        for(auto bindingPath : {Carrot::IO::GLFWGrabbedMouseDeltaBinding, Carrot::IO::GLFWMouseDeltaBinding}) {
+            for(auto& input : vec2Inputs) {
+                const auto& bindings = getMappedBindings(input);
+                if (std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
+                    input->state.vValue = {};
+                }
+            }
+        }
     }
 }
