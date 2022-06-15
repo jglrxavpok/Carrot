@@ -133,4 +133,12 @@ namespace Carrot::IO {
         root = newRoot;
         path = newPath;
     }
+
+    VirtualFileSystem::Path VirtualFileSystem::Path::operator/(const NormalizedPath& subpath) const {
+        return VFS::Path(root, path.append(subpath));
+    }
+
+    VirtualFileSystem::Path VirtualFileSystem::Path::operator/(std::string_view subpath) const {
+        return operator/(NormalizedPath(subpath));
+    }
 }

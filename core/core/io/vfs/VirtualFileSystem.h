@@ -38,6 +38,9 @@ namespace Carrot::IO {
 
             bool operator==(const Path& other) const = default;
 
+            Path operator/(const NormalizedPath& subpath) const;
+            Path operator/(std::string_view subpath) const;
+
         public:
             /**
              * True iif no root is associated to this path.
