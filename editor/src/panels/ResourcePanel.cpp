@@ -55,19 +55,43 @@ namespace Peeler {
         if(ImGui::Begin(treeViewID)) {
             std::filesystem::path currentFolderInDisk = GetVFS().resolve(currentFolder);
             ImGuiTreeNodeFlags_ flags = ImGuiTreeNodeFlags_SpanAvailWidth;
-            std::function<void(const std::filesystem::path&, const std::string&, bool)> showFileHierarchy = [&](const std::filesystem::path& folder, const std::string& toDisplay, bool isFolder) -> void {
-                ImGui::PushID(folder.string().c_str());
+            std::function<void(const std::filesystem::path&, const std::string&, bool)> showFileHierarchy = [&](const std::filesystem::path& filepath, const std::string& toDisplay, bool isFolder) -> void {
+                ImGui::PushID(filepath.string().c_str());
 
                 ImGuiTreeNodeFlags localFlags = flags;
                 if(!isFolder) {
                     localFlags |= ImGuiTreeNodeFlags_Bullet;
+                } else {
+                    localFlags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
                 }
 
-                if(folder == currentFolderInDisk) {
+                if(filepath == currentFolderInDisk) {
                     localFlags |= ImGuiTreeNodeFlags_Selected;
                 }
 
-                const bool opened = ImGui::TreeNodeEx(folder.string().c_str(), localFlags, "");
+                const std::string imguiID = filepath.string();
+                const bool wasOpen = ImGui::TreeNodeBehaviorIsOpen(ImGui::GetID(imguiID.c_str()), localFlags);
+                const bool opened = ImGui::TreeNodeEx(imguiID.c_str(), localFlags, "");
+
+                auto vfsPath = GetVFS().represent(filepath);
+
+                if(!vfsPath.has_value()) {
+                    return;
+                }
+
+                if(ImGui::BeginDragDropSource()) {
+                    std::string str = vfsPath->toString();
+                    ImGui::TextUnformatted(str.c_str());
+                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, str.c_str(), str.length()*sizeof(char));
+                    ImGui::EndDragDropSource();
+                }
+
+                const bool shouldOpenFolder = (wasOpen == opened || ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) && ImGui::IsItemClicked();
+                if(shouldOpenFolder && isFolder) {
+                    if(vfsPath) {
+                        updateCurrentFolder(vfsPath.value());
+                    }
+                }
 
                 const ImVec2 imageSize = ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize());
                 const float baseOffset = ImGui::GetFontSize() /* arrow */ + ImGui::GetStyle().FramePadding.x * 2;
@@ -86,7 +110,7 @@ namespace Peeler {
                     if(isFolder) {
                         std::error_code ec; // TODO: check
                         std::filesystem::directory_options options = std::filesystem::directory_options::none;
-                        for (const auto& child: std::filesystem::directory_iterator(folder, options, ec)) {
+                        for (const auto& child: std::filesystem::directory_iterator(filepath, options, ec)) {
                             std::string childName = child.path().filename().string();
                             if (child.is_directory()) {
                                 showFileHierarchy(child.path(), childName, true);
