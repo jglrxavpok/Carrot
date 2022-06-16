@@ -47,8 +47,8 @@ Don't expect support for the moment.
 - (partial) VR support
 - Basic audio support
 
-## Last screenshot
-![Last screenshot](./screenshot.png)
+## Screenshot of editor
+![Editor screenshot](./screenshot.png)
 
 # Building
 VR requires building manually thirdparty/OpenXR-SDK-Source
