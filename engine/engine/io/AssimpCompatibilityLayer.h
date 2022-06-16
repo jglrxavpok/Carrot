@@ -37,6 +37,8 @@ namespace Carrot::IO {
     public:
         CarrotIOSystem(const Carrot::IO::Resource& sourceResource);
 
+        virtual ~CarrotIOSystem();
+
         bool Exists(const char *pFile) const override;
 
         char getOsSeparator() const override;

@@ -156,7 +156,9 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
             using namespace IMATH_NAMESPACE;
 
             Profiling::PrintingScopedTimer _timer("EXR file load");
-            RgbaInputFile file (resource.getName().c_str());
+
+            std::filesystem::path realPath = GetVFS().resolve(IO::VFS::Path(resource.getName()));
+            RgbaInputFile file (Carrot::toString(realPath.u8string()).c_str());
 
             Box2i dw = file.dataWindow();
             width = dw.max.x - dw.min.x + 1;

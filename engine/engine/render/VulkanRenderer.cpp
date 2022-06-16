@@ -921,7 +921,12 @@ Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize byte
 
 Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(
         /* not a ref because we need the string to be alive inside the coroutine*/ std::string name) {
-    co_return getOrCreateModel(name);
+    try {
+        auto result = getOrCreateModel(name);
+        co_return result;
+    } catch (...) {
+        throw;
+    }
 }
 
 void Carrot::VulkanRenderer::makeCurrentThreadRenderCapable() {

@@ -163,7 +163,7 @@ namespace Carrot::Async {
     struct CoroutinePromiseType: public PromiseTypeReturn<Value> {
         std::coroutine_handle<> awaiting;
         TaskLane wantedLane = TaskLane::Undefined;
-        std::exception_ptr caughtException;
+        std::exception_ptr caughtException = nullptr;
 
         Task<Value> get_return_object() {
             return Task<Value>(std::coroutine_handle<CoroutinePromiseType<Value>>::from_promise(*this));
@@ -423,9 +423,11 @@ namespace Carrot::Async {
             try {
                 coroutineHandle();
                 if(coroutineHandle.promise().caughtException) {
-                    std::rethrow_exception(coroutineHandle.promise().caughtException);
+                    auto ptr = coroutineHandle.promise().caughtException;
+                    coroutineHandle.promise().caughtException = {};
+                    std::rethrow_exception(ptr);
                 }
-            } catch (std::exception& e) {
+            } catch (const std::exception& e) {
                 throw e;
             }
             return true;
@@ -453,7 +455,8 @@ namespace Carrot::Async {
             function();
             co_return;
         } else {
-            co_return function();
+            ReturnType result = function();
+            co_return result;
         }
     };
 

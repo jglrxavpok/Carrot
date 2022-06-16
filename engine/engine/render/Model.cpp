@@ -25,7 +25,7 @@
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
-    Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
+   // Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     Assimp::Importer importer{};
 
@@ -73,8 +73,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                     auto texture = materialSystem.createTextureHandle(GetRenderer().getOrCreateTextureFromResource(from));
                     toSet = texture;
                     loadedATexture = true;
-                } catch (std::runtime_error& e) {
-                    Carrot::Log::warn("Failed to open texture '%s'", path.C_Str());
+                } catch (std::exception& e) {
+                    Carrot::Log::error("[%s] Failed to open texture '%s', reason: %s", file.getName().c_str(), path.C_Str(), e.what());
                 }
             } else {
                 toSet = defaultHandle;

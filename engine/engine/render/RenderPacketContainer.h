@@ -41,7 +41,7 @@ namespace Carrot::Render {
                     std::size_t previousSize = staticStorageSize;
                     deleteStorage();
                     staticStorage = static_cast<StoredType*>(malloc((previousSize + dynamicStorage.size()) * sizeof(StoredType)));
-                    verifyTerminate(staticStorage != nullptr, "allocation error!");
+                    verify(staticStorage != nullptr, "allocation error!");
                     staticStorageSize = previousSize + dynamicStorage.size();
                 }
 

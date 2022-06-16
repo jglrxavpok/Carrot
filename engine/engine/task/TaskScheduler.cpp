@@ -8,6 +8,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
+#include "core/io/Logging.hpp"
 
 namespace Carrot {
     Async::TaskLane TaskScheduler::Parallel;
@@ -66,7 +67,8 @@ namespace Carrot {
                         try {
                             toRun.task();
                         } catch (const std::exception& e) {
-                            throw e;
+                            // don't crash thread if a task fails
+                            Carrot::Log::error("Error while executing scheduled task '%s': %s", toRun.name.c_str(), e.what());
                         }
                     }
 

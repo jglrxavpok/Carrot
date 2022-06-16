@@ -4,6 +4,7 @@
 
 #include "AssimpCompatibilityLayer.h"
 #include "engine/utils/Profiling.h"
+#include "core/io/Logging.hpp"
 
 namespace Carrot::IO {
     CarrotIOStream::CarrotIOStream(Carrot::IO::FileHandle&& file) : file(std::move(file)) {
@@ -63,6 +64,8 @@ namespace Carrot::IO {
         auto vfsPath = VFS::Path(sourceResource.getName());
         vfsRoot = vfsPath.getRoot();
     }
+
+    CarrotIOSystem::~CarrotIOSystem() = default;
 
     std::optional<VFS::Path> CarrotIOSystem::getPath(const char* file) const {
         try {

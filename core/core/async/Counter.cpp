@@ -7,7 +7,7 @@
 
 namespace Carrot::Async {
     Counter::~Counter() {
-        verifyTerminate(internalCounter == 0, "Destroying a counter that has not yet reached 0");
+        verify(internalCounter == 0, "Destroying a counter that has not yet reached 0");
     }
 
     Counter::Counter(Counter&& toMove) {

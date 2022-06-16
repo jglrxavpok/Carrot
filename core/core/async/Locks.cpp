@@ -27,7 +27,7 @@ namespace Carrot::Async {
     }
 
     SpinLock::~SpinLock() {
-        verifyTerminate(!acquired.test(std::memory_order_acquire), "Lock should not be acquired when destroying it");
+        verify(!acquired.test(std::memory_order_acquire), "Lock should not be acquired when destroying it");
     }
 
     // Reentrant spin lock
@@ -85,7 +85,7 @@ namespace Carrot::Async {
     }
 
     ReentrantSpinLock::~ReentrantSpinLock() noexcept {
-        verifyTerminate(reentryCount == 0, "Lock should not be acquired when destroying it");
+        verify(reentryCount == 0, "Lock should not be acquired when destroying it");
     }
 
     // ReadWriteLock
@@ -100,7 +100,7 @@ namespace Carrot::Async {
     }
 
     ReadWriteLock::~ReadWriteLock() {
-        verifyTerminate(readerCount == 0, "Lock should not be acquired when destroying it");
+        verify(readerCount == 0, "Lock should not be acquired when destroying it");
     }
 
     // ReadLock

@@ -87,7 +87,6 @@ static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
-#undef USE_LIVEPP
 #ifdef USE_LIVEPP
 #include <windows.h>
 #include "LPP_API.h"
