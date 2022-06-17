@@ -468,7 +468,7 @@ void Carrot::Engine::run() {
             while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
                 Carrot::IO::ActionSet::updatePrePollAllSets(*this);
 
-                GetTaskScheduler().scheduleMainLoop();
+                GetTaskScheduler().executeMainLoop();
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
 
@@ -812,7 +812,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
         renderer.beginFrame(mainRenderContext);
-        GetTaskScheduler().scheduleRendering();
+        GetTaskScheduler().executeRendering();
 
         auto onFrame = [&](Carrot::Render::Viewport& v) {
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);

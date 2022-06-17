@@ -16,7 +16,8 @@ namespace Carrot {
     Async::TaskLane TaskScheduler::Rendering;
 
     std::size_t TaskScheduler::parallelismAmount() {
-        return std::thread::hardware_concurrency() - 1 /* main thread */;
+        // reduce CPU load by using less threads
+        return std::thread::hardware_concurrency()/2 - 1 /* main thread */;
     }
 
     TaskScheduler::TaskScheduler() {
@@ -41,7 +42,7 @@ namespace Carrot {
         }
     }
 
-    [[nodiscard]] Async::Task<> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane) {
+    [[nodiscard]] Async::Task<bool> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane) {
         TaskDescription toRun;
         while(true) {
             if(taskQueue.popSafe(toRun)) {
@@ -80,25 +81,26 @@ namespace Carrot {
                         taskQueue.push(std::move(toRun));
                     }
                 }
+
+                co_yield true;
             }
-            co_await std::suspend_always{};
+            co_yield false;
         }
-        co_return;
+        co_return false;
     }
 
     void TaskScheduler::threadProc() {
         auto scheduleTask = coscheduleSingleTask(taskQueues[TaskScheduler::Parallel], TaskScheduler::Parallel);
         while(running) {
             scheduleTask();
-            Carrot::Threads::reduceCPULoad();
         }
     }
 
-    void TaskScheduler::scheduleMainLoop() {
+    void TaskScheduler::executeMainLoop() {
         mainLoopScheduling();
     }
 
-    void TaskScheduler::scheduleRendering() {
+    void TaskScheduler::executeRendering() {
         renderingScheduling();
     }
 

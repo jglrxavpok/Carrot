@@ -36,10 +36,10 @@ namespace Carrot {
         void schedule(TaskDescription&& description, Async::TaskLane lane = TaskScheduler::Parallel);
 
         /// Schedule a task for execution. Call from the main loop
-        void scheduleMainLoop();
+        void executeMainLoop();
 
         /// Schedule a task for execution. Call at the beginning of rendering
-        void scheduleRendering();
+        void executeRendering();
 
     public:
         /// How many threads can we use for the task scheduler?
@@ -59,7 +59,7 @@ namespace Carrot {
         TaskScheduler();
         ~TaskScheduler();
 
-        [[nodiscard]] Async::Task<> coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane lane);
+        [[nodiscard]] Async::Task<bool> coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane lane);
         void threadProc();
 
     private:
@@ -67,8 +67,8 @@ namespace Carrot {
         std::atomic<bool> running = true;
         std::vector<std::thread> parallelThreads;
 
-        Async::Task<> mainLoopScheduling;
-        Async::Task<> renderingScheduling;
+        Async::Task<bool> mainLoopScheduling;
+        Async::Task<bool> renderingScheduling;
 
         friend class Engine;
     };
