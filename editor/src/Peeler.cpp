@@ -124,14 +124,25 @@ namespace Peeler {
                 ImGui::EndMenu();
             }
 
+            static bool showDemo = false;
+
             if(ImGui::BeginMenu("Tests")) {
                 if(ImGui::MenuItem("Activate Physics debug")) {
                     GetPhysics().setViewport(&gameViewport);
                 }
+
+                if(ImGui::MenuItem("Show ImGui demo", nullptr, showDemo)) {
+                    showDemo = !showDemo;
+                }
+
                 ImGui::EndMenu();
             }
 
             ImGui::EndMenuBar();
+
+            if(showDemo) {
+                ImGui::ShowDemoWindow();
+            }
         }
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

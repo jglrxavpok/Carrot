@@ -214,6 +214,10 @@ void Carrot::VulkanRenderer::initImGui() {
     imguiInitInfo.PipelineCache = nullptr;
     imguiInitInfo.DescriptorPool = *imguiDescriptorPool;
     imguiInitInfo.Allocator = nullptr;
+
+    // TODO: move to dedicated style file
+    auto font = io.Fonts->AddFontFromFileTTF(Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Roboto-Medium.ttf")).u8string()).c_str(), 14.0f);
+    io.Fonts->Build();
 }
 
 void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
