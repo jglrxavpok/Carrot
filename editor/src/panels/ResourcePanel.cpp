@@ -8,18 +8,42 @@
 #include <core/io/IO.h>
 #include <core/io/Files.h>
 #include <engine/edition/DragDropTypes.h>
+#include <core/utils/ImGuiUtils.hpp>
 
 namespace Peeler {
     ResourcePanel::ResourcePanel(Application& app):
         EditorPanel(app),
         folderIcon(GetVulkanDriver(), "resources/textures/ui/folder.png"),
-        genericFileIcon(GetVulkanDriver(), "resources/textures/ui/file.png"),
-        parentFolderIcon(GetVulkanDriver(), "resources/textures/ui/parent_folder.png"),
-        driveIcon(GetVulkanDriver(), "resources/textures/ui/drive.png")
+        genericFileIcon(GetVulkanDriver(), "resources/textures/ui/file.png")
     {
+        using namespace Carrot::IO;
+        using namespace Carrot::Render;
+        filetypeIcons[FileFormat::LUA] = GetRenderer().getOrCreateTextureFullPath("resources/textures/ui/filetypes/lua.png");
+        filetypeIcons[FileFormat::OBJ] = GetRenderer().getOrCreateTextureFullPath("resources/textures/ui/filetypes/obj.png");
+        filetypeIcons[FileFormat::FBX] = GetRenderer().getOrCreateTextureFullPath("resources/textures/ui/filetypes/fbx.png");
+        filetypeIcons[FileFormat::TXT] = GetRenderer().getOrCreateTextureFullPath("resources/textures/ui/filetypes/txt.png");
+        filetypeIcons[FileFormat::JSON] = GetRenderer().getOrCreateTextureFullPath("resources/textures/ui/filetypes/json.png");
+
         updateCurrentFolder(Carrot::IO::VFS::Path("engine://"));
     }
 
+    const Carrot::Render::Texture& ResourcePanel::getFileTexture(const Carrot::IO::VFS::Path& filePath) const {
+        auto physicalPath = GetVFS().resolve(filePath);
+        if(physicalPath.empty()) {
+            return genericFileIcon;
+        }
+
+        if(std::filesystem::is_directory(physicalPath)) {
+            return folderIcon;
+        }
+
+        auto fileformat = Carrot::IO::getFileFormat(filePath.getPath().c_str());
+        auto it = filetypeIcons.find(fileformat);
+        if(it != filetypeIcons.end()) {
+            return *it->second;
+        }
+        return genericFileIcon;
+    }
 
     void ResourcePanel::draw(const Carrot::Render::Context& renderContext) {
         static float leftPaneWidth = 0.4f * ImGui::GetContentRegionAvailWidth();
@@ -98,11 +122,7 @@ namespace Peeler {
                 const float textOffset = baseOffset + (ImGui::GetStyle().FramePadding.x) + imageSize.x;
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + imageSize.x);
                 ImGui::SameLine();
-                if(isFolder) {
-                    ImGui::Image(folderIcon.getImguiID(), imageSize);
-                } else {
-                    ImGui::Image(genericFileIcon.getImguiID(), imageSize);
-                }
+                ImGui::Image(getFileTexture(vfsPath.value()).getImguiID(), imageSize);
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + textOffset);
                 ImGui::SameLine();
                 ImGui::Text("%s", toDisplay.c_str());
@@ -192,10 +212,10 @@ namespace Peeler {
             if(ImGui::BeginChild("##file view")) {
                 // Thanks Hazel
                 // https://github.com/TheCherno/Hazel/blob/f627b9c90923382f735350cd3060892bbd4b1e75/Hazelnut/src/Panels/ContentBrowserPanel.cpp#L30
-                static float padding = 8.0f;
-                static float thumbnailSize = 64.0f;
-                float cellSize = thumbnailSize + padding;
-                float panelWidth = ImGui::GetContentRegionAvail().x;
+                const float padding = ImGui::GetStyle().CellPadding.y * 2;
+                const float thumbnailSize = 100.0f;
+                const float cellSize = thumbnailSize + padding;
+                const float panelWidth = ImGui::GetContentRegionAvail().x;
                 int columnCount = (int)(panelWidth / cellSize);
                 if (columnCount < 1)
                     columnCount = 1;
@@ -208,24 +228,6 @@ namespace Peeler {
 
                     std::optional<Carrot::IO::VFS::Path> updateToPath;
                     for(const auto& entry : resourcesInCurrentFolder) {
-
-                        ImTextureID texture = nullptr;
-                        switch(entry.type) {
-                            case ResourceType::GenericFile:
-                                texture = genericFileIcon.getImguiID();
-                                break;
-
-                            case ResourceType::Folder:
-                                texture = folderIcon.getImguiID();
-                                break;
-
-                            case ResourceType::Drive:
-                                texture = driveIcon.getImguiID();
-                                break;
-
-                            default:
-                                TODO // missing a resource type
-                        }
                         std::string filename = entry.path.toString();
                         if(!searchFilter.PassFilter(filename.c_str())) {
                             continue;
@@ -234,25 +236,9 @@ namespace Peeler {
 
                         ImGui::PushID(index);
                         {
-                            ImGui::ImageButton(texture, ImVec2(thumbnailSize, thumbnailSize));
-                            if(ImGui::IsItemHovered()) {
-                                ImGui::SetTooltip("%s", filename.c_str());
+                            if(drawFileTile(entry.path, thumbnailSize)) {
+                                updateToPath = entry.path;
                             }
-
-                            if(ImGui::BeginDragDropSource()) {
-                                ImGui::TextUnformatted(filename.c_str());
-                                ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filename.c_str(), filename.length()*sizeof(char8_t));
-                                ImGui::EndDragDropSource();
-                            }
-
-                            if(ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                                if(std::filesystem::is_directory(GetVFS().resolve(entry.path))) {
-                                    updateToPath = entry.path;
-                                }
-                            }
-
-                            std::string smallFilename = std::string(entry.path.getPath().getFilename());
-                            ImGui::TextUnformatted(smallFilename.c_str());
                         }
                         ImGui::PopID();
 
@@ -274,6 +260,78 @@ namespace Peeler {
         }
         ImGui::End();
 
+    }
+
+    bool ResourcePanel::drawFileTile(const Carrot::IO::VFS::Path& vfsPath, float tileSize) {
+        static const char* windowID = "##file tile";
+        const std::string filepath = vfsPath.toString();
+        bool result = false;
+
+        const ImVec2 padding = ImVec2(2.0f, 2.0f);
+        const ImRect bb(ImGui::GetCurrentWindow()->DC.CursorPos, ImGui::GetCurrentWindow()->DC.CursorPos + ImVec2(tileSize, tileSize) + padding + padding);
+        bool hovered = ImGui::IsMouseHoveringRect(bb.Min, bb.Max);
+        bool held = hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+
+        std::uint8_t styleVars = 0;
+        std::uint8_t styleColors = 0;
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f); styleVars++;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, padding); styleVars++;
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f); styleVars++;
+
+        const float alphaMultiplier = 0.5f;
+        if(held) {
+            ImColor baseColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
+            baseColor.Value.w *= alphaMultiplier;
+            ImGui::PushStyleColor(ImGuiCol_Border, (ImU32)baseColor); styleColors++;
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImU32)ImColor(baseColor.Value.x, baseColor.Value.y, baseColor.Value.z, baseColor.Value.w*0.5f)); styleColors++;
+        } else if(hovered) {
+            ImColor baseColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
+            baseColor.Value.w *= alphaMultiplier;
+            ImGui::PushStyleColor(ImGuiCol_Border, (ImU32)baseColor); styleColors++;
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImU32)ImColor(baseColor.Value.x, baseColor.Value.y, baseColor.Value.z, baseColor.Value.w*0.25f)); styleColors++;
+        } else {
+            ImColor baseColor = ImGui::GetStyle().Colors[ImGuiCol_Button];
+            baseColor.Value.w *= alphaMultiplier;
+            ImGui::PushStyleColor(ImGuiCol_Border, (ImU32)baseColor); styleColors++;
+        }
+
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        if(ImGui::BeginChild(windowID, ImVec2(tileSize, tileSize), true, windowFlags)) {
+            const int lineCount = 2; // how many lines for the filename?
+
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::TextUnformatted(filepath.c_str());
+                ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, filepath.c_str(),
+                                          filepath.length() * sizeof(char8_t));
+                ImGui::EndDragDropSource();
+            }
+
+            float thumbnailSize = tileSize - (ImGui::GetFontSize() * lineCount + ImGui::GetStyle().ItemSpacing.y * (lineCount-1) + ImGui::GetStyle().WindowPadding.y * 2);
+            ImGui::SameLine((tileSize - thumbnailSize) / 2);
+            ImGui::Image(getFileTexture(vfsPath).getImguiID(), ImVec2(thumbnailSize, thumbnailSize));
+
+            // TODO: center text
+            auto filename = std::string(vfsPath.getPath().getFilename());
+            ImGui::TextWrapped("%s", filename.c_str());
+        }
+        ImGui::EndChild();
+
+        ImGui::PopStyleColor(styleColors);
+        ImGui::PopStyleVar(styleVars);
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", filepath.c_str());
+
+            // TODO: preview when possible
+
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                if (std::filesystem::is_directory(GetVFS().resolve(vfsPath))) {
+                    result = true;
+                }
+            }
+        }
+
+        return result;
     }
 
     void ResourcePanel::updateCurrentFolder(const Carrot::IO::VFS::Path& vfsPath) {

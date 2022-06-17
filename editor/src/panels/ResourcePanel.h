@@ -15,6 +15,9 @@ namespace Peeler {
         virtual void draw(const Carrot::Render::Context &renderContext) override final;
 
     private:
+        /// Returns true iif the path corresponds to a folder and the user wants to open it (double click)
+        bool drawFileTile(const Carrot::IO::VFS::Path& vfsPath, float tileSize);
+        const Carrot::Render::Texture& getFileTexture(const Carrot::IO::VFS::Path& filePath) const;
         void updateCurrentFolder(const Carrot::IO::VFS::Path& vfsPath);
 
         enum class ResourceType {
@@ -31,10 +34,9 @@ namespace Peeler {
         Carrot::IO::VFS::Path currentFolder = "engine://";
         std::vector<ResourceEntry> resourcesInCurrentFolder;
 
+        std::unordered_map<Carrot::IO::FileFormat, Carrot::Render::Texture::Ref> filetypeIcons;
         Carrot::Render::Texture genericFileIcon;
         Carrot::Render::Texture folderIcon;
-        Carrot::Render::Texture parentFolderIcon;
-        Carrot::Render::Texture driveIcon;
 
         ImGuiID mainNode;
 

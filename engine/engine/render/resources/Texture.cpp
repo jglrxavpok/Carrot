@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 
 namespace Carrot::Render {
+    Texture::Texture(): Texture(GetVulkanDriver()) {}
     Texture::Texture(Carrot::VulkanDriver& driver): resource(), driver(driver) {}
 
     Texture::Texture(Carrot::VulkanDriver& driver,

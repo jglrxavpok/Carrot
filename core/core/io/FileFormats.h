@@ -35,7 +35,10 @@ namespace Carrot::IO {
 
         LUA,
         ScriptFirst = LUA,
-        ScriptLast = LUA
+        ScriptLast = LUA,
+
+        JSON,
+        TXT,
     };
 
     constexpr bool isImageFormat(FileFormat format) {
@@ -80,6 +83,9 @@ namespace Carrot::IO {
         CHECK(OBJ);
 
         CHECK(LUA);
+
+        CHECK(JSON);
+        CHECK(TXT);
         return FileFormat::UNKNOWN;
     }
 

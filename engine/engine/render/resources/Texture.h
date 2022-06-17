@@ -30,6 +30,7 @@ namespace Carrot::Render {
         Texture& operator=(Texture&& toMove) noexcept;
 
         /// Create empty texture object
+        explicit Texture();
         explicit Texture(Carrot::VulkanDriver& driver);
 
         /// Create empty texture object with allocated vulkan image

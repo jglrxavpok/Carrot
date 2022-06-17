@@ -101,7 +101,12 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
         ZoneScopedN("Loading texture");
         ZoneText(textureName.c_str(), textureName.size());
         return textures.getOrCompute(textureName, [&]() {
-            return std::make_shared<Carrot::Render::Texture>(driver, from);
+            try {
+                return std::make_shared<Carrot::Render::Texture>(driver, from);
+            } catch (const std::exception& e) {
+                Carrot::Log::error("Failed to load texture %s", textureName.c_str());
+                return std::make_shared<Carrot::Render::Texture>(driver, "resources/textures/default.png");
+            }
         });
     } else {
         auto texture = std::make_shared<Carrot::Render::Texture>(driver, from);
