@@ -28,7 +28,11 @@ namespace Peeler {
     }
 
     const Carrot::Render::Texture& ResourcePanel::getFileTexture(const Carrot::IO::VFS::Path& filePath) const {
-        auto physicalPath = GetVFS().resolve(filePath);
+        auto physicalPathOpt = GetVFS().safeResolve(filePath);
+        if(!physicalPathOpt.has_value()) {
+            return genericFileIcon;
+        }
+        auto& physicalPath = physicalPathOpt.value();
         if(physicalPath.empty()) {
             return genericFileIcon;
         }
@@ -77,75 +81,78 @@ namespace Peeler {
         ImGui::DockSpace(mainNode);
 
         if(ImGui::Begin(treeViewID)) {
-            std::filesystem::path currentFolderInDisk = GetVFS().resolve(currentFolder);
-            ImGuiTreeNodeFlags_ flags = ImGuiTreeNodeFlags_SpanAvailWidth;
-            std::function<void(const std::filesystem::path&, const std::string&, bool)> showFileHierarchy = [&](const std::filesystem::path& filepath, const std::string& toDisplay, bool isFolder) -> void {
-                ImGui::PushID(filepath.string().c_str());
+            auto folder = GetVFS().safeResolve(currentFolder);
+            if(folder.has_value()) {
+                std::filesystem::path currentFolderInDisk = folder.value();
+                ImGuiTreeNodeFlags_ flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+                std::function<void(const std::filesystem::path&, const std::string&, bool)> showFileHierarchy = [&](const std::filesystem::path& filepath, const std::string& toDisplay, bool isFolder) -> void {
+                    ImGui::PushID(filepath.string().c_str());
 
-                ImGuiTreeNodeFlags localFlags = flags;
-                if(!isFolder) {
-                    localFlags |= ImGuiTreeNodeFlags_Bullet;
-                } else {
-                    localFlags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-                }
-
-                if(filepath == currentFolderInDisk) {
-                    localFlags |= ImGuiTreeNodeFlags_Selected;
-                }
-
-                const std::string imguiID = filepath.string();
-                const bool wasOpen = ImGui::TreeNodeBehaviorIsOpen(ImGui::GetID(imguiID.c_str()), localFlags);
-                const bool opened = ImGui::TreeNodeEx(imguiID.c_str(), localFlags, "");
-
-                auto vfsPath = GetVFS().represent(filepath);
-
-                if(!vfsPath.has_value()) {
-                    return;
-                }
-
-                if(ImGui::BeginDragDropSource()) {
-                    std::string str = vfsPath->toString();
-                    ImGui::TextUnformatted(str.c_str());
-                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, str.c_str(), str.length()*sizeof(char));
-                    ImGui::EndDragDropSource();
-                }
-
-                const bool shouldOpenFolder = (wasOpen == opened || ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) && ImGui::IsItemClicked();
-                if(shouldOpenFolder && isFolder) {
-                    if(vfsPath) {
-                        updateCurrentFolder(vfsPath.value());
+                    ImGuiTreeNodeFlags localFlags = flags;
+                    if(!isFolder) {
+                        localFlags |= ImGuiTreeNodeFlags_Bullet;
+                    } else {
+                        localFlags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
                     }
-                }
 
-                const ImVec2 imageSize = ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize());
-                const float baseOffset = ImGui::GetFontSize() /* arrow */ + ImGui::GetStyle().FramePadding.x * 2;
-                const float textOffset = baseOffset + (ImGui::GetStyle().FramePadding.x) + imageSize.x;
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + imageSize.x);
-                ImGui::SameLine();
-                ImGui::Image(getFileTexture(vfsPath.value()).getImguiID(), imageSize);
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + textOffset);
-                ImGui::SameLine();
-                ImGui::Text("%s", toDisplay.c_str());
-                if(opened) {
-                    if(isFolder) {
-                        std::error_code ec; // TODO: check
-                        std::filesystem::directory_options options = std::filesystem::directory_options::none;
-                        for (const auto& child: std::filesystem::directory_iterator(filepath, options, ec)) {
-                            std::string childName = child.path().filename().string();
-                            if (child.is_directory()) {
-                                showFileHierarchy(child.path(), childName, true);
-                            } else {
-                                showFileHierarchy(child.path(), childName, false);
-                            }
+                    if(filepath == currentFolderInDisk) {
+                        localFlags |= ImGuiTreeNodeFlags_Selected;
+                    }
+
+                    const std::string imguiID = filepath.string();
+                    const bool wasOpen = ImGui::TreeNodeBehaviorIsOpen(ImGui::GetID(imguiID.c_str()), localFlags);
+                    const bool opened = ImGui::TreeNodeEx(imguiID.c_str(), localFlags, "");
+
+                    auto vfsPath = GetVFS().represent(filepath);
+
+                    if(!vfsPath.has_value()) {
+                        return;
+                    }
+
+                    if(ImGui::BeginDragDropSource()) {
+                        std::string str = vfsPath->toString();
+                        ImGui::TextUnformatted(str.c_str());
+                        ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::FilePath, str.c_str(), str.length()*sizeof(char));
+                        ImGui::EndDragDropSource();
+                    }
+
+                    const bool shouldOpenFolder = (wasOpen == opened || ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) && ImGui::IsItemClicked();
+                    if(shouldOpenFolder && isFolder) {
+                        if(vfsPath) {
+                            updateCurrentFolder(vfsPath.value());
                         }
                     }
-                    ImGui::TreePop();
-                }
-                ImGui::PopID();
-            };
 
-            for(const auto& root : GetVFS().getRoots()) {
-                showFileHierarchy(GetVFS().resolve(Carrot::IO::VFS::Path(root, "")), root, true);
+                    const ImVec2 imageSize = ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize());
+                    const float baseOffset = ImGui::GetFontSize() /* arrow */ + ImGui::GetStyle().FramePadding.x * 2;
+                    const float textOffset = baseOffset + (ImGui::GetStyle().FramePadding.x) + imageSize.x;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + imageSize.x);
+                    ImGui::SameLine();
+                    ImGui::Image(getFileTexture(vfsPath.value()).getImguiID(), imageSize);
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + textOffset);
+                    ImGui::SameLine();
+                    ImGui::Text("%s", toDisplay.c_str());
+                    if(opened) {
+                        if(isFolder) {
+                            std::error_code ec; // TODO: check
+                            std::filesystem::directory_options options = std::filesystem::directory_options::none;
+                            for (const auto& child: std::filesystem::directory_iterator(filepath, options, ec)) {
+                                std::string childName = child.path().filename().string();
+                                if (child.is_directory()) {
+                                    showFileHierarchy(child.path(), childName, true);
+                                } else {
+                                    showFileHierarchy(child.path(), childName, false);
+                                }
+                            }
+                        }
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+                };
+
+                for(const auto& root : GetVFS().getRoots()) {
+                    showFileHierarchy(GetVFS().resolve(Carrot::IO::VFS::Path(root, "")), root, true);
+                }
             }
         }
         ImGui::End();

@@ -61,8 +61,11 @@ namespace Carrot::IO {
             NormalizedPath path;
         };
 
-        /// Resolves the input VFS path to a physical absolute path
+        /// Resolves the input VFS path to a physical absolute path. Throws if the root is not valid
         std::filesystem::path resolve(const Path& path) const;
+
+        /// Resolves the input VFS path to a physical absolute path
+        std::optional<std::filesystem::path> safeResolve(const Path& path) const;
 
         /// Attempts to represent the given path inside this VFS. Path must be absolute
         ///  If no root matched the given path, returns an empty optional.

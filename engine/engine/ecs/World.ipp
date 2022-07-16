@@ -122,7 +122,7 @@ namespace Carrot::ECS {
             return;
         Async::Counter counter;
         const std::size_t entityCount = entities.size();
-        const std::size_t stepSize = static_cast<std::size_t>(ceil(entityCount / concurrency()));
+        const std::size_t stepSize = static_cast<std::size_t>(ceil((double)entityCount / concurrency()));
         for(std::size_t index = 0; index < entityCount; index += stepSize) {
             parallelSubmit([&, startIndex = index, endIndex = index + stepSize -1]() {
                 for(std::size_t localIndex = startIndex; localIndex < endIndex && localIndex < entityCount; localIndex++) {

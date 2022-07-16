@@ -17,49 +17,47 @@ namespace Peeler::ECS {
     }
 
     void CollisionShapeRenderer::onFrame(Carrot::Render::Context renderContext) {
-        if(world.exists(selected)) {
-            auto entity = world.wrap(selected);
-            if((entity.getSignature() & getSignature()) == getSignature()) {
-                Carrot::ECS::RigidBodyComponent& rigidBodyComponent = entity.getComponent<Carrot::ECS::RigidBodyComponent>();
-                Carrot::ECS::TransformComponent& transformComponent = entity.getComponent<Carrot::ECS::TransformComponent>();
+        for(const auto& selected : selectedIDs) {
+            if(world.exists(selected)) {
+                auto entity = world.wrap(selected);
+                if((entity.getSignature() & getSignature()) == getSignature()) {
+                    Carrot::ECS::RigidBodyComponent& rigidBodyComponent = entity.getComponent<Carrot::ECS::RigidBodyComponent>();
+                    Carrot::ECS::TransformComponent& transformComponent = entity.getComponent<Carrot::ECS::TransformComponent>();
 
-                for(const auto& colliderPtr : rigidBodyComponent.rigidbody.getColliders()) {
-                    const auto& collider = *colliderPtr;
+                    for(const auto& colliderPtr : rigidBodyComponent.rigidbody.getColliders()) {
+                        const auto& collider = *colliderPtr;
 
-                    glm::mat4 transform = transformComponent.toTransformMatrix();
-                    switch(collider.getType()) {
-                        case Carrot::Physics::ColliderType::Sphere: {
-                            const auto& asSphere = static_cast<Carrot::Physics::SphereCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeSphere(transform, asSphere.getRadius(), ColliderColor, selected);
-                        } break;
+                        glm::mat4 transform = transformComponent.toTransformMatrix();
+                        switch(collider.getType()) {
+                            case Carrot::Physics::ColliderType::Sphere: {
+                                const auto& asSphere = static_cast<Carrot::Physics::SphereCollisionShape&>(collider.getShape());
+                                renderContext.renderWireframeSphere(transform, asSphere.getRadius(), ColliderColor, selected);
+                            } break;
 
-                        case Carrot::Physics::ColliderType::Box: {
-                            const auto& asBox = static_cast<Carrot::Physics::BoxCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeCuboid(transform, asBox.getHalfExtents(), ColliderColor, selected);
-                        } break;
+                            case Carrot::Physics::ColliderType::Box: {
+                                const auto& asBox = static_cast<Carrot::Physics::BoxCollisionShape&>(collider.getShape());
+                                renderContext.renderWireframeCuboid(transform, asBox.getHalfExtents(), ColliderColor, selected);
+                            } break;
 
-                        case Carrot::Physics::ColliderType::Capsule: {
-                            const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
-                            renderContext.renderWireframeCapsule(transform, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
-                        } break;
+                            case Carrot::Physics::ColliderType::Capsule: {
+                                const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
+                                renderContext.renderWireframeCapsule(transform, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
+                            } break;
 
-                        default:
-                            // TODO
-                            break;
+                            default:
+                                // TODO
+                                break;
+                        }
+
+
                     }
-
-
                 }
             }
         }
     }
 
-    void CollisionShapeRenderer::setSelected(const std::optional<Carrot::ECS::EntityID>& id) {
-        if(id.has_value()) {
-            selected = id.value();
-        } else {
-            selected = Carrot::UUID::null();
-        }
+    void CollisionShapeRenderer::setSelected(const std::vector<Carrot::ECS::EntityID>& selection) {
+        selectedIDs = selection;
     }
 
     std::unique_ptr<Carrot::ECS::System> CollisionShapeRenderer::duplicate(Carrot::ECS::World& newOwner) const {

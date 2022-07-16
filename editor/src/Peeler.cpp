@@ -180,6 +180,52 @@ namespace Peeler {
             UISceneProperties(renderContext);
         }
         ImGui::End();
+
+        if(wantsToLoadProject && projectToLoad == EmptyProject) {
+            static const char* newProjectModalID = "New project";
+            ImGui::OpenPopup(newProjectModalID);
+
+            if(ImGui::BeginPopupModal(newProjectModalID, nullptr)) {
+                static std::string projectName;
+                static std::string projectPath;
+                ImGui::InputText("Name", projectName);
+
+                ImGui::InputText("Parent Folder", projectPath);
+
+                bool incomplete = projectName.empty() || projectPath.empty();
+                ImGui::BeginDisabled(incomplete);
+                {
+                    if(ImGui::Button("Create")) {
+                        GetTaskScheduler().schedule(Carrot::TaskDescription {
+                            .name = "Load new project",
+                            .task = Carrot::Async::AsTask<void>([=]() {
+                                deferredLoad();
+                                std::filesystem::path projectFolder = projectPath;
+                                projectFolder /= projectName;
+                                std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
+
+                                settings.currentProject = projectFile;
+                                settings.addToRecentProjects(projectFile);
+                                hasUnsavedChanges = true;
+
+                                wantsToLoadProject = false;
+                                GetVFS().addRoot("game", projectFolder);
+                                projectToLoad = std::filesystem::path{};
+                            })
+                        }, Carrot::TaskScheduler::MainLoop);
+                    }
+                }
+                ImGui::EndDisabled();
+
+                ImGui::SameLine();
+                if(ImGui::Button("Cancel")) {
+                    wantsToLoadProject = false;
+                    projectToLoad.clear();
+                }
+
+                ImGui::EndPopup();
+            }
+        }
     }
 
     void Application::UISceneProperties(const Carrot::Render::Context& renderContext) {
@@ -290,8 +336,8 @@ namespace Peeler {
 
     void Application::UIInspector(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
-        if(selectedID.has_value()) {
-            auto& entityID = selectedID.value();
+        if(selectedIDs.size() == 1) {
+            auto& entityID = selectedIDs[0];
             if(!currentScene.world.exists(entityID)) {
                 ImGui::Text("Entity no longer exists!");
                 return;
@@ -348,6 +394,8 @@ namespace Peeler {
                 }
                 ImGui::EndPopup();
             }
+        } else if(selectedIDs.size() > 1) {
+            ImGui::Text("Inspector for multiple entities is not supported yet.");
         }
     }
 
@@ -370,7 +418,7 @@ namespace Peeler {
             if(!entity)
                 return;
             ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if(selectedID.has_value() && selectedID.value() == entity.getID()) {
+            if(std::find(selectedIDs.begin(), selectedIDs.end(), entity.getID()) != selectedIDs.end()) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
             auto children = currentScene.world.getChildren(entity, Carrot::ShouldRecurse::NoRecursion);
@@ -397,8 +445,8 @@ namespace Peeler {
                 if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str())) {
                     addChildMenu();
                     if(ImGui::IsItemClicked()) {
-                        deselectAllEntities(); // TODO: multi-select
-                        selectEntity(entity.getID());
+                        bool additive = ImGui::GetIO().KeyCtrl;
+                        selectEntity(entity.getID(), additive);
                     }
 
                     for(auto& c : children) {
@@ -413,8 +461,8 @@ namespace Peeler {
 
                 addChildMenu();
                 if(ImGui::IsItemClicked()) {
-                    deselectAllEntities(); // TODO: multi-select
-                    selectEntity(entity.getID());
+                    bool additive = ImGui::GetIO().KeyCtrl;
+                    selectEntity(entity.getID(), additive);
                 }
             }
         };
@@ -452,8 +500,8 @@ namespace Peeler {
         float* cameraProjectionImGuizmo = glm::value_ptr(cameraProjection);
 
         bool usingGizmo = false;
-        if(selectedID.has_value()) {
-            auto transformRef = currentScene.world.getComponent<Carrot::ECS::TransformComponent>(selectedID.value());
+        if(selectedIDs.size() == 1) {
+            auto transformRef = currentScene.world.getComponent<Carrot::ECS::TransformComponent>(selectedIDs[0]);
             if(transformRef) {
                 glm::mat4 transformMatrix = transformRef->toTransformMatrix();
 
@@ -561,7 +609,6 @@ namespace Peeler {
         }
 
         if(!usingGizmo && ImGui::IsItemClicked()) {
-            deselectAllEntities(); // TODO: multi-select
             verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
             const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
             const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
@@ -573,7 +620,8 @@ namespace Peeler {
             glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
             Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
             if(currentScene.world.exists(uuid)) {
-                selectEntity(uuid);
+                bool additive = ImGui::GetIO().KeyCtrl;
+                selectEntity(uuid, additive);
             }
         }
 
@@ -863,6 +911,11 @@ namespace Peeler {
     }
 
     void Application::tick(double frameTime) {
+        if(wantsToLoadProject && projectToLoad != EmptyProject) {
+            deferredLoad();
+            wantsToLoadProject = false;
+            projectToLoad = std::filesystem::path{};
+        }
         if(isPlaying && requestedSingleStep) {
             if(!hasDoneSingleStep) {
                 resumeSimulation();
@@ -893,8 +946,14 @@ namespace Peeler {
     }
 
     void Application::performLoad(std::filesystem::path fileToOpen) {
+        projectToLoad = fileToOpen;
+        wantsToLoadProject = true;
+    }
+
+    void Application::deferredLoad() {
+        wantsToLoadProject = false;
         GetVFS().removeRoot("game");
-        if(fileToOpen == EmptyProject) {
+        if(projectToLoad == EmptyProject) {
             currentScene.clear();
             scenePath = "game://scenes/main.json";
             addDefaultSystems(currentScene);
@@ -905,9 +964,9 @@ namespace Peeler {
             currentScene.world.freezeLogic();
             return;
         }
-        GetVFS().addRoot("game", std::filesystem::absolute(fileToOpen).parent_path());
+        GetVFS().addRoot("game", std::filesystem::absolute(projectToLoad).parent_path());
         rapidjson::Document description;
-        description.Parse(Carrot::IO::readFileAsText(fileToOpen.string()).c_str());
+        description.Parse(Carrot::IO::readFileAsText(projectToLoad.string()).c_str());
 
         rapidjson::Document scene;
         {
@@ -940,19 +999,16 @@ namespace Peeler {
             }
         }
 
-        settings.currentProject = fileToOpen;
-        settings.addToRecentProjects(fileToOpen);
+        settings.currentProject = projectToLoad;
+        settings.addToRecentProjects(projectToLoad);
         hasUnsavedChanges = false;
 
-        if(description.HasMember("selected")) {
-            auto wantedSelection = Carrot::UUID::fromString(description["selected"].GetString());
+        selectedIDs.clear();
+        if(description.HasMember("selectedIDs")) {
+            auto wantedSelection = Carrot::UUID::fromString(description["selectedIDs"].GetString());
             if(currentScene.world.exists(wantedSelection)) {
-                selectEntity(wantedSelection);
-            } else {
-                deselectAllEntities();
+                selectedIDs.push_back(wantedSelection);
             }
-        } else {
-            deselectAllEntities();
         }
         updateWindowTitle();
     }
@@ -992,9 +1048,12 @@ namespace Peeler {
             document.AddMember("scene", scenePath.toString(), document.GetAllocator());
         }
 
-        if(selectedID) {
-            rapidjson::Value uuid(selectedID.value().toString(), document.GetAllocator());
-            document.AddMember("selectedID", uuid, document.GetAllocator());
+        if(!selectedIDs.empty()) {
+            rapidjson::Value uuidArray{rapidjson::kArrayType};
+            for(const auto& id : selectedIDs) {
+                uuidArray.PushBack(rapidjson::Value(id.toString().c_str(), document.GetAllocator()), document.GetAllocator());
+            }
+            document.AddMember("selectedIDs", uuidArray, document.GetAllocator());
         }
 
         {
@@ -1073,7 +1132,7 @@ namespace Peeler {
             entity.setParent(parent);
         }
 
-        selectEntity(entity.getID());
+        selectEntity(entity.getID(), false);
 
         markDirty();
         return entity;
@@ -1095,31 +1154,37 @@ namespace Peeler {
             clone.setParent(entity.getParent());
         }
 
-        selectEntity(entity.getID());
+        selectEntity(entity.getID(), false);
         markDirty();
     }
 
-    void Application::selectEntity(const Carrot::ECS::EntityID& entity) {
-        selectedID = entity;
+    void Application::selectEntity(const Carrot::ECS::EntityID& entity, bool additive) {
+        if(additive) {
+            selectedIDs.push_back(entity);
+        } else {
+            selectedIDs.clear();
+            selectedIDs.push_back(entity);
+        }
 
         auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
         if(shapeRenderer) {
-            shapeRenderer->setSelected(selectedID);
+            shapeRenderer->setSelected(selectedIDs);
         }
     }
 
     void Application::deselectAllEntities() {
-        selectedID.reset();
+        selectedIDs.clear();
 
         auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
         if(shapeRenderer) {
-            shapeRenderer->setSelected(selectedID);
+            shapeRenderer->setSelected(selectedIDs);
         }
     }
 
     void Application::removeEntity(const Carrot::ECS::Entity& entity) {
-        if(selectedID.has_value() && entity.getID() == selectedID.value()) {
-            deselectAllEntities();
+        auto it = std::find(selectedIDs.begin(), selectedIDs.end(), entity.getID());
+        if(it != selectedIDs.end()) {
+            selectedIDs.erase(it);
         }
         currentScene.world.removeEntity(entity);
         markDirty();

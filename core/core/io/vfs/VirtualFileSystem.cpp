@@ -40,23 +40,9 @@ namespace Carrot::IO {
     }
 
     std::filesystem::path VirtualFileSystem::resolve(const VirtualFileSystem::Path& path) const {
-        if(path.isGeneric()) {
-            auto normalizedVersion = path.getPath().normalize();
-            // TODO: might need caching of some kind to avoid querying the OS each time
-            for(const auto& [rootID, rootPath] : roots.snapshot()) {
-                std::filesystem::path p = *rootPath;
-                p.append(normalizedVersion.asString());
-                if(std::filesystem::exists(p)) {
-                    return p;
-                }
-            }
-            return {};
-        } else {
-            const std::filesystem::path* rootPath = roots.find(path.getRoot());
-            verify(rootPath != nullptr, Carrot::sprintf("Invalid root: %s", path.getRoot().c_str()))
-            std::filesystem::path result = *rootPath;
-            return result.append(path.getPath().asString());
-        }
+        auto it = safeResolve(path);
+        verify(it.has_value(), Carrot::sprintf("Invalid root: %s", path.getRoot().c_str()));
+        return it.value();
     }
 
     std::optional<VirtualFileSystem::Path> VirtualFileSystem::represent(const std::filesystem::path& path) const {
@@ -73,7 +59,10 @@ namespace Carrot::IO {
     }
 
     bool VirtualFileSystem::exists(const VirtualFileSystem::Path& path) const {
-        return std::filesystem::exists(resolve(path));
+        auto opt = safeResolve(path);
+        if(!opt.has_value())
+            return false;
+        return std::filesystem::exists(opt.value());
     }
 
     std::vector<std::string> VirtualFileSystem::getRoots() const {
@@ -84,6 +73,29 @@ namespace Carrot::IO {
             rootIDs.push_back(rootID);
         }
         return rootIDs;
+    }
+
+    std::optional<std::filesystem::path> VirtualFileSystem::safeResolve(const VirtualFileSystem::Path& path) const {
+        if(path.isGeneric()) {
+            auto normalizedVersion = path.getPath().normalize();
+            // TODO: might need caching of some kind to avoid querying the OS each time
+            for(const auto& [rootID, rootPath] : roots.snapshot()) {
+                std::filesystem::path p = *rootPath;
+                p.append(normalizedVersion.asString());
+                if(std::filesystem::exists(p)) {
+                    return p;
+                }
+            }
+            return std::filesystem::path{};
+        } else {
+            const std::filesystem::path* rootPath = roots.find(path.getRoot());
+            if(rootPath != nullptr) {
+                std::filesystem::path result = *rootPath;
+                return result.append(path.getPath().asString());
+            } else {
+                return std::optional<std::filesystem::path>{};
+            }
+        }
     }
 
     // Path

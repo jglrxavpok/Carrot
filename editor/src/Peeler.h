@@ -49,6 +49,9 @@ namespace Peeler {
         void drawCantSavePopup() override;
 
     private:
+        void deferredLoad();
+
+    private:
         void markDirty();
         void updateWindowTitle();
 
@@ -70,7 +73,7 @@ namespace Peeler {
         void addEditingSystems();
         void removeEditingSystems();
 
-        void selectEntity(const Carrot::ECS::EntityID& entity);
+        void selectEntity(const Carrot::ECS::EntityID& entity, bool additive);
         void deselectAllEntities();
 
     private: // simulation
@@ -89,6 +92,10 @@ namespace Peeler {
 
     private:
         ImGuiID mainDockspace;
+
+        bool wantsToLoadProject = false;
+        std::filesystem::path projectToLoad;
+
         Tools::EditorSettings settings;
         Carrot::Render::Viewport& gameViewport;
         Carrot::Render::FrameResource gameTexture;
@@ -111,7 +118,7 @@ namespace Peeler {
         ResourcePanel resourcePanel;
 
     private: // Scene manipulation
-        std::optional<Carrot::ECS::EntityID> selectedID;
+        std::vector<Carrot::ECS::EntityID> selectedIDs;
         bool movingGameViewCamera = false;
 
         bool hasUnsavedChanges = false;

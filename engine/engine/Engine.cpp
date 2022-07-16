@@ -936,8 +936,6 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
-    // TODO: debug only, remove
-    std::cout << "========== RESIZE ==========" << std::endl;
     vkDriver.fetchNewFramebufferSize();
 
     framebufferResized = false;
