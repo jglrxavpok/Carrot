@@ -161,6 +161,7 @@ set(VERTEX_SHADERS
         gBufferSprite.vertex.glsl
         billboards.vertex.glsl
         gBufferWireframe.vertex.glsl
+        gBufferWithBoneInfo.vertex.glsl
 
         #PARENT_SCOPE
         )

@@ -35,6 +35,7 @@ namespace Carrot::Render {
         void resize(std::uint32_t width, std::uint32_t height);
         std::uint32_t getWidth() const;
         std::uint32_t getHeight() const;
+        glm::vec2 getSizef() const;
 
     public:
         void onSwapchainImageCountChange(size_t newCount) override;

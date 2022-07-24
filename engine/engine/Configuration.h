@@ -12,8 +12,25 @@
 #include <optional>
 
 namespace Carrot {
+    enum class RaytracingSupport {
+        /**
+         * Abort launch if raytracing is not supported.
+         */
+        Required,
+
+        /**
+         * Uses raytracing if available, but does not abort launch if it is not supported.
+         */
+        Supported,
+
+        /**
+         * Don't use raytracing at all
+         */
+        NotSupported
+    };
+
     struct Configuration {
-        bool requiresRaytracing = true;
+        RaytracingSupport raytracingSupport = RaytracingSupport::Supported;
         bool runInVR = false;
 
         const char* engineName = "Carrot";

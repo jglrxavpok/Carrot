@@ -44,7 +44,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     Carrot::Log::info("Loading model %s", file.getName().c_str());
 
     staticMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
-    skinnedMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");//engine.getRenderer().getOrCreatePipeline("gBufferWithBoneInfo");
+    skinnedMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
 
     std::unordered_map<std::uint32_t, std::shared_ptr<Render::MaterialHandle>> materialMap;
     auto& materialSystem = engine.getRenderer().getMaterialSystem();

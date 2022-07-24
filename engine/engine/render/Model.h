@@ -22,6 +22,7 @@ namespace Carrot {
     class Engine;
     class Material;
     class Buffer;
+    class AnimatedInstances;
 
     class BLASHandle;
 
@@ -89,5 +90,6 @@ namespace Carrot {
         void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
                             const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature);
 
+        friend class Carrot::AnimatedInstances;
     };
 }

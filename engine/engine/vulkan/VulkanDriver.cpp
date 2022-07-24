@@ -49,8 +49,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 //constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -405,22 +405,24 @@ void Carrot::VulkanDriver::fillRenderingCapabilities() {
     }
 
     // check raytracing support
-    Carrot::Log::info("Checking raytracing support...");
+    if(engine->getConfiguration().raytracingSupport != RaytracingSupport::NotSupported) {
+        Carrot::Log::info("Checking raytracing support...");
 
-    std::vector<const char*> raytracingExtensions = RayTracer::getRequiredDeviceExtensions();
-    std::uint32_t rtCount = 0;
-    for(const auto& ext : raytracingExtensions) {
-        if(availableSet.contains(ext)) {
-            rtCount++;
+        std::vector<const char*> raytracingExtensions = RayTracer::getRequiredDeviceExtensions();
+        std::uint32_t rtCount = 0;
+        for(const auto& ext : raytracingExtensions) {
+            if(availableSet.contains(ext)) {
+                rtCount++;
+            }
         }
-    }
 
-    engine->getModifiableCapabilities().supportsRaytracing = rtCount == raytracingExtensions.size();
+        engine->getModifiableCapabilities().supportsRaytracing = rtCount == raytracingExtensions.size();
 
-    if(engine->getCapabilities().supportsRaytracing) {
-        Carrot::Log::info("Hardware supports raytracing");
-    } else {
-        Carrot::Log::info("Hardware does not support raytracing");
+        if(engine->getCapabilities().supportsRaytracing) {
+            Carrot::Log::info("Hardware supports raytracing");
+        } else {
+            Carrot::Log::info("Hardware does not support raytracing");
+        }
     }
 }
 
@@ -559,7 +561,7 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
 
     std::set<std::string> required(VULKAN_DEVICE_EXTENSIONS.begin(), VULKAN_DEVICE_EXTENSIONS.end());
 
-    if(getConfiguration().requiresRaytracing) {
+    if(getConfiguration().raytracingSupport == RaytracingSupport::Required) {
         for(const auto& ext : RayTracer::getRequiredDeviceExtensions()) {
             required.insert(ext);
         }

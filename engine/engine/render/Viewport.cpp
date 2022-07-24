@@ -124,4 +124,8 @@ namespace Carrot::Render {
             return height;
         }
     }
+
+    glm::vec2 Viewport::getSizef() const {
+        return glm::vec2 { getWidth(), getHeight() };
+    }
 }

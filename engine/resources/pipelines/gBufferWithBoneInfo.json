@@ -1,13 +1,5 @@
 {
-  "type": "gbuffer",
-  "subpassIndex": 0,
+  "_import": "gBuffer.json",
   "vertexFormat": "SkinnedVertex",
-  "constants": {
-    "MAX_TEXTURES": 16,
-    "MAX_MATERIALS": 16
-  },
-  "depthWrite": true,
-  "depthTest": true,
-  "vertexShader": "resources/shaders/gBufferWithBoneInfo.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gBuffer.fragment.glsl.spv"
+  "vertexShader": "resources/shaders/gBufferWithBoneInfo.vertex.glsl.spv"
 }

@@ -8,6 +8,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
+#include "engine/render/DrawData.h"
 
 Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, size_t maxInstanceCount):
     engine(engine), model(std::move(animatedModel)), maxInstanceCount(maxInstanceCount) {
@@ -322,9 +323,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             .pWaitDstStageMask = nullptr,
             .commandBufferCount = 1,
             .pCommandBuffers = &skinningCommandBuffers[frameIndex],
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
+            .signalSemaphoreCount = 0,
+            //.pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
     });
+    GetVulkanDriver().getComputeQueue().waitIdle();
     return *skinningSemaphores[frameIndex];
 }
 
@@ -332,4 +334,44 @@ void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::R
     TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render units");
     commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
     model->indirectDraw(pass, renderContext, commands, *instanceBuffer, indirectBuffers, indirectDrawCount);
+}
+
+void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass) {
+    render(renderContext, renderPass, maxInstanceCount);
+}
+
+void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass, std::size_t instanceCount) {
+    verify(instanceCount <= maxInstanceCount, "instanceCount > maxInstanceCount !");
+    onFrame(renderContext.swapchainIndex); // TODO: don't yolo it, wait for semaphore
+
+    Carrot::DrawData data;
+
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+    packet.pipeline = model->skinnedMeshesPipeline;
+    packet.transparentGBuffer.zOrder = 0.0f;
+
+    Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
+    pushConstant.id = "drawDataPush";
+    pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
+
+    packet.instanceCount = 1;
+
+    for (const auto&[mat, meshList]: model->skinnedMeshes) {
+        data.materialIndex = mat;
+        pushConstant.setData(data); // template operator=
+
+        for (const auto& mesh: meshList) {
+            for(size_t index = 0; index < maxInstanceCount; index++) {
+                packet.useInstance(getInstance(index));
+
+                std::int32_t vertexOffset = (static_cast<std::int32_t>(index * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
+
+                packet.vertexBuffer = Carrot::BufferView(nullptr, *fullySkinnedUnitVertices, sizeof(Carrot::Vertex) * vertexOffset, sizeof(Carrot::Vertex) * mesh->getVertexCount());
+                packet.indexBuffer = mesh->getIndexBuffer();
+                packet.indexCount = mesh->getIndexCount();
+
+                renderContext.renderer.render(packet);
+            }
+        }
+    }
 }
