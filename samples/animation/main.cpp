@@ -10,12 +10,14 @@
 #include <engine/edition/FreeCameraController.h>
 #include "engine/render/animation/AnimatedInstances.h"
 
+constexpr const std::size_t InstanceCount = 10;
+
 class SampleAnimation: public Carrot::CarrotGame {
 public:
     explicit SampleAnimation(Carrot::Engine& engine): Carrot::CarrotGame(engine),
                                                       skinnedModel(engine.getRenderer().getOrCreateModel("resources/models/unit.fbx")),
                                                       staticModel(engine.getRenderer().getOrCreateModel("resources/models/viking_room.obj")),
-                                                      skinnedModelRenderer(engine, skinnedModel, 1)
+                                                      skinnedModelRenderer(engine, skinnedModel, InstanceCount)
     {
         engine.setSkybox(Carrot::Skybox::Type::Forest);
         {
@@ -43,9 +45,11 @@ public:
     void onFrame(Carrot::Render::Context renderContext) override {
         cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.viewport.getCamera());
 
-        skinnedModelRenderer.getInstance(0).animationTime = time;
-        skinnedModelRenderer.getInstance(0).animationIndex = 1;
-        skinnedModelRenderer.getInstance(0).transform = glm::scale(glm::identity<glm::mat4>(), glm::vec3(10, 10, 10));
+        for (int i = 0; i < InstanceCount; ++i) {
+            skinnedModelRenderer.getInstance(i).animationTime = time;
+            skinnedModelRenderer.getInstance(i).animationIndex = i % 2;
+            skinnedModelRenderer.getInstance(i).transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 0, 0));
+        }
         skinnedModelRenderer.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer);
 
         Carrot::InstanceData staticInstanceData;
@@ -101,6 +105,7 @@ int main() {
     std::ios::sync_with_stdio(false);
 
     Carrot::Configuration config;
+    config.applicationName = "Animation Sample";
     config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
     Carrot::Engine engine{config};
     engine.run();

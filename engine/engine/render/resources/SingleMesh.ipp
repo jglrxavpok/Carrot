@@ -1,10 +1,10 @@
 #pragma once
-#include "Mesh.h"
+#include "SingleMesh.h"
 
 template<typename VertexType>
-Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& vertices, const std::vector<std::uint32_t>& indices): meshID(currentMeshID++), driver(driver) {
+Carrot::SingleMesh::SingleMesh(const std::vector<VertexType>& vertices, const std::vector<std::uint32_t>& indices): Carrot::Mesh::Mesh() {
     sizeofVertex = sizeof(VertexType);
-    const auto& queueFamilies = driver.getQueueFamilies();
+    const auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
     // create and allocate underlying buffer
     std::set<std::uint32_t> families = {
             queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
@@ -19,7 +19,7 @@ Carrot::Mesh::Mesh(Carrot::VulkanDriver& driver, const std::vector<VertexType>& 
     }
     indexCount = indices.size();
     vertexCount = vertices.size();
-    vertexAndIndexBuffer = std::make_unique<Carrot::Buffer>(driver,
+    vertexAndIndexBuffer = std::make_unique<Carrot::Buffer>(GetVulkanDriver(),
                                                             vertexStartOffset + sizeof(VertexType) * vertices.size(),
                                                             vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc /*TODO: tmp: used by skinning to copy to final buffer, instead of descriptor bind*/ | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                             vk::MemoryPropertyFlagBits::eDeviceLocal,

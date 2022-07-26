@@ -22,7 +22,7 @@
 #include "engine/constants.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Image.h"
-#include "engine/render/resources/Mesh.h"
+#include "engine/render/resources/SingleMesh.h"
 #include "engine/render/Model.h"
 #include "engine/render/resources/Vertex.h"
 #include "engine/render/resources/Pipeline.h"
@@ -112,7 +112,7 @@ vkDriver(window, config, this
 #endif
 ),
 resourceAllocator(std::move(std::make_unique<ResourceAllocator>(vkDriver))),
-renderer(vkDriver, config), screenQuad(std::make_unique<Mesh>(vkDriver,
+renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
                                                               std::vector<ScreenSpaceVertex> {
                                                                    { { -1, -1} },
                                                                    { { 1, -1} },
@@ -1267,7 +1267,7 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
 
         {
             ZoneScopedN("Create skybox mesh");
-            skyboxMesh = make_unique<Mesh>(vkDriver, skyboxVertices, skyboxIndices);
+            skyboxMesh = make_unique<SingleMesh>(skyboxVertices, skyboxIndices);
         }
     }
 }

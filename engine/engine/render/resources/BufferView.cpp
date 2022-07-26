@@ -50,6 +50,10 @@ void Carrot::BufferView::download(const std::span<std::uint8_t>& data, std::uint
     }
 }
 
+vk::DeviceAddress Carrot::BufferView::getDeviceAddress() const {
+    return buffer->getDeviceAddress() + start;
+}
+
 Carrot::BufferView::~BufferView() {
     if(allocator) {
         allocator->freeBufferView(*this);

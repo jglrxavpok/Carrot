@@ -5,8 +5,8 @@
 #include "Sprite.h"
 #include <utility>
 #include <engine/render/resources/Vertex.h>
-#include "engine/render/resources/Mesh.h"
 #include "engine/render/resources/ResourceAllocator.h"
+#include "engine/render/resources/SingleMesh.h"
 #include <glm/gtx/quaternion.hpp>
 
 namespace Carrot::Render {
@@ -56,7 +56,7 @@ namespace Carrot::Render {
 
     Carrot::Mesh& Sprite::getSpriteMesh(Carrot::Engine& engine) {
         if(!spriteMesh) {
-            spriteMesh = make_unique<Carrot::Mesh>(engine.getVulkanDriver(),
+            spriteMesh = make_unique<Carrot::SingleMesh>(
                                                    std::vector<Carrot::SimpleVertexWithInstanceData>{
                                                            { { -0.5f, -0.5f, 0.0f } },
                                                            { { 0.5f, -0.5f, 0.0f } },

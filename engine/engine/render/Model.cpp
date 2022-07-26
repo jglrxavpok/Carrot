@@ -21,6 +21,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 
 #include "engine/io/AssimpCompatibilityLayer.h"
+#include "engine/render/resources/SingleMesh.h"
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
@@ -466,9 +467,9 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
     }
 
     if(usesSkinning) {
-        return std::make_shared<Mesh>(engine.getVulkanDriver(), skinnedVertices, indices);
+        return std::make_shared<SingleMesh>(skinnedVertices, indices);
     } else {
-        return std::make_shared<Mesh>(engine.getVulkanDriver(), vertices, indices);
+        return std::make_shared<SingleMesh>(vertices, indices);
     }
 }
 

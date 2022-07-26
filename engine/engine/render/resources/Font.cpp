@@ -4,6 +4,7 @@
 
 #include "Font.h"
 #include "engine/render/DrawData.h"
+#include "SingleMesh.h"
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
 #include <engine/render/InstanceData.h>
@@ -81,7 +82,7 @@ namespace Carrot::Render {
         auto material = GetRenderer().getMaterialSystem().createMaterialHandle();
         auto textureHandle = GetRenderer().getMaterialSystem().createTextureHandle(bitmap);
         material->diffuseTexture = textureHandle;
-        auto mesh = std::make_unique<Carrot::Mesh>(renderer.getVulkanDriver(),
+        auto mesh = std::make_unique<Carrot::SingleMesh>(
                                                    std::vector<Carrot::SimpleVertexWithInstanceData>{
                                                            {{0, 0, 0}},
                                                            {{0, 1, 0}},

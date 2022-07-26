@@ -7,15 +7,19 @@ set(ENGINE-SOURCES
         ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 
         ${EngineRoot}Engine.cpp
-        ${EngineRoot}render/resources/Mesh.cpp
         ${EngineRoot}render/Model.cpp
-        ${EngineRoot}render/resources/Vertex.cpp
+
         ${EngineRoot}render/resources/Buffer.cpp
         ${EngineRoot}render/resources/BufferView.cpp
         ${EngineRoot}render/resources/Image.cpp
+        ${EngineRoot}render/resources/Mesh.cpp
+        ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
-        ${EngineRoot}render/resources/Texture.cpp
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
+        ${EngineRoot}render/resources/Texture.cpp
+        ${EngineRoot}render/resources/Vertex.cpp
+        ${EngineRoot}render/resources/VertexFormat.cpp
+
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
         ${EngineRoot}render/shaders/ShaderSource.cpp
@@ -23,7 +27,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/shaders/Specialization.cpp
         ${EngineRoot}render/InstanceData.cpp
         ${EngineRoot}render/Camera.cpp
-        ${EngineRoot}render/resources/VertexFormat.cpp
         ${EngineRoot}render/animation/Animation.cpp
         ${EngineRoot}render/RenderPacket.cpp
 

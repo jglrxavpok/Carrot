@@ -27,8 +27,8 @@ namespace Carrot::Render {
     }
 
     void Packet::useMesh(Carrot::Mesh& mesh) {
-        vertexBuffer = BufferView(nullptr, mesh.getBackingBuffer(), mesh.getVertexStartOffset(), mesh.getVertexSize());
-        indexBuffer = BufferView(nullptr, mesh.getBackingBuffer(), mesh.getIndexStartOffset(), mesh.getIndexSize());
+        vertexBuffer = mesh.getVertexBuffer();
+        indexBuffer = mesh.getIndexBuffer();
         indexCount = mesh.getIndexCount();
     }
 

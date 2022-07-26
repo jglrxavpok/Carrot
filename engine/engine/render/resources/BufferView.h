@@ -12,13 +12,7 @@
 namespace Carrot {
     class ResourceAllocator;
 
-    class BufferView {
-    private:
-        Carrot::ResourceAllocator* allocator = nullptr;
-        Carrot::Buffer* buffer;
-        vk::DeviceSize start;
-        vk::DeviceSize size;
-
+    class BufferView: public DeviceAddressable {
     public:
         explicit BufferView(Carrot::ResourceAllocator* allocator, Carrot::Buffer& buffer, vk::DeviceSize start, vk::DeviceSize size);
         explicit BufferView(): buffer(nullptr), start(0), size(0), allocator(nullptr) {};
@@ -54,7 +48,15 @@ namespace Carrot {
 
         void unmap();
 
+        vk::DeviceAddress getDeviceAddress() const override;
+
         ~BufferView();
+
+    private:
+        Carrot::ResourceAllocator* allocator = nullptr;
+        Carrot::Buffer* buffer;
+        vk::DeviceSize start;
+        vk::DeviceSize size;
     };
 
 }

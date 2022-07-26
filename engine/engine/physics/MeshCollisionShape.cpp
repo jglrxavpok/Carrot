@@ -36,7 +36,7 @@ namespace Carrot::Physics {
         for(auto& gpuMesh : model->getStaticMeshes()) {
             meshes.emplace_back();
             auto& cpuMesh = meshes.back();
-            verify(gpuMesh->getVertexSize() / gpuMesh->getVertexCount() == sizeof(Carrot::Vertex), "assumes VertexFormat::Vertex");
+            verify(gpuMesh->getVertexBufferSize() / gpuMesh->getVertexCount() == sizeof(Carrot::Vertex), "assumes VertexFormat::Vertex");
 
             std::vector<Carrot::Vertex> gpuData;
             gpuData.resize(gpuMesh->getVertexCount());

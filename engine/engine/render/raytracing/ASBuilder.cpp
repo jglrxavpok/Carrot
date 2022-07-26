@@ -22,7 +22,8 @@ namespace Carrot {
             // TODO: support SkinnedVertex format
 
             auto& device = GetRenderer().getLogicalDevice();
-            auto vertexIndexAddress = device.getBufferAddress({ .buffer = meshPtr->getBackingBuffer().getVulkanBuffer() });
+            auto vertexAddress = meshPtr->getVertexBuffer().getDeviceAddress();
+            auto indexAddress = meshPtr->getIndexBuffer().getDeviceAddress();
             auto primitiveCount = meshPtr->getIndexCount() / 3; // all triangles
 
             auto& geometry = geometries.emplace_back();
@@ -30,11 +31,11 @@ namespace Carrot {
             geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
                     // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors) TODO: pass said attributes
                     .vertexFormat = vk::Format::eR32G32B32Sfloat,
-                    .vertexData = vertexIndexAddress + meshPtr->getVertexStartOffset(),
+                    .vertexData = vertexAddress,
                     .vertexStride = sizeof(Carrot::Vertex),
                     .maxVertex = static_cast<uint32_t>(meshPtr->getVertexCount()),
                     .indexType = vk::IndexType::eUint32,
-                    .indexData = vertexIndexAddress + meshPtr->getIndexStartOffset(),
+                    .indexData = indexAddress,
                     .transformData = {},
             };
 

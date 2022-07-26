@@ -19,6 +19,7 @@
 
 namespace Carrot {
     class Mesh;
+    class SingleMesh;
     class Engine;
     class Material;
     class Buffer;

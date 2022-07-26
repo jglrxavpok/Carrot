@@ -50,11 +50,11 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 
         engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
             vk::BufferCopy region {
-                    .srcOffset = mesh->getVertexStartOffset(),
+                    .srcOffset = mesh->getVertexBuffer().getStart(),
                     .dstOffset = vertexOffset*sizeof(SkinnedVertex),
                     .size = mesh->getVertexCount()*sizeof(SkinnedVertex),
             };
-            commands.copyBuffer(mesh->getBackingBuffer().getVulkanBuffer(), flatVertices->getVulkanBuffer(), region);
+            commands.copyBuffer(mesh->getVertexBuffer().getVulkanBuffer(), flatVertices->getVulkanBuffer(), region);
         });
     }
 

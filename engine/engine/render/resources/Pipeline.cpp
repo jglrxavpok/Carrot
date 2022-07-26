@@ -13,7 +13,6 @@
 #include "engine/render/DebugBufferObject.h"
 #include "engine/render/MaterialSystem.h"
 #include "Mesh.h"
-#include "Mesh.ipp"
 #include <core/io/Logging.hpp>
 #include <core/utils/Lookup.hpp>
 

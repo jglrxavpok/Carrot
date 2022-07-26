@@ -11,7 +11,7 @@
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/MaterialSystem.h"
-#include "engine/render/resources/Mesh.h"
+#include "engine/render/resources/SingleMesh.h"
 #include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
 #include "core/io/IO.h"
@@ -32,7 +32,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                                                     singleFrameAllocator(SingleFrameAllocatorSize)
 {
     ZoneScoped;
-    fullscreenQuad = std::make_unique<Mesh>(driver,
+    fullscreenQuad = std::make_unique<SingleMesh>(
                                        std::vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
                                                { { 1, -1} },

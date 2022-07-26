@@ -5,7 +5,7 @@
 #include "LoadingScreen.h"
 #include "render/resources/Buffer.h"
 #include "render/resources/Pipeline.h"
-#include "render/resources/Mesh.h"
+#include "render/resources/SingleMesh.h"
 #include "engine/Engine.h"
 
 Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
@@ -105,7 +105,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     PrepareVulkanTracy(engine.tracyCtx[imageIndex], cmds);
 
-    auto quad = Mesh(driver,
+    auto quad = SingleMesh(
                      std::vector<ScreenSpaceVertex> {
                                { { -1, -1} },
                                { { 1, -1} },

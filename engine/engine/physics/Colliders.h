@@ -14,6 +14,7 @@
 #include <reactphysics3d/reactphysics3d.h>
 
 namespace Carrot {
+    class SingleMesh;
     class Mesh;
     class Model;
 }
