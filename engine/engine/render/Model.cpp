@@ -149,10 +149,10 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
             staticBLAS = builder.addBottomLevel(staticMeshesList);
         }
 
-        auto skinnedMeshesList = getSkinnedMeshes();
+/* TODO: remove        auto skinnedMeshesList = getSkinnedMeshes();
         if(!skinnedMeshesList.empty()) {
             skinnedBLAS = builder.addBottomLevel(skinnedMeshesList);
-        }
+        }*/
     }
 
     if(scene->HasAnimations()) {

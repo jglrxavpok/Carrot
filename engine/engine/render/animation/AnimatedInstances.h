@@ -8,32 +8,10 @@
 #include "engine/render/InstanceData.h"
 
 namespace Carrot {
+    class BLASHandle;
+    class InstanceHandle;
+
     class AnimatedInstances {
-    private:
-        std::size_t maxInstanceCount = 0;
-        Carrot::Engine& engine;
-        std::shared_ptr<Model> model = nullptr;
-        std::unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
-        std::unique_ptr<Buffer> flatVertices = nullptr;
-        std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
-        AnimatedInstanceData* animatedInstances = nullptr;
-        std::unique_ptr<Buffer> instanceBuffer = nullptr;
-
-        std::unordered_map<MeshID, size_t> meshOffsets{};
-        std::size_t vertexCountPerInstance = 0;
-
-        std::vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
-        std::vector<vk::DescriptorSet> computeDescriptorSet0{};
-        std::vector<vk::DescriptorSet> computeDescriptorSet1{};
-        vk::UniqueDescriptorSetLayout computeSetLayout0{};
-        vk::UniqueDescriptorSetLayout computeSetLayout1{};
-        vk::UniquePipelineLayout computePipelineLayout{};
-        vk::UniquePipeline computePipeline{};
-        std::vector<vk::CommandBuffer> skinningCommandBuffers{};
-        std::vector<vk::UniqueSemaphore> skinningSemaphores{};
-
-        void createSkinningComputePipeline();
-
     public:
         explicit AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, std::size_t maxInstanceCount);
 
@@ -66,5 +44,32 @@ namespace Carrot {
 
         void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, std::size_t instanceCount);
 #pragma endregion RenderingUpdate
+
+    private:
+        std::size_t maxInstanceCount = 0;
+        Carrot::Engine& engine;
+        std::shared_ptr<Model> model = nullptr;
+        std::unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
+        std::unique_ptr<Buffer> flatVertices = nullptr;
+        std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
+        AnimatedInstanceData* animatedInstances = nullptr;
+        std::unique_ptr<Buffer> instanceBuffer = nullptr;
+        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes;
+        std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances;
+
+        std::unordered_map<MeshID, size_t> meshOffsets{};
+        std::size_t vertexCountPerInstance = 0;
+
+        std::vector<vk::UniqueDescriptorPool> computeDescriptorPools{};
+        std::vector<vk::DescriptorSet> computeDescriptorSet0{};
+        std::vector<vk::DescriptorSet> computeDescriptorSet1{};
+        vk::UniqueDescriptorSetLayout computeSetLayout0{};
+        vk::UniqueDescriptorSetLayout computeSetLayout1{};
+        vk::UniquePipelineLayout computePipelineLayout{};
+        vk::UniquePipeline computePipeline{};
+        std::vector<vk::CommandBuffer> skinningCommandBuffers{};
+        std::vector<vk::UniqueSemaphore> skinningSemaphores{};
+
+        void createSkinningComputePipeline();
     };
 }

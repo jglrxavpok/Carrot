@@ -52,6 +52,10 @@ namespace Carrot {
         // no op for now
     }
 
+    void BLASHandle::setDirty() {
+        built = false;
+    }
+
     void InstanceHandle::update() {
         #define setAndCheck(out, newValue) \
             do { if((out) != (newValue)) { \

@@ -12,6 +12,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Buffer.cpp
         ${EngineRoot}render/resources/BufferView.cpp
         ${EngineRoot}render/resources/Image.cpp
+        ${EngineRoot}render/resources/LightMesh.cpp
         ${EngineRoot}render/resources/Mesh.cpp
         ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp

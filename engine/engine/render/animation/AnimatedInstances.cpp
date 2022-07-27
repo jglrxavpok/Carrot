@@ -9,6 +9,8 @@
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
 #include "engine/render/DrawData.h"
+#include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/resources/LightMesh.h"
 
 Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, size_t maxInstanceCount):
     engine(engine), model(std::move(animatedModel)), maxInstanceCount(maxInstanceCount) {
@@ -60,12 +62,19 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 
     fullySkinnedUnitVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
                                                         sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
-                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                                        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                         vk::MemoryPropertyFlagBits::eDeviceLocal,
                                                         engine.createGraphicsAndTransferFamiliesSet());
     fullySkinnedUnitVertices->name("full skinned unit vertices");
 
+    raytracingBLASes.reserve(maxInstanceCount);
+    raytracingInstances.reserve(maxInstanceCount);
+
     for(int i = 0; i < maxInstanceCount; i++) {
+
+        std::vector<std::shared_ptr<Carrot::Mesh>> instanceMeshes;
+        instanceMeshes.reserve(meshes.size());
+
         for(const auto& mesh : meshes) {
             std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
@@ -76,6 +85,18 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
                     .vertexOffset = vertexOffset,
                     .firstInstance = static_cast<uint32_t>(i),
             });
+
+            if(GetCapabilities().supportsRaytracing) {
+                Carrot::BufferView vertexBuffer{nullptr, *fullySkinnedUnitVertices, static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex) };
+                instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex)));
+            }
+        }
+
+        if(GetCapabilities().supportsRaytracing) {
+            auto& asBuilder = GetRenderer().getASBuilder();
+            auto blas = asBuilder.addBottomLevel(instanceMeshes);
+            raytracingBLASes.push_back(blas);
+            raytracingInstances.push_back(asBuilder.addInstance(blas));
         }
     }
 
@@ -315,6 +336,18 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
     ZoneScoped;
+
+    if(GetCapabilities().supportsRaytracing) {
+        for(auto& blas : raytracingBLASes) {
+            blas->setDirty();
+        }
+
+        for(std::size_t i = 0; i < raytracingInstances.size(); i++) {
+            auto& instance = raytracingInstances[i];
+            instance->transform = getInstance(i).transform;
+        }
+    }
+
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
     GetVulkanDriver().submitCompute(vk::SubmitInfo {

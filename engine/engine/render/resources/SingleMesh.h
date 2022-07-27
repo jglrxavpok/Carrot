@@ -7,6 +7,7 @@
 #include "Mesh.h"
 
 namespace Carrot {
+    /// Mesh that uploads the given vertices and indices to a single buffer.
     class SingleMesh: public Mesh {
     public:
         template<typename VertexType>

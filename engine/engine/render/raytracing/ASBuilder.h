@@ -37,6 +37,7 @@ namespace Carrot {
 
         bool isBuilt() const { return built; }
         void update();
+        void setDirty();
 
     private:
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
