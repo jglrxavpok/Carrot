@@ -354,6 +354,8 @@ namespace Carrot {
 
         TaskScheduler& getTaskScheduler();
 
+        void addWaitSemaphoreBeforeRendering(const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore);
+
     public:
         IO::VFS& getVFS() { return vfs; }
 
@@ -408,6 +410,7 @@ namespace Carrot {
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};
         std::vector<vk::UniqueFence> imagesInFlight{};
+        std::vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>> additionalWaitSemaphores{};
 
         std::list<Carrot::Render::Viewport> viewports;
 

@@ -82,6 +82,7 @@ namespace Carrot::Physics {
     }
 
     void PhysicsSystem::onFrame(const Carrot::Render::Context& context) {
+        ZoneScoped;
         if(debugViewport == nullptr)
             return;
 

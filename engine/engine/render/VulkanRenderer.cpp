@@ -628,6 +628,7 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
+    ZoneScoped;
     asBuilder->onFrame(renderContext);
 }
 

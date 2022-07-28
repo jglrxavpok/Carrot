@@ -815,8 +815,15 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         GetTaskScheduler().executeRendering();
 
         auto onFrame = [&](Carrot::Render::Viewport& v) {
+            ZoneScoped;
+            std::string profilingMarker = Carrot::sprintf("Viewport %x", &v);
+            ZoneText(profilingMarker.c_str(), profilingMarker.size());
+
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
-            game->onFrame(renderContext);
+            {
+                ZoneScopedN("game->onFrame");
+                game->onFrame(renderContext);
+            }
             GetPhysics().onFrame(renderContext);
             getRayTracer().onFrame(renderContext); // update instance positions only once everything has been updated
             v.onFrame(renderContext); // update cameras only once all render systems are updated
@@ -845,6 +852,12 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
 
         game->changeGraphicsWaitSemaphores(imageIndex, waitSemaphores, waitStages);
+
+        for(auto [stage, semaphore] : additionalWaitSemaphores) {
+            waitSemaphores.push_back(semaphore);
+            waitStages.push_back(stage);
+        }
+        additionalWaitSemaphores.clear();
 
         vk::SubmitInfo submitInfo{
                 .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
@@ -1428,6 +1441,10 @@ std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const
 
 Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
     return taskScheduler;
+}
+
+void Carrot::Engine::addWaitSemaphoreBeforeRendering(const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore) {
+    additionalWaitSemaphores.push_back({stage, semaphore});
 }
 
 void Carrot::Engine::grabCursor() {

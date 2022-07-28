@@ -356,10 +356,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             .pWaitDstStageMask = nullptr,
             .commandBufferCount = 1,
             .pCommandBuffers = &skinningCommandBuffers[frameIndex],
-            .signalSemaphoreCount = 0,
-            //.pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
     });
-    GetVulkanDriver().getComputeQueue().waitIdle();
+    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[frameIndex]);
     return *skinningSemaphores[frameIndex];
 }
 
