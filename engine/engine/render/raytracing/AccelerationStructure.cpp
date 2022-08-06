@@ -6,9 +6,9 @@
 #include "engine/render/resources/Buffer.h"
 
 Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
-                                                     vk::AccelerationStructureCreateInfoKHR& createInfo): driver(driver) {
+                                                     vk::AccelerationStructureCreateInfoKHR& createInfo) {
     // allocate buffer to store AS
-    buffer = std::make_unique<Buffer>(driver,
+    buffer = std::make_unique<Buffer>(GetVulkanDriver(),
                                       createInfo.size,
                                       vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -24,4 +24,8 @@ vk::AccelerationStructureKHR& Carrot::AccelerationStructure::getVulkanAS() {
 
 Carrot::Buffer& Carrot::AccelerationStructure::getBuffer() {
     return *buffer;
+}
+
+Carrot::AccelerationStructure::~AccelerationStructure() {
+    GetVulkanDriver().deferDestroy(std::move(as));
 }

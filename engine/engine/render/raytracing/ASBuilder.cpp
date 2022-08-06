@@ -91,6 +91,31 @@ namespace Carrot {
 
 Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     enabled = GetCapabilities().supportsRaytracing;
+
+    createSemaphores();
+    createBuildCommandBuffers();
+    createQueryPools();
+    createGraveyard();
+}
+
+void Carrot::ASBuilder::createBuildCommandBuffers() {
+    tlasBuildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
+            .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = GetEngine().getSwapchainImageCount(),
+    });
+
+    blasBuildCommands.resize(GetEngine().getSwapchainImageCount());
+    compactBLASCommands.resize(GetEngine().getSwapchainImageCount());
+}
+
+void Carrot::ASBuilder::createQueryPools() {
+    queryPools.resize(GetEngine().getSwapchainImageCount());
+}
+
+void Carrot::ASBuilder::createGraveyard() {
+    asGraveyard.clear(); // we don't want to keep any old list
+    asGraveyard.resize(GetEngine().getSwapchainImageCount());
 }
 
 std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes) {
@@ -98,6 +123,18 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
         return nullptr;
     Async::LockGuard l { access };
     return staticGeometries.create(meshes);
+}
+
+void Carrot::ASBuilder::createSemaphores() {
+    std::size_t imageCount = GetEngine().getSwapchainImageCount();
+    preCompactBLASSemaphore.resize(imageCount);
+    blasBuildSemaphore.resize(imageCount);
+    tlasBuildSemaphore.resize(imageCount);
+    for (size_t i = 0; i < imageCount; ++i) {
+        preCompactBLASSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
+        blasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
+        tlasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
+    }
 }
 
 void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
@@ -114,6 +151,8 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     purge(instances);
     purge(staticGeometries);
 
+    asGraveyard[renderContext.swapchainIndex].clear();
+
     std::vector<std::shared_ptr<BLASHandle>> toBuild;
     for(auto& [slot, valuePtr] : staticGeometries) {
         if(auto value = valuePtr.lock()) {
@@ -123,12 +162,12 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
+    builtBLASThisFrame = false;
     if(!toBuild.empty()) {
-        buildBottomLevels(toBuild, false);
+        buildBottomLevels(renderContext, toBuild, false);
         for(auto& v : toBuild) {
             v->built = true;
         }
-
     }
 
     for(auto& [slot, valuePtr] : instances) {
@@ -140,22 +179,22 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     if(!toBuild.empty()) {
-        buildTopLevelAS(false, true);
+        buildTopLevelAS(renderContext, false);
         framesBeforeRebuildingTLAS = 10;
     } else {
         if(framesBeforeRebuildingTLAS == 0 || !tlas) {
-            buildTopLevelAS(false, true);
+            buildTopLevelAS(renderContext, false);
             framesBeforeRebuildingTLAS = 10;
         } else {
             if(framesBeforeRebuildingTLAS > 0) {
                 framesBeforeRebuildingTLAS--;
             }
-            buildTopLevelAS(true, true);
+            buildTopLevelAS(renderContext, true);
         }
     }
 }
 
-void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry) {
+void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry) {
     ZoneScoped;
     if(!enabled)
         return;
@@ -166,12 +205,42 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
 
     // add a bottom level AS for each geometry entry
     std::size_t blasCount = toBuild.size();
+
+    auto& buildCommands = blasBuildCommands[renderContext.swapchainIndex];
+    auto& compactCommands = compactBLASCommands[renderContext.swapchainIndex];
+    vk::UniqueQueryPool& queryPool = queryPools[renderContext.swapchainIndex];
+    if(buildCommands.size() < blasCount) {
+        ZoneScopedN("Reallocate command buffers");
+        buildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
+                .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = static_cast<std::uint32_t>(blasCount),
+        });
+
+        compactCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
+                .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = static_cast<std::uint32_t>(blasCount),
+        });
+
+        vk::QueryPoolCreateInfo queryPoolCreateInfo{
+                .queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR,
+                .queryCount = static_cast<uint32_t>(blasCount),
+        };
+
+        queryPool = GetVulkanDevice().createQueryPoolUnique(queryPoolCreateInfo, GetVulkanDriver().getAllocationCallbacks());
+    }
+    verify(compactCommands.size() == buildCommands.size(), "Compact commands must have as many items as build commands!");
+
     std::vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfo{blasCount};
 
     vk::DeviceSize scratchSize = 0;
     std::vector<vk::DeviceSize> originalSizes(blasCount);
     // allocate memory for each entry
     for(size_t index = 0; index < blasCount; index++) {
+        ZoneScopedN("Create BLAS");
+        ZoneValue(index);
+
         // TODO: can probably be cached
         auto& info = buildInfo[index];
         auto& blas = *toBuild[index];
@@ -208,30 +277,19 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
     Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     bool compactAS = (flags & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
-
-    vk::QueryPoolCreateInfo queryPoolCreateInfo {
-        .queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR,
-        .queryCount = static_cast<uint32_t>(blasCount),
-    };
-
-    vk::UniqueQueryPool queryPool = device.createQueryPoolUnique(queryPoolCreateInfo, renderer.getVulkanDriver().getAllocationCallbacks());
-
-    // TODO: reuse
-    std::vector<vk::CommandBuffer> buildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-            .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = static_cast<uint32_t>(blasCount),
-    });
+    compactAS = false;
 
     auto scratchAddress = device.getBufferAddress({.buffer = scratchBuffer.getVulkanBuffer() });
     for(size_t index = 0; index < blasCount; index++) {
+        ZoneScopedN("Record BLAS build command buffer");
+        ZoneValue(index);
+
         auto& cmds = buildCommands[index];
-        cmds.begin(vk::CommandBufferBeginInfo {
-                .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+        cmds->begin(vk::CommandBufferBeginInfo {
                 .pInheritanceInfo = nullptr,
         });
 
-        cmds.resetQueryPool(*queryPool, index, 1);
+        cmds->resetQueryPool(*queryPool, index, 1);
 
         buildInfo[index].scratchData.deviceAddress = scratchAddress;
 
@@ -241,32 +299,44 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
         }
 
 #ifdef AFTERMATH_ENABLE
-        cmds.setCheckpointNV("Before AS build");
+        cmds->setCheckpointNV("Before AS build");
 #endif
         // build AS
-        cmds.buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
+        cmds->buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
 #ifdef AFTERMATH_ENABLE
-        cmds.setCheckpointNV("After AS build");
+        cmds->setCheckpointNV("After AS build");
 #endif
         vk::MemoryBarrier barrier {
             .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
             .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
         };
-        cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, static_cast<vk::DependencyFlags>(0), barrier, {}, {});
+        cmds->pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, static_cast<vk::DependencyFlags>(0), barrier, {}, {});
 
         // write compacted size
         if(compactAS) {
-            cmds.writeAccelerationStructuresPropertiesKHR(toBuild[index]->as->getVulkanAS(), vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, index);
+            cmds->writeAccelerationStructuresPropertiesKHR(toBuild[index]->as->getVulkanAS(), vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, index);
         }
 
-        cmds.end();
+        cmds->end();
     }
 
-    // TODO: semaphore and don't wait here
-    GetVulkanDriver().submitGraphics(vk::SubmitInfo {
-        .commandBufferCount = static_cast<uint32_t>(buildCommands.size()),
-        .pCommandBuffers = buildCommands.data(),
-    });
+    {
+        ZoneScopedN("Submit BLAS build commands");
+        std::vector<vk::CommandBuffer> dereferencedBuildCommands{};
+        dereferencedBuildCommands.reserve(buildCommands.size());
+        for(auto& pBuffer : buildCommands) {
+            dereferencedBuildCommands.push_back(*pBuffer);
+        }
+        GetVulkanDriver().submitCompute(vk::SubmitInfo {
+                .commandBufferCount = static_cast<uint32_t>(toBuild.size()),
+                .pCommandBuffers = dereferencedBuildCommands.data(),
+
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = compactAS ? &(*preCompactBLASSemaphore[renderContext.swapchainIndex]) : &(*blasBuildSemaphore[renderContext.swapchainIndex]),
+        });
+        builtBLASThisFrame = true;
+    }
+
 #ifdef AFTERMATH_ENABLE
     try {
         renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
@@ -274,17 +344,16 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
         std::this_thread::sleep_for(std::chrono::seconds(6));
         exit(1);
     }
-#else
-    renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
 #endif
 
-    if(compactAS) {
+    if(false) {
+        ZoneScopedN("Compress built Acceleration Structures");
+
         std::vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
-        std::vector<std::unique_ptr<AccelerationStructure>> compactedAS{};
+        std::vector<std::unique_ptr<AccelerationStructure>> compactedASes{};
         for (size_t index = 0; index < blasCount; index++) {
-            auto& cmds = buildCommands[index];
-            cmds.begin(vk::CommandBufferBeginInfo{
-                    .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+            auto& cmds = compactCommands[index];
+            cmds->begin(vk::CommandBufferBeginInfo{
                     .pInheritanceInfo = nullptr,
             });
 
@@ -294,32 +363,42 @@ void Carrot::ASBuilder::buildBottomLevels(const std::vector<std::shared_ptr<BLAS
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
             };
 
-            auto compactAS = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
+            auto compactedAS = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
 
             // copy AS
-            cmds.copyAccelerationStructureKHR(vk::CopyAccelerationStructureInfoKHR {
+            cmds->copyAccelerationStructureKHR(vk::CopyAccelerationStructureInfoKHR {
                 .src = toBuild[index]->as->getVulkanAS(),
-                .dst = compactAS->getVulkanAS(),
+                .dst = compactedAS->getVulkanAS(),
                 .mode = vk::CopyAccelerationStructureModeKHR::eCompact
             });
 
-            compactedAS.emplace_back(move(compactAS));
-            cmds.end();
+            compactedASes.emplace_back(std::move(compactedAS));
+            cmds->end();
         }
 
-        // TODO: don't wait and use semaphore from above
-        GetVulkanDriver().submitGraphics(vk::SubmitInfo {
-            .commandBufferCount = static_cast<uint32_t>(buildCommands.size()),
-            .pCommandBuffers = buildCommands.data(),
+        vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
+        std::vector<vk::CommandBuffer> dereferencedCompactCommands{};
+        dereferencedCompactCommands.reserve(compactCommands.size());
+        for(auto& pBuffer : compactCommands) {
+            dereferencedCompactCommands.push_back(*pBuffer);
+        }
+        GetVulkanDriver().submitCompute(vk::SubmitInfo {
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &(*preCompactBLASSemaphore[renderContext.swapchainIndex]),
+            .pWaitDstStageMask = &waitStage,
+
+            .commandBufferCount = static_cast<uint32_t>(toBuild.size()),
+            .pCommandBuffers = dereferencedCompactCommands.data(),
+
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &(*blasBuildSemaphore[renderContext.swapchainIndex]),
         });
-        renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
         // replace old AS with compacted AS
         for(size_t i = 0; i < blasCount; i++) {
-            toBuild[i]->as = move(compactedAS[i]);
+            asGraveyard[renderContext.swapchainIndex].emplace_back(std::move(toBuild[i]->as));
+            toBuild[i]->as = std::move(compactedASes[i]);
         }
     }
-
-    device.freeCommandBuffers(renderer.getVulkanDriver().getThreadGraphicsCommandPool(), buildCommands);
 }
 
 std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
@@ -329,29 +408,19 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak
     return instances.create(correspondingGeometry);
 }
 
-void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
-    // TODO: remove waitForCompletion and add to rendering-wait semaphores
-    // TODO: synchronisation with bottom level?
+void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
     if(!enabled)
         return;
     ZoneScoped;
 
     if(!update && tlas) {
         ZoneScopedN("WaitDeviceIdle");
-        WaitDeviceIdle();
+        //GetVulkanDriver().getComputeQueue().waitIdle();
+        //WaitDeviceIdle();
     }
 
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
-    if(!tlasBuildCommands) {
-        tlasBuildCommands = device.allocateCommandBuffers(vk::CommandBufferAllocateInfo {
-                .commandPool = renderer.getVulkanDriver().getThreadGraphicsCommandPool(),
-                .level = vk::CommandBufferLevel::ePrimary,
-                .commandBufferCount = 1,
-        })[0];
-    }
-    vk::CommandBuffer& buildCommand = tlasBuildCommands;
-    buildCommand.reset();
 
     std::vector<vk::AccelerationStructureInstanceKHR> vkInstances{};
     vkInstances.reserve(instances.size());
@@ -373,8 +442,9 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
         return;
     }
 
+    vk::CommandBuffer& buildCommand = *tlasBuildCommands[renderContext.swapchainIndex];
+
     buildCommand.begin(vk::CommandBufferBeginInfo {
-        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
     });
     // upload instances to the device
     if(!instancesBuffer || lastInstanceCount < vkInstances.size()) {
@@ -473,30 +543,42 @@ void Carrot::ASBuilder::buildTopLevelAS(bool update, bool waitForCompletion) {
 
     buildCommand.end();
 
-    GetVulkanDriver().submitGraphics(vk::SubmitInfo {
-       .commandBufferCount = 1,
-       .pCommandBuffers = &buildCommand,
+    std::vector<vk::Semaphore> waitSemaphores;
+    std::vector<vk::PipelineStageFlags> waitStages;
+    if(builtBLASThisFrame) {
+        waitStages.emplace_back(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR);
+        waitSemaphores.push_back(*blasBuildSemaphore[renderContext.swapchainIndex]);
+    }
+
+    GetVulkanDriver().submitCompute(vk::SubmitInfo {
+        .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+        .pWaitSemaphores = waitSemaphores.data(),
+        .pWaitDstStageMask = waitStages.data(),
+
+        .commandBufferCount = 1,
+        .pCommandBuffers = &buildCommand,
+
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &(*tlasBuildSemaphore[renderContext.swapchainIndex]),
     });
 
+    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *tlasBuildSemaphore[renderContext.swapchainIndex]);
+
     bottomLevelBarriers.clear();
-    if(waitForCompletion) {
-        renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
-    } else {
-        topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-                .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWrite,
-                .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-                .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureRead,
+    topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
+            .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
+            .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWrite,
+            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllGraphics,
+            .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureRead,
 
-                .srcQueueFamilyIndex = 0,
-                .dstQueueFamilyIndex = 0,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
 
-                // TODO: will need to change with non-dedicated buffers
-                .buffer = tlas->getBuffer().getVulkanBuffer(),
-                .offset = 0,
-                .size = VK_WHOLE_SIZE,
-        });
-    }
+            // TODO: will need to change with non-dedicated buffers
+            .buffer = tlas->getBuffer().getVulkanBuffer(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+    });
 }
 
 void Carrot::ASBuilder::startFrame() {
@@ -515,13 +597,18 @@ void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
     cmds.pipelineBarrier2KHR(dependency);
 }
 
-void Carrot::ASBuilder::updateTopLevelAS() {
-    if(!enabled)
-        return;
-    buildTopLevelAS(true, false);
-}
-
 std::unique_ptr<Carrot::AccelerationStructure>& Carrot::ASBuilder::getTopLevelAS() {
     verify(GetCapabilities().supportsRaytracing, "Raytracing is not supported");
     return tlas;
+}
+
+void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
+    createSemaphores();
+    createBuildCommandBuffers();
+    createQueryPools();
+    createGraveyard();
+}
+
+void Carrot::ASBuilder::onSwapchainSizeChange(int newWidth, int newHeight) {
+
 }

@@ -49,8 +49,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-//constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
+//constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -96,6 +96,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-DescriptorSetNotBound") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-Descriptor index out of bounds") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidCommandBuffer-VkAccelerationStructureKHR") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-vkDestroyAccelerationStructureKHR-accelerationStructure-02442") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-vkQueueSubmit-pCommandBuffers-00074") != nullptr) {
         debug_break();
     }
 
@@ -369,7 +375,7 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
             families.transferFamily = index;
         }
 
-        if(family.queueFlags & vk::QueueFlagBits::eCompute && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
+        if(family.queueFlags & vk::QueueFlagBits::eCompute) {
             families.computeFamily = index;
         }
 
@@ -808,6 +814,14 @@ vk::Format Carrot::VulkanDriver::findSupportedFormat(const std::vector<vk::Forma
     throw std::runtime_error("Could not find supported format");
 }
 
+const vk::Sampler& Carrot::VulkanDriver::getLinearSampler() const {
+    return *linearRepeatSampler;
+}
+
+const vk::Sampler& Carrot::VulkanDriver::getNearestSampler() const {
+    return *nearestRepeatSampler;
+}
+
 vk::Format Carrot::VulkanDriver::findDepthFormat() {
     return findSupportedFormat(
             {vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
@@ -917,6 +931,9 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
         for(auto& resource : deferredMemoryDestructions) {
             resource.tickDown();
         }
+        for(auto& resource : deferredAccelerationStructureDestructions) {
+            resource.tickDown();
+        }
 
         std::erase_if(deferredImageViewDestructions, [](auto& d) {
             return d.isReadyForDestruction();
@@ -928,6 +945,9 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
             return d.isReadyForDestruction();
         });
         std::erase_if(deferredMemoryDestructions, [](auto& d) {
+            return d.isReadyForDestruction();
+        });
+        std::erase_if(deferredAccelerationStructureDestructions, [](auto& d) {
             return d.isReadyForDestruction();
         });
     }
@@ -947,6 +967,10 @@ void Carrot::VulkanDriver::deferDestroy(vk::UniqueBuffer&& resource) {
 
 void Carrot::VulkanDriver::deferDestroy(vk::UniqueDeviceMemory&& resource) {
     deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(std::move(resource))));
+}
+
+void Carrot::VulkanDriver::deferDestroy(vk::UniqueAccelerationStructureKHR&& resource) {
+    deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {
@@ -988,5 +1012,6 @@ void Carrot::VulkanDriver::breakOnNextVulkanError() {
 }
 
 bool Carrot::VulkanDriver::hasDebugNames() const {
-    return USE_DEBUG_MARKERS;
+    //TODO return USE_DEBUG_MARKERS;
+    return false;
 }

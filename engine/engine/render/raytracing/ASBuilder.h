@@ -79,16 +79,13 @@ namespace Carrot {
 
     /// Helpers to build Acceleration Structures for raytracing
     // TODO: rename to RaytracingScene
-    class ASBuilder {
+    class ASBuilder: public SwapchainAware {
     public:
         explicit ASBuilder(VulkanRenderer& renderer);
 
         std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
 
         std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes);
-        void buildTopLevelAS(bool update, bool waitForCompletion = false);
-
-        void updateTopLevelAS();
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
@@ -97,8 +94,20 @@ namespace Carrot {
 
         void onFrame(const Carrot::Render::Context& renderContext);
 
+    public:
+        void onSwapchainImageCountChange(size_t newCount) override;
+
+        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
     private:
-        void buildBottomLevels(const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry);
+        void createGraveyard();
+        void createSemaphores();
+        void createBuildCommandBuffers();
+        void createQueryPools();
+
+    private:
+        void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
+        void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry);
 
     private:
         VulkanRenderer& renderer;
@@ -106,7 +115,11 @@ namespace Carrot {
         bool enabled = false;
 
     private: // reuse between builds
-        vk::CommandBuffer tlasBuildCommands{};
+        std::vector<vk::UniqueCommandBuffer> tlasBuildCommands{};
+        std::vector<vk::UniqueQueryPool> queryPools{};
+        std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
+        std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
+        std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
         std::unique_ptr<Carrot::Buffer> instancesBuffer = nullptr;
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
@@ -119,6 +132,11 @@ namespace Carrot {
         WeakPool<InstanceHandle> instances;
 
         std::unique_ptr<AccelerationStructure> tlas;
+
+        bool builtBLASThisFrame = false;
+        std::vector<vk::UniqueSemaphore> tlasBuildSemaphore;
+        std::vector<vk::UniqueSemaphore> preCompactBLASSemaphore;
+        std::vector<vk::UniqueSemaphore> blasBuildSemaphore;
 
         std::uint8_t framesBeforeRebuildingTLAS = 0;
 

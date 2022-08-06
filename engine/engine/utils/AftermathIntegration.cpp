@@ -1,3 +1,6 @@
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include "NsightAftermathHelpers.h"
 #include <fstream>
 #include <iostream>
@@ -6,7 +9,7 @@
 static std::mutex mut{};
 
 static void WriteGpuCrashDumpToFile(const void* data, const std::uint32_t size) {
-    auto output = ofstream("gpucrash.nv-gpudmp", std::ios::out | std::ios::binary);
+    auto output = std::ofstream("gpucrash.nv-gpudmp", std::ios::out | std::ios::binary);
     output.write(static_cast<const char *>(data), size);
     output.flush();
     output.close();
@@ -31,9 +34,11 @@ void initAftermath() {
     AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_EnableGpuCrashDumps(
             GFSDK_Aftermath_Version_API,
             GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_Vulkan,
-            GFSDK_Aftermath_GpuCrashDumpFeatureFlags_Default,   // Default behavior.
-            GpuCrashDumpCallback,                               // Register callback for GPU crash dumps.
-            nullptr,                            // Register callback for shader debug information.
-            OnDescription,                       // Register callback for GPU crash dump description.
-            nullptr));                           // Set the GpuCrashTracker object as user data passed back by the above callbacks.
+            GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks, // Let the Nsight Aftermath library cache shader debug information.
+            GpuCrashDumpCallback,                                             // Register callback for GPU crash dumps.
+            nullptr,                                          // Register callback for shader debug information.
+            OnDescription,                                     // Register callback for GPU crash dump description.
+            nullptr,                                            // Register callback for resolving application-managed markers.
+            nullptr));                                                           // Set the GpuCrashTracker object as user data for the above callbacks.
+
 }

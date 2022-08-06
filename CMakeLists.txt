@@ -40,7 +40,20 @@ set(OPENXR-INCLUDE-DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source/build/${Platfo
 
 include(FetchContent)
 find_package(Vulkan REQUIRED)
-find_package(Aftermath)
+
+find_package(NsightAftermath)
+if(NsightAftermath_FOUND)
+    message("Found Aftermath SDK")
+    set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} NsightAftermath::NsightAftermath)
+    message("ADDITIONAL_LIBS = " ${ADDITIONAL_LIBS})
+
+    get_filename_component(AFTERMATH_LIB_NAME ${NsightAftermath_LIBRARIES} NAME_WLE)
+    get_filename_component(AFTERMATH_LIB_PATH ${NsightAftermath_LIBRARIES} PATH)
+    set(DLL_PATH "${AFTERMATH_LIB_PATH}/${AFTERMATH_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    file(COPY ${DLL_PATH} DESTINATION "${CMAKE_BINARY_DIR}")
+endif()
+
+
 find_package(Lua REQUIRED)
 
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -121,6 +134,13 @@ function(add_includes Target)
         target_compile_options(${Target} PRIVATE "/Z7")
     endif()
 
+    if(NsightAftermath_FOUND)
+        target_include_directories("${Target}" PRIVATE ${NsightAftermath_INCLUDE_DIRS})
+        target_compile_definitions("${Target}" PRIVATE AFTERMATH_ENABLE=1)
+        target_compile_definitions("${Target}" PRIVATE GPU_ASSISTED_VALIDATION=1)
+        target_compile_definitions("${Target}" PRIVATE DEBUG_MARKERS=1)
+    endif()
+
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
@@ -190,16 +210,3 @@ add_subdirectory(samples)
 add_subdirectory(engine/tools)
 add_subdirectory(editor)
 add_subdirectory(tests)
-
-if(AFTERMATH_LIBS)
-    set(AFTERMATH_SOURCES
-            engine/engine/utils/AftermathIntegration.cpp)
-    add_executable(Carrot-GPUDebug ${ALL_SOURCES} ${AFTERMATH_SOURCES})
-    target_include_directories(Carrot-GPUDebug PRIVATE ${AFTERMATH_INCLUDES})
-    target_compile_definitions(Carrot-GPUDebug PRIVATE AFTERMATH_ENABLE=1)
-    target_compile_definitions(Carrot-GPUDebug PRIVATE GPU_ASSISTED_VALIDATION=1)
-    target_compile_definitions(Carrot-GPUDebug PRIVATE DEBUG_MARKERS=1)
-    target_link_libraries(Carrot-GPUDebug ${ALL_BASE_LIBS} ${AFTERMATH_LIBS})
-else()
-    message("Could not find Aftermath SDK")
-endif()

@@ -69,7 +69,6 @@ mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
     #define instance instances[instanceIndex]
     if(vertex.boneIDs.x < 0)
         return mat4(1.0);
-    // TODO: interpolation
     float timestamp = float(mod(instance.animationTime, animations[instance.animationIndex].duration));
     uint keyframeIndex = 0;
     for(uint i = 0; i < animations[instance.animationIndex].keyframeCount-1; i++) {
@@ -78,12 +77,22 @@ mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
             break;
         }
     }
+    uint nextKeyframeIndex = (keyframeIndex + 1) % animations[instance.animationIndex].keyframeCount;
     #define keyframe animations[instance.animationIndex].keyframes[keyframeIndex]
+    #define nextKeyframe animations[instance.animationIndex].keyframes[nextKeyframeIndex]
+    float timeBetweenKeyFrames = nextKeyframe.timestamp - keyframe.timestamp;
+    float invAlpha = (timestamp - keyframe.timestamp) / timeBetweenKeyFrames;
+    float alpha = 1 - invAlpha;
     mat4 boneTransform =
-                        + keyframe.boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x
-                        + keyframe.boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y
-                        + keyframe.boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z
-                        + keyframe.boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w
+                        + keyframe.boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x * alpha
+                        + keyframe.boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y * alpha
+                        + keyframe.boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z * alpha
+                        + keyframe.boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w * alpha
+
+                        + nextKeyframe.boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x * invAlpha
+                        + nextKeyframe.boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y * invAlpha
+                        + nextKeyframe.boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z * invAlpha
+                        + nextKeyframe.boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w * invAlpha
     ;
     return boneTransform;
 }

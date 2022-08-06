@@ -148,6 +148,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/Profiling.cpp
 
         ${EngineRoot}vulkan/SynchronizedQueue.cpp
+
+        ${EngineRoot}utils/AftermathIntegration.cpp
         )
 
 set(VR_SOURCES
@@ -268,7 +270,10 @@ if (MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 endif()
 
-set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d)
+set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
+        ${ADDITIONAL_LIBS})
+
+message("ENGINE ADDITIONAL LIBS = " ${ALL_BASE_LIBS})
 
 copy_all_resources()
 file(COPY "resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")

@@ -256,6 +256,9 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
     lighting.onSwapchainImageCountChange(newCount);
+    if(asBuilder) {
+        asBuilder->onSwapchainImageCountChange(newCount);
+    }
     for(const auto& [name, pipePtrPtr]: pipelines.snapshot()) {
         (*pipePtrPtr)->onSwapchainImageCountChange(newCount);
     }
@@ -267,6 +270,9 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
     gBuffer->onSwapchainSizeChange(newWidth, newHeight);
     materialSystem.onSwapchainSizeChange(newWidth, newHeight);
     lighting.onSwapchainSizeChange(newWidth, newHeight);
+    if(asBuilder) {
+        asBuilder->onSwapchainSizeChange(newWidth, newHeight);
+    }
     for(const auto& [name, pipePtrPtr]: pipelines.snapshot()) {
         (*pipePtrPtr)->onSwapchainSizeChange(newWidth, newHeight);
     }

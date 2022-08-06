@@ -80,6 +80,7 @@ namespace Carrot {
     using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
     using DeferredMemoryDestruction = DeferredDestruction<vk::UniqueDeviceMemory>;
     using DeferredBufferDestruction = DeferredDestruction<vk::UniqueBuffer>;
+    using DeferredAccelerationStructureDestruction = DeferredDestruction<vk::UniqueAccelerationStructureKHR>;
 
     class VulkanDriver: public SwapchainAware {
     public:
@@ -142,8 +143,8 @@ namespace Carrot {
 
         Render::Texture& getDefaultTexture();
 
-        const vk::Sampler& getLinearSampler() { return *linearRepeatSampler; };
-        const vk::Sampler& getNearestSampler() { return *nearestRepeatSampler; };
+        const vk::Sampler& getLinearSampler() const;
+        const vk::Sampler& getNearestSampler() const;
 
         /// Find the best available format for the depth texture
         vk::Format findDepthFormat();
@@ -196,6 +197,7 @@ namespace Carrot {
         void deferDestroy(vk::UniqueImageView&& imageView);
         void deferDestroy(vk::UniqueDeviceMemory&& memory);
         void deferDestroy(vk::UniqueBuffer&& resource);
+        void deferDestroy(vk::UniqueAccelerationStructureKHR&& resource);
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
@@ -251,6 +253,7 @@ namespace Carrot {
         std::list<DeferredImageViewDestruction> deferredImageViewDestructions;
         std::list<DeferredMemoryDestruction> deferredMemoryDestructions;
         std::list<DeferredBufferDestruction> deferredBufferDestructions;
+        std::list<DeferredAccelerationStructureDestruction> deferredAccelerationStructureDestructions;
 
         ThreadLocal<vk::UniqueCommandPool> graphicsCommandPool;
         ThreadLocal<vk::UniqueCommandPool> transferCommandPool;
