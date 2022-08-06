@@ -138,7 +138,6 @@ function(add_includes Target)
         target_include_directories("${Target}" PRIVATE ${NsightAftermath_INCLUDE_DIRS})
         target_compile_definitions("${Target}" PRIVATE AFTERMATH_ENABLE=1)
         target_compile_definitions("${Target}" PRIVATE GPU_ASSISTED_VALIDATION=1)
-        target_compile_definitions("${Target}" PRIVATE DEBUG_MARKERS=1)
     endif()
 
 

@@ -44,7 +44,9 @@ constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
     constexpr bool USE_DEBUG_MARKERS = false;
 #else
 const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
-        //VK_EXT_DEBUG_MARKER_EXTENSION_NAME
+#ifdef DEBUG_MARKERS
+        VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+#endif
 };
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
@@ -1012,6 +1014,5 @@ void Carrot::VulkanDriver::breakOnNextVulkanError() {
 }
 
 bool Carrot::VulkanDriver::hasDebugNames() const {
-    //TODO return USE_DEBUG_MARKERS;
-    return false;
+    return USE_DEBUG_MARKERS;
 }
