@@ -11,6 +11,8 @@ namespace Carrot {
     class BLASHandle;
     class InstanceHandle;
 
+    //! Used to render one or multiple skinned meshes, while playing their animation.
+    //! For programmatic control over the skeleton, use Carrot::Render::Skeleton
     class AnimatedInstances {
     public:
         explicit AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, std::size_t maxInstanceCount);

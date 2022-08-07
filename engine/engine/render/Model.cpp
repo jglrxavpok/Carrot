@@ -26,6 +26,7 @@
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
+    debugName = file.getName();
    // Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     Assimp::Importer importer{};
@@ -132,10 +133,10 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
         auto loadedMesh = loadMesh(mesh, boneMapping, offsetMatrices);
         auto& material = materialMap[mesh->mMaterialIndex];
-        bool usesSkinning = mesh->HasBones();
+        bool hasBones = mesh->HasBones();
         loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
 
-        if(usesSkinning) {
+        if(hasBones) {
             skinnedMeshes[material->getSlot()].push_back(loadedMesh);
         } else {
             staticMeshes[material->getSlot()].push_back(loadedMesh);
@@ -148,16 +149,13 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         if(!staticMeshesList.empty()) {
             staticBLAS = builder.addBottomLevel(staticMeshesList);
         }
-
-/* TODO: remove        auto skinnedMeshesList = getSkinnedMeshes();
-        if(!skinnedMeshesList.empty()) {
-            skinnedBLAS = builder.addBottomLevel(skinnedMeshesList);
-        }*/
     }
 
     if(scene->HasAnimations()) {
         loadAnimations(engine, scene, boneMapping, offsetMatrices, armature);
     }
+
+    loadSkeleton(armature);
 }
 
 void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
@@ -566,4 +564,33 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getStaticBLAS() {
 
 std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
     return skinnedBLAS;
+}
+
+void Carrot::Model::loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent) {
+    parent.bone.name = std::string(subSkeleton->mName.data, subSkeleton->mName.length);
+    parent.bone.transform = Carrot::glmMat4FromAssimp(subSkeleton->mTransformation);
+
+    for (std::size_t i = 0; i < subSkeleton->mNumChildren; ++i) {
+        loadSubSkeleton(subSkeleton->mChildren[i], parent.newChild());
+    }
+}
+
+void Carrot::Model::loadSkeleton(aiNode* armature) {
+    verify(armature != nullptr, Carrot::sprintf("Cannot load non-existent skeleton (%s)", debugName.c_str()));
+    skeleton = std::make_unique<Render::Skeleton>(glm::inverse(Carrot::glmMat4FromAssimp(armature->mTransformation)));
+    loadSubSkeleton(armature, skeleton->hierarchy);
+}
+
+bool Carrot::Model::hasSkeleton() const {
+    return skeleton != nullptr;
+}
+
+Carrot::Render::Skeleton& Carrot::Model::getSkeleton() {
+    verify(skeleton, Carrot::sprintf("No skeleton in model %s", debugName.c_str()));
+    return *skeleton;
+}
+
+const Carrot::Render::Skeleton& Carrot::Model::getSkeleton() const {
+    verify(skeleton, Carrot::sprintf("No skeleton in model %s", debugName.c_str()));
+    return *skeleton;
 }

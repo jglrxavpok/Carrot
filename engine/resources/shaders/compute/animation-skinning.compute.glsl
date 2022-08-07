@@ -1,3 +1,5 @@
+//! Applies animations to a batch of models (all models are expected to use the same original vertex buffer)
+
 #extension GL_EXT_scalar_block_layout : enable
 
 // vertex

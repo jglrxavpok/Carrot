@@ -12,11 +12,13 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Buffer.cpp
         ${EngineRoot}render/resources/BufferView.cpp
         ${EngineRoot}render/resources/Image.cpp
+        ${EngineRoot}render/resources/Font.cpp
         ${EngineRoot}render/resources/LightMesh.cpp
         ${EngineRoot}render/resources/Mesh.cpp
         ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
+        ${EngineRoot}render/resources/Skeleton.cpp
         ${EngineRoot}render/resources/Texture.cpp
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
@@ -28,12 +30,12 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/shaders/Specialization.cpp
         ${EngineRoot}render/InstanceData.cpp
         ${EngineRoot}render/Camera.cpp
-        ${EngineRoot}render/animation/Animation.cpp
         ${EngineRoot}render/RenderPacket.cpp
 
-        ${EngineRoot}utils/conversions.cpp
+        ${EngineRoot}render/animation/Animation.cpp
+        ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
-        ${EngineRoot}render/resources/Font.cpp
+        ${EngineRoot}utils/conversions.cpp
 
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
@@ -189,8 +191,9 @@ set(FRAGMENT_SHADERS
         )
 
 set(COMPUTE_SHADERS
-        compute/skinning.compute.glsl
+        compute/animation-skinning.compute.glsl
         compute/particles.compute.glsl
+        compute/skeleton-skinning.compute.glsl
 
         #PARENT_SCOPE
         )

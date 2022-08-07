@@ -13,12 +13,11 @@
 
 constexpr const std::size_t InstanceCount = 10;
 
-class SampleAnimation: public Carrot::CarrotGame {
+//! Move a skeleton programmatically (instead of relying on an animation)
+class SampleManualSkeleton: public Carrot::CarrotGame {
 public:
-    explicit SampleAnimation(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                                      skinnedModel(engine.getRenderer().getOrCreateModel("resources/models/unit.fbx")),
-                                                      staticModel(engine.getRenderer().getOrCreateModel("resources/models/viking_room.obj")),
-                                                      skinnedModelRenderer(engine, skinnedModel, InstanceCount)
+    explicit SampleManualSkeleton(Carrot::Engine& engine): Carrot::CarrotGame(engine),
+                                                      skinnedModel(engine.getRenderer().getOrCreateModel("resources/models/cube_tower.fbx"))
     {
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -46,12 +45,6 @@ public:
             editorActions.activate();
         }
 
-        if(GetCapabilities().supportsRaytracing) {
-            auto& asBuilder = GetRenderer().getASBuilder();
-            staticBLAS = asBuilder.addBottomLevel(staticModel->getStaticMeshes());
-            staticModelInstance = asBuilder.addInstance(staticBLAS);
-        }
-
         flashlight = GetRenderer().getLighting().create();
         flashlight->light.type = Carrot::Render::LightType::Spot;
         flashlight->light.cutoffCosAngle = glm::cos(glm::pi<float>()/4.0f);
@@ -64,15 +57,12 @@ public:
     void onFrame(Carrot::Render::Context renderContext) override {
         cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.viewport.getCamera());
 
-        for (int i = 0; i < InstanceCount; ++i) {
+/* TODO: replace        for (int i = 0; i < InstanceCount; ++i) {
             skinnedModelRenderer.getInstance(i).animationTime = time;
             skinnedModelRenderer.getInstance(i).animationIndex = (i+1) % 2;
             skinnedModelRenderer.getInstance(i).transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 0, 0));
         }
-        skinnedModelRenderer.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer);
-
-        Carrot::InstanceData staticInstanceData;
-        staticModel->renderStatic(renderContext, staticInstanceData, Carrot::Render::PassEnum::OpaqueGBuffer);
+        skinnedModelRenderer.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer);*/
 
         if(moveFlashlight.isPressed()) {
             glm::mat4 invViewMatrix = GetEngine().getCamera().computeViewMatrix();
@@ -127,26 +117,21 @@ private:
 
     Carrot::Edition::FreeCameraController cameraController;
 
-    std::shared_ptr<Carrot::Model> staticModel;
-    std::shared_ptr<Carrot::BLASHandle> staticBLAS;
-    std::shared_ptr<Carrot::InstanceHandle> staticModelInstance;
-
     std::shared_ptr<Carrot::Model> skinnedModel;
-    Carrot::AnimatedInstances skinnedModelRenderer;
 
     std::shared_ptr<Carrot::Render::LightHandle> flashlight;
 };
 
 void Carrot::Engine::initGame() {
-    game = std::make_unique<SampleAnimation>(*this);
+    game = std::make_unique<SampleManualSkeleton>(*this);
 }
 
 int main() {
     std::ios::sync_with_stdio(false);
 
     Carrot::Configuration config;
-    config.applicationName = "Animation Sample";
-    config.raytracingSupport = Carrot::RaytracingSupport::Supported;
+    config.applicationName = "Manual Skeleton Sample";
+    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
     Carrot::Engine engine{config};
     engine.run();
 

@@ -18,14 +18,14 @@ Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk
     binding.bindingID = bindingID;
     binding.bufferInfo = std::make_unique<vk::DescriptorBufferInfo>();
     *binding.bufferInfo = info;
-    bindings.emplace_back(std::move(binding));
+    bindings[{setID, bindingID}] = std::move(binding);
     return *this;
 }
 
 std::unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
     std::map<uint32_t, std::vector<ComputeBinding>> bindingsPerSet{};
-    for(const auto& b : bindings) {
-        bindingsPerSet[b.setID].push_back(b);
+    for(const auto& [setAndBindingIndex, b] : bindings) {
+        bindingsPerSet[setAndBindingIndex.setID].push_back(b);
     }
     return std::make_unique<ComputePipeline>(engine, shaderResource, bindingsPerSet);
 }
