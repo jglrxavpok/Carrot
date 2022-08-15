@@ -48,6 +48,9 @@ namespace Carrot {
 #pragma endregion RenderingUpdate
 
     private:
+        void forEachMesh(const std::function<void(std::uint32_t meshIndex, std::uint32_t materialSlot, std::shared_ptr<Mesh>& mesh)>& action);
+
+    private:
         std::size_t maxInstanceCount = 0;
         Carrot::Engine& engine;
         std::shared_ptr<Model> model = nullptr;

@@ -10,6 +10,7 @@
 #include <engine/io/actions/ActionSet.h>
 #include <engine/edition/FreeCameraController.h>
 #include "engine/render/animation/AnimatedInstances.h"
+#include <engine/render/animation/SkeletalModelRenderer.h>
 
 constexpr const std::size_t InstanceCount = 10;
 
@@ -17,7 +18,9 @@ constexpr const std::size_t InstanceCount = 10;
 class SampleManualSkeleton: public Carrot::CarrotGame {
 public:
     explicit SampleManualSkeleton(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                                      skinnedModel(engine.getRenderer().getOrCreateModel("resources/models/cube_tower.fbx"))
+                                                      skinnedModel(engine.getRenderer().getOrCreateModel("resources/models/cube_tower.fbx")),
+                                                      staticModel(engine.getRenderer().getOrCreateModel("resources/models/viking_room.obj")),
+                                                      renderer(skinnedModel)
     {
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -45,6 +48,12 @@ public:
             editorActions.activate();
         }
 
+        if(GetCapabilities().supportsRaytracing) {
+            auto& asBuilder = GetRenderer().getASBuilder();
+            staticBLAS = asBuilder.addBottomLevel(staticModel->getStaticMeshes());
+            staticModelInstance = asBuilder.addInstance(staticBLAS);
+        }
+
         flashlight = GetRenderer().getLighting().create();
         flashlight->light.type = Carrot::Render::LightType::Spot;
         flashlight->light.cutoffCosAngle = glm::cos(glm::pi<float>()/4.0f);
@@ -52,17 +61,34 @@ public:
         flashlight->light.enabled = true;
 
         GetRenderer().getLighting().getAmbientLight() = { 0.1, 0.1, 0.1 };
+
+        // -----
+        childBone1 = renderer.getSkeleton().findBone("Child");
+        childBone2 = renderer.getSkeleton().findBone("Child.001");
+        childBone3 = renderer.getSkeleton().findBone("Child.002");
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
         cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.viewport.getCamera());
 
-/* TODO: replace        for (int i = 0; i < InstanceCount; ++i) {
-            skinnedModelRenderer.getInstance(i).animationTime = time;
-            skinnedModelRenderer.getInstance(i).animationIndex = (i+1) % 2;
-            skinnedModelRenderer.getInstance(i).transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 0, 0));
+        { // sample code
+            const float angle = glm::sin(static_cast<float>(time) * 2.5f) * 1.0f;
+            childBone1->transform = childBone1->originalTransform * glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3{ 0.0f, 1.0f, 0.0f });
+            childBone2->transform = childBone2->originalTransform * glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3{ 0.0f, 1.0f, 0.0f });
+            childBone3->transform = childBone3->originalTransform * glm::rotate(glm::identity<glm::mat4>(), angle, glm::vec3{ 0.0f, 1.0f, 0.0f });
+
+            float scale = 0.01f;
+            renderer.getInstanceData().transform = glm::scale(glm::identity<glm::mat4>(), glm::vec3{ scale, scale, scale });
+
+            // upload skeleton + render
+            renderer.onFrame(renderContext);
         }
-        skinnedModelRenderer.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer);*/
+
+        float staticScale = 10.0f;
+        Carrot::InstanceData staticInstanceData;
+        staticInstanceData.transform = glm::scale(glm::identity<glm::mat4>(), glm::vec3{ staticScale, staticScale, staticScale });
+        staticModelInstance->transform = staticInstanceData.transform;
+        staticModel->renderStatic(renderContext, staticInstanceData, Carrot::Render::PassEnum::OpaqueGBuffer);
 
         if(moveFlashlight.isPressed()) {
             glm::mat4 invViewMatrix = GetEngine().getCamera().computeViewMatrix();
@@ -116,10 +142,18 @@ private:
     Carrot::IO::BoolInputAction moveFlashlight { "Move flashlight" };
 
     Carrot::Edition::FreeCameraController cameraController;
-
-    std::shared_ptr<Carrot::Model> skinnedModel;
-
     std::shared_ptr<Carrot::Render::LightHandle> flashlight;
+
+    std::shared_ptr<Carrot::Model> staticModel;
+    std::shared_ptr<Carrot::BLASHandle> staticBLAS;
+    std::shared_ptr<Carrot::InstanceHandle> staticModelInstance;
+private:
+    std::shared_ptr<Carrot::Model> skinnedModel;
+    Carrot::Render::SkeletalModelRenderer renderer;
+
+    Carrot::Render::Bone* childBone1 = nullptr;
+    Carrot::Render::Bone* childBone2 = nullptr;
+    Carrot::Render::Bone* childBone3 = nullptr;
 };
 
 void Carrot::Engine::initGame() {
@@ -131,7 +165,7 @@ int main() {
 
     Carrot::Configuration config;
     config.applicationName = "Manual Skeleton Sample";
-    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
+    config.raytracingSupport = Carrot::RaytracingSupport::Supported;
     Carrot::Engine engine{config};
     engine.run();
 

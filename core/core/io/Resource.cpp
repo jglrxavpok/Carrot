@@ -74,6 +74,7 @@ namespace Carrot::IO {
         }
 
         data.isRawData = toCopy.data.isRawData;
+        filename = toCopy.filename;
 
         if(data.isRawData) {
             data.raw = toCopy.data.raw;

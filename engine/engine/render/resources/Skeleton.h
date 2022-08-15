@@ -19,6 +19,7 @@ namespace Carrot::Render {
 
     struct Bone {
         glm::mat4 transform{1.0f}; //! Transform of this bone (relative to parent if any exists)
+        glm::mat4 originalTransform{1.0f}; //! Original transform of this bone (relative to parent if any exists). Modify only if you know the consequences
         BoneName name = "NON-INITIALIZED??"; //! name used to identify this bone
     };
 

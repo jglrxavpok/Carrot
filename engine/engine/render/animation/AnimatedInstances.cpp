@@ -26,7 +26,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     auto meshes = model->getSkinnedMeshes();
     uint64_t maxVertexCount = 0;
 
-    for(const auto& mesh : meshes) {
+    forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
         indirectBuffers[mesh->getMeshID()] = std::make_shared<Buffer>(engine.getVulkanDriver(),
                                                                       maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
                                                                       vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
@@ -36,7 +36,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 
         meshOffsets[mesh->getMeshID()] = vertexCountPerInstance;
         vertexCountPerInstance += meshSize;
-    }
+    });
 
     // TODO: swapchainlength-buffering?
     flatVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
@@ -47,7 +47,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     flatVertices->name("flat vertices");
 
     // copy mesh vertices into a flat buffer to allow for easy indexing inside the compute shader
-    for(const auto& mesh : meshes) {
+    forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
         int32_t vertexOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
 
         engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
@@ -58,7 +58,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
             };
             commands.copyBuffer(mesh->getVertexBuffer().getVulkanBuffer(), flatVertices->getVulkanBuffer(), region);
         });
-    }
+    });
 
     fullySkinnedUnitVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
                                                         sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
@@ -75,7 +75,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         std::vector<std::shared_ptr<Carrot::Mesh>> instanceMeshes;
         instanceMeshes.reserve(meshes.size());
 
-        for(const auto& mesh : meshes) {
+        forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
             std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
             indirectCommands[mesh->getMeshID()].push_back(vk::DrawIndexedIndirectCommand {
@@ -90,7 +90,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
                 Carrot::BufferView vertexBuffer{nullptr, *fullySkinnedUnitVertices, static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex) };
                 instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex)));
             }
-        }
+        });
 
         if(GetCapabilities().supportsRaytracing) {
             auto& asBuilder = GetRenderer().getASBuilder();
@@ -100,11 +100,11 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         }
     }
 
-    for(const auto& mesh : meshes) {
+    forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
         indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #" + std::to_string(mesh->getMeshID()));
         indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(std::make_pair(static_cast<std::uint64_t>(0),
                                                                              indirectCommands[mesh->getMeshID()]));
-    }
+    });
 
     createSkinningComputePipeline();
 }
@@ -405,6 +405,16 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
 
                 renderContext.renderer.render(packet);
             }
+        }
+    }
+}
+
+void Carrot::AnimatedInstances::forEachMesh(const std::function<void(std::uint32_t meshIndex, std::uint32_t materialSlot, Mesh::Ref& mesh)>& action) {
+    std::size_t meshIndex = 0;
+    for(auto& [materialSlot, meshList] : model->getSkinnedMeshes()) {
+        for(auto& mesh : meshList) {
+            action(meshIndex, materialSlot, mesh);
+            meshIndex++;
         }
     }
 }

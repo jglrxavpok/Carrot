@@ -49,7 +49,9 @@ namespace Carrot {
         void indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<Carrot::MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID = Carrot::UUID::null());
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getStaticMeshes() const;
-        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getSkinnedMeshes() const;
+
+        // [materialSlot] = list of meshes using that material
+        [[nodiscard]] std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Carrot::Mesh>>> getSkinnedMeshes() const;
 
         Carrot::Buffer& getAnimationDataBuffer();
 
@@ -65,6 +67,12 @@ namespace Carrot {
         //! Gets the skeleton inside this model. Due to how Assimp works, don't expect only bone nodes, the entire scene hierarchy will be present.
         const Render::Skeleton& getSkeleton() const;
 
+        //! Name -> Bone Index mapping
+        const std::unordered_map<std::string, std::uint32_t>& getBoneMapping() const;
+
+        //! Name -> Bone Offset matrix
+        const std::unordered_map<std::string, glm::mat4>& getBoneOffsetMatrices() const;
+
     public:
         void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
         void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
@@ -73,15 +81,16 @@ namespace Carrot {
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
 
     private:
-        std::shared_ptr<Mesh> loadMesh(const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices);
+        std::shared_ptr<Mesh> loadMesh(const aiMesh* mesh);
 
-        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
+        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
 
         void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                            const std::unordered_map<std::string, uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature);
+                            const aiNode *armature);
 
         void loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent);
         void loadSkeleton(aiNode* armature);
+
     private:
         Carrot::Engine& engine;
         std::string debugName;
@@ -96,6 +105,9 @@ namespace Carrot {
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;
+        std::unordered_map<std::string, std::uint32_t> boneMapping;
+        std::unordered_map<std::string, glm::mat4> offsetMatrices;
+
         std::map<std::string, Animation*> animations{};
         std::map<std::string, std::uint32_t> animationMapping{};
         std::unique_ptr<Buffer> animationData = nullptr;

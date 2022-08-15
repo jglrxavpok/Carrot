@@ -11,6 +11,8 @@
 namespace Carrot {
     class Mesh: public DebugNameable {
     public:
+        using Ref = std::shared_ptr<Mesh>;
+
         Mesh();
         virtual ~Mesh() = default;
 

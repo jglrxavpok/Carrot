@@ -131,7 +131,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         ZoneScopedN("Loading mesh");
         ZoneText(mesh->mName.C_Str(), mesh->mName.length);
 
-        auto loadedMesh = loadMesh(mesh, boneMapping, offsetMatrices);
+        auto loadedMesh = loadMesh(mesh);
         auto& material = materialMap[mesh->mMaterialIndex];
         bool hasBones = mesh->HasBones();
         loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
@@ -152,14 +152,14 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     }
 
     if(scene->HasAnimations()) {
-        loadAnimations(engine, scene, boneMapping, offsetMatrices, armature);
+        loadAnimations(engine, scene, armature);
     }
 
     loadSkeleton(armature);
 }
 
 void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                                   const std::unordered_map<std::string, std::uint32_t>& boneMapping, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const aiNode *armature) {
+                                   const aiNode *armature) {
 
     glm::mat4 globalInverseTransform = glm::inverse(glmMat4FromAssimp(armature->mTransformation));
 
@@ -203,7 +203,7 @@ void Carrot::Model::loadAnimations(Carrot::Engine& engine, const aiScene *scene,
             float time = timestamps[index];
             auto& keyframe = animation.keyframes[index];
             keyframe.timestamp = time / anim->mTicksPerSecond;
-            this->updateKeyframeRecursively(keyframe, armature, time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform);
+            this->updateKeyframeRecursively(keyframe, armature, time, animationNodes, globalInverseTransform);
         }
         this->animations[name] = &allAnimations[animationIndex];
 
@@ -373,7 +373,7 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
     }
 }
 
-std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::unordered_map<std::string, std::uint32_t>& boneMapping, std::unordered_map<std::string, glm::mat4>& offsetMatrices) {
+std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh) {
     std::vector<Vertex> vertices{};
     std::vector<SkinnedVertex> skinnedVertices{};
     std::vector<std::uint32_t> indices{};
@@ -471,7 +471,7 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh, std::u
     }
 }
 
-void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, std::uint32_t>& boneMapping, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const std::unordered_map<std::string, glm::mat4>& offsetMatrices, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix) {
+void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix) {
     if(armature == nullptr)
         return;
     std::string boneName = armature->mName.data;
@@ -530,18 +530,12 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
     }
 
     for(int i = 0; i < armature->mNumChildren; i++) {
-        updateKeyframeRecursively(keyframe, armature->mChildren[i], time, boneMapping, animationNodes, offsetMatrices, globalInverseTransform, globalTransform);
+        updateKeyframeRecursively(keyframe, armature->mChildren[i], time, animationNodes, globalInverseTransform, globalTransform);
     }
 }
 
-std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getSkinnedMeshes() const {
-    std::vector<std::shared_ptr<Mesh>> result{};
-    for(const auto& [material, meshes] : skinnedMeshes) {
-        for(const auto& mesh : meshes) {
-            result.push_back(mesh);
-        }
-    }
-    return result;
+std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model::getSkinnedMeshes() const {
+    return skinnedMeshes;
 }
 
 std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getStaticMeshes() const {
@@ -569,6 +563,7 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
 void Carrot::Model::loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent) {
     parent.bone.name = std::string(subSkeleton->mName.data, subSkeleton->mName.length);
     parent.bone.transform = Carrot::glmMat4FromAssimp(subSkeleton->mTransformation);
+    parent.bone.originalTransform = parent.bone.transform;
 
     for (std::size_t i = 0; i < subSkeleton->mNumChildren; ++i) {
         loadSubSkeleton(subSkeleton->mChildren[i], parent.newChild());
@@ -593,4 +588,12 @@ Carrot::Render::Skeleton& Carrot::Model::getSkeleton() {
 const Carrot::Render::Skeleton& Carrot::Model::getSkeleton() const {
     verify(skeleton, Carrot::sprintf("No skeleton in model %s", debugName.c_str()));
     return *skeleton;
+}
+
+const std::unordered_map<std::string, std::uint32_t>& Carrot::Model::getBoneMapping() const {
+    return boneMapping;
+}
+
+const std::unordered_map<std::string, glm::mat4>& Carrot::Model::getBoneOffsetMatrices() const {
+    return offsetMatrices;
 }

@@ -51,6 +51,9 @@ namespace Carrot {
         template<typename T>
         void stageUploadWithOffset(uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
 
+        /// returns a vk::DescriptorBufferInfo that references this buffer
+        [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;
+
         template<typename T>
         T* map();
 

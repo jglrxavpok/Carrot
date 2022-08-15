@@ -5,7 +5,7 @@
 // vertex
 layout (local_size_x = 128) in;
 // instance
-layout (local_size_y = 8) in;
+layout (local_size_y = 1) in;
 
 layout(constant_id = 0) const uint VERTEX_COUNT = 1;
 
@@ -50,11 +50,6 @@ mat4 computeSkinning(uint vertexIndex) {
                         + boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y
                         + boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z
                         + boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w
-
-                        + boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x
-                        + boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y
-                        + boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z
-                        + boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w
     ;
     return boneTransform;
 }
@@ -66,14 +61,14 @@ void main() {
 
     mat4 skinning = computeSkinning(vertexIndex);
     uint finalVertexIndex = vertexIndex;
-    outputVertices[finalVertexIndex].pos = originalVertices[vertexIndex].pos;
-    outputVertices[finalVertexIndex].normal = originalVertices[vertexIndex].normal;
     outputVertices[finalVertexIndex].uv = originalVertices[vertexIndex].uv;
     outputVertices[finalVertexIndex].color = originalVertices[vertexIndex].color;
-    outputVertices[finalVertexIndex].pos = skinning * outputVertices[finalVertexIndex].pos;
 
-    outputVertices[finalVertexIndex].pos = vec4(outputVertices[finalVertexIndex].pos.xyz / outputVertices[finalVertexIndex].pos.w, 1.0);
+    vec4 skinningResult = skinning * originalVertices[vertexIndex].pos;
+    outputVertices[finalVertexIndex].pos = vec4(skinningResult.xyz / skinningResult.w, 1.0);
 
-    vec4 transformedNormal = skinning * vec4(outputVertices[finalVertexIndex].normal, 0.0);
-    outputVertices[finalVertexIndex].normal = transformedNormal.xyz;
+    vec3 transformedNormal = normalize((skinning * vec4(originalVertices[vertexIndex].normal, 0.0)).xyz);
+    vec3 transformedTangent = normalize((skinning * vec4(originalVertices[vertexIndex].tangent, 0.0)).xyz);
+    outputVertices[finalVertexIndex].normal = transformedNormal;
+    outputVertices[finalVertexIndex].tangent = transformedTangent;
 }

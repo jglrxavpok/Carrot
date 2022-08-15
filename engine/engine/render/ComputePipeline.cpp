@@ -22,15 +22,22 @@ Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk
     return *this;
 }
 
+Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::specializationUInt32(std::uint32_t constantID, std::uint32_t value) {
+    specializationConstants[constantID] = value;
+    return *this;
+}
+
 std::unique_ptr<Carrot::ComputePipeline> Carrot::ComputePipelineBuilder::build() {
     std::map<uint32_t, std::vector<ComputeBinding>> bindingsPerSet{};
     for(const auto& [setAndBindingIndex, b] : bindings) {
         bindingsPerSet[setAndBindingIndex.setID].push_back(b);
     }
-    return std::make_unique<ComputePipeline>(engine, shaderResource, bindingsPerSet);
+    return std::make_unique<ComputePipeline>(engine, shaderResource, specializationConstants, bindingsPerSet);
 }
 
-Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<uint32_t, std::vector<ComputeBinding>>& bindings):
+Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource,
+                                         const std::unordered_map<std::uint32_t, SpecializationConstant>& specializationConstants,
+                                         const std::map<uint32_t, std::vector<ComputeBinding>>& bindings):
         engine(engine), dispatchBuffer(engine.getResourceAllocator().allocateBuffer(sizeof(vk::DispatchIndirectCommand),
                                                                                     vk::BufferUsageFlagBits::eIndirectBuffer,
                                                                                     vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
@@ -43,8 +50,30 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
             .commandBufferCount = 1,
     })[0];
 
-    // TODO: specialisation
+    // TODO: support other types than uint32
     auto specialization = vk::SpecializationInfo{};
+
+    std::vector<std::uint8_t> specializationData;
+    std::vector<vk::SpecializationMapEntry> entries;
+    specializationData.resize(specializationConstants.size() * sizeof(SpecializationConstant));
+    entries.reserve(specializationConstants.size());
+
+    std::size_t index = 0;
+    for(const auto& [constantID, constant] : specializationConstants) {
+        SpecializationConstant* ptr = &reinterpret_cast<SpecializationConstant*>(specializationData.data())[index];
+        *ptr = constant;
+
+        entries.emplace_back(vk::SpecializationMapEntry {
+           .constantID = constantID,
+           .offset = static_cast<uint32_t>(index * sizeof(SpecializationConstant)),
+           .size = sizeof(SpecializationConstant),
+        });
+        index++;
+    }
+    specialization.pData = specializationData.data();
+    specialization.dataSize = specializationData.size();
+    specialization.mapEntryCount = entries.size();
+    specialization.pMapEntries = entries.data();
 
     std::uint32_t totalBindingCount = 0;
     std::uint32_t dynamicBindingCount = 0;
@@ -203,7 +232,7 @@ void Carrot::ComputePipeline::onSwapchainImageCountChange(size_t newCount) {
 
 void Carrot::ComputePipeline::onSwapchainSizeChange(int newWidth, int newHeight) {}
 
-void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const {
+void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::Semaphore* signal) const {
     dispatchSizes->x = groupCountX;
     dispatchSizes->y = groupCountY;
     dispatchSizes->z = groupCountZ;
@@ -215,7 +244,7 @@ void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCount
             .pWaitDstStageMask = nullptr,
             .commandBufferCount = 1,
             .pCommandBuffers = &commandBuffer,
-            .signalSemaphoreCount = 0,
-            .pSignalSemaphores = nullptr,
+            .signalSemaphoreCount = signal != nullptr ? 1u : 0u,
+            .pSignalSemaphores = signal,
     }, *finishedFence);
 }

@@ -131,6 +131,14 @@ vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
     return driver.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
 }
 
+vk::DescriptorBufferInfo Carrot::Buffer::asBufferInfo() const {
+    return vk::DescriptorBufferInfo {
+        .buffer = getVulkanBuffer(),
+        .offset = 0,
+        .range = size,
+    };
+}
+
 Carrot::BufferView Carrot::Buffer::getWholeView() {
     return BufferView(nullptr /* allocator does NOT own this buffer view */, *this, 0u, static_cast<vk::DeviceSize>(size));
 }

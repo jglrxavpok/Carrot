@@ -42,11 +42,14 @@ namespace std {
 }
 
 namespace Carrot {
+    using SpecializationConstant = std::uint32_t; // does not support anything else for now
+
     class ComputePipeline: public SwapchainAware {
     public:
-        explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::map<std::uint32_t, std::vector<ComputeBinding>>& bindings);
+        explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::unordered_map<std::uint32_t, SpecializationConstant>& specializationConstants, const std::map<std::uint32_t, std::vector<ComputeBinding>>& bindings);
 
-        void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const;
+        //! Launches the compute pipeline with the given group size. A signal semaphore can optionally be added, and will be signaled once processing is finished
+        void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::Semaphore* signal = nullptr) const;
 
         void waitForCompletion();
 
@@ -76,6 +79,7 @@ namespace Carrot {
 
         ComputePipelineBuilder& shader(IO::Resource shader) { shaderResource = shader; return *this; };
         ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo info, uint32_t count = 1);
+        ComputePipelineBuilder& specializationUInt32(std::uint32_t constantID, std::uint32_t value);
 
         std::unique_ptr<ComputePipeline> build();
 
@@ -83,6 +87,7 @@ namespace Carrot {
         Carrot::Engine& engine;
         IO::Resource shaderResource;
         std::unordered_map<SetAndBindingKey, ComputeBinding> bindings;
+        std::unordered_map<std::uint32_t, SpecializationConstant> specializationConstants;
     };
 
 }
