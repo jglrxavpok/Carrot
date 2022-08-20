@@ -151,8 +151,8 @@ namespace Carrot::VR {
             auto tmp = Carrot::toGlm(view.pose);
             // used to align with engine orientation
             glm::mat4 correctOrientation = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
-            camera.getViewMatrixRef() = glm::inverse(tmp) * correctOrientation;// * glm::translate({}, translation);
-            camera.getProjectionMatrixRef() = Carrot::toGlm(view.fov);
+            eyeViews[static_cast<int>(eye)] = glm::inverse(tmp) * correctOrientation;// * glm::translate({}, translation);
+            eyeProjections[static_cast<int>(eye)] = Carrot::toGlm(view.fov);
         };
 
         updateCamera(Carrot::Render::Eye::LeftEye, xrViews[0]);
@@ -205,6 +205,34 @@ namespace Carrot::VR {
         {
             ZoneScopedN("xrSession->endFrame(frameEndInfo);");
             xrSession->endFrame(frameEndInfo);
+        }
+    }
+
+    const glm::mat4& Session::getEyeProjection(Carrot::Render::Eye eye) const {
+        switch(eye) {
+            case Carrot::Render::Eye::LeftEye:
+                return eyeProjections[0];
+
+            case Carrot::Render::Eye::RightEye:
+                return eyeProjections[1];
+
+            default:
+                verify(false, "invalid case");
+                throw;
+        }
+    }
+
+    const glm::mat4& Session::getEyeView(Carrot::Render::Eye eye) const {
+        switch(eye) {
+            case Carrot::Render::Eye::LeftEye:
+                return eyeViews[0];
+
+            case Carrot::Render::Eye::RightEye:
+                return eyeViews[1];
+
+            default:
+                verify(false, "invalid case");
+                throw;
         }
     }
 

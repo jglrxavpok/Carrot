@@ -799,11 +799,14 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             ZoneScoped;
             std::string profilingMarker = Carrot::sprintf("Viewport %x", &v);
             ZoneText(profilingMarker.c_str(), profilingMarker.size());
-
             Carrot::Render::Context renderContext = newRenderContext(imageIndex, v);
             {
                 ZoneScopedN("game->onFrame");
-                game->onFrame(renderContext);
+                if(config.runInVR) {
+                    game->onVRFrame(newRenderContext(imageIndex, v, Carrot::Render::Eye::LeftEye));
+                    game->onVRFrame(newRenderContext(imageIndex, v, Carrot::Render::Eye::RightEye));
+                }
+                game->onFrame(newRenderContext(imageIndex, v));
             }
             GetPhysics().onFrame(renderContext);
             getRayTracer().onFrame(renderContext); // update instance positions only once everything has been updated
@@ -1341,6 +1344,12 @@ Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFr
             .swapchainIndex = swapchainFrameIndex,
             .lastSwapchainIndex = lastFrameIndex,
     };
+}
+
+Carrot::VR::Session& Carrot::Engine::getVRSession() {
+    verify(config.runInVR, "Cannot access VR Session if not running in VR");
+    verify(vrSession, "VR session is null");
+    return *vrSession;
 }
 
 Carrot::Async::Task<> Carrot::Engine::cowaitNextFrame() {

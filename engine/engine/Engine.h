@@ -222,7 +222,7 @@ namespace Carrot {
         Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Viewport& viewport, Render::Eye eye = Render::Eye::NoVR);
 
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
-        VR::Session& getVRSession() { return *vrSession; }
+        VR::Session& getVRSession();
 
     public:
         Render::Pass<Render::PassData::GResolve>& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback);

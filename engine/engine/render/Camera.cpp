@@ -13,8 +13,6 @@ namespace Carrot {
     Camera::Camera(float fov, float aspectRatio, float zNear, float zFar, glm::vec3 up): up(up), position(), target() {
         projectionMatrix = glm::perspective(glm::radians(fov), aspectRatio, zNear, zFar);
         projectionMatrix[1][1] *= -1; // convert to Vulkan coordinates (from OpenGL)
-
-        swapMatrices(); // make sure first frames are correct
     }
 
     const glm::mat4& Camera::getProjectionMatrix() const {
@@ -87,23 +85,6 @@ namespace Carrot {
         type = ControlType::ViewProjection;
         this->viewMatrix = view;
         this->projectionMatrix = projection;
-    }
-
-    void Camera::swapMatrices() {
-        switch (type) {
-            case ControlType::PoseAndLookAt:
-                viewMatrix = glm::lookAt(position, target, up);
-                break;
-
-            case ControlType::ViewProjection:
-                break;
-
-            default:
-                TODO;
-        }
-
-        thisFrameProjectionMatrix = projectionMatrix;
-        thisFrameViewMatrix = viewMatrix;
     }
 
     Camera& Camera::operator=(const Camera& toCopy) = default;

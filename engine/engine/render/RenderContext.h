@@ -25,6 +25,12 @@ namespace Carrot::Render {
         size_t swapchainIndex = -1;
         size_t lastSwapchainIndex = -1;
 
+        //! Camera currently used for rendering. It is valid to modify it during rendering
+        Carrot::Camera& getCamera();
+
+        //! Camera currently used for rendering
+        const Carrot::Camera& getCamera() const;
+
         vk::DescriptorSet getCameraDescriptorSet() const;
 
         /// Returns a copy of this RenderContext, with swapchainIndex = lastSwapchainIndex. Calling it again on the

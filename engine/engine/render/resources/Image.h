@@ -74,7 +74,7 @@ namespace Carrot {
         ~Image() noexcept;
 
         const vk::Image& getVulkanImage() const;
-        const vk::DeviceMemory& getMemory() const;
+        vk::DeviceMemory getMemory() const;
         const vk::Extent3D& getSize() const;
         vk::Format getFormat() const;
         std::uint32_t getLayerCount() const { return layerCount; }

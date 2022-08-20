@@ -8,6 +8,7 @@
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/Engine.h"
+#include "engine/vr/Session.h"
 
 namespace Carrot::Render {
     Viewport::Viewport(VulkanRenderer& renderer): renderer(renderer) {
@@ -66,10 +67,17 @@ namespace Carrot::Render {
             static CameraBufferObject objLeftEye{};
             static CameraBufferObject objRightEye{};
 
-            objLeftEye.update(getCamera(Carrot::Render::Eye::LeftEye));
-            objRightEye.update(getCamera(Carrot::Render::Eye::RightEye));
-            getCamera(Carrot::Render::Eye::RightEye).swapMatrices();
-            getCamera(Carrot::Render::Eye::LeftEye).swapMatrices();
+            Camera leftEyeCamera = getCamera(Carrot::Render::Eye::LeftEye);
+            Camera rightEyeCamera = getCamera(Carrot::Render::Eye::RightEye);
+
+            leftEyeCamera.getViewMatrixRef() = GetEngine().getVRSession().getEyeView(Carrot::Render::Eye::LeftEye) * leftEyeCamera.getViewMatrixRef();
+            leftEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::LeftEye) * leftEyeCamera.getProjectionMatrixRef();
+
+            rightEyeCamera.getViewMatrixRef() = GetEngine().getVRSession().getEyeView(Carrot::Render::Eye::RightEye) * rightEyeCamera.getViewMatrixRef();
+            rightEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::RightEye) * rightEyeCamera.getProjectionMatrixRef();
+
+            objLeftEye.update(leftEyeCamera);
+            objRightEye.update(rightEyeCamera);
 
             auto& leftBuffer = cameraUniformBuffers[context.swapchainIndex * 2];
             auto& rightBuffer = cameraUniformBuffers[context.swapchainIndex * 2 + 1];
@@ -80,7 +88,6 @@ namespace Carrot::Render {
             auto& buffer = cameraUniformBuffers[context.swapchainIndex];
 
             obj.update(getCamera());
-            getCamera().swapMatrices();
 
             buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
         }

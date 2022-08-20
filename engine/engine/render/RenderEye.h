@@ -6,8 +6,8 @@
 
 namespace Carrot::Render {
     enum class Eye {
-        LeftEye,
-        RightEye,
+        LeftEye = 0,
+        RightEye = 1,
         NoVR = LeftEye,
     };
 }

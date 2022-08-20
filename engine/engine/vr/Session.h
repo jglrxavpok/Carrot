@@ -23,6 +23,13 @@ namespace Carrot::VR {
         ~Session();
 
     public:
+        //! Projection matrix corresponding to the given eye
+        const glm::mat4& getEyeProjection(Carrot::Render::Eye eye) const;
+
+        //! View matrix corresponding to the given eye
+        const glm::mat4& getEyeView(Carrot::Render::Eye eye) const;
+
+    public:
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }
         const vk::Extent2D& getEyeRenderSize() const { return eyeRenderSize; }
@@ -53,6 +60,9 @@ namespace Carrot::VR {
         xr::UniqueSpace xrSpace;
         std::vector<xr::View> xrViews;
         xr::CompositionLayerProjectionView xrProjectionViews[2];
+
+        glm::mat4 eyeViews[2];
+        glm::mat4 eyeProjections[2];
 
     private: // swapchain
         vk::Extent2D fullSwapchainSize;

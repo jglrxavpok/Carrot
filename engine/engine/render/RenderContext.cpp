@@ -7,6 +7,14 @@
 #include "VulkanRenderer.h"
 
 namespace Carrot::Render {
+    Carrot::Camera& Context::getCamera() {
+        return viewport.getCamera(eye);
+    }
+
+    const Carrot::Camera& Context::getCamera() const {
+        return viewport.getCamera(eye);
+    }
+
     vk::DescriptorSet Context::getCameraDescriptorSet() const {
         return viewport.getCameraDescriptorSet(*this);
     }

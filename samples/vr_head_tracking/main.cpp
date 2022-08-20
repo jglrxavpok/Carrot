@@ -5,15 +5,28 @@
 #include <engine/Engine.h>
 #include <engine/CarrotGame.h>
 #include <engine/render/Model.h>
+#include "engine/io/actions/Action.hpp"
+#include "engine/io/actions/ActionSet.h"
 
 class SampleVRHead: public Carrot::CarrotGame {
 public:
     SampleVRHead(Carrot::Engine& engine): Carrot::CarrotGame(engine),
                                           staticModel(GetRenderer().getOrCreateModel("resources/models/viking_room.obj")){
 
+        goUpInput.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_SPACE));
+        goDownInput.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_SHIFT));
+        actions.add(goUpInput);
+        actions.add(goDownInput);
+        actions.activate();
+    }
+
+    void onVRFrame(Carrot::Render::Context renderContext) override {
+        // setup camera for each eye
+        renderContext.getCamera().getViewMatrixRef() = glm::translate(glm::identity<glm::mat4>(), glm::vec3 { 0.0f, 0.0f, -cameraHeight });
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
+        // setup rendering
         Carrot::InstanceData instanceData;
 
         const float scale = 10;
@@ -25,10 +38,18 @@ public:
     }
 
     void tick(double frameTime) override {
-
+        float moveSpeed = 10 * frameTime;
+        float dz = moveSpeed * (goUpInput.getValue() - goDownInput.getValue());
+        cameraHeight += dz;
     }
 
 private:
+    float cameraHeight = 0.0f;
+
+    Carrot::IO::ActionSet actions { "Sample actions" };
+    Carrot::IO::FloatInputAction goUpInput { "Go Up" };
+    Carrot::IO::FloatInputAction goDownInput { "Go Down" };
+
     Carrot::Model::Ref staticModel; // have something to render
 };
 

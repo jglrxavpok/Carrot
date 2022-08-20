@@ -64,9 +64,6 @@ namespace Carrot {
         glm::vec3 up{};
         glm::vec3 position{};
         glm::vec3 target{};
-
-        glm::mat4 thisFrameProjectionMatrix{1.0f};
-        glm::mat4 thisFrameViewMatrix{1.0f};
     };
 }
 

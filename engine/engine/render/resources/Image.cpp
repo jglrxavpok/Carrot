@@ -56,7 +56,7 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
         .memoryTypeIndex = driver.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
 
-    imageData.asOwned.memory = Carrot::DeviceMemory(allocationInfo);
+    imageData.asOwned.memory = std::move(Carrot::DeviceMemory(allocationInfo));
 
     // bind memory to image
     driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getMemory(), 0);
@@ -454,7 +454,7 @@ vk::Format Carrot::Image::getFormat() const {
     return format;
 }
 
-const vk::DeviceMemory& Carrot::Image::getMemory() const {
+vk::DeviceMemory Carrot::Image::getMemory() const {
     verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
     return imageData.asOwned.memory.getVulkanMemory();
 }
