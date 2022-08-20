@@ -3,10 +3,10 @@
 //
 
 #include "SingleMesh.h"
-
+#include "engine/Engine.h"
 
 void Carrot::SingleMesh::setDebugNames(const std::string& name) {
-    nameSingle(GetVulkanDriver(), name, vertexAndIndexBuffer->getVulkanBuffer());
+    nameSingle(name, vertexAndIndexBuffer->getVulkanBuffer());
 }
 
 std::uint64_t Carrot::SingleMesh::getIndexCount() const {

@@ -123,6 +123,8 @@ function(add_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/sol3/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/VulkanMemoryAllocator-Hpp)
     target_include_directories(${Target} PUBLIC ${LUA_INCLUDE_DIR})
+    target_include_directories(${Target} PUBLIC ${OPENXR-INCLUDE-DIR})
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/openxr-hpp/include/)
     target_link_directories(${Target} PUBLIC ${OpenAL_BINARY_DIR})
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")

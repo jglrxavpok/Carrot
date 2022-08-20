@@ -16,6 +16,7 @@
 #include "core/memory/ThreadLocal.hpp"
 #include "engine/Configuration.h"
 #include "engine/Window.h"
+#include "engine/render/resources/DeviceMemory.h"
 
 namespace sol {
     class state;
@@ -78,17 +79,13 @@ namespace Carrot {
 
     using DeferredImageDestruction = DeferredDestruction<vk::UniqueImage>;
     using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
-    using DeferredMemoryDestruction = DeferredDestruction<vk::UniqueDeviceMemory>;
+    using DeferredMemoryDestruction = DeferredDestruction<Carrot::DeviceMemory>;
     using DeferredBufferDestruction = DeferredDestruction<vk::UniqueBuffer>;
     using DeferredAccelerationStructureDestruction = DeferredDestruction<vk::UniqueAccelerationStructureKHR>;
 
     class VulkanDriver: public SwapchainAware {
     public:
-        VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine
-        #ifdef ENABLE_VR
-                , Carrot::VR::Interface& vrInterface
-        #endif
-        );
+        VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine, Carrot::VR::Interface* vrInterface);
 
         ~VulkanDriver();
 
@@ -195,7 +192,7 @@ namespace Carrot {
     public:
         void deferDestroy(vk::UniqueImage&& image);
         void deferDestroy(vk::UniqueImageView&& imageView);
-        void deferDestroy(vk::UniqueDeviceMemory&& memory);
+        void deferDestroy(Carrot::DeviceMemory&& memory);
         void deferDestroy(vk::UniqueBuffer&& resource);
         void deferDestroy(vk::UniqueAccelerationStructureKHR&& resource);
 
@@ -232,9 +229,7 @@ namespace Carrot {
         std::int32_t framebufferHeight;
         Engine* engine = nullptr;
 
-#ifdef ENABLE_VR
-        VR::Interface& vrInterface;
-#endif
+        VR::Interface* vrInterface = nullptr;
 
         vk::UniqueInstance instance;
         vk::UniqueDebugUtilsMessengerEXT callback{};

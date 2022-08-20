@@ -9,6 +9,7 @@
 #include <string_view>
 #include "core/utils/stringmanip.h"
 #include "engine/io/actions/InputVectors.h"
+#include "engine/vr/includes.h"
 
 namespace Carrot::IO {
     enum class ActionType {
@@ -100,7 +101,6 @@ namespace Carrot::IO {
             };
         } state;
 
-#ifdef ENABLE_VR
     private: // OpenXR compatibility
         void createXRAction(xr::ActionSet& set) {
             xr::ActionType xrActionType = xr::ActionType::FloatInput;
@@ -119,7 +119,6 @@ namespace Carrot::IO {
         };
 
         xr::UniqueAction xrAction;
-#endif
 
         friend class ActionSet;
     };

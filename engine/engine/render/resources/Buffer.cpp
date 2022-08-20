@@ -46,8 +46,8 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
             }
     };
 
-    memory = driver.getLogicalDevice().allocateMemoryUnique(allocInfo.get(), driver.getAllocationCallbacks());
-    driver.getLogicalDevice().bindBufferMemory(*vkBuffer, *memory, 0);
+    memory = Carrot::DeviceMemory(allocInfo.get());
+    driver.getLogicalDevice().bindBufferMemory(*vkBuffer, memory.getVulkanMemory(), 0);
 }
 
 void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
@@ -77,15 +77,17 @@ void Carrot::Buffer::copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) 
 
     // copy staging buffer to the 'out' buffer
     stagingBuffer.directDownload(out, 0);
+
+    stagingBuffer.destroyNow();
 }
 
 void Carrot::Buffer::directDownload(std::span<std::uint8_t> out, vk::DeviceSize offset) {
     void* pData;
-    if(driver.getLogicalDevice().mapMemory(*memory, offset, out.size(), static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
+    if(driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), offset, out.size(), static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to map memory!");
     }
     std::memcpy(out.data(), reinterpret_cast<const uint8_t*>(pData), out.size());
-    driver.getLogicalDevice().unmapMemory(*memory);
+    driver.getLogicalDevice().unmapMemory(memory.getVulkanMemory());
 }
 
 const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
@@ -94,14 +96,14 @@ const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
 
 void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
     void* pData;
-    if(driver.getLogicalDevice().mapMemory(*memory, offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
+    if(driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
         throw std::runtime_error("Failed to map memory!");
     }
     std::memcpy(reinterpret_cast<uint8_t*>(pData), data, length);
 
     {
         ZoneScopedN("unmapMemory");
-        driver.getLogicalDevice().unmapMemory(*memory);
+        driver.getLogicalDevice().unmapMemory(memory.getVulkanMemory());
     }
 }
 
@@ -118,12 +120,12 @@ Carrot::Buffer::~Buffer() {
 }
 
 void Carrot::Buffer::setDebugNames(const std::string& name) {
-    nameSingle(driver, name, getVulkanBuffer());
+    nameSingle(name, getVulkanBuffer());
 }
 
 void Carrot::Buffer::unmap() {
     verify(mappedPtr != nullptr, "Must be mapped!");
-    driver.getLogicalDevice().unmapMemory(*memory);
+    driver.getLogicalDevice().unmapMemory(memory.getVulkanMemory());
     mappedPtr = nullptr;
 }
 
@@ -145,8 +147,16 @@ Carrot::BufferView Carrot::Buffer::getWholeView() {
 
 void Carrot::Buffer::flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length) {
     driver.getLogicalDevice().flushMappedMemoryRanges(vk::MappedMemoryRange {
-       .memory = *memory,
+       .memory = memory.getVulkanMemory(),
        .offset = start,
        .size = length,
     });
+}
+
+void Carrot::Buffer::destroyNow() {
+    if(mappedPtr) {
+        unmap();
+    }
+    vkBuffer.reset();
+    memory = {};
 }

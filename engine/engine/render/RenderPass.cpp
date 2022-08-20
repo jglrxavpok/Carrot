@@ -378,7 +378,7 @@ void Carrot::Render::CompiledPass::recordCommands(const Carrot::Render::Context&
             .framebuffer = *framebuffers[renderContext.swapchainIndex],
     };
     cmds.begin(vk::CommandBufferBeginInfo {
-            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue,
+            .flags = vk::CommandBufferUsageFlagBits::eRenderPassContinue | vk::CommandBufferUsageFlagBits::eSimultaneousUse,
             .pInheritanceInfo = &inheritanceInfo,
     });
 

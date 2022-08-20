@@ -11,6 +11,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}render/resources/Buffer.cpp
         ${EngineRoot}render/resources/BufferView.cpp
+        ${EngineRoot}render/resources/DeviceMemory.cpp
         ${EngineRoot}render/resources/Image.cpp
         ${EngineRoot}render/resources/Font.cpp
         ${EngineRoot}render/resources/LightMesh.cpp
@@ -62,14 +63,12 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/Signature.cpp
 
-        ${EngineRoot}vulkan/CustomTracyVulkan.cpp
         ${EngineRoot}render/GBuffer.cpp
         ${EngineRoot}render/animation/AnimatedInstances.cpp
         ${EngineRoot}render/raytracing/RayTracer.cpp
         ${EngineRoot}render/raytracing/ASBuilder.cpp
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp
         ${EngineRoot}single_file_header_impls.cpp
-        ${EngineRoot}vulkan/VulkanDriver.cpp
         ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}LoadingScreen.cpp
 
@@ -149,12 +148,14 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}utils/Profiling.cpp
 
+        ${EngineRoot}vulkan/CustomTracyVulkan.cpp
+        ${EngineRoot}vulkan/DebugNameable.cpp
         ${EngineRoot}vulkan/SynchronizedQueue.cpp
+        ${EngineRoot}vulkan/VulkanDriver.cpp
 
         ${EngineRoot}utils/AftermathIntegration.cpp
-        )
 
-set(VR_SOURCES
+        # VR specific code
         ${EngineRoot}vr/Session.cpp
         ${EngineRoot}vr/VRInterface.cpp
         )
@@ -274,6 +275,7 @@ if (MSVC)
 endif()
 
 set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
+        ${OPENXR-LOADER-LIB-LOCATION}
         ${ADDITIONAL_LIBS})
 
 message("ENGINE ADDITIONAL LIBS = " ${ALL_BASE_LIBS})
@@ -297,13 +299,3 @@ add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)
-
-if(CAN_SUPPORT_VR)
-    add_library(Engine-VR ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES} ${VR_SOURCES})
-    target_include_directories(Engine-VR PUBLIC ${OPENXR-INCLUDE-DIR})
-    target_include_directories(Engine-VR PUBLIC ${ProjectRoot}thirdparty/openxr-hpp/include/)
-    target_compile_definitions(Engine-VR PUBLIC ENABLE_VR=1)
-    target_compile_definitions(Engine-VR PUBLIC TRACY_ENABLE=1)
-    target_link_libraries(Engine-VR ${ALL_BASE_LIBS} ${OPENXR-LOADER-LIB-LOCATION})
-    add_includes(Engine-VR)
-endif()

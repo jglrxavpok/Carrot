@@ -9,6 +9,7 @@
 #include <engine/vulkan/VulkanDriver.h>
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
+#include <engine/render/resources/DeviceMemory.h>
 
 namespace Carrot {
     class Engine;
@@ -61,6 +62,7 @@ namespace Carrot {
 
         void flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length);
 
+        //! Does not immediately destroy the buffer. The destruction is deferred via VulkanRenderer::deferDestroy, unless destroyNow() was called before.
         ~Buffer();
 
         void setDebugNames(const std::string& name) override;
@@ -74,13 +76,16 @@ namespace Carrot {
             return deviceLocal;
         }
 
+    public:
+        void destroyNow();
+
     private:
         VulkanDriver& driver;
         bool deviceLocal = false;
         uint64_t size;
         void* mappedPtr = nullptr;
         vk::UniqueBuffer vkBuffer{};
-        vk::UniqueDeviceMemory memory{};
+        DeviceMemory memory{};
 
         /// Creates and allocates a buffer with the given parameters
         //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});

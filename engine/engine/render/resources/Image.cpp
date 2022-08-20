@@ -15,6 +15,7 @@
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
 #include "engine/Engine.h"
+#include "engine/render/resources/ResourceAllocator.h"
 
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
@@ -54,7 +55,8 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
         .allocationSize = requirements.size,
         .memoryTypeIndex = driver.findMemoryType(requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal),
     };
-    imageData.asOwned.memory = driver.getLogicalDevice().allocateMemoryUnique(allocationInfo, driver.getAllocationCallbacks());
+
+    imageData.asOwned.memory = Carrot::DeviceMemory(allocationInfo);
 
     // bind memory to image
     driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getMemory(), 0);
@@ -361,9 +363,9 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
 }
 
 void Carrot::Image::setDebugNames(const std::string& name) {
-    nameSingle(driver, name, getVulkanImage());
+    nameSingle(name, getVulkanImage());
     if(imageData.ownsImage) {
-        nameSingle(driver, name + " Memory", getMemory());
+        nameSingle(name + " Memory", getMemory());
     }
 }
 
@@ -454,5 +456,5 @@ vk::Format Carrot::Image::getFormat() const {
 
 const vk::DeviceMemory& Carrot::Image::getMemory() const {
     verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
-    return *imageData.asOwned.memory;
+    return imageData.asOwned.memory.getVulkanMemory();
 }

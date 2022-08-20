@@ -6,6 +6,8 @@
 #include "engine/Engine.h"
 #include "core/io/Logging.hpp"
 
+#include <engine/vr/includes.h>
+
 namespace Carrot::IO {
 
     std::vector<ActionSet*>& ActionSet::getSetList() {
@@ -16,9 +18,7 @@ namespace Carrot::IO {
     ActionSet::ActionSet(std::string_view name, bool isXRSet): name(name), isXRSet(isXRSet) {
         getSetList().push_back(this);
 
-#ifndef ENABLE_VR
-        verify(!isXRSet, "Cannot create XR set when ENABLE_VR is not defined.");
-#endif
+        // TODO verify VR supported: verify(!isXRSet, "Cannot create XR set when ENABLE_VR is not defined.");
     }
 
     ActionSet::~ActionSet() {
@@ -78,9 +78,7 @@ namespace Carrot::IO {
             set->updatePrePoll();
         }
 
-#ifdef ENABLE_VR
-        TODO // xrSyncActions
-#endif
+        // TODO // xrSyncActions
     }
 
     void ActionSet::prepareForUse(Carrot::Engine& engine) {
@@ -88,8 +86,7 @@ namespace Carrot::IO {
             return;
 
         if(isXRSet) {
-#ifdef ENABLE_VR
-            TODO
+            /*TODO;
             auto updateActions = [&](const auto& vector) {
                 for(auto& a : vector) {
                     a->createXRAction();
@@ -97,8 +94,7 @@ namespace Carrot::IO {
             };
             updateActions(boolInputs);
             updateActions(floatInputs);
-            updateActions(vec2Inputs);
-#endif
+            updateActions(vec2Inputs);*/
         } else {
             auto changeButtonInput = [this](std::string_view bindingPath, bool isPressed, bool isReleased) {
                 for(auto& input : boolInputs) {

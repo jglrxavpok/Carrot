@@ -2,7 +2,6 @@
 // Created by jglrxavpok on 13/07/2021.
 //
 #pragma once
-#ifdef ENABLE_VR
 
 #include "engine/vulkan/includes.h"
 #include "engine/vr/includes.h"
@@ -75,4 +74,3 @@ namespace Carrot::VR {
         friend class Interface;
     };
 }
-#endif

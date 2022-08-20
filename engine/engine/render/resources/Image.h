@@ -7,6 +7,7 @@
 #include "engine/vulkan/includes.h"
 #include "engine/vulkan/DebugNameable.h"
 #include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/resources/DeviceMemory.h"
 #include <memory>
 #include <set>
 #include <functional>
@@ -26,7 +27,7 @@ namespace Carrot {
             //union {
                 struct {
                     vk::UniqueImage vkImage = {};
-                    vk::UniqueDeviceMemory memory = {};
+                    Carrot::DeviceMemory memory = {};
                 } asOwned;
 
                 struct {
@@ -44,7 +45,7 @@ namespace Carrot {
 
             ~ImageData() {
                 if(ownsImage) {
-                    asOwned.memory.reset();
+                    asOwned.memory = {};
                     asOwned.vkImage.reset();
                 }
             }

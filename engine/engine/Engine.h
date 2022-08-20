@@ -78,12 +78,10 @@ namespace Carrot {
         }
     };
 
-#ifdef ENABLE_VR
     namespace VR {
         class Interface;
         class Session;
     }
-#endif
 
     /// Base class interfacing with Vulkan
     class Engine: public SwapchainAware {
@@ -224,9 +222,7 @@ namespace Carrot {
         Render::Context newRenderContext(std::size_t swapchainFrameIndex, Render::Viewport& viewport, Render::Eye eye = Render::Eye::NoVR);
 
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
-#ifdef ENABLE_VR
         VR::Session& getVRSession() { return *vrSession; }
-#endif
 
     public:
         Render::Pass<Render::PassData::GResolve>& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback);
@@ -386,10 +382,8 @@ namespace Carrot {
         bool running = true;
         bool grabbingCursor = false;
 
-#ifdef ENABLE_VR
         std::unique_ptr<VR::Interface> vrInterface = nullptr;
         std::unique_ptr<VR::Session> vrSession = nullptr;
-#endif
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;

@@ -6,6 +6,7 @@
 #include "ResourceAllocator.h"
 #include "engine/utils/Macros.h"
 #include "engine/Engine.h"
+#include "Buffer.h"
 
 Carrot::BufferView::BufferView(Carrot::ResourceAllocator* allocator, Carrot::Buffer& buffer, vk::DeviceSize start, vk::DeviceSize size):
     allocator(allocator), buffer(&buffer), start(start), size(size) {}

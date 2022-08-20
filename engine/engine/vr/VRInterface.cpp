@@ -1,7 +1,6 @@
 //
 // Created by jglrxavpok on 13/07/2021.
 //
-#ifdef ENABLE_VR
 #include "VRInterface.h"
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
@@ -177,4 +176,3 @@ namespace Carrot::VR {
         return xrInstance->getVulkanGraphicsDevice2KHR(getInfo, getXRDispatch());
     }
 }
-#endif

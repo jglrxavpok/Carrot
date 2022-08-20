@@ -667,7 +667,8 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
-    std::vector<vk::DescriptorSetLayout> layouts {getSwapchainImageCount(), *cameraDescriptorSetLayout};
+    std::size_t count = getSwapchainImageCount() * (GetEngine().getConfiguration().runInVR ? 2 : 1);
+    std::vector<vk::DescriptorSetLayout> layouts {count, *cameraDescriptorSetLayout};
     auto cameraDescriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
             .descriptorPool = *cameraDescriptorPool,
             .descriptorSetCount = static_cast<uint32_t>(layouts.size()),

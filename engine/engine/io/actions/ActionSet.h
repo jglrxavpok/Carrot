@@ -10,9 +10,7 @@
 #include "Action.hpp"
 #include "core/utils/UUID.h"
 
-#ifdef ENABLE_VR
 #include "engine/vr/includes.h"
-#endif
 
 namespace Carrot {
     class Engine;
@@ -83,9 +81,7 @@ namespace Carrot::IO {
         Carrot::UUID mouseDeltaCallback;
         Carrot::UUID mouseDeltaGrabbedCallback;
 
-#ifdef ENABLE_VR
     private: // OpenXR compatibility
         xr::UniqueActionSet xrActionSet;
-#endif
     };
 }

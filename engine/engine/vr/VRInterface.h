@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#ifdef ENABLE_VR
 
 #include <memory>
 #include "engine/vr/includes.h"
@@ -51,5 +50,3 @@ namespace Carrot::VR {
     };
 
 }
-
-#endif

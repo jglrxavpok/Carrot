@@ -34,6 +34,7 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::vecto
     stagingBuffer.copyTo(*this, 0, 0);
 
     // stagingBuffer will be destroyed, and resources freed after this point
+    stagingBuffer.destroyNow();
 }
 
 template<typename T>
@@ -47,6 +48,8 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 
     // copy staging buffer to this buffer
     stagingBuffer.copyTo(*this, 0, offset);
+
+    stagingBuffer.destroyNow();
 }
 
 template<typename T>
@@ -54,7 +57,7 @@ T* Carrot::Buffer::map() {
     if(mappedPtr) {
        return reinterpret_cast<T*>(mappedPtr);
     }
-    void* ptr = driver.getLogicalDevice().mapMemory(*memory, 0, VK_WHOLE_SIZE);
+    void* ptr = driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), 0, VK_WHOLE_SIZE);
     mappedPtr = ptr;
     return reinterpret_cast<T*>(ptr);
 }

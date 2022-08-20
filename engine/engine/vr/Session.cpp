@@ -2,7 +2,6 @@
 // Created by jglrxavpok on 13/07/2021.
 //
 
-#ifdef ENABLE_VR
 #include "Session.h"
 #include "VRInterface.h"
 #include "engine/utils/Macros.h"
@@ -311,4 +310,3 @@ namespace Carrot::VR {
         vr.unregisterSession(this);
     }
 }
-#endif

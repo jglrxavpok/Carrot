@@ -19,9 +19,7 @@
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/Engine.h"
 
-#ifdef ENABLE_VR
 #include "engine/vr/VRInterface.h"
-#endif
 
 const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
         "VK_LAYER_KHRONOS_validation",
@@ -105,20 +103,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkQueueSubmit-pCommandBuffers-00074") != nullptr) {
         debug_break();
+    } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidCommandBuffer-VkDescriptorSet") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdExecuteCommands-pCommandBuffers-00092") != nullptr) {
+        debug_break();
     }
 
     return VK_FALSE;
 }
 
 
-Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config, Carrot::Engine* engine
-#ifdef ENABLE_VR
-    , Carrot::VR::Interface& vrInterface
-#endif
-):
-#ifdef ENABLE_VR
+Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config, Carrot::Engine* engine, Carrot::VR::Interface* vrInterface):
     vrInterface(vrInterface),
-#endif
     window(window),
     graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
     computeCommandPool([&]() { return createComputeCommandPool(); }),
@@ -254,11 +250,7 @@ void Carrot::VulkanDriver::createInstance() {
     }
 
     if(config.runInVR) {
-#ifdef ENABLE_VR
-        instance = vrInterface.createVulkanInstance(createInfo, allocator);
-#else
-        throw std::runtime_error("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
-#endif
+        instance = vrInterface->createVulkanInstance(createInfo, allocator);
     } else {
         instance = vk::createInstanceUnique(createInfo, allocator);
     }
@@ -293,19 +285,15 @@ void Carrot::VulkanDriver::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& 
     createInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
     createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 
-#ifndef ENABLE_VR
     createInfo.messageType |= vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance; // OpenXR seem to do a blit with GENERAL as image layout, at least on my end
-#endif
     createInfo.pfnUserCallback = debugCallback;
     createInfo.pUserData = nullptr;
 }
 
 void Carrot::VulkanDriver::pickPhysicalDevice() {
-#ifdef ENABLE_VR
     if(config.runInVR) {
-        physicalDevice = vrInterface.getVulkanPhysicalDevice();
+        physicalDevice = vrInterface->getVulkanPhysicalDevice();
     } else {
-#endif
         const std::vector<vk::PhysicalDevice> devices = instance->enumeratePhysicalDevices();
 
         std::multimap<int, vk::PhysicalDevice> candidates;
@@ -319,9 +307,7 @@ void Carrot::VulkanDriver::pickPhysicalDevice() {
         } else {
             throw std::runtime_error("No GPU can support this application.");
         }
-#ifdef ENABLE_VR
     }
-#endif
 }
 
 int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
@@ -542,11 +528,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     }
 
     if(config.runInVR) {
-#ifdef ENABLE_VR
-        device = vrInterface.createVulkanDevice(createInfo, allocator);
-#else
-        throw std::runtime_error("Cannot use VR without having ENABLE_VR defined while the code was compiled.");
-#endif
+        device = vrInterface->createVulkanDevice(createInfo, allocator);
     } else {
         device = physicalDevice.createDeviceUnique(createInfo, allocator);
     }
@@ -834,6 +816,7 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 Carrot::VulkanDriver::~VulkanDriver() {
     swapchain.reset();
     instance->destroySurfaceKHR(getSurface(), getAllocationCallbacks());
+    // TODO: don't destroy device if in VR
 }
 
 void Carrot::VulkanDriver::cleanupSwapchain() {
@@ -892,12 +875,8 @@ void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
 
 const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize() const {
     if(config.runInVR) {
-#ifdef ENABLE_VR
-        auto& vrSession = vrInterface.getEngine().getVRSession();
+        auto& vrSession = GetEngine().getVRSession();
         return vrSession.getEyeRenderSize();
-#else
-        throw std::runtime_error("Cannot get VR final render size when engine is not compiled with ENABLE_VR");
-#endif
     } else {
         return getWindowFramebufferExtent();
     }
@@ -967,7 +946,7 @@ void Carrot::VulkanDriver::deferDestroy(vk::UniqueBuffer&& resource) {
     deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(vk::UniqueDeviceMemory&& resource) {
+void Carrot::VulkanDriver::deferDestroy(Carrot::DeviceMemory&& resource) {
     deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(std::move(resource))));
 }
 

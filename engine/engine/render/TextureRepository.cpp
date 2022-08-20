@@ -7,9 +7,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/task/TaskScheduler.h"
 
-#ifdef ENABLE_VR
 #include "engine/vr/Session.h"
-#endif
 
 namespace Carrot::Render {
     Texture& TextureRepository::get(const FrameResource& texture, size_t swapchainIndex) {
@@ -118,10 +116,8 @@ namespace Carrot::Render {
         }
     }
 
-#ifdef ENABLE_VR
     void TextureRepository::setXRSession(VR::Session *session) {
         assert(session != nullptr);
         vrSession = session;
     }
-#endif
 }

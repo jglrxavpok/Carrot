@@ -73,9 +73,7 @@
 #include "engine/ecs/components/TransformComponent.h"
 #include "engine/ecs/systems/LuaSystems.h"
 
-#ifdef ENABLE_VR
 #include "vr/VRInterface.h"
-#endif
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -103,14 +101,8 @@ Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
 
 Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
 instanceSetterHack(this),
-#ifdef ENABLE_VR
-vrInterface(std::make_unique<VR::Interface>(*this)),
-#endif
-vkDriver(window, config, this
-#ifdef ENABLE_VR
-    , *vrInterface
-#endif
-),
+vrInterface(config.runInVR ? std::make_unique<VR::Interface>(*this) : nullptr),
+vkDriver(window, config, this, vrInterface.get()),
 resourceAllocator(std::move(std::make_unique<ResourceAllocator>(vkDriver))),
 renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
                                                               std::vector<ScreenSpaceVertex> {
@@ -135,15 +127,10 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     lpp::lppEnableAllCallingModulesAsync(livePP);
 #endif
 
-#ifndef ENABLE_VR
     if(config.runInVR) {
-        //Carrot::crash("");
-        throw std::runtime_error("Tried to launch engine in VR, but ENABLE_VR was not defined during compilation.");
+        vrSession = vrInterface->createSession();
+        vkDriver.getTextureRepository().setXRSession(vrSession.get());
     }
-#else
-    vrSession = vrInterface->createSession();
-    vkDriver.getTextureRepository().setXRSession(vrSession.get());
-#endif
 
     if(config.runInVR) {
         composers[Render::Eye::LeftEye] = std::make_unique<Render::Composer>(vkDriver);
@@ -233,9 +220,7 @@ void Carrot::Engine::init() {
         companionComposer.add(leftEyeFinalPass.getData().color, -1.0, 0.0);
         companionComposer.add(rightEyeFinalPass.getData().color, 0.0, 1.0);
 
-#ifdef ENABLE_VR
         vrSession->setEyeTexturesToPresent(leftEyeFinalPass.getData().color, rightEyeFinalPass.getData().color);
-#endif
 
         auto& composerPass = companionComposer.appendPass(mainGraph);
 
@@ -400,12 +385,10 @@ void Carrot::Engine::run() {
         lag += timeElapsed;
         previous = frameStartTime;
 
-#ifdef ENABLE_VR
         if(config.runInVR) {
             ZoneScopedN("VR poll events");
             vrInterface->pollEvents();
         }
-#endif
 
         {
             ZoneScopedN("File watching");
@@ -665,8 +648,8 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
                 ZoneScopedN("Render single viewport");
                 auto& viewport = *it;
                 if(config.runInVR) {
-                    viewport.render(newRenderContext(i, viewport, Render::Eye::LeftEye), mainCommandBuffers[i]);
-                    viewport.render(newRenderContext(i, viewport, Render::Eye::RightEye), mainCommandBuffers[i]);
+                    // each eye is done in separate render passes above this code
+                    viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
                 } else {
                     viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
                 }
@@ -802,12 +785,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
     {
         ZoneScopedN("Prepare frame");
 
-#ifdef ENABLE_VR
         if(config.runInVR) {
             ZoneScopedN("VR start frame");
             vrSession->startFrame();
         }
-#endif
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
@@ -906,14 +887,12 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             }
         }
 
-#ifdef ENABLE_VR
         if(config.runInVR) {
             {
                 ZoneScopedN("VR render");
-                vrSession->present(newRenderContext(imageIndex));
+                vrSession->present(newRenderContext(imageIndex, getMainViewport()));
             }
         }
-#endif
 
         {
             ZoneScopedN("Renderer Post-Frame actions");

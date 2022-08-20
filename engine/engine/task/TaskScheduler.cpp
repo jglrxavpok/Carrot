@@ -93,6 +93,7 @@ namespace Carrot {
         auto scheduleTask = coscheduleSingleTask(taskQueues[TaskScheduler::Parallel], TaskScheduler::Parallel);
         while(running) {
             scheduleTask();
+            std::this_thread::yield();
         }
     }
 

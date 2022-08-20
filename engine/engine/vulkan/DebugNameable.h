@@ -6,7 +6,6 @@
 #include <string>
 #include "engine/constants.h"
 #include "engine/vulkan/includes.h"
-#include "engine/vulkan/VulkanDriver.h"
 
 namespace Carrot {
     class DebugNameable {
@@ -14,16 +13,17 @@ namespace Carrot {
         virtual void setDebugNames(const std::string& name) = 0;
 
         template<typename VulkanType>
-        void nameSingle(VulkanDriver& driver, const std::string& name, const VulkanType& object) {
-            if(driver.hasDebugNames()) {
-                vk::DebugMarkerObjectNameInfoEXT nameInfo {
-                        .objectType = VulkanType::debugReportObjectType,
-                        .object = (uint64_t) ((typename VulkanType::CType&) object),
-                        .pObjectName = name.c_str(),
-                };
-                driver.getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
-            }
+        void nameSingle(const std::string& name, const VulkanType& object) {
+            vk::DebugMarkerObjectNameInfoEXT nameInfo {
+                    .objectType = VulkanType::debugReportObjectType,
+                    .object = (uint64_t) ((typename VulkanType::CType&) object),
+                    .pObjectName = name.c_str(),
+            };
+            doNaming(nameInfo);
         }
+
+    private:
+        void doNaming(const vk::DebugMarkerObjectNameInfoEXT& nameInfo);
 
     public:
         void name(const std::string& name) {

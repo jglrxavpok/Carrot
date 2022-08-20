@@ -9,11 +9,9 @@
 #include "engine/render/RenderPassData.h"
 #include "core/utils/UUID.h"
 
-#ifdef ENABLE_VR
 namespace Carrot::VR {
     class Session;
 }
-#endif
 
 namespace Carrot::Render {
     class TextureRepository {
@@ -36,10 +34,8 @@ namespace Carrot::Render {
         /// Removes all textures which belong to this render pass ID.
         void removeBelongingTo(const Carrot::UUID& id);
 
-#ifdef ENABLE_VR
     public:
         void setXRSession(VR::Session* session);
-#endif
 
     private:
         /// Sets which render pass is the creator of the texture with the given ID
@@ -51,9 +47,7 @@ namespace Carrot::Render {
         std::unordered_map<Carrot::UUID, Carrot::UUID> textureOwners;
         std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> usages;
 
-#ifdef ENABLE_VR
         VR::Session* vrSession = nullptr;
-#endif
 
         friend class GraphBuilder;
     };

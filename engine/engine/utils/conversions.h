@@ -17,9 +17,7 @@
 #include <reactphysics3d/mathematics/Vector3.h>
 #include <reactphysics3d/mathematics/Quaternion.h>
 
-#ifdef ENABLE_VR
 #include "engine/vr/includes.h"
-#endif
 
 namespace Carrot {
     glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);
@@ -32,7 +30,6 @@ namespace Carrot {
     reactphysics3d::Vector3 reactPhysicsVecFromGlm(const glm::vec3& vec);
     reactphysics3d::Quaternion reactPhysicsQuatFromGlm(const glm::quat& vec);
 
-#ifdef ENABLE_VR
     // From https://github.com/jherico/Vulkan/blob/experimental/openxr/examples/vr_openxr/vr_openxr.cpp
     // (MIT License) Code written by Bradley Austin Davis ("jherico")
     inline XrFovf toTanFovf(const XrFovf& fov) {
@@ -93,5 +90,4 @@ namespace Carrot {
     inline glm::ivec2 toGlm(const XrExtent2Di& e) {
         return { e.width, e.height };
     }
-#endif
 }
