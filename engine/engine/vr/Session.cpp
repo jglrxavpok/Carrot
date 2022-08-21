@@ -116,6 +116,10 @@ namespace Carrot::VR {
                 .flags = vk::FenceCreateFlagBits::eSignaled,
             }));
         }
+
+        // --
+
+        handTracking = std::make_unique<HandTracking>(vr, *this);
     }
 
     void Session::stateChanged(xr::Time time, xr::SessionState state) {
@@ -157,6 +161,10 @@ namespace Carrot::VR {
 
         updateCamera(Carrot::Render::Eye::LeftEye, xrViews[0]);
         updateCamera(Carrot::Render::Eye::RightEye, xrViews[1]);
+
+        // --
+
+        handTracking->locateJoints(*xrSpace, predictedEndTime);
     }
 
     xr::Result Session::xrBeginFrame() {
@@ -234,6 +242,10 @@ namespace Carrot::VR {
                 verify(false, "invalid case");
                 throw;
         }
+    }
+
+    const HandTracking& Session::getHandTracking() const {
+        return *handTracking;
     }
 
     void Session::setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye) {
@@ -328,6 +340,14 @@ namespace Carrot::VR {
         }
 
         xrEndFrame();
+    }
+
+    xr::UniqueDynamicHandTrackerEXT Session::createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo) {
+        return xrSession->createHandTrackerUniqueEXT(createInfo, vr.getXRDispatch());
+    }
+
+    xr::DispatchLoaderDynamic& Session::getXRDispatch() {
+        return vr.getXRDispatch();
     }
 
     Carrot::Engine& Session::getEngine() {

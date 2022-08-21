@@ -107,6 +107,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdExecuteCommands-pCommandBuffers-00092") != nullptr) {
         debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdBindVertexBuffers-pBuffers-00627") != nullptr) {
+        debug_break();
     }
 
     return VK_FALSE;

@@ -82,8 +82,8 @@ namespace Carrot {
     }
 
     inline glm::mat4 toGlm(const XrPosef& p) {
-        glm::mat4 orientation = glm::mat4_cast(toGlm(p.orientation));
-        glm::mat4 translation = glm::translate(glm::mat4(1.0f), toGlm(p.position));
+        const glm::mat4 orientation = glm::mat4_cast(toGlm(p.orientation));
+        const glm::mat4 translation = glm::translate(glm::mat4(1.0f), toGlm(p.position));
         return translation * orientation;
     }
 

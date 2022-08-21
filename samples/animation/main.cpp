@@ -61,8 +61,11 @@ public:
         GetRenderer().getLighting().getAmbientLight() = { 0.1, 0.1, 0.1 };
     }
 
+    void onVRFrame(Carrot::Render::Context renderContext) override {
+        cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.getCamera());
+    }
+
     void onFrame(Carrot::Render::Context renderContext) override {
-        cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.viewport.getCamera());
 
         for (int i = 0; i < InstanceCount; ++i) {
             skinnedModelRenderer.getInstance(i).animationTime = time;
@@ -112,7 +115,7 @@ public:
 
     void updateCameraProjection() {
         auto renderSize = engine.getVulkanDriver().getFinalRenderSize();
-        engine.getCamera().setViewProjection(glm::identity<glm::mat4>(), glm::ortho(0.0f, static_cast<float>(renderSize.width), 0.0f, static_cast<float>(renderSize.height), -1.0f, 1.0f));
+        engine.getCamera().setViewProjection(glm::identity<glm::mat4>(), GetEngine().getConfiguration().runInVR ? glm::identity<glm::mat4>() : glm::ortho(0.0f, static_cast<float>(renderSize.width), 0.0f, static_cast<float>(renderSize.height), -1.0f, 1.0f));
     }
 
 private:

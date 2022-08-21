@@ -8,13 +8,18 @@
 #include "engine/utils/Macros.h"
 #include "engine/render/TextureRepository.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
+#include "engine/Engine.h"
 
 namespace Carrot::Render {
-    GraphBuilder::GraphBuilder(VulkanDriver& driver): driver(driver) {
-        swapchainImage.format = driver.getSwapchainImageFormat();
+    GraphBuilder::GraphBuilder(VulkanDriver& driver) {
+        swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
         swapchainImage.imageOrigin = ImageOrigin::SurfaceSwapchain;
         swapchainImage.owner = this;
         resources.emplace_back(&swapchainImage);
+    }
+
+    VulkanDriver& GraphBuilder::getVulkanDriver() {
+        return GetVulkanDriver();
     }
 
     FrameResource& GraphBuilder::read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
@@ -23,17 +28,17 @@ namespace Carrot::Render {
         currentPass->addInput(resources.back(), expectedLayout, aspect);
         switch(expectedLayout) {
             case vk::ImageLayout::eTransferSrcOptimal:
-                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
                 break;
 
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
-                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
 
 
             default:
-                driver.getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
         }
         return resources.back();
@@ -50,14 +55,14 @@ namespace Carrot::Render {
         }
         switch(layout) {
             case vk::ImageLayout::eTransferDstOptimal:
-                driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                GetVulkanDriver().getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
                 break;
 
             case vk::ImageLayout::eDepthStencilAttachmentOptimal:
             case vk::ImageLayout::eDepthAttachmentOptimal:
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
-                driver.getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
 
             default:
@@ -83,7 +88,7 @@ namespace Carrot::Render {
         r.updateLayout(layout);
         currentPass->finalLayouts[r.id] = layout;
 
-        driver.getTextureRepository().setCreatorID(r.rootID, currentPass->passID);
+        GetVulkanDriver().getTextureRepository().setCreatorID(r.rootID, currentPass->passID);
 
         auto aspect = static_cast<vk::ImageAspectFlags>(0);
 
@@ -91,17 +96,17 @@ namespace Carrot::Render {
             case vk::ImageLayout::eStencilAttachmentOptimal:
             case vk::ImageLayout::eDepthAttachmentOptimal:
             case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-                driver.getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 aspect |= vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
                 break;
 
             case vk::ImageLayout::eGeneral:
-                driver.getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
+                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 
             case vk::ImageLayout::eColorAttachmentOptimal:
-                driver.getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
+                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 
@@ -116,10 +121,10 @@ namespace Carrot::Render {
     }
 
     std::unique_ptr<Graph> GraphBuilder::compile() {
-        auto result = std::make_unique<Graph>(driver);
+        auto result = std::make_unique<Graph>(GetVulkanDriver());
 
         for(const auto& [name, pass] : passes) {
-            result->passes.emplace_back(name, std::move(pass->compile(driver, *result)));
+            result->passes.emplace_back(name, std::move(pass->compile(GetVulkanDriver(), *result)));
         }
 
         // TODO: actually sort

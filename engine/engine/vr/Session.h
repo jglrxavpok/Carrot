@@ -5,6 +5,7 @@
 
 #include "engine/vulkan/includes.h"
 #include "engine/vr/includes.h"
+#include "engine/vr/HandTracking.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
 #include <memory>
@@ -30,6 +31,9 @@ namespace Carrot::VR {
         const glm::mat4& getEyeView(Carrot::Render::Eye eye) const;
 
     public:
+        const HandTracking& getHandTracking() const;
+
+    public:
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }
         const vk::Extent2D& getEyeRenderSize() const { return eyeRenderSize; }
@@ -41,7 +45,11 @@ namespace Carrot::VR {
         void present(const Render::Context& context);
 
     private:
+        xr::UniqueDynamicHandTrackerEXT createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo);
+
+    private:
         xr::Session& getXRSession() { return *xrSession; }
+        xr::DispatchLoaderDynamic& getXRDispatch();
         Carrot::Engine& getEngine();
 
     private:
@@ -64,6 +72,8 @@ namespace Carrot::VR {
         glm::mat4 eyeViews[2];
         glm::mat4 eyeProjections[2];
 
+        std::unique_ptr<HandTracking> handTracking = nullptr;
+
     private: // swapchain
         vk::Extent2D fullSwapchainSize;
         vk::Extent2D eyeRenderSize;
@@ -82,5 +92,6 @@ namespace Carrot::VR {
         std::vector<vk::UniqueFence> renderFences;
 
         friend class Interface;
+        friend class HandTracking;
     };
 }

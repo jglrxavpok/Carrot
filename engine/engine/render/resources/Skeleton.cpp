@@ -21,7 +21,9 @@ namespace Carrot::Render {
 
     // --
 
-    Skeleton::Skeleton(const glm::mat4& globalInverseTransform): globalInverseTransform(globalInverseTransform) {}
+    Skeleton::Skeleton(const glm::mat4& globalInverseTransform): globalInverseTransform(globalInverseTransform) {
+        invGlobalInverseTransform = glm::inverse(globalInverseTransform);
+    }
 
     Bone* Skeleton::findBone(const BoneName& boneName) {
         std::function<Bone* (SkeletonTreeNode&)> recurse = [&](SkeletonTreeNode& node) -> Bone* {
@@ -41,6 +43,14 @@ namespace Carrot::Render {
 
     const Bone* Skeleton::findBone(const BoneName& boneName) const {
         return const_cast<Skeleton*>(this)->findBone(boneName);
+    }
+
+    const glm::mat4& Skeleton::getGlobalTransform() const {
+        return invGlobalInverseTransform;
+    }
+
+    const glm::mat4& Skeleton::getGlobalInverseTransform() const {
+        return globalInverseTransform;
     }
 
     void Skeleton::computeTransforms(std::unordered_map<std::string, glm::mat4>& transforms) const {

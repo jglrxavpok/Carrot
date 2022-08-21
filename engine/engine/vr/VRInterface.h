@@ -10,12 +10,17 @@
 #include "engine/Engine.h"
 
 namespace Carrot::VR {
+    //! Interface to communicate with OpenXR. Carrot does not expose all of OpenXR directly (contrary to Vulkan)
     class Interface {
     public:
         explicit Interface(Carrot::Engine& engine);
 
     public:
         bool hasHMD();
+
+        //! Is locating individual joints of hands available ?
+        bool supportsHandTracking() const;
+
         Carrot::Engine& getEngine() { return engine; }
 
     public: // Create VR-compatible Vulkan objects
@@ -44,6 +49,8 @@ namespace Carrot::VR {
         xr::UniqueInstance xrInstance{};
         xr::UniqueDynamicDebugUtilsMessengerEXT messenger{};
         xr::SystemId systemID;
+        xr::SystemProperties systemProperties;
+        xr::SystemHandTrackingPropertiesEXT handTrackingProperties;
         std::unordered_map<xr::Session::RawHandleType, Session*> sessions;
 
         friend class Session;

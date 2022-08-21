@@ -261,7 +261,18 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
 }
 
 void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
+    std::int32_t leastInfluential = -1;
+    float smallestWeight = 1.0f;
+
     for(size_t i = 0; i < 4; i++) {
+        if(smallestWeight > boneWeights[i]) {
+            if(boneWeights[i] < weight) {
+                smallestWeight = boneWeights[i];
+                leastInfluential = i;
+            }
+        }
+
+        // free slot
         if(boneWeights[i] == 0.0f) {
             boneWeights[i] = weight;
             boneIDs[i] = boneID;
@@ -269,7 +280,12 @@ void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
         }
     }
 
-    assert(0);
+    if(leastInfluential < 0)
+        return;
+
+    // replace least influential
+    boneWeights[leastInfluential] = weight;
+    boneIDs[leastInfluential] = boneID;
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::ScreenSpaceVertex::getAttributeDescriptions() {

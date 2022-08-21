@@ -156,6 +156,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/AftermathIntegration.cpp
 
         # VR specific code
+        ${EngineRoot}vr/HandTracking.cpp
         ${EngineRoot}vr/Session.cpp
         ${EngineRoot}vr/VRInterface.cpp
         )

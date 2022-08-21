@@ -6,6 +6,8 @@
 #include "FreeCameraController.h"
 #include "core/io/Logging.hpp"
 #include "core/utils/JSON.h"
+#include "engine/utils/Macros.h"
+#include "engine/Engine.h"
 
 namespace Carrot::Edition {
     void FreeCameraController::move(float strafe, float forward, float upward, float rotDx, float rotDy, double dt) {
@@ -38,7 +40,7 @@ namespace Carrot::Edition {
 
         float aspectRatio = viewportSize.x / viewportSize.y;
 
-        glm::mat4 projection = glm::perspective(fov, aspectRatio, zNear, zFar);
+        glm::mat4 projection = GetEngine().getConfiguration().runInVR ? glm::identity<glm::mat4>() : glm::perspective(fov, aspectRatio, zNear, zFar);
 
         camera.setViewProjection(view, projection);
     }

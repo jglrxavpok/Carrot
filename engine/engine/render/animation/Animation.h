@@ -10,7 +10,7 @@
 
 namespace Carrot {
     static constexpr int MAX_KEYFRAMES_PER_ANIMATION = 140;
-    static constexpr int MAX_BONES_PER_MESH = 20;
+    static constexpr int MAX_BONES_PER_MESH = 40;
 
     struct Keyframe {
         glm::mat4 boneTransforms[MAX_BONES_PER_MESH]{};

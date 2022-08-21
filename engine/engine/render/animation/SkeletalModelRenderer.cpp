@@ -42,6 +42,7 @@ namespace Carrot::Render {
                 continue;
             }
             std::uint32_t boneIndex = mappingIt->second;
+            verify(boneIndex < Carrot::MAX_BONES_PER_MESH, "Too many bones");
             processedSkeleton.boneTransforms[boneIndex] = boneTransform * model->getBoneOffsetMatrices().at(boneName);
         }
 
@@ -154,7 +155,7 @@ namespace Carrot::Render {
 
         for (std::size_t imageIndex = 0; imageIndex < GetEngine().getSwapchainImageCount(); imageIndex++) {
             // create output buffer for this frame
-            auto& outputBuffer = outputBuffers.emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(requiredSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal));
+            auto& outputBuffer = outputBuffers.emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(requiredSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal));
 
             // create skinning pipelines for all meshes inside the model
             auto& pipelinesForThisFrame = skinningPipelines[imageIndex];

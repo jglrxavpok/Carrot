@@ -63,12 +63,17 @@ namespace Carrot::Render {
         const Bone* findBone(const BoneName& boneName) const;
 
     public:
+        const glm::mat4& getGlobalTransform() const;
+        const glm::mat4& getGlobalInverseTransform() const;
+
+    public:
         //! Fills the given keyframe with all
         void computeTransforms(std::unordered_map<std::string, glm::mat4>& transforms) const;
 
     private:
         SkeletonTreeNode hierarchy;
         glm::mat4 globalInverseTransform;
+        glm::mat4 invGlobalInverseTransform;
 
         friend class Carrot::Model; // this structure is meant to be loaded by Model
     };

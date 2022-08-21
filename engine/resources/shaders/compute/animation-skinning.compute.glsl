@@ -11,7 +11,7 @@ layout(constant_id = 0) const uint VERTEX_COUNT = 1;
 layout(constant_id = 1) const uint INSTANCE_COUNT = 1;
 
 const uint MAX_KEYFRAMES = 140;
-const uint MAX_BONES = 20;
+const uint MAX_BONES = 40;
 
 struct VertexWithBones {
     vec4 pos;

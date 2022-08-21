@@ -57,12 +57,14 @@ namespace Carrot::Render {
 
     public:
         explicit GraphBuilder(Carrot::VulkanDriver& driver);
+        GraphBuilder(const GraphBuilder& toCopy) = default;
+        GraphBuilder& operator=(const GraphBuilder& toCopy) = default;
 
     public:
         template<typename Data>
         Pass<Data>& addPass(const std::string& name, const SetupPassCallback<Data>& setup, const ExecutePassCallback<Data>& execute,
                             const PostCompileCallback<Data>& postCompile = [](CompiledPass&, Data&){}) {
-            auto& pair = passes.emplace_back(name, std::move(std::make_unique<Render::Pass<Data>>(driver, name, execute, postCompile)));
+            auto& pair = passes.emplace_back(name, std::move(std::make_shared<Render::Pass<Data>>(getVulkanDriver(), name, execute, postCompile)));
             currentPass = pair.second.get();
             auto* pass = static_cast<Render::Pass<Data>*>(currentPass);
             setup(*this, *pass, pass->data);
@@ -80,7 +82,8 @@ namespace Carrot::Render {
             return swapchainImage;
         }
 
-        VulkanDriver& getVulkanDriver() { return driver; }
+        // TODO: remove
+        VulkanDriver& getVulkanDriver();
 
     public:
         FrameResource& read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
@@ -99,11 +102,10 @@ namespace Carrot::Render {
         }
 
     private:
-        Carrot::VulkanDriver& driver;
         FrameResource swapchainImage;
         std::list<FrameResource> resources;
         std::set<Carrot::UUID> toPresent;
-        std::list<std::pair<std::string, std::unique_ptr<Render::PassBase>>> passes;
+        std::list<std::pair<std::string, std::shared_ptr<Render::PassBase>>> passes;
         std::list<std::pair<std::string, std::any>> passesData;
         Render::PassBase* currentPass = nullptr;
     };

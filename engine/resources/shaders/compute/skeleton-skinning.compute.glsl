@@ -9,7 +9,7 @@ layout (local_size_y = 1) in;
 
 layout(constant_id = 0) const uint VERTEX_COUNT = 1;
 
-const uint MAX_BONES = 20;
+const uint MAX_BONES = 40;
 
 struct VertexWithBones {
     vec4 pos;

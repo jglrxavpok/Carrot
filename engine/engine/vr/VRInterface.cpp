@@ -30,7 +30,8 @@ namespace Carrot::VR {
         };
         std::vector<const char*> extensions {
                 XR_EXT_DEBUG_UTILS_EXTENSION_NAME,
-                XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME
+                XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME,
+                XR_EXT_HAND_TRACKING_EXTENSION_NAME,
         };
 
         xr::DebugUtilsMessengerCreateInfoEXT debugCreate = {
@@ -60,6 +61,9 @@ namespace Carrot::VR {
         systemID = getXRInstance().getSystem(xr::SystemGetInfo(
                 xr::FormFactor::HeadMountedDisplay
         ));
+
+        systemProperties.next = &handTrackingProperties;
+        getXRInstance().getSystemProperties(systemID, systemProperties, getXRDispatch());
     }
 
     std::unique_ptr<Session> Interface::createSession() {
@@ -83,6 +87,10 @@ namespace Carrot::VR {
         } catch (xr::exceptions::FormFactorUnavailableError&) {
             return false;
         }
+    }
+
+    bool Interface::supportsHandTracking() const {
+        return !!handTrackingProperties.supportsHandTracking;
     }
 
     xr::DispatchLoaderDynamic& Interface::getXRDispatch() {
