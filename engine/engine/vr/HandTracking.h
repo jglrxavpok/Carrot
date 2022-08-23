@@ -7,6 +7,7 @@
 #include <engine/vr/includes.h>
 #include <core/utils/Lookup.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace Carrot::VR {
     class Interface;
@@ -54,8 +55,11 @@ namespace Carrot::VR {
         bool isLinearVelocityValid = false;
         bool isAngularVelocityValid = false;
 
-        //! Pose of this joint. Undefined if 'isPoseValid' is false
-        glm::mat4 pose{1.0f};
+        //! Position of this joint. Undefined if 'isPoseValid' is false
+        glm::vec3 position{0.0f};
+
+        //! Orientation of this joint. Undefined if 'isPoseValid' is false
+        glm::quat orientation = glm::identity<glm::quat>();
 
         //! Size of this joint. Undefined if 'isRadiusValid' is false
         float radius = 0.0f;

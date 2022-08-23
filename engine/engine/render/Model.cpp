@@ -451,6 +451,22 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh) {
             boneMapping[bone->mName.data] = boneIndex;
             offsetMatrices[bone->mName.data] = glmMat4FromAssimp(bone->mOffsetMatrix);
         }
+
+        Async::Counter normalizeAllWeights;
+        const std::size_t vertexCount = skinnedVertices.size();
+        const std::size_t stepSize = static_cast<std::size_t>(ceil((double)vertexCount / Carrot::TaskScheduler::parallelismAmount()));
+        for(std::size_t start = 0; start < vertexCount; start += stepSize) {
+            GetTaskScheduler().schedule(Carrot::TaskDescription {
+                .name = Carrot::sprintf("Normalize bone weights %s", debugName.c_str()),
+                .task = Carrot::Async::AsTask<void>([&, startIndex = start]() {
+                    for(std::size_t vertexIndex = startIndex; vertexIndex < startIndex + stepSize && vertexIndex < vertexCount; vertexIndex++) {
+                        skinnedVertices[vertexIndex].normalizeWeights();
+                    }
+                }),
+                .joiner = &normalizeAllWeights,
+            });
+        }
+        normalizeAllWeights.busyWait();
     }
 
     for(std::size_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++) {

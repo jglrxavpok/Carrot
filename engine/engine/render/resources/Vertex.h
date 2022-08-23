@@ -73,6 +73,7 @@ namespace Carrot {
         alignas(16) glm::vec4 boneWeights{0,0,0,0};
 
         void addBoneInformation(uint32_t boneID, float weight);
+        void normalizeWeights();
 
         /// Creates a binding description for this Vertex struct
         static std::vector<vk::VertexInputBindingDescription> getBindingDescription();

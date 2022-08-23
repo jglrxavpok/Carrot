@@ -76,8 +76,8 @@ namespace Carrot::VR {
                 joint.angularVelocity = Carrot::toGlm(xrVelocity.angularVelocity);
                 joint.linearVelocity = Carrot::toGlm(xrVelocity.linearVelocity);
 
-                glm::mat4 rotation = glm::rotate(glm::identity<glm::mat4>(), -glm::pi<float>()/2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-                joint.pose = rotation * Carrot::toGlm(xrJoint.pose);
+                joint.orientation = Carrot::toGlm(xrJoint.pose.orientation);
+                joint.position = Carrot::toGlm(xrJoint.pose.position);
                 joint.radius = xrJoint.radius;
             }
         };

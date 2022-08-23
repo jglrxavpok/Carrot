@@ -15,8 +15,8 @@ struct VertexWithBones {
     vec4 pos;
     vec3 color;
     vec3 normal;
-    vec2 uv;
     vec3 tangent;
+    vec2 uv;
     ivec4 boneIDs;
     vec4 boneWeights;
 };

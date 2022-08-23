@@ -6,6 +6,8 @@
 #include "engine/render/InstanceData.h"
 #include "engine/render/particles/Particles.h"
 
+constexpr int BoneWeightCount = 4;
+
 std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{11};
 
@@ -262,11 +264,11 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
 
 void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
     std::int32_t leastInfluential = -1;
-    float smallestWeight = 1.0f;
+    float smallestWeight = 10000.0f;
 
-    for(size_t i = 0; i < 4; i++) {
-        if(smallestWeight > boneWeights[i]) {
-            if(boneWeights[i] < weight) {
+    for(size_t i = 0; i < BoneWeightCount; i++) {
+        if(boneWeights[i] < weight) {
+            if(smallestWeight > boneWeights[i]) {
                 smallestWeight = boneWeights[i];
                 leastInfluential = i;
             }
@@ -286,6 +288,21 @@ void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
     // replace least influential
     boneWeights[leastInfluential] = weight;
     boneIDs[leastInfluential] = boneID;
+}
+
+void Carrot::SkinnedVertex::normalizeWeights() {
+    float totalWeight = 0.0f;
+    for (int j = 0; j < BoneWeightCount; ++j) {
+        totalWeight += boneWeights[j];
+    }
+
+    if(totalWeight < 10e-6) {
+        return;
+    }
+
+    for (int j = 0; j < BoneWeightCount; ++j) {
+        boneWeights[j] /= totalWeight;
+    }
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::ScreenSpaceVertex::getAttributeDescriptions() {
