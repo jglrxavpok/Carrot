@@ -11,6 +11,7 @@
 #include "engine/render/TextureRepository.h"
 #include "engine/render/Camera.h"
 #include "engine/utils/conversions.h"
+#include "engine/io/actions/ActionSet.h"
 
 namespace Carrot::VR {
     Session::Session(Interface& vr): vr(vr) {
@@ -248,6 +249,43 @@ namespace Carrot::VR {
         return *handTracking;
     }
 
+    xr::UniqueActionSet Session::createActionSet(std::string_view name) {
+        xr::ActionSetCreateInfo createInfo;
+        strcpy_s(createInfo.actionSetName, sizeof(createInfo.actionSetName), name.data());
+        strcpy_s(createInfo.localizedActionSetName, sizeof(createInfo.localizedActionSetName), name.data());
+        return vr.getXRInstance().createActionSetUnique(createInfo);
+    }
+
+    xr::Path Session::makeXRPath(const std::string& path) {
+        return vr.getXRInstance().stringToPath(path.c_str());
+    }
+
+    void Session::suggestBindings(const std::string& interactionProfile, std::span<const xr::ActionSuggestedBinding> bindings) {
+        xr::InteractionProfileSuggestedBinding suggestion;
+        suggestion.interactionProfile = makeXRPath(interactionProfile);
+        suggestion.countSuggestedBindings = bindings.size();
+        suggestion.suggestedBindings = bindings.data();
+        vr.getXRInstance().suggestInteractionProfileBindings(suggestion);
+    }
+
+    xr::ActionStateBoolean Session::getActionStateBoolean(Carrot::IO::BoolInputAction& action) {
+        xr::ActionStateGetInfo getInfo;
+        getInfo.action = action.getXRAction();
+        return xrSession->getActionStateBoolean(getInfo);
+    }
+
+    xr::ActionStateFloat Session::getActionStateFloat(Carrot::IO::FloatInputAction& action) {
+        xr::ActionStateGetInfo getInfo;
+        getInfo.action = action.getXRAction();
+        return xrSession->getActionStateFloat(getInfo);
+    }
+
+    xr::ActionStateVector2f Session::getActionStateVector2f(Carrot::IO::Vec2InputAction& action) {
+        xr::ActionStateGetInfo getInfo;
+        getInfo.action = action.getXRAction();
+        return xrSession->getActionStateVector2f(getInfo);
+    }
+
     void Session::setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye) {
         this->leftEye = leftEye;
         this->rightEye = rightEye;
@@ -342,6 +380,68 @@ namespace Carrot::VR {
         xrEndFrame();
     }
 
+    void Session::attachActionSets() {
+        xr::SessionActionSetsAttachInfo attachInfo;
+        std::vector<xr::ActionSet> setsToAttach;
+
+        auto& setList = Carrot::IO::ActionSet::getSetList();
+        setsToAttach.reserve(setList.size());
+
+        struct ProfileBindings {
+            std::vector<xr::ActionSuggestedBinding> data;
+        };
+        std::unordered_map<std::string, ProfileBindings> perProfileBindings;
+        auto updateActions = [&](const auto& vector, xr::ActionSet& xrActionSet) {
+            for(auto& a : vector) {
+                a->createXRAction(xrActionSet);
+
+                for(const Carrot::IO::ActionBinding& binding : a->getSuggestedBindings()) {
+                    if(!binding.isOpenXR()) {
+                        continue;
+                    }
+                    xr::ActionSuggestedBinding xrBinding;
+                    xrBinding.action = a->getXRAction();
+                    xrBinding.binding = GetEngine().getVRSession().makeXRPath(binding.path);
+                    perProfileBindings[binding.interactionProfile].data.push_back(xrBinding);
+                }
+            }
+        };
+
+        for(auto& actionSet : setList) {
+            updateActions(actionSet->getBoolInputs(), actionSet->getXRActionSet());
+            updateActions(actionSet->getFloatInputs(), actionSet->getXRActionSet());
+            updateActions(actionSet->getVec2Inputs(), actionSet->getXRActionSet());
+
+            setsToAttach.push_back(actionSet->getXRActionSet());
+        }
+
+        for(const auto& [profile, bindings] : perProfileBindings) {
+            GetEngine().getVRSession().suggestBindings(profile, bindings.data);
+        }
+
+        if(setsToAttach.empty()) {
+            return;
+        }
+        attachInfo.actionSets = setsToAttach.data();
+        attachInfo.countActionSets = setsToAttach.size();
+        xrSession->attachSessionActionSets(attachInfo);
+    }
+
+    void Session::syncActionSets(std::vector<Carrot::IO::ActionSet*> actionSets) {
+        std::vector<xr::ActiveActionSet> xrSets;
+        xrSets.reserve(actionSets.size());
+        for(auto& set : actionSets) {
+            xr::ActiveActionSet activeSet;
+            activeSet.actionSet = set->getXRActionSet();
+            activeSet.subactionPath = xr::Path::null();
+            xrSets.emplace_back(activeSet);
+        }
+        xr::ActionsSyncInfo syncInfo;
+        syncInfo.activeActionSets = xrSets.data();
+        syncInfo.countActiveActionSets = xrSets.size();
+        xrSession->syncActions(syncInfo);
+    }
+
     xr::UniqueDynamicHandTrackerEXT Session::createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo) {
         return xrSession->createHandTrackerUniqueEXT(createInfo, vr.getXRDispatch());
     }
@@ -357,4 +457,5 @@ namespace Carrot::VR {
     Session::~Session() {
         vr.unregisterSession(this);
     }
+
 }

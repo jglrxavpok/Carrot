@@ -67,11 +67,11 @@ namespace Carrot {
         //! Gets the skeleton inside this model. Due to how Assimp works, don't expect only bone nodes, the entire scene hierarchy will be present.
         const Render::Skeleton& getSkeleton() const;
 
-        //! Name -> Bone Index mapping
-        const std::unordered_map<std::string, std::uint32_t>& getBoneMapping() const;
+        //! MeshIndex -> Name -> Bone Index mapping
+        const std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>>& getBoneMapping() const;
 
-        //! Name -> Bone Offset matrix
-        const std::unordered_map<std::string, glm::mat4>& getBoneOffsetMatrices() const;
+        //! MeshIndex -> Name -> Bone Offset matrix
+        const std::unordered_map<int, std::unordered_map<std::string, glm::mat4>>& getBoneOffsetMatrices() const;
 
     public:
         void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
@@ -81,7 +81,7 @@ namespace Carrot {
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
 
     private:
-        std::shared_ptr<Mesh> loadMesh(const aiMesh* mesh);
+        std::shared_ptr<Mesh> loadMesh(int meshIndex, const aiMesh* mesh);
 
         void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
 
@@ -105,8 +105,8 @@ namespace Carrot {
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;
-        std::unordered_map<std::string, std::uint32_t> boneMapping;
-        std::unordered_map<std::string, glm::mat4> offsetMatrices;
+        std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;
+        std::unordered_map<int, std::unordered_map<std::string, glm::mat4>> offsetMatrices;
 
         std::map<std::string, Animation*> animations{};
         std::map<std::string, std::uint32_t> animationMapping{};

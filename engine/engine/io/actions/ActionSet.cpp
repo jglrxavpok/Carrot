@@ -4,6 +4,7 @@
 #include "ActionSet.h"
 #include <core/Macros.h>
 #include "engine/Engine.h"
+#include "engine/vr/Session.h"
 #include "core/io/Logging.hpp"
 
 #include <engine/vr/includes.h>
@@ -15,10 +16,12 @@ namespace Carrot::IO {
         return list;
     }
 
-    ActionSet::ActionSet(std::string_view name, bool isXRSet): name(name), isXRSet(isXRSet) {
+    ActionSet::ActionSet(std::string_view name): name(name) {
         getSetList().push_back(this);
 
-        // TODO verify VR supported: verify(!isXRSet, "Cannot create XR set when ENABLE_VR is not defined.");
+        if(GetConfiguration().runInVR) {
+            xrActionSet = GetEngine().getVRSession().createActionSet(name);
+        }
     }
 
     ActionSet::~ActionSet() {
@@ -54,6 +57,23 @@ namespace Carrot::IO {
         }
     }
 
+    void ActionSet::add(BoolInputAction& input) {
+        boolInputs.push_back(&input);
+    }
+
+    void ActionSet::add(FloatInputAction& input) {
+        floatInputs.push_back(&input);
+    }
+
+    void ActionSet::add(Vec2InputAction& input) {
+        vec2Inputs.push_back(&input);
+    }
+
+    xr::ActionSet& ActionSet::getXRActionSet() {
+        verify(xrActionSet, "Cannot call ActionSet::getXRActionSet if not running in VR");
+        return *xrActionSet;
+    }
+
     void ActionSet::updatePrePoll() {
         if(!active)
             return;
@@ -68,6 +88,28 @@ namespace Carrot::IO {
         }
     }
 
+    void ActionSet::syncXRActions() {
+        std::vector<ActionSet*> setsToSync;
+        setsToSync.reserve(getSetList().size());
+
+        for(auto* set : getSetList()) {
+            if(!set->isActive())
+                continue;
+            if(!set->readyForUse) {
+                set->prepareForUse(GetEngine());
+            }
+            set->updatePrePoll();
+
+            setsToSync.emplace_back(set);
+        }
+
+        GetEngine().getVRSession().syncActionSets(setsToSync);
+
+        for(auto* set : setsToSync) {
+            set->pollXRActions();
+        }
+    }
+
     void ActionSet::updatePrePollAllSets(Carrot::Engine& engine) {
         for(auto* set : getSetList()) {
             if(!set->isActive())
@@ -77,180 +119,190 @@ namespace Carrot::IO {
             }
             set->updatePrePoll();
         }
-
-        // TODO // xrSyncActions
     }
 
     void ActionSet::prepareForUse(Carrot::Engine& engine) {
         if(readyForUse)
             return;
 
-        if(isXRSet) {
-            /*TODO;
-            auto updateActions = [&](const auto& vector) {
-                for(auto& a : vector) {
-                    a->createXRAction();
-                }
-            };
-            updateActions(boolInputs);
-            updateActions(floatInputs);
-            updateActions(vec2Inputs);*/
-        } else {
-            auto changeButtonInput = [this](std::string_view bindingPath, bool isPressed, bool isReleased) {
-                for(auto& input : boolInputs) {
-                    const auto& bindings = getMappedBindings(input);
-                    if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
-                        if(isReleased) {
-                            input->state.bValue = false;
-                        } else {
-                            input->state.bValue |= isPressed;
-                        }
+        auto changeButtonInput = [this](const ActionBinding& bindingPath, bool isPressed, bool isReleased) {
+            for(auto& input : boolInputs) {
+                const auto& bindings = getMappedBindings(input);
+                if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
+                    if(isReleased) {
+                        input->state.bValue = false;
+                    } else {
+                        input->state.bValue |= isPressed;
                     }
                 }
-            };
+            }
+        };
 
-            auto changeAxisInput = [this](std::string_view bindingPath, float newValue) {
-                for(auto& input : floatInputs) {
-                    const auto& bindings = getMappedBindings(input);
-                    if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
-                        // TODO: handle case if multiple physical inputs are bound to this action
-                        input->state.fValue = newValue;
+        auto changeAxisInput = [this](const ActionBinding& bindingPath, float newValue) {
+            for(auto& input : floatInputs) {
+                const auto& bindings = getMappedBindings(input);
+                if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
+                    // TODO: handle case if multiple physical inputs are bound to this action
+                    input->state.fValue = newValue;
+                }
+            }
+        };
+
+        auto changeVec2Input = [this](const ActionBinding& bindingPath, const glm::vec2& newValue, bool additive) {
+            for(auto& input : vec2Inputs) {
+                const auto& bindings = getMappedBindings(input);
+                if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
+                    // TODO: handle case if multiple physical inputs are bound to this action
+                    if(additive) {
+                        input->state.vValue += newValue;
+                    } else {
+                        input->state.vValue = newValue;
                     }
                 }
-            };
+            }
+        };
 
-            auto changeVec2Input = [this](std::string_view bindingPath, const glm::vec2& newValue, bool additive) {
-                for(auto& input : vec2Inputs) {
-                    const auto& bindings = getMappedBindings(input);
-                    if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
-                        // TODO: handle case if multiple physical inputs are bound to this action
-                        if(additive) {
-                            input->state.vValue += newValue;
-                        } else {
-                            input->state.vValue = newValue;
-                        }
-                    }
-                }
-            };
+        keyCallback = GetEngine().addGLFWKeyCallback([this, changeButtonInput, changeAxisInput](int key, int scancode, int action, int mods) {
+            if(!active)
+                return;
 
-            keyCallback = GetEngine().addGLFWKeyCallback([this, changeButtonInput, changeAxisInput](int key, int scancode, int action, int mods) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWKeyBinding(key);
 
-                const auto correspondingPath = Carrot::IO::GLFWKeyBinding(key);
+            bool isPressed = false;
+            if(action == GLFW_PRESS || action == GLFW_REPEAT) {
+                isPressed = true;
+            }
 
-                bool isPressed = false;
-                if(action == GLFW_PRESS || action == GLFW_REPEAT) {
-                    isPressed = true;
-                }
+            bool isReleased = false;
+            if(action == GLFW_RELEASE) {
+                isPressed = false;
+                isReleased = true;
+            }
 
-                bool isReleased = false;
-                if(action == GLFW_RELEASE) {
-                    isPressed = false;
-                    isReleased = true;
-                }
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
-            });
+        gamepadButtonCallback = GetEngine().addGLFWGamepadButtonCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int buttonID, bool pressed) {
+            if(!active)
+                return;
 
-            gamepadButtonCallback = GetEngine().addGLFWGamepadButtonCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int buttonID, bool pressed) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWGamepadButtonBinding(gamepadID, buttonID);
 
-                const auto correspondingPath = Carrot::IO::GLFWGamepadButtonBinding(gamepadID, buttonID);
+            bool isPressed = pressed;
+            bool isReleased = !pressed;
 
-                bool isPressed = pressed;
-                bool isReleased = !pressed;
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, pressed ? 1.0f : 0.0f);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, pressed ? 1.0f : 0.0f);
-            });
+        gamepadAxisCallback = GetEngine().addGLFWGamepadAxisCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int axisID, float newValue, float oldValue) {
+            if(!active)
+                return;
 
-            gamepadAxisCallback = GetEngine().addGLFWGamepadAxisCallback([this, changeButtonInput, changeAxisInput](int gamepadID, int axisID, float newValue, float oldValue) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWGamepadAxisBinding(gamepadID, axisID);
 
-                const auto correspondingPath = Carrot::IO::GLFWGamepadAxisBinding(gamepadID, axisID);
+            bool isPressed = newValue >= 0.5f;
+            bool isReleased = !isPressed;
 
-                bool isPressed = newValue >= 0.5f;
-                bool isReleased = !isPressed;
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, newValue);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, newValue);
-            });
+        gamepadVec2Callback = GetEngine().addGLFWGamepadVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](int gamepadID, IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
+            if(!active)
+                return;
 
-            gamepadVec2Callback = GetEngine().addGLFWGamepadVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](int gamepadID, IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWGamepadVec2Binding(gamepadID, vectorType);
 
-                const auto correspondingPath = Carrot::IO::GLFWGamepadVec2Binding(gamepadID, vectorType);
+            bool isPressed = glm::length(newValue) >= 0.5f;
+            bool isReleased = !isPressed;
 
-                bool isPressed = glm::length(newValue) >= 0.5f;
-                bool isReleased = !isPressed;
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, glm::length(newValue));
+            changeVec2Input(correspondingPath, newValue, false);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, glm::length(newValue));
-                changeVec2Input(correspondingPath, newValue, false);
-            });
+        keysVec2Callback = GetEngine().addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
+            if(!active)
+                return;
 
-            keysVec2Callback = GetEngine().addGLFWKeysVec2Callback([this, changeButtonInput, changeAxisInput, changeVec2Input](IO::GameInputVectorType vectorType, glm::vec2 newValue, glm::vec2 oldValue) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWKeysVec2Binding(vectorType);
 
-                const auto correspondingPath = Carrot::IO::GLFWKeysVec2Binding(vectorType);
+            bool isPressed = glm::length(newValue) >= 0.5f;
+            bool isReleased = !isPressed;
 
-                bool isPressed = glm::length(newValue) >= 0.5f;
-                bool isReleased = !isPressed;
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, glm::length(newValue));
+            changeVec2Input(correspondingPath, newValue, false);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, glm::length(newValue));
-                changeVec2Input(correspondingPath, newValue, false);
-            });
+        mouseButtonCallback = GetEngine().addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
+            if(!active)
+                return;
 
-            mouseButtonCallback = GetEngine().addGLFWMouseButtonCallback([this, changeButtonInput, changeAxisInput](int buttonID, bool pressed, int mods) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWMouseButtonBinding(buttonID);
 
-                const auto correspondingPath = Carrot::IO::GLFWMouseButtonBinding(buttonID);
+            bool isPressed = pressed;
+            bool isReleased = !pressed;
 
-                bool isPressed = pressed;
-                bool isReleased = !pressed;
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
+        });
 
-                changeButtonInput(correspondingPath, isPressed, isReleased);
-                changeAxisInput(correspondingPath, isPressed ? 1.0f : 0.0f);
-            });
+        mousePositionCallback = GetEngine().addGLFWMousePositionCallback([this, changeVec2Input](double dx, double dy) {
+            if(!active)
+                return;
 
-            mousePositionCallback = GetEngine().addGLFWMousePositionCallback([this, changeVec2Input](double dx, double dy) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWMousePositionBinding;
 
-                const auto correspondingPath = Carrot::IO::GLFWMousePositionBinding;
+            changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, false);
+        });
 
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, false);
-            });
+        mouseDeltaCallback = GetEngine().addGLFWMouseDeltaCallback([this, changeVec2Input](double dx, double dy) {
+            if(!active)
+                return;
 
-            mouseDeltaCallback = GetEngine().addGLFWMouseDeltaCallback([this, changeVec2Input](double dx, double dy) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWMouseDeltaBinding;
 
-                const auto correspondingPath = Carrot::IO::GLFWMouseDeltaBinding;
+            changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
+        });
 
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
-            });
+        mouseDeltaGrabbedCallback = GetEngine().addGLFWMouseDeltaGrabbedCallback([this, changeVec2Input](double dx, double dy) {
+            if(!active)
+                return;
 
-            mouseDeltaGrabbedCallback = GetEngine().addGLFWMouseDeltaGrabbedCallback([this, changeVec2Input](double dx, double dy) {
-                if(!active)
-                    return;
+            const auto correspondingPath = Carrot::IO::GLFWGrabbedMouseDeltaBinding;
 
-                const auto correspondingPath = Carrot::IO::GLFWGrabbedMouseDeltaBinding;
-
-                changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
-            });
-
-        }
+            changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
+        });
 
         readyForUse = true;
+    }
+
+    void ActionSet::pollXRActions() {
+        for(auto& boolInput : boolInputs) {
+            xr::ActionStateBoolean actionState = GetEngine().getVRSession().getActionStateBoolean(*boolInput);
+            if(actionState.isActive) {
+                boolInput->state.bValue = (bool) actionState.currentState;
+            }
+        }
+
+        for(auto& floatInput : floatInputs) {
+            xr::ActionStateFloat actionState = GetEngine().getVRSession().getActionStateFloat(*floatInput);
+            if(actionState.isActive) {
+                floatInput->state.fValue = actionState.currentState;
+            }
+        }
+
+        for(auto& vec2Input : vec2Inputs) {
+            xr::ActionStateVector2f actionState = GetEngine().getVRSession().getActionStateVector2f(*vec2Input);
+            if(actionState.isActive) {
+                vec2Input->state.vValue = glm::vec2(actionState.currentState.x, actionState.currentState.y);
+            }
+        }
+
+        // TODO: pose
     }
 
     void ActionSet::resetAllDeltas() {

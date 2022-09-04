@@ -18,8 +18,8 @@ namespace Carrot {
         //! Called once per viewport per frame. Push your render calls here.
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
 
-        //! Called once per viewport per frame per eye. Setup your camera here to work properly in VR.
-        virtual void onVRFrame(Carrot::Render::Context renderContext) {};
+        //! Called once per viewport per frame per eye. Setup your camera here to work properly in VR. Also called if not in VR, just before onFrame
+        virtual void setupCamera(Carrot::Render::Context renderContext) {};
 
         virtual void tick(double frameTime) = 0;
 

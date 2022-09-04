@@ -261,6 +261,10 @@ void Carrot::Engine::initInputStructures() {
             activeJoysticks.insert(joystickID);
         }
     }
+
+    if(config.runInVR) {
+        vrSession->attachActionSets();
+    }
 }
 
 void Carrot::Engine::pollGamepads() {
@@ -398,6 +402,9 @@ void Carrot::Engine::run() {
             glfwPollEvents();
             pollKeysVec2();
             pollGamepads();
+            if(config.runInVR) {
+                IO::ActionSet::syncXRActions();
+            }
 
             onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
         }
@@ -785,10 +792,13 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             {
                 ZoneScopedN("game->onFrame");
                 if(config.runInVR) {
-                    game->onVRFrame(newRenderContext(imageIndex, v, Carrot::Render::Eye::LeftEye));
-                    game->onVRFrame(newRenderContext(imageIndex, v, Carrot::Render::Eye::RightEye));
+                    game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::LeftEye));
+                    game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::RightEye));
+                    game->onFrame(newRenderContext(imageIndex, v));
+                } else {
+                    game->setupCamera(renderContext);
+                    game->onFrame(renderContext);
                 }
-                game->onFrame(newRenderContext(imageIndex, v));
             }
             GetPhysics().onFrame(renderContext);
             getRayTracer().onFrame(renderContext); // update instance positions only once everything has been updated

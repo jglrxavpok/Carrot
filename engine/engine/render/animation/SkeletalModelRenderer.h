@@ -53,14 +53,14 @@ namespace Carrot::Render {
 
         Carrot::Model::Ref model;
         std::unordered_map<std::string, glm::mat4> transforms;
-        GPUSkeleton processedSkeleton;
+        std::vector<GPUSkeleton> processedSkeletons; // one per mesh
         std::shared_ptr<Carrot::Pipeline> renderingPipeline = nullptr;
         Carrot::InstanceData instanceData;
         PerFrame<std::vector<std::unique_ptr<Carrot::ComputePipeline>>> skinningPipelines; // [swapchainIndex][mesh]
         PerFrame<std::vector<vk::UniqueSemaphore>> skinningSemaphores; // [swapchainIndex][mesh]
         PerFrame<std::unique_ptr<Carrot::Buffer>> outputBuffers;
         PerFrame<std::vector<std::shared_ptr<Carrot::Mesh>>> renderingMeshes; // one per mesh inside the input model
-        PerFrame<std::unique_ptr<Carrot::Buffer>> gpuSkeletons;
+        PerFrame<std::vector<std::unique_ptr<Carrot::Buffer>>> gpuSkeletons; // one per mesh
 
         PerFrame<std::shared_ptr<Carrot::BLASHandle>> blas;
         PerFrame<std::shared_ptr<Carrot::InstanceHandle>> rtInstance;

@@ -14,6 +14,7 @@
 #define GetVulkanDevice() GetVulkanDriver().getLogicalDevice()
 #define WaitDeviceIdle() GetVulkanDriver().waitDeviceIdle()
 #define GetCapabilities() GetEngine().getCapabilities()
+#define GetConfiguration() GetEngine().getConfiguration()
 #define GetTaskScheduler() GetEngine().getTaskScheduler()
 #define GetVFS() GetEngine().getVFS()
 

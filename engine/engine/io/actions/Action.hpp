@@ -10,6 +10,11 @@
 #include "core/utils/stringmanip.h"
 #include "engine/io/actions/InputVectors.h"
 #include "engine/vr/includes.h"
+#include "core/utils/Assert.h"
+
+namespace Carrot::VR {
+    class Session;
+}
 
 namespace Carrot::IO {
     enum class ActionType {
@@ -18,6 +23,35 @@ namespace Carrot::IO {
         Vec2Input,
 
         // TODO FloatOutput
+    };
+
+    //! Represents a binding for an action.
+    struct ActionBinding {
+        static constexpr const char* const CarrotInteractionProfile = "/carrot";
+
+        //! Interaction profile to suggest this action for.
+        //! Used for OpenXR (https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#semantic-path-interaction-profiles). Unused for non-OpenXR bindings
+        std::string interactionProfile = CarrotInteractionProfile;
+
+        //! Path of the suggested binding
+        std::string path;
+
+        ActionBinding() = default;
+
+        //! Creates a non-OpenXR binding with the given path
+        ActionBinding(std::string_view p): path(p) {};
+        //! Creates a non-OpenXR binding with the given path
+        ActionBinding(const char* p): path(p) {};
+        //! Creates a non-OpenXR binding with the given path
+        ActionBinding(const std::string& p): path(p) {};
+
+        inline bool isOpenXR() const {
+            return interactionProfile != CarrotInteractionProfile;
+        }
+
+        inline bool operator==(const ActionBinding& other) const {
+            return interactionProfile == other.interactionProfile && path == other.path;
+        }
     };
 
     template<ActionType type>
@@ -35,11 +69,16 @@ namespace Carrot::IO {
         }
 
         const std::string& getName() const { return name; }
-        const std::vector<std::string>& getSuggestedBindings() const { return suggestedBindings; }
+        const std::vector<ActionBinding>& getSuggestedBindings() const { return suggestedBindings; }
+
+        xr::Action& getXRAction() {
+            verify(xrAction, "Cannot call getXRAction without calling createXRAction first");
+            return *xrAction;
+        }
 
     public:
-        void suggestBinding(std::string_view binding) {
-            suggestedBindings.emplace_back(binding);
+        void suggestBinding(ActionBinding binding) {
+            suggestedBindings.emplace_back(std::move(binding));
         }
 
     public:
@@ -85,7 +124,7 @@ namespace Carrot::IO {
 
     private:
         std::string name;
-        std::vector<std::string> suggestedBindings;
+        std::vector<ActionBinding> suggestedBindings;
         union State {
             struct {
                 bool bValue;
@@ -103,6 +142,7 @@ namespace Carrot::IO {
 
     private: // OpenXR compatibility
         void createXRAction(xr::ActionSet& set) {
+            // TODO: poses, haptics
             xr::ActionType xrActionType = xr::ActionType::FloatInput;
 
             if constexpr(type == ActionType::BoolInput) {
@@ -121,39 +161,56 @@ namespace Carrot::IO {
         xr::UniqueAction xrAction;
 
         friend class ActionSet;
+        friend class Carrot::VR::Session;
     };
 
     using FloatInputAction = Action<ActionType::FloatInput>;
     using BoolInputAction = Action<ActionType::BoolInput>;
     using Vec2InputAction = Action<ActionType::Vec2Input>;
 
-    inline std::string GLFWKeyBinding(int glfwCode) {
+    inline ActionBinding GLFWKeyBinding(int glfwCode) {
         return Carrot::sprintf("/user/glfw/keyboard/%d", glfwCode);
     }
 
-    inline std::string GLFWMouseButtonBinding(int buttonID) {
+    inline ActionBinding GLFWMouseButtonBinding(int buttonID) {
         return Carrot::sprintf("/user/glfw/mouse/%d", buttonID);
     }
 
-    inline std::string GLFWGamepadButtonBinding(int gamepadID, int buttonID) {
+    inline ActionBinding GLFWGamepadButtonBinding(int gamepadID, int buttonID) {
         return Carrot::sprintf("/user/glfw/gamepad/%d/button/%d", gamepadID, buttonID);
     }
 
-    inline std::string GLFWGamepadAxisBinding(int gamepadID, int axisID) {
+    inline ActionBinding GLFWGamepadAxisBinding(int gamepadID, int axisID) {
         return Carrot::sprintf("/user/glfw/gamepad/%d/axis/%d", gamepadID, axisID);
     }
 
-    inline std::string GLFWGamepadVec2Binding(int gamepadID, Carrot::IO::GameInputVectorType vectorType) {
+    inline ActionBinding GLFWGamepadVec2Binding(int gamepadID, Carrot::IO::GameInputVectorType vectorType) {
         return Carrot::sprintf("/user/glfw/gamepad/%d/vec2/%d", gamepadID, vectorType);
     }
 
-    inline std::string GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType vectorType) {
+    inline ActionBinding GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType vectorType) {
         return Carrot::sprintf("/user/glfw/keys/vec2/%d", vectorType);
     }
 
-    constexpr const char* GLFWMousePositionBinding = "/user/glfw/mouse/pos";
-    constexpr const char* GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
-    constexpr const char* GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";
+    static const ActionBinding GLFWMousePositionBinding = "/user/glfw/mouse/pos";
+    static const ActionBinding GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
+    static const ActionBinding GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";
 
-    // TODO: OpenXR bindings
+    // Input profiles
+    constexpr static const char* const SimpleController = "/interaction_profiles/khr/simple_controller";
+    constexpr static const char* const DaydreamController = "/interaction_profiles/google/daydream_controller";
+    constexpr static const char* const ViveController = "/interaction_profiles/htc/vive_controller";
+    constexpr static const char* const VivePro = "/interaction_profiles/htc/vive_pro";
+    constexpr static const char* const MotionController = "/interaction_profiles/microsoft/motion_controller";
+    constexpr static const char* const XboxController = "/interaction_profiles/microsoft/xbox_controller";
+    constexpr static const char* const GoController = "/interaction_profiles/oculus/go_controller";
+    constexpr static const char* const TouchController = "/interaction_profiles/oculus/touch_controller";
+    constexpr static const char* const IndexController = "/interaction_profiles/valve/index_controller";
+
+    inline ActionBinding OpenXRBinding(const std::string& interactionProfile, const std::string& path) {
+        ActionBinding binding;
+        binding.interactionProfile = interactionProfile;
+        binding.path = path;
+        return binding;
+    }
 }

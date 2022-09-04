@@ -28,26 +28,36 @@ namespace Carrot::Render {
         createSkinningPipelines();
 
         instanceData.transform = glm::identity<glm::mat4>();
+
+        auto skinnedMeshLists = this->model->getSkinnedMeshes();
+        std::size_t totalMeshCount = 0;
+        for(const auto& [_, list] : skinnedMeshLists) {
+            totalMeshCount += list.size();
+        }
+        processedSkeletons.resize(totalMeshCount);
     }
 
     void SkeletalModelRenderer::onFrame(const Carrot::Render::Context& renderContext) {
         // compute bone transforms
         getSkeleton().computeTransforms(transforms);
         const auto& boneMapping = model->getBoneMapping();
-        for(auto& [boneName, boneTransform] : transforms) {
-            auto mappingIt = boneMapping.find(boneName);
+        forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, const Mesh::Ref& mesh) {
+            auto& meshBoneMapping = boneMapping.at(meshIndex);
+            for(auto& [boneName, boneTransform] : transforms) {
+                auto mappingIt = meshBoneMapping.find(boneName);
 
-            // skeleton can contain scene elements that do not represent a used bone
-            if(mappingIt == boneMapping.end()) {
-                continue;
+                // skeleton can contain scene elements that do not represent a used bone
+                if(mappingIt == meshBoneMapping.end()) {
+                    continue;
+                }
+                std::uint32_t boneIndex = mappingIt->second;
+                verify(boneIndex < Carrot::MAX_BONES_PER_MESH, "Too many bones");
+                processedSkeletons[meshIndex].boneTransforms[boneIndex] = boneTransform * model->getBoneOffsetMatrices().at(meshIndex).at(boneName);
             }
-            std::uint32_t boneIndex = mappingIt->second;
-            verify(boneIndex < Carrot::MAX_BONES_PER_MESH, "Too many bones");
-            processedSkeleton.boneTransforms[boneIndex] = boneTransform * model->getBoneOffsetMatrices().at(boneName);
-        }
 
-        // upload new skeleton
-        gpuSkeletons[renderContext.swapchainIndex]->directUpload(&processedSkeleton, sizeof(GPUSkeleton));
+            // upload new skeleton
+            gpuSkeletons[renderContext.swapchainIndex][meshIndex]->directUpload(&processedSkeletons[meshIndex], sizeof(GPUSkeleton));
+        });
 
         auto& skinningPipelinesOfThisFrame = skinningPipelines[renderContext.swapchainIndex];
         auto skinnedMeshes = model->getSkinnedMeshes();
@@ -104,14 +114,16 @@ namespace Carrot::Render {
 
     void SkeletalModelRenderer::createGPUSkeletonBuffers() {
         gpuSkeletons.clear();
-        gpuSkeletons.reserve(GetEngine().getSwapchainImageCount());
+        gpuSkeletons.resize(GetEngine().getSwapchainImageCount());
 
         for (std::size_t i = 0; i < GetEngine().getSwapchainImageCount(); ++i) {
-            auto& buffer = gpuSkeletons.emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(
-                    sizeof(GPUSkeleton),
-                    vk::BufferUsageFlagBits::eStorageBuffer,
-                    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent // we assume the user will update the skeleton very often
-                    ));
+            forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
+                gpuSkeletons[i].emplace_back(GetEngine().getResourceAllocator().allocateDedicatedBuffer(
+                        sizeof(GPUSkeleton),
+                        vk::BufferUsageFlagBits::eStorageBuffer,
+                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent // we assume the user will update the skeleton very often
+                ));
+            });
         }
     }
 
@@ -180,7 +192,7 @@ namespace Carrot::Render {
 
                 // skeleton buffer
                 builder.bufferBinding(vk::DescriptorType::eStorageBuffer, SkeletonSet, SkeletonStorageBinding,
-                                      gpuSkeletons[imageIndex]->asBufferInfo());
+                                      gpuSkeletons[imageIndex][meshIndex]->asBufferInfo());
 
                 // specialization
                 builder.specializationUInt32(VertexCountConstantID, mesh->getVertexCount());

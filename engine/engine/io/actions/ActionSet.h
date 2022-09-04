@@ -18,9 +18,11 @@ namespace Carrot {
 
 namespace Carrot::IO {
     /// Represents a group of Action which can be toggled on or off at once.
+    /// For OpenXR compatibility, ALL action sets must be created and filled before the first frame of your game (in your
+    /// CarrotGame constructor for instance). Also the name must respect https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#well-formed-path-strings for OpenXR compatibility
     class ActionSet {
     public:
-        explicit ActionSet(std::string_view name, bool isXRSet = false);
+        explicit ActionSet(std::string_view name);
         ~ActionSet();
 
         bool isActive() const { return active; }
@@ -29,17 +31,13 @@ namespace Carrot::IO {
         void activate();
         void deactivate();
 
-        void add(BoolInputAction& input) {
-            boolInputs.push_back(&input);
-        }
+        void add(BoolInputAction& input);
 
-        void add(FloatInputAction& input) {
-            floatInputs.push_back(&input);
-        }
+        void add(FloatInputAction& input);
 
-        void add(Vec2InputAction& input) {
-            vec2Inputs.push_back(&input);
-        }
+        void add(Vec2InputAction& input);
+
+        xr::ActionSet& getXRActionSet();
 
     public:
         const std::vector<BoolInputAction*>& getBoolInputs() const { return boolInputs; }
@@ -49,22 +47,22 @@ namespace Carrot::IO {
     public:
         static void updatePrePollAllSets(Carrot::Engine& engine);
         static void resetAllDeltas();
+        static void syncXRActions();
         static std::vector<ActionSet*>& getSetList();
 
     private:
         // TODO: actually allow remapping, for the moment only use suggested binding
-        const std::vector<std::string>& getMappedBindings(auto& action) {
+        const std::vector<ActionBinding>& getMappedBindings(auto& action) {
             return action->getSuggestedBindings();
         };
 
         void updatePrePoll();
         void resetDeltas();
         void prepareForUse(Carrot::Engine& engine);
+        void pollXRActions();
 
     private:
-
         bool readyForUse = false;
-        bool isXRSet = false;
         bool active = false;
         std::string name;
         std::vector<FloatInputAction*> floatInputs;

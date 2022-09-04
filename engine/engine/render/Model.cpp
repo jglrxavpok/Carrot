@@ -121,8 +121,6 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         materials.push_back(handle);
     }
 
-    std::unordered_map<std::string, std::uint32_t> boneMapping{};
-    std::unordered_map<std::string, glm::mat4> offsetMatrices{};
     aiNode* armature = scene->mRootNode;
 
     for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
@@ -131,7 +129,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         ZoneScopedN("Loading mesh");
         ZoneText(mesh->mName.C_Str(), mesh->mName.length);
 
-        auto loadedMesh = loadMesh(mesh);
+        auto loadedMesh = loadMesh(meshIndex, mesh);
         auto& material = materialMap[mesh->mMaterialIndex];
         bool hasBones = mesh->HasBones();
         loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
@@ -373,7 +371,7 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
     }
 }
 
-std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh) {
+std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(int meshIndex, const aiMesh* mesh) {
     std::vector<Vertex> vertices{};
     std::vector<SkinnedVertex> skinnedVertices{};
     std::vector<std::uint32_t> indices{};
@@ -448,8 +446,8 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh) {
                 vertex.addBoneInformation(boneIndex, weight.mWeight);
             }
 
-            boneMapping[bone->mName.data] = boneIndex;
-            offsetMatrices[bone->mName.data] = glmMat4FromAssimp(bone->mOffsetMatrix);
+            boneMapping[meshIndex][bone->mName.data] = boneIndex;
+            offsetMatrices[meshIndex][bone->mName.data] = glmMat4FromAssimp(bone->mOffsetMatrix);
         }
 
         Async::Counter normalizeAllWeights;
@@ -490,12 +488,15 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(const aiMesh* mesh) {
 void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const glm::mat4& globalInverseTransform, const glm::mat4& parentMatrix) {
     if(armature == nullptr)
         return;
+    const int meshIndex = 0; // TODO: rework to work with multiple meshes & skeletons
+
+
     std::string boneName = armature->mName.data;
-    auto potentialMapping = boneMapping.find(boneName);
+    auto potentialMapping = boneMapping[meshIndex].find(boneName);
     auto potentialAnim = animationNodes.find(boneName);
     glm::mat4 nodeTransform = glmMat4FromAssimp(armature->mTransformation);
     glm::mat4 globalTransform{1.0f};
-    if(potentialMapping != boneMapping.end()) {
+    if(potentialMapping != boneMapping[meshIndex].end()) {
         uint32_t boneID = potentialMapping->second;
 
 
@@ -538,7 +539,7 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
             nodeTransform = translationMat * rotationMat * scalingMat;
         }
 
-        glm::mat4 boneOffset = (offsetMatrices.find(boneName)->second);
+        glm::mat4 boneOffset = (offsetMatrices[meshIndex].find(boneName)->second);
         globalTransform = parentMatrix * nodeTransform;
         keyframe.boneTransforms[boneID] = globalInverseTransform * globalTransform * boneOffset;
     } else {
@@ -606,10 +607,10 @@ const Carrot::Render::Skeleton& Carrot::Model::getSkeleton() const {
     return *skeleton;
 }
 
-const std::unordered_map<std::string, std::uint32_t>& Carrot::Model::getBoneMapping() const {
+const std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>>& Carrot::Model::getBoneMapping() const {
     return boneMapping;
 }
 
-const std::unordered_map<std::string, glm::mat4>& Carrot::Model::getBoneOffsetMatrices() const {
+const std::unordered_map<int, std::unordered_map<std::string, glm::mat4>>& Carrot::Model::getBoneOffsetMatrices() const {
     return offsetMatrices;
 }

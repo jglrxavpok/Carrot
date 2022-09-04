@@ -8,15 +8,21 @@
 #include "engine/vr/HandTracking.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
+#include "engine/io/actions/Action.hpp"
 #include <memory>
 
 namespace Carrot {
     class Engine;
+
+    namespace IO {
+        class ActionSet;
+    }
 }
 
 namespace Carrot::VR {
     class Interface;
 
+    //! Represents the current VR session. Also handles communication with OpenXR
     class Session {
     public:
         explicit Session(Interface& vr);
@@ -33,6 +39,27 @@ namespace Carrot::VR {
     public:
         const HandTracking& getHandTracking() const;
 
+    public: // actions related API
+        //! Creates a new XR Action set with the given name
+        //! Exposed for engine purposes. Please use Carrot::IO::ActionSet directly otherwise
+        xr::UniqueActionSet createActionSet(std::string_view name);
+
+        //! Exposed for engine purposes. Please use Carrot::IO::ActionSet directly otherwise
+        xr::Path makeXRPath(const std::string& path);
+
+        //! Suggest some bindings for a given interaction profile.
+        //! Exposed for engine purposes. Please use Carrot::IO::ActionSet directly otherwise
+        void suggestBindings(const std::string& interactionProfile, std::span<const xr::ActionSuggestedBinding> bindings);
+
+        //! Gets the current state of the given action
+        xr::ActionStateBoolean getActionStateBoolean(Carrot::IO::BoolInputAction& action);
+
+        //! Gets the current state of the given action
+        xr::ActionStateFloat getActionStateFloat(Carrot::IO::FloatInputAction& action);
+
+        //! Gets the current state of the given action
+        xr::ActionStateVector2f getActionStateVector2f(Carrot::IO::Vec2InputAction& action);
+
     public:
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }
@@ -43,6 +70,12 @@ namespace Carrot::VR {
 
         void startFrame();
         void present(const Render::Context& context);
+
+        //! Attaches Carrot action sets to OpenXR. Only for engine purposes
+        void attachActionSets();
+
+        //! Syncs Carrot action sets with OpenXR. Only for engine purposes
+        void syncActionSets(std::vector<Carrot::IO::ActionSet*> actionSets);
 
     private:
         xr::UniqueDynamicHandTrackerEXT createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo);

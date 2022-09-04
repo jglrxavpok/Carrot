@@ -61,12 +61,11 @@ public:
         GetRenderer().getLighting().getAmbientLight() = { 0.1, 0.1, 0.1 };
     }
 
-    void onVRFrame(Carrot::Render::Context renderContext) override {
+    void setupCamera(Carrot::Render::Context renderContext) override {
         cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.getCamera());
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
-
         for (int i = 0; i < InstanceCount; ++i) {
             skinnedModelRenderer.getInstance(i).animationTime = time;
             skinnedModelRenderer.getInstance(i).animationIndex = (i+1) % 2;

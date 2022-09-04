@@ -20,7 +20,7 @@ public:
         actions.activate();
     }
 
-    void onVRFrame(Carrot::Render::Context renderContext) override {
+    void setupCamera(Carrot::Render::Context renderContext) override {
         // setup camera for each eye
         renderContext.getCamera().getViewMatrixRef() = glm::translate(glm::identity<glm::mat4>(), glm::vec3 { 0.0f, 0.0f, -cameraHeight });
     }
