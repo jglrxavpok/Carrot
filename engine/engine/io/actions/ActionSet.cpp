@@ -317,7 +317,10 @@ namespace Carrot::IO {
             if(actionState.isActive) {
                 const xr::SpaceLocation location = vrSession.locateSpace(*poseInput->xrSpace);
                 poseInput->poseState.pValue.position = glm::rotateX(Carrot::toGlm(location.pose.position), glm::half_pi<float>());
-                poseInput->poseState.pValue.orientation = glm::rotate(Carrot::toGlm(location.pose.orientation), glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+
+                const glm::quat correction = glm::rotate(glm::identity<glm::quat>(), -glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+                const glm::quat invCorrection = glm::rotate(glm::identity<glm::quat>(), glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+                poseInput->poseState.pValue.orientation = invCorrection * Carrot::toGlm(location.pose.orientation) * correction;
             }
         }
     }
