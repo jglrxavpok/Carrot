@@ -22,7 +22,8 @@ namespace Carrot::IO {
         BoolInput,
         Vec2Input,
 
-        // TODO FloatOutput
+        PoseInput,
+        VibrationOutput,
     };
 
     //! Represents a binding for an action.
@@ -60,6 +61,17 @@ namespace Carrot::IO {
     concept IsBoolInput = type == ActionType::BoolInput;
     template<ActionType type>
     concept IsVec2Input = type == ActionType::Vec2Input;
+    template<ActionType type>
+    concept IsPoseInput = type == ActionType::PoseInput;
+    template<ActionType type>
+    concept IsVibrationOutput = type == ActionType::VibrationOutput;
+
+    namespace Details {
+        // bridge methods to avoid including more than necessary
+
+        void internalVibrate(xr::Action& action, std::int64_t durationInNanoSeconds, float frequency, float amplitude);
+        void internalStopVibration(xr::Action& action);
+    }
 
     template<ActionType type>
     class Action {
@@ -122,6 +134,18 @@ namespace Carrot::IO {
             state.vValue = v;
         }
 
+        //! Creates a vibration of given duration, frequency and amplitude.
+        //! Backed by OpenXR, check https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#XrHapticVibration for more details
+        void vibrate(std::int64_t durationInNanoSeconds, float frequency, float amplitude) requires IsVibrationOutput<type> {
+            Details::internalVibrate(*xrAction, durationInNanoSeconds, frequency, amplitude);
+        }
+
+        //! Stops a vibration.
+        //! Backed by OpenXR, check https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#XrHapticVibration for more details
+        void stopVibration() requires IsVibrationOutput<type> {
+            Details::internalStopVibration(*xrAction);
+        }
+
     private:
         std::string name;
         std::vector<ActionBinding> suggestedBindings;
@@ -142,13 +166,20 @@ namespace Carrot::IO {
 
     private: // OpenXR compatibility
         void createXRAction(xr::ActionSet& set) {
-            // TODO: poses, haptics
             xr::ActionType xrActionType = xr::ActionType::FloatInput;
 
             if constexpr(type == ActionType::BoolInput) {
                 xrActionType = xr::ActionType::BooleanInput;
             } else if constexpr(type == ActionType::Vec2Input) {
                 xrActionType = xr::ActionType::Vector2FInput;
+            } else if constexpr(type == ActionType::FloatInput) {
+                xrActionType = xr::ActionType::FloatInput;
+            } else if constexpr(type == ActionType::PoseInput) {
+                xrActionType = xr::ActionType::PoseInput;
+            } else if constexpr(type == ActionType::VibrationOutput) {
+                xrActionType = xr::ActionType::VibrationOutput;
+            } else {
+                static_assert(false, "Missing case");
             }
 
             xr::ActionCreateInfo createInfo;
@@ -167,6 +198,8 @@ namespace Carrot::IO {
     using FloatInputAction = Action<ActionType::FloatInput>;
     using BoolInputAction = Action<ActionType::BoolInput>;
     using Vec2InputAction = Action<ActionType::Vec2Input>;
+    using PoseInputAction = Action<ActionType::PoseInput>;
+    using VibrationOutputAction = Action<ActionType::VibrationOutput>;
 
     inline ActionBinding GLFWKeyBinding(int glfwCode) {
         return Carrot::sprintf("/user/glfw/keyboard/%d", glfwCode);

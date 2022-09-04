@@ -77,6 +77,12 @@ namespace Carrot::VR {
         //! Syncs Carrot action sets with OpenXR. Only for engine purposes
         void syncActionSets(std::vector<Carrot::IO::ActionSet*> actionSets);
 
+        //! Vibrate with OpenXR. Only for engine purposes, use Carrot::IO::VibrationOutput::vibrate instead
+        void vibrate(xr::Action& action, const xr::HapticVibration& vibrationDesc);
+
+        //! Stop a vibration with OpenXR. Only for engine purposes, use Carrot::IO::VibrationOutput::stopVibration instead
+        void stopVibration(xr::Action& action);
+
     private:
         xr::UniqueDynamicHandTrackerEXT createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo);
 

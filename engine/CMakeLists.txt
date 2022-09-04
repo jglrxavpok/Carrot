@@ -3,6 +3,7 @@ set(ShadersRoot "${EngineRoot}resources/shaders")
 set(ENGINE-SOURCES
         ${EngineRoot}Window.cpp
 
+        ${EngineRoot}io/actions/Action.cpp
         ${EngineRoot}io/actions/ActionSet.cpp
         ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 

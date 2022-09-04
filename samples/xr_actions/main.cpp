@@ -18,6 +18,9 @@ public:
     {
         selectClick.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::SimpleController, "/user/hand/right/input/select/click"));
         menuClick.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::SimpleController, "/user/hand/right/input/menu/click"));
+        menuClick.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/trigger/value"));
+        feedback.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/output/haptic"));
+
         aButtonTouch.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/a/touch"));
         aButtonClick.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/a/click"));
 
@@ -28,6 +31,7 @@ public:
         set1.add(selectClick);
         set1.add(aButtonTouch);
         set1.add(trackpadX);
+        set1.add(feedback);
 
         set2.add(menuClick);
         set2.add(aButtonClick);
@@ -81,7 +85,11 @@ public:
     }
 
     void tick(double frameTime) override {
-
+        static bool wasPressed = false;
+        if(aButtonClick.isPressed() && !wasPressed) {
+            feedback.vibrate(1000000000, 10, 0.5f);
+        }
+        wasPressed = aButtonClick.isPressed();
     }
 
 private:
@@ -96,9 +104,9 @@ private:
 
     Carrot::IO::FloatInputAction trackpadX { "trackpad_x_valve_index" };
     Carrot::IO::FloatInputAction trackpadY { "trackpad_y_valve_index" };
+    Carrot::IO::VibrationOutputAction feedback { "feedback" };
 
     // TODO: poses
-    // TODO: haptic feedback
 };
 
 void Carrot::Engine::initGame() {

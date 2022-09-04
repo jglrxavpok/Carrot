@@ -37,12 +37,18 @@ namespace Carrot::IO {
 
         void add(Vec2InputAction& input);
 
+        void add(PoseInputAction& input);
+
+        void add(VibrationOutputAction& output);
+
         xr::ActionSet& getXRActionSet();
 
     public:
         const std::vector<BoolInputAction*>& getBoolInputs() const { return boolInputs; }
         const std::vector<FloatInputAction*>& getFloatInputs() const { return floatInputs; }
         const std::vector<Vec2InputAction*>& getVec2Inputs() const { return vec2Inputs; }
+        const std::vector<PoseInputAction*>& getPoseInputs() const { return poseInputs; }
+        const std::vector<VibrationOutputAction*>& getVibrationOutputs() const { return vibrationOutputs; }
 
     public:
         static void updatePrePollAllSets(Carrot::Engine& engine);
@@ -68,6 +74,8 @@ namespace Carrot::IO {
         std::vector<FloatInputAction*> floatInputs;
         std::vector<BoolInputAction*> boolInputs;
         std::vector<Vec2InputAction*> vec2Inputs;
+        std::vector<PoseInputAction*> poseInputs;
+        std::vector<VibrationOutputAction*> vibrationOutputs;
 
         Carrot::UUID keyCallback;
         Carrot::UUID gamepadButtonCallback;

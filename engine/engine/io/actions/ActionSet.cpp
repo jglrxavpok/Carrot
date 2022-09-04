@@ -69,6 +69,14 @@ namespace Carrot::IO {
         vec2Inputs.push_back(&input);
     }
 
+    void ActionSet::add(PoseInputAction& input) {
+        poseInputs.push_back(&input);
+    }
+
+    void ActionSet::add(VibrationOutputAction& input) {
+        vibrationOutputs.push_back(&input);
+    }
+
     xr::ActionSet& ActionSet::getXRActionSet() {
         verify(xrActionSet, "Cannot call ActionSet::getXRActionSet if not running in VR");
         return *xrActionSet;

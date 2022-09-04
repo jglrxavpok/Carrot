@@ -411,6 +411,8 @@ namespace Carrot::VR {
             updateActions(actionSet->getBoolInputs(), actionSet->getXRActionSet());
             updateActions(actionSet->getFloatInputs(), actionSet->getXRActionSet());
             updateActions(actionSet->getVec2Inputs(), actionSet->getXRActionSet());
+            updateActions(actionSet->getPoseInputs(), actionSet->getXRActionSet());
+            updateActions(actionSet->getVibrationOutputs(), actionSet->getXRActionSet());
 
             setsToAttach.push_back(actionSet->getXRActionSet());
         }
@@ -440,6 +442,19 @@ namespace Carrot::VR {
         syncInfo.activeActionSets = xrSets.data();
         syncInfo.countActiveActionSets = xrSets.size();
         xrSession->syncActions(syncInfo);
+    }
+
+    void Session::vibrate(xr::Action& action, const xr::HapticVibration& vibrationDesc) {
+        xr::HapticActionInfo info;
+        info.action = action;
+
+        xrSession->applyHapticFeedback(info, (const XrHapticBaseHeader*)&vibrationDesc);
+    }
+
+    void Session::stopVibration(xr::Action& action) {
+        xr::HapticActionInfo info;
+        info.action = action;
+        xrSession->stopHapticFeedback(info);
     }
 
     xr::UniqueDynamicHandTrackerEXT Session::createHandTracker(const xr::HandTrackerCreateInfoEXT& createInfo) {
