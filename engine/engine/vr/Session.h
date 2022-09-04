@@ -60,6 +60,11 @@ namespace Carrot::VR {
         //! Gets the current state of the given action
         xr::ActionStateVector2f getActionStateVector2f(Carrot::IO::Vec2InputAction& action);
 
+        //! Gets the current state of the given action
+        xr::ActionStatePose getActionStatePose(Carrot::IO::PoseInputAction& action);
+
+        //! Locate the given space, relative to the reference space, and with time = predicted display time
+        xr::SpaceLocation locateSpace(xr::Space& space);
     public:
         bool isReadyForRendering() const { return readyForRendering; }
         bool shouldRenderToSwapchain() const { return shouldRender; }

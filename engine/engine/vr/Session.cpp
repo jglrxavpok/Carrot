@@ -286,6 +286,16 @@ namespace Carrot::VR {
         return xrSession->getActionStateVector2f(getInfo);
     }
 
+    xr::ActionStatePose Session::getActionStatePose(Carrot::IO::PoseInputAction& action) {
+        xr::ActionStateGetInfo getInfo;
+        getInfo.action = action.getXRAction();
+        return xrSession->getActionStatePose(getInfo);
+    }
+
+    xr::SpaceLocation Session::locateSpace(xr::Space& space) {
+        return space.locateSpace(*xrSpace, predictedEndTime);
+    }
+
     void Session::setEyeTexturesToPresent(const Render::FrameResource& leftEye, const Render::FrameResource& rightEye) {
         this->leftEye = leftEye;
         this->rightEye = rightEye;
@@ -413,6 +423,12 @@ namespace Carrot::VR {
             updateActions(actionSet->getVec2Inputs(), actionSet->getXRActionSet());
             updateActions(actionSet->getPoseInputs(), actionSet->getXRActionSet());
             updateActions(actionSet->getVibrationOutputs(), actionSet->getXRActionSet());
+
+            for(auto* poseInput : actionSet->getPoseInputs()) {
+                xr::ActionSpaceCreateInfo createInfo;
+                createInfo.action = poseInput->getXRAction();
+                poseInput->setXRSpace(xrSession->createActionSpaceUnique(createInfo));
+            }
 
             setsToAttach.push_back(actionSet->getXRActionSet());
         }

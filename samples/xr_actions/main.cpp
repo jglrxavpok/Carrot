@@ -27,6 +27,9 @@ public:
         trackpadX.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/trackpad/x"));
         trackpadY.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/trackpad/y"));
 
+        rightHandPose.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::SimpleController, "/user/hand/right/input/aim/pose"));
+        rightHandPose.suggestBinding(Carrot::IO::OpenXRBinding(Carrot::IO::IndexController, "/user/hand/right/input/aim/pose"));
+
         // mix actions for each set (to make sure you can mix input profiles properly)
         set1.add(selectClick);
         set1.add(aButtonTouch);
@@ -36,6 +39,7 @@ public:
         set2.add(menuClick);
         set2.add(aButtonClick);
         set2.add(trackpadY);
+        set2.add(rightHandPose);
 
         set1.activate();
         set2.activate();
@@ -80,6 +84,9 @@ public:
             ImGui::Checkbox(aButtonClick.getName().c_str(), &selected);
 
             ImGui::Text("%s : %f", trackpadY.getName().c_str(), trackpadY.getValue());
+
+            ImGui::Text("Right Hand position: %f ; %f ; %f", rightHandPose.getValue().position.x, rightHandPose.getValue().position.y, rightHandPose.getValue().position.z);
+            ImGui::Text("Right Hand orientation: %f ; %f ; %f ; %f", rightHandPose.getValue().orientation.x, rightHandPose.getValue().orientation.y, rightHandPose.getValue().orientation.z, rightHandPose.getValue().orientation.w);
         }
         ImGui::End();
     }
@@ -104,9 +111,8 @@ private:
 
     Carrot::IO::FloatInputAction trackpadX { "trackpad_x_valve_index" };
     Carrot::IO::FloatInputAction trackpadY { "trackpad_y_valve_index" };
+    Carrot::IO::PoseInputAction rightHandPose { "right_hand" };
     Carrot::IO::VibrationOutputAction feedback { "feedback" };
-
-    // TODO: poses
 };
 
 void Carrot::Engine::initGame() {

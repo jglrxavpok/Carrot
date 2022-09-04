@@ -6,6 +6,7 @@
 #include "engine/Engine.h"
 #include "engine/vr/Session.h"
 #include "core/io/Logging.hpp"
+#include "engine/utils/conversions.h"
 
 #include <engine/vr/includes.h>
 
@@ -289,28 +290,36 @@ namespace Carrot::IO {
     }
 
     void ActionSet::pollXRActions() {
+        Carrot:VR::Session& vrSession = GetEngine().getVRSession();
         for(auto& boolInput : boolInputs) {
-            xr::ActionStateBoolean actionState = GetEngine().getVRSession().getActionStateBoolean(*boolInput);
+            xr::ActionStateBoolean actionState = vrSession.getActionStateBoolean(*boolInput);
             if(actionState.isActive) {
                 boolInput->state.bValue = (bool) actionState.currentState;
             }
         }
 
         for(auto& floatInput : floatInputs) {
-            xr::ActionStateFloat actionState = GetEngine().getVRSession().getActionStateFloat(*floatInput);
+            xr::ActionStateFloat actionState = vrSession.getActionStateFloat(*floatInput);
             if(actionState.isActive) {
                 floatInput->state.fValue = actionState.currentState;
             }
         }
 
         for(auto& vec2Input : vec2Inputs) {
-            xr::ActionStateVector2f actionState = GetEngine().getVRSession().getActionStateVector2f(*vec2Input);
+            xr::ActionStateVector2f actionState = vrSession.getActionStateVector2f(*vec2Input);
             if(actionState.isActive) {
                 vec2Input->state.vValue = glm::vec2(actionState.currentState.x, actionState.currentState.y);
             }
         }
 
-        // TODO: pose
+        for(auto& poseInput : poseInputs) {
+            xr::ActionStatePose actionState = vrSession.getActionStatePose(*poseInput);
+            if(actionState.isActive) {
+                const xr::SpaceLocation location = vrSession.locateSpace(*poseInput->xrSpace);
+                poseInput->poseState.pValue.position = glm::rotateX(Carrot::toGlm(location.pose.position), glm::half_pi<float>());
+                poseInput->poseState.pValue.orientation = glm::rotate(Carrot::toGlm(location.pose.orientation), glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+            }
+        }
     }
 
     void ActionSet::resetAllDeltas() {

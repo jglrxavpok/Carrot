@@ -5,6 +5,8 @@
 #pragma once
 
 #include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <string>
 #include <string_view>
 #include "core/utils/stringmanip.h"
@@ -24,6 +26,12 @@ namespace Carrot::IO {
 
         PoseInput,
         VibrationOutput,
+    };
+
+    //! Represents a pose that an action can return (in most cases, the pose of the VR controllers)
+    struct ActionPose {
+        glm::vec3 position{0.0f};
+        glm::quat orientation = glm::identity<glm::quat>();
     };
 
     //! Represents a binding for an action.
@@ -119,7 +127,15 @@ namespace Carrot::IO {
         }
 
         glm::vec2 getDelta() const requires IsVec2Input<type> {
-            return state.vValue - state.vPreviousValue;;
+            return state.vValue - state.vPreviousValue;
+        }
+
+        const ActionPose& getValue() const requires IsPoseInput<type> {
+            return poseState.pValue;
+        }
+
+        const ActionPose& getPreviousValue() const requires IsPoseInput<type> {
+            return poseState.pPreviousValue;
         }
 
         void forceValue(bool v) requires IsBoolInput<type> {
@@ -132,6 +148,10 @@ namespace Carrot::IO {
 
         void forceValue(const glm::vec2& v) requires IsVec2Input<type> {
             state.vValue = v;
+        }
+
+        void forceValue(const ActionPose& v) requires IsPoseInput<type> {
+            poseState.pValue = v;
         }
 
         //! Creates a vibration of given duration, frequency and amplitude.
@@ -164,6 +184,12 @@ namespace Carrot::IO {
             };
         } state;
 
+        // non-trivial constructor so keeping it inside the union is not great
+        struct {
+            ActionPose pValue;
+            ActionPose pPreviousValue;
+        } poseState;
+
     private: // OpenXR compatibility
         void createXRAction(xr::ActionSet& set) {
             xr::ActionType xrActionType = xr::ActionType::FloatInput;
@@ -189,7 +215,12 @@ namespace Carrot::IO {
             xrAction = set.createActionUnique(createInfo);
         };
 
+        void setXRSpace(xr::UniqueSpace&& space) {
+            xrSpace = std::move(space);
+        }
+
         xr::UniqueAction xrAction;
+        xr::UniqueSpace xrSpace; // only used for Pose inputs
 
         friend class ActionSet;
         friend class Carrot::VR::Session;
