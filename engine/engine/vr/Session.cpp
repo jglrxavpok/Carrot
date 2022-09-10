@@ -334,7 +334,11 @@ namespace Carrot::VR {
         if(shouldRenderToSwapchain()) {
             auto& fence = *renderFences[xrSwapchainIndex];
             auto& device = getEngine().getVulkanDriver().getLogicalDevice();
-            DISCARD(device.waitForFences(fence, true, UINT64_MAX));
+            try {
+                DISCARD(device.waitForFences(fence, true, UINT64_MAX));
+            } catch(vk::DeviceLostError& deviceLost) {
+                GetVulkanDriver().onDeviceLost();
+            }
             device.resetFences(fence);
 
             auto& driver = vr.getEngine().getVulkanDriver();

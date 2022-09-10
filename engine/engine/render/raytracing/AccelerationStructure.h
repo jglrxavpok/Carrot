@@ -9,6 +9,8 @@
 namespace Carrot {
     class AccelerationStructure {
     public:
+        static Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> ASByStartAddress;
+
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
 
         explicit AccelerationStructure(AccelerationStructure&&) = default;
@@ -22,9 +24,11 @@ namespace Carrot {
         vk::AccelerationStructureKHR& getVulkanAS();
 
         Buffer& getBuffer();
+        const Buffer& getBuffer() const;
 
     private:
         std::unique_ptr<Buffer> buffer = nullptr;
         vk::UniqueAccelerationStructureKHR as{};
+        vk::DeviceAddress deviceAddress = 0x0;
     };
 }

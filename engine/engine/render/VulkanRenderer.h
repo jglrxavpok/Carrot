@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <map>
+#include <source_location>
 #include <functional>
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/resources/Pipeline.h"
@@ -183,8 +184,13 @@ namespace Carrot {
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
 
     public:
+        std::shared_ptr<Carrot::Model> getUnitSphere();
+        std::shared_ptr<Carrot::Model> getUnitCapsule();
+        std::shared_ptr<Carrot::Model> getUnitCube();
+
+    public:
         /// Reference is valid only for the current frame
-        Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport);
+        Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
         void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());

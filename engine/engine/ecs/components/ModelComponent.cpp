@@ -100,13 +100,15 @@ namespace Carrot::ECS {
         if(!GetCapabilities().supportsRaytracing) {
             return;
         }
-        if(tlasIsWaitingForModel && asyncModel.isReady()) {
+        if(castsShadows && tlasIsWaitingForModel && asyncModel.isReady()) {
             Async::LockGuard l{ tlasAccess };
             if(tlasIsWaitingForModel) {
                 tlasIsWaitingForModel = false;
                 tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
                 tlas->enabled = true;
             }
+        } else if(!castsShadows && tlas) {
+            tlas = nullptr;
         }
     }
 

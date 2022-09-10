@@ -107,7 +107,8 @@ inline std::string  AftermathErrorMessage(GFSDK_Aftermath_Result result)
 
 // Helper macro for checking Nsight Aftermath results and throwing exception
 // in case of a failure.
-#ifdef _WIN32
+//#ifdef _WIN32
+#if 0
 #define AFTERMATH_CHECK_ERROR(FC)                                                                       \
 [&]() {                                                                                                 \
     GFSDK_Aftermath_Result _result = FC;                                                                \

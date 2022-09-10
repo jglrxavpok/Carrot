@@ -616,6 +616,8 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         {
             ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
             mainCommandBuffers[i].begin(beginInfo);
+
+            GetVulkanDriver().setMarker(mainCommandBuffers[i], "begin command buffer");
         }
 
         TracyVkZone(tracyCtx[i], mainCommandBuffers[i], "Main command buffer");
@@ -623,19 +625,23 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         if(config.runInVR) {
             {
                 ZoneScopedN("VR Left eye render");
+                GetVulkanDriver().setMarker(mainCommandBuffers[i], "VR Left eye render");
                 leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
             }
             {
                 ZoneScopedN("VR Right eye render");
+                GetVulkanDriver().setMarker(mainCommandBuffers[i], "VR Right eye render");
                 rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
             }
         }
 
         {
+            GetVulkanDriver().setMarker(mainCommandBuffers[i], "render viewports");
             ZoneScopedN("Render viewports");
             for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
                 ZoneScopedN("Render single viewport");
                 auto& viewport = *it;
+                GetVulkanDriver().setFormattedMarker(mainCommandBuffers[i], "render viewport %x", &viewport);
                 if(config.runInVR) {
                     // each eye is done in separate render passes above this code
                     viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
@@ -680,7 +686,11 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         {
             ZoneNamedN(__fences, "Wait fences", true);
-            static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
+            try {
+                static_cast<void>(getLogicalDevice().waitForFences((*inFlightFences[currentFrame]), true, UINT64_MAX));
+            } catch(vk::DeviceLostError& deviceLost) {
+                GetVulkanDriver().onDeviceLost();
+            }
             getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
         }
 

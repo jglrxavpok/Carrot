@@ -19,6 +19,7 @@ namespace Carrot::ECS {
         glm::vec4 color = glm::vec4{1.0f};
         bool isTransparent = false;
         std::shared_ptr<InstanceHandle> tlas = nullptr;
+        bool castsShadows = true;
 
         explicit ModelComponent(Entity entity): IdentifiableComponent<ModelComponent>(std::move(entity)) {}
 

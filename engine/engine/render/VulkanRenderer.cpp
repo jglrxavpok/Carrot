@@ -910,8 +910,20 @@ void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const C
     render(packet);
 }
 
-Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport) {
-    return threadLocalPacketStorage->make(pass, &viewport);
+std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitSphere() {
+    return unitSphereModel;
+}
+
+std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCapsule() {
+    return unitCapsuleModel;
+}
+
+std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCube() {
+    return unitCubeModel;
+}
+
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location) {
+    return threadLocalPacketStorage->make(pass, &viewport, location);
 }
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {

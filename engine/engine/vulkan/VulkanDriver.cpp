@@ -21,6 +21,14 @@
 
 #include "engine/vr/VRInterface.h"
 
+#include "engine/utils/AftermathIntegration.h"
+
+#ifdef AFTERMATH_ENABLE
+#include <GFSDK_Aftermath_GpuCrashDump.h>
+#include "engine/utils/NsightAftermathHelpers.h"
+
+#endif
+
 const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
         "VK_LAYER_KHRONOS_validation",
 #ifndef NO_DEBUG
@@ -387,10 +395,6 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
 
     return families;
 }
-
-#ifdef AFTERMATH_ENABLE
-extern "C++" void initAftermath();
-#endif
 
 void Carrot::VulkanDriver::fillRenderingCapabilities() {
     const std::vector<vk::ExtensionProperties> available = physicalDevice.enumerateDeviceExtensionProperties(nullptr);
@@ -983,7 +987,11 @@ void Carrot::VulkanDriver::waitTransfer() {
 
 void Carrot::VulkanDriver::waitDeviceIdle() {
     std::lock_guard l { deviceMutex };
-    getLogicalDevice().waitIdle();
+    try {
+        getLogicalDevice().waitIdle();
+    } catch(vk::DeviceLostError& e) {
+        onDeviceLost();
+    }
 }
 
 std::mutex& Carrot::VulkanDriver::getDeviceMutex() {
@@ -992,6 +1000,78 @@ std::mutex& Carrot::VulkanDriver::getDeviceMutex() {
 
 void Carrot::VulkanDriver::breakOnNextVulkanError() {
     breakOnVulkanError = true;
+}
+
+void Carrot::VulkanDriver::onDeviceLost() {
+    Carrot::Log::error(">>> GPU has crashed!! <<<");
+    Carrot::Log::flush();
+#ifdef AFTERMATH_ENABLE
+    Carrot::Log::error("Aftermath is enabled, a .nv-gpudump file will be created inside the working directory.");
+    Carrot::Log::flush();
+    /*
+ * Copyright (c) 2015-2019 The Khronos Group Inc.
+ * Copyright (c) 2015-2019 Valve Corporation
+ * Copyright (c) 2015-2019 LunarG, Inc.
+ * Copyright (c) 2019-2020 NVIDIA Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Author: Jeremy Hayes <jeremy@lunarg.com>
+ */
+
+    // https://github.com/NVIDIA/nsight-aftermath-samples/blob/6f985096067e4efdb0b0d0b78f2e64dacd591798/VkHelloNsightAftermath/VkHelloNsightAftermath.cpp
+
+    // Device lost notification is asynchronous to the NVIDIA display
+    // driver's GPU crash handling. Give the Nsight Aftermath GPU crash dump
+    // thread some time to do its work before terminating the process.
+    auto tdrTerminationTimeout = std::chrono::seconds(20);
+    auto tStart = std::chrono::steady_clock::now();
+    auto tElapsed = std::chrono::milliseconds::zero();
+
+    GFSDK_Aftermath_CrashDump_Status status = GFSDK_Aftermath_CrashDump_Status_Unknown;
+    AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GetCrashDumpStatus(&status));
+
+    while (status != GFSDK_Aftermath_CrashDump_Status_CollectingDataFailed &&
+           status != GFSDK_Aftermath_CrashDump_Status_Finished &&
+           tElapsed < tdrTerminationTimeout)
+    {
+        // Sleep 50ms and poll the status again until timeout or Aftermath finished processing the crash dump.
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GetCrashDumpStatus(&status));
+
+        auto tEnd = std::chrono::steady_clock::now();
+        tElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart);
+    }
+
+    if (status != GFSDK_Aftermath_CrashDump_Status_Finished)
+    {
+        std::stringstream err_msg;
+        err_msg << "Unexpected crash dump status: " << status;
+
+        // modified to use Carrot's logging system
+        Carrot::Log::error(err_msg.str().c_str(), "Aftermath Error");
+        Carrot::Log::flush();
+    }
+
+    // Terminate on failure
+    exit(1);
+#endif
+}
+
+void Carrot::VulkanDriver::setMarker(vk::CommandBuffer& cmds, const std::string& markerData) {
+#ifdef AFTERMATH_ENABLE
+    setAftermathMarker(cmds, markerData);
+#endif
 }
 
 bool Carrot::VulkanDriver::hasDebugNames() const {

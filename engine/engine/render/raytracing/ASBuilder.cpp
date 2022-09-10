@@ -76,7 +76,7 @@ namespace Carrot {
         setAndCheck(instance.mask, mask);
 
         auto geometryPtr = geometry.lock();
-        assert(geometryPtr);
+        verify(geometryPtr, "geometry == nullptr, did it get released when it should not have?");
 
         vk::AccelerationStructureDeviceAddressInfoKHR addressInfo {
                 .accelerationStructure = geometryPtr->as->getVulkanAS()
@@ -170,15 +170,22 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
+    std::size_t activeInstances = 0;
+
     for(auto& [slot, valuePtr] : instances) {
         if(auto value = valuePtr.lock()) {
             if(value->enabled) {
                 value->update();
+                activeInstances++;
             }
         }
     }
 
-    if(!toBuild.empty()) {
+    bool requireTLASRebuildNow = !toBuild.empty() || activeInstances > previousActiveInstances;
+
+    previousActiveInstances = activeInstances;
+
+    if(requireTLASRebuildNow) {
         buildTopLevelAS(renderContext, false);
         framesBeforeRebuildingTLAS = 10;
     } else {
@@ -298,14 +305,10 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             pBuildRanges[i] = toBuild[index]->buildRanges[i];
         }
 
-#ifdef AFTERMATH_ENABLE
-        cmds->setCheckpointNV("Before AS build");
-#endif
+        GetVulkanDriver().setMarker(*cmds, "Before AS build");
         // build AS
         cmds->buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
-#ifdef AFTERMATH_ENABLE
-        cmds->setCheckpointNV("After AS build");
-#endif
+        GetVulkanDriver().setMarker(*cmds, "After AS build");
         vk::MemoryBarrier barrier {
             .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
             .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
@@ -340,9 +343,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 #ifdef AFTERMATH_ENABLE
     try {
         renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
-    } catch (std::exception& e) {
-        std::this_thread::sleep_for(std::chrono::seconds(6));
-        exit(1);
+    } catch (vk::DeviceLostError& e) {
+        GetVulkanDriver().onDeviceLost();
     }
 #endif
 
@@ -411,13 +413,8 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak
 void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
     if(!enabled)
         return;
+    static int prevPrimitiveCount = 0;
     ZoneScoped;
-
-    if(!update && tlas) {
-        ZoneScopedN("WaitDeviceIdle");
-        //GetVulkanDriver().getComputeQueue().waitIdle();
-        //WaitDeviceIdle();
-    }
 
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
@@ -446,6 +443,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     buildCommand.begin(vk::CommandBufferBeginInfo {
     });
+    GetVulkanDriver().setFormattedMarker(buildCommand, "Start of command buffer for TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
     // upload instances to the device
     if(!instancesBuffer || lastInstanceCount < vkInstances.size()) {
         instancesBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
@@ -457,9 +455,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         instancesBuffer->setDebugNames("TLAS Instances");
         lastInstanceCount = vkInstances.size();
 
-        instanceBufferAddress = renderer.getLogicalDevice().getBufferAddress({
-            .buffer = instancesBuffer->getVulkanBuffer(),
-        });
+        instanceBufferAddress = instancesBuffer->getDeviceAddress();
     }
     {
         ZoneScopedN("Stage upload");
@@ -489,7 +485,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     size_t count = vkInstances.size();
     vk::AccelerationStructureBuildSizesInfoKHR sizeInfo = renderer.getLogicalDevice().getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, count);
 
-    if( ! update) {
+    if(!update) {
         vk::AccelerationStructureCreateInfoKHR createInfo {
                 .size = sizeInfo.accelerationStructureSize,
                 .type = vk::AccelerationStructureTypeKHR::eTopLevel,
@@ -537,10 +533,12 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
             .bufferMemoryBarrierCount = static_cast<uint32_t>(bottomLevelBarriers.size()),
             .pBufferMemoryBarriers = bottomLevelBarriers.data(),
     };
+    GetVulkanDriver().setFormattedMarker(buildCommand, "Pre-barrier TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
     buildCommand.pipelineBarrier2KHR(dependency);
 
+    GetVulkanDriver().setFormattedMarker(buildCommand, "Before TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
     buildCommand.buildAccelerationStructuresKHR(buildInfo, &buildOffsetInfo);
-
+    GetVulkanDriver().setFormattedMarker(buildCommand, "After TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
     buildCommand.end();
 
     std::vector<vk::Semaphore> waitSemaphores;
@@ -579,6 +577,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
             .offset = 0,
             .size = VK_WHOLE_SIZE,
     });
+
+    prevPrimitiveCount = vkInstances.size();
 }
 
 void Carrot::ASBuilder::startFrame() {

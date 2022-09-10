@@ -145,6 +145,8 @@ namespace Carrot::Render {
         for(auto* pass : sortedPasses) {
 #ifdef TRACY_ENABLE
             std::string passName = "Execute pass ";
+            GetVulkanDriver().setFormattedMarker(cmds, "Pass %s", pass->getName().data());
+
             passName += pass->getName();
             ZoneScopedN("Execute pass");
 #endif

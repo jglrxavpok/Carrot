@@ -10,6 +10,8 @@
 #include "engine/Engine.h"
 #include <engine/utils/Macros.h>
 
+Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::Buffer*> Carrot::Buffer::BufferByStartAddress;
+
 Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
                        vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
     deviceLocal = (properties & vk::MemoryPropertyFlagBits::eDeviceLocal) == vk::MemoryPropertyFlagBits::eDeviceLocal;
@@ -48,6 +50,11 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
 
     memory = Carrot::DeviceMemory(allocInfo.get());
     driver.getLogicalDevice().bindBufferMemory(*vkBuffer, memory.getVulkanMemory(), 0);
+
+    deviceAddress = driver.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
+    BufferByStartAddress.getOrCompute(deviceAddress, [&]() {
+       return this;
+    });
 }
 
 void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
@@ -117,6 +124,9 @@ Carrot::Buffer::~Buffer() {
     }
     GetVulkanDriver().deferDestroy(std::move(vkBuffer));
     GetVulkanDriver().deferDestroy(std::move(memory));
+
+    BufferByStartAddress.remove(deviceAddress);
+    deviceAddress = 0x0;
 }
 
 void Carrot::Buffer::setDebugNames(const std::string& name) {
@@ -130,7 +140,7 @@ void Carrot::Buffer::unmap() {
 }
 
 vk::DeviceAddress Carrot::Buffer::getDeviceAddress() const {
-    return driver.getLogicalDevice().getBufferAddress({.buffer = *vkBuffer});
+    return deviceAddress;
 }
 
 vk::DescriptorBufferInfo Carrot::Buffer::asBufferInfo() const {

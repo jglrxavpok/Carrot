@@ -138,7 +138,8 @@ namespace Carrot {
         std::vector<vk::UniqueSemaphore> preCompactBLASSemaphore;
         std::vector<vk::UniqueSemaphore> blasBuildSemaphore;
 
-        std::uint8_t framesBeforeRebuildingTLAS = 0;
+        std::int8_t framesBeforeRebuildingTLAS = 0;
+        std::size_t previousActiveInstances = 0;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;

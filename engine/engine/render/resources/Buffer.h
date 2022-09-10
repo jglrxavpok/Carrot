@@ -10,6 +10,7 @@
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
 #include <engine/render/resources/DeviceMemory.h>
+#include <core/async/ParallelMap.hpp>
 
 namespace Carrot {
     class Engine;
@@ -19,6 +20,9 @@ namespace Carrot {
     /// Abstraction over Vulkan buffers
     class Buffer: public DebugNameable, public DeviceAddressable, std::enable_shared_from_this<Buffer> {
     public:
+        //! How many buffers are alive, and where?
+        static Async::ParallelMap<vk::DeviceAddress, const Buffer*> BufferByStartAddress;
+
         /// TODO: PRIVATE ONLY
         explicit Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
         const vk::Buffer& getVulkanBuffer() const;
@@ -86,6 +90,7 @@ namespace Carrot {
         void* mappedPtr = nullptr;
         vk::UniqueBuffer vkBuffer{};
         DeviceMemory memory{};
+        vk::DeviceAddress deviceAddress;
 
         /// Creates and allocates a buffer with the given parameters
         //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});

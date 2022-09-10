@@ -76,10 +76,10 @@ namespace Carrot::ECS {
 
     public:
         template<class RenderSystemType, typename... Args>
-        void addRenderSystem(Args&&... args);
+        RenderSystemType& addRenderSystem(Args&&... args);
 
         template<class LogicSystemType, typename... Args>
-        void addLogicSystem(Args&&... args);
+        LogicSystemType& addLogicSystem(Args&&... args);
 
         void addRenderSystem(std::unique_ptr<System>&& system);
         void addLogicSystem(std::unique_ptr<System>&& system);

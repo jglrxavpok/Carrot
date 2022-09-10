@@ -64,13 +64,19 @@ namespace Carrot::ECS {
     }
 
     template<class RenderSystemType, typename... Args>
-    void World::addRenderSystem(Args&&... args) {
-        addRenderSystem(std::move(std::make_unique<RenderSystemType>(*this, args...)));
+    RenderSystemType& World::addRenderSystem(Args&&... args) {
+        auto system = std::make_unique<RenderSystemType>(*this, args...);
+        auto& result = *system;
+        addRenderSystem(std::move(system));
+        return result;
     }
 
     template<class LogicSystemType, typename... Args>
-    void World::addLogicSystem(Args&&... args) {
-        addLogicSystem(std::move(std::make_unique<LogicSystemType>(*this, args...)));
+    LogicSystemType& World::addLogicSystem(Args&&... args) {
+        auto system = std::make_unique<LogicSystemType>(*this, args...);
+        auto& result = *system;
+        addLogicSystem(std::move(system));
+        return result;
     }
 
     template<class LogicSystemType>

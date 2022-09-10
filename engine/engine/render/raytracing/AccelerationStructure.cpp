@@ -5,6 +5,8 @@
 #include "AccelerationStructure.h"
 #include "engine/render/resources/Buffer.h"
 
+Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> Carrot::AccelerationStructure::ASByStartAddress;
+
 Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
                                                      vk::AccelerationStructureCreateInfoKHR& createInfo) {
     // allocate buffer to store AS
@@ -16,6 +18,11 @@ Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& drive
     createInfo.buffer = buffer->getVulkanBuffer();
 
     as = driver.getLogicalDevice().createAccelerationStructureKHRUnique(createInfo, driver.getAllocationCallbacks());
+
+    deviceAddress = GetVulkanDevice().getAccelerationStructureAddressKHR({.accelerationStructure = *as});
+    ASByStartAddress.getOrCompute(deviceAddress, [&]() {
+        return this;
+    });
 }
 
 vk::AccelerationStructureKHR& Carrot::AccelerationStructure::getVulkanAS() {
@@ -26,6 +33,12 @@ Carrot::Buffer& Carrot::AccelerationStructure::getBuffer() {
     return *buffer;
 }
 
+const Carrot::Buffer& Carrot::AccelerationStructure::getBuffer() const {
+    return *buffer;
+}
+
 Carrot::AccelerationStructure::~AccelerationStructure() {
+    ASByStartAddress.remove(deviceAddress);
+    deviceAddress = 0x0;
     GetVulkanDriver().deferDestroy(std::move(as));
 }

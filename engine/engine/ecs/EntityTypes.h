@@ -89,6 +89,10 @@ namespace Carrot::ECS {
 
         void updateName(std::string_view name);
 
+    public:
+        //! Schedule this entity and its children for removal in the next tick
+        void remove();
+
     private:
         EntityID internalEntity;
         World& worldRef;

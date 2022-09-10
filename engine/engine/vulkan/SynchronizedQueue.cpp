@@ -19,7 +19,11 @@ namespace Carrot::Vulkan {
     void SynchronizedQueue::submit(const vk::SubmitInfo& info, const vk::Fence& fence) {
         std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
-        queue.submit(info, fence);
+        try {
+            queue.submit(info, fence);
+        } catch(vk::DeviceLostError& deviceLost) {
+            GetVulkanDriver().onDeviceLost();
+        }
     }
 
     void SynchronizedQueue::presentKHR(const vk::PresentInfoKHR& info) {

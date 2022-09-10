@@ -24,6 +24,14 @@ namespace Carrot {
         AsyncResource(const AsyncResource& toCopy) = delete;
         AsyncResource(AsyncResource&& toMove) = default;
 
+        //! Creates an already-loaded async resource
+        AsyncResource(std::shared_ptr<T> alreadyLoaded) {
+            storage = std::make_shared<Storage>();
+            storage->value = alreadyLoaded;
+            storage->initialized = true;
+            storage->running = false;
+        }
+
         explicit AsyncResource(TaskType&& loadingTask) {
             storage = std::make_shared<Storage>();
             storage->initializer = std::move(loadingTask);

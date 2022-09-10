@@ -63,6 +63,10 @@ namespace Carrot::ECS {
         worldRef.entityNames[internalEntity] = name;
     }
 
+    void Entity::remove() {
+        worldRef.removeEntity(*this);
+    }
+
     Entity::operator bool() const {
         return exists();
     }

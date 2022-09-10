@@ -189,6 +189,17 @@ namespace Carrot {
 
         void breakOnNextVulkanError();
 
+        //! Called when a device lost occurs, used to wait for Aftermath to complete its work
+        void onDeviceLost();
+
+        //! Adds a marker to the given command buffer, to help debugging if the GPU crashes
+        void setMarker(vk::CommandBuffer& cmds, const std::string& markerData);
+
+        template<typename... Args>
+        void setFormattedMarker(vk::CommandBuffer& cmds, const char* format, Args&&... args) {
+            setMarker(cmds, Carrot::sprintf(format, std::forward<Args>(args)...));
+        }
+
     public:
         void deferDestroy(vk::UniqueImage&& image);
         void deferDestroy(vk::UniqueImageView&& imageView);
