@@ -7,47 +7,48 @@
 #include <engine/render/resources/Vertex.h>
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/SingleMesh.h"
+#include "engine/render/DrawData.h"
 #include <glm/gtx/quaternion.hpp>
 
 namespace Carrot::Render {
 
     std::unique_ptr<Carrot::Mesh> Sprite::spriteMesh = nullptr;
 
-    Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), textureRegion(std::move(textureRegion)),
-    instanceBuffer(renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::InstanceData), vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)) {
-/*        Carrot::PipelineDescription desc = Carrot::PipelineDescription("resources/pipelines/gBufferSprite.json");
-        renderingPipeline = std::make_unique<Carrot::Pipeline>(renderer.getVulkanDriver(), desc);*/
-        // create a different pipeline for each texture (probably not really efficient)
+    Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), textureRegion(std::move(textureRegion)) {
+        renderingPipeline = renderer.getOrCreatePipeline("gBufferSprite");
         setTexture(texture);
-        instanceData = instanceBuffer.map<Carrot::InstanceData>();
-        *instanceData = Carrot::InstanceData();
     }
 
-    void Sprite::onFrame(Carrot::Render::Context renderContext) const {
+    void Sprite::onFrame(const Carrot::Render::Context& renderContext) const {
         ZoneScoped;
+        Carrot::InstanceData instanceData;
         {
             ZoneScopedN("Instance update");
-            instanceData->transform = computeTransformMatrix();
-            instanceData->color = {1.0, 1.0, 1.0, 1.0};
+            instanceData.transform = computeTransformMatrix();
+            instanceData.color = {1.0, 1.0, 1.0, 1.0};
         }
-        {
-            ZoneScopedN("Bind texture");
-            renderer.bindTexture(*renderingPipeline, renderContext, *texture, 0, 0, nullptr);
-        }
-        {
-            ZoneScopedN("Bind sampler");
-            renderer.bindSampler(*renderingPipeline, renderContext, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
-        }
-    }
 
-    void Sprite::soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {
-        ZoneScoped;
-        auto& mesh = getSpriteMesh(renderContext.renderer.getEngine());
-        renderContext.renderer.pushConstantBlock("region", *renderingPipeline, renderContext, vk::ShaderStageFlagBits::eVertex, commands, textureRegion);
-        renderingPipeline->bind(renderPass, renderContext, commands);
-        mesh.bind(commands);
-        commands.bindVertexBuffers(1, instanceBuffer.getVulkanBuffer(), instanceBuffer.getStart());
-        mesh.draw(commands);
+        Render::Packet packet = renderContext.renderer.makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+        packet.useMesh(getSpriteMesh(GetEngine()));
+        packet.viewport = &renderContext.viewport;
+        packet.pipeline = renderingPipeline;
+
+        packet.useInstance(instanceData);
+
+        Render::Packet::PushConstant& materialData = packet.addPushConstant();
+        materialData.id = "drawDataPush";
+        materialData.stages = vk::ShaderStageFlagBits::eFragment;
+
+        Carrot::DrawData drawData;
+        drawData.materialIndex = material->getSlot();
+        materialData.setData(drawData);
+
+        Render::Packet::PushConstant& region = packet.addPushConstant();
+        region.id = "region";
+        region.stages = vk::ShaderStageFlagBits::eVertex;
+        region.setData(textureRegion);
+
+        renderContext.renderer.render(packet);
     }
 
     void Sprite::updateTextureRegion(const Carrot::Math::Rect2Df& newRegion) {
@@ -81,7 +82,6 @@ namespace Carrot::Render {
 
     std::shared_ptr<Sprite> Sprite::duplicate() const {
         auto clone = std::make_shared<Sprite>(renderer, texture, textureRegion);
-        *clone->instanceData = *instanceData;
         clone->size = size;
         clone->position = position;
         clone->rotation = rotation;
@@ -92,6 +92,7 @@ namespace Carrot::Render {
     void Sprite::setTexture(Texture::Ref texture) {
         this->texture = std::move(texture);
         verify(this->texture != nullptr, "Cannot create sprite with no texture");
-        renderingPipeline = renderer.getOrCreatePipeline("gBufferSprite", (std::uint64_t)((VkImage)this->texture->getVulkanImage()));
+        material = GetRenderer().getMaterialSystem().createMaterialHandle();
+        material->diffuseTexture = GetRenderer().getMaterialSystem().createTextureHandle(texture);
     }
 }

@@ -37,8 +37,8 @@ namespace Carrot::Render {
 
     public:
         virtual void tick(double deltaTime) {}
-        void onFrame(Carrot::Render::Context renderContext) const;
-        void soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const;
+        void onFrame(const Carrot::Render::Context& renderContext) const;
+        [[deprecated("Rendering done via onFrame")]] void soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {}
 
     public:
         Carrot::VulkanRenderer& getRenderer() { return renderer; }
@@ -59,8 +59,7 @@ namespace Carrot::Render {
         Carrot::VulkanRenderer& renderer;
         Carrot::Render::Texture::Ref texture;
         Carrot::Math::Rect2Df textureRegion;
-        Carrot::BufferView instanceBuffer;
-        Carrot::InstanceData* instanceData = nullptr;
+        std::shared_ptr<Carrot::Render::MaterialHandle> material;
 
         std::shared_ptr<Carrot::Pipeline> renderingPipeline;
 

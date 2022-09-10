@@ -1,15 +1,8 @@
 {
-  "type": "gbuffer",
-  "subpassIndex": 0,
+  "_import": "gBuffer.json",
   "vertexFormat": "SimpleVertexWithInstanceData",
   "cull": false,
   "alphaBlending": true,
-  "constants": {
-    "MAX_TEXTURES": 1,
-    "MAX_MATERIALS": 1
-  },
-  "depthWrite": true,
-  "depthTest": true,
   "vertexShader": "resources/shaders/gBufferSprite.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/gBufferSprite.fragment.glsl.spv"
 }
