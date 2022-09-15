@@ -23,9 +23,17 @@ namespace Carrot::Render {
         glm::mat4 parentTransform{1.0f};
         glm::vec3 position{0.0};
         glm::vec2 size{1.0f};
+        glm::vec4 color{1.0f};
         glm::quat rotation = glm::identity<glm::quat>();
 
-        explicit Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion = Carrot::Math::Rect2Df { 0.0f, 0.0f, 1.0f, 1.0f });
+        Sprite();
+        explicit Sprite(Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion = Carrot::Math::Rect2Df { 0.0f, 0.0f, 1.0f, 1.0f });
+
+        Sprite(const Sprite& toCopy) = default;
+        Sprite(Sprite&& toMove) = default;
+
+        Sprite& operator=(const Sprite& toCopy) = default;
+        Sprite& operator=(Sprite&& toMove) = default;
 
         std::shared_ptr<Sprite> duplicate() const;
 
@@ -41,7 +49,6 @@ namespace Carrot::Render {
         [[deprecated("Rendering done via onFrame")]] void soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {}
 
     public:
-        Carrot::VulkanRenderer& getRenderer() { return renderer; }
         const Texture& getTexture() const { return *texture; }
         Math::Rect2Df& getTextureRegion() { return textureRegion; }
         const Math::Rect2Df& getTextureRegion() const { return textureRegion; }
@@ -56,7 +63,6 @@ namespace Carrot::Render {
         static void registerUsertype(sol::state& destination);
 
     private:
-        Carrot::VulkanRenderer& renderer;
         Carrot::Render::Texture::Ref texture;
         Carrot::Math::Rect2Df textureRegion;
         std::shared_ptr<Carrot::Render::MaterialHandle> material;

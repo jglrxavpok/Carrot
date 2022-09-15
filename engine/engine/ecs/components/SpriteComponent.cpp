@@ -28,7 +28,7 @@ namespace Carrot::ECS {
                 float maxX = regionData[2].GetFloat();
                 float maxY = regionData[3].GetFloat();
 
-                sprite = std::make_unique<Render::Sprite>(Engine::getInstance().getRenderer(), textureRef, Math::Rect2Df(minX, minY, maxX, maxY));
+                sprite = std::make_unique<Render::Sprite>(textureRef, Math::Rect2Df(minX, minY, maxX, maxY));
             } else {
                 TODO // cannot load non-file textures at the moment
             }
@@ -76,7 +76,7 @@ namespace Carrot::ECS {
         if(ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path);
             if(!sprite) {
-                sprite = std::make_unique<Carrot::Render::Sprite>(Engine::getInstance().getRenderer(), textureRef);
+                sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
             } else {
                 sprite->setTexture(textureRef);
             }
@@ -94,7 +94,7 @@ namespace Carrot::ECS {
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
                     auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
                     if(!sprite) {
-                        sprite = std::make_unique<Carrot::Render::Sprite>(Engine::getInstance().getRenderer(), textureRef);
+                        sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
                     } else {
                         sprite->setTexture(textureRef);
                     }

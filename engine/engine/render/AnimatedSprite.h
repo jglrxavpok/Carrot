@@ -11,7 +11,7 @@
 namespace Carrot::Render {
     class AnimatedSprite: public Sprite {
     public:
-        explicit AnimatedSprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, TextureAtlas atlas, std::vector<glm::ivec2> indices, float animationDuration);
+        explicit AnimatedSprite(Carrot::Render::Texture::Ref texture, TextureAtlas atlas, std::vector<glm::ivec2> indices, float animationDuration);
 
     public:
         void play();

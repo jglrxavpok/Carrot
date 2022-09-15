@@ -14,18 +14,24 @@ namespace Carrot::Render {
 
     std::unique_ptr<Carrot::Mesh> Sprite::spriteMesh = nullptr;
 
-    Sprite::Sprite(Carrot::VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): renderer(renderer), textureRegion(std::move(textureRegion)) {
-        renderingPipeline = renderer.getOrCreatePipeline("gBufferSprite");
+    Sprite::Sprite() {
+        renderingPipeline = GetRenderer().getOrCreatePipeline("gBufferSprite");
+    }
+
+    Sprite::Sprite(Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): textureRegion(std::move(textureRegion)) {
+        renderingPipeline = GetRenderer().getOrCreatePipeline("gBufferSprite");
         setTexture(texture);
     }
 
     void Sprite::onFrame(const Carrot::Render::Context& renderContext) const {
+        if(!texture)
+            return;
         ZoneScoped;
         Carrot::InstanceData instanceData;
         {
             ZoneScopedN("Instance update");
             instanceData.transform = computeTransformMatrix();
-            instanceData.color = {1.0, 1.0, 1.0, 1.0};
+            instanceData.color = color;
         }
 
         Render::Packet packet = renderContext.renderer.makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
@@ -81,7 +87,7 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<Sprite> Sprite::duplicate() const {
-        auto clone = std::make_shared<Sprite>(renderer, texture, textureRegion);
+        auto clone = std::make_shared<Sprite>(texture, textureRegion);
         clone->size = size;
         clone->position = position;
         clone->rotation = rotation;

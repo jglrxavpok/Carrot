@@ -29,7 +29,7 @@ void main() {
     if(texColor.a < 0.01) {
         discard;
     }
-    outColor = texColor * fragColor;
+    outColor = texColor * fragColor * instanceColor;
     outViewPosition = vec4(viewPosition, 1.0);
     outNormal = vec4(viewNormal, 1.0);
     intProperty = IntPropertiesRayTracedLighting;

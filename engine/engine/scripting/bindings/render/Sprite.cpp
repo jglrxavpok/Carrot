@@ -14,11 +14,11 @@ namespace Carrot::Render {
         renderNamespace.new_usertype<Carrot::Render::Sprite>("Sprite",
                                                              sol::call_constructor,
                                                              sol::factories(
-                                                                     [](VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture) {
-                                                                         return Sprite(renderer, std::move(texture));
+                                                                     [](Carrot::Render::Texture::Ref texture) {
+                                                                         return Sprite(std::move(texture));
                                                                      },
-                                                                     [](VulkanRenderer& renderer, Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion) {
-                                                                         return Sprite(renderer, std::move(texture), textureRegion);
+                                                                     [](Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion) {
+                                                                         return Sprite(std::move(texture), textureRegion);
                                                                      }
                                                              ),
                                                              "tick", &Sprite::tick,
@@ -26,8 +26,7 @@ namespace Carrot::Render {
                                                              "soloGBufferRender", &Sprite::soloGBufferRender,
                                                              "size", &Sprite::size,
                                                              "rotation", &Sprite::rotation,
-                                                             "position", &Sprite::position,
-                                                             "getRenderer", &Sprite::getRenderer
+                                                             "position", &Sprite::position
                                                              );
     }
 }

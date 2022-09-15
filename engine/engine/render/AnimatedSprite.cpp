@@ -7,11 +7,10 @@
 #include <cmath>
 
 namespace Carrot::Render {
-    AnimatedSprite::AnimatedSprite(Carrot::VulkanRenderer& renderer,
-                                   Carrot::Render::Texture::Ref texture,
+    AnimatedSprite::AnimatedSprite(Carrot::Render::Texture::Ref texture,
                                    TextureAtlas atlas,
                                    std::vector<glm::ivec2> indices,
-                                   float animationDuration): Sprite(renderer, texture), atlas(std::move(atlas)), indices(std::move(indices)), playbackSpeed(animationDuration) {
+                                   float animationDuration): Sprite(texture), atlas(std::move(atlas)), indices(std::move(indices)), playbackSpeed(animationDuration) {
 
     }
 
