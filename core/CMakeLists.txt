@@ -22,6 +22,8 @@ set(CORE-SOURCES
         ${CoreRoot}io/Serialisation.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
+        ${CoreRoot}math/Segment2D.cpp
+
         ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp
 
