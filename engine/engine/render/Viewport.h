@@ -22,6 +22,10 @@ namespace Carrot::Render {
         explicit Viewport(VulkanRenderer& renderer);
         Viewport(const Viewport&) = delete;
 
+    public:
+        //! Is this viewport expected to support dual eye rendering?
+        bool vrCompatible = false;
+
     public: // camera
         Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR);
         const Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR) const;

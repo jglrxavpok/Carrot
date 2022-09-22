@@ -149,6 +149,7 @@ void Carrot::Engine::init() {
     createTracyContexts();
 
     createViewport(); // main viewport
+    getMainViewport().vrCompatible = true;
 
     // quickly render something on screen
     LoadingScreen screen{*this};
@@ -183,24 +184,6 @@ void Carrot::Engine::init() {
                                                                  renderer.initImGuiPass(pass.getRenderPass());
                                                              }
         );
-    };
-
-    auto fillGraphBuilder = [&](Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR) {
-         auto& gResolvePass = fillInDefaultPipeline(mainGraph, eye,
-                                     [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
-                                         ZoneScopedN("CPU RenderGraph Opaque GPass");
-                                         game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         renderer.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                     },
-                                     [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Transparent Rendering");
-                                         ZoneScopedN("CPU RenderGraph Transparent GPass");
-                                         game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         renderer.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                    });
-
-        return gResolvePass;
     };
 
     if(config.runInVR) {
@@ -1385,13 +1368,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
                                                               vk::CommandBuffer&)> opaqueCallback,
                                            std::function<void(const Carrot::Render::CompiledPass&,
                                                               const Carrot::Render::Context&,
-                                                              vk::CommandBuffer&)> transparentCallback) {
-    auto testTexture = renderer.getOrCreateTexture("default.png");
-
+                                                              vk::CommandBuffer&)> transparentCallback,
+                                           const Render::TextureSize& framebufferSize) {
     auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
-                                                                           [this](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
+                                                                           [this, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
                                                                                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                                                                                        {},
+                                                                                                                        framebufferSize,
                                                                                                                         vk::AttachmentLoadOp::eClear,
                                                                                                                         vk::ClearColorValue(std::array{0,0,0,0})
                                                                                );
@@ -1414,14 +1396,33 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
     auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         opaqueCallback(pass, frame, cmds);
-    });
+    }, framebufferSize);
     auto& transparentGBufferPass = getGBuffer().addTransparentGBufferPass(mainGraph, opaqueGBufferPass.getData(), [transparentCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         transparentCallback(pass, frame, cmds);
-    });
-    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph);
+    }, framebufferSize);
+    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
 
     return gresolvePass;
+}
+
+Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+    auto& gResolvePass = fillInDefaultPipeline(mainGraph, eye,
+                                               [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+                                                   TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
+                                                   ZoneScopedN("CPU RenderGraph Opaque GPass");
+                                                   game->recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                                   renderer.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
+                                               },
+                                               [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
+                                                   TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Transparent Rendering");
+                                                   ZoneScopedN("CPU RenderGraph Transparent GPass");
+                                                   game->recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                                   renderer.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
+                                               },
+                                               framebufferSize);
+
+    return gResolvePass;
 }
 
 std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const Carrot::IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch) {

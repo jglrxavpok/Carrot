@@ -17,7 +17,7 @@ void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
     // TODO
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> opaqueCallback) {
+Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBufferPass(Carrot::Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     vk::ClearValue positionClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
@@ -32,37 +32,37 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
            {
 
                 data.albedo = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                       {},
+                                                       framebufferSize,
                                                        vk::AttachmentLoadOp::eClear,
                                                        clearColor,
                                                        vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.depthStencil = graph.createRenderTarget(renderer.getVulkanDriver().getDepthFormat(),
-                                                             {},
+                                                             framebufferSize,
                                                              vk::AttachmentLoadOp::eClear,
                                                              clearDepth,
                                                              vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
                 data.positions = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                          {},
+                                                          framebufferSize,
                                                           vk::AttachmentLoadOp::eClear,
                                                           positionClear,
                                                           vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.normals = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                        {},
+                                                        framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.flags = graph.createRenderTarget(vk::Format::eR32Uint,
-                                                      {},
+                                                      framebufferSize,
                                                       vk::AttachmentLoadOp::eClear,
                                                       clearIntProperties,
                                                       vk::ImageLayout::eColorAttachmentOptimal);
 
                 data.entityID = graph.createRenderTarget(vk::Format::eR32G32B32A32Uint,
-                                                        {},
+                                                        framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearEntityID,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
@@ -74,7 +74,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
     return opaquePass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuffer::addTransparentGBufferPass(Render::GraphBuilder& graph, const Carrot::Render::PassData::GBuffer& opaqueData, std::function<void(const Carrot::Render::CompiledPass&, const Render::Context&, vk::CommandBuffer&)> transparentCallback) {
+Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuffer::addTransparentGBufferPass(Render::GraphBuilder& graph, const Carrot::Render::PassData::GBuffer& opaqueData, std::function<void(const Carrot::Render::CompiledPass&, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     auto& transparentPass = graph.addPass<Carrot::Render::PassData::GBufferTransparent>("gbuffer-transparent",
@@ -82,7 +82,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
                                                                                         {
 
                                                                                             data.transparentOutput = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                                                                                                              {},
+                                                                                                                                              framebufferSize,
                                                                                                                                               vk::AttachmentLoadOp::eClear,
                                                                                                                                               clearColor,
                                                                                                                                               vk::ImageLayout::eColorAttachmentOptimal);
@@ -99,7 +99,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
 Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData,
                                                                                            const Carrot::Render::PassData::GBufferTransparent& transparentData,
                                                                                       const Carrot::Render::FrameResource& skyboxOutput,
-                                                                                      Carrot::Render::GraphBuilder& graph) {
+                                                                                      Carrot::Render::GraphBuilder& graph,
+                                                                                      const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
     return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
@@ -115,7 +116,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 resolveData.flags = graph.read(opaqueData.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                        {},
+                                                        framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearColor,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
