@@ -90,4 +90,15 @@ namespace Carrot {
     inline glm::ivec2 toGlm(const XrExtent2Di& e) {
         return { e.width, e.height };
     }
+
+    inline glm::vec3 xrSpaceToCarrotSpace(const glm::vec3& xrSpace) {
+        return glm::vec3 { xrSpace.x, -xrSpace.z, xrSpace.y };
+    }
+
+    inline glm::quat xrSpaceToCarrotSpace(const glm::quat& xrSpace) {
+        glm::quat result = xrSpace;
+        result.y = -xrSpace.z;
+        result.z = xrSpace.y;
+        return result;
+    }
 }
