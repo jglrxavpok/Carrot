@@ -39,6 +39,10 @@ namespace Carrot::VR {
     public:
         const HandTracking& getHandTracking() const;
 
+    public:
+        const glm::vec3& getHeadPosition() const;
+        const glm::quat& getHeadRotation() const;
+
     public: // actions related API
         //! Creates a new XR Action set with the given name
         //! Exposed for engine purposes. Please use Carrot::IO::ActionSet directly otherwise
@@ -110,6 +114,9 @@ namespace Carrot::VR {
         bool shouldRender = false;
         xr::Time predictedEndTime;
         xr::UniqueSpace xrSpace;
+        xr::UniqueSpace headSpace;
+        glm::vec3 headPosition{0.0f};
+        glm::quat headRotation = glm::identity<glm::quat>();
         std::vector<xr::View> xrViews;
         xr::CompositionLayerProjectionView xrProjectionViews[2];
 

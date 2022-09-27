@@ -56,6 +56,9 @@ namespace Carrot::VR {
 
         xrSpace = xrSession->createReferenceSpaceUnique(spaceReference);
 
+        spaceReference.referenceSpaceType = xr::ReferenceSpaceType::View;
+        headSpace = xrSession->createReferenceSpaceUnique(spaceReference);
+
         auto swapchainFormats = xrSession->enumerateSwapchainFormatsToVector();
         bool foundCompatible = false;
 
@@ -149,6 +152,10 @@ namespace Carrot::VR {
             ZoneScopedN("Get views");
             xrViews = xrSession->locateViewsToVector(locateInfo, reinterpret_cast<XrViewState*>(&viewState));
         }
+
+        xr::SpaceLocation headLocation = locateSpace(*headSpace);
+        headPosition = Carrot::xrSpaceToCarrotSpace(Carrot::toGlm(headLocation.pose.position));
+        headRotation = Carrot::xrSpaceToCarrotSpace(Carrot::toGlm(headLocation.pose.orientation));
 
         auto updateCamera = [&](Carrot::Render::Eye eye, xr::View& view) {
             glm::vec3 translation{0.0f};
@@ -247,6 +254,14 @@ namespace Carrot::VR {
 
     const HandTracking& Session::getHandTracking() const {
         return *handTracking;
+    }
+
+    const glm::vec3& Session::getHeadPosition() const {
+        return headPosition;
+    }
+
+    const glm::quat& Session::getHeadRotation() const {
+        return headRotation;
     }
 
     xr::UniqueActionSet Session::createActionSet(std::string_view name) {
