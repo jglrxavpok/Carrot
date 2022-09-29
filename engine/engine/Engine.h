@@ -209,6 +209,9 @@ namespace Carrot {
 
         void ungrabCursor();
 
+        //! Change tick rate, parameter is in Hertzs
+        void changeTickRate(std::uint32_t frequency);
+
         bool hasPreviousFrame() const {
             return frames > 0;
         }
@@ -380,6 +383,7 @@ namespace Carrot {
         double mouseX = 0.0;
         double mouseY = 0.0;
         float currentFPS = 0.0f;
+        std::chrono::duration<float> timeBetweenUpdates;
         bool running = true;
         bool grabbingCursor = false;
 

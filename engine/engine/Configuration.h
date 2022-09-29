@@ -31,6 +31,9 @@ namespace Carrot {
         RaytracingSupport raytracingSupport = RaytracingSupport::Supported;
         bool runInVR = false;
 
+        //! Wanted tick rate (in Hz) for your game
+        std::uint32_t tickRate = 60;
+
         const char* engineName = "Carrot";
 
         std::string applicationName = WINDOW_TITLE;

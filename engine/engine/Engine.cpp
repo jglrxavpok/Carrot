@@ -119,6 +119,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     {
     ZoneScoped;
     instance = this;
+    changeTickRate(config.tickRate);
 
 #ifdef USE_LIVEPP
     std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
@@ -339,7 +340,6 @@ void Carrot::Engine::run() {
 
     auto previous = std::chrono::steady_clock::now();
     auto lag = std::chrono::duration<float>(0.0f);
-    const auto timeBetweenUpdates = std::chrono::duration<float>(1.0f/60.0f); // 60 Hz
     bool ticked = false;
     while(running) {
 #ifdef USE_LIVEPP
@@ -1453,6 +1453,9 @@ void Carrot::Engine::ungrabCursor() {
     ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 }
 
+void Carrot::Engine::changeTickRate(std::uint32_t tickRate) {
+    timeBetweenUpdates = std::chrono::duration<float>(1.0f / tickRate);
+}
 
 #ifdef TRACY_ENABLE
 void* operator new(std::size_t count) {
