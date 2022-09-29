@@ -115,6 +115,8 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}network/packets/HandshakePackets.cpp
 
+        ${EngineRoot}scene/Scene.cpp
+
         ${EngineRoot}scripting/LuaScript.cpp
         ${EngineRoot}scripting/bindings/all.cpp
         ${EngineRoot}scripting/bindings/glm.cpp

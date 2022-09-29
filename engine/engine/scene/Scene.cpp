@@ -5,8 +5,12 @@
 #include "Scene.h"
 #include "core/utils/JSON.h"
 #include "core/io/Logging.hpp"
+#include "engine/render/RenderContext.h"
+#include "engine/utils/Macros.h"
+#include "engine/Engine.h"
+#include "engine/render/VulkanRenderer.h"
 
-namespace Peeler {
+namespace Carrot {
     void Scene::tick(double frameTime) {
         world.tick(frameTime);
     }
@@ -128,6 +132,9 @@ namespace Peeler {
 
     void Scene::load() {
         world.reloadSystems();
+
+        GetRenderer().getLighting().getAmbientLight() = lighting.ambient;
+        GetEngine().setSkybox(skybox);
     }
 
     void Scene::unload() {

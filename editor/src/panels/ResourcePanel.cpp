@@ -58,6 +58,10 @@ namespace Peeler {
 
         mainNode = ImGui::GetID("##Resource Panel");
 
+        if(ImGui::GetContentRegionAvail().x <= 0.0f || ImGui::GetContentRegionAvail().y <= 0.0f) {
+            return;
+        }
+
         if(!ImGui::DockBuilderGetNode(mainNode)) {
             ImGui::DockBuilderRemoveNode(mainNode);
             ImGui::DockBuilderAddNode(mainNode);

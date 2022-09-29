@@ -201,7 +201,6 @@ namespace Peeler {
                             .task = Carrot::Async::AsTask<void>([=]() {
                                 deferredLoad();
                                 std::filesystem::path projectFolder = projectPath;
-                                projectFolder /= projectName;
                                 std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
 
                                 settings.currentProject = projectFile;
@@ -649,8 +648,8 @@ namespace Peeler {
 
         currentScene.world.unfreezeLogic();
         currentScene.world.broadcastStartEvent();
+        currentScene.load();
         removeEditingSystems();
-        updateSettingsBasedOnScene();
         GetPhysics().resume();
 
         startSimulationRequested = false;
@@ -671,7 +670,6 @@ namespace Peeler {
         savedScene.load();
         currentScene = savedScene;
         savedScene.clear();
-        updateSettingsBasedOnScene();
         GetPhysics().pause();
         GetEngine().ungrabCursor();
         stopSimulationRequested = false;
@@ -701,12 +699,6 @@ namespace Peeler {
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CameraRenderer>();
-    }
-
-    void Application::updateSettingsBasedOnScene() {
-        GetRenderer().getLighting().getAmbientLight() = currentScene.lighting.ambient;
-        GetEngine().setSkybox(currentScene.skybox);
-        // TODO: raytraced shadows
     }
 
     void Application::UIPlayBar(const Carrot::Render::Context& renderContext) {
@@ -806,6 +798,7 @@ namespace Peeler {
         scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png"),
         resourcePanel(*this)
     {
+        NFD_Init();
         GetTaskScheduler().schedule({
                                             .name = "My test task",
                                             .task = testTask1(),
@@ -977,7 +970,7 @@ namespace Peeler {
         }
         addEditingSystems();
         currentScene.world.freezeLogic();
-        updateSettingsBasedOnScene();
+        currentScene.load();
         if(description.HasMember("camera")) {
             cameraController.deserialise(description["camera"].GetObject());
         }
@@ -1005,9 +998,11 @@ namespace Peeler {
 
         selectedIDs.clear();
         if(description.HasMember("selectedIDs")) {
-            auto wantedSelection = Carrot::UUID::fromString(description["selectedIDs"].GetString());
-            if(currentScene.world.exists(wantedSelection)) {
-                selectedIDs.push_back(wantedSelection);
+            for(const auto& selectedIDValue : description["selectedIDs"].GetArray()) {
+                auto wantedSelection = Carrot::UUID::fromString(selectedIDValue.GetString());
+                if(currentScene.world.exists(wantedSelection)) {
+                    selectedIDs.push_back(wantedSelection);
+                }
             }
         }
         updateWindowTitle();
@@ -1210,7 +1205,7 @@ namespace Peeler {
 
     static std::shared_ptr<Carrot::Render::LightHandle> lightHandle = nullptr;
 
-    void Application::addDefaultSystems(Scene& scene) {
+    void Application::addDefaultSystems(Carrot::Scene& scene) {
         scene.world.addRenderSystem<Carrot::ECS::SpriteRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::ModelRenderSystem>();
         scene.world.addRenderSystem<Carrot::ECS::SystemHandleLights>();

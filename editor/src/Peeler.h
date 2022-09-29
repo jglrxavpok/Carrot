@@ -13,7 +13,7 @@
 #include <engine/io/actions/ActionSet.h>
 #include <optional>
 #include <core/io/vfs/VirtualFileSystem.h>
-#include "Scene.h"
+#include <engine/scene/Scene.h>
 #include "GridRenderer.h"
 #include "panels/ResourcePanel.h"
 
@@ -69,7 +69,7 @@ namespace Peeler {
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
 
-        void addDefaultSystems(Scene& scene);
+        void addDefaultSystems(Carrot::Scene& scene);
         void addEditingSystems();
         void removeEditingSystems();
 
@@ -87,8 +87,6 @@ namespace Peeler {
         // process the request, don't call mid-frame
         void performSimulationStart();
         void performSimulationStop();
-
-        void updateSettingsBasedOnScene();
 
     private:
         ImGuiID mainDockspace;
@@ -124,8 +122,8 @@ namespace Peeler {
         bool hasUnsavedChanges = false;
 
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
-        Scene currentScene;
-        Scene savedScene;
+        Carrot::Scene currentScene;
+        Carrot::Scene savedScene;
 
     private: // inputs
         Carrot::IO::ActionSet editorActions { "editor_actions" };

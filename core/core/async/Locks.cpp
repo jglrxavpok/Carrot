@@ -9,7 +9,9 @@
 namespace Carrot::Async {
 
     // SpinLock
-    SpinLock::SpinLock(): acquired() {}
+    SpinLock::SpinLock(): acquired() {
+        acquired.clear();
+    }
 
     void SpinLock::lock() {
         while(!tryLock()) {

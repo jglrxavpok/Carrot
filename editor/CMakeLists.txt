@@ -3,7 +3,6 @@ set(EditorRoot "src/")
 set(EditorSources
         ${EditorRoot}main.cpp
         ${EditorRoot}Peeler.cpp
-        ${EditorRoot}Scene.cpp
         ${EditorRoot}GridRenderer.cpp
 
         ${EditorRoot}panels/ResourcePanel.cpp

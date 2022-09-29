@@ -8,7 +8,7 @@
 #include <engine/render/RenderContext.h>
 #include <rapidjson/document.h>
 
-namespace Peeler {
+namespace Carrot {
     class Scene {
     public:
         Carrot::ECS::World world;
@@ -45,8 +45,5 @@ namespace Peeler {
 
     public:
         Scene& operator=(const Scene& toCopy) = default;
-
-    private:
-        bool loaded = true;
     };
 }

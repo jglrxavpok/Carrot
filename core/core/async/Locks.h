@@ -76,10 +76,10 @@ namespace Carrot::Async {
     private:
         static std::hash<std::thread::id> threadIDHasher;
 
-        std::atomic<std::size_t> owningThreadHash;
+        std::atomic<std::size_t> owningThreadHash = 0;
 
         // Used to ensure lock/unlock are called in pairs
-        std::uint32_t reentryCount;
+        std::uint32_t reentryCount = 0;
     };
 
 
@@ -161,7 +161,7 @@ namespace Carrot::Async {
 
     private:
         std::atomic<std::uint32_t> readerCount = 0;
-        std::atomic<std::uint32_t> atomicValue;
+        std::atomic<std::uint32_t> atomicValue = 0;
         static constexpr std::uint32_t WriterPresentValue = std::numeric_limits<std::uint32_t>::max();
         ReadLock readLock;
         WriteLock writeLock;
