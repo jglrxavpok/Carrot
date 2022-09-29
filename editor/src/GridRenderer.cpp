@@ -6,8 +6,7 @@
 #include <engine/render/RenderPacket.h>
 
 namespace Peeler {
-    GridRenderer::GridRenderer(): gridMesh(Carrot::Engine::getInstance().getVulkanDriver(),
-                                           std::vector<Carrot::SimpleVertex>{
+    GridRenderer::GridRenderer(): gridMesh(std::vector<Carrot::SimpleVertex>{
                                                    { { -0.5f, -0.5f, 0.0f } },
                                                    { { 0.5f, -0.5f, 0.0f } },
                                                    { { 0.5f, 0.5f, 0.0f } },

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "engine/render/resources/Mesh.h"
+#include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
@@ -17,7 +17,7 @@ namespace Peeler {
         void render(const Carrot::Render::Context& renderContext, const glm::vec4& color, float lineWidth, float cellSize, float size);
 
     private:
-        Carrot::Mesh gridMesh;
+        Carrot::SingleMesh gridMesh;
         std::shared_ptr<Carrot::Pipeline> renderingPipeline = nullptr;
     };
 }

@@ -128,11 +128,11 @@ namespace Peeler {
         Scene savedScene;
 
     private: // inputs
-        Carrot::IO::ActionSet editorActions { "Editor actions" };
-        Carrot::IO::Vec2InputAction moveCamera { "Move camera (strafe & forward) " };
-        Carrot::IO::FloatInputAction moveCameraUp { "Move camera (up) " };
-        Carrot::IO::FloatInputAction moveCameraDown { "Move camera (down) " };
-        Carrot::IO::Vec2InputAction turnCamera { "Turn camera " };
+        Carrot::IO::ActionSet editorActions { "editor_actions" };
+        Carrot::IO::Vec2InputAction moveCamera { "strafe_forward_camera" };
+        Carrot::IO::FloatInputAction moveCameraUp { "move_camera_up" };
+        Carrot::IO::FloatInputAction moveCameraDown { "move_camera_down" };
+        Carrot::IO::Vec2InputAction turnCamera { "turn_camera" };
 
         Carrot::Edition::FreeCameraController cameraController;
 
