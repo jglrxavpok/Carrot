@@ -1,7 +1,6 @@
 set(EditorRoot "src/")
 
 set(EditorSources
-        ${EditorRoot}main.cpp
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}GridRenderer.cpp
 
@@ -51,20 +50,24 @@ endif()
 
 set(EditorSources "${EditorSources}" "${EditorShaders}")
 
-add_executable(Peeler ${EditorSources} ${ImGuizmoSources})
+add_library(Peeler-Lib ${EditorSources} ${ImGuizmoSources})
+add_includes(Peeler-Lib)
+target_include_directories(Peeler-Lib PUBLIC ../thirdparty/ImGuizmo)
+target_link_libraries(Peeler-Lib PUBLIC Engine-Base)
+
+add_library(Peeler-Renderdoc-Lib ${EditorSources} ${ImGuizmoSources})
+add_includes(Peeler-Renderdoc-Lib)
+target_compile_definitions(Peeler-Renderdoc-Lib PRIVATE DEBUG_MARKERS=1)
+target_include_directories(Peeler-Renderdoc-Lib PUBLIC ../thirdparty/ImGuizmo)
+target_link_libraries(Peeler-Renderdoc-Lib PUBLIC Engine-Base-Renderdoc)
+
+add_library(Peeler-ASAN-Lib ${EditorSources} ${ImGuizmoSources})
+target_link_libraries(Peeler-ASAN-Lib PUBLIC Engine-ASAN)
+target_include_directories(Peeler-ASAN-Lib PUBLIC ../thirdparty/ImGuizmo)
+make_asan_target(Peeler-ASAN-Lib)
+
+add_executable(Peeler ${EditorRoot}main.cpp)
 add_includes(Peeler)
-target_include_directories(Peeler PUBLIC ../thirdparty/ImGuizmo)
-target_link_libraries(Peeler PUBLIC Engine-Base)
-
-add_executable(Peeler-Renderdoc ${EditorSources} ${ImGuizmoSources})
-add_includes(Peeler-Renderdoc)
-target_compile_definitions(Peeler-Renderdoc PRIVATE DEBUG_MARKERS=1)
-target_include_directories(Peeler-Renderdoc PUBLIC ../thirdparty/ImGuizmo)
-target_link_libraries(Peeler-Renderdoc PUBLIC Engine-Base-Renderdoc)
-
-add_executable(Peeler-ASAN ${EditorSources} ${ImGuizmoSources})
-target_link_libraries(Peeler-ASAN PUBLIC Engine-ASAN)
-target_include_directories(Peeler-ASAN PUBLIC ../thirdparty/ImGuizmo)
-make_asan_target(Peeler-ASAN)
+target_link_libraries(Peeler PUBLIC Peeler-Lib)
 
 copy_all_resources() # game resources
