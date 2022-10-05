@@ -80,8 +80,8 @@ namespace Carrot::VR {
         assert(viewConfigs.size() == 2);
         assert(viewConfigs[0].recommendedImageRectHeight == viewConfigs[1].recommendedImageRectHeight);
 
-        fullSwapchainSize = vk::Extent2D { viewConfigs[0].maxImageRectWidth * 2, viewConfigs[1].maxImageRectHeight };
-        eyeRenderSize = vk::Extent2D { viewConfigs[0].maxImageRectWidth, viewConfigs[1].maxImageRectHeight };
+        fullSwapchainSize = vk::Extent2D { viewConfigs[0].recommendedImageRectWidth * 2, viewConfigs[1].recommendedImageRectHeight };
+        eyeRenderSize = vk::Extent2D { viewConfigs[0].recommendedImageRectWidth, viewConfigs[1].recommendedImageRectHeight };
 
         xr::SwapchainCreateInfo swapchainInfo;
         swapchainInfo.width = fullSwapchainSize.width;
