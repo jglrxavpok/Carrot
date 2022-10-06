@@ -88,7 +88,7 @@ namespace Carrot {
     class VulkanRenderer: public SwapchainAware {
     public:
         static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
-        static constexpr std::uint32_t MaxCameras = 10; // used to determine descriptor set pool size
+        static constexpr std::uint32_t MaxCameras = 20; // used to determine descriptor set pool size
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
 
