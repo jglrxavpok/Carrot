@@ -96,9 +96,10 @@ namespace Carrot {
     }
 
     inline glm::quat xrSpaceToCarrotSpace(const glm::quat& xrSpace) {
+        const glm::quat correction = glm::rotate(glm::identity<glm::quat>(), glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
         glm::quat result = xrSpace;
         result.y = -xrSpace.z;
         result.z = xrSpace.y;
-        return result;
+        return result * correction;
     }
 }
