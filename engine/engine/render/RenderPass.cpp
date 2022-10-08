@@ -385,7 +385,8 @@ void Carrot::Render::CompiledPass::recordCommands(const Carrot::Render::Context&
     if(rasterized) {
         getVulkanDriver().updateViewportAndScissor(cmds, renderSize);
     }
-    renderingCode(*this, getVulkanDriver().getEngine().newRenderContext(renderContext.swapchainIndex, renderContext.viewport, renderContext.eye), cmds);
+
+    renderingCode(*this, renderContext, cmds);
     cmds.end();
 }
 

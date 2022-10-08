@@ -341,6 +341,9 @@ namespace Carrot {
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
+        void startFrame(const Render::Context& renderContext);
+
+    public:
         void submitGraphics(const vk::SubmitInfo& info, const vk::Fence& fence = {});
         void submitTransfer(const vk::SubmitInfo& info, const vk::Fence& fence = {});
         void submitCompute(const vk::SubmitInfo& info, const vk::Fence& fence = {});
@@ -357,6 +360,13 @@ namespace Carrot {
         // used by performSingleTimeCommands
         static void waitGraphics();
         static void waitTransfer();
+
+    private: // memory inspection support
+        vk::PhysicalDeviceMemoryProperties baseProperties{};
+
+        bool memoryBudgetSupported = false;
+        vk::DeviceSize gpuHeapBudgets[VK_MAX_MEMORY_HEAPS] = {0};
+        vk::DeviceSize gpuHeapUsages[VK_MAX_MEMORY_HEAPS] = {0};
     };
 }
 

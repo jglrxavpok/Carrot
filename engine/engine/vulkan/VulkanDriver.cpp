@@ -26,6 +26,7 @@
 #ifdef AFTERMATH_ENABLE
 #include <GFSDK_Aftermath_GpuCrashDump.h>
 #include "engine/utils/NsightAftermathHelpers.h"
+#include "engine/console/RuntimeOption.hpp"
 
 #endif
 
@@ -122,6 +123,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
+static Carrot::RuntimeOption showGPUMemoryUsage("GPU/Show GPU Memory", false);
 
 Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config, Carrot::Engine* engine, Carrot::VR::Interface* vrInterface):
     vrInterface(vrInterface),
@@ -423,6 +425,10 @@ void Carrot::VulkanDriver::fillRenderingCapabilities() {
         } else {
             Carrot::Log::info("Hardware does not support raytracing");
         }
+    }
+
+    if(availableSet.contains(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) {
+        memoryBudgetSupported = true;
     }
 }
 
@@ -963,6 +969,51 @@ void Carrot::VulkanDriver::deferDestroy(vk::UniqueAccelerationStructureKHR&& res
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
     deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
+}
+
+void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderContext) {
+    if(memoryBudgetSupported) {
+        vk::StructureChain<vk::PhysicalDeviceMemoryProperties2, vk::PhysicalDeviceMemoryBudgetPropertiesEXT> chain;
+        physicalDevice.getMemoryProperties2(&chain.get<vk::PhysicalDeviceMemoryProperties2>());
+        baseProperties = chain.get<vk::PhysicalDeviceMemoryProperties2>().memoryProperties;
+
+        auto& memoryBudget = chain.get<vk::PhysicalDeviceMemoryBudgetPropertiesEXT>();
+        for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
+            gpuHeapBudgets[j] = memoryBudget.heapBudget[j];
+            gpuHeapUsages[j] = memoryBudget.heapUsage[j];
+        }
+    } else {
+        baseProperties = physicalDevice.getMemoryProperties();
+    }
+
+    if(showGPUMemoryUsage) {
+        if(ImGui::Begin("GPU Memory")) {
+            std::size_t totalUsage = 0;
+            if(memoryBudgetSupported) {
+                for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
+                    if(gpuHeapBudgets[j] > 0) {
+                        ImGui::Text("Heap #%d", j);
+                        ImGui::Text("Usage: %llu B (%f%%)", gpuHeapUsages[j], 100.0 * gpuHeapUsages[j] / (double)gpuHeapBudgets[j]);
+                        ImGui::Text("Budget: %llu B", gpuHeapBudgets[j]);
+                        ImGui::Separator();
+                        totalUsage += gpuHeapUsages[j];
+                    }
+                }
+            } else {
+                ImGui::Text(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME " is not supported by your current GPU. Only tracked information is available.");
+            }
+
+
+            if(memoryBudgetSupported) {
+                double trackedPercent = Carrot::DeviceMemory::TotalMemoryUsed.load() / (double)totalUsage;
+                ImGui::Text("Tracked device memory: %llu B (%f%%)", (std::uint64_t) Carrot::DeviceMemory::TotalMemoryUsed.load(), 100.0 * trackedPercent);
+                ImGui::Text("Untracked device memory: %llu B", totalUsage - Carrot::DeviceMemory::TotalMemoryUsed.load());
+            } else {
+                ImGui::Text("Tracked device memory: %llu B", (std::uint64_t) Carrot::DeviceMemory::TotalMemoryUsed.load());
+            }
+        }
+        ImGui::End();
+    }
 }
 
 void Carrot::VulkanDriver::submitGraphics(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {

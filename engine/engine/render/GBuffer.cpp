@@ -123,6 +123,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
            },
            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GResolve& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph GResolve");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "GResolve");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
                 if(useRaytracingVersion) {
                     useRaytracingVersion &= !!frame.renderer.getASBuilder().getTopLevelAS();

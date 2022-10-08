@@ -78,9 +78,9 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 Carrot::Engine* Carrot::Engine::instance = nullptr;
-static Carrot::RuntimeOption showFPS("Debug/Show FPS", false);
-static Carrot::RuntimeOption showInputDebug("Debug/Show Inputs", false);
-static Carrot::RuntimeOption showGBuffer("Debug/Show GBuffer", false);
+static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
+static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
+static Carrot::RuntimeOption showGBuffer("Engine/Show GBuffer", false);
 
 
 static std::unordered_set<int> activeJoysticks{};
@@ -774,6 +774,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         getDebugUniformBuffers()[imageIndex]->directUpload(&debug, sizeof(debug));
 
+        vkDriver.startFrame(mainRenderContext);
         renderer.beginFrame(mainRenderContext);
         GetTaskScheduler().executeRendering();
 
