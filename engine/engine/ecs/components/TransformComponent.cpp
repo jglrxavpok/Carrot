@@ -85,6 +85,16 @@ namespace Carrot::ECS {
         return { wpos.x, wpos.y, wpos.z };
     }
 
+    glm::quat TransformComponent::computeFinalOrientation() const {
+        auto parent = getEntity().getParent();
+        if(parent) {
+            if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {
+                return parentTransform->computeFinalOrientation() * localTransform.rotation;
+            }
+        }
+        return localTransform.rotation;
+    }
+
     Carrot::Math::Transform TransformComponent::computeGlobalReactPhysicsTransform() const {
         auto parent = getEntity().getParent();
         if(parent) {

@@ -34,7 +34,17 @@ namespace Carrot::ECS {
 
         void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
 
+        /**
+         * Computes the final position of the entity based on the parent orientation & position and this entity's local transform.
+         * @return World-space position of the entity
+         */
         glm::vec3 computeFinalPosition() const;
+
+        /**
+         * Computes the final orientation of the entity based on the parent orientation and this entity's orientation.
+         * @return World-space orientation of the entity
+         */
+        glm::quat computeFinalOrientation() const;
 
         /// Computes the global transform of this entity, taking into account the hierarchy
         Carrot::Math::Transform computeGlobalReactPhysicsTransform() const;
