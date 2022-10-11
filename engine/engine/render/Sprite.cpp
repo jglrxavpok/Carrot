@@ -92,11 +92,12 @@ namespace Carrot::Render {
         clone->position = position;
         clone->rotation = rotation;
         clone->parentTransform = parentTransform;
+        clone->material = material;
         return clone;
     }
 
     void Sprite::setTexture(Texture::Ref texture) {
-        this->texture = std::move(texture);
+        this->texture = texture;
         verify(this->texture != nullptr, "Cannot create sprite with no texture");
         material = GetRenderer().getMaterialSystem().createMaterialHandle();
         material->diffuseTexture = GetRenderer().getMaterialSystem().createTextureHandle(texture);

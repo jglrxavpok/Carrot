@@ -13,7 +13,7 @@ public:
     explicit BasicSprites(Carrot::Engine& engine): Carrot::CarrotGame(engine),
 
     // initialises the sprite, 'getOrCreateTexture' will lazily load a texture given its filename
-    mySprite(engine.getRenderer(), engine.getRenderer().getOrCreateTexture(TextureName))
+    mySprite(engine.getRenderer().getOrCreateTexture(TextureName))
 
     {
         direction = { 1, -1 };
@@ -81,7 +81,7 @@ int main() {
     std::ios::sync_with_stdio(false);
 
     Carrot::Configuration config;
-    config.requiresRaytracing = false;
+    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
     Carrot::Engine engine{config};
     engine.run();
 

@@ -11,7 +11,7 @@ layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 viewNormal;
-layout(location = 5) in vec3 inUUID; // TODO: unused at the moment
+layout(location = 5) flat in uvec4 inUUID; // TODO: unused at the moment
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outViewPosition;

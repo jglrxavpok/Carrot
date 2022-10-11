@@ -5,10 +5,12 @@
 #include "MaterialSystem.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/Engine.h"
+#include "engine/console/RuntimeOption.hpp"
 #include <core/io/Logging.hpp>
 
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 4;
+    static Carrot::RuntimeOption ShowDebug("Engine/Materials Debug", false);
 
     TextureHandle::TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
 
@@ -231,7 +233,64 @@ namespace Carrot::Render {
 
     void MaterialSystem::beginFrame(const Context& renderContext) {
         Async::LockGuard g { accessLock };
-        if(materialHandles.size() >= materialBufferSize) {
+
+        if(ShowDebug) {
+            bool isOpen = true;
+            if(ImGui::Begin("Material debug", &isOpen)) {
+                static int textureType = 0;
+                ImGui::RadioButton("Diffuse", &textureType, 0);
+                ImGui::RadioButton("NormalMap", &textureType, 1);
+
+                const int columnCount = 8;
+                if(ImGui::BeginTable("Materials", columnCount)) {
+                    int index = 0;
+                    for (auto it = materialHandles.begin(); it != materialHandles.end(); it++, index++) {
+                        if(index % columnCount == 0) {
+                            ImGui::TableNextRow();
+                        }
+                        ImGui::TableSetColumnIndex(index % columnCount);
+
+                        if(auto material = it->second.lock()) {
+                            std::shared_ptr<TextureHandle> handle = nullptr;
+                            std::int64_t textureID = -1;
+
+                            switch(textureType) {
+                                case 0:
+                                    handle = material->diffuseTexture;
+                                    break;
+
+                                case 1:
+                                    handle = material->normalMap;
+                                    break;
+                            }
+
+                            auto texture = handle
+                                    ? handle->texture
+                                    : GetRenderer().getDefaultImage();
+
+                            if(handle) {
+                                textureID = handle->getSlot();
+                            }
+
+                            ImGui::Text("Slot %d", material->getSlot());
+                            ImGui::Text("Texture ID: %lld", textureID);
+                            ImGui::Image(texture->getImguiID(), ImVec2(128, 128));
+                        } else {
+                            ImGui::Text("Free slot");
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            if(!isOpen) {
+                ShowDebug.setValue(false);
+            }
+            ImGui::End();
+        }
+
+        if(materialHandles.getRequiredStorageCount() >= materialBufferSize) {
             WaitDeviceIdle();
             reallocateMaterialBuffer(materialBufferSize*2);
         }
@@ -287,7 +346,7 @@ namespace Carrot::Render {
     std::shared_ptr<TextureHandle> MaterialSystem::createTextureHandle(Texture::Ref texture) {
         Async::LockGuard l { accessLock };
         auto ptr = textureHandles.create(std::ref(*this));
-        ptr->texture = std::move(texture);
+        ptr->texture = texture;
         return ptr;
     }
 

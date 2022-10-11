@@ -60,6 +60,13 @@ namespace Carrot {
             registry.erase(start, end);
         }
 
+        /**
+         * Required minimum element count to hold all current entries as a flat buffer, with slotIndex = index in the buffer
+         */
+        std::size_t getRequiredStorageCount() const {
+            return requiredStorageCount;
+        }
+
     public:
         template<typename... Args>
         std::shared_ptr<ElementType> create(Args&&... args) {
@@ -69,6 +76,7 @@ namespace Carrot {
                 freeSlots.pop();
             } else {
                 slot = nextID++;
+                requiredStorageCount = std::max(slot+1, requiredStorageCount);
             }
             auto ptr = std::make_shared<ElementType>(slot, [this](WeakPoolHandle* element) {
                 freeSlot(element->getSlot());
@@ -80,6 +88,14 @@ namespace Carrot {
         void freeSlot(std::uint32_t slot) {
             registry.erase(slot);
             freeSlots.push(slot);
+
+            std::uint32_t highestIndex = 0;
+            for(const auto& [index, ptr] : registry) {
+                if(auto handle = ptr.lock()) {
+                    highestIndex = std::max(index, highestIndex);
+                }
+            }
+            requiredStorageCount = highestIndex+1;
         }
 
         void free(ElementType& handle) {
@@ -90,5 +106,6 @@ namespace Carrot {
         Registry registry;
         std::queue<std::uint32_t> freeSlots;
         std::uint32_t nextID = 1;
+        std::uint32_t requiredStorageCount = 0;
     };
 }
