@@ -27,6 +27,7 @@
 #include <GFSDK_Aftermath_GpuCrashDump.h>
 #include "engine/utils/NsightAftermathHelpers.h"
 #include "engine/console/RuntimeOption.hpp"
+#include "core/io/Strings.h"
 
 #endif
 
@@ -995,8 +996,8 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                 for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
                     if(gpuHeapBudgets[j] > 0) {
                         ImGui::Text("Heap #%d", j);
-                        ImGui::Text("Usage: %llu B (%f%%)", gpuHeapUsages[j], 100.0 * gpuHeapUsages[j] / (double)gpuHeapBudgets[j]);
-                        ImGui::Text("Budget: %llu B", gpuHeapBudgets[j]);
+                        ImGui::Text("Usage: %s (%f%%)", Carrot::IO::toReadableFormat( gpuHeapUsages[j]).c_str(), 100.0 * gpuHeapUsages[j] / (double)gpuHeapBudgets[j]);
+                        ImGui::Text("Budget: %s", Carrot::IO::toReadableFormat(gpuHeapBudgets[j]).c_str());
                         ImGui::Separator();
                         totalUsage += gpuHeapUsages[j];
                     }
@@ -1008,10 +1009,29 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 
             if(memoryBudgetSupported) {
                 double trackedPercent = Carrot::DeviceMemory::TotalMemoryUsed.load() / (double)totalUsage;
-                ImGui::Text("Tracked device memory: %llu B (%f%%)", (std::uint64_t) Carrot::DeviceMemory::TotalMemoryUsed.load(), 100.0 * trackedPercent);
-                ImGui::Text("Untracked device memory: %llu B", totalUsage - Carrot::DeviceMemory::TotalMemoryUsed.load());
+                ImGui::Text("Tracked device memory: %s (%f%%)", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str(), 100.0 * trackedPercent);
+                ImGui::Text("Untracked device memory: %s", Carrot::IO::toReadableFormat(totalUsage - Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
             } else {
-                ImGui::Text("Tracked device memory: %llu B", (std::uint64_t) Carrot::DeviceMemory::TotalMemoryUsed.load());
+                ImGui::Text("Tracked device memory: %s", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
+            }
+
+            static bool showPerType = true;
+            if(ImGui::CollapsingHeader("Tracked memory per location", &showPerType)) {
+                if(ImGui::BeginTable("per location memory", 2)) {
+                    ImGui::TableSetupColumn("Location");
+                    ImGui::TableSetupColumn("Count");
+                    ImGui::TableHeadersRow();
+
+                    for(const auto& [type, size] : Carrot::DeviceMemory::MemoryUsedByLocation.snapshot()) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", type.c_str());
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%s", Carrot::IO::toReadableFormat(*size).c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
             }
         }
         ImGui::End();

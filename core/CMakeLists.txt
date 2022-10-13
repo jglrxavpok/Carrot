@@ -20,6 +20,7 @@ set(CORE-SOURCES
         ${CoreRoot}io/Path.cpp
         ${CoreRoot}io/Resource.cpp
         ${CoreRoot}io/Serialisation.cpp
+        ${CoreRoot}io/Strings.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
         ${CoreRoot}math/Segment2D.cpp
