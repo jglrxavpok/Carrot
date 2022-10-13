@@ -8,8 +8,9 @@
 #include "engine/Engine.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/utils/Macros.h"
+#include "engine/console/RuntimeOption.hpp"
 
-#pragma optimize("", off)
+static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 1;
@@ -82,15 +83,22 @@ namespace Carrot::Render {
     }
 
     void Lighting::beginFrame(const Context& renderContext) {
-        if(ImGui::Begin("Fog config")) {
-            ImGui::DragFloat("Distance", &fogDistance);
-            ImGui::DragFloat("Depth", &fogDepth);
-            float color[3] = { fogColor.x, fogColor.y, fogColor.z };
-            if(ImGui::DragFloat3("Depth", color)) {
-                fogColor = { color[0], color[1], color[2] };
+        if(DebugFogConfig) {
+            bool open = true;
+            if(ImGui::Begin("Fog config", &open)) {
+                ImGui::DragFloat("Distance", &fogDistance);
+                ImGui::DragFloat("Depth", &fogDepth);
+                float color[3] = { fogColor.x, fogColor.y, fogColor.z };
+                if(ImGui::DragFloat3("Depth", color)) {
+                    fogColor = { color[0], color[1], color[2] };
+                }
+            }
+            ImGui::End();
+
+            if(!open) {
+                DebugFogConfig.setValue(false);
             }
         }
-        ImGui::End();
 
         lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
         data->lightCount = lightBufferSize;
