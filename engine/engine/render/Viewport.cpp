@@ -71,10 +71,10 @@ namespace Carrot::Render {
             Camera rightEyeCamera = getCamera(Carrot::Render::Eye::RightEye);
 
             leftEyeCamera.getViewMatrixRef() = GetEngine().getVRSession().getEyeView(Carrot::Render::Eye::LeftEye) * leftEyeCamera.getViewMatrixRef();
-            leftEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::LeftEye) * leftEyeCamera.getProjectionMatrixRef();
+            leftEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::LeftEye);
 
             rightEyeCamera.getViewMatrixRef() = GetEngine().getVRSession().getEyeView(Carrot::Render::Eye::RightEye) * rightEyeCamera.getViewMatrixRef();
-            rightEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::RightEye) * rightEyeCamera.getProjectionMatrixRef();
+            rightEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::RightEye);
 
             objLeftEye.update(leftEyeCamera);
             objRightEye.update(rightEyeCamera);

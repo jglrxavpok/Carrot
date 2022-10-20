@@ -7,7 +7,8 @@
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "EntityTypes.h"
 
-#include <engine/console/RuntimeOption.hpp>
+#include "engine/console/RuntimeOption.hpp"
+#include "engine/Engine.h"
 
 namespace Carrot::ECS {
     Entity World::newEntity(std::string_view name) {
@@ -205,30 +206,28 @@ namespace Carrot::ECS {
 
         {
             ZoneScopedN("Debug");
-            if(showWorldHierarchy) {
+            if(showWorldHierarchy && &renderContext.viewport == &GetEngine().getMainViewport()) {
                 if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
                     std::function<void(Entity&)> showEntityTree = [&](Entity& entity) {
                         if(!entity)
                             return;
-                        auto children = getChildren(entity);
-                        if(!children.empty()) {
-                            if(ImGui::TreeNode("##child", "%s", getName(entity).c_str())) {
-                                for(auto& c : children) {
-                                    showEntityTree(c);
-                                }
-
-                                ImGui::TreePop();
+                        auto children = getChildren(entity, ShouldRecurse::NoRecursion);
+                        if(ImGui::TreeNode("##child", "%s", getName(entity).c_str())) {
+                            for(auto& c : children) {
+                                showEntityTree(c);
                             }
-                        } else { // has no children
-                            ImGui::Text("- %s", getName(entity).c_str());
+
+                            ImGui::TreePop();
                         }
                     };
                     for(const auto& ent : entities) {
                         auto entityObj = wrap(ent);
-                        if( ! getParent(entityObj)) {
+                        if(!getParent(entityObj).has_value()) {
                             showEntityTree(entityObj);
                         }
                     }
+
+                    ImGui::Separator();
                 }
                 ImGui::End();
             }
@@ -434,6 +433,7 @@ namespace Carrot::ECS {
     }
 
     World& World::operator=(const World& toCopy) {
+        entitiesUpdated.clear();
         entityParents = toCopy.entityParents;
         entityChildren = toCopy.entityChildren;
         entityNames = toCopy.entityNames;
