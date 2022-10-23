@@ -41,10 +41,22 @@ namespace Carrot::ECS {
         glm::vec3 computeFinalPosition() const;
 
         /**
+         * Computes the final scale of the entity based on the parent scale and this entity's local transform.
+         * @return World-space scale of the entity
+         */
+        glm::vec3 computeFinalScale() const;
+
+        /**
          * Computes the final orientation of the entity based on the parent orientation and this entity's orientation.
          * @return World-space orientation of the entity
          */
         glm::quat computeFinalOrientation() const;
+
+        /**
+        * Computes the global forward of the entity based on the parent orientation and this entity's orientation.
+        * @return World-space forward of the entity
+        */
+        glm::vec3 computeGlobalForward() const;
 
         /// Computes the global transform of this entity, taking into account the hierarchy
         Carrot::Math::Transform computeGlobalReactPhysicsTransform() const;

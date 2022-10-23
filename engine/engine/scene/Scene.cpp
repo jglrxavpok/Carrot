@@ -15,6 +15,10 @@ namespace Carrot {
         world.tick(frameTime);
     }
 
+    void Scene::setupCamera(const Carrot::Render::Context& renderContext) {
+        world.setupCamera(renderContext);
+    }
+
     void Scene::onFrame(const Carrot::Render::Context& renderContext) {
         world.onFrame(renderContext);
     }

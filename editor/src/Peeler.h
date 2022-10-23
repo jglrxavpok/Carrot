@@ -22,6 +22,7 @@ namespace Peeler {
     public:
         explicit Application(Carrot::Engine& engine);
 
+        void setupCamera(Carrot::Render::Context renderContext) override;
         void onFrame(Carrot::Render::Context renderContext) override;
 
         void tick(double frameTime) override;

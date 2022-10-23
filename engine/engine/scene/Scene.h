@@ -29,6 +29,7 @@ namespace Carrot {
         void clear();
 
     public:
+        void setupCamera(const Carrot::Render::Context& renderContext);
         void tick(double frameTime);
         void onFrame(const Carrot::Render::Context& renderContext);
 

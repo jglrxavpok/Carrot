@@ -85,6 +85,16 @@ namespace Carrot::ECS {
         return { wpos.x, wpos.y, wpos.z };
     }
 
+    glm::vec3 TransformComponent::computeFinalScale() const {
+        auto parent = getEntity().getParent();
+        if(parent) {
+            if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {
+                return parentTransform->computeFinalScale() * localTransform.scale;
+            }
+        }
+        return localTransform.scale;
+    }
+
     glm::quat TransformComponent::computeFinalOrientation() const {
         auto parent = getEntity().getParent();
         if(parent) {
@@ -93,6 +103,11 @@ namespace Carrot::ECS {
             }
         }
         return localTransform.rotation;
+    }
+
+    glm::vec3 TransformComponent::computeGlobalForward() const {
+        constexpr glm::vec3 forward = glm::vec3{ 0.0f, 1.0f, 0.0f };
+        return computeFinalOrientation() * forward;
     }
 
     Carrot::Math::Transform TransformComponent::computeGlobalReactPhysicsTransform() const {

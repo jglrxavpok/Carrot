@@ -17,7 +17,8 @@ namespace Carrot::ECS {
 
         explicit CameraSystem(const rapidjson::Value& json, World& world): CameraSystem(world) {}
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        virtual void setupCamera(Carrot::Render::Context renderContext) override;
+        virtual void onFrame(Carrot::Render::Context renderContext) override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override {
             return std::make_unique<CameraSystem>(newOwner);

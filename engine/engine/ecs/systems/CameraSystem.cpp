@@ -6,8 +6,8 @@
 #include "engine/ecs/components/TransformComponent.h"
 
 namespace Carrot::ECS {
-    void CameraSystem::onFrame(Carrot::Render::Context renderContext) {
-        auto& camera = renderContext.viewport.getCamera();
+    void CameraSystem::setupCamera(Carrot::Render::Context renderContext) {
+        auto& camera = renderContext.getCamera();
         forEachEntity([&](Entity& entity, TransformComponent& transform, CameraComponent& cameraComponent) {
             if(!cameraComponent.isPrimary) {
                 return;
@@ -17,5 +17,9 @@ namespace Carrot::ECS {
 
             camera.setViewProjection(viewMatrix, cameraComponent.makeProjectionMatrix());
         });
+    }
+
+    void CameraSystem::onFrame(Carrot::Render::Context renderContext) {
+        // no op
     }
 }

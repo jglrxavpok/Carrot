@@ -182,6 +182,19 @@ namespace Carrot::ECS {
 
     static Carrot::RuntimeOption showWorldHierarchy("Debug/Show World hierarchy", false);
 
+    void World::setupCamera(Carrot::Render::Context renderContext) {
+        ZoneScoped;
+
+        {
+            ZoneScopedN("Systems setup their cameras");
+            for(const auto& render : renderSystems) {
+                ZoneScopedN("RenderSystem");
+                ZoneText(typeid(*render).name(), std::strlen(typeid(*render).name()));
+                render->setupCamera(renderContext);
+            }
+        }
+    }
+
     void World::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
 

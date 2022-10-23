@@ -43,6 +43,20 @@
 
 namespace Peeler {
 
+    void Application::setupCamera(Carrot::Render::Context renderContext) {
+        if(&renderContext.viewport == &gameViewport) {
+            auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
+            cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+
+            currentScene.setupCamera(renderContext);
+
+            if(!isPlaying) {
+                // override any primary camera the game might have
+                cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+            }
+        }
+    }
+
     void Application::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
         if(&renderContext.viewport == &engine.getMainViewport()) {

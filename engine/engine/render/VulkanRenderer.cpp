@@ -440,6 +440,16 @@ void Carrot::VulkanRenderer::newFrame() {
         ZoneScopedN("renderPackets.reserve(previousCapacity)");
         renderPackets.reserve(previousCapacity);
     }
+
+    if(blinkTime > 0.0 && hasBlinked) {
+        static auto lastTime = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> timeElapsed = now-lastTime;
+
+        blinkTime -= timeElapsed.count();
+
+        lastTime = now;
+    }
 }
 
 void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
@@ -546,6 +556,16 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
 
     Async::LockGuard lk { threadRegistrationLock };
 
+    bool open = true;
+    bool debugRender = false;
+    std::size_t totalPacketCount = 0;
+    if(DebugRenderPacket) {
+        debugRender = ImGui::Begin("Debug Render Packets", &open);
+        if(!open) {
+            DebugRenderPacket.setValue(false);
+        }
+    }
+
     // TODO: fewer allocations
     std::unordered_map<PacketKey, std::vector<Carrot::Render::Packet>> packetBins;
     auto snapshot = threadRenderPackets.snapshot();
@@ -564,16 +584,6 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
         // was not merged, brand new packet
         bin.emplace_back(std::move(toPlace));
     };
-
-    bool open = true;
-    bool debugRender = false;
-    std::size_t totalPacketCount = 0;
-    if(DebugRenderPacket) {
-        debugRender = ImGui::Begin("Debug Render Packets", &open);
-        if(!open) {
-            DebugRenderPacket.setValue(false);
-        }
-    }
 
     for(const auto& [threadID, packets] : snapshot) {
         {
@@ -629,8 +639,13 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
         ImGui::Text("Draw call reduction: %0.1f%%", (1.0f - ratio)*100);
         ImGui::Text("Instance buffer size this frame: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeThisFrame()).c_str());
         ImGui::Text("Instance buffer size total: %s", Carrot::IO::getHumanReadableFileSize(singleFrameAllocator.getAllocatedSizeAllFrames()).c_str());
-
     }
+
+    if(DebugRenderPacket) {
+        ImGui::End();
+    }
+
+    hasBlinked = true;
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -731,6 +746,11 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
 
 void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
+
+    if(blinkTime > 0.0) {
+        return;
+    }
+
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
@@ -745,6 +765,11 @@ void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot
 
 void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
+
+    if(blinkTime > 0.0) {
+        return;
+    }
+
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
@@ -937,6 +962,11 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     verify(packet.viewport, "Viewport must not be null");
     verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
     threadLocalRenderPackets->unsorted.emplace_back(packet);
+}
+
+void Carrot::VulkanRenderer::blink() {
+    blinkTime = BlinkDuration;
+    hasBlinked = false;
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes) {

@@ -89,6 +89,7 @@ namespace Carrot {
     public:
         static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
         static constexpr std::uint32_t MaxCameras = 20; // used to determine descriptor set pool size
+        static constexpr double BlinkDuration = 0.100f;
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
 
@@ -200,6 +201,12 @@ namespace Carrot {
         void render(const Render::Packet& packet);
 
     public:
+        /**
+         * Shows a blackscreen for at minimum one frame, and for a duration of VulkanRenderer::BlinkDuration.
+         */
+        void blink();
+
+    public:
         /// Returns a portion of buffer that can be used for the current frame
         Carrot::BufferView getSingleFrameBuffer(vk::DeviceSize size);
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
@@ -272,6 +279,10 @@ namespace Carrot {
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
         SingleFrameStackGPUAllocator singleFrameAllocator;
+
+    private:
+        bool hasBlinked = false;
+        double blinkTime = -1.0;
 
     private:
         void createCameraSetResources();

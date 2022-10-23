@@ -30,6 +30,7 @@ namespace Carrot::ECS {
         [[nodiscard]] const Signature& getSignature() const;
 
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
+        virtual void setupCamera(Carrot::Render::Context renderContext) {};
         virtual void tick(double dt) {};
 
         // TODO: provide a way to render even in other passes -> RenderPacket
