@@ -146,6 +146,8 @@ namespace Carrot::Render {
         rtInstance.clear();
         rtInstance.reserve(GetEngine().getSwapchainImageCount());
 
+        meshTransforms.clear();
+
         auto skinnedMeshes = model->getSkinnedMeshes();
 
         // compute required size for output buffer
@@ -162,6 +164,8 @@ namespace Carrot::Render {
             std::size_t outputMeshSize = mesh->getVertexCount() * sizeof(OutputVertexFormat);
             sizes.emplace_back(outputMeshSize);
             requiredSize += outputMeshSize;
+
+            meshTransforms.push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform, requires modification of forEachMesh
         });
 
 
@@ -206,7 +210,7 @@ namespace Carrot::Render {
 
             if(GetCapabilities().supportsRaytracing) {
                 auto& asBuilder = GetRenderer().getASBuilder();
-                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex]));
+                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms));
                 rtInstance.emplace_back(asBuilder.addInstance(createdBLAS));
             }
         }

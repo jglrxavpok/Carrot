@@ -16,7 +16,7 @@ namespace Peeler {
         virtual void draw(const Carrot::Render::Context& renderContext) = 0;
         virtual ~EditorPanel() = default;
 
-    private:
+    protected:
         Peeler::Application& app;
     };
 }

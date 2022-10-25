@@ -9,15 +9,38 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <iostream>
 #include "RayTracer.h"
+#include "engine/render/resources/ResourceAllocator.h"
 
 namespace Carrot {
-    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes):
+    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms):
     WeakPoolHandle(index, std::move(destructor)),
     meshes(meshes) {
         geometries.reserve(meshes.size());
         buildRanges.reserve(meshes.size());
 
-        for(auto& meshPtr : meshes) {
+        verify(meshes.size() == transforms.size(), "Need as many meshes as there are transforms!");
+
+        transformData = GetResourceAllocator().allocateDedicatedBuffer(
+                transforms.size() * sizeof(vk::TransformMatrixKHR),
+                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+        std::vector<vk::TransformMatrixKHR> rtTransforms;
+        rtTransforms.resize(transforms.size());
+
+        for (int j = 0; j < transforms.size(); ++j) {
+            for (int column = 0; column < 4; ++column) {
+                for (int row = 0; row < 3; ++row) {
+                    rtTransforms[j].matrix[row][column] = transforms[j][column][row];
+                }
+            }
+        }
+
+        transformData->stageUploadWithOffset(0, rtTransforms.data(), rtTransforms.size() * sizeof(vk::TransformMatrixKHR));
+
+        for(std::size_t i = 0; i < meshes.size(); i++) {
+            auto& meshPtr = meshes[i];
+            auto& transform = transforms[i];
             verify(meshPtr->getSizeOfSingleVertex() == sizeof(Carrot::Vertex), "Only Carrot::Vertex structure is supported for the moment");
             // TODO: support SkinnedVertex format
 
@@ -36,7 +59,7 @@ namespace Carrot {
                     .maxVertex = static_cast<uint32_t>(meshPtr->getVertexCount()),
                     .indexType = vk::IndexType::eUint32,
                     .indexData = indexAddress,
-                    .transformData = {},
+                    .transformData = transformData->getDeviceAddress() + i * sizeof(vk::TransformMatrixKHR),
             };
 
             buildRanges.emplace_back(vk::AccelerationStructureBuildRangeInfoKHR {
@@ -118,11 +141,11 @@ void Carrot::ASBuilder::createGraveyard() {
     asGraveyard.resize(GetEngine().getSwapchainImageCount());
 }
 
-std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes) {
+std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms) {
     if(!enabled)
         return nullptr;
     Async::LockGuard l { access };
-    return staticGeometries.create(meshes);
+    return staticGeometries.create(meshes, transforms);
 }
 
 void Carrot::ASBuilder::createSemaphores() {

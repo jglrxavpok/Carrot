@@ -75,6 +75,9 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         std::vector<std::shared_ptr<Carrot::Mesh>> instanceMeshes;
         instanceMeshes.reserve(meshes.size());
 
+        std::vector<glm::mat4> meshTransforms;
+        meshTransforms.reserve(meshes.size());
+
         forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
             std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
@@ -89,12 +92,13 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
             if(GetCapabilities().supportsRaytracing) {
                 Carrot::BufferView vertexBuffer{nullptr, *fullySkinnedUnitVertices, static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex) };
                 instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex)));
+                meshTransforms.push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform
             }
         });
 
         if(GetCapabilities().supportsRaytracing) {
             auto& asBuilder = GetRenderer().getASBuilder();
-            auto blas = asBuilder.addBottomLevel(instanceMeshes);
+            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms);
             raytracingBLASes.push_back(blas);
             raytracingInstances.push_back(asBuilder.addInstance(blas));
         }
@@ -393,9 +397,11 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
         data.materialIndex = mat;
         pushConstant.setData(data); // template operator=
 
-        for (const auto& mesh: meshList) {
+        for (const auto& [mesh, meshTransform]: meshList) {
             for(size_t index = 0; index < maxInstanceCount; index++) {
-                packet.useInstance(getInstance(index));
+                Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
+                meshInstanceData.transform = meshInstanceData.transform * meshTransform;
+                packet.useInstance(meshInstanceData);
 
                 std::int32_t vertexOffset = (static_cast<std::int32_t>(index * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 

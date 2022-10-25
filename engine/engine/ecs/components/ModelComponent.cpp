@@ -66,6 +66,8 @@ namespace Carrot::ECS {
             modified = true;
         }
 
+        ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &isTransparent);
+
         if(ImGui::BeginDragDropTarget()) {
             if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
                 std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));

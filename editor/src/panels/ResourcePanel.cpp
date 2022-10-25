@@ -4,6 +4,8 @@
 
 #include "ResourcePanel.h"
 #include "../Peeler.h"
+#include "engine/ecs/components/ModelComponent.h"
+#include "engine/ecs/components/TransformComponent.h"
 #include <core/utils/ImGuiUtils.hpp>
 #include <core/io/IO.h>
 #include <core/io/Files.h>
@@ -270,7 +272,6 @@ namespace Peeler {
             ImGui::EndChild();
         }
         ImGui::End();
-
     }
 
     bool ResourcePanel::drawFileTile(const Carrot::IO::VFS::Path& vfsPath, float tileSize) {
@@ -324,6 +325,13 @@ namespace Peeler {
             // TODO: center text
             auto filename = std::string(vfsPath.getPath().getFilename());
             ImGui::TextWrapped("%s", filename.c_str());
+
+            if(ImGui::BeginPopupContextWindow()) {
+                if(Carrot::IO::isModelFormat(vfsPath.getPath().c_str())) {
+                    fillModelContextPopup(vfsPath);
+                }
+                ImGui::EndPopup();
+            }
         }
         ImGui::EndChild();
 
@@ -357,4 +365,12 @@ namespace Peeler {
         }
     }
 
+    void ResourcePanel::fillModelContextPopup(const Carrot::IO::VFS::Path& vfsPath) {
+        if(ImGui::MenuItem("Add to scene")) {
+            Carrot::ECS::Entity newEntity = app.addEntity()
+                    .addComponent<Carrot::ECS::ModelComponent>();
+            newEntity.updateName(vfsPath.getPath().getFilename());
+            newEntity.getComponent<Carrot::ECS::ModelComponent>()->setFile(vfsPath);
+        }
+    }
 }

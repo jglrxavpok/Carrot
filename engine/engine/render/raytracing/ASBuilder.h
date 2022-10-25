@@ -33,7 +33,7 @@ namespace Carrot {
 
     class BLASHandle: public WeakPoolHandle {
     public:
-        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes);
+        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms);
 
         bool isBuilt() const { return built; }
         void update();
@@ -43,7 +43,8 @@ namespace Carrot {
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
-        std::unique_ptr<AccelerationStructure> as{};
+        std::unique_ptr<AccelerationStructure> as = nullptr;
+        std::unique_ptr<Carrot::Buffer> transformData;
         std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
         bool built = false;
 
@@ -85,7 +86,7 @@ namespace Carrot {
 
         std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
 
-        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes);
+        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms);
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);

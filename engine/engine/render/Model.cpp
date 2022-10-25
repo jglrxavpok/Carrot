@@ -57,6 +57,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         ZoneScopedN("Loading material");
         ZoneText(materialName.c_str(), materialName.size());
 
+        Profiling::PrintingScopedTimer _t(Carrot::sprintf("Loading material %s", materialName.c_str()));
+
         auto handle = materialSystem.createMaterialHandle();
 
         auto setMaterialTexture = [&](std::shared_ptr<Render::TextureHandle>& toSet, aiTextureType textureType, std::shared_ptr<Render::TextureHandle> defaultHandle) {
@@ -84,32 +86,34 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
             return loadedATexture;
         };
-        if(!setMaterialTexture(handle->diffuseTexture, aiTextureType_DIFFUSE, materialSystem.getWhiteTexture())) {
-            aiColor4D diffuse;
-            if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
-                std::uint8_t red = static_cast<std::uint8_t>(diffuse.r * 255.0f) & 0xFF;
-                std::uint8_t green = static_cast<std::uint8_t>(diffuse.g * 255.0f) & 0xFF;
-                std::uint8_t blue = static_cast<std::uint8_t>(diffuse.b * 255.0f) & 0xFF;
-                std::uint8_t alpha = static_cast<std::uint8_t>(diffuse.a * 255.0f) & 0xFF;
+        if(!setMaterialTexture(handle->diffuseTexture, aiTextureType_BASE_COLOR, materialSystem.getWhiteTexture())) {
+            if(!setMaterialTexture(handle->diffuseTexture, aiTextureType_DIFFUSE, materialSystem.getWhiteTexture())) {
+                aiColor4D diffuse;
+                if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
+                    std::uint8_t red = static_cast<std::uint8_t>(diffuse.r * 255.0f) & 0xFF;
+                    std::uint8_t green = static_cast<std::uint8_t>(diffuse.g * 255.0f) & 0xFF;
+                    std::uint8_t blue = static_cast<std::uint8_t>(diffuse.b * 255.0f) & 0xFF;
+                    std::uint8_t alpha = static_cast<std::uint8_t>(diffuse.a * 255.0f) & 0xFF;
 
-                if(red == 0 && green == 0 && blue == 0 && alpha == 255) {
-                    handle->diffuseTexture = GetRenderer().getMaterialSystem().getBlackTexture();
-                } else if(red == 255 && green == 255 && blue == 255 && alpha == 255) {
-                    handle->diffuseTexture = GetRenderer().getMaterialSystem().getWhiteTexture();
-                } else {
-                    std::unique_ptr<Carrot::Image> image = std::make_unique<Carrot::Image>(
-                            GetVulkanDriver(),
-                            vk::Extent3D {
-                                    .width = 1,
-                                    .height = 1,
-                                    .depth = 1,
-                            },
-                            vk::ImageUsageFlagBits::eSampled,
-                            vk::Format::eR8G8B8A8Unorm
-                    );
-                    std::uint8_t pixel[] = { red, green, blue, alpha };
-                    image->stageUpload(std::span<std::uint8_t>(pixel, 4));
-                    handle->diffuseTexture = materialSystem.createTextureHandle(std::make_shared<Render::Texture>(std::move(image)));
+                    if(red == 0 && green == 0 && blue == 0 && alpha == 255) {
+                        handle->diffuseTexture = GetRenderer().getMaterialSystem().getBlackTexture();
+                    } else if(red == 255 && green == 255 && blue == 255 && alpha == 255) {
+                        handle->diffuseTexture = GetRenderer().getMaterialSystem().getWhiteTexture();
+                    } else {
+                        std::unique_ptr<Carrot::Image> image = std::make_unique<Carrot::Image>(
+                                GetVulkanDriver(),
+                                vk::Extent3D {
+                                        .width = 1,
+                                        .height = 1,
+                                        .depth = 1,
+                                },
+                                vk::ImageUsageFlagBits::eSampled,
+                                vk::Format::eR8G8B8A8Unorm
+                        );
+                        std::uint8_t pixel[] = { red, green, blue, alpha };
+                        image->stageUpload(std::span<std::uint8_t>(pixel, 4));
+                        handle->diffuseTexture = materialSystem.createTextureHandle(std::make_shared<Render::Texture>(std::move(image)));
+                    }
                 }
             }
         }
@@ -123,29 +127,50 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     aiNode* armature = scene->mRootNode;
 
-    for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
-        const aiMesh* mesh = scene->mMeshes[meshIndex];
+    std::function<void(const aiNode& node, const glm::mat4& parentTransform)> depthFirstTraversal = [&](const aiNode& node, const glm::mat4& parentTransform) {
+        glm::mat4 nodeTransform = parentTransform * Carrot::glmMat4FromAssimp(node.mTransformation);
+        for(std::size_t meshIndex = 0; meshIndex < node.mNumMeshes; meshIndex++) {
+            const aiMesh* mesh = scene->mMeshes[node.mMeshes[meshIndex]];
 
-        ZoneScopedN("Loading mesh");
-        ZoneText(mesh->mName.C_Str(), mesh->mName.length);
+            ZoneScopedN("Loading mesh");
+            ZoneText(mesh->mName.C_Str(), mesh->mName.length);
 
-        auto loadedMesh = loadMesh(meshIndex, mesh);
-        auto& material = materialMap[mesh->mMaterialIndex];
-        bool hasBones = mesh->HasBones();
-        loadedMesh->name(file.getName()+", mesh #"+std::to_string(loadedMesh->getMeshID()));
+            auto loadedMesh = loadMesh(meshIndex, mesh);
+            auto& material = materialMap[mesh->mMaterialIndex];
+            bool hasBones = mesh->HasBones();
+            loadedMesh->name(file.getName()+" ("+std::string(mesh->mName.C_Str(), mesh->mName.length)+")");
 
-        if(hasBones) {
-            skinnedMeshes[material->getSlot()].push_back(loadedMesh);
-        } else {
-            staticMeshes[material->getSlot()].push_back(loadedMesh);
+            if(hasBones) {
+                skinnedMeshes[material->getSlot()].emplace_back(loadedMesh, nodeTransform);
+            } else {
+                staticMeshes[material->getSlot()].emplace_back(loadedMesh, nodeTransform);
+            }
         }
-    }
+
+        for(std::size_t childIndex = 0; childIndex < node.mNumChildren; childIndex++) {
+            depthFirstTraversal(*node.mChildren[childIndex], nodeTransform);
+        }
+    };
+
+    depthFirstTraversal(*armature, glm::mat4(1.0f));
 
     if(GetCapabilities().supportsRaytracing) {
         auto& builder = GetRenderer().getASBuilder();
-        auto staticMeshesList = getStaticMeshes();
-        if(!staticMeshesList.empty()) {
-            staticBLAS = builder.addBottomLevel(staticMeshesList);
+
+        std::vector<std::shared_ptr<Mesh>> allStaticMeshes{};
+        std::vector<glm::mat4> transforms{};
+
+        allStaticMeshes.reserve(staticMeshes.size()); // assume 1 mesh / material
+        transforms.reserve(staticMeshes.size()); // assume 1 mesh / material
+        for(const auto& [material, meshes] : staticMeshes) {
+            for(const auto& [mesh, transform] : meshes) {
+                allStaticMeshes.push_back(mesh);
+                transforms.push_back(transform);
+            }
+        }
+
+        if(!allStaticMeshes.empty()) {
+            staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms);
         }
     }
 
@@ -270,7 +295,7 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
     data.setUUID(entityID);
     auto draw = [&](auto meshes, auto& pipeline) {
         for(const auto& [mat, meshList] : meshes) {
-            for(const auto& mesh : meshList) {
+            for(const auto& [mesh, transform] : meshList) {
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bind(commands);
@@ -297,7 +322,7 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
 
     auto draw = [&](auto meshes, auto& pipeline) {
         for(const auto& [mat, meshList] : meshes) {
-            for(const auto& mesh : meshList) {
+            for(const auto& [mesh, transform] : meshList) {
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bindForIndirect(commands);
@@ -333,11 +358,16 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
         packet.useInstance(instanceData);
     }
 
+    Carrot::InstanceData meshInstanceData = instanceData;
     for (const auto&[mat, meshList]: staticMeshes) {
-        for (const auto& mesh: meshList) {
+        for (const auto& [mesh, transform]: meshList) {
             ZoneScopedN("mesh use");
             data.materialIndex = mat;
             packet.useMesh(*mesh);
+
+            meshInstanceData.transform = instanceData.transform * transform;
+            packet.useInstance(meshInstanceData);
+
 
             pushConstant.setData(data); // template operator=
 
@@ -357,12 +387,14 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
     pushConstant.id = "drawDataPush";
     pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
 
-    packet.useInstance(instanceData);
-
+    Carrot::AnimatedInstanceData meshInstanceData = instanceData;
     for (const auto&[mat, meshList]: skinnedMeshes) {
-        for (const auto& mesh: meshList) {
+        for (const auto& [mesh, transform]: meshList) {
             data.materialIndex = mat;
             packet.useMesh(*mesh);
+
+            meshInstanceData.transform = instanceData.transform * transform;
+            packet.useInstance(meshInstanceData);
 
             pushConstant.setData(data); // template operator=
 
@@ -378,6 +410,12 @@ std::shared_ptr<Carrot::Mesh> Carrot::Model::loadMesh(int meshIndex, const aiMes
 
     bool usesSkinning = mesh->HasBones();
 
+    if(usesSkinning) {
+        skinnedVertices.reserve(mesh->mNumVertices);
+    } else {
+        vertices.reserve(mesh->mNumVertices);
+    }
+    indices.reserve(mesh->mNumFaces * 3);
     for(size_t vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++) {
         const aiVector3D vec = mesh->mVertices[vertexIndex];
         const aiColor4D* vertexColor = mesh->mColors[0];
@@ -552,13 +590,19 @@ void Carrot::Model::updateKeyframeRecursively(Carrot::Keyframe& keyframe, const 
 }
 
 std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model::getSkinnedMeshes() const {
-    return skinnedMeshes;
+    std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> result;
+    for(const auto& [material, meshes] : skinnedMeshes) {
+        for(const auto& [mesh, transform] : meshes) {
+            result[material].push_back(mesh);
+        }
+    }
+    return result;
 }
 
 std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getStaticMeshes() const {
     std::vector<std::shared_ptr<Mesh>> result{};
     for(const auto& [material, meshes] : staticMeshes) {
-        for(const auto& mesh : meshes) {
+        for(const auto& [mesh, transform] : meshes) {
             result.push_back(mesh);
         }
     }

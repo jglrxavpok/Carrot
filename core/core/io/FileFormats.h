@@ -30,8 +30,9 @@ namespace Carrot::IO {
 
         FBX,
         OBJ,
+        GLTF,
         ModelFirst = FBX,
-        ModelLast = OBJ,
+        ModelLast = GLTF,
 
         LUA,
         ScriptFirst = LUA,
@@ -81,6 +82,7 @@ namespace Carrot::IO {
 
         CHECK(FBX);
         CHECK(OBJ);
+        CHECK(GLTF);
 
         CHECK(LUA);
 

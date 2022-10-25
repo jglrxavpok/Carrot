@@ -49,6 +49,9 @@ namespace Peeler {
 
         void drawCantSavePopup() override;
 
+    public:
+        Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
+
     private:
         void deferredLoad();
 
@@ -66,7 +69,6 @@ namespace Peeler {
 
     private:
         void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});
-        Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
 

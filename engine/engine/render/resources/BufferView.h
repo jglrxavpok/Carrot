@@ -32,6 +32,19 @@ namespace Carrot {
         /// Only use for host-visible and host-coherent memory
         void directUpload(const void* data, vk::DeviceSize length);
 
+        /// Upload to device-local memory
+        void stageUpload(const void* data, vk::DeviceSize length);
+
+        template<typename T>
+        void directUpload(const std::span<const T>& data) {
+            directUpload(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
+        }
+
+        template<typename T>
+        void stageUpload(const std::span<const T>& data) {
+            stageUpload(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
+        }
+
         /// Copies the contents of this buffer to the given memory
         void download(const std::span<std::uint8_t>& data, std::uint32_t offset = 0) const;
 

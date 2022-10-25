@@ -92,12 +92,17 @@ namespace Carrot {
         void loadSkeleton(aiNode* armature);
 
     private:
+        struct MeshAndTransform {
+            std::shared_ptr<Mesh> mesh;
+            glm::mat4 transform{1.0f};
+        };
+
         Carrot::Engine& engine;
         std::string debugName;
         std::shared_ptr<Carrot::Pipeline> staticMeshesPipeline;
         std::shared_ptr<Carrot::Pipeline> skinnedMeshesPipeline;
-        std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> staticMeshes{};
-        std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Mesh>>> skinnedMeshes{};
+        std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> staticMeshes{};
+        std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
 
         std::shared_ptr<BLASHandle> staticBLAS;

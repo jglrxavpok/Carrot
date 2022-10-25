@@ -37,6 +37,11 @@ void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length) {
     getBuffer().directUpload(data, length, start);
 }
 
+void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length) {
+    verify(length <= size, "Cannot upload more data than this view allows");
+    getBuffer().stageUploadWithOffset(start, data, length);
+}
+
 void Carrot::BufferView::download(const std::span<std::uint8_t>& data, std::uint32_t offset) const {
     verify(offset >= 0, "Offset must be >= 0");
     verify(offset < size, "Offset must be < size");

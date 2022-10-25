@@ -20,6 +20,10 @@ namespace Peeler {
         const Carrot::Render::Texture& getFileTexture(const Carrot::IO::VFS::Path& filePath) const;
         void updateCurrentFolder(const Carrot::IO::VFS::Path& vfsPath);
 
+    private:
+        void fillModelContextPopup(const Carrot::IO::VFS::Path& vfsPath);
+
+    private:
         enum class ResourceType {
             GenericFile,
             Folder,
