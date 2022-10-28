@@ -28,12 +28,13 @@ void main() {
     Material material = materials[instanceDrawData.materialIndex];
     uint diffuseTexture = nonuniformEXT(material.diffuseTexture);
     uint normalMap = nonuniformEXT(material.normalMap);
+    uint alphaMap = nonuniformEXT(material.alphaMap);
     vec4 texColor = texture(sampler2D(textures[diffuseTexture], linearSampler), uv);
     texColor.a = 1.0;
     if(texColor.a < 0.01) {
         discard;
     }
-    outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, 1.0);
+    outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, texColor.a * instanceColor.a);
     outViewPosition = vec4(viewPosition, 1.0);
 
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;

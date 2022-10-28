@@ -3,6 +3,8 @@
 struct Material {
     uint diffuseTexture;
     uint normalMap;
+    uint alphaMap;
+    uint roughnessMetallic;
 };
 
 #define MATERIAL_SYSTEM_SET(setID) \

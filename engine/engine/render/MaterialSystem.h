@@ -23,6 +23,8 @@ namespace Carrot::Render {
     struct MaterialData {
         std::uint32_t diffuseTexture = -1;
         std::uint32_t normalMap = -1;
+        std::uint32_t alphaMap = -1;
+        std::uint32_t roughnessMetallic = -1;
     };
 
     class TextureHandle: public WeakPoolHandle {
@@ -45,6 +47,8 @@ namespace Carrot::Render {
     public:
         std::shared_ptr<TextureHandle> diffuseTexture;
         std::shared_ptr<TextureHandle> normalMap;
+        std::shared_ptr<TextureHandle> alphaMap;
+        std::shared_ptr<TextureHandle> roughnessMetallic;
 
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 

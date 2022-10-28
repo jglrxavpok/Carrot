@@ -25,6 +25,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
 
+        ${EngineRoot}render/resources/model_loading/AssimpLoader.cpp
+        ${EngineRoot}render/resources/model_loading/GLTFLoader.cpp
+
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
         ${EngineRoot}render/shaders/ShaderSource.cpp

@@ -16,6 +16,7 @@
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
 #include "engine/render/InstanceData.h"
+#include "engine/render/resources/model_loading/LoadedScene.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -79,17 +80,6 @@ namespace Carrot {
 
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
-
-    private:
-        std::shared_ptr<Mesh> loadMesh(int meshIndex, const aiMesh* mesh);
-
-        void updateKeyframeRecursively(Keyframe& keyframe, const aiNode* armature, float time, const std::unordered_map<std::string, aiNodeAnim*>& animationNodes, const glm::mat4& globalTransform, const glm::mat4& parentMatrix = glm::mat4{1.0f});
-
-        void loadAnimations(Carrot::Engine& engine, const aiScene *scene,
-                            const aiNode *armature);
-
-        void loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent);
-        void loadSkeleton(aiNode* armature);
 
     private:
         struct MeshAndTransform {

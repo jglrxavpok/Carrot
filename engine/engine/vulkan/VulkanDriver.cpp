@@ -121,6 +121,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-Shader-InterfaceTypeMismatch") != nullptr) {
         debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-VkBufferDeviceAddressInfo-buffer-02601") != nullptr) {
+        debug_break();
     }
 
     return VK_FALSE;

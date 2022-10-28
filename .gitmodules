@@ -52,3 +52,6 @@
 [submodule "thirdparty/reactphysics3d"]
 	path = thirdparty/reactphysics3d
 	url = https://github.com/DanielChappuis/reactphysics3d
+[submodule "thirdparty/tinygltf"]
+	path = thirdparty/tinygltf
+	url = https://github.com/syoyo/tinygltf

@@ -10,11 +10,10 @@
 #include <string>
 #include <glm/glm.hpp>
 
-namespace Carrot {
-    class Model; // forward declaration for friend class declaration
-}
-
 namespace Carrot::Render {
+    class AssimpLoader; // forward declaration for friend class declaration
+    class GLTFLoader; // forward declaration for friend class declaration
+
     using BoneName = std::string;
 
     struct Bone {
@@ -75,6 +74,7 @@ namespace Carrot::Render {
         glm::mat4 globalInverseTransform;
         glm::mat4 invGlobalInverseTransform;
 
-        friend class Carrot::Model; // this structure is meant to be loaded by Model
+        friend class Carrot::Render::AssimpLoader; // this structure is meant to be loaded by Model
+        friend class Carrot::Render::GLTFLoader; // this structure is meant to be loaded by Model
     };
 }

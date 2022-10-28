@@ -60,10 +60,23 @@ namespace Carrot::Render {
         } else {
             data->diffuseTexture = materialSystem.whiteTextureHandle->getSlot();
         }
+
         if(normalMap) {
             data->normalMap = normalMap->getSlot();
         } else {
             data->normalMap = materialSystem.blueTextureHandle->getSlot();
+        }
+
+        if(alphaMap) {
+            data->alphaMap = alphaMap->getSlot();
+        } else {
+            data->alphaMap = materialSystem.whiteTextureHandle->getSlot();
+        }
+
+        if(roughnessMetallic) {
+            data->roughnessMetallic = roughnessMetallic->getSlot();
+        } else {
+            data->roughnessMetallic = materialSystem.blackTextureHandle->getSlot();
         }
     }
 
@@ -71,6 +84,8 @@ namespace Carrot::Render {
         Carrot::Render::MaterialData* data = materialSystem.getData(*this);
         data->diffuseTexture = materialSystem.invalidMaterialHandle->diffuseTexture->getSlot();
         data->normalMap = materialSystem.invalidMaterialHandle->normalMap->getSlot();
+        data->alphaMap = materialSystem.invalidMaterialHandle->alphaMap->getSlot();
+        data->roughnessMetallic = materialSystem.invalidMaterialHandle->roughnessMetallic->getSlot();
     }
 
     MaterialSystem::MaterialSystem() {
@@ -168,6 +183,8 @@ namespace Carrot::Render {
         invalidMaterialHandle = createMaterialHandle();
         invalidMaterialHandle->diffuseTexture = invalidTextureHandle;
         invalidMaterialHandle->normalMap = invalidTextureHandle;
+        invalidMaterialHandle->alphaMap = invalidTextureHandle;
+        invalidMaterialHandle->roughnessMetallic = invalidTextureHandle;
 
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
@@ -240,6 +257,8 @@ namespace Carrot::Render {
                 static int textureType = 0;
                 ImGui::RadioButton("Diffuse", &textureType, 0);
                 ImGui::RadioButton("NormalMap", &textureType, 1);
+                ImGui::RadioButton("AlphaMap", &textureType, 2);
+                ImGui::RadioButton("RoughnessMetallic", &textureType, 3);
 
                 const int columnCount = 8;
                 if(ImGui::BeginTable("Materials", columnCount)) {
@@ -261,6 +280,14 @@ namespace Carrot::Render {
 
                                 case 1:
                                     handle = material->normalMap;
+                                    break;
+
+                                case 2:
+                                    handle = material->alphaMap;
+                                    break;
+
+                                case 3:
+                                    handle = material->roughnessMetallic;
                                     break;
                             }
 
@@ -325,9 +352,13 @@ namespace Carrot::Render {
             if(invalidTextureHandle) {
                 materialDataPtr[i].diffuseTexture = invalidTextureHandle->getSlot();
                 materialDataPtr[i].normalMap = invalidTextureHandle->getSlot();
+                materialDataPtr[i].alphaMap = invalidTextureHandle->getSlot();
+                materialDataPtr[i].roughnessMetallic = invalidTextureHandle->getSlot();
             } else {
                 materialDataPtr[i].diffuseTexture = 0;
                 materialDataPtr[i].normalMap = 0;
+                materialDataPtr[i].alphaMap = 0;
+                materialDataPtr[i].roughnessMetallic = 0;
             }
         }
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);

@@ -16,6 +16,8 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
                        vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
     deviceLocal = (properties & vk::MemoryPropertyFlagBits::eDeviceLocal) == vk::MemoryPropertyFlagBits::eDeviceLocal;
 
+    usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
     auto& queueFamilies = driver.getQueueFamilies();
     if(families.empty()) {
         families.insert(queueFamilies.graphicsFamily.value());

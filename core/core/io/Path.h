@@ -70,6 +70,13 @@ namespace Carrot::IO {
          */
         std::string_view getFilename() const;
 
+        /**
+         * Returns a string_view representing the extension inside the path (with the dot), extracted from the last dot
+         * present after the last separator, to the end of the path.
+         * @return
+         */
+        std::string_view getExtension() const;
+
         friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
             return os << bar.path;
         }
@@ -81,6 +88,10 @@ namespace Carrot::IO {
         Path operator/(std::string_view toAppend) const;
         Path operator/(const char* toAppend) const;
         Path operator/(const Path& toAppend) const;
+
+    public:
+        Path relative(std::string_view toAppend) const;
+        Path relative(const char* toAppend) const;
 
     public:
         PathPartIterator begin() const;

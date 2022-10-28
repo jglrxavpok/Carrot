@@ -127,6 +127,10 @@ namespace Carrot::IO {
         return root.empty();
     }
 
+    bool VirtualFileSystem::Path::isEmpty() const {
+        return path.isEmpty();
+    }
+
     std::string VirtualFileSystem::Path::toString() const {
         if(root.empty()) {
             return path.asString();
@@ -152,5 +156,12 @@ namespace Carrot::IO {
 
     VirtualFileSystem::Path VirtualFileSystem::Path::operator/(std::string_view subpath) const {
         return operator/(NormalizedPath(subpath));
+    }
+
+    VirtualFileSystem::Path VirtualFileSystem::Path::relative(std::string_view subpath) const {
+        return Path {
+            root,
+            path.relative(subpath)
+        };
     }
 }

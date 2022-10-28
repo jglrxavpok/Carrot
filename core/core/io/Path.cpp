@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 #include <deque>
+#include <filesystem>
 
 namespace Carrot::IO {
     PathPartIterator::PathPartIterator(const Path& path, std::size_t startIndex, std::size_t endIndex): path(path), startIndex(startIndex), endIndex(endIndex) {}
@@ -140,7 +141,7 @@ namespace Carrot::IO {
         std::size_t newSize = thisSize + toAppend.size() + 1/* separator */;
         std::unique_ptr<char[]> resultPath = std::make_unique<char[]>(newSize+1);
         memcpy(resultPath.get(), path.data(), thisSize);
-        resultPath.get()[thisSize] = '/';
+        resultPath.get()[thisSize] = Path::Separator;
         memcpy(resultPath.get() + thisSize + 1, toAppend.data() + otherOffset, toAppend.size()-otherOffset);
         resultPath.get()[newSize] = '\0';
         return Path{resultPath.get()};
@@ -154,6 +155,24 @@ namespace Carrot::IO {
         return append(toAppend.path);
     }
 
+    Path Path::relative(std::string_view relativePath) const {
+        if(relativePath.starts_with(Path::Separator) || isEmpty()) {
+            return Path { relativePath };
+        }
+        if(path.ends_with(Path::Separator)) {
+            return append(relativePath);
+        }
+
+        std::filesystem::path fullPath = path;
+        fullPath = fullPath.parent_path();
+        fullPath /= relativePath;
+        return {fullPath.string()};
+    }
+
+    Path Path::relative(const char* relativePath) const {
+        return relative(std::string_view(relativePath));
+    }
+
     bool Path::operator==(const Path& other) const {
         return path == other.path;
     }
@@ -165,6 +184,31 @@ namespace Carrot::IO {
         }
         std::string_view pathView = path;
         return pathView.substr(lastSeparator+1);
+    }
+
+    std::string_view Path::getExtension() const {
+        if(path.empty())
+            return {};
+        std::size_t startSearchIndex = path.find_last_of('/');
+        if(startSearchIndex == std::string::npos) {
+            // no separators, start from start of string
+            startSearchIndex = 0;
+        }
+        const std::size_t index = path.find_last_of('.');
+        if(index == std::string::npos) {
+            // no extension
+            return {};
+        }
+        if(index < startSearchIndex) {
+            // dot before last '/'
+            return {};
+        }
+        if(index == startSearchIndex+1) {
+            // hidden file
+            return {};
+        }
+        std::string_view pathView = path;
+        return pathView.substr(index);
     }
 
     // -- NormalizedPath

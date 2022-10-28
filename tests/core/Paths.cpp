@@ -127,3 +127,24 @@ TEST(Paths, GetFilename) {
     ASSERT_EQ(std::string(Path("/a/").getFilename()), "");
     ASSERT_EQ(std::string(Path("abc").getFilename()), "abc");
 }
+
+TEST(Paths, GetExtension) {
+    ASSERT_EQ(std::string(Path("").getExtension()), "");
+    ASSERT_EQ(std::string(Path("/a").getExtension()), "");
+    ASSERT_EQ(std::string(Path("/a.b/aa").getExtension()), "");
+    ASSERT_EQ(std::string(Path("/a.b/aa.c").getExtension()), ".c");
+    ASSERT_EQ(std::string(Path("/a/.txt").getExtension()), ""); // hidden files on Unix
+    ASSERT_EQ(std::string(Path("/a/bbb.txt").getExtension()), ".txt");
+    ASSERT_EQ(std::string(Path("aaa.gltf").getExtension()), ".gltf");
+}
+
+TEST(Paths, Relative) {
+    ASSERT_EQ(Path("").relative("a"), Path("a"));
+    ASSERT_EQ(Path("a").relative("b"), Path("b"));
+    ASSERT_EQ(Path("folder/").relative("b"), Path("folder/b"));
+    ASSERT_EQ(Path("folder/").relative("./b"), Path("folder/./b"));
+    ASSERT_EQ(Path("folder/").relative("a/./b"), Path("folder/a/./b"));
+    ASSERT_EQ(Path("folder/").relative("../b"), Path("folder/../b")); // no normalization
+    ASSERT_EQ(Path("folder/").relative("folder2/.."), Path("folder/folder2/.."));
+    ASSERT_EQ(Path("folder/").relative("folder2/../folder3/"), Path("folder/folder2/../folder3/"));
+}

@@ -48,7 +48,7 @@ public:
 
         if(GetCapabilities().supportsRaytracing) {
             auto& asBuilder = GetRenderer().getASBuilder();
-            staticBLAS = asBuilder.addBottomLevel(staticModel->getStaticMeshes());
+            staticBLAS = staticModel->getStaticBLAS();
             staticModelInstance = asBuilder.addInstance(staticBLAS);
         }
 

@@ -42,11 +42,19 @@ namespace Carrot::IO {
             Path operator/(std::string_view subpath) const;
 
         public:
+            Path relative(std::string_view subpath) const;
+
+        public:
             /**
              * True iif no root is associated to this path.
              * If true, will iterate through all known roots on access.
              */
             bool isGeneric() const;
+
+            /**
+             * True iif the relative path part is empty
+             */
+            bool isEmpty() const;
 
             std::string toString() const;
 

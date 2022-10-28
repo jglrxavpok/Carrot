@@ -73,6 +73,7 @@ SET(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT FALSE)
 SET(ASSIMP_BUILD_FBX_IMPORTER TRUE)
 SET(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
 SET(ASSIMP_BUILD_M3D_IMPORTER TRUE)
+SET(ASSIMP_BUILD_GLTF_IMPORTER TRUE)
 
 SET(ASSIMP_BUILD_M3D_EXPORTER TRUE)
 SET(ASSIMP_BUILD_ASSBIN_EXPORTER TRUE)
@@ -99,6 +100,10 @@ add_subdirectory(thirdparty/assimp)
 add_subdirectory(thirdparty/nativefiledialog-extended)
 add_subdirectory(thirdparty/openexr)
 add_subdirectory(thirdparty/reactphysics3d)
+
+set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(thirdparty/tinygltf)
 
 FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
@@ -143,6 +148,7 @@ function(add_includes Target)
     endif()
 
 
+    target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
     target_compile_definitions("${Target}" PRIVATE TRACY_ENABLE=1)
