@@ -1,5 +1,6 @@
 #include "includes/gbuffer.glsl"
 #include "includes/lights.glsl"
+#include "includes/debugparams.glsl"
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable
@@ -27,12 +28,6 @@ layout(set = 0, binding = 10) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = 11) uniform texture2D noiseTexture;
 #endif
 
-/*
-layout(set = 0, binding = 11) uniform Debug {
-    #include "debugparams.glsl"
-} debug;*/
-
-
 layout(set = 1, binding = 0) uniform CameraBufferObject {
     mat4 projection;
     mat4 view;
@@ -45,7 +40,7 @@ layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
 LIGHT_SET(2)
-
+DEBUG_OPTIONS_SET(3)
 
 float computePointLight(vec3 worldPos, vec3 normal, Light light) {
     vec3 lightPosition = light.position;
@@ -164,11 +159,30 @@ void main() {
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
     vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
     vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
-    vec3 normal = normalize((cbo.inverseView * vec4(texture(sampler2D(viewNormals, linearSampler), uv).xyz, 0.0)).xyz);
+    vec3 viewNormal = texture(sampler2D(viewNormals, linearSampler), uv).xyz;
+    vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
     vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
 
     uint intProperties = texture(intPropertiesInput, uv).r;
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
+
+    if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
+        outColor = fragmentColor;
+        return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_DEPTH) {
+        outColor = vec4(currDepth, currDepth, currDepth, 1.0);
+        return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_POSITION) {
+        outColor = vec4(viewPos, 1.0);
+        return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_NORMAL) {
+        outColor = vec4(viewNormal, 1.0);
+        return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_METALLIC_ROUGHNESS) {
+        outColor = vec4(1.0, 1.0, 1.0, 1.0); // TODO
+        return;
+    }
+
     if(currDepth < 1.0) {
         if((intProperties & IntPropertiesRayTracedLighting) == IntPropertiesRayTracedLighting) {
             outColorWorld = vec4(fragmentColor.rgb, fragmentColor.a);

@@ -28,6 +28,7 @@ static Carrot::Lookup DescriptorSetType = std::array {
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Camera, "camera"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Materials, "materials"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Lights, "lights"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Debug, "debug"),
 };
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
@@ -346,6 +347,9 @@ const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uin
         case PipelineDescription::DescriptorSet::Type::Lights:
             return GetRenderer().getLighting().getDescriptorSetLayout();
 
+        case PipelineDescription::DescriptorSet::Type::Debug:
+            return GetRenderer().getDebugDescriptorSetLayout();
+
         default:
             std::terminate();
             return *((vk::DescriptorSetLayout*)nullptr);
@@ -436,17 +440,10 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
             switch (binding.vkBinding.descriptorType) {
                 case vk::DescriptorType::eUniformBufferDynamic: {
                     auto& buffer = buffers[writeIndex];
-                    if(binding.name == "Debug") {
-                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
-                        buffer.range = sizeof(DebugBufferObject);
-                    } else if(binding.name == "Particles") {
-                        // TODO
-                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
-                        buffer.range = sizeof(DebugBufferObject);
+                    if(binding.name == "Particles") {
+
                     } else {
-                        // TODO
-                        buffer.buffer = driver.getDebugUniformBuffers()[i]->getVulkanBuffer();
-                        buffer.range = sizeof(DebugBufferObject);
+                        TODO;
                     }
                     buffer.offset = 0;
                     write.pBufferInfo = buffers.data()+writeIndex;
@@ -498,6 +495,12 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
         case PipelineDescription::DescriptorSet::Type::Lights:
         {
             std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getLighting().getCameraDescriptorSet(renderContext) };
+            return sets;
+        }
+
+        case PipelineDescription::DescriptorSet::Type::Debug:
+        {
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getDebugDescriptorSet(renderContext) };
             return sets;
         }
 

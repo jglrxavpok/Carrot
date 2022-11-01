@@ -1,4 +1,5 @@
 #include "includes/gbuffer.glsl"
+#include "includes/debugparams.glsl"
 
 layout(input_attachment_index = 0, binding = 0) uniform subpassInput albedo;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput depth;
@@ -8,9 +9,7 @@ layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
 layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
 layout(set = 0, binding = 6) uniform sampler linearSampler;
 
-layout(set = 0, binding = 9) uniform Debug {
-    #include "debugparams.glsl"
-} debug;
+DEBUG_OPTIONS_SET(3)
 
 layout(set = 0, binding = 10) uniform texture2D skyboxTexture;
 

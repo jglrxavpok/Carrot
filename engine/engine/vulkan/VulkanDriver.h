@@ -168,8 +168,6 @@ namespace Carrot {
 
         void createUniformBuffers();
 
-        std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers() { return debugUniformBuffers; };
-
         Window& getWindow() { return window; };
 
         vk::Format getDepthFormat() { return depthFormat; };
@@ -278,7 +276,6 @@ namespace Carrot {
 
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
 
-        std::vector<std::shared_ptr<Buffer>> debugUniformBuffers{};
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
         std::unordered_map<std::uint32_t, std::vector<DeferredCommandBufferDestruction>> deferredCommandBufferDestructions;

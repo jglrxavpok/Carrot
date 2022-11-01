@@ -185,7 +185,6 @@ set(VERTEX_SHADERS
 set(FRAGMENT_SHADERS
         gBuffer.fragment.glsl
         blit.fragment.glsl
-        gResolve.fragment.glsl
         skybox.fragment.glsl
         particles.fragment.glsl
         gResolve-rendergraph-noraytracing.fragment.glsl

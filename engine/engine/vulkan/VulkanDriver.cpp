@@ -842,16 +842,6 @@ void Carrot::VulkanDriver::cleanupSwapchain() {
 }
 
 void Carrot::VulkanDriver::createUniformBuffers() {
-    vk::DeviceSize debugBufferSize = sizeof(Carrot::DebugBufferObject);
-    debugUniformBuffers.resize(getSwapchainImageCount(), nullptr);
-
-    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        debugUniformBuffers[i] = std::make_unique<Carrot::Buffer>(*this,
-                                                             debugBufferSize,
-                                                             vk::BufferUsageFlagBits::eUniformBuffer,
-                                                             vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                                                             createGraphicsAndTransferFamiliesSet());
-    }
 }
 
 void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size) {

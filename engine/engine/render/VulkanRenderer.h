@@ -9,6 +9,7 @@
 #include <source_location>
 #include <functional>
 #include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/resources/PerFrame.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/vulkan/SwapchainAware.h"
@@ -165,6 +166,8 @@ namespace Carrot {
 
     public:
         const vk::DescriptorSetLayout& getCameraDescriptorSetLayout() const;
+        const vk::DescriptorSetLayout& getDebugDescriptorSetLayout() const;
+        const vk::DescriptorSet& getDebugDescriptorSet(const Render::Context& renderContext) const;
 
         std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
         void destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
@@ -236,6 +239,10 @@ namespace Carrot {
 
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
+        vk::UniqueDescriptorSetLayout debugDescriptorSetLayout{};
+        vk::UniqueDescriptorPool debugDescriptorPool{};
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> debugBuffers;
+        Render::PerFrame<vk::DescriptorSet> debugDescriptorSets;
 
         std::unique_ptr<ASBuilder> asBuilder = nullptr;
 
@@ -286,6 +293,7 @@ namespace Carrot {
 
     private:
         void createCameraSetResources();
+        void createDebugSetResources();
 
         void createUIResources();
 

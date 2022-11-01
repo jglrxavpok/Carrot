@@ -34,8 +34,9 @@ namespace Carrot {
                 Camera,
                 Materials,
                 Lights,
+                Debug,
 
-                CountOf = Materials
+                CountOf
             };
 
             // --

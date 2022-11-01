@@ -17,6 +17,10 @@
     {
       "type": "lights",
       "setID": 2
+    },
+    {
+      "type": "debug",
+      "setID": 3
     }
   ]
 }

@@ -18,11 +18,13 @@
 #include "engine/render/DrawData.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Font.h"
+#include "engine/render/resources/ResourceAllocator.h"
 #include "engine/math/Transform.h"
 #include <execution>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
+static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 
 static thread_local Carrot::VulkanRenderer::ThreadPackets* threadLocalRenderPackets = nullptr;
 static thread_local Carrot::Render::PacketContainer* threadLocalPacketStorage = nullptr;
@@ -45,6 +47,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                        });
 
     createCameraSetResources();
+    createDebugSetResources();
     createRayTracer();
     createUIResources();
     createGBuffer();
@@ -650,6 +653,36 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
+
+    {
+        static DebugBufferObject obj{};
+        auto& buffer = debugBuffers[renderContext.swapchainIndex];
+
+        static std::uint32_t gBufferDebugType = DEBUG_GBUFFER_DISABLED;
+
+        if(ShowGBuffer && &renderContext.viewport == &GetEngine().getMainViewport()) {
+            bool open = true;
+            if(ImGui::Begin("GBuffer debug", &open)) {
+                static int gIndex = DEBUG_GBUFFER_DISABLED;
+                ImGui::RadioButton("Disable debug", &gIndex, DEBUG_GBUFFER_DISABLED);
+                ImGui::RadioButton("Albedo", &gIndex, DEBUG_GBUFFER_ALBEDO);
+                ImGui::RadioButton("Positions", &gIndex, DEBUG_GBUFFER_POSITION);
+                ImGui::RadioButton("Normals", &gIndex, DEBUG_GBUFFER_NORMAL);
+                ImGui::RadioButton("Depth", &gIndex, DEBUG_GBUFFER_DEPTH);
+                ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
+
+                obj.gBufferType = gIndex;
+            }
+            ImGui::End();
+
+            if(!open) {
+                ShowGBuffer.setValue(false);
+            }
+        }
+
+        buffer->directUpload(&obj, sizeof(obj));
+    }
+
     asBuilder->onFrame(renderContext);
 }
 
@@ -679,6 +712,58 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
             .poolSizeCount = 1,
             .pPoolSizes = &poolSize,
     });
+}
+
+void Carrot::VulkanRenderer::createDebugSetResources() {
+    vk::DescriptorSetLayoutBinding debugBinding {
+            .binding = 0,
+            .descriptorType = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+    };
+    debugDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = 1,
+            .pBindings = &debugBinding,
+    });
+
+    vk::DescriptorPoolSize poolSize {
+            .type = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+    };
+    debugDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxCameras,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+    });
+
+    std::size_t count = GetEngine().getSwapchainImageCount();
+    std::vector<vk::DescriptorSetLayout> layouts {count, *debugDescriptorSetLayout};
+    debugDescriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *debugDescriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
+    });
+
+    debugBuffers.resize(debugDescriptorSets.size());
+    for (int i = 0; i < debugDescriptorSets.size(); i++) {
+        debugBuffers[i] = GetResourceAllocator().allocateDedicatedBuffer(
+                sizeof(DebugBufferObject),
+                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+                );
+
+        vk::DescriptorBufferInfo cameraBuffer = debugBuffers[i]->asBufferInfo();
+        vk::WriteDescriptorSet write {
+                .dstSet = debugDescriptorSets[i],
+                .dstBinding = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                .pBufferInfo = &cameraBuffer,
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
+    }
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
@@ -714,6 +799,14 @@ void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::D
 
 const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getCameraDescriptorSetLayout() const {
     return *cameraDescriptorSetLayout;
+}
+
+const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getDebugDescriptorSetLayout() const {
+    return *debugDescriptorSetLayout;
+}
+
+const vk::DescriptorSet& Carrot::VulkanRenderer::getDebugDescriptorSet(const Render::Context& renderContext) const {
+    return debugDescriptorSets[renderContext.swapchainIndex];
 }
 
 void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {

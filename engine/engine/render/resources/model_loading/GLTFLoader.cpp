@@ -299,7 +299,6 @@ namespace Carrot::Render {
             }
         }
 
-
         for(const auto& scene : model.scenes) {
             for(const auto& nodeIndex : scene.nodes) {
                 loadNodesRecursively(result, model, nodeIndex, meshes, glm::mat4{1.0f});

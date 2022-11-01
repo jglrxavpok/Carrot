@@ -166,8 +166,6 @@ namespace Carrot {
 
         std::uint32_t getSwapchainImageCount();
 
-        std::vector<std::shared_ptr<Buffer>>& getDebugUniformBuffers();
-
         /// Creates a set with the graphics and transfer family indices
         std::set<uint32_t> createGraphicsAndTransferFamiliesSet();
 
