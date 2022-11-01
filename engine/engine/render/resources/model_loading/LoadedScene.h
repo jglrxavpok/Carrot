@@ -25,6 +25,8 @@ namespace Carrot::Render {
 
         std::string name;
 
+        BlendMode blendMode = BlendMode::None;
+
         /**
          * Path to albedo texture, empty if none
          */

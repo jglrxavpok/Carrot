@@ -32,10 +32,10 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     const Carrot::IO::Path filePath { file.getName() };
 
     Render::LoadedScene scene;
-    /*if(filePath.getExtension() == ".gltf") {
+    if(filePath.getExtension() == ".gltf") {
         Render::GLTFLoader loader;
         scene = std::move(loader.load(file));
-    } else */{
+    } else {
         Render::AssimpLoader loader;
         scene = std::move(loader.load(file));
     }
@@ -45,6 +45,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     skinnedMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
 
     Carrot::Async::Counter waitMaterialLoads;
+    // TODO: reduce task count
     for(const auto& material : scene.materials) {
         ZoneScopedN("Loading material");
         ZoneText(material.name.c_str(), material.name.size());
@@ -92,6 +93,12 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     for(const auto& primitive : scene.primitives) {
         std::shared_ptr<SingleMesh> mesh;
         const auto& material = materials[primitive.materialIndex];
+
+        if(scene.materials[primitive.materialIndex].blendMode != Render::LoadedMaterial::BlendMode::None) {
+            // TODO: handle alpha blending properly
+            continue;
+        }
+
         const glm::mat4& nodeTransform = primitive.transform;
         if(primitive.isSkinned) {
             mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);

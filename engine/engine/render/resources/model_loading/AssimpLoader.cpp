@@ -51,7 +51,7 @@ namespace Carrot::Render {
                     aiString texturePath;
                     if(mat->GetTexture(textureType, 0, &texturePath) == AI_SUCCESS) {
                         Carrot::IO::VFS::Path path = Carrot::IO::VFS::Path { file.getName() };
-                        toSet = path.relative(std::string(texturePath.data, texturePath.length));
+                        toSet = path.relative(Carrot::IO::VFS::Path { std::string(texturePath.data, texturePath.length) });
                     }
 
                     return true;

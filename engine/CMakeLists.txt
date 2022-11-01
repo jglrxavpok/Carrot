@@ -282,6 +282,7 @@ if (MSVC)
 endif()
 
 set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
+        tinygltf
         ${OPENXR-LOADER-LIB-LOCATION}
         ${ADDITIONAL_LIBS})
 

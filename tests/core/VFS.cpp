@@ -87,3 +87,14 @@ TEST(VFS, Represent) {
     ASSERT_EQ(vfs.represent(WIN_PREFIX "/aaa/f.txt"), "foobar://f.txt");
     ASSERT_FALSE(vfs.represent(WIN_PREFIX "/bbb/f.txt").has_value()); // no root associated
 }
+
+TEST(VFS, Relative) {
+    VFS vfs;
+    vfs.addRoot("engine", WIN_PREFIX "/root/folder");
+    vfs.addRoot("game", WIN_PREFIX "/aaa");
+
+    ASSERT_EQ(VFS::Path{"game://models/test.gltf"}.relative("game://models/a.gltf"), VFS::Path { "game://models/a.gltf" }); // same root but absolute
+    ASSERT_EQ(VFS::Path{"game://models/test.gltf"}.relative("engine://models/a.gltf"), VFS::Path { "engine://models/a.gltf" }); // different root
+    ASSERT_EQ(VFS::Path{"game://models/test.gltf"}.relative("a.gltf"), VFS::Path { "game://models/a.gltf" }); // actually relative
+    ASSERT_EQ(VFS::Path{"game://models/test.gltf"}.relative("../a.txt"), VFS::Path { "game://a.txt" }); // actually relative
+}

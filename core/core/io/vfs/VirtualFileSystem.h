@@ -42,7 +42,7 @@ namespace Carrot::IO {
             Path operator/(std::string_view subpath) const;
 
         public:
-            Path relative(std::string_view subpath) const;
+            Path relative(const Path& other) const;
 
         public:
             /**
@@ -60,6 +60,11 @@ namespace Carrot::IO {
 
             const std::string& getRoot() const { return root; }
             const NormalizedPath& getPath() const { return path; }
+
+            // For GTest
+            friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
+                return os << bar.root << ":" << bar.path;
+            }
 
         private:
             /// Sets this path contents, and performs validation
