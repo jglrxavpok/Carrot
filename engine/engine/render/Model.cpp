@@ -79,11 +79,15 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                     return loadedATexture;
                 };
 
-                setMaterialTexture(handle->diffuseTexture, material.albedo, materialSystem.getWhiteTexture());
-                // TODO: albedo blend color
-
+                setMaterialTexture(handle->albedo, material.albedo, materialSystem.getWhiteTexture());
                 setMaterialTexture(handle->normalMap, material.normalMap, materialSystem.getBlueTexture());
-                // TODO: metalicness + roughness
+                setMaterialTexture(handle->emissive, material.emissive, materialSystem.getBlackTexture());
+                setMaterialTexture(handle->roughnessMetallic, material.roughnessMetallic, materialSystem.getBlackTexture());
+
+                handle->baseColor = material.baseColorFactor;
+                handle->emissiveColor = material.emissiveFactor;
+                handle->roughnessFactor = material.roughnessFactor;
+                handle->metallicFactor = material.metallicFactor;
             }),
             .joiner = &waitMaterialLoads,
         });

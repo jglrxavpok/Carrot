@@ -65,7 +65,7 @@ void Carrot::VulkanRenderer::lateInit() {
     wireframeGBufferPipeline = getOrCreatePipeline("gBufferWireframe");
     gBufferPipeline = getOrCreatePipeline("gBuffer");
     whiteMaterial = getMaterialSystem().createMaterialHandle();
-    whiteMaterial->diffuseTexture = getMaterialSystem().getWhiteTexture();
+    whiteMaterial->albedo = getMaterialSystem().getWhiteTexture();
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& renderPass) {
@@ -670,6 +670,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Normals", &gIndex, DEBUG_GBUFFER_NORMAL);
                 ImGui::RadioButton("Depth", &gIndex, DEBUG_GBUFFER_DEPTH);
                 ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
+                ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);
 
                 obj.gBufferType = gIndex;
             }

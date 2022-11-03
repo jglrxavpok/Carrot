@@ -119,6 +119,8 @@ namespace Carrot::Render {
             FrameResource depthStencil;
             FrameResource flags;
             FrameResource entityID;
+            FrameResource roughnessMetallic;
+            FrameResource emissive;
         };
 
         struct GBufferTransparent {
@@ -134,6 +136,8 @@ namespace Carrot::Render {
             FrameResource flags;
             FrameResource raytracing;
             FrameResource transparent;
+            FrameResource roughnessMetallic;
+            FrameResource emissive;
             FrameResource skybox;
 
             FrameResource resolved;

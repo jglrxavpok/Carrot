@@ -72,10 +72,10 @@ namespace Carrot::Render {
 
             aiColor4D diffuse;
             if (AI_SUCCESS == aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
-                material.albedoColorFactor.r = diffuse.r;
-                material.albedoColorFactor.g = diffuse.g;
-                material.albedoColorFactor.b = diffuse.b;
-                material.albedoColorFactor.a = diffuse.a;
+                material.baseColorFactor.r = diffuse.r;
+                material.baseColorFactor.g = diffuse.g;
+                material.baseColorFactor.b = diffuse.b;
+                material.baseColorFactor.a = diffuse.a;
             }
         }
 

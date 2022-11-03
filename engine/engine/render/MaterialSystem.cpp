@@ -55,37 +55,28 @@ namespace Carrot::Render {
 
     void MaterialHandle::updateHandle(const Carrot::Render::Context& renderContext) {
         auto* data = materialSystem.getData(*this);
-        if(diffuseTexture) {
-            data->diffuseTexture = diffuseTexture->getSlot();
-        } else {
-            data->diffuseTexture = materialSystem.whiteTextureHandle->getSlot();
-        }
 
-        if(normalMap) {
-            data->normalMap = normalMap->getSlot();
-        } else {
-            data->normalMap = materialSystem.blueTextureHandle->getSlot();
-        }
+        auto getSlot = [&](const std::shared_ptr<TextureHandle>& texture, const std::shared_ptr<TextureHandle>& defaultTexture) {
+            return texture ? texture->getSlot() : defaultTexture->getSlot();
+        };
 
-        if(alphaMap) {
-            data->alphaMap = alphaMap->getSlot();
-        } else {
-            data->alphaMap = materialSystem.whiteTextureHandle->getSlot();
-        }
+        data->baseColor = baseColor;
+        data->emissiveColor = emissiveColor;
+        data->emissive = getSlot(emissive, materialSystem.blackTextureHandle);
+        data->roughnessMetallicFactor = glm::vec2 { roughnessFactor, metallicFactor };
+        data->albedo = getSlot(albedo, materialSystem.whiteTextureHandle);
+        data->normalMap = getSlot(normalMap, materialSystem.blueTextureHandle);
 
-        if(roughnessMetallic) {
-            data->roughnessMetallic = roughnessMetallic->getSlot();
-        } else {
-            data->roughnessMetallic = materialSystem.blackTextureHandle->getSlot();
-        }
+        data->roughnessMetallic = getSlot(roughnessMetallic, materialSystem.blackTextureHandle);
     }
 
     MaterialHandle::~MaterialHandle() noexcept {
         Carrot::Render::MaterialData* data = materialSystem.getData(*this);
-        data->diffuseTexture = materialSystem.invalidMaterialHandle->diffuseTexture->getSlot();
-        data->normalMap = materialSystem.invalidMaterialHandle->normalMap->getSlot();
-        data->alphaMap = materialSystem.invalidMaterialHandle->alphaMap->getSlot();
-        data->roughnessMetallic = materialSystem.invalidMaterialHandle->roughnessMetallic->getSlot();
+        data->emissive = materialSystem.blackTextureHandle->getSlot();
+        data->albedo = materialSystem.whiteTextureHandle->getSlot();
+        data->normalMap = materialSystem.blueTextureHandle->getSlot();
+
+        data->roughnessMetallic = materialSystem.blackTextureHandle->getSlot();
     }
 
     MaterialSystem::MaterialSystem() {
@@ -181,9 +172,9 @@ namespace Carrot::Render {
         invalidTexture = GetRenderer().getOrCreateTexture("invalid_texture_reference.png");
         invalidTextureHandle = createTextureHandle(invalidTexture);
         invalidMaterialHandle = createMaterialHandle();
-        invalidMaterialHandle->diffuseTexture = invalidTextureHandle;
+        invalidMaterialHandle->albedo = invalidTextureHandle;
         invalidMaterialHandle->normalMap = invalidTextureHandle;
-        invalidMaterialHandle->alphaMap = invalidTextureHandle;
+        invalidMaterialHandle->emissive = invalidTextureHandle;
         invalidMaterialHandle->roughnessMetallic = invalidTextureHandle;
 
         whiteTextureHandle = createTextureHandle(whiteTexture);
@@ -257,8 +248,8 @@ namespace Carrot::Render {
                 static int textureType = 0;
                 ImGui::RadioButton("Diffuse", &textureType, 0);
                 ImGui::RadioButton("NormalMap", &textureType, 1);
-                ImGui::RadioButton("AlphaMap", &textureType, 2);
-                ImGui::RadioButton("RoughnessMetallic", &textureType, 3);
+                ImGui::RadioButton("RoughnessMetallic", &textureType, 2);
+                ImGui::RadioButton("Emissive", &textureType, 3);
 
                 const int columnCount = 8;
                 if(ImGui::BeginTable("Materials", columnCount)) {
@@ -275,7 +266,7 @@ namespace Carrot::Render {
 
                             switch(textureType) {
                                 case 0:
-                                    handle = material->diffuseTexture;
+                                    handle = material->albedo;
                                     break;
 
                                 case 1:
@@ -283,11 +274,11 @@ namespace Carrot::Render {
                                     break;
 
                                 case 2:
-                                    handle = material->alphaMap;
+                                    handle = material->roughnessMetallic;
                                     break;
 
                                 case 3:
-                                    handle = material->roughnessMetallic;
+                                    handle = material->emissive;
                                     break;
                             }
 
@@ -349,15 +340,16 @@ namespace Carrot::Render {
         );
         materialDataPtr = materialBuffer->map<MaterialData>();
         for (std::size_t i = 0; i < materialCount; i++) {
+            materialDataPtr[i] = {};
             if(invalidTextureHandle) {
-                materialDataPtr[i].diffuseTexture = invalidTextureHandle->getSlot();
+                materialDataPtr[i].albedo = invalidTextureHandle->getSlot();
                 materialDataPtr[i].normalMap = invalidTextureHandle->getSlot();
-                materialDataPtr[i].alphaMap = invalidTextureHandle->getSlot();
+                materialDataPtr[i].emissive = invalidTextureHandle->getSlot();
                 materialDataPtr[i].roughnessMetallic = invalidTextureHandle->getSlot();
             } else {
-                materialDataPtr[i].diffuseTexture = 0;
+                materialDataPtr[i].albedo = 0;
                 materialDataPtr[i].normalMap = 0;
-                materialDataPtr[i].alphaMap = 0;
+                materialDataPtr[i].emissive = 0;
                 materialDataPtr[i].roughnessMetallic = 0;
             }
         }

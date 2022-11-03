@@ -24,8 +24,8 @@ void main() {
     //#define material (materials[instanceDrawData.materialIndex])
 
     Material material = materials[instanceDrawData.materialIndex];
-    uint diffuseTexture = nonuniformEXT(material.diffuseTexture);
-    vec4 texColor = texture(sampler2D(textures[diffuseTexture], linearSampler), uv);
+    uint albedoTexture = nonuniformEXT(material.albedo);
+    vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
     if(texColor.a < 0.01) {
         discard;
     }

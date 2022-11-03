@@ -31,7 +31,7 @@ namespace Carrot::Render {
          * Path to albedo texture, empty if none
          */
         Carrot::IO::VFS::Path albedo;
-        glm::vec4 albedoColorFactor{1.0f};
+        glm::vec4 baseColorFactor{1.0f};
 
         /**
          * Path to normalMap texture, empty if none (Blue = metalness, Green = roughness)

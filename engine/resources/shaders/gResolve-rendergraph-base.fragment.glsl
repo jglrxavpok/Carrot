@@ -19,13 +19,15 @@ layout(set = 0, binding = 3) uniform texture2D viewNormals;
 layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
 layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
 layout(set = 0, binding = 6) uniform texture2D transparent;
-layout(set = 0, binding = 7) uniform texture2D skyboxTexture;
-layout(set = 0, binding = 8) uniform sampler linearSampler;
-layout(set = 0, binding = 9) uniform sampler nearestSampler;
+layout(set = 0, binding = 7) uniform texture2D roughnessMetallicValues;
+layout(set = 0, binding = 8) uniform texture2D emissiveValues;
+layout(set = 0, binding = 9) uniform texture2D skyboxTexture;
+layout(set = 0, binding = 10) uniform sampler linearSampler;
+layout(set = 0, binding = 11) uniform sampler nearestSampler;
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-layout(set = 0, binding = 10) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = 11) uniform texture2D noiseTexture;
+layout(set = 0, binding = 12) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 13) uniform texture2D noiseTexture;
 #endif
 
 layout(set = 1, binding = 0) uniform CameraBufferObject {
@@ -162,6 +164,8 @@ void main() {
     vec3 viewNormal = texture(sampler2D(viewNormals, linearSampler), uv).xyz;
     vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
     vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
+    vec2 roughnessMetallic = texture(sampler2D(roughnessMetallicValues, linearSampler), uv).rg;
+    vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
 
     uint intProperties = texture(intPropertiesInput, uv).r;
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
@@ -179,7 +183,10 @@ void main() {
         outColor = vec4(viewNormal, 1.0);
         return;
     } else if(debug.gBufferType == DEBUG_GBUFFER_METALLIC_ROUGHNESS) {
-        outColor = vec4(1.0, 1.0, 1.0, 1.0); // TODO
+        outColor = vec4(roughnessMetallic, 0.0, 1.0);
+        return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_EMISSIVE) {
+        outColor = vec4(emissive, 1.0);
         return;
     }
 

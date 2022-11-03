@@ -1,9 +1,15 @@
 #extension GL_EXT_scalar_block_layout : enable
 
 struct Material {
-    uint diffuseTexture;
+    vec4 baseColor;
+
+    vec3 emissiveColor;
+    uint emissive;
+
+    vec2 roughnessMetallicFactor;
+
+    uint albedo;
     uint normalMap;
-    uint alphaMap;
     uint roughnessMetallic;
 };
 

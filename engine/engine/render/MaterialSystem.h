@@ -21,10 +21,16 @@ namespace Carrot::Render {
 
     /// Data sent to the GPU
     struct MaterialData {
-        std::uint32_t diffuseTexture = -1;
-        std::uint32_t normalMap = -1;
-        std::uint32_t alphaMap = -1;
-        std::uint32_t roughnessMetallic = -1;
+        glm::vec4 baseColor {1.0f};
+
+        glm::vec3 emissiveColor {0.0f};
+        std::uint32_t emissive = 0;
+
+        glm::vec2 roughnessMetallicFactor{0.0f};
+
+        std::uint32_t albedo = 0;
+        std::uint32_t normalMap = 0;
+        std::uint32_t roughnessMetallic = 0;
     };
 
     class TextureHandle: public WeakPoolHandle {
@@ -45,9 +51,16 @@ namespace Carrot::Render {
 
     class MaterialHandle: public WeakPoolHandle {
     public:
-        std::shared_ptr<TextureHandle> diffuseTexture;
+        glm::vec4 baseColor {1.0f};
+
+        glm::vec3 emissiveColor {0.0f};
+        std::shared_ptr<TextureHandle> emissive;
+
+        float roughnessFactor = 0.0f;
+        float metallicFactor = 0.0f;
+
+        std::shared_ptr<TextureHandle> albedo;
         std::shared_ptr<TextureHandle> normalMap;
-        std::shared_ptr<TextureHandle> alphaMap;
         std::shared_ptr<TextureHandle> roughnessMetallic;
 
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);

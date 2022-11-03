@@ -66,6 +66,18 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearEntityID,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
+
+               data.roughnessMetallic = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                                 framebufferSize,
+                                                                 vk::AttachmentLoadOp::eClear,
+                                                                 clearColor,
+                                                                 vk::ImageLayout::eColorAttachmentOptimal);
+
+               data.emissive = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                        framebufferSize,
+                                                        vk::AttachmentLoadOp::eClear,
+                                                        clearColor,
+                                                        vk::ImageLayout::eColorAttachmentOptimal);
            },
            [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBuffer& data, vk::CommandBuffer& buffer){
                 opaqueCallback(pass, frame, buffer);
@@ -114,6 +126,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 resolveData.transparent = graph.read(transparentData.transparentOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.depthStencil = graph.read(transparentData.depthInput, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
                 resolveData.flags = graph.read(opaqueData.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.roughnessMetallic = graph.read(opaqueData.roughnessMetallic, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.emissive = graph.read(opaqueData.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
                                                         framebufferSize,
@@ -136,16 +150,18 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.swapchainIndex), 0, 3, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.transparent, frame.swapchainIndex), 0, 6, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 7, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.roughnessMetallic, frame.swapchainIndex), 0, 7, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.emissive, frame.swapchainIndex), 0, 8, nullptr);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 9, nullptr);
 
-                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 8);
-                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 9);
+                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 10);
+                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 11);
 
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
-                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 10);
-                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 11, nullptr);
+                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 12);
+                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 13, nullptr);
                     }
                 }
 

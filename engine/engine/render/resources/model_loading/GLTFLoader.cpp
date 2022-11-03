@@ -269,7 +269,7 @@ namespace Carrot::Render {
             loadedMaterial.name = material.name;
             loadedMaterial.metallicFactor = static_cast<float>(material.pbrMetallicRoughness.metallicFactor);
             loadedMaterial.roughnessFactor = static_cast<float>(material.pbrMetallicRoughness.roughnessFactor);
-            loadedMaterial.albedoColorFactor = toVec4(material.pbrMetallicRoughness.baseColorFactor, glm::vec4{1.0f});
+            loadedMaterial.baseColorFactor = toVec4(material.pbrMetallicRoughness.baseColorFactor, glm::vec4{1.0f});
             loadedMaterial.emissiveFactor = toVec3(material.emissiveFactor, glm::vec3{1.0f});
 
             loadedMaterial.albedo = getTexturePath(material.pbrMetallicRoughness.baseColorTexture.index);

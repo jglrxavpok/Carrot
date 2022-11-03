@@ -100,6 +100,6 @@ namespace Carrot::Render {
         this->texture = texture;
         verify(this->texture != nullptr, "Cannot create sprite with no texture");
         material = GetRenderer().getMaterialSystem().createMaterialHandle();
-        material->diffuseTexture = GetRenderer().getMaterialSystem().createTextureHandle(texture);
+        material->albedo = GetRenderer().getMaterialSystem().createTextureHandle(texture);
     }
 }

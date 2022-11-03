@@ -20,8 +20,8 @@ layout(location = 3) out uint intProperty;
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
     Material material = materials[instanceDrawData.materialIndex];
-    uint diffuseTexture = nonuniformEXT(material.diffuseTexture);
-    float color = texture(sampler2D(textures[diffuseTexture], linearSampler), uv).r;
+    uint albedoTexture = nonuniformEXT(material.albedo);
+    float color = texture(sampler2D(textures[albedoTexture], linearSampler), uv).r;
     if(color < 0.01) {
         discard;
     }
