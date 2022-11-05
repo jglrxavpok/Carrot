@@ -24,16 +24,16 @@ namespace Fertilizer {
 
         switch(comp) {
             case 1:
-                createInfo.vkFormat = VK_FORMAT_R8_SRGB;
+                createInfo.vkFormat = VK_FORMAT_R8_UNORM;
                 break;
             case 2:
-                createInfo.vkFormat = VK_FORMAT_R8G8_SRGB;
+                createInfo.vkFormat = VK_FORMAT_R8G8_UNORM;
                 break;
             case 3:
-                createInfo.vkFormat = VK_FORMAT_R8G8B8_SRGB;
+                createInfo.vkFormat = VK_FORMAT_R8G8B8_UNORM;
                 break;
             case 4:
-                createInfo.vkFormat = VK_FORMAT_R8G8B8A8_SRGB;
+                createInfo.vkFormat = VK_FORMAT_R8G8B8A8_UNORM;
                 break;
             default:
                 return {

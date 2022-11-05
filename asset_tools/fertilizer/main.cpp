@@ -9,6 +9,8 @@
 #include "core/utils/stringmanip.h"
 
 int main(int argc, char** argv) {
+    std::ios::sync_with_stdio(false);
+
     bool recursive = false;
     bool valid = true;
 

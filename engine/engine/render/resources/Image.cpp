@@ -224,10 +224,10 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                     const vk::PhysicalDeviceFeatures& deviceFeatures = GetVulkanDriver().getPhysicalDeviceFeatures();
                     if (deviceFeatures.textureCompressionETC2) {
                         tf = KTX_TTF_ETC2_RGBA;
-                        vkFormat = vk::Format::eEtc2R8G8B8A8SrgbBlock;
+                        vkFormat = vk::Format::eEtc2R8G8B8A8UnormBlock;
                     } else if (deviceFeatures.textureCompressionBC) {
                         tf = KTX_TTF_BC3_RGBA;
-                        vkFormat = vk::Format::eBc3SrgbBlock;
+                        vkFormat = vk::Format::eBc3UnormBlock;
                     } else {
                         throw std::runtime_error("Vulkan implementation does not support any available transcode target.");
                     }
