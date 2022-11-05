@@ -199,6 +199,9 @@ namespace Carrot {
         }
 
     public:
+        const vk::PhysicalDeviceFeatures& getPhysicalDeviceFeatures() const;
+
+    public:
         void deferDestroy(vk::UniqueImage&& image);
         void deferDestroy(vk::UniqueImageView&& imageView);
         void deferDestroy(Carrot::DeviceMemory&& memory);
@@ -269,6 +272,7 @@ namespace Carrot {
         vk::UniqueSampler nearestRepeatSampler{};
 
         vk::UniqueSwapchainKHR swapchain{};
+        vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
         vk::Extent2D windowFramebufferExtent{};

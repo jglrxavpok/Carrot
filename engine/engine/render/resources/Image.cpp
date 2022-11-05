@@ -4,6 +4,7 @@
 
 #include <OpenEXRConfig.h>
 #include <ImfRgbaFile.h>
+#include <ktx.h>
 
 #include "Image.h"
 #include "engine/render/resources/Buffer.h"
@@ -199,6 +200,71 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
             image->name(resource.getName());
 
             return std::move(image);
+        } else if(format == IO::FileFormat::KTX2) {
+            ktxTexture2* texture;
+            KTX_error_code result;
+            {
+                std::unique_ptr<std::uint8_t[]> ktxData = resource.readAll();
+                std::size_t ktxDataSize = resource.getSize();
+
+                result = ktxTexture2_CreateFromMemory(ktxData.get(), ktxDataSize,
+                                                     KTX_TEXTURE_CREATE_NO_FLAGS,
+                                                     &texture);
+
+                if(result != ktx_error_code_e::KTX_SUCCESS) {
+                    throw std::runtime_error("Could not read KTX2 file: "+resource.getName() + " error is " +
+                                                     ktxErrorString(result));
+                }
+
+                vk::Format vkFormat = static_cast<vk::Format>(texture->vkFormat);
+
+                if (ktxTexture2_NeedsTranscoding(texture)) {
+                    ktx_texture_transcode_fmt_e tf;
+
+                    const vk::PhysicalDeviceFeatures& deviceFeatures = GetVulkanDriver().getPhysicalDeviceFeatures();
+                    if (deviceFeatures.textureCompressionETC2) {
+                        tf = KTX_TTF_ETC2_RGBA;
+                        vkFormat = vk::Format::eEtc2R8G8B8A8SrgbBlock;
+                    } else if (deviceFeatures.textureCompressionBC) {
+                        tf = KTX_TTF_BC3_RGBA;
+                        vkFormat = vk::Format::eBc3SrgbBlock;
+                    } else {
+                        throw std::runtime_error("Vulkan implementation does not support any available transcode target.");
+                    }
+
+                    result = ktxTexture2_TranscodeBasis(texture, tf, 0);
+                    if(result != ktx_error_code_e::KTX_SUCCESS) {
+                        throw std::runtime_error("Could not transcode KTX2 file: "+resource.getName() + " error is " +
+                                                 ktxErrorString(result));
+                    }
+                }
+
+                // TODO: Carrot only supports mip0 for now
+                ktx_size_t offset;
+                result = ktxTexture_GetImageOffset(ktxTexture(texture), 0, 0, 0, &offset);
+                if(result != ktx_error_code_e::KTX_SUCCESS) {
+                    throw std::runtime_error(resource.getName() + ", ktxTexture_GetImageOffset error is " +
+                                             ktxErrorString(result));
+                }
+
+                std::uint8_t* pixelData = ktxTexture_GetData(ktxTexture(texture)) + offset;
+
+                auto image = std::make_unique<Carrot::Image>(device,
+                                                             vk::Extent3D {
+                                                                     .width = texture->baseWidth,
+                                                                     .height = texture->baseHeight,
+                                                                     .depth = texture->baseDepth,
+                                                             },
+                                                             vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
+                                                             vkFormat);
+
+                image->stageUpload(std::span<std::uint8_t>{pixelData, static_cast<std::size_t>(texture->dataSize) });
+                image->name(resource.getName());
+
+                ktxTexture_Destroy(ktxTexture(texture));
+
+                return image;
+            }
         } else {
             return loadThroughStbi();
         }

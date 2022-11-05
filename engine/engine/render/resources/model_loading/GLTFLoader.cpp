@@ -6,9 +6,6 @@
 #include "core/io/Logging.hpp"
 #include <glm/gtx/quaternion.hpp>
 
-#define TINYGLTF_IMPLEMENTATION
-#include "tiny_gltf.h"
-
 #include "engine/Engine.h"
 #include "core/io/vfs/VirtualFileSystem.h"
 

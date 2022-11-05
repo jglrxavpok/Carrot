@@ -325,6 +325,8 @@ void Carrot::VulkanDriver::pickPhysicalDevice() {
             throw std::runtime_error("No GPU can support this application.");
         }
     }
+
+    physicalDeviceFeatures = physicalDevice.getFeatures();
 }
 
 int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
@@ -939,6 +941,10 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
             return d.isReadyForDestruction();
         });
     }
+}
+
+const vk::PhysicalDeviceFeatures& Carrot::VulkanDriver::getPhysicalDeviceFeatures() const {
+    return physicalDeviceFeatures;
 }
 
 void Carrot::VulkanDriver::deferDestroy(vk::UniqueImage&& resource) {

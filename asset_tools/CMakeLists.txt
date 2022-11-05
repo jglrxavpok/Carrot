@@ -1,1 +1,2 @@
+add_subdirectory(fertilizer)
 add_subdirectory(shadercompiler)

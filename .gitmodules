@@ -55,3 +55,6 @@
 [submodule "thirdparty/tinygltf"]
 	path = thirdparty/tinygltf
 	url = https://github.com/syoyo/tinygltf
+[submodule "thirdparty/KTX-Software"]
+	path = thirdparty/KTX-Software
+	url = https://github.com/KhronosGroup/KTX-Software

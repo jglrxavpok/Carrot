@@ -28,6 +28,7 @@ set(CORE-SOURCES
         ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp
 
+        ${CoreRoot}utils/CarrotTinyGLTF.cpp
         ${CoreRoot}utils/Identifiable.cpp
         ${CoreRoot}utils/stringmanip.cpp
         ${CoreRoot}utils/UUID.cpp
@@ -42,7 +43,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/debugbreak)
 endfunction()
 
-set(ALL_CORE_LIBS glm)
+set(ALL_CORE_LIBS ktx glm tinygltf)
 add_library(CarrotCore ${CORE-SOURCES})
 add_core_includes(CarrotCore)
-target_link_libraries(CarrotCore ${ALL_CORE_LIBS})
+target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})

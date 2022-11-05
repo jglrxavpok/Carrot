@@ -24,9 +24,10 @@ namespace Carrot::IO {
         PNM,
 
         EXR,
+        KTX2,
 
         ImageFirst = PNG,
-        ImageLast = EXR,
+        ImageLast = KTX2,
 
         FBX,
         OBJ,
@@ -79,6 +80,7 @@ namespace Carrot::IO {
         CHECK(PNM);
 
         CHECK(EXR);
+        CHECK(KTX2);
 
         CHECK(FBX);
         CHECK(OBJ);

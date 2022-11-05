@@ -92,6 +92,11 @@ SET(ASSIMP_BUILD_3MF_EXPORTER FALSE)
 SET(ASSIMP_BUILD_ASSJSON_EXPORTER FALSE)
 SET(ASSIMP_BUILD_STEP_EXPORTER FALSE)
 
+set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_STATIC_LIBRARY OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(thirdparty/KTX-Software)
+
 add_subdirectory(thirdparty/glfw-3.3.2/)
 add_subdirectory(thirdparty/glm-0.9.9.8/glm/)
 

@@ -14,6 +14,7 @@
 #include "utils/Assert.h"
 #include "utils/Containers.h"
 #include <debugbreak.h>
+#include <functional>
 
 namespace Carrot::Exceptions {
     class TodoException: public std::exception {
@@ -28,3 +29,13 @@ namespace Carrot::Exceptions {
 
 #define TODO throw Carrot::Exceptions::TodoException();
 #define DISCARD(x) static_cast<void>((x))
+
+struct DeferredCleanup {
+    std::function<void()> cleanup;
+
+    ~DeferredCleanup() {
+        cleanup();
+    }
+};
+
+#define CLEANUP(x) DeferredCleanup _cleanup{.cleanup = [&]() { x; }}

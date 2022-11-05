@@ -280,8 +280,9 @@ if (MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 endif()
 
-set(ALL_BASE_LIBS CarrotCore Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
-        tinygltf
+set(ALL_BASE_LIBS
+        CarrotCore fertilizer-lib
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
         ${OPENXR-LOADER-LIB-LOCATION}
         ${ADDITIONAL_LIBS})
 
@@ -291,6 +292,7 @@ copy_all_resources()
 file(COPY "resources/icon32.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/icon64.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
+file(COPY "resources/icon128.ktx2" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
 add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
