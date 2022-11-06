@@ -195,10 +195,10 @@ void Carrot::Engine::init() {
 
         Render::GraphBuilder rightEyeGraph = leftEyeGraph; // reuse most textures
 
-        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass.getData().resolved);
+        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass.getData().postProcessed);
         auto& leftEyeComposerPass = composers[Render::Eye::LeftEye]->appendPass(leftEyeGraph);
 
-        composers[Render::Eye::RightEye]->add(rightEyeFinalPass.getData().resolved);
+        composers[Render::Eye::RightEye]->add(rightEyeFinalPass.getData().postProcessed);
         auto& rightEyeComposerPass = composers[Render::Eye::RightEye]->appendPass(rightEyeGraph);
 
         companionComposer.add(leftEyeComposerPass.getData().color, -1.0, 0.0);
@@ -221,7 +221,7 @@ void Carrot::Engine::init() {
 
         auto lastPass = fillGraphBuilder(mainGraph);
 
-        composers[Render::Eye::NoVR]->add(lastPass.getData().resolved);
+        composers[Render::Eye::NoVR]->add(lastPass.getData().postProcessed);
         auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
         addPresentPass(mainGraph, composerPass.getData().color);
 
@@ -1290,14 +1290,14 @@ Carrot::Render::Viewport& Carrot::Engine::createViewport() {
     return viewports.back();
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
-                                           std::function<void(const Carrot::Render::CompiledPass&,
+Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
+                                                                                                std::function<void(const Carrot::Render::CompiledPass&,
                                                               const Carrot::Render::Context&,
                                                               vk::CommandBuffer&)> opaqueCallback,
-                                           std::function<void(const Carrot::Render::CompiledPass&,
+                                                                                                std::function<void(const Carrot::Render::CompiledPass&,
                                                               const Carrot::Render::Context&,
                                                               vk::CommandBuffer&)> transparentCallback,
-                                           const Render::TextureSize& framebufferSize) {
+                                                                                                const Render::TextureSize& framebufferSize) {
     auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
                                                                            [this, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
                                                                                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
@@ -1309,8 +1309,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
                                                                            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
                                                                                ZoneScopedN("CPU RenderGraph skybox");
                                                                                auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                                                                               /*renderer.bindCameraSet(vk::PipelineBindPoint::eGraphics, skyboxPipeline->getPipelineLayout(), frame,
-                                                                                                      buffer);*/
                                                                                renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
                                                                                skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
                                                                                skyboxMesh->bind(buffer);
@@ -1329,13 +1327,38 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillIn
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         transparentCallback(pass, frame, cmds);
     }, framebufferSize);
-    auto& gresolvePass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
+    auto& lightingPass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
 
-    return gresolvePass;
+    auto& postProcessPass = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>("post-processing",
+                                                                           [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                                                                                data.postLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
+                                                                                data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
+                                                                                                                        framebufferSize,
+                                                                                                                        vk::AttachmentLoadOp::eClear,
+                                                                                                                        vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                                                                        vk::ImageLayout::eColorAttachmentOptimal
+                                                                                );
+                                                                           },
+                                                                           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
+                                                                               ZoneScopedN("CPU RenderGraph post-process");
+                                                                               TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
+                                                                               auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass.getRenderPass());
+                                                                               renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
+
+                                                                               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
+                                                                               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
+
+                                                                               pipeline->bind(pass.getRenderPass(), frame, buffer);
+                                                                               auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                                                                               screenQuadMesh.bind(buffer);
+                                                                               screenQuadMesh.draw(buffer);
+                                                                           }
+    );
+    return postProcessPass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
-    auto& gResolvePass = fillInDefaultPipeline(mainGraph, eye,
+Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+    auto& finalPass = fillInDefaultPipeline(mainGraph, eye,
                                                [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                    TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
                                                    ZoneScopedN("CPU RenderGraph Opaque GPass");
@@ -1350,7 +1373,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::Engine::fillGr
                                                },
                                                framebufferSize);
 
-    return gResolvePass;
+    return finalPass;
 }
 
 std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const Carrot::IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch) {

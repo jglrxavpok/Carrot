@@ -1,5 +1,4 @@
 #include <iostream>
-#include <GLFW/glfw3.h>
 #include "engine/Engine.h"
 #include "engine/constants.h"
 #include "stb_image.h"

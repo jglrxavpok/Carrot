@@ -26,7 +26,7 @@ namespace Carrot {
     namespace Render {
         class Texture;
         class TextureRepository;
-        class Context;
+        struct Context;
         enum class Eye;
     };
 

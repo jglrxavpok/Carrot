@@ -108,15 +108,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
     return transparentPass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData,
+Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData,
                                                                                            const Carrot::Render::PassData::GBufferTransparent& transparentData,
-                                                                                      const Carrot::Render::FrameResource& skyboxOutput,
-                                                                                      Carrot::Render::GraphBuilder& graph,
-                                                                                      const Render::TextureSize& framebufferSize) {
+                                                                                           const Carrot::Render::FrameResource& skyboxOutput,
+                                                                                           Carrot::Render::GraphBuilder& graph,
+                                                                                           const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-    return graph.addPass<Carrot::Render::PassData::GResolve>("gresolve",
-           [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GResolve>& pass, Carrot::Render::PassData::GResolve& resolveData)
+    return graph.addPass<Carrot::Render::PassData::Lighting>("gresolve",
+                                                             [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
                 // pass.prerecordable = true; TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
                 // TODO (or it should be re-recorded when changes happen)
@@ -129,13 +129,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::GResolve>& Carrot::GBuffer::addGR
                 resolveData.roughnessMetallic = graph.read(opaqueData.roughnessMetallic, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.emissive = graph.read(opaqueData.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.resolved = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                resolveData.resolved = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearColor,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
            },
-           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GResolve& data, vk::CommandBuffer& buffer) {
+                                                             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph GResolve");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "GResolve");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;

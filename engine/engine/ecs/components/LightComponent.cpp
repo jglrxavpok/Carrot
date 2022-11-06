@@ -145,9 +145,10 @@ namespace Carrot::ECS {
     }
 
     void LightComponent::reload() {
-        lightRef = GetRenderer().getLighting().create();
-        verify(savedLight, "Don't unload if there is no light");
-        lightRef->light = savedLight.value();
+        if(savedLight) {
+            lightRef = GetRenderer().getLighting().create();
+            lightRef->light = savedLight.value();
+        }
     }
 
     void LightComponent::unload() {

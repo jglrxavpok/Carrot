@@ -42,7 +42,7 @@ void main() {
     outViewPosition = vec4(viewPosition, 1.0);
 
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
-    mappedNormal = mappedNormal * 2 - 1;
+    mappedNormal = mappedNormal;
     outNormal = vec4(normalize(TBN * mappedNormal), 1.0);
 
     intProperty = IntPropertiesRayTracedLighting;

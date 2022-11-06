@@ -73,7 +73,7 @@ namespace Carrot {
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
 
-        void bind(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
+        void bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
         void recreateDescriptorPool(std::uint32_t imageCount);
 

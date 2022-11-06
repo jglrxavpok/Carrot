@@ -51,7 +51,9 @@ float computePointLight(vec3 worldPos, vec3 normal, Light light) {
     float distance = length(point2light);
     float attenutation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
 
-    return max(0, 1.0f / attenutation);
+    float inclinaisonFactor = abs(dot(normal, point2light / distance));
+
+    return max(0, 1.0f / attenutation) * inclinaisonFactor;
 }
 
 float computeDirectionalLight(vec3 worldPos, vec3 normal, Light light) {
@@ -71,7 +73,7 @@ float computeSpotLight(vec3 worldPos, vec3 normal, Light light) {
     return clamp((intensity - outerCosCutoffAngle) / cutoffRange, 0, 1);
 }
 
-vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
+vec3 calculateLighting(vec3 worldPos, vec3 emissive, vec3 normal, bool computeShadows) {
     vec3 finalColor = vec3(0.0);
 
     vec3 lightContribution = vec3(0.0);
@@ -150,9 +152,7 @@ vec3 calculateLighting(vec3 worldPos, vec3 normal, bool computeShadows) {
         lightContribution += light.color * lightFactor * light.intensity * (1.0f - shadowPercent);
     }
 
-    lightContribution = min(vec3(1.0)-lights.ambientColor, lightContribution);
-
-    return lightContribution + lights.ambientColor;
+    return lightContribution + emissive + lights.ambientColor;
 }
 
 void main() {
@@ -197,7 +197,7 @@ void main() {
             outColorWorld = fragmentColor;
         }
 
-        outColorWorld.rgb *= calculateLighting(worldPos, normal, true);
+        outColorWorld.rgb *= calculateLighting(worldPos, emissive, normal, true);
 
         float distanceToCamera = length(viewPos);
 

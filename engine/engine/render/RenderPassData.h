@@ -128,7 +128,7 @@ namespace Carrot::Render {
             FrameResource transparentOutput;
         };
 
-        struct GResolve {
+        struct Lighting {
             FrameResource positions;
             FrameResource normals;
             FrameResource albedo;
@@ -143,8 +143,9 @@ namespace Carrot::Render {
             FrameResource resolved;
         };
 
-        struct Raytracing {
-            FrameResource output;
+        struct PostProcessing {
+            FrameResource postLighting;
+            FrameResource postProcessed;
         };
 
         struct Present {

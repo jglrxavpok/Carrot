@@ -711,6 +711,7 @@ namespace Peeler {
 
     void Application::removeEditingSystems() {
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
+        currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CameraRenderer>();
     }
@@ -870,7 +871,7 @@ namespace Peeler {
                                          currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                          GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
-        gameTexture = resolvePass.getData().resolved;
+        gameTexture = resolvePass.getData().postProcessed;
 
         engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
         const auto gbufferPass = graphBuilder.getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();

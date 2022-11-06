@@ -24,7 +24,7 @@ namespace Carrot {
     public: // Render::Graph reimpl
         Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize = {});
         Render::Pass<Carrot::Render::PassData::GBufferTransparent>& addTransparentGBufferPass(Render::GraphBuilder& graph, const Carrot::Render::PassData::GBuffer& data, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
-        Render::Pass<Carrot::Render::PassData::GResolve>& addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData, const Carrot::Render::PassData::GBufferTransparent& transparentData, const Render::FrameResource& skyboxOutput, Render::GraphBuilder& graph, const Render::TextureSize& framebufferSize = {});
+        Render::Pass<Carrot::Render::PassData::Lighting>& addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData, const Carrot::Render::PassData::GBufferTransparent& transparentData, const Render::FrameResource& skyboxOutput, Render::GraphBuilder& graph, const Render::TextureSize& framebufferSize = {});
 
     private:
         VulkanRenderer& renderer;

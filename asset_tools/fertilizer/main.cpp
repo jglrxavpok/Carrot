@@ -9,6 +9,8 @@
 #include "core/utils/stringmanip.h"
 
 int main(int argc, char** argv) {
+    auto start = std::chrono::steady_clock::now();
+
     std::ios::sync_with_stdio(false);
 
     bool recursive = false;
@@ -107,6 +109,9 @@ int main(int argc, char** argv) {
     for(auto& t : threads) {
         t.join();
     }
+
+    float duration = duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start)).count();
+    std::cout << "Took " << duration << " seconds." << std::endl;
 
     return errorCode;
 }

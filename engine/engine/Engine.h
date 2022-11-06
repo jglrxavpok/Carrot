@@ -74,7 +74,7 @@ namespace Carrot {
 
         namespace PassData {
             struct Composer;
-            struct GResolve;
+            struct Lighting;
         }
     };
 
@@ -226,8 +226,8 @@ namespace Carrot {
         VR::Session& getVRSession();
 
     public:
-        Render::Pass<Render::PassData::GResolve>& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
-        Render::Pass<Carrot::Render::PassData::GResolve>& fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
+        Render::Pass<Render::PassData::PostProcessing>& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
+        Render::Pass<Carrot::Render::PassData::PostProcessing>& fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});
 
     public: // viewports
         Render::Viewport& getMainViewport();
@@ -432,7 +432,6 @@ namespace Carrot {
 
         std::vector<ImGuiTextures> imguiTextures;
 
-        Carrot::Render::PassData::GResolve gResolvePassData;
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
         std::unique_ptr<Render::Graph> rightEyeGlobalFrameGraph = nullptr;
 
