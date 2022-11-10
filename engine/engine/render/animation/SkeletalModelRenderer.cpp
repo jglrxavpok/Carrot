@@ -148,6 +148,8 @@ namespace Carrot::Render {
 
         meshTransforms.clear();
 
+        std::vector<std::uint32_t> meshMaterials;
+
         auto skinnedMeshes = model->getSkinnedMeshes();
 
         // compute required size for output buffer
@@ -158,6 +160,7 @@ namespace Carrot::Render {
         std::vector<std::size_t> sizes;
         offsets.reserve(skinnedMeshes.size());
         sizes.reserve(skinnedMeshes.size());
+        meshMaterials.reserve(skinnedMeshes.size());
         forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, const Mesh::Ref& mesh) {
             offsets.emplace_back(requiredSize);
 
@@ -166,6 +169,7 @@ namespace Carrot::Render {
             requiredSize += outputMeshSize;
 
             meshTransforms.push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform, requires modification of forEachMesh
+            meshMaterials.push_back(materialSlot);
         });
 
 
@@ -210,7 +214,7 @@ namespace Carrot::Render {
 
             if(GetCapabilities().supportsRaytracing) {
                 auto& asBuilder = GetRenderer().getASBuilder();
-                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms));
+                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials));
                 rtInstance.emplace_back(asBuilder.addInstance(createdBLAS));
             }
         }

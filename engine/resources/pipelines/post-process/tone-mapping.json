@@ -13,5 +13,5 @@
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/post-process/invert-colors.fragment.glsl.spv"
+  "fragmentShader": "resources/shaders/post-process/tone-mapping.fragment.glsl.spv"
 }

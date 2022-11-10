@@ -144,6 +144,18 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addGR
                 }
                 const char* shader = useRaytracingVersion ? "gResolve-rendergraph-raytracing" : "gResolve-rendergraph-noraytracing";
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
+
+                struct PushConstant {
+                    std::uint32_t frameCount;
+                    std::uint32_t frameWidth;
+                    std::uint32_t frameHeight;
+                } block;
+
+                block.frameCount = renderer.getFrameCount();
+                block.frameWidth = GetVulkanDriver().getWindowFramebufferExtent().width;
+                block.frameHeight = GetVulkanDriver().getWindowFramebufferExtent().height;
+                renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.positions, frame.swapchainIndex), 0, 2, nullptr);

@@ -4,13 +4,17 @@
 
 #pragma once
 
-namespace Carrot {
-    struct SceneElement {
-        std::uint32_t mappedIndex;
+#include <cstdint>
 
-        glm::mat4 transform{1.0f};
+namespace Carrot::SceneDescription {
 
-        /// inverse transpose of the transform matrix
-        glm::mat4 transformIT{1.0f};
+    struct Geometry {
+        vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
+        vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
+        std::uint32_t materialIndex = (std::uint32_t)-1;
+    };
+
+    struct Instance {
+        std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
     };
 }

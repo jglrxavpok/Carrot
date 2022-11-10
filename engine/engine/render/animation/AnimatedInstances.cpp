@@ -78,6 +78,9 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         std::vector<glm::mat4> meshTransforms;
         meshTransforms.reserve(meshes.size());
 
+        std::vector<std::uint32_t> meshMaterialSlots;
+        meshMaterialSlots.reserve(meshes.size());
+
         forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
             std::int32_t vertexOffset = (static_cast<std::int32_t>(i * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));
 
@@ -93,12 +96,13 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
                 Carrot::BufferView vertexBuffer{nullptr, *fullySkinnedUnitVertices, static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex) };
                 instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex)));
                 meshTransforms.push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform
+                meshMaterialSlots.push_back(materialSlot);
             }
         });
 
         if(GetCapabilities().supportsRaytracing) {
             auto& asBuilder = GetRenderer().getASBuilder();
-            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms);
+            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots);
             raytracingBLASes.push_back(blas);
             raytracingInstances.push_back(asBuilder.addInstance(blas));
         }

@@ -5,12 +5,22 @@
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+
+#extension GL_EXT_buffer_reference: enable
+#include "includes/buffers.glsl"
 #endif
+#include "includes/noise/noise4D.glsl"
 
 
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
+
+layout(push_constant) uniform PushConstant {
+    uint frameCount;
+    uint frameWidth;
+    uint frameHeight;
+} push;
 
 layout(set = 0, binding = 0) uniform texture2D albedo;
 layout(set = 0, binding = 1) uniform texture2D depth;
@@ -28,6 +38,14 @@ layout(set = 0, binding = 11) uniform sampler nearestSampler;
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 layout(set = 0, binding = 12) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = 13) uniform texture2D noiseTexture;
+
+layout(set = 0, binding = 14) buffer Geometries {
+    Geometry g[];
+};
+
+layout(set = 0, binding = 15) buffer RTInstances {
+    Instance i[];
+};
 #endif
 
 layout(set = 1, binding = 0) uniform CameraBufferObject {
@@ -44,6 +62,17 @@ layout(location = 0) out vec4 outColor;
 LIGHT_SET(2)
 DEBUG_OPTIONS_SET(3)
 
+float rand(vec2 n) {
+    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
+}
+
+float sampleNoise(vec2 noiseUV) {
+    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
+    float x = snoise(vec4(noiseUV * screenSize + rand(noiseUV), push.frameCount, 1.0));
+
+    return x;
+}
+
 float computePointLight(vec3 worldPos, vec3 normal, Light light) {
     vec3 lightPosition = light.position;
     vec3 point2light = lightPosition-worldPos;
@@ -57,7 +86,7 @@ float computePointLight(vec3 worldPos, vec3 normal, Light light) {
 }
 
 float computeDirectionalLight(vec3 worldPos, vec3 normal, Light light) {
-    vec3 lightDirection = -normalize(light.direction);
+    vec3 lightDirection = normalize(light.direction);
     return max(0, dot(lightDirection, normal));
 }
 
@@ -73,23 +102,50 @@ float computeSpotLight(vec3 worldPos, vec3 normal, Light light) {
     return clamp((intensity - outerCosCutoffAngle) / cutoffRange, 0, 1);
 }
 
-vec3 calculateLighting(vec3 worldPos, vec3 emissive, vec3 normal, bool computeShadows) {
-    vec3 finalColor = vec3(0.0);
+/**
+* Computes the direct contribution of the given light
+*/
+vec3 computeLightContribution(uint lightIndex, vec3 worldPos, vec3 normal) {
+    #define light lights.l[lightIndex]
+    float enabledF = float(light.enabled);
 
+    float lightFactor = 0.0f;
+    switch(light.type) {
+        case POINT_LIGHT_TYPE:
+            lightFactor = computePointLight(worldPos, normal, light);
+        break;
+
+        case DIRECTIONAL_LIGHT_TYPE:
+            lightFactor = computeDirectionalLight(worldPos, normal, light);
+        break;
+
+        case SPOT_LIGHT_TYPE:
+            lightFactor = computeSpotLight(worldPos, normal, light);
+        break;
+    }
+
+    return enabledF * light.color * lightFactor * light.intensity;
+    #undef light
+}
+
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
+vec3 Li(vec2 noiseUVStart, vec3 worldPos, vec3 direction, float maxDistance) {
+    #define light lights.l[i]
     vec3 lightContribution = vec3(0.0);
 
-    for(uint i = 0; i < lights.count; i++) {
-        #define light lights.l[i]
-
-        if (!light.enabled)
-        continue;
-
-        // is this point in shadow?
+    float pdfInv = 1.0;
+    #if 0
+    for(uint i = 0; i < lights.count; i++)
+    #else
+    pdfInv = lights.count;
+    uint i = uint(floor(sampleNoise(noiseUVStart) * lights.count));
+    #endif
+    {
         float shadowPercent = 0.0f;
+        float enabledF = float(light.enabled);
 
-        if (!computeShadows) {
-            shadowPercent = 0.0f;
-        } else {
+        if(light.enabled)
+        {
             vec3 L = vec3(0, 0, 1);
             switch (light.type) {
                 case POINT_LIGHT_TYPE:
@@ -105,7 +161,6 @@ vec3 calculateLighting(vec3 worldPos, vec3 emissive, vec3 normal, bool computeSh
                 break;
             }
 
-            #ifdef HARDWARE_SUPPORTS_RAY_TRACING
             // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
             float lightDistance = 5000.0f;// TODO: compute this value properly
 
@@ -115,44 +170,65 @@ vec3 calculateLighting(vec3 worldPos, vec3 emissive, vec3 normal, bool computeSh
 
             // Ray Query for shadow
             vec3  origin    = worldPos;
-            vec3  direction = normalize(L);// vector to light
+            vec3  rayDirection = normalize(L);// vector to light
             float tMin      = 0.001f;
-            float tMax      = lightDistance;
+            float tMax      = enabledF * lightDistance;
 
             // Initializes a ray query object but does not start traversal
             rayQueryEXT rayQuery;
-            rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullBackFacingTrianglesEXT , 0xFF, origin, tMin, direction, tMax);
+            rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsCullBackFacingTrianglesEXT , 0xFF, origin, tMin, rayDirection, tMax);
 
             // Start traversal: return false if traversal is complete
             while(rayQueryProceedEXT(rayQuery)) {}
 
             // Returns type of committed (true) intersection
-            if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
-                // Got an intersection == Shadow
-                shadowPercent = 1.0f;
-            }
-            #endif
+            shadowPercent = float(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT);
+
+            const vec3 normal = direction; // TODO
+            lightContribution += enabledF * (1.0f - shadowPercent) * computeLightContribution(i, origin, normal);
         }
-
-        float lightFactor = 0.0f;
-        switch(light.type) {
-            case POINT_LIGHT_TYPE:
-                lightFactor = computePointLight(worldPos, normal, light);
-            break;
-
-            case DIRECTIONAL_LIGHT_TYPE:
-                lightFactor = computeDirectionalLight(worldPos, normal, light);
-            break;
-
-            case SPOT_LIGHT_TYPE:
-                lightFactor = computeSpotLight(worldPos, normal, light);
-            break;
-
-        }
-        lightContribution += light.color * lightFactor * light.intensity * (1.0f - shadowPercent);
     }
+    return lightContribution * pdfInv;
+    #undef light
+}
+#endif
 
-    return lightContribution + emissive + lights.ambientColor;
+
+vec3 dBSDF(vec3 worldPos, vec3 emitDirection, vec3 incidentDirection) {
+    // TODO: depend on material
+    return vec3(1.0);
+}
+
+vec3 calculateLighting(vec2 noiseUVStart, vec3 worldPos, vec3 emissive, vec3 normal, bool raytracing) {
+    vec3 finalColor = vec3(0.0);
+
+    const vec3 cameraForward = (cbo.inverseView * vec4(0, 0, 1, 0)).xyz;
+
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
+    if (!raytracing)
+    {
+#endif
+        vec3 lightContribution = emissive;
+        for (uint i = 0; i < lights.count; i++) {
+            lightContribution += computeLightContribution(i, worldPos, normal);
+        }
+        return lightContribution;
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
+    }
+    else
+    {
+        vec3 lightContribution = emissive;
+        const uint SAMPLE_COUNT = 5; // TODO: more samples
+        vec3 wo = -cameraForward;
+        for(uint i = 0; i < SAMPLE_COUNT; i++) {
+
+            vec3 wi = normal; // TODO: depend on i
+            lightContribution += dBSDF(worldPos, wo, wi) * Li(noiseUVStart + vec2(i), worldPos, normal, 5000.0f) * dot(wi, normal); // TODO: cos() multiplied twice right now due to Li
+        }
+
+        return lightContribution / SAMPLE_COUNT;
+    }
+#endif
 }
 
 void main() {
@@ -188,6 +264,10 @@ void main() {
     } else if(debug.gBufferType == DEBUG_GBUFFER_EMISSIVE) {
         outColor = vec4(emissive, 1.0);
         return;
+    } else if(debug.gBufferType == DEBUG_GBUFFER_RANDOMNESS) {
+        outColor = vec4(sampleNoiseTexture(uv), 1.0);
+
+        return;
     }
 
     if(currDepth < 1.0) {
@@ -197,7 +277,7 @@ void main() {
             outColorWorld = fragmentColor;
         }
 
-        outColorWorld.rgb *= calculateLighting(worldPos, emissive, normal, true);
+        outColorWorld.rgb *= calculateLighting(uv, worldPos, emissive, normal, true);
 
         float distanceToCamera = length(viewPos);
 

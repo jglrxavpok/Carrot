@@ -10,7 +10,6 @@
 #include "core/io/IO.h"
 #include "engine/render/DrawData.h"
 #include "Vertex.h"
-#include "engine/render/DebugBufferObject.h"
 #include "engine/render/MaterialSystem.h"
 #include "Mesh.h"
 #include <core/io/Logging.hpp>

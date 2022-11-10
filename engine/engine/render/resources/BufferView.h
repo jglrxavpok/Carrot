@@ -66,7 +66,7 @@ namespace Carrot {
         ~BufferView();
 
     private:
-        Carrot::ResourceAllocator* allocator = nullptr;
+        Carrot::ResourceAllocator* allocator = nullptr; // TODO: remove allocator ref, maybe make BufferRef somewhere. Need to do a pass on all usages of BufferView/Buffer
         Carrot::Buffer* buffer;
         vk::DeviceSize start;
         vk::DeviceSize size;

@@ -21,7 +21,6 @@ namespace Carrot {
 #include "core/memory/NakedPtr.hpp"
 #include "engine/render/IDTypes.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
-#include "engine/render/DebugBufferObject.h"
 #include "imgui.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"

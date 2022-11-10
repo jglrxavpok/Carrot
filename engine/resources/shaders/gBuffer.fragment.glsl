@@ -11,7 +11,7 @@ layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
-layout(location = 4) in vec3 viewNormal;
+layout(location = 4) in vec3 viewNormal; // TODO: remove? no longer used
 layout(location = 5) flat in uvec4 uuid;
 layout(location = 6) in mat3 TBN;
 
@@ -43,7 +43,7 @@ void main() {
 
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
     mappedNormal = mappedNormal;
-    outNormal = vec4(normalize(TBN * mappedNormal), 1.0);
+    outNormal = vec4(normalize(TBN * mappedNormal), 0.0);
 
     intProperty = IntPropertiesRayTracedLighting;
     //entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);

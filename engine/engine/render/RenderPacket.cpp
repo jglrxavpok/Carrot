@@ -91,12 +91,18 @@ namespace Carrot::Render {
 
     void Packet::record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& cmds, bool skipPipelineBind) const {
         ZoneScoped;
-        GetVulkanDriver().setFormattedMarker(cmds, "Record RenderPacket %s %s %llu", source.file_name(), source.function_name(), (std::uint64_t)source.line());
-        GetVulkanDriver().setFormattedMarker(cmds, "drawIndexed index: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)indexCount, (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
+
+        if(false)
+        {
+            ZoneScopedN("Aftermath markers");
+            GetVulkanDriver().setFormattedMarker(cmds, "Record RenderPacket %s %s %llu", source.file_name(), source.function_name(), (std::uint64_t)source.line());
+            GetVulkanDriver().setFormattedMarker(cmds, "drawIndexed index: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)indexCount, (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
+        }
 
         auto& renderer = renderContext.renderer;
 
         if(!skipPipelineBind) {
+            ZoneScopedN("Change pipeline");
             pipeline->bind(pass, renderContext, cmds);
         }
         {

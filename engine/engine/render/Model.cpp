@@ -172,18 +172,21 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
         std::vector<std::shared_ptr<Mesh>> allStaticMeshes{};
         std::vector<glm::mat4> transforms{};
+        std::vector<std::uint32_t> staticMeshMaterials{};
 
         allStaticMeshes.reserve(staticMeshes.size()); // assume 1 mesh / material
         transforms.reserve(staticMeshes.size()); // assume 1 mesh / material
-        for(const auto& [material, meshes] : staticMeshes) {
+        staticMeshMaterials.reserve(staticMeshes.size()); // assume 1 mesh / material
+        for(const auto& [materialSlot, meshes] : staticMeshes) {
             for(const auto& [mesh, transform] : meshes) {
                 allStaticMeshes.push_back(mesh);
                 transforms.push_back(transform);
+                staticMeshMaterials.push_back(materialSlot);
             }
         }
 
         if(!allStaticMeshes.empty()) {
-            staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms);
+            staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms, staticMeshMaterials);
         }
     }
     waitMaterialLoads.busyWait(); // hide latency

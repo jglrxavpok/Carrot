@@ -129,6 +129,7 @@ namespace Carrot {
         void postFrame();
 
     public:
+        std::uint32_t getFrameCount() const { return frameCount; }
         std::size_t getSwapchainImageCount() { return driver.getSwapchainImageCount(); };
         VulkanDriver& getVulkanDriver() { return driver; };
 
@@ -177,6 +178,7 @@ namespace Carrot {
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
         void bindAccelerationStructure(Pipeline& pipeline, const Render::Context& data, AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID);
+        void bindBuffer(Pipeline& pipeline, const Render::Context& data, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID);
 
         template<typename ConstantBlock>
         void pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
@@ -271,6 +273,7 @@ namespace Carrot {
         std::unordered_map<BindingKey, vk::Image> boundTextures;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
+        std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;
 
         Async::SpinLock threadRegistrationLock;
 
@@ -290,6 +293,8 @@ namespace Carrot {
     private:
         bool hasBlinked = false;
         double blinkTime = -1.0;
+
+        std::uint32_t frameCount = 0;
 
     private:
         void createCameraSetResources();

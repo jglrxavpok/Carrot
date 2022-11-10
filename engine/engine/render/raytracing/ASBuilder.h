@@ -33,7 +33,10 @@ namespace Carrot {
 
     class BLASHandle: public WeakPoolHandle {
     public:
-        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms);
+        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
+                   const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                   const std::vector<glm::mat4>& transforms,
+                   const std::vector<std::uint32_t>& materialSlots);
 
         bool isBuilt() const { return built; }
         void update();
@@ -46,6 +49,8 @@ namespace Carrot {
         std::unique_ptr<AccelerationStructure> as = nullptr;
         std::unique_ptr<Carrot::Buffer> transformData;
         std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
+        std::vector<std::uint32_t> materialSlots;
+        std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
         bool built = false;
 
         friend class ASBuilder;
@@ -86,7 +91,9 @@ namespace Carrot {
 
         std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
 
-        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes, const std::vector<glm::mat4>& transforms);
+        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                                                   const std::vector<glm::mat4>& transforms,
+                                                   const std::vector<std::uint32_t>& materialSlots);
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
@@ -105,6 +112,7 @@ namespace Carrot {
         void createSemaphores();
         void createBuildCommandBuffers();
         void createQueryPools();
+        void createDescriptors();
 
     private:
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
@@ -121,7 +129,11 @@ namespace Carrot {
         std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
         std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
-        std::unique_ptr<Carrot::Buffer> instancesBuffer = nullptr;
+        std::unique_ptr<Carrot::Buffer> rtInstancesBuffer = nullptr;
+
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> geometriesBuffer;
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> instancesBuffer;
+
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
 

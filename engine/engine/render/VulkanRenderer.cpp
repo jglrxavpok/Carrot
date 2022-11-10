@@ -15,6 +15,7 @@
 #include "engine/render/Model.h"
 #include "core/io/Logging.hpp"
 #include "core/io/IO.h"
+#include "engine/render/DebugBufferObject.h"
 #include "engine/render/DrawData.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Font.h"
@@ -348,7 +349,7 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
         return;
     }
     boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = as.getVulkanAS();
-    auto descriptorSet = pipeline.getDescriptorSets(frame, 0)[frame.swapchainIndex];
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
             .accelerationStructureCount = 1,
@@ -370,6 +371,31 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
     {
         ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
         driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
+void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    if(boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == view) {
+        return;
+    }
+    boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = view;
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    auto bufferInfo = view.asBufferInfo();
+    std::array<vk::WriteDescriptorSet, 1> writeBuffer {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .pBufferInfo = &bufferInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeBuffer, {});
     }
 }
 
@@ -427,6 +453,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
 
 void Carrot::VulkanRenderer::newFrame() {
     ZoneScoped;
+
+    frameCount++;
 
     {
         ZoneScopedN("ImGui_Impl new frame");
@@ -671,6 +699,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Depth", &gIndex, DEBUG_GBUFFER_DEPTH);
                 ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
                 ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);
+                ImGui::RadioButton("Randomness", &gIndex, DEBUG_GBUFFER_RANDOMNESS);
 
                 obj.gBufferType = gIndex;
             }

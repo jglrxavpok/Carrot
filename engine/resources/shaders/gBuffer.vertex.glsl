@@ -34,7 +34,7 @@ void main() {
 
     fragColor = inColor;
     instanceColor = inInstanceColor;
-    outViewPos = viewPosition.xyz;
+    outViewPos = viewPosition.xyz / viewPosition.w;
 
 #define rotate(vec) normalize((transpose(inverse(mat3(modelview)))) * vec)
 
