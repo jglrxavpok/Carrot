@@ -218,7 +218,8 @@ vec3 calculateLighting(vec2 noiseUVStart, vec3 worldPos, vec3 emissive, vec3 nor
     else
     {
         vec3 lightContribution = emissive;
-        const uint SAMPLE_COUNT = 5; // TODO: more samples
+        const uint SAMPLE_COUNT = 10; // TODO: more samples
+
         vec3 wo = -cameraForward;
         for(uint i = 0; i < SAMPLE_COUNT; i++) {
 
@@ -265,8 +266,7 @@ void main() {
         outColor = vec4(emissive, 1.0);
         return;
     } else if(debug.gBufferType == DEBUG_GBUFFER_RANDOMNESS) {
-        outColor = vec4(sampleNoiseTexture(uv), 1.0);
-
+        outColor = vec4(sampleNoise(uv).rrr, 1.0);
         return;
     }
 

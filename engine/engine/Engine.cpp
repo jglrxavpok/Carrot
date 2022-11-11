@@ -40,6 +40,7 @@
 #include "engine/console/Console.h"
 #include "engine/render/RenderGraph.h"
 #include "engine/render/TextureRepository.h"
+#include "engine/render/MaterialSystem.h"
 #include "core/Macros.h"
 #include "engine/io/actions/ActionSet.h"
 #include "core/io/Logging.hpp"
@@ -1329,32 +1330,69 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     }, framebufferSize);
     auto& lightingPass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
 
-    auto& postProcessPass = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>("post-processing",
-                                                                           [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
-                                                                                data.postLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
-                                                                                data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
-                                                                                                                        framebufferSize,
-                                                                                                                        vk::AttachmentLoadOp::eClear,
-                                                                                                                        vk::ClearColorValue(std::array{0,0,0,0}),
-                                                                                                                        vk::ImageLayout::eColorAttachmentOptimal
-                                                                                );
-                                                                           },
-                                                                           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
-                                                                               ZoneScopedN("CPU RenderGraph post-process");
-                                                                               TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
-                                                                               auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass.getRenderPass());
-                                                                               renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
+    auto& accumulateLighingPass = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
+            "accumulate-lighting",
+            [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                data.postLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.postProcessed = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                vk::ImageLayout::eGeneral
+                );
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph accumulate-lighting");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "accumulate-lighting");
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/accumulate-lighting", pass.getRenderPass());
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
 
-                                                                               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
-                                                                               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
+                Render::Texture* lastFrameTexture = nullptr;
+                if(frame.lastSwapchainIndex >= 0) {
+                    lastFrameTexture = &pass.getGraph().getTexture(data.postProcessed, frame.lastSwapchainIndex);
+                } else {
+                    lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
+                }
+                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1, nullptr);
 
-                                                                               pipeline->bind(pass.getRenderPass(), frame, buffer);
-                                                                               auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
-                                                                               screenQuadMesh.bind(buffer);
-                                                                               screenQuadMesh.draw(buffer);
-                                                                           }
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 2);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 3);
+
+                pipeline->bind(pass.getRenderPass(), frame, buffer);
+                auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                screenQuadMesh.bind(buffer);
+                screenQuadMesh.draw(buffer);
+            }
     );
-    return postProcessPass;
+
+    auto& toneMapping = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
+            "post-processing",
+
+            [this, accumulateLighingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                data.postLighting = builder.read(accumulateLighingPass.getData().postProcessed, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
+                                                        framebufferSize,
+                                                        vk::AttachmentLoadOp::eClear,
+                                                        vk::ClearColorValue(std::array{0,0,0,0}),
+                                                        vk::ImageLayout::eColorAttachmentOptimal
+                );
+           },
+           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
+               ZoneScopedN("CPU RenderGraph post-process");
+               TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "Post-Process");
+               auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/tone-mapping", pass.getRenderPass());
+               renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
+
+               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 1);
+               renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 2);
+
+               pipeline->bind(pass.getRenderPass(), frame, buffer);
+               auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+               screenQuadMesh.bind(buffer);
+               screenQuadMesh.draw(buffer);
+           }
+    );
+    return toneMapping;
 }
 
 Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {

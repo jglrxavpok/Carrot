@@ -13,7 +13,8 @@ layout(location = 1) out vec4 outViewPosition;
 layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
-
+layout(location = 5) out vec4 roughnessMetallic;
+layout(location = 6) out vec4 emissive;
 
 void main() {
     vec4 texColor = texture(sampler2D(textures[billboard.textureID], linearSampler), uv) * vec4(billboard.color, 1.0);
@@ -28,4 +29,6 @@ void main() {
 
     intProperty = 0;
     entityID = billboard.uuid;
+    roughnessMetallic = vec4(0.0);
+    emissive = vec4(0.0);
 }

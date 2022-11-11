@@ -18,6 +18,8 @@ layout(location = 1) out vec4 outViewPosition;
 layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
+layout(location = 5) out vec4 roughnessMetallic;
+layout(location = 6) out vec4 emissive;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -34,4 +36,6 @@ void main() {
     outNormal = vec4(viewNormal, 1.0);
     intProperty = IntPropertiesRayTracedLighting;
     entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
+    roughnessMetallic = vec4(0.0);
+    emissive = vec4(0.0);
 }

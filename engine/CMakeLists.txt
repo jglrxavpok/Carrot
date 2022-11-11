@@ -194,6 +194,7 @@ set(FRAGMENT_SHADERS
         gBufferSprite.fragment.glsl
         billboards.fragment.glsl
 
+        post-process/accumulate-lighting.fragment.glsl
         post-process/tone-mapping.fragment.glsl
 
         #PARENT_SCOPE
