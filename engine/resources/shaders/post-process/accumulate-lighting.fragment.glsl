@@ -8,10 +8,11 @@ layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    // TODO: reprojection
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), uv);
 
-    float alpha = 0.5;
+    float alpha = 0.25;
     if(isnan(previousFrameColor.r) || isnan(previousFrameColor.g) || isnan(previousFrameColor.b))
     {
         outColor = currentFrameColor;

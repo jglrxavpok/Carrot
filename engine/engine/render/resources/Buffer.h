@@ -27,7 +27,7 @@ namespace Carrot {
         explicit Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});
         const vk::Buffer& getVulkanBuffer() const;
 
-        uint64_t getSize() const;
+        std::uint64_t getSize() const;
 
         /// Copies this buffer to 'other' as a transfer operation
         void copyTo(Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const;
@@ -70,6 +70,7 @@ namespace Carrot {
         ~Buffer();
 
         void setDebugNames(const std::string& name) override;
+        const std::string& getDebugName() const;
 
         vk::DeviceAddress getDeviceAddress() const override;
 
@@ -86,11 +87,12 @@ namespace Carrot {
     private:
         VulkanDriver& driver;
         bool deviceLocal = false;
-        uint64_t size;
+        std::uint64_t size;
         void* mappedPtr = nullptr;
         vk::UniqueBuffer vkBuffer{};
         DeviceMemory memory{};
         vk::DeviceAddress deviceAddress;
+        std::string debugName;
 
         /// Creates and allocates a buffer with the given parameters
         //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});

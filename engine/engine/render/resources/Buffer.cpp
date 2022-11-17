@@ -132,7 +132,12 @@ Carrot::Buffer::~Buffer() {
 }
 
 void Carrot::Buffer::setDebugNames(const std::string& name) {
+    debugName = name;
     nameSingle(name, getVulkanBuffer());
+}
+
+const std::string& Carrot::Buffer::getDebugName() const {
+    return debugName;
 }
 
 void Carrot::Buffer::unmap() {

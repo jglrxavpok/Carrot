@@ -389,7 +389,7 @@ void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Contex
                     .dstBinding = bindingID,
                     .dstArrayElement = 0,
                     .descriptorCount = 1,
-                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
                     .pBufferInfo = &bufferInfo,
             }
     };

@@ -111,6 +111,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
             mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
             staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
         }
+        mesh->name(scene.debugName + " (" + primitive.name + ")");
     }
 
     animationData = std::move(scene.animationData);

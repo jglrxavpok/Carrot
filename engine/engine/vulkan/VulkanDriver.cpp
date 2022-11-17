@@ -122,6 +122,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-VkBufferDeviceAddressInfo-buffer-02601") != nullptr) {
         debug_break();
+    } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-Device address out of bounds") != nullptr) {
+     //   debug_break();
     }
 
     return VK_FALSE;
@@ -987,7 +989,8 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
     }
 
     if(showGPUMemoryUsage) {
-        if(ImGui::Begin("GPU Memory")) {
+        bool isOpen = true;
+        if(ImGui::Begin("GPU Memory", &isOpen)) {
             std::size_t totalUsage = 0;
             if(memoryBudgetSupported) {
                 for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
@@ -1030,8 +1033,103 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                     ImGui::EndTable();
                 }
             }
+
+            if(ImGui::CollapsingHeader("Show buffers")) {
+                if(ImGui::BeginTable("all buffers", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_Reorderable)) {
+                    ImGui::TableSetupColumn("Buffer name");
+                    ImGui::TableSetupColumn("Range");
+                    ImGui::TableSetupColumn("Start Address");
+                    ImGui::TableSetupColumn("Length");
+                    ImGui::TableSetupColumn("Range (decimal)");
+                    ImGui::TableHeadersRow();
+
+                    ImGuiTableSortSpecs* sorting = ImGui::TableGetSortSpecs();
+                    std::vector<std::pair<vk::DeviceAddress, const Carrot::Buffer*>> sortedBuffers;
+                    using PairType = decltype(sortedBuffers)::value_type;
+
+                    auto snapshot = Carrot::Buffer::BufferByStartAddress.snapshot();
+                    sortedBuffers.reserve(snapshot.size());
+                    for(auto& [address, buffer] : snapshot) {
+                        sortedBuffers.emplace_back(address, *buffer);
+                    }
+
+                    if(sorting != nullptr && sorting->SpecsCount > 0) {
+                        verify(sorting->SpecsCount == 1, "Only one column at a time is supported");
+                        const int columnIndex = sorting->Specs[0].ColumnIndex;
+                        const int directionMultiplier = sorting->Specs[0].SortDirection == ImGuiSortDirection_Descending ? -1 : 1;
+
+                        struct NameSorter {
+                            const int directionMultiplier = 0;
+
+                            bool operator()(PairType a, PairType b) const {
+                                return a.second->getDebugName().compare(b.second->getDebugName()) * directionMultiplier < 0;
+                            }
+                        };
+                        struct StartAddressSorter {
+                            const int directionMultiplier = 0;
+
+                            bool operator()(PairType a, PairType b) const {
+                                return std::less<vk::DeviceAddress>{}(a.second->getDeviceAddress(), b.second->getDeviceAddress()) == (directionMultiplier == 1);
+                            }
+                        };
+                        struct LengthSorter {
+                            const int directionMultiplier = 0;
+
+                            bool operator()(PairType a, PairType b) const {
+                                return std::less<std::uint64_t>{}(a.second->getSize(), b.second->getSize()) == (directionMultiplier == 1);
+                            }
+                        };
+                        switch(columnIndex) {
+                            case 0:
+                                std::sort(sortedBuffers.begin(),
+                                          sortedBuffers.end(),
+                                          NameSorter{directionMultiplier});
+                                break;
+
+                            case 1:
+                            case 2:
+                            case 4:
+                                std::sort(sortedBuffers.begin(),
+                                          sortedBuffers.end(),
+                                          StartAddressSorter{directionMultiplier});
+                                break;
+
+                            case 3:
+                                std::sort(sortedBuffers.begin(),
+                                          sortedBuffers.end(),
+                                          LengthSorter{directionMultiplier});
+                                break;
+                        }
+                    }
+
+                    for(const auto& [address, buffer] : sortedBuffers) {
+                        ImGui::TableNextRow();
+
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", buffer->getDebugName().c_str());
+
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%llx - %llx", address, address + buffer->getSize());
+
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%llx", address);
+
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::Text("%llu", buffer->getSize());
+
+                        ImGui::TableSetColumnIndex(4);
+                        ImGui::Text("%llu - %llu", address, address + buffer->getSize());
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
         }
         ImGui::End();
+
+        if(!isOpen) {
+            showGPUMemoryUsage.setValue(false);
+        }
     }
 }
 

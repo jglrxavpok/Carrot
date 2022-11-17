@@ -29,7 +29,7 @@ void Carrot::BufferView::flushMappedMemory() {
 }
 
 bool Carrot::BufferView::operator==(const Carrot::BufferView& other) const {
-    return start == other.start && size == other.size && getVulkanBuffer() == other.getVulkanBuffer();
+    return start == other.start && size == other.size && buffer == other.buffer;
 }
 
 void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length) {

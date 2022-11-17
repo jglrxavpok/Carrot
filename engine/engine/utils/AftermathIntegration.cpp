@@ -186,6 +186,7 @@ static void WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gp
     for(const auto& [address, buffer] : Carrot::Buffer::BufferByStartAddress.snapshot()) {
         rapidjson::Value resource{rapidjson::kObjectType};
         resource.AddMember("Type", "Buffer", jsonDocument.GetAllocator());
+        resource.AddMember("Name", (*buffer)->getDebugName(), jsonDocument.GetAllocator());
         resource.AddMember("Start Address", address, jsonDocument.GetAllocator());
         resource.AddMember("Size", (*buffer)->getSize(), jsonDocument.GetAllocator());
         resource.AddMember("Range", Carrot::sprintf("%x - %x", address, address + (*buffer)->getSize()), jsonDocument.GetAllocator());

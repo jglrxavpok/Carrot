@@ -242,6 +242,8 @@ namespace Carrot::Render {
             TODO; // throw exception
         }
 
+        result.debugName = resource.getName();
+
         // 1. Load materials
         // 2. Load each scene
         // 3. For each scene, load node hierarchy and load meshes as they arrive
@@ -290,6 +292,7 @@ namespace Carrot::Render {
             for(const auto& primitive : mesh.primitives) {
                 LoadedPrimitive& loadedPrimitive = gltfMesh.primitives.emplace_back();
                 loadedPrimitive.materialIndex = primitive.material;
+                loadedPrimitive.name = mesh.name;
 
                 loadVertices(loadedPrimitive.vertices, model, primitive);
                 loadIndices(loadedPrimitive.indices, model, primitive);

@@ -166,14 +166,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addGR
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.emissive, frame.swapchainIndex), 0, 8, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 9, nullptr);
 
-                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 10);
-                renderer.bindSampler(*resolvePipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 11);
-
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
                         renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 12);
                         renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 13, nullptr);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 0, 14);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 0, 15);
                     }
                 }
 

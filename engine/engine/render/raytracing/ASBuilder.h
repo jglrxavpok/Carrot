@@ -8,6 +8,7 @@
 #include <glm/matrix.hpp>
 #include <core/utils/WeakPool.hpp>
 #include <core/async/Locks.h>
+#include "SceneElement.h"
 
 namespace Carrot {
     struct GeometryInput {
@@ -107,6 +108,17 @@ namespace Carrot {
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
+    public:
+        /**
+         * Buffer containing of vector of SceneDescription::Geometry
+         */
+        Carrot::BufferView getGeometriesBuffer(const Render::Context& renderContext);
+
+        /**
+         * Buffer containing of vector of SceneDescription::Instance
+         */
+        Carrot::BufferView getInstancesBuffer(const Render::Context& renderContext);
+
     private:
         void createGraveyard();
         void createSemaphores();
@@ -131,8 +143,8 @@ namespace Carrot {
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
         std::unique_ptr<Carrot::Buffer> rtInstancesBuffer = nullptr;
 
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> geometriesBuffer;
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> instancesBuffer;
+        std::unique_ptr<Carrot::Buffer> geometriesBuffer;
+        std::unique_ptr<Carrot::Buffer> instancesBuffer;
 
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
@@ -153,6 +165,8 @@ namespace Carrot {
 
         std::int8_t framesBeforeRebuildingTLAS = 0;
         std::size_t previousActiveInstances = 0;
+
+        std::vector<SceneDescription::Geometry> allGeometries;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;

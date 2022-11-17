@@ -36,9 +36,9 @@ void main() {
     instanceColor = inInstanceColor;
     outViewPos = viewPosition.xyz / viewPosition.w;
 
-#define rotate(vec) normalize((transpose(inverse(mat3(modelview)))) * vec)
+#define rotate(vec) normalize(((mat3(modelview))) * vec)
 
-    outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * inNormal);
+    outViewNormal = rotate(inNormal);
 
     vec3 T = rotate(inTangent);
     vec3 N = rotate(inNormal);

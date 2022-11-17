@@ -21,6 +21,10 @@
     {
       "type": "debug",
       "setID": 3
+    },
+    {
+      "type": "materials",
+      "setID": 4
     }
   ]
 }

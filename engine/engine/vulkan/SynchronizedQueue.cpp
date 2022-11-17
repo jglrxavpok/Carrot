@@ -13,7 +13,11 @@ namespace Carrot::Vulkan {
     void SynchronizedQueue::waitIdle() {
         std::lock_guard l0 { GetVulkanDriver().getDeviceMutex() };
         std::lock_guard l { mutex };
-        queue.waitIdle();
+        try {
+            queue.waitIdle();
+        } catch(vk::DeviceLostError& deviceLost) {
+            GetVulkanDriver().onDeviceLost();
+        }
     }
 
     void SynchronizedQueue::submit(const vk::SubmitInfo& info, const vk::Fence& fence) {

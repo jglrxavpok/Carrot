@@ -12,6 +12,7 @@ namespace Carrot::SceneDescription {
         vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
         vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
         std::uint32_t materialIndex = (std::uint32_t)-1;
+        std::uint32_t _pad = (std::uint32_t)-1;
     };
 
     struct Instance {
