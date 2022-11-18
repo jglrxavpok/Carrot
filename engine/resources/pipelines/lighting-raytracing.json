@@ -1,0 +1,4 @@
+{
+  "_import": "lighting.json",
+  "fragmentShader": "resources/shaders/lighting-raytracing.fragment.glsl.spv"
+}

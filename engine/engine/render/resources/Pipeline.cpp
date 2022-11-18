@@ -82,8 +82,8 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .alphaToOneEnable = false,
     };
     pipelineTemplate.depthStencil = {
-            .depthTestEnable = description.depthTest,//description.type != PipelineType::GResolve,
-            .depthWriteEnable = description.depthWrite,//description.type != PipelineType::GResolve && description.type != PipelineType::Skybox,
+            .depthTestEnable = description.depthTest,
+            .depthWriteEnable = description.depthWrite,
             .depthCompareOp = vk::CompareOp::eLessOrEqual,
             .stencilTestEnable = false,
     };
@@ -531,8 +531,8 @@ Carrot::VertexFormat Carrot::Pipeline::getVertexFormat() const {
 }
 
 Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) {
-    if(name == "gResolve") {
-        return PipelineType::GResolve;
+    if(name == "lighting") {
+        return PipelineType::Lighting;
     } else if(name == "gbuffer") {
         return PipelineType::GBuffer;
     } else if(name == "blit") {

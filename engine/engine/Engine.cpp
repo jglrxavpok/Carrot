@@ -647,15 +647,6 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
     };
 
     this->mainCommandBuffers = this->getLogicalDevice().allocateCommandBuffers(allocInfo);
-
-    vk::CommandBufferAllocateInfo gAllocInfo {
-            .commandPool = getGraphicsCommandPool(),
-            .level = vk::CommandBufferLevel::eSecondary,
-            .commandBufferCount = static_cast<uint32_t>(getSwapchainImageCount()),
-    };
-    this->gBufferCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
-    this->gResolveCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
-    this->skyboxCommandBuffers = getLogicalDevice().allocateCommandBuffers(gAllocInfo);
 }
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
@@ -1328,7 +1319,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         transparentCallback(pass, frame, cmds);
     }, framebufferSize);
-    auto& lightingPass = getGBuffer().addGResolvePass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
+    auto& lightingPass = getGBuffer().addLightingPass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
 
     auto& accumulateLighingPass = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
             "accumulate-lighting",

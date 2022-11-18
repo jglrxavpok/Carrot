@@ -65,7 +65,7 @@ namespace Carrot::Render {
         data->emissive = getSlot(emissive, materialSystem.blackTextureHandle);
         data->roughnessMetallicFactor = glm::vec2 { roughnessFactor, metallicFactor };
         data->albedo = getSlot(albedo, materialSystem.whiteTextureHandle);
-        data->normalMap = getSlot(normalMap, materialSystem.blueTextureHandle);
+        data->normalMap = getSlot(normalMap, materialSystem.flatNormalTextureHandle);
 
         data->roughnessMetallic = getSlot(roughnessMetallic, materialSystem.blackTextureHandle);
     }
@@ -74,7 +74,7 @@ namespace Carrot::Render {
         Carrot::Render::MaterialData* data = materialSystem.getData(*this);
         data->emissive = materialSystem.blackTextureHandle->getSlot();
         data->albedo = materialSystem.whiteTextureHandle->getSlot();
-        data->normalMap = materialSystem.blueTextureHandle->getSlot();
+        data->normalMap = materialSystem.flatNormalTextureHandle->getSlot();
 
         data->roughnessMetallic = materialSystem.blackTextureHandle->getSlot();
     }
@@ -158,16 +158,16 @@ namespace Carrot::Render {
         std::uint8_t blackPixel[4] = {0x0, 0x00, 0x00, 0xFF};
         blackImage->stageUpload(std::span{blackPixel, 4});
 
-        std::unique_ptr<Carrot::Image> blueImage = std::make_unique<Image>(GetVulkanDriver(),
+        std::unique_ptr<Carrot::Image> flatNormalImage = std::make_unique<Image>(GetVulkanDriver(),
                                                                             vk::Extent3D{.width = 1, .height = 1, .depth = 1},
                                                                             vk::ImageUsageFlagBits::eSampled,
                                                                             vk::Format::eR8G8B8A8Unorm);
-        std::uint8_t bluePixel[4] = {0x00, 0x00, 0xFF, 0xFF};
-        blueImage->stageUpload(std::span{bluePixel, 4});
+        std::uint8_t flatNormalPixel[4] = {128, 128, 0xFF, 0xFF};
+        flatNormalImage->stageUpload(std::span{flatNormalPixel, 4});
 
         whiteTexture = std::make_shared<Texture>(std::move(whiteImage));
         blackTexture = std::make_shared<Texture>(std::move(blackImage));
-        blueTexture = std::make_shared<Texture>(std::move(blueImage));
+        flatNormalTexture = std::make_shared<Texture>(std::move(flatNormalImage));
 
         invalidTexture = GetRenderer().getOrCreateTexture("invalid_texture_reference.png");
         invalidTextureHandle = createTextureHandle(invalidTexture);
@@ -179,7 +179,7 @@ namespace Carrot::Render {
 
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
-        blueTextureHandle = createTextureHandle(blueTexture);
+        flatNormalTextureHandle = createTextureHandle(flatNormalTexture);
     }
 
     void MaterialSystem::updateDescriptorSets(const Carrot::Render::Context& renderContext) {

@@ -187,8 +187,8 @@ set(FRAGMENT_SHADERS
         blit.fragment.glsl
         skybox.fragment.glsl
         particles.fragment.glsl
-        gResolve-rendergraph-noraytracing.fragment.glsl
-        gResolve-rendergraph-raytracing.fragment.glsl
+        lighting-noraytracing.fragment.glsl
+        lighting-raytracing.fragment.glsl
         composer-blit.fragment.glsl
         text-rendering.fragment.glsl
         gBufferSprite.fragment.glsl

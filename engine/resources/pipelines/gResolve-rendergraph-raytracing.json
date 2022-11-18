@@ -1,4 +1,0 @@
-{
-  "_import": "gResolve.json",
-  "fragmentShader": "resources/shaders/gResolve-rendergraph-raytracing.fragment.glsl.spv"
-}

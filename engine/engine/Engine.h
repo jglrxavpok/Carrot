@@ -399,9 +399,6 @@ namespace Carrot {
         std::vector<vk::CommandBuffer> tracyCommandBuffers{};
 
         std::vector<vk::CommandBuffer> mainCommandBuffers{};
-        std::vector<vk::CommandBuffer> gBufferCommandBuffers{};
-        std::vector<vk::CommandBuffer> gResolveCommandBuffers{};
-        std::vector<vk::CommandBuffer> skyboxCommandBuffers{};
         std::vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};

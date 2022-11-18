@@ -19,7 +19,7 @@ namespace Carrot {
 
     enum class PipelineType {
         GBuffer,
-        GResolve,
+        Lighting,
         Skybox,
         Blit,
         Particles,

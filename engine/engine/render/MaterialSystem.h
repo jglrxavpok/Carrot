@@ -103,12 +103,12 @@ namespace Carrot::Render {
     public:
         std::shared_ptr<TextureHandle> getWhiteTexture() const { return whiteTextureHandle; }
         std::shared_ptr<TextureHandle> getBlackTexture() const { return blackTextureHandle; }
-        std::shared_ptr<TextureHandle> getBlueTexture() const { return blueTextureHandle; }
+        std::shared_ptr<TextureHandle> getFlatNormalTexture() const { return flatNormalTextureHandle; }
 
     private:
         Texture::Ref whiteTexture = nullptr;
         Texture::Ref blackTexture = nullptr;
-        Texture::Ref blueTexture = nullptr;
+        Texture::Ref flatNormalTexture = nullptr;
 
     private:
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
@@ -137,7 +137,7 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> invalidTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blueTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> flatNormalTextureHandle = nullptr;
 
 
     private:

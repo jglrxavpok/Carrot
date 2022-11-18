@@ -41,8 +41,8 @@ void main() {
     outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, texColor.a * instanceColor.a);
     outViewPosition = vec4(viewPosition, 1.0);
 
-    vec3 mappedNormal = normalize(texture(sampler2D(textures[normalMap], linearSampler), uv).xyz);
-    //mappedNormal = mappedNormal - 0.5;
+    vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
+    mappedNormal = normalize(mappedNormal *2 -1);
     outNormal = vec4(normalize(TBN * mappedNormal), 0.0);
 
     intProperty = IntPropertiesRayTracedLighting;

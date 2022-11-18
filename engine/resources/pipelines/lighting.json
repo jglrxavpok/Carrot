@@ -1,5 +1,5 @@
 {
-  "type": "gResolve",
+  "type": "lighting",
   "subpassIndex": 0,
   "vertexFormat": "ScreenSpace",
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",

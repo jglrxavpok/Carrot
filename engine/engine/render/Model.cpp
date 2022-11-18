@@ -80,7 +80,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 };
 
                 setMaterialTexture(handle->albedo, material.albedo, materialSystem.getWhiteTexture());
-                setMaterialTexture(handle->normalMap, material.normalMap, materialSystem.getBlueTexture());
+                setMaterialTexture(handle->normalMap, material.normalMap, materialSystem.getFlatNormalTexture());
                 setMaterialTexture(handle->emissive, material.emissive, materialSystem.getBlackTexture());
                 setMaterialTexture(handle->roughnessMetallic, material.roughnessMetallic, materialSystem.getBlackTexture());
 

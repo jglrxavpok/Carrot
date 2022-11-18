@@ -9,7 +9,7 @@ namespace Carrot::Render {
         Undefined = 0,
         OpaqueGBuffer,
         TransparentGBuffer,
-        GResolve,
+        Lighting,
         UI, // TODO: not implemented yet
     };
 }

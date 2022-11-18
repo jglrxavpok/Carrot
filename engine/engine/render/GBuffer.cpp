@@ -108,14 +108,14 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
     return transparentPass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addGResolvePass(const Carrot::Render::PassData::GBuffer& opaqueData,
+Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLightingPass(const Carrot::Render::PassData::GBuffer& opaqueData,
                                                                                            const Carrot::Render::PassData::GBufferTransparent& transparentData,
                                                                                            const Carrot::Render::FrameResource& skyboxOutput,
                                                                                            Carrot::Render::GraphBuilder& graph,
                                                                                            const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-    return graph.addPass<Carrot::Render::PassData::Lighting>("gresolve",
+    return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
                 // pass.prerecordable = true; TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
@@ -136,13 +136,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addGR
                                                         vk::ImageLayout::eColorAttachmentOptimal);
            },
                                                              [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph GResolve");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "GResolve");
+                ZoneScopedN("CPU RenderGraph lighting");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
                 if(useRaytracingVersion) {
                     useRaytracingVersion &= !!frame.renderer.getASBuilder().getTopLevelAS();
                 }
-                const char* shader = useRaytracingVersion ? "gResolve-rendergraph-raytracing" : "gResolve-rendergraph-noraytracing";
+                const char* shader = useRaytracingVersion ? "lighting-raytracing" : "lighting-noraytracing";
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
 
                 struct PushConstant {
