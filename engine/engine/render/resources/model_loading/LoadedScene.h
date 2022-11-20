@@ -39,9 +39,9 @@ namespace Carrot::Render {
         Carrot::IO::VFS::Path normalMap;
 
         /**
-         * Path to roughness+metallic texture, empty if none
+         * Path to metallic+roughness texture, empty if none
          */
-        Carrot::IO::VFS::Path roughnessMetallic;
+        Carrot::IO::VFS::Path metallicRoughness;
 
         /**
          * Metallic factor, multiplied with metallic texture

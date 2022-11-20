@@ -12,14 +12,16 @@ layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 viewNormal;
 layout(location = 5) flat in uvec4 inUUID; // TODO: unused at the moment
+layout(location = 6) in vec3 viewTangent;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outViewPosition;
 layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
-layout(location = 5) out vec4 roughnessMetallic;
+layout(location = 5) out vec4 metallicRoughness;
 layout(location = 6) out vec4 emissive;
+layout(location = 7) out vec4 outTangent;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -33,9 +35,10 @@ void main() {
     }
     outColor = texColor * fragColor * instanceColor;
     outViewPosition = vec4(viewPosition, 1.0);
-    outNormal = vec4(viewNormal, 1.0);
+    outNormal = vec4(viewNormal, 0.0);
+    outTangent = vec4(viewTangent, 0.0);
     intProperty = IntPropertiesRayTracedLighting;
     entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
-    roughnessMetallic = vec4(0.0);
+    metallicRoughness = vec4(0.0);
     emissive = vec4(0.0);
 }

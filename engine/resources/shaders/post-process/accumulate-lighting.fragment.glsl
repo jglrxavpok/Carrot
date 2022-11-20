@@ -12,7 +12,7 @@ void main() {
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), uv);
 
-    float alpha = 0.25;
+    float alpha = 0.5;
     if(isnan(previousFrameColor.r) || isnan(previousFrameColor.g) || isnan(previousFrameColor.b))
     {
         outColor = currentFrameColor;

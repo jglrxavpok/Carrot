@@ -20,8 +20,9 @@ layout(location = 1) out vec4 outViewPosition;
 layout(location = 2) out vec4 outNormal;
 layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
-layout(location = 5) out vec4 roughnessMetallic;
+layout(location = 5) out vec4 metallicRoughness;
 layout(location = 6) out vec4 emissive;
+layout(location = 7) out vec4 outTangent;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -31,23 +32,24 @@ void main() {
     uint albedoTexture = nonuniformEXT(material.albedo);
     uint normalMap = nonuniformEXT(material.normalMap);
     uint emissiveTexture = nonuniformEXT(material.emissive);
-    uint roughnessMetallicTexture = nonuniformEXT(material.roughnessMetallic);
+    uint metallicRoughnessTexture = nonuniformEXT(material.metallicRoughness);
     vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
     texColor *= material.baseColor;
     texColor.a = 1.0;
     if(texColor.a < 0.01) {
         discard;
     }
-    outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb, texColor.a * instanceColor.a);
+    outColor = vec4(texColor.rgb * fragColor * instanceColor.rgb * material.baseColor.rgb, texColor.a * instanceColor.a);
     outViewPosition = vec4(viewPosition, 1.0);
 
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
     mappedNormal = normalize(mappedNormal *2 -1);
     outNormal = vec4(normalize(TBN * mappedNormal), 0.0);
+    outTangent = vec4(normalize(TBN * vec3(1.0, 0.0, 0.0)), 0.0); // TODO: deferred texturing
 
     intProperty = IntPropertiesRayTracedLighting;
     //entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
     entityID = uuid;
-    roughnessMetallic = vec4(texture(sampler2D(textures[roughnessMetallicTexture], linearSampler), uv).rg * material.roughnessMetallicFactor, 0.0, 1.0);
+    metallicRoughness = vec4(texture(sampler2D(textures[metallicRoughnessTexture], linearSampler), uv).bg * material.metallicRoughnessFactor, 0.0, 1.0);
     emissive = vec4(texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissive, 1.0);
 }

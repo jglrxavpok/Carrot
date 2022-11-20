@@ -72,6 +72,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                             loadedATexture = true;
                         } catch (std::exception& e) {
                             Carrot::Log::error("[%s] Failed to open texture '%s', reason: %s", file.getName().c_str(), texturePath.toString().c_str(), e.what());
+                            toSet = defaultHandle;
                         }
                     } else {
                         toSet = defaultHandle;
@@ -82,7 +83,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 setMaterialTexture(handle->albedo, material.albedo, materialSystem.getWhiteTexture());
                 setMaterialTexture(handle->normalMap, material.normalMap, materialSystem.getFlatNormalTexture());
                 setMaterialTexture(handle->emissive, material.emissive, materialSystem.getBlackTexture());
-                setMaterialTexture(handle->roughnessMetallic, material.roughnessMetallic, materialSystem.getBlackTexture());
+                setMaterialTexture(handle->metallicRoughness, material.metallicRoughness, materialSystem.getBlackTexture());
 
                 handle->baseColor = material.baseColorFactor;
                 handle->emissiveColor = material.emissiveFactor;

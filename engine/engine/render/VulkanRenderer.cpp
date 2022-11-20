@@ -696,6 +696,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Albedo", &gIndex, DEBUG_GBUFFER_ALBEDO);
                 ImGui::RadioButton("Positions", &gIndex, DEBUG_GBUFFER_POSITION);
                 ImGui::RadioButton("Normals", &gIndex, DEBUG_GBUFFER_NORMAL);
+                ImGui::RadioButton("Tangents", &gIndex, DEBUG_GBUFFER_TANGENT);
                 ImGui::RadioButton("Depth", &gIndex, DEBUG_GBUFFER_DEPTH);
                 ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
                 ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);

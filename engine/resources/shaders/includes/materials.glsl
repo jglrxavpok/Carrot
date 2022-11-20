@@ -6,11 +6,11 @@ struct Material {
     vec3 emissiveColor;
     uint emissive;
 
-    vec2 roughnessMetallicFactor;
+    vec2 metallicRoughnessFactor;
 
     uint albedo;
     uint normalMap;
-    uint roughnessMetallic;
+    uint metallicRoughness;
 };
 
 #define MATERIAL_SYSTEM_SET(setID) \

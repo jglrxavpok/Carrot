@@ -63,11 +63,11 @@ namespace Carrot::Render {
         data->baseColor = baseColor;
         data->emissiveColor = emissiveColor;
         data->emissive = getSlot(emissive, materialSystem.blackTextureHandle);
-        data->roughnessMetallicFactor = glm::vec2 { roughnessFactor, metallicFactor };
+        data->metallicRoughnessFactor = glm::vec2 { roughnessFactor, metallicFactor };
         data->albedo = getSlot(albedo, materialSystem.whiteTextureHandle);
         data->normalMap = getSlot(normalMap, materialSystem.flatNormalTextureHandle);
 
-        data->roughnessMetallic = getSlot(roughnessMetallic, materialSystem.blackTextureHandle);
+        data->metallicRoughness = getSlot(metallicRoughness, materialSystem.blackTextureHandle);
     }
 
     MaterialHandle::~MaterialHandle() noexcept {
@@ -76,7 +76,7 @@ namespace Carrot::Render {
         data->albedo = materialSystem.whiteTextureHandle->getSlot();
         data->normalMap = materialSystem.flatNormalTextureHandle->getSlot();
 
-        data->roughnessMetallic = materialSystem.blackTextureHandle->getSlot();
+        data->metallicRoughness = materialSystem.blackTextureHandle->getSlot();
     }
 
     MaterialSystem::MaterialSystem() {
@@ -175,7 +175,7 @@ namespace Carrot::Render {
         invalidMaterialHandle->albedo = invalidTextureHandle;
         invalidMaterialHandle->normalMap = invalidTextureHandle;
         invalidMaterialHandle->emissive = invalidTextureHandle;
-        invalidMaterialHandle->roughnessMetallic = invalidTextureHandle;
+        invalidMaterialHandle->metallicRoughness = invalidTextureHandle;
 
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
@@ -248,7 +248,7 @@ namespace Carrot::Render {
                 static int textureType = 0;
                 ImGui::RadioButton("Diffuse", &textureType, 0);
                 ImGui::RadioButton("NormalMap", &textureType, 1);
-                ImGui::RadioButton("RoughnessMetallic", &textureType, 2);
+                ImGui::RadioButton("MetallicRoughness", &textureType, 2);
                 ImGui::RadioButton("Emissive", &textureType, 3);
 
                 const int columnCount = 8;
@@ -274,7 +274,7 @@ namespace Carrot::Render {
                                     break;
 
                                 case 2:
-                                    handle = material->roughnessMetallic;
+                                    handle = material->metallicRoughness;
                                     break;
 
                                 case 3:
@@ -345,12 +345,12 @@ namespace Carrot::Render {
                 materialDataPtr[i].albedo = invalidTextureHandle->getSlot();
                 materialDataPtr[i].normalMap = invalidTextureHandle->getSlot();
                 materialDataPtr[i].emissive = invalidTextureHandle->getSlot();
-                materialDataPtr[i].roughnessMetallic = invalidTextureHandle->getSlot();
+                materialDataPtr[i].metallicRoughness = invalidTextureHandle->getSlot();
             } else {
                 materialDataPtr[i].albedo = 0;
                 materialDataPtr[i].normalMap = 0;
                 materialDataPtr[i].emissive = 0;
-                materialDataPtr[i].roughnessMetallic = 0;
+                materialDataPtr[i].metallicRoughness = 0;
             }
         }
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);

@@ -22,6 +22,7 @@ layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outViewNormal;
 layout(location = 5) out uvec4 outUUID;
+layout(location = 6) out vec3 outViewTangent;
 
 layout(push_constant) uniform TexRegion {
     layout(offset = 24) vec2 center;
@@ -38,7 +39,8 @@ void main() {
     instanceColor = inInstanceColor;
     outViewPos = viewPosition.xyz;
 
-    outViewNormal = normalize((transpose(inverse(mat3(modelview)))) * vec3(0,0,1));
+    outViewNormal = normalize(mat3(modelview) * vec3(0,0,1));
+    outViewTangent = normalize(mat3(modelview) * vec3(1,0,0));
 
     outUUID = inUUID;
 }

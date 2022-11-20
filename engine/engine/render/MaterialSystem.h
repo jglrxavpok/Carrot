@@ -26,11 +26,11 @@ namespace Carrot::Render {
         glm::vec3 emissiveColor {0.0f};
         std::uint32_t emissive = 0;
 
-        glm::vec2 roughnessMetallicFactor{0.0f};
+        glm::vec2 metallicRoughnessFactor{0.0f};
 
         std::uint32_t albedo = 0;
         std::uint32_t normalMap = 0;
-        std::uint32_t roughnessMetallic = 0;
+        std::uint32_t metallicRoughness = 0;
     };
 
     class TextureHandle: public WeakPoolHandle {
@@ -61,7 +61,7 @@ namespace Carrot::Render {
 
         std::shared_ptr<TextureHandle> albedo;
         std::shared_ptr<TextureHandle> normalMap;
-        std::shared_ptr<TextureHandle> roughnessMetallic;
+        std::shared_ptr<TextureHandle> metallicRoughness;
 
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 

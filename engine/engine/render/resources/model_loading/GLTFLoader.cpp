@@ -149,16 +149,28 @@ namespace Carrot::Render {
         ZoneScoped;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
         const tinygltf::Accessor& normalsAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-        const tinygltf::Accessor& tangentsAccessor = model.accessors[primitive.attributes.at("TANGENT")];
-        const tinygltf::Accessor& texCoordsAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
 
+        int texCoordsAccessorIndex = -1;
+        auto texCoordsAttributeIt = primitive.attributes.find("TEXCOORD_0");
+        if(texCoordsAttributeIt != primitive.attributes.end()) {
+            texCoordsAccessorIndex = texCoordsAttributeIt->second;
+        }
 
         int colorAccessorIndex = -1;
         auto colorAttributeIt = primitive.attributes.find("COLOR_0");
         if(colorAttributeIt != primitive.attributes.end()) {
             colorAccessorIndex = colorAttributeIt->second;
         }
+
+        int tangentAccessorIndex = -1;
+        auto tangentAttributeIt = primitive.attributes.find("TANGENT");
+        if(tangentAttributeIt != primitive.attributes.end()) {
+            tangentAccessorIndex = tangentAttributeIt->second;
+        }
+
         const tinygltf::Accessor* vertexColorAccessor = colorAccessorIndex != -1 ? &model.accessors[colorAccessorIndex] : nullptr;
+        const tinygltf::Accessor* texCoordsAccessor = texCoordsAccessorIndex != -1 ? &model.accessors[texCoordsAccessorIndex] : nullptr;
+        const tinygltf::Accessor* tangentsAccessor = tangentAccessorIndex != -1 ? &model.accessors[tangentAccessorIndex] : nullptr;
         // TODO: UV2
         // TODO: Joints
         // TODO: Weights
@@ -166,8 +178,14 @@ namespace Carrot::Render {
         // TODO: support compressed meshes
 
         verify(positionsAccessor.count == normalsAccessor.count, "Mismatched position/normal count");
-        verify(positionsAccessor.count == tangentsAccessor.count, "Mismatched position/tangents count");
-        verify(positionsAccessor.count == texCoordsAccessor.count, "Mismatched position/texCoords count");
+
+        if(texCoordsAccessor != nullptr) {
+            verify(positionsAccessor.count == texCoordsAccessor->count, "Mismatched position/texCoords count");
+        }
+
+        if(tangentsAccessor != nullptr) {
+            verify(positionsAccessor.count == tangentsAccessor->count, "Mismatched position/tangents count");
+        }
 
         vertices.resize(positionsAccessor.count);
         for (std::size_t i = 0; i < positionsAccessor.count; ++i) {
@@ -176,8 +194,18 @@ namespace Carrot::Render {
             vertex.pos = glm::vec4 { pos, 1.0f };
 
             vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
-            vertex.tangent = readFromAccessor<glm::vec3>(i, tangentsAccessor, model);
-            vertex.uv = readFromAccessor<glm::vec3>(i, texCoordsAccessor, model);
+            if(tangentsAccessor) {
+                vertex.tangent = readFromAccessor<glm::vec3>(i, *tangentsAccessor, model);
+            } else {
+                // TODO: compute tangents
+                vertex.tangent = glm::vec3(0.0, 1.0, 0.0);
+            }
+
+            if(texCoordsAccessor) {
+                vertex.uv = readFromAccessor<glm::vec3>(i, *texCoordsAccessor, model);
+            } else {
+                vertex.uv = glm::vec2(0.0f);
+            }
 
             if(vertexColorAccessor) {
                 vertex.color = readFromAccessor<glm::vec4>(i, *vertexColorAccessor, model);
@@ -275,7 +303,7 @@ namespace Carrot::Render {
             loadedMaterial.normalMap = getTexturePath(material.normalTexture.index);
             loadedMaterial.occlusion = getTexturePath(material.occlusionTexture.index);
             loadedMaterial.emissive = getTexturePath(material.emissiveTexture.index);
-            loadedMaterial.roughnessMetallic = getTexturePath(material.pbrMetallicRoughness.metallicRoughnessTexture.index);
+            loadedMaterial.metallicRoughness = getTexturePath(material.pbrMetallicRoughness.metallicRoughnessTexture.index);
 
             if(material.alphaMode.empty()) {
                 loadedMaterial.blendMode = LoadedMaterial::BlendMode::None;

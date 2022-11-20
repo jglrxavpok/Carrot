@@ -20,6 +20,7 @@ namespace Fertilizer {
 
     static std::unordered_map<std::string, Convertor> ConversionFunctions = {
             { ".png", { ".ktx2", compressTexture } },
+            { ".jpg", { ".ktx2", compressTexture } },
             { ".jpeg", { ".ktx2", compressTexture } },
             { ".tga", { ".ktx2", compressTexture } },
             { ".bmp", { ".ktx2", compressTexture } },
