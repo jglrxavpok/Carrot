@@ -53,6 +53,18 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 }
 
 template<typename T>
+void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
+    // allocate staging buffer used for transfer
+    auto stagingBuffer = Carrot::Buffer(driver, totalLength, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+
+    // upload data to staging buffer
+    stagingBuffer.directUpload(data, totalLength);
+
+    // copy staging buffer to this buffer
+    stagingBuffer.asyncCopyTo(semaphore, *this, 0, offset);
+}
+
+template<typename T>
 T* Carrot::Buffer::map() {
     if(mappedPtr) {
        return reinterpret_cast<T*>(mappedPtr);

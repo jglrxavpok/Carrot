@@ -32,6 +32,10 @@ namespace Carrot {
         /// Copies this buffer to 'other' as a transfer operation
         void copyTo(Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const;
 
+        /// Copies this buffer to 'other' as a transfer operation, without blocking waiting for the transfer to complete.
+        /// Give a semaphore to signal when the transfer is done
+        void asyncCopyTo(vk::Semaphore& semaphore, Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const;
+
         /// Copies the content of this buffer to the given buffer, as a transfer operation.
         void copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const;
 
@@ -55,6 +59,9 @@ namespace Carrot {
 
         template<typename T>
         void stageUploadWithOffset(uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
+
+        template<typename T>
+        void stageAsyncUploadWithOffset(vk::Semaphore& semaphore, uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
 
         /// returns a vk::DescriptorBufferInfo that references this buffer
         [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;

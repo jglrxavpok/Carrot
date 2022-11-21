@@ -124,13 +124,13 @@ namespace Carrot {
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0));
+        void performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0), vk::Semaphore signalSemaphore = {});
 
         /// Performs a graphics operation on the graphics queue.
         /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
         /// \param consumer function describing the operation
         template<typename CommandBufferConsumer>
-        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0));
+        void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags waitDstFlags = static_cast<vk::PipelineStageFlagBits>(0), vk::Semaphore signalSemaphore = {});
 
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
                                                           vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -356,7 +356,7 @@ namespace Carrot {
 
     private:
         template<typename CommandBufferConsumer>
-        void performSingleTimeCommands(vk::CommandPool& commandPool, const std::function<void(const vk::SubmitInfo&, const vk::Fence&)>& submitAction, const std::function<void()>& waitAction, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, CommandBufferConsumer consumer);
+        void performSingleTimeCommands(vk::CommandPool& commandPool, const std::function<void(const vk::SubmitInfo&, const vk::Fence&)>& submitAction, const std::function<void()>& waitAction, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, vk::Semaphore signalSemaphore, CommandBufferConsumer consumer);
 
         // used by performSingleTimeCommands
         static void waitGraphics();

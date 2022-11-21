@@ -40,6 +40,7 @@ namespace Carrot {
             }
         }
 
+        // TODO: don't wait for upload to complete?
         transformData->stageUploadWithOffset(0, rtTransforms.data(), rtTransforms.size() * sizeof(vk::TransformMatrixKHR));
 
         for(std::size_t i = 0; i < meshes.size(); i++) {
@@ -165,10 +166,14 @@ void Carrot::ASBuilder::createSemaphores() {
     preCompactBLASSemaphore.resize(imageCount);
     blasBuildSemaphore.resize(imageCount);
     tlasBuildSemaphore.resize(imageCount);
+    geometryUploadSemaphore.resize(imageCount);
+    instanceUploadSemaphore.resize(imageCount);
     for (size_t i = 0; i < imageCount; ++i) {
         preCompactBLASSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         blasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
         tlasBuildSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
+        geometryUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
+        instanceUploadSemaphore[i] = GetVulkanDevice().createSemaphoreUnique({});
     }
 }
 
@@ -334,7 +339,9 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                                                                           vk::MemoryPropertyFlagBits::eDeviceLocal);
         geometriesBuffer->setDebugNames("RT Geometries");
     }
-    geometriesBuffer->stageUploadWithOffset(0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+
+    geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
 
     // TODO: reuse
     Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -531,10 +538,10 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     {
         ZoneScopedN("Stage upload");
-        instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+        instancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+        GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
+
         rtInstancesBuffer->directUpload(vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
-        // TODO: remove wait
-        //instancesBuffer->stageUploadWithOffsets(make_pair(0ull, instances));
     }
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesVk {

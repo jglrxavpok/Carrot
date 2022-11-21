@@ -313,7 +313,7 @@ vec3 cosineSampleHemisphere(inout RandomSampler rng) {
     return vec3(d.x, d.y, z);
 }
 
-vec3 sampleDirection(inout RandomSampler rng, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
+vec3 sampleF(inout RandomSampler rng, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
     // TODO: GGX instead of Lambertian
 
     incidentDirection = cosineSampleHemisphere(rng);
@@ -387,7 +387,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 
                 vec3 direction;
                 float pdf;
-                vec3 f = sampleDirection(rng, invTBN * incomingRay, direction, pdf);
+                vec3 f = sampleF(rng, invTBN * incomingRay, direction, pdf);
 
                 if(pdf == 0.0)
                     break;

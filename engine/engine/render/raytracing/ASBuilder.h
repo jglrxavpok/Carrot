@@ -159,6 +159,8 @@ namespace Carrot {
         std::unique_ptr<AccelerationStructure> tlas;
 
         bool builtBLASThisFrame = false;
+        std::vector<vk::UniqueSemaphore> instanceUploadSemaphore;
+        std::vector<vk::UniqueSemaphore> geometryUploadSemaphore;
         std::vector<vk::UniqueSemaphore> tlasBuildSemaphore;
         std::vector<vk::UniqueSemaphore> preCompactBLASSemaphore;
         std::vector<vk::UniqueSemaphore> blasBuildSemaphore;

@@ -59,6 +59,17 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
     });
 }
 
+void Carrot::Buffer::asyncCopyTo(vk::Semaphore& semaphore, Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+        vk::BufferCopy copyRegion = {
+                .srcOffset = srcOffset,
+                .dstOffset = dstOffset,
+                .size = other.size - dstOffset,
+        };
+        stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
+    }, false, {}, static_cast<vk::PipelineStageFlagBits>(0), semaphore);
+}
+
 void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
     driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
         vk::BufferCopy copyRegion = {
