@@ -189,6 +189,7 @@ namespace Carrot {
 
         Skybox::Type getSkybox() const;
         void setSkybox(Skybox::Type type);
+        std::shared_ptr<Render::Texture> getSkyboxCubeMap() const;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
@@ -410,7 +411,7 @@ namespace Carrot {
         bool framebufferResized = false;
 
         Skybox::Type currentSkybox = Skybox::Type::None;
-        std::unique_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
+        std::shared_ptr<Render::Texture> loadedSkyboxTexture = nullptr;
         std::unique_ptr<Mesh> skyboxMesh = nullptr;
 
         std::unique_ptr<Mesh> screenQuad = nullptr;

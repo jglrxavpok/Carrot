@@ -177,6 +177,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
+                        Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
+                        if(!skyboxCubeMap || GetEngine().getSkybox() == Skybox::Type::None) {
+                            skyboxCubeMap = renderer.getBlackCubeMapTexture();
+                        }
+                        renderer.bindTexture(*resolvePipeline, frame, *skyboxCubeMap, 0, 11, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
                         renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 12);
                         renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 13, nullptr);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 0, 14);

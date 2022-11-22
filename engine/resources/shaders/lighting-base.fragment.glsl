@@ -40,6 +40,7 @@ layout(set = 0, binding = 10) uniform texture2D viewTangents;
 
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
+layout(set = 0, binding = 11) uniform samplerCube skybox3D;
 layout(set = 0, binding = 12) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = 13) uniform texture2D noiseTexture;
 
@@ -416,7 +417,13 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 tangent = tbn * vec3(1, 0, 0);
                 metallicRoughness = _sample(metallicRoughness).rg;
             } else {
-                vec3 skyboxColor = vec3(0,0,0); // TODO
+                const mat3 rot = mat3(
+                    vec3(1.0, 0.0, 0.0),
+                    vec3(0.0, 0.0, -1.0),
+                    vec3(0.0, 1.0, 0.0)
+                );
+                vec3 uv = rot * incomingRay;
+                vec3 skyboxColor = texture(skybox3D, uv).rgb;
                 lightContribution += skyboxColor * beta;
                 break;
             }

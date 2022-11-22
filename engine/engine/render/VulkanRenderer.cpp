@@ -52,6 +52,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     createRayTracer();
     createUIResources();
     createGBuffer();
+    createDefaultResources();
 
     initImGui();
 
@@ -797,6 +798,28 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
     }
 }
 
+void Carrot::VulkanRenderer::createDefaultResources() {
+    std::unique_ptr<Image> cubeMap = std::make_unique<Image>(
+            GetVulkanDriver(),
+            vk::Extent3D{1,1,1},
+            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+            vk::Format::eR8G8B8A8Unorm,
+            GetVulkanDriver().createGraphicsAndTransferFamiliesSet(),
+            vk::ImageCreateFlagBits::eCubeCompatible,
+            vk::ImageType::e2D,
+            6);
+
+    std::array<std::uint8_t, 4> blackPixel = {0,0,0,0};
+    cubeMap->stageUpload(blackPixel, 0);
+    cubeMap->stageUpload(blackPixel, 1);
+    cubeMap->stageUpload(blackPixel, 2);
+    cubeMap->stageUpload(blackPixel, 3);
+    cubeMap->stageUpload(blackPixel, 4);
+    cubeMap->stageUpload(blackPixel, 5);
+
+    blackCubeMapTexture = std::make_shared<Render::Texture>(std::move(cubeMap));
+}
+
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
     std::size_t count = getSwapchainImageCount() * (GetEngine().getConfiguration().runInVR ? 2 : 1);
     std::vector<vk::DescriptorSetLayout> layouts {count, *cameraDescriptorSetLayout};
@@ -866,6 +889,10 @@ void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Ca
 
 Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
     return getOrCreateTexture("default.png");
+}
+
+Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
+    return blackCubeMapTexture;
 }
 
 void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {

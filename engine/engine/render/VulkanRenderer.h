@@ -220,6 +220,7 @@ namespace Carrot {
 
     public:
         Render::Texture::Ref getDefaultImage();
+        Render::Texture::Ref getBlackCubeMapTexture();
 
     public:
         struct ThreadPackets {
@@ -288,6 +289,7 @@ namespace Carrot {
         std::shared_ptr<Carrot::Render::MaterialHandle> whiteMaterial;
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
+        std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
         SingleFrameStackGPUAllocator singleFrameAllocator;
 
     private:
@@ -299,6 +301,7 @@ namespace Carrot {
     private:
         void createCameraSetResources();
         void createDebugSetResources();
+        void createDefaultResources();
 
         void createUIResources();
 

@@ -1172,6 +1172,11 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
     }
 }
 
+
+std::shared_ptr<Carrot::Render::Texture> Carrot::Engine::getSkyboxCubeMap() const {
+    return loadedSkyboxTexture;
+}
+
 void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     vkDriver.onSwapchainImageCountChange(newCount);
 
