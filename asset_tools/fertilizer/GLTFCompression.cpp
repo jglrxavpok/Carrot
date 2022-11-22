@@ -5,8 +5,12 @@
 #include <GLTFCompression.h>
 #include <core/utils/CarrotTinyGLTF.h>
 #include "core/Macros.h"
+#include <unordered_set>
 
 namespace Fertilizer {
+
+    constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
+
     using fspath = std::filesystem::path;
 
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
@@ -77,14 +81,42 @@ namespace Fertilizer {
             };
         }
 
+        // ----------
+        // convert
+
+        std::vector<std::string> extensionsRequired = {
+                "KHR_texture_basisu",
+        };
+
+        for(const auto& ext : extensionsRequired) {
+            model.extensionsRequired.push_back(ext);
+            model.extensionsUsed.push_back(ext);
+        }
+
         for(const auto& buffer : model.buffers) {
             copyConvert(parentPath / buffer.uri, outputParentPath / buffer.uri);
         }
 
-        for(auto& image : model.images) {
+        std::unordered_set<std::size_t> modifiedImages;
+
+        modifiedImages.reserve(model.images.size());
+        for(std::size_t imageIndex = 0; imageIndex < model.images.size(); imageIndex++) {
+            tinygltf::Image& image = model.images[imageIndex];
             fspath uri = image.uri;
             uri = Fertilizer::makeOutputPath(uri);
             image.uri = uri.string();
+
+            modifiedImages.insert(imageIndex);
+        }
+
+        for(std::size_t textureIndex = 0; textureIndex < model.textures.size(); textureIndex++) {
+            tinygltf::Texture& texture = model.textures[textureIndex];
+            if(modifiedImages.contains(texture.source)) {
+                tinygltf::Value::Object extensionContents;
+                extensionContents["source"] = tinygltf::Value{ texture.source };
+                texture.extensions[KHR_TEXTURE_BASISU_EXTENSION_NAME] = tinygltf::Value{ extensionContents };
+                texture.source = -1;
+            }
         }
 
         if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, false, false)) {

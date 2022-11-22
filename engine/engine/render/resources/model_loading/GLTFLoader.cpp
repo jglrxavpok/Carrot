@@ -11,6 +11,12 @@
 
 namespace Carrot::Render {
 
+    constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
+
+    constexpr const char* const SUPPORTED_EXTENSIONS[] = {
+            KHR_TEXTURE_BASISU_EXTENSION_NAME,
+    };
+
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
                            std::string* err, const std::string& filepath,
                            void* userData) {
@@ -272,6 +278,20 @@ namespace Carrot::Render {
 
         result.debugName = resource.getName();
 
+        for(const auto& requiredExtension : model.extensionsRequired) {
+            bool supported = false;
+            for(const auto& supportedExtension : SUPPORTED_EXTENSIONS) {
+                if(requiredExtension == supportedExtension) {
+                    supported = true;
+                    break;
+                }
+            }
+
+            if(!supported) {
+                throw std::runtime_error("Unsupported extension: " + requiredExtension);
+            }
+        }
+
         // 1. Load materials
         // 2. Load each scene
         // 3. For each scene, load node hierarchy and load meshes as they arrive
@@ -289,7 +309,17 @@ namespace Carrot::Render {
             auto getTexturePath = [&](int textureIndex) -> const IO::VFS::Path& {
                 if(textureIndex < 0)
                     return nullPath;
-                return imagePaths[model.textures[textureIndex].source];
+
+                tinygltf::Texture& texture = model.textures[textureIndex];
+                auto it = texture.extensions.find(KHR_TEXTURE_BASISU_EXTENSION_NAME);
+
+                int source = -1;
+                if(it != texture.extensions.end()) {
+                    source = it->second.Get<tinygltf::Value::Object>().at("source").Get<int>();
+                } else {
+                    source = texture.source;
+                }
+                return imagePaths[source];
             };
 
             auto& loadedMaterial = result.materials.emplace_back();
