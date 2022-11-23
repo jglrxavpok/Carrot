@@ -26,7 +26,12 @@ layout(set = setID, binding = bindingID) buffer Lights { \
     Light l[]; \
 } lights;
 
-#define LIGHT_SET(setID) LIGHT_BUFFER(setID, 0)
+#define LIGHT_SET(setID)                                                                        \
+    LIGHT_BUFFER(setID, 0)                                                                      \
+    layout(set = setID, binding = 1) buffer ActiveLights {                                      \
+        uint count;                                                                             \
+        uint indices[];                                                                         \
+    } activeLights;
 
 #define POINT_LIGHT_TYPE 0
 #define DIRECTIONAL_LIGHT_TYPE 1

@@ -66,8 +66,6 @@ namespace Carrot::Render {
 
         std::shared_ptr<LightHandle> create();
 
-        Buffer& getBuffer() const { return *lightBuffer; }
-
     public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
         void beginFrame(const Carrot::Render::Context& renderContext);
@@ -86,7 +84,7 @@ namespace Carrot::Render {
             return lightPtr[handle.getSlot()];
         }
 
-        void reallocateBuffer(std::uint32_t lightCount);
+        void reallocateBuffers(std::uint32_t lightCount);
         void reallocateDescriptorSets();
 
     private:
@@ -115,9 +113,17 @@ namespace Carrot::Render {
             alignas(alignof(glm::vec4)) Light lights[];
         };
 
+        struct ActiveLightsData {
+            std::uint32_t count = 0;
+
+            std::uint32_t indices[];
+        };
+
         Data* data = nullptr;
+        ActiveLightsData* activeLightsData = nullptr;
         std::size_t lightBufferSize = 0; // in number of lights
         std::unique_ptr<Carrot::Buffer> lightBuffer = nullptr;
+        std::unique_ptr<Carrot::Buffer> activeLightsBuffer = nullptr;
 
         // Distance at which fog starts
         float fogDistance = std::numeric_limits<float>::infinity();

@@ -104,7 +104,8 @@ float sampleNoise(inout RandomSampler rng) {
     return rng.seed * (1.0 / 4294967296.0);
 }
 
-float computePointLight(vec3 worldPos, vec3 normal, Light light) {
+float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
+    #define light lights.l[lightIndex]
     vec3 lightPosition = light.position;
     vec3 point2light = lightPosition-worldPos;
 
@@ -114,14 +115,18 @@ float computePointLight(vec3 worldPos, vec3 normal, Light light) {
     float inclinaisonFactor = abs(dot(normal, point2light / distance));
 
     return max(0, 1.0f / attenutation) * inclinaisonFactor;
+    #undef light
 }
 
-float computeDirectionalLight(vec3 worldPos, vec3 normal, Light light) {
+float computeDirectionalLight(vec3 worldPos, vec3 normal, uint lightIndex) {
+    #define light lights.l[lightIndex]
     vec3 lightDirection = normalize(light.direction);
     return max(0, dot(lightDirection, normal));
+    #undef light
 }
 
-float computeSpotLight(vec3 worldPos, vec3 normal, Light light) {
+float computeSpotLight(vec3 worldPos, vec3 normal, uint lightIndex) {
+    #define light lights.l[lightIndex]
     float cutoffCosAngle = light.cutoffCosAngle;
     float outerCosCutoffAngle = light.outerCosCutoffAngle;
 
@@ -131,6 +136,7 @@ float computeSpotLight(vec3 worldPos, vec3 normal, Light light) {
     float intensity = dot(point2light, lightDirection);
     float cutoffRange = outerCosCutoffAngle - cutoffCosAngle;
     return clamp((intensity - outerCosCutoffAngle) / cutoffRange, 0, 1);
+    #undef light
 }
 
 /**
@@ -143,15 +149,15 @@ vec3 computeLightContribution(uint lightIndex, vec3 worldPos, vec3 normal) {
     float lightFactor = 0.0f;
     switch(light.type) {
         case POINT_LIGHT_TYPE:
-            lightFactor = computePointLight(worldPos, normal, light);
+            lightFactor = computePointLight(worldPos, normal, lightIndex);
         break;
 
         case DIRECTIONAL_LIGHT_TYPE:
-            lightFactor = computeDirectionalLight(worldPos, normal, light);
+            lightFactor = computeDirectionalLight(worldPos, normal, lightIndex);
         break;
 
         case SPOT_LIGHT_TYPE:
-            lightFactor = computeSpotLight(worldPos, normal, light);
+            lightFactor = computeSpotLight(worldPos, normal, lightIndex);
         break;
     }
 
@@ -232,17 +238,15 @@ SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
     return r;
 }
 
-vec3 computeDirectLighting(inout RandomSampler rng, vec3 worldPos, vec3 direction, vec3 normal, float maxDistance) {
+vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, inout vec3 direction, vec3 worldPos, vec3 normal, float maxDistance) {
     #define light lights.l[i]
     vec3 lightContribution = vec3(0.0);
 
-    float pdfInv = 1.0;
-    #if 0
-    for(uint i = 0; i < lights.count; i++)
-    #else
-    pdfInv = lights.count;
-    uint i = uint(floor(sampleNoise(rng) * lights.count));
-    #endif
+    float pdfInv = activeLights.count;
+    uint i = uint(floor(sampleNoise(rng) * activeLights.count));
+    i = activeLights.indices[i];
+    lightPDF = 1.0 / pdfInv;
+
     {
         float shadowPercent = 0.0f;
         float enabledF = float(light.enabled);
@@ -281,7 +285,7 @@ vec3 computeDirectLighting(inout RandomSampler rng, vec3 worldPos, vec3 directio
 #endif
 
 // ============= TANGENT SPACE ONLY =============
-float computePDF(vec3 wo, vec3 wi) {
+float computeBSDF_PDF(vec3 wo, vec3 wi) {
     // TODO: GGX instead of Lambertian
     if(wo.z * wi.z < 0) {
         return 0.0f;
@@ -322,12 +326,19 @@ vec3 sampleF(inout RandomSampler rng, vec3 emitDirection, inout vec3 incidentDir
     float woDotN = emitDirection.z;
     if(woDotN < 0) incidentDirection.z *= -1.0;
 
-    pdf = computePDF(emitDirection, incidentDirection);
+    pdf = computeBSDF_PDF(emitDirection, incidentDirection);
 
     return vec3(M_INV_PI);
 }
 
 // ============= END OF TANGENT SPACE ONLY =============
+
+// from Physically Based Rendering
+float powerHeuristic(int nf, float fPDF, int ng, float gPDF) {
+    float f = nf * fPDF;
+    float g = ng * gPDF;
+    return (f*f) / (f*f + g*g);
+}
 
 vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     vec3 finalColor = vec3(0.0);
@@ -348,7 +359,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
     }
     else
     {
-        vec3 lightContribution = lights.ambientColor;
+        vec3 lightContribution = emissive + lights.ambientColor;
 
         vec3 incomingRay = normalize(worldPos - cameraPos);
         const float roughness = metallicRoughness.y;
@@ -366,11 +377,23 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             SurfaceIntersection intersection;
             intersection.hasIntersection = false;
 
-
             // direct lighting
-            pathContribution += (computeDirectLighting(rng, worldPos, incomingRay, normal, MAX_LIGHT_DISTANCE)) * beta;
+            float weight = 1.0f;
+            bool sampledSpecular = u <= metallic;
 
-            if(u <= metallic) {
+            float sampledSpecularF = float(sampledSpecular);
+
+            float lightPDF;
+            vec3 lightDirection;
+
+            vec3 lightAtPoint = (computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, lightDirection, worldPos, normal, MAX_LIGHT_DISTANCE)) * beta;
+            float scatteringPDF = computeBSDF_PDF(lightDirection, incomingRay);
+            weight = sampledSpecularF * powerHeuristic(1, scatteringPDF, 1, lightPDF) + (1.0f-sampledSpecularF);
+
+            lightContribution += weight * lightAtPoint;
+
+
+            if(sampledSpecular) {
                 // sample specular reflection
                 vec3 reflectedRay = reflect(incomingRay, normal);
                 intersection = traceRay(worldPos, reflectedRay, MAX_LIGHT_DISTANCE);
@@ -390,7 +413,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 float pdf;
                 vec3 f = sampleF(rng, invTBN * incomingRay, direction, pdf);
 
-                if(pdf == 0.0)
+                if(pdf == 0.0 || dot(f, f) <= 0.0f)
                     break;
 
                 vec3 worldSpaceDirection = tbn * -direction;
@@ -414,22 +437,17 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 
                 mat3 tbn = mat3(T, B, N);
                 normal = tbn * _sample(normalMap).rgb;
-                tangent = tbn * vec3(1, 0, 0);
+                tangent = T;
                 metallicRoughness = _sample(metallicRoughness).rg;
             } else {
-                const mat3 rot = mat3(
-                    vec3(1.0, 0.0, 0.0),
-                    vec3(0.0, 0.0, -1.0),
-                    vec3(0.0, 1.0, 0.0)
-                );
-                vec3 uv = rot * incomingRay;
+                vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
                 vec3 skyboxColor = texture(skybox3D, uv).rgb;
                 lightContribution += skyboxColor * beta;
                 break;
             }
         }
 
-        return lightContribution + pathContribution;
+        return lightContribution;
     }
 #endif
 }

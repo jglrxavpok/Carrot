@@ -13,7 +13,7 @@
 static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 
 namespace Carrot::Render {
-    static const std::uint32_t BindingCount = 1;
+    static const std::uint32_t BindingCount = 2;
 
     LightHandle::LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system): WeakPoolHandle::WeakPoolHandle(index, std::move(destructor)), lightingSystem(system) {}
 
@@ -28,12 +28,20 @@ namespace Carrot::Render {
     }
 
     Lighting::Lighting() {
-        reallocateBuffer(DefaultLightBufferSize);
+        reallocateBuffers(DefaultLightBufferSize);
         vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR;
         std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
                 // Light Buffer
                 vk::DescriptorSetLayoutBinding {
                         .binding = 0,
+                        .descriptorType = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = 1,
+                        .stageFlags = stageFlags
+                },
+
+                // Active Lights Buffer
+                vk::DescriptorSetLayoutBinding {
+                        .binding = 1,
                         .descriptorType = vk::DescriptorType::eStorageBuffer,
                         .descriptorCount = 1,
                         .stageFlags = stageFlags
@@ -44,6 +52,10 @@ namespace Carrot::Render {
                 .pBindings = bindings.data(),
         });
         std::array<vk::DescriptorPoolSize, BindingCount> poolSizes = {
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eStorageBuffer,
                         .descriptorCount = GetEngine().getSwapchainImageCount(),
@@ -62,12 +74,12 @@ namespace Carrot::Render {
     std::shared_ptr<LightHandle> Lighting::create() {
         auto ptr = lightHandles.create(std::ref(*this));
         if(lightHandles.size() >= lightBufferSize) {
-            reallocateBuffer(lightBufferSize*2);
+            reallocateBuffers(lightBufferSize*2);
         }
         return ptr;
     }
 
-    void Lighting::reallocateBuffer(std::uint32_t lightCount) {
+    void Lighting::reallocateBuffers(std::uint32_t lightCount) {
         lightBufferSize = std::max(lightCount, DefaultLightBufferSize);
         lightBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(Light),
@@ -75,6 +87,14 @@ namespace Carrot::Render {
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
         data = lightBuffer->map<Data>();
+
+        activeLightsBuffer = GetResourceAllocator().allocateDedicatedBuffer(
+                sizeof(Data) + lightBufferSize * sizeof(std::uint32_t),
+                vk::BufferUsageFlagBits::eStorageBuffer,
+                vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+        );
+        activeLightsData = activeLightsBuffer->map<ActiveLightsData>();
+
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
 
@@ -106,23 +126,41 @@ namespace Carrot::Render {
         data->fogColor = fogColor;
         data->fogDepth = fogDepth;
         data->fogDistance = fogDistance;
+
+        std::uint32_t activeCount = 0;
         for(auto& [slot, handlePtr] : lightHandles) {
             if(auto handle = handlePtr.lock()) {
                 handle->updateHandle(renderContext);
+                if(handle->light.enabled) {
+                    activeLightsData->indices[activeCount] = slot;
+                    activeCount++;
+                }
             }
         }
+
+        activeLightsData->count = activeCount;
 
         if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
             auto& set = descriptorSets[renderContext.swapchainIndex];
             auto lightBufferInfo = lightBuffer->getWholeView().asBufferInfo();
+            auto activeLightsInfo = activeLightsBuffer->getWholeView().asBufferInfo();
             std::array<vk::WriteDescriptorSet, BindingCount> writes = {
-                    // Material buffer
+                    // Lights buffer
                     vk::WriteDescriptorSet {
                             .dstSet = set,
                             .dstBinding = 0,
                             .descriptorCount = 1,
                             .descriptorType = vk::DescriptorType::eStorageBuffer,
                             .pBufferInfo = &lightBufferInfo,
+                    },
+
+                    // Active lights buffer
+                    vk::WriteDescriptorSet {
+                            .dstSet = set,
+                            .dstBinding = 1,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eStorageBuffer,
+                            .pBufferInfo = &activeLightsInfo,
                     },
             };
             GetVulkanDevice().updateDescriptorSets(writes, {});
