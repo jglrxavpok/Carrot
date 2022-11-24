@@ -10,8 +10,8 @@
       "setID": 0
     }
   ],
-  "depthWrite": false,
-  "depthTest": false,
+  "depthWrite": true,
+  "depthTest": true,
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/post-process/accumulate-lighting.fragment.glsl.spv"
+  "fragmentShader": "resources/shaders/post-process/merge-lighting.fragment.glsl.spv"
 }

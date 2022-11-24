@@ -93,6 +93,13 @@ namespace Carrot::Render {
         }
     }
 
+    const Carrot::BufferView& Viewport::getCameraUniformBuffer(const Render::Context& context) const {
+        if(context.renderer.getConfiguration().runInVR && vrCompatible) {
+            return cameraUniformBuffers[context.swapchainIndex * 2 + (context.eye == Eye::RightEye ? 1 : 0)];
+        }
+        return cameraUniformBuffers[context.swapchainIndex];
+    }
+
     void Viewport::render(const Carrot::Render::Context& context, vk::CommandBuffer& cmds) {
         if(renderGraph) {
             renderGraph->execute(context, cmds);

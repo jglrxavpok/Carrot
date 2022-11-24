@@ -1326,33 +1326,95 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     }, framebufferSize);
     auto& lightingPass = getGBuffer().addLightingPass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
 
-    auto& accumulateLighingPass = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
-            "accumulate-lighting",
-            [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
-                data.postLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.postProcessed = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                                framebufferSize,
+    struct Denoising {
+        Render::FrameResource beauty;
+        Render::FrameResource depth;
+        Render::FrameResource denoisedResult;
+    };
+    auto& denoisingPass = mainGraph.addPass<Denoising>(
+            "denoise",
+            [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
+                data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.depth = builder.read(lightingPass.getData().depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.denoisedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                data.beauty.size,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
                                                                 vk::ImageLayout::eGeneral
                 );
             },
-            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::PostProcessing& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph accumulate-lighting");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "accumulate-lighting");
-                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/accumulate-lighting", pass.getRenderPass());
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex), 0, 0, nullptr);
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Denoising& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph denoise");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "denoise");
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/denoise", pass.getRenderPass());
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.swapchainIndex), 0, 0, nullptr);
 
                 Render::Texture* lastFrameTexture = nullptr;
                 if(frame.lastSwapchainIndex >= 0) {
-                    lastFrameTexture = &pass.getGraph().getTexture(data.postProcessed, frame.lastSwapchainIndex);
+                    lastFrameTexture = &pass.getGraph().getTexture(data.denoisedResult, frame.lastSwapchainIndex);
                 } else {
                     lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
                 }
                 renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1, nullptr);
 
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 2);
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 3);
+                Render::Texture* lastFrameDepthTexture = nullptr;
+                if(frame.lastSwapchainIndex >= 0) {
+                    lastFrameDepthTexture = &pass.getGraph().getTexture(data.depth, frame.lastSwapchainIndex);
+                } else {
+                    lastFrameDepthTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
+                }
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr);
+                renderer.bindTexture(*pipeline, frame, *lastFrameDepthTexture, 0, 3, nullptr);
+
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
+
+                renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame), 1, 0);
+                renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame.lastFrame()), 1, 1);
+
+                pipeline->bind(pass.getRenderPass(), frame, buffer);
+                auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                screenQuadMesh.bind(buffer);
+                screenQuadMesh.draw(buffer);
+            }
+    );
+
+    struct LightingMerge {
+        Render::FrameResource albedo;
+        Render::FrameResource skybox;
+        Render::FrameResource depth;
+        Render::FrameResource lighting;
+        Render::FrameResource mergeResult;
+    };
+
+    auto& mergeLighting = mainGraph.addPass<LightingMerge>(
+            "merge-lighting",
+
+            [this, opaqueGBufferPass, denoisingPass, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+                data.albedo = builder.read(opaqueGBufferPass.getData().albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.skybox = builder.read(skyboxData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.depth = builder.read(opaqueGBufferPass.getData().depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+                data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                vk::ImageLayout::eColorAttachmentOptimal
+                );
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph merge-lighting");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "merge-lighting");
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/merge-lighting", pass.getRenderPass());
+
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 1, nullptr);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 0, 3, nullptr);
+
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
@@ -1362,10 +1424,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     );
 
     auto& toneMapping = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
-            "post-processing",
+            "tone-mapping",
 
-            [this, accumulateLighingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
-                data.postLighting = builder.read(accumulateLighingPass.getData().postProcessed, vk::ImageLayout::eShaderReadOnlyOptimal);
+            [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                data.postLighting = builder.read(mergeLighting.getData().mergeResult, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,

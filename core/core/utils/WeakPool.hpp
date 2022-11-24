@@ -76,8 +76,8 @@ namespace Carrot {
                 freeSlots.pop();
             } else {
                 slot = nextID++;
-                requiredStorageCount = std::max(slot+1, requiredStorageCount);
             }
+            requiredStorageCount = std::max(slot+1, requiredStorageCount);
             auto ptr = std::make_shared<ElementType>(slot, [this](WeakPoolHandle* element) {
                 freeSlot(element->getSlot());
             }, std::forward<Args>(args)...);
@@ -92,7 +92,7 @@ namespace Carrot {
             std::uint32_t highestIndex = 0;
             for(const auto& [index, ptr] : registry) {
                 if(auto handle = ptr.lock()) {
-                    highestIndex = std::max(index, highestIndex);
+                    highestIndex = std::max(handle->getSlot(), highestIndex);
                 }
             }
             requiredStorageCount = highestIndex+1;

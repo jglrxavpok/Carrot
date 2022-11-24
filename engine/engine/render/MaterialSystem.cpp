@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 #include "engine/console/RuntimeOption.hpp"
 #include <core/io/Logging.hpp>
+#include <core/math/BasicFunctions.h>
 
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 4;
@@ -310,7 +311,7 @@ namespace Carrot::Render {
 
         if(materialHandles.getRequiredStorageCount() >= materialBufferSize) {
             WaitDeviceIdle();
-            reallocateMaterialBuffer(materialBufferSize*2);
+            reallocateMaterialBuffer(Carrot::Math::nextPowerOf2(materialHandles.getRequiredStorageCount()));
         }
 
         auto updateType = [&](auto registry) {
@@ -331,15 +332,14 @@ namespace Carrot::Render {
     }
 
     void MaterialSystem::reallocateMaterialBuffer(std::uint32_t materialCount) {
-        materialCount = std::max(materialCount, DefaultMaterialBufferSize);
-        materialBufferSize = materialCount;
+        materialBufferSize = std::max(materialCount, DefaultMaterialBufferSize);
         materialBuffer = GetResourceAllocator().allocateDedicatedBuffer(
-                sizeof(MaterialData) * materialCount,
+                sizeof(MaterialData) * materialBufferSize,
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
         materialDataPtr = materialBuffer->map<MaterialData>();
-        for (std::size_t i = 0; i < materialCount; i++) {
+        for (std::size_t i = 0; i < materialBufferSize; i++) {
             materialDataPtr[i] = {};
             if(invalidTextureHandle) {
                 materialDataPtr[i].albedo = invalidTextureHandle->getSlot();
@@ -357,6 +357,7 @@ namespace Carrot::Render {
     }
 
     MaterialData* MaterialSystem::getData(MaterialHandle& handle) {
+        verify(handle.getSlot() < materialBufferSize, "out of bounds handle!");
         return &materialDataPtr[handle.getSlot()];
     }
 

@@ -380,7 +380,11 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
     std::vector<vk::DescriptorPoolSize> sizes{};
 
     std::vector<NamedBinding> bindings{};
+    std::uint32_t autofillCount = 0;
     for(std::uint32_t setID = 0; setID < description.setCount; setID++) {
+        if(description.descriptorSets[setID].type == PipelineDescription::DescriptorSet::Type::Autofill) {
+            autofillCount++;
+        }
         for(const auto& [stage, module] : stages->getModuleMap()) {
             module->addBindingsSet(stage, setID, bindings, description.constants);
         }
@@ -402,7 +406,7 @@ void Carrot::Pipeline::recreateDescriptorPool(uint32_t imageCount) {
 
     vk::DescriptorPoolCreateInfo poolInfo{
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = imageCount,
+            .maxSets = imageCount * std::max(1u, autofillCount),
             .poolSizeCount = static_cast<uint32_t>(sizes.size()),
             .pPoolSizes = sizes.data(),
     };

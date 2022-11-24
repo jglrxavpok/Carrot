@@ -9,6 +9,7 @@
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/utils/Macros.h"
 #include "engine/console/RuntimeOption.hpp"
+#include "core/math/BasicFunctions.h"
 
 static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 
@@ -73,8 +74,8 @@ namespace Carrot::Render {
 
     std::shared_ptr<LightHandle> Lighting::create() {
         auto ptr = lightHandles.create(std::ref(*this));
-        if(lightHandles.size() >= lightBufferSize) {
-            reallocateBuffers(lightBufferSize*2);
+        if(lightHandles.getRequiredStorageCount() > lightBufferSize) {
+            reallocateBuffers(Carrot::Math::nextPowerOf2(lightHandles.size()));
         }
         return ptr;
     }

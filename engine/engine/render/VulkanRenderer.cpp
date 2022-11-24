@@ -375,6 +375,31 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
     }
 }
 
+void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    if(boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == view) {
+        return;
+    }
+    boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = view;
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    auto bufferInfo = view.asBufferInfo();
+    std::array<vk::WriteDescriptorSet, 1> writeBuffer {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .pBufferInfo = &bufferInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeBuffer, {});
+    }
+}
+
 void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
     if(boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == view) {

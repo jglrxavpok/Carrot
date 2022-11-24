@@ -32,7 +32,9 @@ layout(set = 0, binding = 2) uniform texture2D viewPos;
 layout(set = 0, binding = 3) uniform texture2D viewNormals;
 layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
 layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
-layout(set = 0, binding = 6) uniform texture2D transparent;
+
+layout(set = 0, binding = 6) uniform texture2D _unused;
+
 layout(set = 0, binding = 7) uniform texture2D metallicRoughnessValues;
 layout(set = 0, binding = 8) uniform texture2D emissiveValues;
 layout(set = 0, binding = 9) uniform texture2D skyboxTexture;
@@ -78,13 +80,8 @@ struct SurfaceIntersection {
 };
 
 struct RandomSampler {
-    vec2 pixelUV;
     uint seed;
 };
-
-float rand(vec2 n) {
-    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
-}
 
 uint wang_hash(uint seed) {
     seed = (seed ^ 61u) ^ (seed >> 16);
@@ -95,13 +92,26 @@ uint wang_hash(uint seed) {
     return seed;
 }
 
-float sampleNoise(inout RandomSampler rng) {
-    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
+// from https://www.mattkeeter.com/projects/rayray/ (MIT)
+// ( https://github.com/mkeeter/rayray )
+// Returns a pseudorandom value between -1 and 1
+float rand(inout uint seed) {
+    // 32-bit LCG Multiplier from
+    // "Computationally Easy, Spectrally Good Multipliers for
+    //  Congruential Pseudorandom Number Generators" [Steele + Vigna]
+    seed = 0xadb4a92d * seed + 1;
 
-    const vec2 pixelPos = rng.pixelUV * screenSize;
-    const uint pixelIndex = uint(pixelPos.x + pixelPos.y * push.frameWidth);
-    rng.seed = wang_hash(push.frameCount * pixelIndex + rng.seed);
-    return rng.seed * (1.0 / 4294967296.0);
+    // Low bits have less randomness [L'ECUYER '99], so we'll shift the high
+    // bits into the mantissa position of an IEEE float32, then mask with
+    // the bit-pattern for 2.0
+    uint m = (seed >> 9) | 0x40000000u;
+
+    float f = uintBitsToFloat(m);   // Range [2:4]
+    return f - 3.0;                 // Range [-1:1]
+}
+
+float sampleNoise(inout RandomSampler rng) {
+    return (rand(rng.seed)+1.0)/2.0;
 }
 
 float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
@@ -110,11 +120,11 @@ float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     vec3 point2light = lightPosition-worldPos;
 
     float distance = length(point2light);
-    float attenutation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
+    float attenuation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
 
     float inclinaisonFactor = abs(dot(normal, point2light / distance));
 
-    return max(0, 1.0f / attenutation) * inclinaisonFactor;
+    return max(0, 1.0f / attenuation) * inclinaisonFactor;
     #undef light
 }
 
@@ -392,6 +402,8 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 
             lightContribution += weight * lightAtPoint;
 
+            if(depth == MAX_BOUNCES - 1)
+                break;
 
             if(sampledSpecular) {
                 // sample specular reflection
@@ -470,9 +482,15 @@ void main() {
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
 
     RandomSampler rng;
-    rng.seed = 0;
-    rng.pixelUV = uv;
 
+    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
+
+    const vec2 pixelPos = uv * screenSize;
+    const uint pixelIndex = uint(pixelPos.x + pixelPos.y * push.frameWidth);
+
+    rng.seed = wang_hash(wang_hash(pixelIndex) ^ push.frameCount);
+
+    // TODO: move to merge-lighting
     if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
         outColor = fragmentColor;
         return;
@@ -501,22 +519,17 @@ void main() {
 
     float distanceToCamera;
     if(currDepth < 1.0) {
-        if((intProperties & IntPropertiesRayTracedLighting) == IntPropertiesRayTracedLighting) {
-            outColorWorld = vec4(fragmentColor.rgb, fragmentColor.a);
-        } else {
-            outColorWorld = fragmentColor;
-        }
-
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 2; // TODO: configurable sample count?
+        const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT; // TODO: configurable sample count?
+
         vec3 l = vec3(0.0);
         for(int i = 0; i < SAMPLE_COUNT; i++) {
             l += calculateLighting(rng, worldPos, emissive, normal, tangent, metallicRoughness, true);
         }
-        outColorWorld.rgb *= l * INV_SAMPLE_COUNT;
+        outColorWorld.rgb = l * INV_SAMPLE_COUNT;
 #else
-        outColorWorld.rgb *= calculateLighting(rng, worldPos, emissive, normal, tangent, metallicRoughness, true);
+        outColorWorld.rgb = calculateLighting(rng, worldPos, emissive, normal, tangent, metallicRoughness, true);
 #endif
 
         distanceToCamera = length(viewPos);
@@ -528,9 +541,6 @@ void main() {
     float fogFactor = clamp((distanceToCamera - lights.fogDistance) / lights.fogDepth, 0, 1);
     outColorWorld.rgb = mix(outColorWorld.rgb, lights.fogColor, fogFactor);
 
-    vec4 transparentColor = texture(sampler2D(transparent, linearSampler), uv);
-
-    vec3 blended = outColorWorld.rgb * (1.0 - transparentColor.a) + transparentColor.rgb * transparentColor.a;
-
-    outColor = vec4(blended, 1.0);
+    outColorWorld.a = 1.0;
+    outColor = outColorWorld;
 }

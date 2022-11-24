@@ -30,6 +30,7 @@ namespace Carrot::Render {
         Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR);
         const Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR) const;
         vk::DescriptorSet getCameraDescriptorSet(const Carrot::Render::Context& context) const;
+        const Carrot::BufferView& getCameraUniformBuffer(const Render::Context& context) const;
 
     public:
         void onFrame(const Carrot::Render::Context& context);

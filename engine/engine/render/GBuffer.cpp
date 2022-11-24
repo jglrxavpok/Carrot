@@ -121,6 +121,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                                            const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
+
+    const float scaleFactor = 0.75f;
+    TextureSize outputSize;
+    outputSize.type = Render::TextureSize::Type::SwapchainProportional;
+    outputSize.width = scaleFactor;
+    outputSize.height = scaleFactor;
+
     return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
@@ -136,13 +143,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 resolveData.metallicRoughness = graph.read(opaqueData.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.emissive = graph.read(opaqueData.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+               // TODO: output into multiple buffer depending on content type (shadows, reflections)
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                        framebufferSize,
-                                                        vk::AttachmentLoadOp::eClear,
-                                                        clearColor,
-                                                        vk::ImageLayout::eColorAttachmentOptimal);
+                                                                outputSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                clearColor,
+                                                                vk::ImageLayout::eColorAttachmentOptimal);
            },
-                                                             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
+           [outputSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
@@ -159,8 +168,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
-                block.frameWidth = GetVulkanDriver().getWindowFramebufferExtent().width;
-                block.frameHeight = GetVulkanDriver().getWindowFramebufferExtent().height;
+                block.frameWidth = outputSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
+                block.frameHeight = outputSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
