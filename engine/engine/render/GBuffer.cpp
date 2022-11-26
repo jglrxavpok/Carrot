@@ -138,7 +138,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 resolveData.tangents = graph.read(opaqueData.tangents, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.albedo = graph.read(opaqueData.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.transparent = graph.read(transparentData.transparentOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.depthStencil = graph.read(transparentData.depthInput, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                resolveData.depthStencil = graph.read(transparentData.depthInput, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
                 resolveData.flags = graph.read(opaqueData.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.metallicRoughness = graph.read(opaqueData.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
                 resolveData.emissive = graph.read(opaqueData.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -150,6 +150,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 clearColor,
                                                                 vk::ImageLayout::eColorAttachmentOptimal);
+
+                // TODO: fix (double read in two != passes result in no 'previousLayout' change
+               resolveData.depthStencil.previousLayout = resolveData.depthStencil.layout;
            },
            [outputSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph lighting");
@@ -173,7 +176,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth);
+                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.positions, frame.swapchainIndex), 0, 2, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.swapchainIndex), 0, 3, nullptr);
                 renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());

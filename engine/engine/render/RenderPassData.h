@@ -81,12 +81,7 @@ namespace Carrot::Render {
             layout = parent->layout;
         };
 
-        void updateLayout(vk::ImageLayout newLayout) {
-            if(newLayout == layout)
-                return;
-            previousLayout = layout;
-            layout = newLayout;
-        }
+        void updateLayout(vk::ImageLayout newLayout);
 
         TextureSize size;
         vk::Format format = vk::Format::eUndefined;

@@ -208,7 +208,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             };
             attachments.push_back(attachment);
 
-            if(output.loadOp == vk::AttachmentLoadOp::eClear) {
+            /*if(output.loadOp == vk::AttachmentLoadOp::eClear) */{
                 clearValues.push_back(output.clearValue);
             }
 
@@ -402,4 +402,11 @@ void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& r
     for (int i = 0; i < commandBuffers.size(); i++) {
         recordCommands(GetEngine().newRenderContext(i, renderContext.viewport, renderContext.eye));
     }
+}
+
+void Carrot::Render::FrameResource::updateLayout(vk::ImageLayout newLayout) {
+    if(newLayout == layout)
+        return;
+    previousLayout = layout;
+    layout = newLayout;
 }

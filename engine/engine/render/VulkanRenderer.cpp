@@ -425,18 +425,26 @@ void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Contex
     }
 }
 
-void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const Carrot::Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t arrayIndex) {
+void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame,
+                                         const Carrot::Render::Texture& textureToBind,
+                                         std::uint32_t setID,
+                                         std::uint32_t bindingID,
+                                         vk::Sampler sampler,
+                                         vk::ImageAspectFlags aspect,
+                                         vk::ImageViewType viewType,
+                                         std::uint32_t arrayIndex,
+                                         vk::ImageLayout textureLayout) {
     ZoneScoped;
-    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == textureToBind.getVulkanImage()) {
+    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
-    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = textureToBind.getVulkanImage();
+    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
         .sampler = sampler,
         .imageView = textureToBind.getView(textureToBind.getImage().getFormat(), aspect, viewType),
-        .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+        .imageLayout = textureLayout,
     };
 
     vk::DescriptorType descType = vk::DescriptorType::eSampledImage;

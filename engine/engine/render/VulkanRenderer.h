@@ -41,6 +41,10 @@ namespace Carrot {
             return pipeline == other.pipeline && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID;
         }
     };
+
+    struct ImageBindingKey: public BindingKey {
+        vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+    };
 };
 
 namespace std {
@@ -53,6 +57,20 @@ namespace std {
             hash = key.swapchainIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
+            return hash;
+        }
+    };
+
+    template<>
+    struct hash<Carrot::ImageBindingKey> {
+        std::size_t operator()(const Carrot::ImageBindingKey& key) const {
+            const std::size_t prime = 31;
+
+            std::size_t hash = static_cast<std::size_t>((std::uint64_t)key.pipeline.operator VkPipelineLayout_T *());
+            hash = key.swapchainIndex + hash * prime;
+            hash = key.setID + hash * prime;
+            hash = key.bindingID + hash * prime;
+            hash = static_cast<std::size_t>(key.layout) + hash * prime;
             return hash;
         }
     };
@@ -176,7 +194,7 @@ namespace Carrot {
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
         void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
-        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0);
+        void bindTexture(Pipeline& pipeline, const Render::Context& data, const Render::Texture& textureToBind, std::uint32_t setID, std::uint32_t bindingID, vk::Sampler sampler, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D, std::uint32_t arrayIndex = 0, vk::ImageLayout textureLayout = vk::ImageLayout::eShaderReadOnlyOptimal);
         void bindAccelerationStructure(Pipeline& pipeline, const Render::Context& data, AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID);
         void bindBuffer(Pipeline& pipeline, const Render::Context& data, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID);
         void bindUniformBuffer(Pipeline& pipeline, const Render::Context& data, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID);
@@ -272,7 +290,7 @@ namespace Carrot {
         std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
 
-        std::unordered_map<BindingKey, vk::Image> boundTextures;
+        std::unordered_map<ImageBindingKey, vk::Image> boundTextures;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
         std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;

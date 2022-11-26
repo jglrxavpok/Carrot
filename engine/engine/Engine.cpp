@@ -1328,14 +1328,14 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
 
     struct Denoising {
         Render::FrameResource beauty;
-        Render::FrameResource depth;
+        Render::FrameResource viewSpacePositions;
         Render::FrameResource denoisedResult;
     };
     auto& denoisingPass = mainGraph.addPass<Denoising>(
             "denoise",
             [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
                 data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.depth = builder.read(lightingPass.getData().depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.viewSpacePositions = builder.read(lightingPass.getData().positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.denoisedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 data.beauty.size,
                                                                 vk::AttachmentLoadOp::eClear,
@@ -1355,16 +1355,18 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 } else {
                     lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
                 }
-                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1, nullptr);
+                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                Render::Texture* lastFrameDepthTexture = nullptr;
+                Render::Texture* lastFrameViewPosTexture = nullptr;
                 if(frame.lastSwapchainIndex >= 0) {
-                    lastFrameDepthTexture = &pass.getGraph().getTexture(data.depth, frame.lastSwapchainIndex);
+                    lastFrameViewPosTexture = &pass.getGraph().getTexture(data.viewSpacePositions, frame.lastSwapchainIndex);
                 } else {
-                    lastFrameDepthTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
+                    lastFrameViewPosTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
                 }
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr);
-                renderer.bindTexture(*pipeline, frame, *lastFrameDepthTexture, 0, 3, nullptr);
+
+                Render::Texture& viewPosTexture = pass.getGraph().getTexture(data.viewSpacePositions, frame.swapchainIndex);
+                renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
+                renderer.bindTexture(*pipeline, frame, *lastFrameViewPosTexture, 0, 3, nullptr);
 
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
@@ -1390,11 +1392,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, opaqueGBufferPass, denoisingPass, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
-                data.albedo = builder.read(opaqueGBufferPass.getData().albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
+            [this, lightingPass, denoisingPass, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+                data.albedo = builder.read(lightingPass.getData().albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.skybox = builder.read(skyboxData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.depth = builder.read(opaqueGBufferPass.getData().depthStencil, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.depth = builder.read(lightingPass.getData().depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+                                          vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eGeneral);
 
                 data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
@@ -1402,6 +1405,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
                                                                 vk::ImageLayout::eColorAttachmentOptimal
                 );
+
+                // hack until render graph is fixed
+                // todo: fix
+                data.albedo.previousLayout = data.albedo.layout;
+                data.skybox.previousLayout = data.skybox.layout;
+                data.depth.previousLayout = data.depth.layout;
+
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph merge-lighting");
@@ -1410,8 +1420,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
 
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 1, nullptr);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 0, 3, nullptr);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 0, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
