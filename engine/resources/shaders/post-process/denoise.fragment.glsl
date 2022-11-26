@@ -1,3 +1,5 @@
+#include <includes/sampling.glsl>
+
 layout(set = 0, binding = 0) uniform texture2D currentFrame;
 layout(set = 0, binding = 1) uniform texture2D previousFrame;
 layout(set = 0, binding = 2) uniform texture2D currentViewPos;
@@ -25,6 +27,7 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
+    currentFrameColor.a = 1.0;
 
     vec4 viewSpacePos = vec4(texture(sampler2D(currentViewPos, linearSampler), uv).rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
@@ -35,7 +38,9 @@ void main() {
     prevNDC.xyz /= prevNDC.w;
     vec2 reprojectedUV = (prevNDC.xy + 1.0) / 2.0;
 
-    float reprojected = 1.0f-clamp(length(previousViewSpacePos.xyz/previousViewSpacePos.w - viewSpacePos.xyz/viewSpacePos.w)*0.5, 0, 1.0);
+    vec3 prevPos = previousViewSpacePos.xyz/previousViewSpacePos.w;
+    vec3 currPos = viewSpacePos.xyz/viewSpacePos.w;
+    float reprojected = clamp(pow(dot(prevPos, currPos)/length(prevPos)/length(currPos),5), 0, 1.0);
 
     reprojected *= 1.0f - float(
         reprojectedUV.x < 0 || reprojectedUV.x >= 1

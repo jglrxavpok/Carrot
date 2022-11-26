@@ -1,3 +1,5 @@
+#include <includes/sampling.glsl>
+
 layout(set = 0, binding = 0) uniform texture2D albedo;
 layout(set = 0, binding = 1) uniform texture2D skybox;
 layout(set = 0, binding = 2) uniform texture2D depth;

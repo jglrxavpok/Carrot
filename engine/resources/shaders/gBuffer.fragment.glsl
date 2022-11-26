@@ -51,5 +51,5 @@ void main() {
     //entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
     entityID = uuid;
     metallicRoughness = vec4(texture(sampler2D(textures[metallicRoughnessTexture], linearSampler), uv).bg * material.metallicRoughnessFactor, 0.0, 1.0);
-    emissive = vec4(texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissive, 1.0);
+    emissive = vec4(texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor, 1.0);
 }

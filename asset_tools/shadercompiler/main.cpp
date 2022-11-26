@@ -98,6 +98,8 @@ int main(int argc, const char** argv) {
     std::string preamble = R"(#version 460
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_control_flow_attributes: enable
+#extension GL_EXT_samplerless_texture_functions: enable
 )";
     auto filepath = inputFile.string();
     std::array strs {

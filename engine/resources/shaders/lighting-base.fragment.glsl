@@ -110,6 +110,14 @@ float rand(inout uint seed) {
     return f - 3.0;                 // Range [-1:1]
 }
 
+void initRNG(inout RandomSampler rng, vec2 uv) {
+    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
+
+    const vec2 pixelPos = uv * screenSize;
+    const uint pixelIndex = uint(pixelPos.x + pixelPos.y * push.frameWidth);
+    rng.seed = wang_hash(wang_hash(pixelIndex) ^ push.frameCount);
+}
+
 float sampleNoise(inout RandomSampler rng) {
     return (rand(rng.seed)+1.0)/2.0;
 }
@@ -295,13 +303,87 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, inout 
 #endif
 
 // ============= TANGENT SPACE ONLY =============
-float computeBSDF_PDF(vec3 wo, vec3 wi) {
-    // TODO: GGX instead of Lambertian
-    if(wo.z * wi.z < 0) {
-        return 0.0f;
-    }
+// based on https://www.pbr-book.org/3ed-2018/Reflection_Models#SinTheta
+float cos2Theta(vec3 w) {
+    return w.z * w.z;
+}
 
-    return abs(wi.z) * M_INV_PI;
+float sin2Theta(vec3 w) {
+    return max(0, 1-cos2Theta(w));
+}
+
+float cosTheta(vec3 w) {
+    return sqrt(cos2Theta(w));
+}
+
+float sinTheta(vec3 w) {
+    return sqrt(sin2Theta(w));
+}
+
+float tan2Theta(vec3 w) {
+    return sin2Theta(w) / cos2Theta(w);
+}
+
+float tanTheta(vec3 w) {
+    return sqrt(tan2Theta(w));
+}
+
+float cosPhi(vec3 w) {
+    float sinTheta = sinTheta(w);
+    return sinTheta == 0.0 ? 1 : clamp(w.x / sinTheta, -1, 1);
+}
+
+float sinPhi(vec3 w) {
+    float sinTheta = sinTheta(w);
+    return sinTheta == 0.0 ? 1 : clamp(w.y / sinTheta, -1, 1);
+}
+
+float cos2Phi(vec3 w) {
+    float f = cosPhi(w);
+    return f*f;
+}
+
+float sin2Phi(vec3 w) {
+    float f = sinPhi(w);
+    return f*f;
+}
+
+// https://github.com/mmp/pbrt-v3/blob/aaa552a4b9cbf9dccb71450f47b268e0ed6370e2/src/core/microfacet.h#L127
+float roughnessToAlpha(float roughness) {
+    roughness = max(roughness, float(1e-3f));
+    float x = log(roughness);
+
+    return max(0.001, 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x + 0.000640711f * x * x * x * x);
+}
+
+// https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
+// distribution of microfacets
+float ggxD(vec3 wh/*half vector*/, float alphax, float alphay) {
+    float tan2Theta = tan2Theta(wh);
+    if(isinf(tan2Theta)) return 0.0;
+    float cos4Theta = cos2Theta(wh) * cos2Theta(wh);
+
+    float e = tan2Theta * (cos2Phi(wh) / (alphax*alphax) + sin2Phi(wh) / (alphay*alphay));
+    return 1.0 / (
+        M_PI * alphax * alphay * cos4Theta * (1 + e) * (1 + e)
+    );
+}
+
+float ggxLambda(vec3 w, float alphax, float alphay) {
+    float absTanTheta = abs(tanTheta(w));
+    if(isinf(absTanTheta)) return 0.0f;
+    float alpha = sqrt(cos2Phi(w) * alphax * alphax + sin2Phi(w) * alphay * alphay);
+    float alpha2Tan2Theta = (alpha * absTanTheta) * (alpha * absTanTheta);
+    return (-1 + sqrt(1 + alpha2Tan2Theta)) / 2.0;
+}
+
+// masking-shadowing
+float ggxG(vec3 wo, vec3 wi, float alphax, float alphay) {
+    return 1 / (1 + ggxLambda(wo, alphax, alphay) + ggxLambda(wi, alphax, alphay));
+}
+
+float ggxG1(vec3 wo, vec3 wh, float alphax, float alphay) {
+    return 1 / (1 + ggxLambda(wo, alphax, alphay));
 }
 
 vec2 concentricSampleDisk(inout RandomSampler rng) {
@@ -328,17 +410,91 @@ vec3 cosineSampleHemisphere(inout RandomSampler rng) {
     return vec3(d.x, d.y, z);
 }
 
-vec3 sampleF(inout RandomSampler rng, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
-    // TODO: GGX instead of Lambertian
+vec3 schlickFresnel(vec3 f0, float lDotH) {
+    return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - lDotH, 5.0f);
+}
 
-    incidentDirection = cosineSampleHemisphere(rng);
+vec3 computeF(vec3 wo, vec3 wi, float alphax, float alphay) {
+    float cosThetaO = abs(cosTheta(wo));
+    float cosThetaI = abs(cosTheta(wi));
 
-    float woDotN = emitDirection.z;
-    if(woDotN < 0) incidentDirection.z *= -1.0;
+    vec3 wh = wi + wo;
+    // degenerate cases
+    if(cosThetaI == 0.0 || cosThetaO == 0.0)
+        return vec3(0.0);
+    if(dot(wh, wh) == 0)
+        return vec3(0.0);
 
-    pdf = computeBSDF_PDF(emitDirection, incidentDirection);
+    wh = normalize(wh);
+    return vec3(ggxD(wh, alphax, alphay) * ggxG(wo, wi, alphax, alphay) / (4 * cosThetaI * cosThetaO));
+}
 
-    return vec3(M_INV_PI);
+vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
+    return vec3(
+        sinTheta * cos(phi),
+        sinTheta * sin(phi),
+        cosTheta
+    );
+}
+
+vec3 sampleWH(inout RandomSampler rng, vec3 wo, float alphax, float alphay) {
+    vec3 wh;
+    bool flip = wo.z < 0;
+    #if 0
+
+    wh = normalize(cosineSampleHemisphere(rng)+wo);
+
+    #else
+    // WH sampling which does not account for self-shadowing microfacets
+    float tan2Theta;
+    float phi;
+    if(alphax == alphay) {
+        float logSample = log(1 - sampleNoise(rng));
+        if(isinf(logSample)) logSample = 0.0f;
+        tan2Theta = -alphax * alphax * logSample;
+        phi = sampleNoise(rng) * 2 * M_PI;
+    } else {
+        float logSample = log(sampleNoise(rng));
+
+        float u1 = sampleNoise(rng);
+        phi = atan(alphay / alphax * tan(2 * M_PI * u1 + 0.5 * M_PI));
+        if(u1 > 0.5f) {
+            phi += M_PI;
+        }
+
+        float sinPhi = sin(phi);
+        float cosPhi = cos(phi);
+        float alphax2 = alphax * alphax;
+        float alphay2 = alphay * alphay;
+        tan2Theta = -logSample / (cosPhi * cosPhi / alphax2 + sinPhi * sinPhi / alphay2);
+    }
+
+    float cosTheta = 1 / sqrt(1 + tan2Theta);
+    float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
+    wh = sphericalDirection(sinTheta, cosTheta, phi);
+    #endif
+
+    if(flip)
+        wh = -wh;
+    return wh;
+}
+
+float computeGGX_PDF(vec3 wo, vec3 wh, float alphax, float alphay) {
+    return (ggxD(wh, alphax, alphay) * /*ggxG1(wo, wh, alphax, alphay) **/ abs(dot(wo, wh)) / abs(cosTheta(wo)));
+}
+
+vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
+    float alphax = roughnessToAlpha(roughness);
+    float alphay = alphax;
+
+    vec3 wh = sampleWH(rng, emitDirection, alphax, alphay);
+    if(dot(emitDirection, wh) < 0.0) return vec3(0.0f);
+    incidentDirection = reflect(emitDirection, wh);
+    if(dot(emitDirection, incidentDirection) > 0.0) return vec3(0.0f);
+
+    pdf = computeGGX_PDF(emitDirection, wh, alphax, alphay) / (4 * dot(emitDirection, wh));
+
+    return computeF(emitDirection, incidentDirection, alphax, alphay);
 }
 
 // ============= END OF TANGENT SPACE ONLY =============
@@ -396,11 +552,28 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             float lightPDF;
             vec3 lightDirection;
 
-            vec3 lightAtPoint = (computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, lightDirection, worldPos, normal, MAX_LIGHT_DISTANCE)) * beta;
-            float scatteringPDF = computeBSDF_PDF(lightDirection, incomingRay);
-            weight = sampledSpecularF * powerHeuristic(1, scatteringPDF, 1, lightPDF) + (1.0f-sampledSpecularF);
+            vec3 wh = normalize(lightDirection + incomingRay);
+            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, lightDirection, worldPos, normal, MAX_LIGHT_DISTANCE);
+            vec3 fresnel = schlickFresnel(vec3(0.0), clamp(dot(wh, lightDirection), 0.0, 1.0)); // TODO ?
 
-            lightContribution += weight * lightAtPoint;
+            vec3 T = tangent;
+            vec3 N = normal;
+            T = normalize(T - dot(T, N) * N);
+            vec3 B = cross(T, N);
+
+            mat3 tbn = mat3(T, B, N);
+            mat3 invTBN = transpose(tbn);
+
+            float lightWeight = 1.0;
+
+            // TODO: non-delta lights (ie area lights)
+            if(false) {
+                float scatteringPDF = 1.0; // TODO
+                lightWeight *= powerHeuristic(1, lightPDF, 1, scatteringPDF);
+            }
+
+            weight *= sampledSpecularF * lightWeight / lightPDF + (1.0f-sampledSpecularF);
+            lightContribution += weight * (emissive + lightAtPoint * fresnel) * beta;
 
             if(depth == MAX_BOUNCES - 1)
                 break;
@@ -411,19 +584,9 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 intersection = traceRay(worldPos, reflectedRay, MAX_LIGHT_DISTANCE);
                 incomingRay = reflectedRay;
             } else {
-                // TODO: use GGX instead of Lambertian
-
-                vec3 T = tangent;
-                vec3 N = normal;
-                T = normalize(T - dot(T, N) * N);
-                vec3 B = cross(T, N);
-
-                mat3 tbn = mat3(T, B, N);
-                mat3 invTBN = inverse(tbn);
-
                 vec3 direction;
                 float pdf;
-                vec3 f = sampleF(rng, invTBN * incomingRay, direction, pdf);
+                vec3 f = sampleF(rng, metallicRoughness.y, invTBN * incomingRay, direction, pdf);
 
                 if(pdf == 0.0 || dot(f, f) <= 0.0f)
                     break;
@@ -483,12 +646,7 @@ void main() {
 
     RandomSampler rng;
 
-    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
-
-    const vec2 pixelPos = uv * screenSize;
-    const uint pixelIndex = uint(pixelPos.x + pixelPos.y * push.frameWidth);
-
-    rng.seed = wang_hash(wang_hash(pixelIndex) ^ push.frameCount);
+    initRNG(rng, uv);
 
     // TODO: move to merge-lighting
     if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
