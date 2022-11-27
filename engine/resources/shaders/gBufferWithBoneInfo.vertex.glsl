@@ -1,12 +1,8 @@
 const uint MAX_KEYFRAMES = 140;
 const uint MAX_BONES = 20;
 
-layout(set = 0, binding = 0) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
+#include <includes/camera.glsl>
+DEFINE_CAMERA_SET(0)
 
 // Per vertex
 layout(location = 0) in vec4 inPosition;
@@ -19,9 +15,11 @@ layout(location = 6) in vec4 boneWeights;
 
 // Per instance
 layout(location = 7) in vec4 inInstanceColor;
-layout(location = 8) in mat4 inInstanceTransform;
-layout(location = 12) in uint animationIndex;
-layout(location = 13) in float animationTime;
+layout(location = 8) in uvec4 inInstanceUUID;
+layout(location = 9) in mat4 inInstanceTransform;
+layout(location = 13) in mat4 inInstanceTransform;
+layout(location = 17) in uint animationIndex;
+layout(location = 18) in float animationTime;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 uv;

@@ -218,6 +218,20 @@ namespace Carrot::ECS {
         }
 
         {
+            ZoneScopedN("Swap buffers");
+            for(const auto& logic : logicSystems) {
+                ZoneScopedN("LogicSystem");
+                ZoneText(typeid(*logic).name(), std::strlen(typeid(*logic).name()));
+                logic->swapBuffers();
+            }
+            for(const auto& render : renderSystems) {
+                ZoneScopedN("RenderSystem");
+                ZoneText(typeid(*render).name(), std::strlen(typeid(*render).name()));
+                render->swapBuffers();
+            }
+        }
+
+        {
             ZoneScopedN("Debug");
             if(showWorldHierarchy && &renderContext.viewport == &GetEngine().getMainViewport()) {
                 if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {

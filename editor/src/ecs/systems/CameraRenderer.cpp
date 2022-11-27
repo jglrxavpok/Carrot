@@ -31,6 +31,7 @@ namespace Peeler::ECS {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::ECS::CameraComponent& cameraComponent) {
             instanceData.uuid = entity.getID();
             instanceData.transform = transform.toTransformMatrix() * scaling;
+            instanceData.lastFrameTransform = transform.lastFrameGlobalTransform * scaling;
             packet.useInstance(instanceData);
 
             packet.pipeline = cameraComponent.isPrimary ? primaryCameraPipeline : secondaryCameraPipeline;

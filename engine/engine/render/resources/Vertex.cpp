@@ -9,7 +9,7 @@
 constexpr int BoneWeightCount = 4;
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{11};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{15};
 
     descriptions[0] = {
             .location = 0,
@@ -69,6 +69,15 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDes
         };
     }
 
+    for (int i = 0; i < 4; ++i) {
+        descriptions[11+i] = {
+                .location = static_cast<uint32_t>(11+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
+        };
+    }
+
     return descriptions;
 }
 
@@ -87,7 +96,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::Vertex::getBindingDescrip
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::ComputeSkinnedVertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{10};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{14};
 
     descriptions[0] = {
             .location = 0,
@@ -140,6 +149,15 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::ComputeSkinnedVertex::g
         };
     }
 
+    for (int i = 0; i < 4; ++i) {
+        descriptions[10+i] = {
+                .location = static_cast<uint32_t>(10+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
+        };
+    }
+
     return descriptions;
 }
 
@@ -172,7 +190,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SkinnedVertex::getBinding
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{15};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{19};
 
     descriptions[0] = {
             .location = 0,
@@ -246,14 +264,23 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
         };
     }
 
-    descriptions[12] = {
+    for (int i = 0; i < 4; ++i) {
+        descriptions[13+i] = {
+                .location = static_cast<uint32_t>(13+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    descriptions[17] = {
             .location = 12,
             .binding = 1,
             .format = vk::Format::eR32Uint,
             .offset = static_cast<uint32_t>(offsetof(AnimatedInstanceData, animationIndex)),
     };
 
-    descriptions[13] = {
+    descriptions[18] = {
             .location = 13,
             .binding = 1,
             .format = vk::Format::eR32Sfloat,
@@ -352,7 +379,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingD
 }
 
 std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanceData::getAttributeDescriptions() {
-    std::vector<vk::VertexInputAttributeDescription> descriptions{7};
+    std::vector<vk::VertexInputAttributeDescription> descriptions{11};
 
     descriptions[0] = {
             .location = 0,
@@ -381,6 +408,15 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanc
                 .binding = 1,
                 .format = vk::Format::eR32G32B32A32Sfloat,
                 .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[7+i] = {
+                .location = static_cast<uint32_t>(7+i),
+                .binding = 1,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
         };
     }
 

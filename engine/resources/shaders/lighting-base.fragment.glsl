@@ -56,12 +56,8 @@ layout(set = 0, binding = 15, scalar) buffer RTInstances {
 };
 #endif
 
-layout(set = 1, binding = 0) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
+#include <includes/camera.glsl>
+DEFINE_CAMERA_SET(1)
 
 layout(location = 0) in vec2 uv;
 

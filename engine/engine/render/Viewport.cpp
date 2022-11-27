@@ -39,7 +39,6 @@ namespace Carrot::Render {
                                                                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
         cameraDescriptorSets = renderer.createDescriptorSetForCamera(cameraUniformBuffers);
-        renderer.createDescriptorSetForCamera(cameraUniformBuffers);
 
         if(renderGraph) {
             renderGraph->onSwapchainImageCountChange(newCount);

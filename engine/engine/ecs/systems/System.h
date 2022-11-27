@@ -44,6 +44,12 @@ namespace Carrot::ECS {
         virtual void reload() {};
         virtual void unload() {};
 
+        /**
+         * Called at the end of each frame. Can be used to swap resources for the next frame.
+         * TransformComponent have the transform from the previous frame which can be used for this case
+         */
+        virtual void swapBuffers() {};
+
         virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
 
         virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const {

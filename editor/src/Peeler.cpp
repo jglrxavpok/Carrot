@@ -32,6 +32,7 @@
 #include <engine/ecs/systems/SystemKinematics.h>
 #include <engine/ecs/systems/SystemSinPosition.h>
 #include <engine/ecs/systems/SystemHandleLights.h>
+#include <engine/ecs/systems/SystemTransformSwapBuffers.h>
 #include <engine/ecs/systems/LuaSystems.h>
 #include "ecs/systems/LightEditorRenderer.h"
 #include "ecs/systems/CollisionShapeRenderer.h"
@@ -1187,6 +1188,7 @@ namespace Peeler {
         scene.world.addRenderSystem<Carrot::ECS::LuaRenderSystem>();
 
         scene.world.addLogicSystem<Carrot::ECS::SystemKinematics>();
+        scene.world.addLogicSystem<Carrot::ECS::SystemTransformSwapBuffers>();
         //scene.world.addLogicSystem<Carrot::ECS::SystemSinPosition>();
         scene.world.addLogicSystem<Carrot::ECS::RigidBodySystem>();
         scene.world.addLogicSystem<Carrot::ECS::LuaUpdateSystem>();

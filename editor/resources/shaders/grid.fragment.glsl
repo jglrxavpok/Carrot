@@ -1,11 +1,7 @@
 #include "../../../engine/resources/shaders/includes/gbuffer_output.glsl"
 
-layout(set = 0, binding = 0) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
+#include "../../../engine/resources/shaders/includes/camera.glsl"
+DEFINE_CAMERA_SET(0)
 
 #include "grid.glsl"
 #include "../../../engine/resources/shaders/includes/math.glsl"

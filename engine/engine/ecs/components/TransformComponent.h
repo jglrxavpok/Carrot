@@ -14,6 +14,9 @@ namespace Carrot::ECS {
     struct TransformComponent: public IdentifiableComponent<TransformComponent> {
         Carrot::Math::Transform localTransform;
 
+        /// used for motion vectors
+        glm::mat4 lastFrameGlobalTransform = glm::mat4 {0.0f};
+
         explicit TransformComponent(Entity entity): IdentifiableComponent<TransformComponent>(std::move(entity)) {};
 
         explicit TransformComponent(const rapidjson::Value& json, Entity entity);

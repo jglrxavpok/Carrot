@@ -166,9 +166,10 @@ int main(int argc, const char** argv) {
         }
         metadata.sourceFiles.push_back(std::filesystem::absolute(inputFile));
 
-        metadata.commandArguments[0] = filename;
-        metadata.commandArguments[1] = outFilename;
-        metadata.commandArguments[2] = stageStr;
+        metadata.commandArguments[0] = basePath;
+        metadata.commandArguments[1] = filename;
+        metadata.commandArguments[2] = outFilename;
+        metadata.commandArguments[3] = stageStr;
 
         auto metadataPath = outputPath;
         metadataPath.replace_extension(".meta.json");

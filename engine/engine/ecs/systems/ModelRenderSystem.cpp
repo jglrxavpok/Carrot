@@ -29,6 +29,7 @@ namespace Carrot::ECS {
                 if (modelComp.asyncModel.isReady()) {
                     modelComp.loadTLASIfPossible();
                     Carrot::InstanceData instanceData;
+                    instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
                     instanceData.transform = transform.toTransformMatrix();
                     instanceData.uuid = entity.getID();
                     instanceData.color = modelComp.color;

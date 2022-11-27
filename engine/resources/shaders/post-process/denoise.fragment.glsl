@@ -1,3 +1,4 @@
+#include "includes/camera.glsl"
 #include "includes/sampling.glsl"
 
 layout(set = 0, binding = 0) uniform texture2D currentFrame;
@@ -7,19 +8,7 @@ layout(set = 0, binding = 3) uniform texture2D previousViewPos;
 layout(set = 0, binding = 4) uniform sampler nearestSampler;
 layout(set = 0, binding = 5) uniform sampler linearSampler;
 
-layout(set = 1, binding = 0) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
-
-layout(set = 1, binding = 1) uniform PreviousFrameCameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} previousFrameCBO;
+DEFINE_CAMERA_SET(1)
 
 layout(location = 0) in vec2 uv;
 
@@ -40,7 +29,7 @@ void main() {
 
     vec3 prevPos = previousViewSpacePos.xyz/previousViewSpacePos.w;
     vec3 currPos = viewSpacePos.xyz/viewSpacePos.w;
-    float reprojected = clamp(pow(dot(prevPos, currPos)/length(prevPos)/length(currPos),5), 0, 1.0);
+    float reprojected = float(length(prevPos-currPos) <= 0.1);
 
     reprojected *= 1.0f - float(
         reprojectedUV.x < 0 || reprojectedUV.x >= 1
@@ -49,7 +38,7 @@ void main() {
 
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
 
-    float alpha = 0.5;
+    float alpha = 0.80;
     //if(uv.x > 0.5)
     {
         if(isnan(previousFrameColor.x))
@@ -73,4 +62,6 @@ void main() {
             outColor = abs(vec4(reprojected));
         }
     }*/
+
+    //outColor = vec4(reprojectedUV, 0.0, 1.0);
 }

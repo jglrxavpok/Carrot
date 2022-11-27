@@ -60,6 +60,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
+        ${EngineRoot}ecs/systems/SystemTransformSwapBuffers.cpp
         ${EngineRoot}ecs/systems/SystemUpdateAnimatedModelInstance.cpp
         ${EngineRoot}ecs/systems/TextRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp

@@ -756,20 +756,28 @@ Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
 }
 
 void Carrot::VulkanRenderer::createCameraSetResources() {
-    vk::DescriptorSetLayoutBinding cameraBinding {
-            .binding = 0,
-            .descriptorType = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+    vk::DescriptorSetLayoutBinding cameraBindings[] = {
+            {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+            },
+            {
+                    .binding = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+            }
     };
     cameraDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-            .bindingCount = 1,
-            .pBindings = &cameraBinding,
+            .bindingCount = 2,
+            .pBindings = cameraBindings,
     });
 
     vk::DescriptorPoolSize poolSize {
             .type = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
+            .descriptorCount = 2,
     };
     cameraDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
@@ -854,7 +862,8 @@ void Carrot::VulkanRenderer::createDefaultResources() {
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
-    std::size_t count = getSwapchainImageCount() * (GetEngine().getConfiguration().runInVR ? 2 : 1);
+    int vrMultiplier = (GetEngine().getConfiguration().runInVR ? 2 : 1);
+    std::size_t count = getSwapchainImageCount() * vrMultiplier;
     std::vector<vk::DescriptorSetLayout> layouts {count, *cameraDescriptorSetLayout};
     auto cameraDescriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
             .descriptorPool = *cameraDescriptorPool,
@@ -864,16 +873,27 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
 
     assert(cameraDescriptorSets.size() == uniformBuffers.size());
     for (int i = 0; i < cameraDescriptorSets.size(); i++) {
+        int nextFrameIndex = (i + 2 * vrMultiplier) % (getSwapchainImageCount() * vrMultiplier);
         vk::DescriptorBufferInfo cameraBuffer = uniformBuffers[i].asBufferInfo();
-        vk::WriteDescriptorSet write {
-                .dstSet = cameraDescriptorSets[i],
-                .dstBinding = 0,
-                .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eUniformBuffer,
-                .pBufferInfo = &cameraBuffer,
+        vk::DescriptorBufferInfo previousCameraBuffer = uniformBuffers[nextFrameIndex].asBufferInfo();
+        std::vector<vk::WriteDescriptorSet> writes = {
+                {
+                        .dstSet = cameraDescriptorSets[i],
+                        .dstBinding = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBuffer,
+                        .pBufferInfo = &cameraBuffer,
+                },
+                {
+                        .dstSet = cameraDescriptorSets[i],
+                        .dstBinding = 1,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBuffer,
+                        .pBufferInfo = &previousCameraBuffer,
+                }
         };
 
-        getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
     }
     return cameraDescriptorSets;
 }

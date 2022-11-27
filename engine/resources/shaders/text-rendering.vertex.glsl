@@ -1,9 +1,5 @@
-layout(set = 1, binding = 0) uniform CameraBufferObject {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    mat4 inverseProjection;
-} cbo;
+#include <includes/camera.glsl>
+DEFINE_CAMERA_SET(1)
 
 // Per vertex
 layout(location = 0) in vec3 inPosition;

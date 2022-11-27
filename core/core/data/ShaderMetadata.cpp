@@ -20,6 +20,7 @@ namespace ShaderCompiler {
                 args[0].GetString(),
                 args[1].GetString(),
                 args[2].GetString(),
+                args[3].GetString(),
         };
     }
 
