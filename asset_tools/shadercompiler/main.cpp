@@ -24,8 +24,9 @@ static std::filesystem::path outputList = "shadercompilerlist.txt";
 
 void showUsage() {
     std::cerr <<
-        "shadercompiler [input file] [output file] [stage]" << '\n'
+        "shadercompiler [base path] [input file] [output file] [stage]" << '\n'
         << "\tCompiles a shader and write additional metadata next to the output." << '\n'
+        << "\t\t- [base path]: Path to <source folder>/resources/shaders" << '\n'
         << "\t\t- [input file]: Path of file inside <source folder>/resources/shaders to compile" << '\n'
         << "\t\t- [output file]: Path of file inside <build folder>/resources/shaders to compile" << '\n'
         << "\t\t- [stage]: Shader type to add" << '\n'
@@ -34,15 +35,16 @@ void showUsage() {
 }
 
 int main(int argc, const char** argv) {
-    if(argc < 4) {
+    if(argc < 5) {
         std::cerr << "Missing arguments" << std::endl;
         showUsage();
         return -1;
     }
 
-    const char* filename = argv[1];
-    const char* outFilename = argv[2];
-    const char* stageStr = argv[3];
+    const char* basePath = argv[1];
+    const char* filename = argv[2];
+    const char* outFilename = argv[3];
+    const char* stageStr = argv[4];
 
     EShLanguage stage = EShLangFragment;
     if(strcmp(stageStr, "fragment") == 0) {
@@ -112,7 +114,7 @@ int main(int argc, const char** argv) {
     };
     shader.setStringsWithLengthsAndNames(strs.data(), nullptr, names.data(), strs.size());
 
-    ShaderCompiler::FileIncluder includer;
+    ShaderCompiler::FileIncluder includer { basePath };
     TBuiltInResource Resources = glslang::DefaultTBuiltInResource;
     if(!shader.parse(&Resources, 100, false, EShMsgDefault, includer)) {
         std::cerr << "Failed shader compilation. " << shader.getInfoLog() << std::endl;
@@ -151,35 +153,60 @@ int main(int argc, const char** argv) {
     spvOptions.validate = true;
     glslang::GlslangToSpv(*program.getIntermediate(stage), spirv, &logger, &spvOptions);
 
-    std::ofstream outputFile(outputPath, std::ios::binary);
-    outputFile.write(reinterpret_cast<const char *>(spirv.data()), spirv.size() * sizeof(std::uint32_t));
-
-    ShaderCompiler::Metadata metadata;
-    for(const auto& includedFile : includer.includedFiles) {
-        metadata.sourceFiles.push_back(std::filesystem::absolute(includedFile));
+    {
+        std::ofstream outputFile(outputPath, std::ios::binary);
+        outputFile.write(reinterpret_cast<const char *>(spirv.data()), spirv.size() * sizeof(std::uint32_t));
     }
-    metadata.sourceFiles.push_back(std::filesystem::absolute(inputFile));
 
-    metadata.commandArguments[0] = filename;
-    metadata.commandArguments[1] = outFilename;
-    metadata.commandArguments[2] = stageStr;
+    // runtime metadata file (for hot reload)
+    {
+        ShaderCompiler::Metadata metadata;
+        for (const auto& includedFile: includer.includedFiles) {
+            metadata.sourceFiles.push_back(std::filesystem::absolute(includedFile));
+        }
+        metadata.sourceFiles.push_back(std::filesystem::absolute(inputFile));
 
-    auto metadataPath = outputPath;
-    metadataPath.replace_extension(".meta.json");
-    FILE* fp = fopen(Carrot::toString(metadataPath.u8string()).c_str(), "wb"); // non-Windows use "w"
+        metadata.commandArguments[0] = filename;
+        metadata.commandArguments[1] = outFilename;
+        metadata.commandArguments[2] = stageStr;
 
-    char writeBuffer[65536];
-    rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+        auto metadataPath = outputPath;
+        metadataPath.replace_extension(".meta.json");
+        FILE *fp = fopen(Carrot::toString(metadataPath.u8string()).c_str(), "wb"); // non-Windows use "w"
 
-    rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
+        char writeBuffer[65536];
+        rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
-    rapidjson::Document document;
-    document.SetObject();
+        rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
-    metadata.writeJSON(document);
+        rapidjson::Document document;
+        document.SetObject();
 
-    document.Accept(writer);
-    fclose(fp);
+        metadata.writeJSON(document);
+
+        document.Accept(writer);
+        fclose(fp);
+    }
+
+    // depfile (for CMake)
+    {
+        auto depfilePath = outputPath;
+        depfilePath.replace_extension(".spv.d");
+        std::wofstream outputFile(depfilePath);
+
+        std::filesystem::path relativeOutput = std::filesystem::relative(outputPath, std::filesystem::current_path());
+        outputFile << outputPath.c_str() << ": ";
+        for(const auto& includedFile : includer.includedFiles) {
+            std::wstring path = includedFile.c_str();
+            // replace separators
+            for(std::size_t i = 0; i < path.size(); i++) {
+                if(path[i] == L'\\') {
+                    path[i] = L'/';
+                }
+            }
+            outputFile << path << " ";
+        }
+    }
 
     return 0;
 }

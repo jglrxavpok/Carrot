@@ -1,4 +1,3 @@
-#include "includes/gbuffer.glsl"
 #include "includes/lights.glsl"
 #include "includes/debugparams.glsl"
 #include "includes/materials.glsl"
@@ -26,6 +25,8 @@ layout(push_constant) uniform PushConstant {
     uint frameHeight;
 } push;
 
+#include "includes/gbuffer_input.glsl"
+// TODO: move inputs to gbuffer_input
 layout(set = 0, binding = 0) uniform texture2D albedo;
 layout(set = 0, binding = 1) uniform texture2D depth;
 layout(set = 0, binding = 2) uniform texture2D viewPos;

@@ -1,7 +1,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #include "draw_data.glsl"
-#include "includes/gbuffer.glsl"
+#include "includes/gbuffer_output.glsl"
 #include "includes/materials.glsl"
 
 MATERIAL_SYSTEM_SET(1)
@@ -13,15 +13,6 @@ layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 viewNormal;
 layout(location = 5) flat in uvec4 inUUID; // TODO: unused at the moment
 layout(location = 6) in vec3 viewTangent;
-
-layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outViewPosition;
-layout(location = 2) out vec4 outNormal;
-layout(location = 3) out uint intProperty;
-layout(location = 4) out uvec4 entityID;
-layout(location = 5) out vec4 metallicRoughness;
-layout(location = 6) out vec4 emissive;
-layout(location = 7) out vec4 outTangent;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing

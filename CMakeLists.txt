@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.22)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -164,13 +164,19 @@ add_subdirectory(core)
 add_subdirectory(asset_tools)
 
 function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
+    set(depfile "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}.d")
+    set(basePath "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/")
+    set(inputFilePath "${basePath}${INPUT_FILE}")
+    set(outputFilePath "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}")
     add_custom_command(
-            OUTPUT "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}"
-            COMMAND shadercompiler "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}" "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}" "${SHADER_STAGE}"
-            COMMENT "Compiling shader ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
+            OUTPUT "${outputFilePath}"
+            COMMAND shadercompiler "${basePath}" "${inputFilePath}" "${outputFilePath}" "${SHADER_STAGE}"
+            COMMENT "Compiling shader ${inputFilePath}"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/${INPUT_FILE}"
+            DEPENDS "${inputFilePath}"
             DEPENDS shadercompiler
+            BYPRODUCTS "${depfile}"
+            DEPFILE "${depfile}"
     )
 endfunction()
 

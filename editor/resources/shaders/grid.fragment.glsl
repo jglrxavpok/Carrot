@@ -1,4 +1,4 @@
-#include <includes/gbuffer.glsl>
+#include "../../../engine/resources/shaders/includes/gbuffer_output.glsl"
 
 layout(set = 0, binding = 0) uniform CameraBufferObject {
     mat4 projection;
@@ -8,19 +8,10 @@ layout(set = 0, binding = 0) uniform CameraBufferObject {
 } cbo;
 
 #include "grid.glsl"
-#include <includes/math.glsl>
+#include "../../../engine/resources/shaders/includes/math.glsl"
 
 layout(location = 0) in vec2 inVertexPosition;
 layout(location = 1) in vec3 inViewPosition;
-
-layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outViewPosition;
-layout(location = 2) out vec4 outNormal;
-layout(location = 3) out uint intProperty;
-layout(location = 4) out uvec4 entityID;
-layout(location = 5) out vec4 metallicRoughness;
-layout(location = 6) out vec4 emissive;
-layout(location = 7) out vec4 outTangent;
 
 void main() {
     vec2 positionInCell = mod(inVertexPosition, grid.cellSize);

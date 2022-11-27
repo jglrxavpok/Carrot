@@ -30,7 +30,7 @@ namespace ShaderCompiler {
 
     glslang::TShader::Includer::IncludeResult *
     FileIncluder::includeSystem(const char *string, const char *string1, size_t size) {
-        return include(string, "resources/shaders", includedFiles);
+        return include(string, basePath, includedFiles);
     }
 
     glslang::TShader::Includer::IncludeResult *
