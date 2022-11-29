@@ -735,6 +735,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
                 ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);
                 ImGui::RadioButton("Randomness", &gIndex, DEBUG_GBUFFER_RANDOMNESS);
+                ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
 
                 obj.gBufferType = gIndex;
             }

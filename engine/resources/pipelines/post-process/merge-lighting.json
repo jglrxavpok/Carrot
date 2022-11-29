@@ -8,6 +8,18 @@
     {
       "type": "autofill",
       "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "debug",
+      "setID": 2
+    },
+    {
+      "type": "camera",
+      "setID": 3
     }
   ],
   "depthWrite": true,

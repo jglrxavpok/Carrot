@@ -17,7 +17,7 @@ layout(location = 6) in vec4 boneWeights;
 layout(location = 7) in vec4 inInstanceColor;
 layout(location = 8) in uvec4 inInstanceUUID;
 layout(location = 9) in mat4 inInstanceTransform;
-layout(location = 13) in mat4 inInstanceTransform;
+layout(location = 13) in mat4 inLastFrameInstanceTransform;
 layout(location = 17) in uint animationIndex;
 layout(location = 18) in float animationTime;
 

@@ -4,6 +4,7 @@
 
 #include "GBuffer.h"
 #include "engine/render/raytracing/ASBuilder.h"
+#include "engine/render/Skybox.hpp"
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
     blueNoise = renderer.getOrCreateTexture("FreeBlueNoiseTextures/LDR_RGB1_54.png");
@@ -124,25 +125,16 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
     const float scaleFactor = 0.75f;
     TextureSize outputSize;
-    outputSize.type = Render::TextureSize::Type::SwapchainProportional;
-    outputSize.width = scaleFactor;
-    outputSize.height = scaleFactor;
+    outputSize.type = framebufferSize.type;
+    outputSize.width = scaleFactor * framebufferSize.width;
+    outputSize.height = scaleFactor * framebufferSize.height;
 
     return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
                 // pass.prerecordable = true; TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
                 // TODO (or it should be re-recorded when changes happen)
-                resolveData.positions = graph.read(opaqueData.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.normals = graph.read(opaqueData.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.tangents = graph.read(opaqueData.tangents, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.albedo = graph.read(opaqueData.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.transparent = graph.read(transparentData.transparentOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.depthStencil = graph.read(transparentData.depthInput, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
-                resolveData.flags = graph.read(opaqueData.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.metallicRoughness = graph.read(opaqueData.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.emissive = graph.read(opaqueData.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
-                resolveData.skybox = graph.read(skyboxOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
+                resolveData.gBuffer.readFrom(graph, opaqueData);
 
                // TODO: output into multiple buffer depending on content type (shadows, reflections)
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
@@ -150,9 +142,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 clearColor,
                                                                 vk::ImageLayout::eColorAttachmentOptimal);
-
-                // TODO: fix (double read in two != passes result in no 'previousLayout' change
-               resolveData.depthStencil.previousLayout = resolveData.depthStencil.layout;
            },
            [outputSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph lighting");
@@ -171,33 +160,25 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
-                block.frameWidth = outputSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
-                block.frameHeight = outputSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
+                if(outputSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                    block.frameWidth = outputSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
+                    block.frameHeight = outputSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
+                } else {
+                    block.frameWidth = outputSize.width;
+                    block.frameHeight = outputSize.height;
+                }
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.depthStencil, frame.swapchainIndex), 0, 1, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.positions, frame.swapchainIndex), 0, 2, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.normals, frame.swapchainIndex), 0, 3, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.flags, frame.swapchainIndex), 0, 4, renderer.getVulkanDriver().getNearestSampler());
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.transparent, frame.swapchainIndex), 0, 6, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.metallicRoughness, frame.swapchainIndex), 0, 7, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.emissive, frame.swapchainIndex), 0, 8, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 9, nullptr);
-                renderer.bindTexture(*resolvePipeline, frame, pass.getGraph().getTexture(data.tangents, frame.swapchainIndex), 0, 10, nullptr);
+                // GBuffer inputs
+                data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0);
 
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
-                        Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
-                        if(!skyboxCubeMap || GetEngine().getSkybox() == Skybox::Type::None) {
-                            skyboxCubeMap = renderer.getBlackCubeMapTexture();
-                        }
-                        renderer.bindTexture(*resolvePipeline, frame, *skyboxCubeMap, 0, 11, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
-                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 0, 12);
-                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 0, 13, nullptr);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 0, 14);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 0, 15);
+                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 5, 0);
+                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 5, 1, nullptr);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 5, 2);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 5, 3);
                     }
                 }
 
@@ -207,4 +188,43 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 screenQuadMesh.draw(buffer);
            }
     );
+}
+
+void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other) {
+    positions = graph.read(other.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
+    normals = graph.read(other.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
+    tangents = graph.read(other.tangents, vk::ImageLayout::eShaderReadOnlyOptimal);
+    albedo = graph.read(other.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
+    depthStencil = graph.read(other.depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+    flags = graph.read(other.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
+    metallicRoughness = graph.read(other.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
+    emissive = graph.read(other.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    // TODO: fix (double read in two != passes result in no 'previousLayout' change
+    depthStencil.previousLayout = depthStencil.layout;
+    albedo.previousLayout = albedo.layout;
+}
+
+void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID) const {
+    auto& renderer = GetRenderer();
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.swapchainIndex), setID, 0, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frame.swapchainIndex), setID, 1, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.swapchainIndex), setID, 2, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(normals, frame.swapchainIndex), setID, 3, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.swapchainIndex), setID, 4, renderer.getVulkanDriver().getNearestSampler());
+    // 5 -> unused
+    // 6 -> unused
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughness, frame.swapchainIndex), setID, 7, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frame.swapchainIndex), setID, 8, nullptr);
+
+    Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
+    if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
+        skyboxCubeMap = renderer.getBlackCubeMapTexture();
+    }
+    renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(tangents, frame.swapchainIndex), setID, 10, nullptr);
+
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 11);
+    renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 12);
 }

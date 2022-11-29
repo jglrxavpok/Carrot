@@ -7,6 +7,7 @@
 #define DEBUG_GBUFFER_EMISSIVE 6
 #define DEBUG_GBUFFER_RANDOMNESS 7
 #define DEBUG_GBUFFER_TANGENT 8
+#define DEBUG_GBUFFER_LIGHTING 9
 
 #define DEBUG_OPTIONS_SET(SetID)                                                                                       \
 layout(set = SetID, binding = 0) uniform Debug {                                                                       \

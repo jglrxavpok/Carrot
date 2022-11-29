@@ -1,4 +1,30 @@
 {
   "_import": "lighting.json",
-  "fragmentShader": "resources/shaders/lighting-raytracing.fragment.glsl.spv"
+  "fragmentShader": "resources/shaders/lighting-raytracing.fragment.glsl.spv",
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "camera",
+      "setID": 1
+    },
+    {
+      "type": "lights",
+      "setID": 2
+    },
+    {
+      "type": "debug",
+      "setID": 3
+    },
+    {
+      "type": "materials",
+      "setID": 4
+    },
+    {
+      "type": "autofill",
+      "setID": 5
+    }
+  ]
 }

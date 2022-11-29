@@ -7,8 +7,14 @@
 #include <memory>
 #include "core/utils/UUID.h"
 
+namespace Carrot {
+    class Pipeline;
+    struct RenderContext;
+}
+
 namespace Carrot::Render {
     class GraphBuilder;
+    class Graph;
 
     struct TextureSize {
         enum class Type {
@@ -117,6 +123,9 @@ namespace Carrot::Render {
             FrameResource metallicRoughness;
             FrameResource emissive;
             FrameResource tangents;
+
+            void readFrom(Render::GraphBuilder& graph, const GBuffer& other);
+            void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID) const;
         };
 
         struct GBufferTransparent {
@@ -125,18 +134,7 @@ namespace Carrot::Render {
         };
 
         struct Lighting {
-            FrameResource positions;
-            FrameResource normals;
-            FrameResource albedo;
-            FrameResource depthStencil;
-            FrameResource flags;
-            FrameResource raytracing;
-            FrameResource transparent;
-            FrameResource metallicRoughness;
-            FrameResource emissive;
-            FrameResource skybox;
-            FrameResource tangents;
-
+            GBuffer gBuffer;
             FrameResource resolved;
         };
 

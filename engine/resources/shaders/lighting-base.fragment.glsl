@@ -1,5 +1,4 @@
 #include "includes/lights.glsl"
-#include "includes/debugparams.glsl"
 #include "includes/materials.glsl"
 #include "includes/math.glsl"
 
@@ -12,7 +11,7 @@
 #extension GL_EXT_buffer_reference2 : enable
 #include "includes/buffers.glsl"
 #endif
-#include "includes/noise/noise4D.glsl"
+#include "includes/rng.glsl"
 
 
 #extension GL_EXT_nonuniform_qualifier : enable
@@ -26,46 +25,30 @@ layout(push_constant) uniform PushConstant {
 } push;
 
 #include "includes/gbuffer_input.glsl"
-// TODO: move inputs to gbuffer_input
-layout(set = 0, binding = 0) uniform texture2D albedo;
-layout(set = 0, binding = 1) uniform texture2D depth;
-layout(set = 0, binding = 2) uniform texture2D viewPos;
-layout(set = 0, binding = 3) uniform texture2D viewNormals;
-layout(set = 0, binding = 4) uniform usampler2D intPropertiesInput;
-layout(set = 0, binding = 5) uniform texture2D rayTracedLighting;
+#include <includes/camera.glsl>
 
-layout(set = 0, binding = 6) uniform texture2D _unused;
-
-layout(set = 0, binding = 7) uniform texture2D metallicRoughnessValues;
-layout(set = 0, binding = 8) uniform texture2D emissiveValues;
-layout(set = 0, binding = 9) uniform texture2D skyboxTexture;
-layout(set = 0, binding = 10) uniform texture2D viewTangents;
+DEFINE_GBUFFER_INPUTS(0)
+DEFINE_CAMERA_SET(1)
+LIGHT_SET(2)
+MATERIAL_SYSTEM_SET(4)
 
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-layout(set = 0, binding = 11) uniform samplerCube skybox3D;
-layout(set = 0, binding = 12) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = 13) uniform texture2D noiseTexture;
+layout(set = 5, binding = 0) uniform accelerationStructureEXT topLevelAS;
+layout(set = 5, binding = 1) uniform texture2D noiseTexture;
 
-layout(set = 0, binding = 14, scalar) buffer Geometries {
+layout(set = 5, binding = 2, scalar) buffer Geometries {
     Geometry geometries[];
 };
 
-layout(set = 0, binding = 15, scalar) buffer RTInstances {
+layout(set = 5, binding = 3, scalar) buffer RTInstances {
     Instance instances[];
 };
 #endif
 
-#include <includes/camera.glsl>
-DEFINE_CAMERA_SET(1)
-
 layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
-
-LIGHT_SET(2)
-DEBUG_OPTIONS_SET(3)
-MATERIAL_SYSTEM_SET(4)
 
 struct SurfaceIntersection {
     vec3 position;
@@ -75,49 +58,6 @@ struct SurfaceIntersection {
     vec2 uv;
     bool hasIntersection;
 };
-
-struct RandomSampler {
-    uint seed;
-};
-
-uint wang_hash(uint seed) {
-    seed = (seed ^ 61u) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
-
-// from https://www.mattkeeter.com/projects/rayray/ (MIT)
-// ( https://github.com/mkeeter/rayray )
-// Returns a pseudorandom value between -1 and 1
-float rand(inout uint seed) {
-    // 32-bit LCG Multiplier from
-    // "Computationally Easy, Spectrally Good Multipliers for
-    //  Congruential Pseudorandom Number Generators" [Steele + Vigna]
-    seed = 0xadb4a92d * seed + 1;
-
-    // Low bits have less randomness [L'ECUYER '99], so we'll shift the high
-    // bits into the mantissa position of an IEEE float32, then mask with
-    // the bit-pattern for 2.0
-    uint m = (seed >> 9) | 0x40000000u;
-
-    float f = uintBitsToFloat(m);   // Range [2:4]
-    return f - 3.0;                 // Range [-1:1]
-}
-
-void initRNG(inout RandomSampler rng, vec2 uv) {
-    const vec2 screenSize = vec2(push.frameWidth, push.frameHeight);
-
-    const vec2 pixelPos = uv * screenSize;
-    const uint pixelIndex = uint(pixelPos.x + pixelPos.y * push.frameWidth);
-    rng.seed = wang_hash(wang_hash(pixelIndex) ^ push.frameCount);
-}
-
-float sampleNoise(inout RandomSampler rng) {
-    return (rand(rng.seed)+1.0)/2.0;
-}
 
 float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     #define light lights.l[lightIndex]
@@ -634,7 +574,6 @@ void main() {
     vec3 viewTangent = texture(sampler2D(viewTangents, linearSampler), uv).xyz;
     vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
     vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
-    vec3 skyboxRGB = texture(sampler2D(skyboxTexture, linearSampler), uv).rgb;
     vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, linearSampler), uv).rg;
     vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
 
@@ -643,34 +582,7 @@ void main() {
 
     RandomSampler rng;
 
-    initRNG(rng, uv);
-
-    // TODO: move to merge-lighting
-    if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
-        outColor = fragmentColor;
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_DEPTH) {
-        outColor = vec4(currDepth, currDepth, currDepth, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_POSITION) {
-        outColor = vec4(viewPos, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_NORMAL) {
-        outColor = vec4(viewNormal, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_METALLIC_ROUGHNESS) {
-        outColor = vec4(metallicRoughness, 0.0, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_EMISSIVE) {
-        outColor = vec4(emissive, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_RANDOMNESS) {
-        outColor = vec4(sampleNoise(rng).rrr, 1.0);
-        return;
-    } else if(debug.gBufferType == DEBUG_GBUFFER_TANGENT) {
-        outColor = vec4(viewTangent, 1.0);
-        return;
-    }
+    initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 
     float distanceToCamera;
     if(currDepth < 1.0) {
@@ -689,6 +601,8 @@ void main() {
 
         distanceToCamera = length(viewPos);
     } else {
+        vec3 skyboxRGB = texture(skybox3D, (cbo.inverseView * vec4(0, 1, 0, 0)).xyz).rgb;
+
         outColorWorld = vec4(skyboxRGB, 1.0);
         distanceToCamera = 1.0f/0.0f;
     }

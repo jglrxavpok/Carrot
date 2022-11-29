@@ -1335,7 +1335,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             "denoise",
             [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
                 data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.viewSpacePositions = builder.read(lightingPass.getData().positions, vk::ImageLayout::eShaderReadOnlyOptimal);
+                // TODO: use entire GBuffer
+                data.viewSpacePositions = builder.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.denoisedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 data.beauty.size,
                                                                 vk::AttachmentLoadOp::eClear,
@@ -1382,9 +1383,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     );
 
     struct LightingMerge {
-        Render::FrameResource albedo;
-        Render::FrameResource skybox;
-        Render::FrameResource depth;
+        Carrot::Render::PassData::GBuffer gBuffer;
         Render::FrameResource lighting;
         Render::FrameResource mergeResult;
     };
@@ -1393,38 +1392,38 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             "merge-lighting",
 
             [this, lightingPass, denoisingPass, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
-                data.albedo = builder.read(lightingPass.getData().albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.skybox = builder.read(skyboxData.output, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.depth = builder.read(lightingPass.getData().depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-                                          vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
-                data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eGeneral);
-
+                data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
+                data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
                                                                 vk::ImageLayout::eColorAttachmentOptimal
                 );
-
-                // hack until render graph is fixed
-                // todo: fix
-                data.albedo.previousLayout = data.albedo.layout;
-                data.skybox.previousLayout = data.skybox.layout;
-                data.depth.previousLayout = data.depth.layout;
-
             },
-            [this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
+            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const LightingMerge& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph merge-lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "merge-lighting");
                 auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/merge-lighting", pass.getRenderPass());
 
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.albedo, frame.swapchainIndex), 0, 0, nullptr);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.skybox, frame.swapchainIndex), 0, 1, nullptr);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.depth, frame.swapchainIndex), 0, 2, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 0, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                struct PushConstant {
+                    std::uint32_t frameCount;
+                    std::uint32_t frameWidth;
+                    std::uint32_t frameHeight;
+                } block;
 
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
+                block.frameCount = renderer.getFrameCount();
+                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                    block.frameWidth = framebufferSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
+                    block.frameHeight = framebufferSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
+                } else {
+                    block.frameWidth = framebufferSize.width;
+                    block.frameHeight = framebufferSize.height;
+                }
+                renderer.pushConstantBlock("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+
+                data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
