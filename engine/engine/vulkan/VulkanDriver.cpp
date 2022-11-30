@@ -124,7 +124,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-Device address out of bounds") != nullptr) {
      //   debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-VkSubpassDescription-colorAttachmentCount-00845") != nullptr) {
+        debug_break(); // too many render targets!
+    } else if(strstr(pCallbackData->pMessage, "VUID-VkFramebufferCreateInfo-pAttachments-00877") != nullptr) {
+        debug_break();
+    } else if(strstr(pCallbackData->pMessage, "VUID-VkWriteDescriptorSet-descriptorType-00330") != nullptr) {
+        debug_break();
     }
+
 
     return VK_FALSE;
 }

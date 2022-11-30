@@ -2,28 +2,12 @@
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outViewPosition;
-layout(location = 2) out vec4 outNormal;
+layout(location = 2) out vec4 outNormalTangent;
 layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
 layout(location = 5) out vec4 metallicRoughness;
 layout(location = 6) out vec4 emissive;
-layout(location = 7) out vec4 outTangent;
-// TODO: motion vectors
-
-struct GBuffer {
-    vec4 albedo;
-    vec3 viewPosition;
-    vec3 viewNormal;
-    vec3 viewTangent;
-
-    uint intProperty;
-    uvec4 entityID;
-
-    float metallicness;
-    float roughness;
-
-    vec3 emissiveColor;
-};
+layout(location = 7) out vec4 outVelocity;
 
 GBuffer initGBuffer() {
     GBuffer gbuffer;
@@ -39,6 +23,7 @@ GBuffer initGBuffer() {
     gbuffer.roughness = 0.0;
 
     gbuffer.emissiveColor = vec3(0.0);
+    gbuffer.motionVector = vec3(0.0);
 
     return gbuffer;
 }
@@ -46,10 +31,25 @@ GBuffer initGBuffer() {
 void outputGBuffer(in GBuffer o) {
     outColor = o.albedo;
     outViewPosition = vec4(o.viewPosition, 1.0);
-    outNormal = vec4(o.viewNormal, 0.0);
-    outTangent = vec4(o.viewTangent, 0.0);
-    intProperty = o.intProperty;
+    vec3 n = normalize(o.viewNormal);
+    vec3 t = normalize(o.viewTangent);
+    outNormalTangent = vec4(n.xy, t.xy);
+
+    uint nSign = 0;
+    if(n.z < 0)
+    {
+        nSign = IntPropertiesNegativeNormalZ;
+    }
+
+    uint tSign = 0;
+    if(t.z < 0)
+    {
+        tSign = IntPropertiesNegativeTangentZ;
+    }
+
+    intProperty = o.intProperty | nSign | tSign;
     entityID = o.entityID;
     metallicRoughness = vec4(o.metallicness, o.roughness, 0.0, 0.0);
     emissive = vec4(o.emissiveColor, 1.0);
+    outVelocity = vec4(o.motionVector, 0.0);
 }

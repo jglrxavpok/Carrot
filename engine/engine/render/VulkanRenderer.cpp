@@ -735,6 +735,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
                 ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);
                 ImGui::RadioButton("Randomness", &gIndex, DEBUG_GBUFFER_RANDOMNESS);
+                ImGui::RadioButton("Motion", &gIndex, DEBUG_GBUFFER_MOTION);
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
 
                 obj.gBufferType = gIndex;
@@ -823,7 +824,7 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
     for (int i = 0; i < debugDescriptorSets.size(); i++) {
         debugBuffers[i] = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(DebugBufferObject),
-                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
                 );
 
@@ -872,7 +873,7 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
             .pSetLayouts = layouts.data(),
     });
 
-    assert(cameraDescriptorSets.size() == uniformBuffers.size());
+    verify(cameraDescriptorSets.size() == uniformBuffers.size(), "mismatched camera descriptor count and uniform buffer count");
     for (int i = 0; i < cameraDescriptorSets.size(); i++) {
         int nextFrameIndex = (i + 2 * vrMultiplier) % (getSwapchainImageCount() * vrMultiplier);
         vk::DescriptorBufferInfo cameraBuffer = uniformBuffers[i].asBufferInfo();

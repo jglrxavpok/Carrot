@@ -372,8 +372,8 @@ namespace Carrot::Render {
         glm::mat4 localTransform{1.0f};
         if(!node.matrix.empty()) {
             // transform given as column-major matrix
-            for (int x = 0; x < 16; ++x) {
-                for (int y = 0; y < 16; ++y) {
+            for (int x = 0; x < 4; ++x) {
+                for (int y = 0; y < 4; ++y) {
                     localTransform[x][y] = node.matrix[y + x * 4];
                 }
             }

@@ -110,7 +110,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
-            // R32G32B32 normals
+            // R32G32B32 normals+tangents
             pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
@@ -124,7 +124,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
 
-            // R32G32B32A32
+            // R32G32B32A32 entityID
             pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
@@ -145,7 +145,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
 
-            // R32G32B32 tangents
+            // R32G32B32 velocity
             pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
@@ -154,7 +154,7 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
         }
     } else {
         pipelineTemplate.colorBlendAttachments = {
-                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 7 : 1),
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 8 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = false,
 

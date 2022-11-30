@@ -26,7 +26,7 @@ namespace Carrot::Render {
     }
 
     void Viewport::onSwapchainImageCountChange(size_t newCount) {
-        if(cameraDescriptorSets.empty()) {
+        if(!cameraDescriptorSets.empty()) {
             auto& device = renderer.getVulkanDriver().getLogicalDevice();
             renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
         }

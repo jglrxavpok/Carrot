@@ -20,8 +20,12 @@ void main() {
     if(color < 0.01) {
         discard;
     }
-    outColor = vec4(1.0, 1.0, 1.0, color) * fragColor * instanceColor;
-    outViewPosition = vec4(viewPosition, 1.0);
-    outNormal = vec4(viewNormal, 0.0);
-    intProperty = IntPropertiesRayTracedLighting;
+
+    GBuffer o = initGBuffer();
+    o.albedo = vec4(1.0, 1.0, 1.0, color) * fragColor * instanceColor;
+    o.viewPosition = viewPosition;
+    o.viewNormal = viewNormal;
+    o.intProperty = IntPropertiesRayTracedLighting;
+
+    outputGBuffer(o);
 }

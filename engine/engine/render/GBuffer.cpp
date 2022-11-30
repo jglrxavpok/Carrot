@@ -50,7 +50,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                           positionClear,
                                                           vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.normals = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                data.normalTangents = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,
@@ -79,8 +79,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearColor,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
-
-               data.tangents = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+               data.velocity = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,
@@ -192,13 +191,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
 void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other) {
     positions = graph.read(other.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
-    normals = graph.read(other.normals, vk::ImageLayout::eShaderReadOnlyOptimal);
-    tangents = graph.read(other.tangents, vk::ImageLayout::eShaderReadOnlyOptimal);
+    normalTangents = graph.read(other.normalTangents, vk::ImageLayout::eShaderReadOnlyOptimal);
     albedo = graph.read(other.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
     depthStencil = graph.read(other.depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
     flags = graph.read(other.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
     metallicRoughness = graph.read(other.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
     emissive = graph.read(other.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
+    velocity = graph.read(other.velocity, vk::ImageLayout::eShaderReadOnlyOptimal);
 
     // TODO: fix (double read in two != passes result in no 'previousLayout' change
     depthStencil.previousLayout = depthStencil.layout;
@@ -210,10 +209,10 @@ void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, c
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.swapchainIndex), setID, 0, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frame.swapchainIndex), setID, 1, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.swapchainIndex), setID, 2, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(normals, frame.swapchainIndex), setID, 3, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(normalTangents, frame.swapchainIndex), setID, 3, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.swapchainIndex), setID, 4, renderer.getVulkanDriver().getNearestSampler());
     // 5 -> unused
-    // 6 -> unused
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(velocity, frame.swapchainIndex), setID, 6, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughness, frame.swapchainIndex), setID, 7, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frame.swapchainIndex), setID, 8, nullptr);
 
@@ -223,7 +222,7 @@ void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, c
     }
     renderer.bindTexture(pipeline, frame, *skyboxCubeMap, setID, 9, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
 
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(tangents, frame.swapchainIndex), setID, 10, nullptr);
+    // 10 -> unused
 
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), setID, 11);
     renderer.bindSampler(pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), setID, 12);

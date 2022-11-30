@@ -567,17 +567,32 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 void main() {
     vec4 outColorWorld;
 
+    // TODO: move to unpackGBuffer
     vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
     vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
     vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
-    vec3 viewNormal = texture(sampler2D(viewNormals, linearSampler), uv).xyz;
-    vec3 viewTangent = texture(sampler2D(viewTangents, linearSampler), uv).xyz;
+    uint intProperties = uint(texture(intPropertiesInput, uv).r);
+
+    vec4 compressedNormalTangent = texture(sampler2D(viewNormalTangents, linearSampler), uv);
+    vec3 viewNormal = compressedNormalTangent.xyx;
+    viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
+    if((intProperties & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ)
+    {
+        viewNormal.z *= -1;
+    }
+
+    vec3 viewTangent = compressedNormalTangent.zwx;
+    viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
+    if((intProperties & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ)
+    {
+        viewTangent.z *= -1;
+    }
+
     vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
     vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
     vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, linearSampler), uv).rg;
     vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
 
-    uint intProperties = uint(texture(intPropertiesInput, uv).r);
     float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
 
     RandomSampler rng;

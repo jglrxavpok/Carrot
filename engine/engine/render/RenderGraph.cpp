@@ -102,6 +102,7 @@ namespace Carrot::Render {
 
             case vk::ImageLayout::eGeneral:
                 GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
+                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 

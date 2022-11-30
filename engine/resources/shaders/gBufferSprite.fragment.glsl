@@ -24,12 +24,14 @@ void main() {
     if(texColor.a < 0.01) {
         discard;
     }
-    outColor = texColor * fragColor * instanceColor;
-    outViewPosition = vec4(viewPosition, 1.0);
-    outNormal = vec4(viewNormal, 0.0);
-    outTangent = vec4(viewTangent, 0.0);
-    intProperty = IntPropertiesRayTracedLighting;
-    entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
-    metallicRoughness = vec4(0.0);
-    emissive = vec4(0.0);
+
+    GBuffer o = initGBuffer();
+    o.albedo = texColor * fragColor * instanceColor;
+    o.viewPosition = viewPosition;
+    o.viewNormal = viewNormal;
+    o.viewTangent = viewTangent;
+    o.intProperty = IntPropertiesRayTracedLighting;
+    o.entityID = uvec4(instanceDrawData.uuid0, instanceDrawData.uuid1, instanceDrawData.uuid2, instanceDrawData.uuid3);
+
+    outputGBuffer(o);
 }

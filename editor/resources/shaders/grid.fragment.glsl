@@ -25,12 +25,11 @@ void main() {
         discard;
     }
 
-    outColor = grid.color;
-    outViewPosition = vec4(inViewPosition, 1.0);
-    outNormal = vec4(0, 0, 1, 0);
-    outTangent = vec4(1, 0, 0, 0);
-    intProperty = 0;
-    entityID = uvec4(0);
-    metallicRoughness = vec4(0.0);
-    emissive = vec4(0.0);
+    GBuffer gbuffer = initGBuffer();
+
+    gbuffer.albedo = grid.color;
+    gbuffer.viewPosition = inViewPosition;
+    gbuffer.viewNormal = vec3(0, 0, 1);
+    gbuffer.viewTangent = vec3(1, 0, 0);
+    outputGBuffer(gbuffer);
 }

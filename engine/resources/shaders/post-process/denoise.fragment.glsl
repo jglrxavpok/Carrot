@@ -29,7 +29,7 @@ void main() {
 
     vec3 prevPos = previousViewSpacePos.xyz/previousViewSpacePos.w;
     vec3 currPos = viewSpacePos.xyz/viewSpacePos.w;
-    float reprojected = float(length(prevPos-currPos) <= 0.1);
+    float reprojected = float(length(prevPos-currPos) <= 0.000001);
 
     reprojected *= 1.0f - float(
         reprojectedUV.x < 0 || reprojectedUV.x >= 1

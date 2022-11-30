@@ -20,25 +20,40 @@ layout(push_constant) uniform PushConstant {
 } push;
 
 void main() {
+    /*GBuffer g = unpackGBuffer();
+    vec4 albedoColor = g.albedo;*/
     vec4 albedoColor = texture(sampler2D(albedo, gLinearSampler), uv);
     vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv);
 
     float currDepth = texture(sampler2D(depth, gLinearSampler), uv).r;
 
     // debug rendering
-    {
-        vec4 fragmentColor = texture(sampler2D(albedo, gLinearSampler), uv);
+    if(debug.gBufferType != DEBUG_GBUFFER_DISABLED) {
         vec3 viewPos = texture(sampler2D(viewPos, gLinearSampler), uv).xyz;
         vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
-        vec3 viewNormal = texture(sampler2D(viewNormals, gLinearSampler), uv).xyz;
-        vec3 viewTangent = texture(sampler2D(viewTangents, gLinearSampler), uv).xyz;
+        uint intProperties = uint(texture(intPropertiesInput, uv).r);
+
+        vec4 compressedNormalTangent = texture(sampler2D(viewNormalTangents, gLinearSampler), uv);
+        vec3 viewNormal = compressedNormalTangent.xyx;
+        viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
+        if((intProperties & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ) {
+            viewNormal.z *= -1;
+        }
+
+        vec3 viewTangent = compressedNormalTangent.zwx;
+        viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
+        if((intProperties & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ) {
+            viewTangent.z *= -1;
+        }
+
         vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
         vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
         vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, gLinearSampler), uv).rg;
         vec3 emissive = texture(sampler2D(emissiveValues, gLinearSampler), uv).rgb;
+        vec3 velocity = texture(sampler2D(motionVectors, gLinearSampler), uv).rgb;
 
         if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
-            outColor = fragmentColor;
+            outColor = albedoColor;
             return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_DEPTH) {
             outColor = vec4(currDepth, currDepth, currDepth, 1.0);
@@ -67,7 +82,13 @@ void main() {
         } else if(debug.gBufferType == DEBUG_GBUFFER_LIGHTING) {
             outColor = vec4(lightingColor.rgb, 1.0);
             return;
+        } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
+            outColor = vec4(velocity, 1.0);
+            return;
         }
+
+        outColor = vec4(uv, 0.0, 1.0);
+        return;
     }
 
     if(currDepth < 1.0) {
