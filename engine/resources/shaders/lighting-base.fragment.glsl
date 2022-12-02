@@ -635,6 +635,7 @@ void main() {
     float fogFactor = clamp((distanceToCamera - lights.fogDistance) / lights.fogDepth, 0, 1);
     outColorWorld.rgb = mix(outColorWorld.rgb, lights.fogColor, fogFactor);
 
+
     outColorWorld.a = 1.0;
     outColor = outColorWorld;
 }
