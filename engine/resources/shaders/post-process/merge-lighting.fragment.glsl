@@ -20,6 +20,7 @@ layout(push_constant) uniform PushConstant {
 } push;
 
 void main() {
+    // TODO: vvvv
     /*GBuffer g = unpackGBuffer();
     vec4 albedoColor = g.albedo;*/
     vec4 albedoColor = texture(sampler2D(albedo, gLinearSampler), uv);
@@ -83,7 +84,7 @@ void main() {
             outColor = vec4(lightingColor.rgb, 1.0);
             return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
-            outColor = vec4(velocity, 1.0);
+            outColor = vec4(abs(velocity), 1.0);
             return;
         }
 

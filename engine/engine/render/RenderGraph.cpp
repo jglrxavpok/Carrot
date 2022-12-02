@@ -34,6 +34,7 @@ namespace Carrot::Render {
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
                 GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
 
 

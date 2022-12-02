@@ -36,14 +36,12 @@ void outputGBuffer(in GBuffer o) {
     outNormalTangent = vec4(n.xy, t.xy);
 
     uint nSign = 0;
-    if(n.z < 0)
-    {
+    if(n.z < 0) {
         nSign = IntPropertiesNegativeNormalZ;
     }
 
     uint tSign = 0;
-    if(t.z < 0)
-    {
+    if(t.z < 0) {
         tSign = IntPropertiesNegativeTangentZ;
     }
 

@@ -5,8 +5,11 @@ layout(set = 0, binding = 0) uniform texture2D currentFrame;
 layout(set = 0, binding = 1) uniform texture2D previousFrame;
 layout(set = 0, binding = 2) uniform texture2D currentViewPos;
 layout(set = 0, binding = 3) uniform texture2D previousViewPos;
-layout(set = 0, binding = 4) uniform sampler nearestSampler;
-layout(set = 0, binding = 5) uniform sampler linearSampler;
+
+layout(set = 0, binding = 4) uniform texture2D motionVectors;
+
+layout(set = 0, binding = 5) uniform sampler nearestSampler;
+layout(set = 0, binding = 6) uniform sampler linearSampler;
 
 DEFINE_CAMERA_SET(1)
 
@@ -21,24 +24,26 @@ void main() {
     vec4 viewSpacePos = vec4(texture(sampler2D(currentViewPos, linearSampler), uv).rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
-    // TODO: create a velocity buffer
-    vec4 previousViewSpacePos = previousFrameCBO.view * vec4(hWorldSpacePos);
-    vec4 prevNDC = previousFrameCBO.projection * previousViewSpacePos;
+    vec4 prevNDC = cbo.projection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
+    prevNDC.xyz += texture(sampler2D(motionVectors, linearSampler), uv).xyz;
+
     vec2 reprojectedUV = (prevNDC.xy + 1.0) / 2.0;
+    vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);
+    vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    vec3 prevPos = previousViewSpacePos.xyz/previousViewSpacePos.w;
-    vec3 currPos = viewSpacePos.xyz/viewSpacePos.w;
-    float reprojected = float(length(prevPos-currPos) <= 0.000001);
+    float reprojected = float(length(hWorldSpacePos-hPreviousWorldSpacePos) <= 0.01);
 
+    const float epsilon = 0.01;
     reprojected *= 1.0f - float(
-        reprojectedUV.x < 0 || reprojectedUV.x >= 1
-        || reprojectedUV.y < 0 || reprojectedUV.y >= 1
+        reprojectedUV.x <= epsilon || reprojectedUV.x >= 1-epsilon
+        || reprojectedUV.y <= epsilon || reprojectedUV.y >= 1-epsilon
     );
 
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
+    previousFrameColor.a = 1.0;
 
-    float alpha = 0.80;
+    float alpha = 0.8;
     //if(uv.x > 0.5)
     {
         if(isnan(previousFrameColor.x))
@@ -63,5 +68,5 @@ void main() {
         }
     }*/
 
-    //outColor = vec4(reprojectedUV, 0.0, 1.0);
+//    outColor = vec4(reprojectedUV, 0.0, 1.0);
 }

@@ -56,6 +56,7 @@
 #include "engine/ecs/systems/SystemHandleLights.h"
 #include "engine/ecs/systems/SystemKinematics.h"
 #include "engine/ecs/systems/SystemSinPosition.h"
+#include "engine/ecs/systems/SystemTransformSwapBuffers.h"
 #include "engine/ecs/systems/SystemUpdateAnimatedModelInstance.h"
 #include "engine/ecs/systems/CameraSystem.h"
 #include "engine/ecs/systems/TextRenderSystem.h"
@@ -552,6 +553,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
         systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
         systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemTransformSwapBuffers>();
 
         systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();
@@ -1295,6 +1297,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                               const Carrot::Render::Context&,
                                                               vk::CommandBuffer&)> transparentCallback,
                                                                                                 const Render::TextureSize& framebufferSize) {
+    /* TODO: remove*/
     auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
                                                                            [this, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
                                                                                data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
@@ -1313,7 +1316,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                            }
     );
     skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data) {
-        return currentSkybox != Skybox::Type::None;
+        return false;//currentSkybox != Skybox::Type::None;
     });
 
     auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
@@ -1329,6 +1332,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     struct Denoising {
         Render::FrameResource beauty;
         Render::FrameResource viewSpacePositions;
+        Render::FrameResource motionVectors;
         Render::FrameResource denoisedResult;
     };
     auto& denoisingPass = mainGraph.addPass<Denoising>(
@@ -1337,6 +1341,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
                 // TODO: use entire GBuffer
                 data.viewSpacePositions = builder.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.motionVectors = builder.read(lightingPass.getData().gBuffer.velocity, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.denoisedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 data.beauty.size,
                                                                 vk::AttachmentLoadOp::eClear,
@@ -1356,7 +1361,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 } else {
                     lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
                 }
-                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1);
 
                 Render::Texture* lastFrameViewPosTexture = nullptr;
                 if(frame.lastSwapchainIndex >= 0) {
@@ -1369,8 +1374,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
                 renderer.bindTexture(*pipeline, frame, *lastFrameViewPosTexture, 0, 3, nullptr);
 
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 4);
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 5);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.motionVectors, frame.swapchainIndex), 0, 4, nullptr);
+
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 5);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 6);
 
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame), 1, 0);
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame.lastFrame()), 1, 1);

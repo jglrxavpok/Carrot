@@ -272,6 +272,7 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
             packet.useMesh(*mesh);
 
             meshInstanceData.transform = instanceData.transform * transform;
+            meshInstanceData.lastFrameTransform = instanceData.lastFrameTransform * transform;
             packet.useInstance(meshInstanceData);
 
 

@@ -1,19 +1,21 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
+#include <includes/camera.glsl>
 #include "draw_data.glsl"
 #include "includes/gbuffer_output.glsl"
 #include "includes/materials.glsl"
 
-
+DEFINE_CAMERA_SET(0)
 MATERIAL_SYSTEM_SET(1)
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
-layout(location = 4) in vec3 viewNormal; // TODO: remove? no longer used
-layout(location = 5) flat in uvec4 uuid;
-layout(location = 6) in mat3 TBN;
+layout(location = 4) in vec3 previousFrameViewPosition;
+layout(location = 5) in vec3 viewNormal; // TODO: remove? no longer used
+layout(location = 6) flat in uvec4 uuid;
+layout(location = 7) in mat3 TBN;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -48,6 +50,10 @@ void main() {
     o.metallicness = metallicRoughness.x;
     o.roughness = metallicRoughness.y;
     o.emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
+
+    vec4 clipPos = cbo.projection * vec4(viewPosition, 1.0);
+    vec4 previousClipPos = previousFrameCBO.projection * vec4(previousFrameViewPosition, 1.0);
+    o.motionVector = previousClipPos.xyz/previousClipPos.w - clipPos.xyz/clipPos.w;
 
     outputGBuffer(o);
 }

@@ -22,8 +22,8 @@
       "setID": 3
     }
   ],
-  "depthWrite": true,
-  "depthTest": true,
+  "depthWrite": false,
+  "depthTest": false,
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/post-process/merge-lighting.fragment.glsl.spv"
 }

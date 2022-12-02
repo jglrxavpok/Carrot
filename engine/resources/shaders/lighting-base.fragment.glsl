@@ -46,7 +46,7 @@ layout(set = 5, binding = 3, scalar) buffer RTInstances {
 };
 #endif
 
-layout(location = 0) in vec2 uv;
+layout(location = 0) in vec2 inUV;
 
 layout(location = 0) out vec4 outColor;
 
@@ -567,42 +567,44 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 void main() {
     vec4 outColorWorld;
 
-    // TODO: move to unpackGBuffer
-    vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
-    vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
-    vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
-    uint intProperties = uint(texture(intPropertiesInput, uv).r);
+    vec2 jitter = vec2(push.frameCount % 2 - 0.5, (push.frameCount/2) % 2 - 0.5) / vec2(push.frameWidth, push.frameHeight);
+    vec2 uv = inUV + jitter*0.5;
 
-    vec4 compressedNormalTangent = texture(sampler2D(viewNormalTangents, linearSampler), uv);
-    vec3 viewNormal = compressedNormalTangent.xyx;
-    viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
-    if((intProperties & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ)
-    {
-        viewNormal.z *= -1;
-    }
+    float currDepth = texture(sampler2D(depth, nearestSampler), uv).r;
 
-    vec3 viewTangent = compressedNormalTangent.zwx;
-    viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
-    if((intProperties & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ)
-    {
-        viewTangent.z *= -1;
-    }
-
-    vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
-    vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
-    vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, linearSampler), uv).rg;
-    vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
-
-    float currDepth = texture(sampler2D(depth, linearSampler), uv).r;
-
-    RandomSampler rng;
-
-    initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 
     float distanceToCamera;
     if(currDepth < 1.0) {
+        RandomSampler rng;
+
+        initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
+
+        // TODO: move to unpackGBuffer
+        vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
+        vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
+        vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
+        uint intProperties = uint(texture(intPropertiesInput, uv).r);
+
+        vec4 compressedNormalTangent = texture(sampler2D(viewNormalTangents, linearSampler), uv);
+        vec3 viewNormal = compressedNormalTangent.xyx;
+        viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
+        if((intProperties & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ) {
+            viewNormal.z *= -1;
+        }
+
+        vec3 viewTangent = compressedNormalTangent.zwx;
+        viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
+        if((intProperties & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ) {
+            viewTangent.z *= -1;
+        }
+
+        vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
+        vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
+        vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, linearSampler), uv).rg;
+        vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
+
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
+        const int SAMPLE_COUNT = 8; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT; // TODO: configurable sample count?
 
         vec3 l = vec3(0.0);
@@ -616,9 +618,17 @@ void main() {
 
         distanceToCamera = length(viewPos);
     } else {
-        vec3 skyboxRGB = texture(skybox3D, (cbo.inverseView * vec4(0, 1, 0, 0)).xyz).rgb;
+        vec4 viewSpaceDir = cbo.inverseProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
+        vec3 worldViewDir = mat3(cbo.inverseView) * viewSpaceDir.xyz;
 
-        outColorWorld = vec4(skyboxRGB, 1.0);
+        const mat3 rot = mat3(
+            vec3(1.0, 0.0, 0.0),
+            vec3(0.0, 0.0, -1.0),
+            vec3(0.0, 1.0, 0.0)
+        );
+        vec3 skyboxRGB = texture(skybox3D, (rot) * worldViewDir).rgb;
+
+        outColorWorld = vec4(skyboxRGB.rgb,1.0);
         distanceToCamera = 1.0f/0.0f;
     }
 
