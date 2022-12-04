@@ -197,8 +197,13 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, inout 
     #define light lights.l[i]
     vec3 lightContribution = vec3(0.0);
 
+    if(activeLights.count <= 0) {
+        lightPDF = 0.0;
+        return vec3(0.0);
+    }
+
     float pdfInv = activeLights.count;
-    uint i = uint(floor(sampleNoise(rng) * activeLights.count));
+    uint i = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
     i = activeLights.indices[i];
     lightPDF = 1.0 / pdfInv;
 
@@ -417,7 +422,7 @@ vec3 sampleWH(inout RandomSampler rng, vec3 wo, float alphax, float alphay) {
 }
 
 float computeGGX_PDF(vec3 wo, vec3 wh, float alphax, float alphay) {
-    return (ggxD(wh, alphax, alphay) * /*ggxG1(wo, wh, alphax, alphay) **/ abs(dot(wo, wh)) / abs(cosTheta(wo)));
+    return (ggxD(wh, alphax, alphay) * /*ggxG1(wo, wh, alphax, alphay) **/ abs(cosTheta(wh)));//abs(dot(wo, wh)) / abs(cosTheta(wo)));
 }
 
 vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {

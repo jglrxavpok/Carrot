@@ -195,7 +195,7 @@ set(FRAGMENT_SHADERS
         gBufferSprite.fragment.glsl
         billboards.fragment.glsl
 
-        post-process/denoise.fragment.glsl
+        post-process/temporal-denoise.fragment.glsl
         post-process/merge-lighting.fragment.glsl
         post-process/tone-mapping.fragment.glsl
 

@@ -6,6 +6,7 @@
 
 DEFINE_GBUFFER_INPUTS(0)
 layout(set = 1, binding = 0) uniform texture2D lighting;
+layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -85,6 +86,9 @@ void main() {
             return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
             outColor = vec4(abs(velocity), 1.0);
+            return;
+        } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {
+            outColor = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
             return;
         }
 

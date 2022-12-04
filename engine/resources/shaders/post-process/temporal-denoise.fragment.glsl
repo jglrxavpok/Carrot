@@ -7,15 +7,18 @@ layout(set = 0, binding = 2) uniform texture2D currentViewPos;
 layout(set = 0, binding = 3) uniform texture2D previousViewPos;
 
 layout(set = 0, binding = 4) uniform texture2D motionVectors;
+layout(set = 0, binding = 5) uniform texture2D lastFrameMomentHistoryHistoryLength;
 
-layout(set = 0, binding = 5) uniform sampler nearestSampler;
-layout(set = 0, binding = 6) uniform sampler linearSampler;
+layout(set = 0, binding = 6) uniform sampler nearestSampler;
+layout(set = 0, binding = 7) uniform sampler linearSampler;
+
 
 DEFINE_CAMERA_SET(1)
 
 layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outMomentHistoryHistoryLength;
 
 void main() {
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
@@ -40,6 +43,7 @@ void main() {
         || reprojectedUV.y <= epsilon || reprojectedUV.y >= 1-epsilon
     );
 
+    vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, nearestSampler), reprojectedUV);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
@@ -55,18 +59,7 @@ void main() {
             outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
         }
     }
-    /*else
-    {
 
-        if(isnan(hWorldSpacePos.x))
-        {
-            outColor = vec4(1.0, 0.0, 0.0, 1.0);
-        }
-        else
-        {
-            outColor = abs(vec4(reprojected));
-        }
-    }*/
-
-//    outColor = vec4(reprojectedUV, 0.0, 1.0);
+    float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
+    outMomentHistoryHistoryLength = vec4(momentHistoryHistoryLength.xy * reprojected, historyLength, 1.0);
 }

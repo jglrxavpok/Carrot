@@ -1333,10 +1333,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         Render::FrameResource beauty;
         Render::FrameResource viewSpacePositions;
         Render::FrameResource motionVectors;
+        Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
         Render::FrameResource denoisedResult;
     };
     auto& denoisingPass = mainGraph.addPass<Denoising>(
-            "denoise",
+            "temporal-denoise",
             [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
                 data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
                 // TODO: use entire GBuffer
@@ -1346,38 +1347,41 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                 data.beauty.size,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
-                                                                vk::ImageLayout::eGeneral
+                                                                vk::ImageLayout::eGeneral // TODO: color attachment?
+                );
+                data.momentsHistoryHistoryLength = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                              data.beauty.size,
+                                                                              vk::AttachmentLoadOp::eClear,
+                                                                              vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                              vk::ImageLayout::eGeneral // TODO: color attachment?
                 );
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Denoising& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph denoise");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "denoise");
-                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/denoise", pass.getRenderPass());
+                ZoneScopedN("CPU RenderGraph temporal-denoise");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "temporal-denoise");
+                auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass.getRenderPass());
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.swapchainIndex), 0, 0, nullptr);
 
-                Render::Texture* lastFrameTexture = nullptr;
-                if(frame.lastSwapchainIndex >= 0) {
-                    lastFrameTexture = &pass.getGraph().getTexture(data.denoisedResult, frame.lastSwapchainIndex);
-                } else {
-                    lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
-                }
-                renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, 1);
-
-                Render::Texture* lastFrameViewPosTexture = nullptr;
-                if(frame.lastSwapchainIndex >= 0) {
-                    lastFrameViewPosTexture = &pass.getGraph().getTexture(data.viewSpacePositions, frame.lastSwapchainIndex);
-                } else {
-                    lastFrameViewPosTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
-                }
+                auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex) {
+                    Render::Texture* lastFrameTexture = nullptr;
+                    if(frame.lastSwapchainIndex >= 0) {
+                        lastFrameTexture = &pass.getGraph().getTexture(resource, frame.lastSwapchainIndex);
+                    } else {
+                        lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
+                    }
+                    renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, bindingIndex, nullptr);
+                };
+                bindLastFrameTexture(data.denoisedResult, 1);
 
                 Render::Texture& viewPosTexture = pass.getGraph().getTexture(data.viewSpacePositions, frame.swapchainIndex);
                 renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
-                renderer.bindTexture(*pipeline, frame, *lastFrameViewPosTexture, 0, 3, nullptr);
+                bindLastFrameTexture(data.viewSpacePositions, 3);
 
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.motionVectors, frame.swapchainIndex), 0, 4, nullptr);
+                bindLastFrameTexture(data.momentsHistoryHistoryLength, 5);
 
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 5);
-                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 6);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
+                renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 7);
 
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame), 1, 0);
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame.lastFrame()), 1, 1);
@@ -1389,9 +1393,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             }
     );
 
+    // TODO: spatial filtering on temporally-denoised output
+
     struct LightingMerge {
         Carrot::Render::PassData::GBuffer gBuffer;
         Render::FrameResource lighting;
+        Render::FrameResource momentsHistoryHistoryLength;
         Render::FrameResource mergeResult;
     };
 
@@ -1401,6 +1408,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             [this, lightingPass, denoisingPass, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
                 data.lighting = builder.read(denoisingPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.momentsHistoryHistoryLength = builder.read(denoisingPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
@@ -1430,7 +1438,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 renderer.pushConstantBlock("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.momentsHistoryHistoryLength, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

@@ -151,6 +151,13 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
+        } else if(description.type == PipelineType::Denoising) {
+            // R32G32B32 moments
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
         }
     } else {
         pipelineTemplate.colorBlendAttachments = {
@@ -161,6 +168,15 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
                         .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
                 }
         };
+
+        if(description.type == PipelineType::Denoising) {
+            // R32G32B32 moments
+            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+        }
     }
 
     pipelineTemplate.colorBlending = vk::PipelineColorBlendStateCreateInfo {
@@ -552,6 +568,8 @@ Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) 
         return PipelineType::Skybox;
     } else if(name == "particles") {
         return PipelineType::Particles;
+    } else if(name == "denoising") {
+        return PipelineType::Denoising;
     }
     return PipelineType::Unknown;
 }
