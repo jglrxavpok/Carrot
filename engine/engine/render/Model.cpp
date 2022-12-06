@@ -91,7 +91,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 handle->metallicFactor = material.metallicFactor;
             }),
             .joiner = &waitMaterialLoads,
-        });
+        }, TaskScheduler::AssetLoading);
         materials.push_back(handle);
     }
 

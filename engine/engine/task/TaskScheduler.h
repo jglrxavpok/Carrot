@@ -33,7 +33,7 @@ namespace Carrot {
     class TaskScheduler {
     public:
         /// Schedule a task for execution. The task will be executed as soon as possible on the given lane.
-        void schedule(TaskDescription&& description, Async::TaskLane lane = TaskScheduler::Parallel);
+        void schedule(TaskDescription&& description, const Async::TaskLane& lane);
 
         /// Schedule a task for execution. Call from the main loop
         void executeMainLoop();
@@ -42,12 +42,18 @@ namespace Carrot {
         void executeRendering();
 
     public:
-        /// How many threads can we use for the task scheduler?
-        static std::size_t parallelismAmount();
+        /// How many threads can we use for the task scheduler? Only count "short" tasks
+        static std::size_t frameParallelWorkParallelismAmount();
+
+        /// How many threads can we use for the task scheduler? Only count "long" tasks
+        static std::size_t assetLoadingParallelismAmount();
 
     public:
-        /// Group of threads that run parallel to the main thread
-        static Async::TaskLane Parallel;
+        /// Group of threads that run parallel to the main thread. Conceptually must be used for short tasks (that are expected to finish in the current frame)
+        static Async::TaskLane FrameParallelWork;
+
+        /// Group of threads that run parallel to the main thread. Conceptually must be used for long tasks (that are NOT expected to finish in the current frame)
+        static Async::TaskLane AssetLoading;
 
         /// Run tasks at each iteration of the main loop
         static Async::TaskLane MainLoop;
@@ -59,8 +65,8 @@ namespace Carrot {
         TaskScheduler();
         ~TaskScheduler();
 
-        [[nodiscard]] Async::Task<bool> coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane lane);
-        void threadProc();
+        [[nodiscard]] Async::Task<bool> coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane lane, bool allowBlocking);
+        void threadProc(const Async::TaskLane& lane);
 
     private:
         std::unordered_map<Async::TaskLane, ThreadSafeQueue<TaskDescription>> taskQueues;

@@ -63,11 +63,11 @@ namespace Carrot::ECS {
             .task = Async::AsTask(action),
             .joiner = &counter,
         };
-        GetTaskScheduler().schedule(std::move(description));
+        GetTaskScheduler().schedule(std::move(description), TaskScheduler::FrameParallelWork);
     }
 
     std::size_t System::concurrency() {
-        return TaskScheduler::parallelismAmount();
+        return TaskScheduler::frameParallelWorkParallelismAmount();
     }
 
     SystemLibrary& getSystemLibrary() {

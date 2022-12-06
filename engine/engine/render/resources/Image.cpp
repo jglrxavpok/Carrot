@@ -467,7 +467,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::cubemapFromFiles(Carrot::VulkanDri
                 }),
                 .joiner = &waitForPixelReads,
         };
-        GetTaskScheduler().schedule(std::move(task));
+        GetTaskScheduler().schedule(std::move(task), TaskScheduler::AssetLoading);
     }
     waitForPixelReads.sleepWait();
 

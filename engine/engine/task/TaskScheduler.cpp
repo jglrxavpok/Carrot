@@ -11,41 +11,55 @@
 #include "core/io/Logging.hpp"
 
 namespace Carrot {
-    Async::TaskLane TaskScheduler::Parallel;
+    Async::TaskLane TaskScheduler::FrameParallelWork;
+    Async::TaskLane TaskScheduler::AssetLoading;
     Async::TaskLane TaskScheduler::MainLoop;
     Async::TaskLane TaskScheduler::Rendering;
 
-    std::size_t TaskScheduler::parallelismAmount() {
+    std::size_t TaskScheduler::frameParallelWorkParallelismAmount() {
+        // reduce CPU load by using less threads
+        return std::thread::hardware_concurrency()/2 - 1 /* main thread */;
+    }
+
+    std::size_t TaskScheduler::assetLoadingParallelismAmount() {
         // reduce CPU load by using less threads
         return std::thread::hardware_concurrency()/2 - 1 /* main thread */;
     }
 
     TaskScheduler::TaskScheduler() {
-        std::size_t availableThreads = parallelismAmount();
+        const std::size_t inFrameCount = frameParallelWorkParallelismAmount();
+        std::size_t availableThreads = inFrameCount + assetLoadingParallelismAmount();
         parallelThreads.resize(availableThreads);
         for (std::size_t i = 0; i < availableThreads; i++) {
-            parallelThreads[i] = std::thread([this]() {
+            bool isInFrame = i < inFrameCount;
+            parallelThreads[i] = std::thread([isInFrame, this]() {
                 GetRenderer().makeCurrentThreadRenderCapable();
-                threadProc();
+                threadProc(isInFrame ? FrameParallelWork : AssetLoading);
             });
-            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("ParallelTask #%d", i+1));
+            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sParallelTask #%d", isInFrame ? "Frame" : "AssetLoading", i+1));
         }
 
-        mainLoopScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::MainLoop], TaskScheduler::MainLoop);
-        renderingScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::Rendering], TaskScheduler::Rendering);
+        mainLoopScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::MainLoop], TaskScheduler::MainLoop, false);
+        renderingScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::Rendering], TaskScheduler::Rendering, false);
     }
 
     TaskScheduler::~TaskScheduler() {
         running = false;
+        for(auto& [_, queue] : taskQueues) {
+            queue.requestStop();
+        }
         for (auto& t : parallelThreads) {
             t.join();
         }
     }
 
-    [[nodiscard]] Async::Task<bool> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane) {
+    [[nodiscard]] Async::Task<bool> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane, bool allowBlocking) {
         TaskDescription toRun;
         while(true) {
-            if(taskQueue.popSafe(toRun)) {
+            bool foundSomethingToExecute = allowBlocking
+                    ? taskQueue.blockingPopSafe(toRun)
+                    : taskQueue.popSafe(toRun);
+            if(foundSomethingToExecute) {
                 bool canRun = true;
 
                 const Async::TaskLane wantedLane = toRun.task.wantedLane();
@@ -89,8 +103,8 @@ namespace Carrot {
         co_return false;
     }
 
-    void TaskScheduler::threadProc() {
-        auto scheduleTask = coscheduleSingleTask(taskQueues[TaskScheduler::Parallel], TaskScheduler::Parallel);
+    void TaskScheduler::threadProc(const Async::TaskLane& lane) {
+        auto scheduleTask = coscheduleSingleTask(taskQueues[lane], lane, true);
         while(running) {
             scheduleTask();
             std::this_thread::yield();
@@ -105,8 +119,9 @@ namespace Carrot {
         renderingScheduling();
     }
 
-    void TaskScheduler::schedule(TaskDescription&& description, Async::TaskLane lane) {
-        verify(lane == TaskScheduler::Parallel
+    void TaskScheduler::schedule(TaskDescription&& description, const Async::TaskLane& lane) {
+        verify(lane == TaskScheduler::FrameParallelWork
+               || lane == TaskScheduler::AssetLoading
                || lane == TaskScheduler::MainLoop
                || lane == TaskScheduler::Rendering
                , "No other lanes supported at the moment");

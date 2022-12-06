@@ -556,7 +556,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
             }),
             .joiner = &prepareThreadRenderPackets,
         };
-        GetTaskScheduler().schedule(std::move(task));
+        GetTaskScheduler().schedule(std::move(task), TaskScheduler::FrameParallelWork);
     }
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
@@ -678,7 +678,7 @@ void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderConte
                 }),
                 .joiner = &mustBeDoneByNextFrameCounter,
         };
-        GetTaskScheduler().schedule(std::move(task));
+        GetTaskScheduler().schedule(std::move(task), TaskScheduler::FrameParallelWork);
     }
 
     std::size_t previousCapacity = preparedRenderPackets.capacity();

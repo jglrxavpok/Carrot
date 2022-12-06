@@ -40,7 +40,7 @@ namespace Carrot {
                 .task = asTask(storage),
                 // TODO: joiner counter?
             };
-            GetTaskScheduler().schedule(std::move(desc));
+            GetTaskScheduler().schedule(std::move(desc), TaskScheduler::AssetLoading);
         }
 
         bool isEmpty() const {

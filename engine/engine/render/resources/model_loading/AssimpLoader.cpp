@@ -203,7 +203,7 @@ namespace Carrot::Render {
 
             Async::Counter normalizeAllWeights;
             const std::size_t vertexCount = skinnedVertices.size();
-            const std::size_t stepSize = static_cast<std::size_t>(ceil((double)vertexCount / Carrot::TaskScheduler::parallelismAmount()));
+            const std::size_t stepSize = static_cast<std::size_t>(ceil((double)vertexCount / Carrot::TaskScheduler::assetLoadingParallelismAmount()));
             for(std::size_t start = 0; start < vertexCount; start += stepSize) {
                 GetTaskScheduler().schedule(Carrot::TaskDescription {
                         .name = Carrot::sprintf("Normalize bone weights %s", currentScene.debugName.c_str()),
@@ -213,7 +213,7 @@ namespace Carrot::Render {
                             }
                         }),
                         .joiner = &normalizeAllWeights,
-                });
+                }, TaskScheduler::AssetLoading);
             }
             normalizeAllWeights.busyWait();
         }
