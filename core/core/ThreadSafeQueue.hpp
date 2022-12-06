@@ -81,6 +81,7 @@ namespace Carrot {
 
         void requestStop() {
             stopRequested.store(true);
+            conditionVariable.notify_all();
         }
 
     private:
