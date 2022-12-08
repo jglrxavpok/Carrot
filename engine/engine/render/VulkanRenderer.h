@@ -177,7 +177,7 @@ namespace Carrot {
 
         void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
-        void endFrame(const Carrot::Render::Context& renderContext);
+        void beforeRecord(const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);

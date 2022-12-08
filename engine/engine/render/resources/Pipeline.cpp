@@ -323,10 +323,12 @@ void Carrot::Pipeline::reloadShaders() {
     recreateDescriptorPool(driver.getSwapchainImageCount());
 }
 
-void Carrot::Pipeline::checkForReloadableShaders() {
+bool Carrot::Pipeline::checkForReloadableShaders() {
     if(stages->shouldReload()) {
         reloadShaders();
+        return true;
     }
+    return false;
 }
 
 const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view name) const {

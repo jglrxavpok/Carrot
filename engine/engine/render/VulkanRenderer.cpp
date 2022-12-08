@@ -285,10 +285,6 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
 
 // TODO: thread safety
 void Carrot::VulkanRenderer::preFrame() {
-    for(auto& [name, pipePtrPtr] : pipelines.snapshot()) {
-        (*pipePtrPtr)->checkForReloadableShaders();
-    }
-
     if(beforeFrameCommands.empty())
         return;
     driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
@@ -545,6 +541,19 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         mustBeDoneByNextFrameCounter.busyWait();
     }
 
+    bool reloadedSomeShaders = false;
+    for(auto& [name, pipePtrPtr] : pipelines.snapshot()) {
+        reloadedSomeShaders |= (*pipePtrPtr)->checkForReloadableShaders();
+    }
+
+    // reloaded shaders -> pipeline recreation -> need to rebind descriptor
+    if(reloadedSomeShaders) {
+        boundBuffers.clear();
+        boundTextures.clear();
+        boundSamplers.clear();
+        boundAS.clear();
+    }
+
     Async::LockGuard lk { threadRegistrationLock };
 
     Async::Counter prepareThreadRenderPackets;
@@ -613,7 +622,7 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
     };
 }
 
-void Carrot::VulkanRenderer::endFrame(const Carrot::Render::Context& renderContext) {
+void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
 
     materialSystem.beginFrame(renderContext);

@@ -732,7 +732,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             onFrame(v);
         }
         onFrame(getMainViewport());
-        renderer.endFrame(mainRenderContext);
+        renderer.beforeRecord(mainRenderContext);
     }
     {
         ZoneScopedN("Record main command buffer");

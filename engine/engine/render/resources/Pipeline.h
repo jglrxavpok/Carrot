@@ -89,7 +89,7 @@ namespace Carrot {
         VertexFormat getVertexFormat() const;
 
     public:
-        void checkForReloadableShaders();
+        bool checkForReloadableShaders();
 
     public:
         PipelineDescription& getDescription() {
