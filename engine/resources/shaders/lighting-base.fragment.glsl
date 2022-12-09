@@ -381,7 +381,7 @@ vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
 
 vec3 sampleWH(inout RandomSampler rng, vec3 wo, float alphax, float alphay) {
     vec3 wh;
-    bool flip = wo.z < 0;
+
     #if 0
 
     wh = normalize(cosineSampleHemisphere(rng)+wo);
@@ -411,13 +411,13 @@ vec3 sampleWH(inout RandomSampler rng, vec3 wo, float alphax, float alphay) {
         tan2Theta = -logSample / (cosPhi * cosPhi / alphax2 + sinPhi * sinPhi / alphay2);
     }
 
-    float cosTheta = 1 / sqrt(1 + tan2Theta);
-    float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
+    float cosTheta = 1.0 / sqrt(1.0 + tan2Theta);
+    float sinTheta = sqrt(max(0, 1.0 - cosTheta * cosTheta));
     wh = sphericalDirection(sinTheta, cosTheta, phi);
-    #endif
-
-    if(flip)
+    if(wo.z * wh.z < 0.0) {
         wh = -wh;
+    }
+    #endif
     return wh;
 }
 
@@ -425,18 +425,45 @@ float computeGGX_PDF(vec3 wo, vec3 wh, float alphax, float alphay) {
     return (ggxD(wh, alphax, alphay) * /*ggxG1(wo, wh, alphax, alphay) **/ abs(cosTheta(wh)));//abs(dot(wo, wh)) / abs(cosTheta(wo)));
 }
 
-vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
+vec3 sampleGGXF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
     float alphax = roughnessToAlpha(roughness);
     float alphay = alphax;
 
     vec3 wh = sampleWH(rng, emitDirection, alphax, alphay);
-    if(dot(emitDirection, wh) < 0.0) return vec3(0.0f);
+    //if(dot(emitDirection, wh) < 0.0) return vec3(0.0f);
     incidentDirection = reflect(emitDirection, wh);
-    if(dot(emitDirection, incidentDirection) > 0.0) return vec3(0.0f);
+    if(emitDirection.z * incidentDirection.z < 0.0) return vec3(0.0f);
 
     pdf = computeGGX_PDF(emitDirection, wh, alphax, alphay) / (4 * dot(emitDirection, wh));
 
     return computeF(emitDirection, incidentDirection, alphax, alphay);
+}
+
+float computeLambertian_PDF(vec3 wo, vec3 wi) {
+    if (wo.z * wi.z < 0) {
+        return 0.0f;
+    }
+
+    return abs(wi.z) * M_INV_PI;
+}
+
+vec3 sampleLambertianF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
+    incidentDirection = cosineSampleHemisphere(rng);
+    float woDotN = emitDirection.z;
+    if(woDotN < 0) incidentDirection.z *= -1.0;
+    pdf = computeLambertian_PDF(emitDirection, incidentDirection);
+
+    return vec3(M_INV_PI);
+}
+
+vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
+    float probabilityToSampleDiffuse = 0.5f;
+
+    if(sampleNoise(rng) <= probabilityToSampleDiffuse) {
+        return sampleLambertianF(rng, roughness, emitDirection, incidentDirection, pdf) / probabilityToSampleDiffuse;
+    } else {
+        return sampleGGXF(rng, roughness, emitDirection, incidentDirection, pdf) / (1.0f-probabilityToSampleDiffuse);
+    }
 }
 
 // ============= END OF TANGENT SPACE ONLY =============
@@ -470,10 +497,11 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
         vec3 lightContribution = emissive + lights.ambientColor;
 
         vec3 incomingRay = normalize(worldPos - cameraPos);
-        const float roughness = metallicRoughness.y;
-        const float metallic = metallicRoughness.x;
         const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
         const uint MAX_BOUNCES = 3; /* TODO: specialization constant?*/
+        float roughnessBias = 0.0f;
+        float roughness = metallicRoughness.y;
+        float metallic = metallicRoughness.x;
 
         vec3 beta = vec3(1.0f);
         int depth = 0;
@@ -481,6 +509,10 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
         for(; depth < MAX_BOUNCES; depth++) {
+            const float oldRoughness = roughness;
+            roughness = min(1, oldRoughness + roughnessBias);
+            roughnessBias += oldRoughness * 0.75f;
+
             const float u = sampleNoise(rng);
             SurfaceIntersection intersection;
             intersection.hasIntersection = false;
@@ -514,8 +546,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 lightWeight *= powerHeuristic(1, lightPDF, 1, scatteringPDF);
             }
 
-            weight *= sampledSpecularF * lightWeight / lightPDF + (1.0f-sampledSpecularF);
-            lightContribution += weight * (emissive + lightAtPoint * fresnel) * beta;
+            lightContribution += (emissive + lightAtPoint * fresnel) * beta;
 
             if(depth == MAX_BOUNCES - 1)
                 break;
@@ -528,12 +559,12 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             } else {
                 vec3 direction;
                 float pdf;
-                vec3 f = sampleF(rng, metallicRoughness.y, invTBN * incomingRay, direction, pdf);
+                vec3 f = sampleF(rng, roughness, invTBN * incomingRay, direction, pdf);
 
                 if(pdf == 0.0 || dot(f, f) <= 0.0f)
                     break;
 
-                vec3 worldSpaceDirection = tbn * -direction;
+                vec3 worldSpaceDirection = normalize(tbn * -direction);
                 beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
 
                 intersection = traceRay(worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
@@ -547,15 +578,17 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 worldPos = intersection.position;
                 emissive = _sample(emissive).rgb;
 
-                vec3 T = intersection.surfaceTangent;
-                vec3 N = intersection.surfaceNormal;
+                vec3 T = normalize(intersection.surfaceTangent);
+                vec3 N = normalize(intersection.surfaceNormal);
                 T = normalize(T - dot(T, N) * N);
                 vec3 B = cross(T, N);
 
                 mat3 tbn = mat3(T, B, N);
                 normal = tbn * _sample(normalMap).rgb;
                 tangent = T;
-                metallicRoughness = _sample(metallicRoughness).rg;
+                vec2 metallicRoughness = _sample(metallicRoughness).rg;
+                metallic = metallicRoughness.x;
+                roughness = metallicRoughness.y;
             } else {
                 vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
                 vec3 skyboxColor = texture(skybox3D, uv).rgb;
@@ -610,7 +643,7 @@ void main() {
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
         const int SAMPLE_COUNT = 8; // TODO: configurable sample count?
-        const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT; // TODO: configurable sample count?
+        const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         vec3 l = vec3(0.0);
         for(int i = 0; i < SAMPLE_COUNT; i++) {
