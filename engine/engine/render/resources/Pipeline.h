@@ -25,6 +25,7 @@ namespace Carrot {
         Blit,
         Particles,
         Denoising,
+        Compute,
         Unknown
     };
 
@@ -66,6 +67,9 @@ namespace Carrot {
 
         vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 
+
+        Render::ShaderSource computeShader;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };
@@ -73,7 +77,7 @@ namespace Carrot {
     class Pipeline: public SwapchainAware {
     public:
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
-        explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description);
+        explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription& description);
 
         void bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
 
@@ -105,6 +109,24 @@ namespace Carrot {
         static PipelineType getPipelineType(const std::string& name);
 
     private:
+        std::vector<vk::DescriptorSet> allocateAutofillDescriptorSets(std::uint32_t setID);
+
+        void allocateDescriptorSets();
+
+        vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
+
+        void reloadShaders();
+
+        void createGraphicsTemplate();
+        void createComputeTemplate();
+
+    private:
+        struct {
+            std::vector<uint32_t> specializationData{}; // TODO: support something else than uint32
+            std::vector<vk::SpecializationMapEntry> specializationEntries;
+            vk::SpecializationInfo specialization;
+        } commonPipelineTemplate;
+
         struct {
             std::vector<vk::VertexInputBindingDescription> vertexBindingDescriptions;
             std::vector<vk::VertexInputAttributeDescription> vertexAttributes;
@@ -131,12 +153,14 @@ namespace Carrot {
             vk::Rect2D scissor;
             vk::PipelineViewportStateCreateInfo viewportState;
 
-            std::vector<uint32_t> specializationData{}; // TODO: support something else than uint32
-            std::vector<vk::SpecializationMapEntry> specializationEntries;
-            vk::SpecializationInfo specialization;
 
             vk::GraphicsPipelineCreateInfo pipelineInfo;
-        } pipelineTemplate;
+        } graphicsPipelineTemplate;
+
+        struct {
+            vk::PipelineShaderStageCreateInfo shaderStageCreation;
+            vk::ComputePipelineCreateInfo pipelineInfo;
+        } computePipelineTemplate;
 
         Carrot::VulkanDriver& driver;
         vk::UniquePipelineLayout layout{};
@@ -149,13 +173,5 @@ namespace Carrot {
         mutable std::unordered_map<vk::RenderPass, vk::UniquePipeline> vkPipelines{};
 
         mutable std::unordered_map<std::string, vk::PushConstantRange> pushConstantMap{};
-
-        std::vector<vk::DescriptorSet> allocateAutofillDescriptorSets(std::uint32_t setID);
-
-        void allocateDescriptorSets();
-
-        vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
-
-        void reloadShaders();
     };
 }

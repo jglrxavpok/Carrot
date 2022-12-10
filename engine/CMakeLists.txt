@@ -7,6 +7,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}io/actions/ActionSet.cpp
         ${EngineRoot}io/AssimpCompatibilityLayer.cpp
 
+        ${EngineRoot}CarrotRenderingPipeline.cpp
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/Model.cpp
 
@@ -206,6 +207,7 @@ set(COMPUTE_SHADERS
         compute/animation-skinning.compute.glsl
         compute/particles.compute.glsl
         compute/skeleton-skinning.compute.glsl
+        compute/test-compute.compute.glsl
 
         #PARENT_SCOPE
         )

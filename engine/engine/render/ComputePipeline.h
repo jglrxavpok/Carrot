@@ -7,6 +7,7 @@
 #include "engine/Engine.h"
 #include "engine/render/resources/BufferView.h"
 #include <string>
+#include <utility>
 #include "core/io/Resource.h"
 
 namespace Carrot {
@@ -48,6 +49,7 @@ namespace Carrot {
     public:
         explicit ComputePipeline(Carrot::Engine& engine, const IO::Resource shaderResource, const std::unordered_map<std::uint32_t, SpecializationConstant>& specializationConstants, const std::map<std::uint32_t, std::vector<ComputeBinding>>& bindings);
 
+        void dispatchInline(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::CommandBuffer& cmds) const;
         //! Launches the compute pipeline with the given group size. A signal semaphore can optionally be added, and will be signaled once processing is finished
         void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::Semaphore* signal = nullptr) const;
 
@@ -69,6 +71,10 @@ namespace Carrot {
         vk::UniquePipelineLayout computePipelineLayout{};
         vk::UniquePipeline computePipeline{};
         vk::UniqueFence finishedFence{};
+
+        std::vector<vk::DescriptorSet> descriptorSetsFlat;
+        std::vector<uint32_t> dynamicOffsets;
+
         mutable BufferView dispatchBuffer;
         mutable vk::DispatchIndirectCommand* dispatchSizes = nullptr;
     };
@@ -77,8 +83,8 @@ namespace Carrot {
     public:
         explicit ComputePipelineBuilder(Carrot::Engine& engine);
 
-        ComputePipelineBuilder& shader(IO::Resource shader) { shaderResource = shader; return *this; };
-        ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo info, uint32_t count = 1);
+        ComputePipelineBuilder& shader(IO::Resource shader) { shaderResource = std::move(shader); return *this; };
+        ComputePipelineBuilder& bufferBinding(vk::DescriptorType type, uint32_t setID, uint32_t bindingID, const vk::DescriptorBufferInfo& info, uint32_t count = 1);
         ComputePipelineBuilder& specializationUInt32(std::uint32_t constantID, std::uint32_t value);
 
         std::unique_ptr<ComputePipeline> build();

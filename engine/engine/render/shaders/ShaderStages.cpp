@@ -22,6 +22,9 @@ Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vect
         if(filename.ends_with(".rgen.spv")) {
             stage = vk::ShaderStageFlagBits::eRaygenKHR;
         }
+        if(filename.ends_with(".compute.spv")) {
+            stage = vk::ShaderStageFlagBits::eCompute;
+        }
         stages.emplace_back(std::make_pair(stage, std::move(std::make_unique<ShaderModule>(driver, filename))));
     }
 }

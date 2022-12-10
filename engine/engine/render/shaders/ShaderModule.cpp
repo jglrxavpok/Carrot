@@ -65,6 +65,7 @@ void Carrot::ShaderModule::addBindingsSet(vk::ShaderStageFlagBits stage, std::ui
 
 
     createBindingsSet(stage, setID, bindings, vk::DescriptorType::eStorageBuffer, resources.storage_buffers, constants);
+    createBindingsSet(stage, setID, bindings, vk::DescriptorType::eStorageImage, resources.storage_images, constants);
 
     createBindingsSet(stage, setID, bindings, vk::DescriptorType::eAccelerationStructureKHR, resources.acceleration_structures, constants);
     //createBindingsSet0(stage, bindings, vk::DescriptorType::eAccelerationStructureNV, resources.acceleration_structures, constants);

@@ -35,197 +35,39 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resou
 
 }
 
-Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription description): driver(driver), description(description) {
-    auto& device = driver.getLogicalDevice();
-    pipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
-    pipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
-
-    pipelineTemplate.vertexInput = {
-            .vertexBindingDescriptionCount = static_cast<std::uint32_t>(pipelineTemplate.vertexBindingDescriptions.size()),
-            .pVertexBindingDescriptions = pipelineTemplate.vertexBindingDescriptions.data(),
-
-            .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(pipelineTemplate.vertexAttributes.size()),
-            .pVertexAttributeDescriptions = pipelineTemplate.vertexAttributes.data(),
-    };
-
-    pipelineTemplate.inputAssembly = {
-            .topology = description.topology,
-            .primitiveRestartEnable = false,
-    };
-
-    pipelineTemplate.rasterizer = {
-            // TODO: change for shadow maps
-            .depthClampEnable = false,
-
-            .rasterizerDiscardEnable = false,
-
-            .polygonMode = description.polygonMode,
-
-            .cullMode = description.cull ? vk::CullModeFlagBits::eFront : vk::CullModeFlagBits::eNone,
-            .frontFace = vk::FrontFace::eClockwise,
-
-            // TODO: change for shadow maps
-            .depthBiasEnable = false,
-            .depthBiasConstantFactor = 0.0f,
-            .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = 0.0f,
-
-            .lineWidth = 1.0f,
-    };
-
-    pipelineTemplate.multisampling = {
-            .rasterizationSamples = vk::SampleCountFlagBits::e1,
-            .sampleShadingEnable = false,
-            .minSampleShading = 1.0f,
-            .pSampleMask = nullptr,
-            .alphaToCoverageEnable = false,
-            .alphaToOneEnable = false,
-    };
-    pipelineTemplate.depthStencil = {
-            .depthTestEnable = description.depthTest,
-            .depthWriteEnable = description.depthWrite,
-            .depthCompareOp = vk::CompareOp::eLessOrEqual,
-            .stencilTestEnable = false,
-    };
-
-    if(description.alphaBlending) {
-        pipelineTemplate.colorBlendAttachments = {
-                vk::PipelineColorBlendAttachmentState {
-                        .blendEnable = true,
-                        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-                        .colorBlendOp = vk::BlendOp::eAdd,
-                        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                        .dstAlphaBlendFactor = vk::BlendFactor::eOne,
-                        .alphaBlendOp = vk::BlendOp::eAdd,
-
-                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-                }
-        };
-
-        if(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer) {
-            // R32G32B32 position
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-            // R32G32B32 normals+tangents
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R32 not blendable
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R32G32B32A32 entityID
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R8G8B8A8 metallic+roughness
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R8G8B8A8 emissive
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R32G32B32 velocity
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-        } else if(description.type == PipelineType::Denoising) {
-            // R32G32B32 moments
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-        }
+Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription& description): driver(driver), description(description) {
+    // create swapchain-agnostic template parts, these will never be changed during the entire lifetime of the Pipeline object
+    if(description.type == PipelineType::Compute) {
+        createComputeTemplate();
     } else {
-        pipelineTemplate.colorBlendAttachments = {
-                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 8 : 1),
-                vk::PipelineColorBlendAttachmentState {
-                        .blendEnable = false,
-
-                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-                }
-        };
-
-        if(description.type == PipelineType::Denoising) {
-            // R32G32B32 moments
-            pipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-        }
+        createGraphicsTemplate();
     }
 
-    pipelineTemplate.colorBlending = vk::PipelineColorBlendStateCreateInfo {
-            .logicOpEnable = false,
-            .attachmentCount = static_cast<uint32_t>(pipelineTemplate.colorBlendAttachments.size()),
-            .pAttachments = pipelineTemplate.colorBlendAttachments.data(),
+    std::vector<Specialization> specializations{};
+
+    for(const auto& [constantName, constantValue] : description.constants) {
+        Carrot::Log::info("Specializing constant %s to value %lu", constantName.c_str(), constantValue);
+        specializations.push_back(Specialization {
+                .offset = static_cast<std::uint32_t>(specializations.size()*sizeof(uint32_t)),
+                .size = sizeof(std::uint32_t),
+                .constantID = static_cast<std::uint32_t>(specializations.size()), // TODO: Map name to index
+        });
+        commonPipelineTemplate.specializationData.push_back(static_cast<std::uint32_t>(constantValue));
+    }
+
+    uint32_t totalDataSize = 0;
+    std::vector<vk::SpecializationMapEntry> entries{};
+    for(const auto& spec : specializations) {
+        entries.emplace_back(spec.convertToEntry());
+        totalDataSize += spec.size;
+    }
+    commonPipelineTemplate.specializationEntries = entries;
+    commonPipelineTemplate.specialization = {
+            .mapEntryCount = static_cast<std::uint32_t>(commonPipelineTemplate.specializationEntries.size()),
+            .pMapEntries = commonPipelineTemplate.specializationEntries.data(),
+            .dataSize = totalDataSize,
+            .pData = commonPipelineTemplate.specializationData.data(),
     };
-
-    pipelineTemplate.dynamicStateInfo = {
-            .dynamicStateCount = 2,
-            .pDynamicStates = pipelineTemplate.dynamicStates,
-    };
-
-    pipelineTemplate.viewport = vk::Viewport {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = static_cast<float>(driver.getFinalRenderSize().width),
-            .height = static_cast<float>(driver.getFinalRenderSize().height),
-
-            .minDepth = -1.0f,
-            .maxDepth = 1.0f,
-    };
-
-    pipelineTemplate.scissor = vk::Rect2D {
-            .offset = {0,0},
-            .extent = {
-                    .width = driver.getFinalRenderSize().width,
-                    .height = driver.getFinalRenderSize().height,
-            }
-    };
-
-    pipelineTemplate.viewportState = vk::PipelineViewportStateCreateInfo {
-            .viewportCount = 1,
-            .pViewports = &pipelineTemplate.viewport,
-
-            .scissorCount = 1,
-            .pScissors = &pipelineTemplate.scissor,
-    };
-
-    stages = make_unique<Carrot::ShaderStages>(driver,
-                                               std::vector<Render::ShaderSource> {
-                                                       description.vertexShader,
-                                                       description.fragmentShader
-                                               },
-                                               std::vector<vk::ShaderStageFlagBits> {
-                                                       vk::ShaderStageFlagBits::eVertex,
-                                                       vk::ShaderStageFlagBits::eFragment
-                                               }
-    );
 
     reloadShaders();
 }
@@ -275,52 +117,240 @@ void Carrot::Pipeline::reloadShaders() {
 
     layout = GetVulkanDevice().createPipelineLayoutUnique(pipelineLayoutCreateInfo, driver.getAllocationCallbacks());
 
-    std::vector<Specialization> specializations{};
+    if(description.type != PipelineType::Compute) {
+        graphicsPipelineTemplate.shaderStageCreation = stages->createPipelineShaderStages(&commonPipelineTemplate.specialization);
+        graphicsPipelineTemplate.pipelineInfo = vk::GraphicsPipelineCreateInfo {
+                .stageCount = static_cast<std::uint32_t>(graphicsPipelineTemplate.shaderStageCreation.size()),
+                .pStages = graphicsPipelineTemplate.shaderStageCreation.data(),
 
-    for(const auto& [constantName, constantValue] : description.constants) {
-        Carrot::Log::info("Specializing constant %s to value %lu", constantName.c_str(), constantValue);
-        specializations.push_back(Specialization {
-                .offset = static_cast<std::uint32_t>(specializations.size()*sizeof(uint32_t)),
-                .size = sizeof(std::uint32_t),
-                .constantID = static_cast<std::uint32_t>(specializations.size()), // TODO: Map name to index
-        });
-        pipelineTemplate.specializationData.push_back(static_cast<std::uint32_t>(constantValue));
+                .pVertexInputState = &graphicsPipelineTemplate.vertexInput,
+                .pInputAssemblyState = &graphicsPipelineTemplate.inputAssembly,
+                .pViewportState = &graphicsPipelineTemplate.viewportState,
+                .pRasterizationState = &graphicsPipelineTemplate.rasterizer,
+                .pMultisampleState = &graphicsPipelineTemplate.multisampling,
+                .pDepthStencilState = &graphicsPipelineTemplate.depthStencil,
+                .pColorBlendState = &graphicsPipelineTemplate.colorBlending,
+                .pDynamicState = &graphicsPipelineTemplate.dynamicStateInfo,
+
+                .layout = *layout,
+                .renderPass = {}, // will be filled in getOrCreatePipelineForRenderPass
+                .subpass = static_cast<std::uint32_t>(description.subpassIndex),
+        };
+    } else {
+        auto shaderStages = stages->createPipelineShaderStages(&commonPipelineTemplate.specialization);
+        verify(shaderStages.size() == 1, "Compute shaders can only have a single stage");
+        computePipelineTemplate.shaderStageCreation = shaderStages[0];
+        computePipelineTemplate.pipelineInfo = vk::ComputePipelineCreateInfo {
+            .stage = computePipelineTemplate.shaderStageCreation,
+            .layout = *layout
+        };
     }
-
-    uint32_t totalDataSize = 0;
-    std::vector<vk::SpecializationMapEntry> entries{};
-    for(const auto& spec : specializations) {
-        entries.emplace_back(spec.convertToEntry());
-        totalDataSize += spec.size;
-    }
-    pipelineTemplate.specializationEntries = entries;
-    pipelineTemplate.specialization = {
-            .mapEntryCount = static_cast<std::uint32_t>(pipelineTemplate.specializationEntries.size()),
-            .pMapEntries = pipelineTemplate.specializationEntries.data(),
-            .dataSize = totalDataSize,
-            .pData = pipelineTemplate.specializationData.data(),
-    };
-
-    pipelineTemplate.shaderStageCreation = stages->createPipelineShaderStages(&pipelineTemplate.specialization);
-    pipelineTemplate.pipelineInfo = vk::GraphicsPipelineCreateInfo {
-            .stageCount = static_cast<std::uint32_t>(pipelineTemplate.shaderStageCreation.size()),
-            .pStages = pipelineTemplate.shaderStageCreation.data(),
-
-            .pVertexInputState = &pipelineTemplate.vertexInput,
-            .pInputAssemblyState = &pipelineTemplate.inputAssembly,
-            .pViewportState = &pipelineTemplate.viewportState,
-            .pRasterizationState = &pipelineTemplate.rasterizer,
-            .pMultisampleState = &pipelineTemplate.multisampling,
-            .pDepthStencilState = &pipelineTemplate.depthStencil,
-            .pColorBlendState = &pipelineTemplate.colorBlending,
-            .pDynamicState = &pipelineTemplate.dynamicStateInfo,
-
-            .layout = *layout,
-            .renderPass = {}, // will be filled in getOrCreatePipelineForRenderPass
-            .subpass = static_cast<std::uint32_t>(description.subpassIndex),
-    };
 
     recreateDescriptorPool(driver.getSwapchainImageCount());
+}
+
+void Carrot::Pipeline::createGraphicsTemplate() {
+    stages = make_unique<Carrot::ShaderStages>(driver,
+                                               std::vector<Render::ShaderSource> {
+                                                       description.vertexShader,
+                                                       description.fragmentShader
+                                               },
+                                               std::vector<vk::ShaderStageFlagBits> {
+                                                       vk::ShaderStageFlagBits::eVertex,
+                                                       vk::ShaderStageFlagBits::eFragment
+                                               }
+    );
+
+    graphicsPipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
+    graphicsPipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
+
+    graphicsPipelineTemplate.vertexInput = {
+            .vertexBindingDescriptionCount = static_cast<std::uint32_t>(graphicsPipelineTemplate.vertexBindingDescriptions.size()),
+            .pVertexBindingDescriptions = graphicsPipelineTemplate.vertexBindingDescriptions.data(),
+
+            .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(graphicsPipelineTemplate.vertexAttributes.size()),
+            .pVertexAttributeDescriptions = graphicsPipelineTemplate.vertexAttributes.data(),
+    };
+
+    graphicsPipelineTemplate.inputAssembly = {
+            .topology = description.topology,
+            .primitiveRestartEnable = false,
+    };
+
+    graphicsPipelineTemplate.rasterizer = {
+            // TODO: change for shadow maps
+            .depthClampEnable = false,
+
+            .rasterizerDiscardEnable = false,
+
+            .polygonMode = description.polygonMode,
+
+            .cullMode = description.cull ? vk::CullModeFlagBits::eFront : vk::CullModeFlagBits::eNone,
+            .frontFace = vk::FrontFace::eClockwise,
+
+            // TODO: change for shadow maps
+            .depthBiasEnable = false,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+
+            .lineWidth = 1.0f,
+    };
+
+    graphicsPipelineTemplate.multisampling = {
+            .rasterizationSamples = vk::SampleCountFlagBits::e1,
+            .sampleShadingEnable = false,
+            .minSampleShading = 1.0f,
+            .pSampleMask = nullptr,
+            .alphaToCoverageEnable = false,
+            .alphaToOneEnable = false,
+    };
+    graphicsPipelineTemplate.depthStencil = {
+            .depthTestEnable = description.depthTest,
+            .depthWriteEnable = description.depthWrite,
+            .depthCompareOp = vk::CompareOp::eLessOrEqual,
+            .stencilTestEnable = false,
+    };
+
+    // TODO: rework
+    if(description.alphaBlending) {
+        graphicsPipelineTemplate.colorBlendAttachments = {
+                vk::PipelineColorBlendAttachmentState {
+                        .blendEnable = true,
+                        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                        .colorBlendOp = vk::BlendOp::eAdd,
+                        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                        .dstAlphaBlendFactor = vk::BlendFactor::eOne,
+                        .alphaBlendOp = vk::BlendOp::eAdd,
+
+                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+                }
+        };
+
+        if(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer) {
+            // R32G32B32 position
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+            // R32G32B32 normals+tangents
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+
+            // R32 not blendable
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+
+            // R32G32B32A32 entityID
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+
+            // R8G8B8A8 metallic+roughness
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+
+            // R8G8B8A8 emissive
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+
+            // R32G32B32 velocity
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+        } else if(description.type == PipelineType::Denoising) {
+            // R32G32B32 moments
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+        }
+    } else {
+        graphicsPipelineTemplate.colorBlendAttachments = {
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 8 : 1),
+                vk::PipelineColorBlendAttachmentState {
+                        .blendEnable = false,
+
+                        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+                }
+        };
+
+        if(description.type == PipelineType::Denoising) {
+            // R32G32B32 moments
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+        }
+    }
+
+    graphicsPipelineTemplate.colorBlending = vk::PipelineColorBlendStateCreateInfo {
+            .logicOpEnable = false,
+            .attachmentCount = static_cast<uint32_t>(graphicsPipelineTemplate.colorBlendAttachments.size()),
+            .pAttachments = graphicsPipelineTemplate.colorBlendAttachments.data(),
+    };
+
+    graphicsPipelineTemplate.dynamicStateInfo = {
+            .dynamicStateCount = 2,
+            .pDynamicStates = graphicsPipelineTemplate.dynamicStates,
+    };
+
+    graphicsPipelineTemplate.viewport = vk::Viewport {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = static_cast<float>(driver.getFinalRenderSize().width),
+            .height = static_cast<float>(driver.getFinalRenderSize().height),
+
+            .minDepth = -1.0f,
+            .maxDepth = 1.0f,
+    };
+
+    graphicsPipelineTemplate.scissor = vk::Rect2D {
+            .offset = {0,0},
+            .extent = {
+                    .width = driver.getFinalRenderSize().width,
+                    .height = driver.getFinalRenderSize().height,
+            }
+    };
+
+    graphicsPipelineTemplate.viewportState = vk::PipelineViewportStateCreateInfo {
+            .viewportCount = 1,
+            .pViewports = &graphicsPipelineTemplate.viewport,
+
+            .scissorCount = 1,
+            .pScissors = &graphicsPipelineTemplate.scissor,
+    };
+}
+
+void Carrot::Pipeline::createComputeTemplate() {
+    stages = make_unique<Carrot::ShaderStages>(driver,
+                                               std::vector<Render::ShaderSource> {
+                                                       description.computeShader
+                                               },
+                                               std::vector<vk::ShaderStageFlagBits> {
+                                                       vk::ShaderStageFlagBits::eCompute
+                                               }
+    );
 }
 
 bool Carrot::Pipeline::checkForReloadableShaders() {
@@ -338,10 +368,14 @@ const vk::PushConstantRange& Carrot::Pipeline::getPushConstant(std::string_view 
 vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass pass) const {
     auto it = vkPipelines.find(pass);
     if(it == vkPipelines.end()) {
-        vk::GraphicsPipelineCreateInfo info = pipelineTemplate.pipelineInfo;
-        info.renderPass = pass;
-        Carrot::Log::flush();
-        vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr));
+        if(description.type == PipelineType::Compute) {
+            vk::ComputePipelineCreateInfo info = computePipelineTemplate.pipelineInfo;
+            vkPipelines[pass] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr));
+        } else {
+            vk::GraphicsPipelineCreateInfo info = graphicsPipelineTemplate.pipelineInfo;
+            info.renderPass = pass;
+            vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr));
+        }
     }
     return *vkPipelines[pass];
 }
@@ -572,6 +606,8 @@ Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) 
         return PipelineType::Particles;
     } else if(name == "denoising") {
         return PipelineType::Denoising;
+    } else if(name == "compute") {
+        return PipelineType::Compute;
     }
     return PipelineType::Unknown;
 }
@@ -601,6 +637,9 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     }
     if(json.HasMember("fragmentShader")) {
         fragmentShader = json["fragmentShader"].GetString();
+    }
+    if(json.HasMember("computeShader")) {
+        computeShader = json["computeShader"].GetString();
     }
     if(json.HasMember("vertexFormat")) {
         vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());
@@ -659,4 +698,7 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
             setCount = std::max(setCount, setID+1);
         }
     }
+
+    // TODO: coherency verifications
+
 }

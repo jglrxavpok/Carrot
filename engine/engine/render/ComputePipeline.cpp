@@ -10,7 +10,7 @@ Carrot::ComputePipelineBuilder::ComputePipelineBuilder(Carrot::Engine& engine): 
 
 }
 
-Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, std::uint32_t setID, std::uint32_t bindingID, const vk::DescriptorBufferInfo info, std::uint32_t count) {
+Carrot::ComputePipelineBuilder& Carrot::ComputePipelineBuilder::bufferBinding(vk::DescriptorType type, std::uint32_t setID, std::uint32_t bindingID, const vk::DescriptorBufferInfo& info, std::uint32_t count) {
     ComputeBinding binding{};
     binding.type = type;
     binding.count = count;
@@ -116,7 +116,6 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
         }));
     }
 
-    std::vector<uint32_t> dynamicOffsets;
     dynamicOffsets.resize(dynamicBindingCount, 0);
 
     std::vector<vk::DescriptorPoolSize> descriptorSizes{};
@@ -142,7 +141,7 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     }));
 
     descriptorSets.clear();
-    std::vector<vk::DescriptorSet> descriptorSetsFlat{};
+    descriptorSetsFlat.clear();
     for(const auto& [setID, layout] : descriptorLayouts) {
         descriptorSets[setID] = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *descriptorPool,
@@ -231,6 +230,16 @@ void Carrot::ComputePipeline::onSwapchainImageCountChange(size_t newCount) {
 }
 
 void Carrot::ComputePipeline::onSwapchainSizeChange(int newWidth, int newHeight) {}
+
+void Carrot::ComputePipeline::dispatchInline(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::CommandBuffer& commandBuffer) const {
+    dispatchSizes->x = groupCountX;
+    dispatchSizes->y = groupCountY;
+    dispatchSizes->z = groupCountZ;
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, descriptorSetsFlat, dynamicOffsets);
+    commandBuffer.dispatchIndirect(dispatchBuffer.getVulkanBuffer(), dispatchBuffer.getStart());
+}
 
 void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::Semaphore* signal) const {
     dispatchSizes->x = groupCountX;
