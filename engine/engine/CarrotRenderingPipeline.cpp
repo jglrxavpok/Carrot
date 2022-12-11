@@ -182,43 +182,91 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             }
     );
 
-    struct TestComputeData {
-        Render::FrameResource postProcessed;
-        Render::FrameResource mergedResult;
-    };
-    auto& testCompute = mainGraph.addPass<TestComputeData>(
-            "testCompute",
+    struct SpatialDenoise {
+        Render::FrameResource postTemporal;
+        Render::FrameResource denoisedPingPong[2];
 
-            [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<TestComputeData>& pass, TestComputeData& data) {
-                data.postProcessed = builder.read(mergeLighting.getData().mergeResult, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.mergedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                               framebufferSize,
-                                                               vk::AttachmentLoadOp::eClear,
-                                                               vk::ClearColorValue(std::array{0,0,0,0}),
-                                                               vk::ImageLayout::eColorAttachmentOptimal
+        std::uint8_t iterationCount = 0;
+    };
+    auto& spatialDenoise = mainGraph.addPass<SpatialDenoise>(
+            "spatialDenoise",
+
+            [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<SpatialDenoise>& pass, SpatialDenoise& data) {
+                data.postTemporal = builder.read(mergeLighting.getData().mergeResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.denoisedPingPong[0] = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                      data.postTemporal.size,
+                                                                      vk::AttachmentLoadOp::eClear,
+                                                                      vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                      vk::ImageLayout::eGeneral
+                );
+                data.denoisedPingPong[1] = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                      data.postTemporal.size,
+                                                                      vk::AttachmentLoadOp::eClear,
+                                                                      vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                      vk::ImageLayout::eGeneral
                 );
 
+                data.iterationCount = 4;
                 pass.rasterized = false; // compute pass
+                pass.prerecordable = false;
             },
-            [this](const Render::CompiledPass& pass, const Render::Context& frame, const TestComputeData& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph testCompute");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "testCompute");
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const SpatialDenoise& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph spatial denoise");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "spatial denoise");
 
                 const auto& extent = GetVulkanDriver().getWindowFramebufferExtent();
 
-                auto pipeline = frame.renderer.getOrCreatePipeline("compute/test-compute");
-                pipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
-                frame.renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.postProcessed, frame.swapchainIndex), 0, 0, nullptr);
-                frame.renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.mergedResult, frame.swapchainIndex), 0, 1, nullptr);
+                auto& temporalTexture = pass.getGraph().getTexture(data.postTemporal, frame.swapchainIndex);
+                auto& denoisedResultTexture0 = pass.getGraph().getTexture(data.denoisedPingPong[0], frame.swapchainIndex);
+                auto& denoisedResultTexture1 = pass.getGraph().getTexture(data.denoisedPingPong[1], frame.swapchainIndex);
+
+                std::shared_ptr<Pipeline> pipelinePingPong[3] = {
+                        frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 0u + ((std::uint64_t)&frame.viewport)),
+                        frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 1u + ((std::uint64_t)&frame.viewport)),
+                        frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 2u + ((std::uint64_t)&frame.viewport)),
+                };
+                Render::Texture* denoisedPingPong[2] = {
+                        &denoisedResultTexture0,
+                        &denoisedResultTexture1,
+                };
+
+                frame.renderer.bindTexture(*pipelinePingPong[0], frame, temporalTexture, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedResultTexture0, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture1, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture0, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                pipelinePingPong[0]->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
                 buffer.dispatch(extent.width, extent.height, 1);
+
+                for (std::uint8_t j = 0; j < data.iterationCount - 1; ++j) {
+                    vk::MemoryBarrier2KHR memoryBarrier {
+                        .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
+                        .srcAccessMask = vk::AccessFlagBits2KHR::eShaderWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
+                        .dstAccessMask = vk::AccessFlagBits2KHR::eShaderRead,
+                    };
+                    vk::DependencyInfoKHR dependencyInfo {
+                        .memoryBarrierCount = 1,
+                        .pMemoryBarriers = &memoryBarrier,
+                    };
+                    buffer.pipelineBarrier2KHR(dependencyInfo);
+
+                    auto pipeline = pipelinePingPong[j % 2 + 1];
+                    pipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
+                    buffer.dispatch(extent.width, extent.height, 1);
+                }
             }
     );
 
     auto& toneMapping = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
             "tone-mapping",
 
-            [this, testCompute, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
-                data.postLighting = builder.read(testCompute.getData().mergedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+            [this, spatialDenoise, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                data.postLighting = builder.read(spatialDenoise.getData().denoisedPingPong[(spatialDenoise.getData().iterationCount + 1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,

@@ -6,5 +6,5 @@
       "setID": 0
     }
   ],
-  "computeShader": "resources/shaders/compute/test-compute.compute.glsl.spv"
+  "computeShader": "resources/shaders/compute/spatial-denoise.compute.glsl.spv"
 }

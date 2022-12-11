@@ -421,6 +421,44 @@ void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Contex
     }
 }
 
+void Carrot::VulkanRenderer::bindStorageImage(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame,
+                                         const Carrot::Render::Texture& textureToBind,
+                                         std::uint32_t setID,
+                                         std::uint32_t bindingID,
+                                         vk::ImageAspectFlags aspect,
+                                         vk::ImageViewType viewType,
+                                         std::uint32_t arrayIndex,
+                                         vk::ImageLayout textureLayout) {
+    ZoneScoped;
+    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+        return;
+    }
+    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::DescriptorImageInfo imageInfo {
+            .imageView = textureToBind.getView(textureToBind.getImage().getFormat(), aspect, viewType),
+            .imageLayout = textureLayout,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eStorageImage;
+
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = arrayIndex,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+                    .pImageInfo = &imageInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
 void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame,
                                          const Carrot::Render::Texture& textureToBind,
                                          std::uint32_t setID,

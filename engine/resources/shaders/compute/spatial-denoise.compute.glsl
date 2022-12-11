@@ -7,5 +7,8 @@ void main() {
     ivec2 coords = ivec2(gl_GlobalInvocationID);
 
     vec4 pixel = imageLoad(inputImage, coords);
+
+    // TODO
+
     imageStore(outputImage, coords, pixel);
 }
