@@ -28,6 +28,8 @@ layout(push_constant) uniform PushConstant {
 #include <includes/camera.glsl>
 
 DEFINE_GBUFFER_INPUTS(0)
+#include "includes/gbuffer_unpack.glsl"
+
 DEFINE_CAMERA_SET(1)
 LIGHT_SET(2)
 MATERIAL_SYSTEM_SET(4)
@@ -591,7 +593,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 roughness = metallicRoughness.y;
             } else {
                 vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
-                vec3 skyboxColor = texture(skybox3D, uv).rgb;
+                vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
                 lightContribution += skyboxColor * beta;
                 break;
             }
@@ -606,40 +608,25 @@ void main() {
     vec4 outColorWorld;
 
     vec2 jitter = vec2(push.frameCount % 2 - 0.5, (push.frameCount/2) % 2 - 0.5) / vec2(push.frameWidth, push.frameHeight);
-    vec2 uv = inUV + jitter*0.5;
+    vec2 uv = inUV + jitter*0.5; // TODO: move jitter earlier in pipeline
 
-    float currDepth = texture(sampler2D(depth, nearestSampler), uv).r;
+    float currDepth = texture(sampler2D(gDepth, nearestSampler), uv).r;
 
 
     float distanceToCamera;
     if(currDepth < 1.0) {
         RandomSampler rng;
 
+        GBuffer gbuffer = unpackGBuffer(uv);
+        vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
+        vec3 worldPos = hWorldPos.xyz;// / hWorldPos.w;
+
+        vec3 normal = mat3(cbo.inverseView) * gbuffer.viewNormal;
+        vec3 tangent = mat3(cbo.inverseView) * gbuffer.viewTangent;
+        vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
+
         initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 
-        // TODO: move to unpackGBuffer
-        vec4 fragmentColor = texture(sampler2D(albedo, linearSampler), uv);
-        vec3 viewPos = texture(sampler2D(viewPos, linearSampler), uv).xyz;
-        vec3 worldPos = (cbo.inverseView * vec4(viewPos, 1.0)).xyz;
-        uint intProperties = uint(texture(intPropertiesInput, uv).r);
-
-        vec4 compressedNormalTangent = texture(sampler2D(viewNormalTangents, linearSampler), uv);
-        vec3 viewNormal = compressedNormalTangent.xyx;
-        viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
-        if((intProperties & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ) {
-            viewNormal.z *= -1;
-        }
-
-        vec3 viewTangent = compressedNormalTangent.zwx;
-        viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
-        if((intProperties & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ) {
-            viewTangent.z *= -1;
-        }
-
-        vec3 normal = normalize((cbo.inverseView * vec4(viewNormal, 0.0)).xyz);
-        vec3 tangent = normalize((cbo.inverseView * vec4(viewTangent, 0.0)).xyz);
-        vec2 metallicRoughness = texture(sampler2D(metallicRoughnessValues, linearSampler), uv).rg;
-        vec3 emissive = texture(sampler2D(emissiveValues, linearSampler), uv).rgb;
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
         const int SAMPLE_COUNT = 8; // TODO: configurable sample count?
@@ -647,14 +634,14 @@ void main() {
 
         vec3 l = vec3(0.0);
         for(int i = 0; i < SAMPLE_COUNT; i++) {
-            l += calculateLighting(rng, worldPos, emissive, normal, tangent, metallicRoughness, true);
+            l += calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
         }
         outColorWorld.rgb = l * INV_SAMPLE_COUNT;
 #else
-        outColorWorld.rgb = calculateLighting(rng, worldPos, emissive, normal, tangent, metallicRoughness, true);
+        outColorWorld.rgb = calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
 #endif
 
-        distanceToCamera = length(viewPos);
+        distanceToCamera = length(gbuffer.viewPosition);
     } else {
         vec4 viewSpaceDir = cbo.inverseProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
         vec3 worldViewDir = mat3(cbo.inverseView) * viewSpaceDir.xyz;
@@ -664,7 +651,7 @@ void main() {
             vec3(0.0, 0.0, -1.0),
             vec3(0.0, 1.0, 0.0)
         );
-        vec3 skyboxRGB = texture(skybox3D, (rot) * worldViewDir).rgb;
+        vec3 skyboxRGB = texture(gSkybox3D, (rot) * worldViewDir).rgb;
 
         outColorWorld = vec4(skyboxRGB.rgb,1.0);
         distanceToCamera = 1.0f/0.0f;
