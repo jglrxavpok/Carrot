@@ -430,10 +430,10 @@ void Carrot::VulkanRenderer::bindStorageImage(Carrot::Pipeline& pipeline, const 
                                          std::uint32_t arrayIndex,
                                          vk::ImageLayout textureLayout) {
     ZoneScoped;
-    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+    if(boundStorageImages[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
-    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    boundStorageImages[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {

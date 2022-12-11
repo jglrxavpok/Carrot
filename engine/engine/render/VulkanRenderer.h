@@ -292,6 +292,7 @@ namespace Carrot {
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
 
         std::unordered_map<ImageBindingKey, vk::Image> boundTextures;
+        std::unordered_map<ImageBindingKey, vk::Image> boundStorageImages;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
         std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;
