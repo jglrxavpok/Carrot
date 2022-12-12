@@ -1,3 +1,5 @@
+#include <includes/lighting_utils.glsl>
+
 layout(set = 0, binding = 0) uniform texture2D inputImage;
 layout(set = 0, binding = 1) uniform sampler nearestSampler;
 layout(set = 0, binding = 2) uniform sampler linearSampler;
@@ -25,10 +27,6 @@ vec3 rgb2xyz(vec3 rgb) {
 }
 
 // https://64.github.io/tonemapping/
-float luminance(vec3 v) {
-    return dot(v, vec3(0.2126f, 0.7152f, 0.0722f));
-}
-
 vec3 changeLuminance(vec3 color, float targetLuminance) {
     float l_in = luminance(color);
     return color * (targetLuminance / l_in);

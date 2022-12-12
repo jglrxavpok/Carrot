@@ -1,4 +1,5 @@
 #include "includes/camera.glsl"
+#include "includes/lighting_utils.glsl"
 #include "includes/sampling.glsl"
 
 layout(set = 0, binding = 0) uniform texture2D currentFrame;
@@ -61,5 +62,10 @@ void main() {
     }
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-    outMomentHistoryHistoryLength = vec4(momentHistoryHistoryLength.xy * reprojected, historyLength, 1.0);
+    float momentsAlpha = 1.0f / historyLength;
+
+    vec2 moments = vec2(luminance(outColor.rgb), 0.0);
+    moments.y = moments.x * moments.x;
+
+    outMomentHistoryHistoryLength = vec4(mix(momentHistoryHistoryLength.xy, moments, momentsAlpha), historyLength, 1.0);
 }
