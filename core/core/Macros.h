@@ -39,3 +39,5 @@ struct DeferredCleanup {
 };
 
 #define CLEANUP(x) DeferredCleanup _cleanup{.cleanup = [&]() { x; }}
+
+#define GetVFS() (*Carrot::IO::Resource::vfsToUse)

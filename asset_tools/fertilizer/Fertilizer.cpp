@@ -4,7 +4,7 @@
 
 #include <Fertilizer.h>
 #include <TextureCompression.h>
-#include <GLTFCompression.h>
+#include <GLTFProcessing.h>
 #include <iostream>
 #include <unordered_map>
 #include <filesystem>
@@ -20,17 +20,17 @@ namespace Fertilizer {
 
     static std::unordered_map<std::string, Convertor> ConversionFunctions = {
             { ".png", { ".ktx2", compressTexture } },
-            { ".jpg", { ".ktx2", compressTexture } },
+            { ".jpg", { ".ktx2",  compressTexture } },
             { ".jpeg", { ".ktx2", compressTexture } },
-            { ".tga", { ".ktx2", compressTexture } },
-            { ".bmp", { ".ktx2", compressTexture } },
-            { ".psd", { ".ktx2", compressTexture } },
-            { ".gif", { ".ktx2", compressTexture } },
-            { ".hdr", { ".ktx2", compressTexture } },
-            { ".pic", { ".ktx2", compressTexture } },
-            { ".pnm", { ".ktx2", compressTexture } },
+            { ".tga", { ".ktx2",  compressTexture } },
+            { ".bmp", { ".ktx2",  compressTexture } },
+            { ".psd", { ".ktx2",  compressTexture } },
+            { ".gif", { ".ktx2",  compressTexture } },
+            { ".hdr", { ".ktx2",  compressTexture } },
+            { ".pic", { ".ktx2",  compressTexture } },
+            { ".pnm", { ".ktx2",  compressTexture } },
 
-            { ".gltf", { ".gltf", compressGLTF } },
+            { ".gltf", { ".gltf", processGLTF } },
     };
 
     bool isSupportedFormat(const fspath& input) {

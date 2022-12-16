@@ -28,24 +28,24 @@ Carrot::VertexFormat Carrot::getVertexFormat(const std::string& name) {
 std::vector<vk::VertexInputBindingDescription> Carrot::getBindingDescriptions(Carrot::VertexFormat vertexFormat) {
     switch(vertexFormat) {
         case VertexFormat::Vertex:
-            return Carrot::Vertex::getBindingDescription();
+            return Carrot::getVertexBindingDescription();
         case VertexFormat::SkinnedVertex:
-            return Carrot::SkinnedVertex::getBindingDescription();
+            return Carrot::getSkinnedVertexBindingDescription();
 
         case VertexFormat::ComputeSkinnedVertex:
-            return Carrot::ComputeSkinnedVertex::getBindingDescription();
+            return Carrot::getComputeSkinnedVertexBindingDescription();
 
         case VertexFormat::ScreenSpace:
-            return Carrot::ScreenSpaceVertex::getBindingDescription();
+            return Carrot::getScreenSpaceVertexBindingDescription();
 
         case VertexFormat::SimpleVertex:
-            return Carrot::SimpleVertex::getBindingDescription();
+            return Carrot::getSimpleVertexBindingDescription();
 
         case VertexFormat::SimpleVertexWithInstanceData:
-            return Carrot::SimpleVertexWithInstanceData::getBindingDescription();
+            return Carrot::getSimpleVertexWithInstanceDataBindingDescription();
 
         case VertexFormat::Particle:
-            return Carrot::Particle::getBindingDescription();
+            return Carrot::getParticleBindingDescription();
 
         default:
             throw std::runtime_error("Invalid vertex format!");
@@ -55,25 +55,25 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getBindingDescriptions(Ca
 std::vector<vk::VertexInputAttributeDescription> Carrot::getAttributeDescriptions(VertexFormat vertexFormat) {
     switch(vertexFormat) {
         case VertexFormat::Vertex:
-            return Carrot::Vertex::getAttributeDescriptions();
+            return Carrot::getVertexAttributeDescriptions();
 
         case VertexFormat::SkinnedVertex:
-            return Carrot::SkinnedVertex::getAttributeDescriptions();
+            return Carrot::getSkinnedVertexAttributeDescriptions();
 
         case VertexFormat::ComputeSkinnedVertex:
-            return Carrot::ComputeSkinnedVertex::getAttributeDescriptions();
+            return Carrot::getComputeSkinnedVertexAttributeDescriptions();
 
         case VertexFormat::ScreenSpace:
-            return Carrot::ScreenSpaceVertex::getAttributeDescriptions();
+            return Carrot::getScreenSpaceVertexAttributeDescriptions();
 
         case VertexFormat::SimpleVertex:
-            return Carrot::SimpleVertex::getAttributeDescriptions();
+            return Carrot::getSimpleVertexAttributeDescriptions();
 
         case VertexFormat::SimpleVertexWithInstanceData:
-            return Carrot::SimpleVertexWithInstanceData::getAttributeDescriptions();
+            return Carrot::getSimpleVertexWithInstanceDataAttributeDescriptions();
 
         case VertexFormat::Particle:
-            return Carrot::Particle::getAttributeDescriptions();
+            return Carrot::getParticleAttributeDescriptions();
 
         default:
             throw std::runtime_error("Invalid vertex format!");

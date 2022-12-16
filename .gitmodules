@@ -58,3 +58,6 @@
 [submodule "thirdparty/KTX-Software"]
 	path = thirdparty/KTX-Software
 	url = https://github.com/KhronosGroup/KTX-Software
+[submodule "thirdparty/MikkTSpace"]
+	path = thirdparty/MikkTSpace
+	url = https://github.com/mmikk/MikkTSpace

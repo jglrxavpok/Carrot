@@ -8,13 +8,13 @@ GBuffer unpackGBuffer(vec2 uv) {
 
     vec4 compressedNormalTangent = texture(sampler2D(gViewNormalTangents, gLinearSampler), uv);
     vec3 viewNormal = compressedNormalTangent.xyx;
-    viewNormal.z = sqrt(1 - dot(viewNormal.xy, viewNormal.xy));
+    viewNormal.z = sqrt(max(0, 1 - dot(viewNormal.xy, viewNormal.xy)));
     if((gbuffer.intProperty & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ) {
         viewNormal.z *= -1;
     }
 
     vec3 viewTangent = compressedNormalTangent.zwx;
-    viewTangent.z = sqrt(1 - dot(viewTangent.xy, viewTangent.xy));
+    viewTangent.z = sqrt(max(0, 1 - dot(viewTangent.xy, viewTangent.xy)));
     if((gbuffer.intProperty & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ) {
         viewTangent.z *= -1;
     }

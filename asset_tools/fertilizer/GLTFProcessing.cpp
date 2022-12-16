@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 05/11/2022.
 //
 
-#include <GLTFCompression.h>
+#include <GLTFProcessing.h>
 #include <core/utils/CarrotTinyGLTF.h>
 #include "core/Macros.h"
 #include <unordered_set>
@@ -54,35 +54,19 @@ namespace Fertilizer {
         return std::filesystem::exists(abs_filename);
     }
 
-    ConversionResult compressGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
-        using namespace tinygltf;
+    void generateMissingAttributes(tinygltf::Model& model) {
+        for(auto& mesh : model.meshes) {
+            /* TODO mesh.primitives[0].
+            expandMesh(mesh);
+            generateMissingNormals(model);
+            generateMissingTexCoords(model);
+            generateMissingTangents(model);*/
+        }
+    }
 
-        tinygltf::TinyGLTF parser;
-        tinygltf::FsCallbacks callbacks;
-
-        callbacks.ReadWholeFile = gltfReadWholeFile;
-        callbacks.ExpandFilePath = gltfExpandFilePath;
-        callbacks.FileExists = gltfFileExists;
-        callbacks.WriteWholeFile = nullptr;
-
+    void convertTexturePaths(tinygltf::Model& model, fspath inputFile, fspath outputFile) {
         fspath parentPath = inputFile.parent_path();
         fspath outputParentPath = outputFile.parent_path();
-        callbacks.user_data = (void*)&parentPath;
-        parser.SetFsCallbacks(callbacks);
-
-        tinygltf::Model model;
-        std::string errors;
-        std::string warnings;
-
-        if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, inputFile.string())) {
-            return {
-                .errorCode = ConversionResultError::GLTFCompressionError,
-                .errorMessage = errors,
-            };
-        }
-
-        // ----------
-        // convert
 
         std::vector<std::string> extensionsRequired = {
                 "KHR_texture_basisu",
@@ -118,6 +102,42 @@ namespace Fertilizer {
                 texture.source = -1;
             }
         }
+    }
+
+    ConversionResult processGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
+        using namespace tinygltf;
+
+        tinygltf::TinyGLTF parser;
+        tinygltf::FsCallbacks callbacks;
+
+        callbacks.ReadWholeFile = gltfReadWholeFile;
+        callbacks.ExpandFilePath = gltfExpandFilePath;
+        callbacks.FileExists = gltfFileExists;
+        callbacks.WriteWholeFile = nullptr;
+
+        fspath parentPath = inputFile.parent_path();
+        fspath outputParentPath = outputFile.parent_path();
+        callbacks.user_data = (void*)&parentPath;
+        parser.SetFsCallbacks(callbacks);
+
+        tinygltf::Model model;
+        std::string errors;
+        std::string warnings;
+
+        if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, inputFile.string())) {
+            return {
+                .errorCode = ConversionResultError::GLTFCompressionError,
+                .errorMessage = errors,
+            };
+        }
+
+        // ----------
+
+        generateMissingAttributes(model);
+
+        convertTexturePaths(model, inputFile, outputFile);
+
+        // ----------
 
         if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, false, false)) {
             return {

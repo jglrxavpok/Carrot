@@ -10,13 +10,12 @@
 #include "engine/vulkan/includes.h"
 #include <assimp/scene.h>
 #include "engine/render/resources/VertexFormat.h"
-#include "engine/render/resources/Skeleton.h"
-#include "engine/render/animation/Animation.h"
+#include <core/render/Skeleton.h>
+#include <core/render/Animation.h>
 #include "engine/Engine.h"
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
 #include "engine/render/InstanceData.h"
-#include "engine/render/resources/model_loading/LoadedScene.h"
 #include "IDTypes.h"
 
 namespace Carrot {

@@ -13,9 +13,10 @@ layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
 layout(location = 4) in vec3 previousFrameViewPosition;
-layout(location = 5) in vec3 viewNormal; // TODO: remove? no longer used
+layout(location = 5) in vec3 _unused;
 layout(location = 6) flat in uvec4 uuid;
-layout(location = 7) in mat3 TBN;
+layout(location = 7) in vec3 T;
+layout(location = 8) in vec3 N;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -38,10 +39,15 @@ void main() {
     o.albedo = vec4(texColor.rgb * fragColor * instanceColor.rgb * material.baseColor.rgb, texColor.a * instanceColor.a);
     o.viewPosition = viewPosition;
 
+    vec3 N_ = normalize(N);
+    vec3 T_ = normalize(T - dot(T, N) * N);
+
+    vec3 B = cross(T_, N_);
+    mat3 TBN = mat3(T_, B, N_);
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
-    mappedNormal = normalize(mappedNormal *2 -1);
+    mappedNormal = mappedNormal * 2 -1;
     o.viewNormal = normalize(TBN * mappedNormal);
-    o.viewTangent = normalize(TBN * vec3(1.0, 0.0, 0.0)); // TODO: deferred texturing
+    o.viewTangent = TBN * vec3(1.0, 0.0, 0.0);
 
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = uuid;

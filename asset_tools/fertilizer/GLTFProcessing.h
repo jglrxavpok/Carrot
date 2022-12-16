@@ -8,5 +8,5 @@
 #include <Fertilizer.h>
 
 namespace Fertilizer {
-    ConversionResult compressGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
+    ConversionResult processGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
 }

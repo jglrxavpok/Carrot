@@ -297,12 +297,12 @@ namespace Carrot::Render {
     }
 
     void AssimpLoader::loadAnimations(const aiScene *scene, const aiNode *armature) {
-
         glm::mat4 globalInverseTransform = glm::inverse(glmMat4FromAssimp(armature->mTransformation));
+        auto& allAnimations = currentScene.animationData;
 
-        // load animations into staging buffer
-        std::vector<Animation> allAnimations{};
-        for(int animationIndex = 0; animationIndex < scene->mNumAnimations; animationIndex++) {
+        unsigned int sceneCount = scene->mNumAnimations;
+        allAnimations.reserve(sceneCount);
+        for(int animationIndex = 0; animationIndex < sceneCount; animationIndex++) {
             aiAnimation* anim = scene->mAnimations[animationIndex];
             std::string name = anim->mName.data;
 
@@ -342,18 +342,8 @@ namespace Carrot::Render {
                 keyframe.timestamp = time / anim->mTicksPerSecond;
                 this->updateKeyframeRecursively(keyframe, armature, time, animationNodes, globalInverseTransform);
             }
-            currentScene.animations[name] = std::make_shared<Animation>(allAnimations[animationIndex]); // copy
-
             currentScene.animationMapping[name] = animationIndex;
         }
-
-        // upload staging buffer to GPU buffer
-        currentScene.animationData = std::make_unique<Carrot::Buffer>(GetVulkanDriver(),
-                                                               sizeof(Carrot::Animation) * scene->mNumAnimations,
-                                                               vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
-                                                               vk::MemoryPropertyFlagBits::eDeviceLocal);
-        currentScene.animationData->setDebugNames("Animations");
-        currentScene.animationData->stageUploadWithOffsets(make_pair(0ull, allAnimations));
     }
 
     void AssimpLoader::loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent) {

@@ -1,7 +1,7 @@
 add_library(fertilizer-lib
         Fertilizer.cpp
 
-        GLTFCompression.cpp
+        GLTFProcessing.cpp
         TextureCompression.cpp
 )
 

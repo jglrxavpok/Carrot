@@ -6,9 +6,7 @@
 #include "engine/render/InstanceData.h"
 #include "engine/render/particles/Particles.h"
 
-constexpr int BoneWeightCount = 4;
-
-std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getVertexAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{15};
 
     descriptions[0] = {
@@ -81,7 +79,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::Vertex::getAttributeDes
     return descriptions;
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::Vertex::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getVertexBindingDescription() {
     return {vk::VertexInputBindingDescription {
                     .binding = 0,
                     .stride = sizeof(Vertex),
@@ -95,7 +93,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::Vertex::getBindingDescrip
     };
 }
 
-std::vector<vk::VertexInputAttributeDescription> Carrot::ComputeSkinnedVertex::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getComputeSkinnedVertexAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{14};
 
     descriptions[0] = {
@@ -161,7 +159,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::ComputeSkinnedVertex::g
     return descriptions;
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::ComputeSkinnedVertex::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getComputeSkinnedVertexBindingDescription() {
     return {vk::VertexInputBindingDescription {
                     .binding = 0,
                     .stride = sizeof(ComputeSkinnedVertex),
@@ -175,7 +173,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::ComputeSkinnedVertex::get
     };
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::SkinnedVertex::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getSkinnedVertexBindingDescription() {
     return {vk::VertexInputBindingDescription {
             .binding = 0,
             .stride = sizeof(SkinnedVertex),
@@ -189,7 +187,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SkinnedVertex::getBinding
     };
 }
 
-std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getSkinnedVertexAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{19};
 
     descriptions[0] = {
@@ -289,50 +287,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SkinnedVertex::getAttri
     return descriptions;
 }
 
-void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
-    std::int32_t leastInfluential = -1;
-    float smallestWeight = 10000.0f;
-
-    for(size_t i = 0; i < BoneWeightCount; i++) {
-        if(boneWeights[i] < weight) {
-            if(smallestWeight > boneWeights[i]) {
-                smallestWeight = boneWeights[i];
-                leastInfluential = i;
-            }
-        }
-
-        // free slot
-        if(boneWeights[i] == 0.0f) {
-            boneWeights[i] = weight;
-            boneIDs[i] = boneID;
-            return;
-        }
-    }
-
-    if(leastInfluential < 0)
-        return;
-
-    // replace least influential
-    boneWeights[leastInfluential] = weight;
-    boneIDs[leastInfluential] = boneID;
-}
-
-void Carrot::SkinnedVertex::normalizeWeights() {
-    float totalWeight = 0.0f;
-    for (int j = 0; j < BoneWeightCount; ++j) {
-        totalWeight += boneWeights[j];
-    }
-
-    if(totalWeight < 10e-6) {
-        return;
-    }
-
-    for (int j = 0; j < BoneWeightCount; ++j) {
-        boneWeights[j] /= totalWeight;
-    }
-}
-
-std::vector<vk::VertexInputAttributeDescription> Carrot::ScreenSpaceVertex::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getScreenSpaceVertexAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{1};
 
     descriptions[0] = {
@@ -345,7 +300,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::ScreenSpaceVertex::getA
     return descriptions;
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::ScreenSpaceVertex::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getScreenSpaceVertexBindingDescription() {
     return {
         vk::VertexInputBindingDescription {
             .binding = 0,
@@ -355,7 +310,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::ScreenSpaceVertex::getBin
     };
 }
 
-std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertex::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getSimpleVertexAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{1};
 
     descriptions[0] = {
@@ -368,7 +323,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertex::getAttrib
     return descriptions;
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getSimpleVertexBindingDescription() {
     return {
             vk::VertexInputBindingDescription {
                     .binding = 0,
@@ -378,7 +333,7 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertex::getBindingD
     };
 }
 
-std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanceData::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getSimpleVertexWithInstanceDataAttributeDescriptions() {
     std::vector<vk::VertexInputAttributeDescription> descriptions{11};
 
     descriptions[0] = {
@@ -423,7 +378,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::SimpleVertexWithInstanc
     return descriptions;
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertexWithInstanceData::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getSimpleVertexWithInstanceDataBindingDescription() {
     return {
             vk::VertexInputBindingDescription {
                     .binding = 0,
@@ -438,10 +393,10 @@ std::vector<vk::VertexInputBindingDescription> Carrot::SimpleVertexWithInstanceD
     };
 }
 
-std::vector<vk::VertexInputAttributeDescription> Carrot::Particle::getAttributeDescriptions() {
+std::vector<vk::VertexInputAttributeDescription> Carrot::getParticleAttributeDescriptions() {
     return {};
 }
 
-std::vector<vk::VertexInputBindingDescription> Carrot::Particle::getBindingDescription() {
+std::vector<vk::VertexInputBindingDescription> Carrot::getParticleBindingDescription() {
     return {};
 }

@@ -122,7 +122,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
 
-    const float scaleFactor = 0.5f;
+    const float scaleFactor = 0.75f;
     TextureSize outputSize;
     outputSize.type = framebufferSize.type;
     outputSize.width = scaleFactor * framebufferSize.width;

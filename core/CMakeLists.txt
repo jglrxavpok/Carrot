@@ -25,25 +25,44 @@ set(CORE-SOURCES
 
         ${CoreRoot}math/Segment2D.cpp
 
+        ${CoreRoot}render/Skeleton.cpp
+        ${CoreRoot}render/VertexTypes.cpp
+
+        ${CoreRoot}scene/GLTFLoader.cpp
+
         ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp
 
         ${CoreRoot}utils/CarrotTinyGLTF.cpp
         ${CoreRoot}utils/Identifiable.cpp
+        ${CoreRoot}utils/Profiling.cpp
         ${CoreRoot}utils/stringmanip.cpp
         ${CoreRoot}utils/UUID.cpp
 
         )
 
+set(CORE-THIRDPARTY-SOURCES
+        ${ProjectRoot}thirdparty/tracy/TracyClient.cpp
+        ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
+        )
+
 function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}core/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/debugbreak)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/MikkTSpace)
+
+    target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
+    target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
+    target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
+    target_compile_definitions("${Target}" PUBLIC TRACY_ENABLE=1)
+    target_compile_definitions("${Target}" PUBLIC TRACY_ON_DEMAND=1)
 endfunction()
 
 set(ALL_CORE_LIBS ktx glm tinygltf)
-add_library(CarrotCore ${CORE-SOURCES})
+add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})

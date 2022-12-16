@@ -4,9 +4,9 @@
 
 #include "GLTFLoader.h"
 #include "core/io/Logging.hpp"
+#include <core/utils/Profiling.h>
 #include <glm/gtx/quaternion.hpp>
 
-#include "engine/Engine.h"
 #include "core/io/vfs/VirtualFileSystem.h"
 
 namespace Carrot::Render {
@@ -15,6 +15,10 @@ namespace Carrot::Render {
 
     constexpr const char* const SUPPORTED_EXTENSIONS[] = {
             KHR_TEXTURE_BASISU_EXTENSION_NAME,
+    };
+
+    struct PrimitiveInformation {
+        bool hasTangents = false;
     };
 
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
@@ -151,7 +155,7 @@ namespace Carrot::Render {
         return *((const T*)pSource);
     }
 
-    static void loadVertices(std::vector<Vertex>& vertices, const tinygltf::Model& model, const tinygltf::Primitive& primitive) {
+    static void loadVertices(std::vector<Vertex>& vertices, const tinygltf::Model& model, const tinygltf::Primitive& primitive, PrimitiveInformation& info) {
         ZoneScoped;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
         const tinygltf::Accessor& normalsAccessor = model.accessors[primitive.attributes.at("NORMAL")];
@@ -172,6 +176,7 @@ namespace Carrot::Render {
         auto tangentAttributeIt = primitive.attributes.find("TANGENT");
         if(tangentAttributeIt != primitive.attributes.end()) {
             tangentAccessorIndex = tangentAttributeIt->second;
+            info.hasTangents = true;
         }
 
         const tinygltf::Accessor* vertexColorAccessor = colorAccessorIndex != -1 ? &model.accessors[colorAccessorIndex] : nullptr;
@@ -201,10 +206,9 @@ namespace Carrot::Render {
 
             vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
             if(tangentsAccessor) {
-                vertex.tangent = readFromAccessor<glm::vec3>(i, *tangentsAccessor, model);
+                vertex.tangent = readFromAccessor<glm::vec4>(i, *tangentsAccessor, model).xyz;
             } else {
-                // TODO: compute tangents
-                vertex.tangent = glm::vec3(0.0, 1.0, 0.0);
+                vertex.tangent = glm::vec3(0.0, 0.0, 0.0);
             }
 
             if(texCoordsAccessor) {
@@ -247,6 +251,27 @@ namespace Carrot::Render {
                     verify(false, Carrot::sprintf("Unsupported component type: %d", accessor.componentType));
                     break;
             }
+        }
+    }
+
+    static void computeTangents(LoadedPrimitive& primitive) {
+        std::size_t indexCount = primitive.indices.size();
+        verify(indexCount % 3 == 0, "expecting triangles only at this point");
+        for(std::size_t i = 0; i < indexCount; i += 3) {
+            Vertex& v0 = primitive.vertices[primitive.indices[i+0]];
+            Vertex& v1 = primitive.vertices[primitive.indices[i+1]];
+            Vertex& v2 = primitive.vertices[primitive.indices[i+2]];
+
+            glm::vec3 edge0 = (v1.pos - v0.pos).xyz;
+            glm::vec3 edge1 = (v2.pos - v0.pos).xyz;
+            glm::vec3 edge2 = (v2.pos - v1.pos).xyz;
+            v0.tangent = v0.tangent + edge0;
+            v1.tangent = v1.tangent + edge1;
+            v2.tangent = v2.tangent + edge2;
+        }
+
+        for(auto& v : primitive.vertices) {
+          //  v.tangent = glm::normalize(v.tangent);
         }
     }
 
@@ -352,8 +377,13 @@ namespace Carrot::Render {
                 loadedPrimitive.materialIndex = primitive.material;
                 loadedPrimitive.name = mesh.name;
 
-                loadVertices(loadedPrimitive.vertices, model, primitive);
+                PrimitiveInformation info;
+                loadVertices(loadedPrimitive.vertices, model, primitive, info);
                 loadIndices(loadedPrimitive.indices, model, primitive);
+
+                if(!info.hasTangents) {
+                    computeTangents(loadedPrimitive);
+                }
             }
         }
 

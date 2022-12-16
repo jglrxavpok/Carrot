@@ -10,6 +10,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
 #include <core/io/Logging.hpp>
+#include <core/scene/LoadedScene.h>
 #include <engine/render/DrawData.h>
 #include <engine/render/RenderPacket.h>
 #include <engine/utils/Profiling.h>
@@ -17,7 +18,7 @@
 
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/model_loading/AssimpLoader.h"
-#include "engine/render/resources/model_loading/GLTFLoader.h"
+#include <core/scene/GLTFLoader.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
@@ -115,7 +116,18 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         mesh->name(scene.debugName + " (" + primitive.name + ")");
     }
 
-    animationData = std::move(scene.animationData);
+    // upload staging buffer to GPU buffer
+    auto& allAnimations = scene.animationData;
+
+    if(!allAnimations.empty()) {
+        animationData = std::make_unique<Carrot::Buffer>(GetVulkanDriver(),
+                                                         sizeof(Carrot::Animation) * allAnimations.size(),
+                                                         vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                         vk::MemoryPropertyFlagBits::eDeviceLocal);
+        animationData->setDebugNames("Animations");
+        animationData->stageUploadWithOffsets(make_pair(0ull, allAnimations));
+    }
+
     animationMapping = std::move(scene.animationMapping);
     boneMapping = std::move(scene.boneMapping);
     offsetMatrices = std::move(scene.offsetMatrices);

@@ -6,7 +6,7 @@
 #include "engine/render/DrawData.h"
 #include <engine/render/resources/Mesh.h>
 #include <engine/render/resources/ResourceAllocator.h>
-#include <engine/render/animation/Animation.h>
+#include <core/render/Animation.h>
 #include <engine/render/raytracing/ASBuilder.h>
 #include <utility>
 

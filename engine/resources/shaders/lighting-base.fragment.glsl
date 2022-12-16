@@ -57,6 +57,7 @@ struct SurfaceIntersection {
     uint materialIndex;
     vec3 surfaceNormal;
     vec3 surfaceTangent;
+    vec3 surfaceColor;
     vec2 uv;
     bool hasIntersection;
 };
@@ -138,8 +139,7 @@ bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
     return rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT;
 }
 
-SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
-    SurfaceIntersection r;
+void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float maxDistance) {
     r.hasIntersection = false;
     // Ray Query for shadow
     float tMin      = 0.00001f;
@@ -153,16 +153,16 @@ SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
 
     // Returns type of committed (true) intersection
     if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-        return r;
+        return;
     }
 
     int instanceID = rayQueryGetIntersectionInstanceIdEXT(rayQuery, true);
     if(instanceID < 0) {
-        return r;
+        return;
     }
     int localGeometryID = rayQueryGetIntersectionGeometryIndexEXT(rayQuery, true);
     if(localGeometryID < 0) {
-        return r;
+        return;
     }
 
     #define instance (instances[nonuniformEXT(instanceID)])
@@ -171,7 +171,7 @@ SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
     uint geometryID = instance.firstGeometryIndex + localGeometryID;
     int triangleID = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
     if(triangleID < 0) {
-        return r;
+        return;
     }
     vec2 barycentrics = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
 
@@ -184,6 +184,7 @@ SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
     vec2 uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
     vec3 surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
     vec3 surfaceTangent = P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y);
+    vec3 color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
 
     mat3 modelRotation = mat3(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
     r.hasIntersection = true;
@@ -191,11 +192,11 @@ SurfaceIntersection traceRay(vec3 startPos, vec3 direction, float maxDistance) {
     r.uv = uvPos;
     r.surfaceNormal = modelRotation * surfaceNormal;
     r.surfaceTangent = modelRotation * surfaceTangent;
+    r.surfaceColor = color;
     r.position = rayQueryGetIntersectionTEXT(rayQuery, true) * direction + startPos;
-    return r;
 }
 
-vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, inout vec3 direction, vec3 worldPos, vec3 normal, float maxDistance) {
+vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 worldPos, vec3 normal, float maxDistance) {
     #define light lights.l[i]
     vec3 lightContribution = vec3(0.0);
 
@@ -210,7 +211,6 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, inout 
     lightPDF = 1.0 / pdfInv;
 
     {
-        float shadowPercent = 0.0f;
         float enabledF = float(light.enabled);
 
         if(light.enabled)
@@ -338,7 +338,7 @@ vec2 concentricSampleDisk(inout RandomSampler rng) {
     float theta = 0.0f;
     float r = 0.0f;
 
-    if(abs(u.x) > abs(u.y)) {
+    if(abs(u.x) >= abs(u.y)) {
         r = u.x;
         theta = M_PI_OVER_4 * (u.y / u.x);
     } else {
@@ -511,9 +511,12 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
         for(; depth < MAX_BOUNCES; depth++) {
+            if(isnan(normal.x)) {
+                return vec3(10000,0,0);
+            }
             const float oldRoughness = roughness;
             roughness = min(1, oldRoughness + roughnessBias);
-            roughnessBias += oldRoughness * 0.75f;
+            roughnessBias += oldRoughness * 0.75f; // firefly rejection
 
             const float u = sampleNoise(rng);
             SurfaceIntersection intersection;
@@ -525,12 +528,13 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 
             float sampledSpecularF = float(sampledSpecular);
 
-            float lightPDF;
-            vec3 lightDirection;
+            float lightPDF = 1.0f;
 
-            vec3 wh = normalize(lightDirection + incomingRay);
-            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, lightDirection, worldPos, normal, MAX_LIGHT_DISTANCE);
-            vec3 fresnel = schlickFresnel(vec3(0.0), clamp(dot(wh, lightDirection), 0.0, 1.0)); // TODO ?
+            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, worldPos, normal, MAX_LIGHT_DISTANCE);
+
+            /*vec3 wh = normalize(lightDirection + incomingRay);
+            vec3 fresnel = schlickFresnel(vec3(0.0), clamp(dot(wh, lightDirection), 0.0, 1.0)); // TODO ?*/
+            vec3 fresnel = vec3(1.0);
 
             vec3 T = tangent;
             vec3 N = normal;
@@ -556,7 +560,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             if(sampledSpecular) {
                 // sample specular reflection
                 vec3 reflectedRay = reflect(incomingRay, normal);
-                intersection = traceRay(worldPos, reflectedRay, MAX_LIGHT_DISTANCE);
+                traceRay(intersection, worldPos, invTBN * reflectedRay, MAX_LIGHT_DISTANCE);
                 incomingRay = reflectedRay;
             } else {
                 vec3 direction;
@@ -569,32 +573,58 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 vec3 worldSpaceDirection = normalize(tbn * -direction);
                 beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
 
-                intersection = traceRay(worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
+                traceRay(intersection, worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
                 incomingRay = worldSpaceDirection;
             }
 
             if(intersection.hasIntersection) {
                 #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
                 beta *= _sample(albedo).rgb;
+                beta *= intersection.surfaceColor;
 
                 worldPos = intersection.position;
                 emissive = _sample(emissive).rgb;
 
                 vec3 T = normalize(intersection.surfaceTangent);
                 vec3 N = normalize(intersection.surfaceNormal);
-                T = normalize(T - dot(T, N) * N);
+
+                if(true) {
+                  //  return vec3(0,0,pow(dot(T, N), 2));
+                    //return T;
+                }
+
+                if(isnan(normalize(T - dot(T, N) * N).x)) {
+                    //return vec3(0,10000,0);
+                }
+
+                //T = normalize(T - dot(T, N) * N);
+
                 vec3 B = cross(T, N);
 
                 mat3 tbn = mat3(T, B, N);
-                normal = tbn * _sample(normalMap).rgb;
+                vec3 mappedNormal = _sample(normalMap).rgb;
+
+                mappedNormal = mappedNormal * 2 -1;
+                mappedNormal = normalize(mappedNormal);
+
+
+                normal = tbn * mappedNormal;
                 tangent = T;
                 vec2 metallicRoughness = _sample(metallicRoughness).rg;
                 metallic = metallicRoughness.x;
                 roughness = metallicRoughness.y;
             } else {
                 vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
-                vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
-                lightContribution += skyboxColor * beta;
+                if(isnan(uv.x))
+                {
+                    // incomingRay-> NaN ???
+                }
+                else
+                {
+                    vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
+                    lightContribution += skyboxColor * beta;
+
+                }
                 break;
             }
         }
@@ -624,6 +654,9 @@ void main() {
         vec3 normal = mat3(cbo.inverseView) * gbuffer.viewNormal;
         vec3 tangent = mat3(cbo.inverseView) * gbuffer.viewTangent;
         vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
+
+        normal = normalize(normal);
+        tangent = normalize(tangent);
 
         initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 

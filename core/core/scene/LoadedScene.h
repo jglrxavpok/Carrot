@@ -7,9 +7,9 @@
 #include <memory>
 #include <unordered_map>
 #include "core/io/vfs/VirtualFileSystem.h"
-#include "engine/render/resources/Buffer.h"
-#include "engine/render/resources/Vertex.h"
-#include "engine/render/resources/Skeleton.h"
+#include <core/render/VertexTypes.h>
+#include <core/render/Skeleton.h>
+#include <core/render/Animation.h>
 #include <glm/glm.hpp>
 
 namespace Carrot {
@@ -117,8 +117,8 @@ namespace Carrot::Render {
         std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;
         std::unordered_map<int, std::unordered_map<std::string, glm::mat4>> offsetMatrices;
 
-        std::map<std::string, std::shared_ptr<Animation>> animations{};
+        /// id -> index in animationData
         std::map<std::string, std::uint32_t> animationMapping{};
-        std::unique_ptr<Carrot::Buffer> animationData{};
+        std::vector<Carrot::Animation> animationData{};
     };
 }

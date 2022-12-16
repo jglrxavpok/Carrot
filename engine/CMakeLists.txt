@@ -21,13 +21,11 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
-        ${EngineRoot}render/resources/Skeleton.cpp
         ${EngineRoot}render/resources/Texture.cpp
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
 
         ${EngineRoot}render/resources/model_loading/AssimpLoader.cpp
-        ${EngineRoot}render/resources/model_loading/GLTFLoader.cpp
 
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
@@ -38,7 +36,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Camera.cpp
         ${EngineRoot}render/RenderPacket.cpp
 
-        ${EngineRoot}render/animation/Animation.cpp
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
         ${EngineRoot}utils/conversions.cpp
@@ -154,8 +151,6 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}task/TaskScheduler.cpp
 
-        ${EngineRoot}utils/Profiling.cpp
-
         ${EngineRoot}vulkan/CustomTracyVulkan.cpp
         ${EngineRoot}vulkan/DebugNameable.cpp
         ${EngineRoot}vulkan/SynchronizedQueue.cpp
@@ -263,7 +258,6 @@ foreach(shader ${RAYHIT_SHADERS})
 endforeach()
 
 set(THIRDPARTY-SOURCES
-        ${ProjectRoot}thirdparty/tracy/TracyClient.cpp
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_vulkan.cpp
         ${ProjectRoot}thirdparty/imgui/backends/imgui_impl_glfw.cpp
         ${ProjectRoot}thirdparty/imgui/imgui.cpp

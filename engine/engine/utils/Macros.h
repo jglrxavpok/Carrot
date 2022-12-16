@@ -16,6 +16,8 @@
 #define GetCapabilities() GetEngine().getCapabilities()
 #define GetConfiguration() GetEngine().getConfiguration()
 #define GetTaskScheduler() GetEngine().getTaskScheduler()
+
+#undef GetVFS
 #define GetVFS() GetEngine().getVFS()
 
 #define GetPhysics() Carrot::Physics::PhysicsSystem::getInstance()

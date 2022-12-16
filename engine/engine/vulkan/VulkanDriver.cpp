@@ -113,7 +113,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(strstr(pCallbackData->pMessage, "VUID-vkQueueSubmit-pCommandBuffers-00074") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "UNASSIGNED-CoreValidation-DrawState-InvalidCommandBuffer-VkDescriptorSet") != nullptr) {
-        debug_break();
+        //debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdExecuteCommands-pCommandBuffers-00092") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-vkCmdBindVertexBuffers-pBuffers-00627") != nullptr) {

@@ -60,6 +60,7 @@ void main() {
             outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
         }
     }
+    outColor = currentFrameColor; // TODO DEBUG REMOVE
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
     float momentsAlpha = 1.0f / historyLength;

@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include "LoadedScene.h"
+#include <core/scene/LoadedScene.h>
 #include "core/io/Resource.h"
 #include "engine/render/resources/Mesh.h"
-#include "engine/render/animation/Animation.h"
-#include "engine/render/resources/Skeleton.h"
+#include <core/render/Animation.h>
+#include <core/render/Skeleton.h>
 
 struct aiMesh;
 struct aiNode;

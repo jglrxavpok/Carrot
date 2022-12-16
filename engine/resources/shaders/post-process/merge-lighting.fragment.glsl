@@ -39,43 +39,42 @@ void main() {
 
         if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
             outColor = albedoColor;
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_DEPTH) {
             outColor = vec4(currDepth, currDepth, currDepth, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_POSITION) {
             outColor = vec4(g.viewPosition, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_NORMAL) {
             outColor = vec4(g.viewNormal, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_METALLIC_ROUGHNESS) {
             outColor = vec4(g.metallicness, g.roughness, 0.0, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_EMISSIVE) {
             outColor = vec4(g.emissiveColor, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_RANDOMNESS) {
             RandomSampler rng;
 
             initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
             outColor = vec4(sampleNoise(rng).rrr, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_TANGENT) {
             outColor = vec4(g.viewTangent, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_LIGHTING) {
             outColor = vec4(lightingColor.rgb, 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
             outColor = vec4(abs(g.motionVector), 1.0);
-            return;
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {
             outColor = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
-            return;
+        } else {
+            outColor = vec4(uv, 0.0, 1.0);
         }
 
-        outColor = vec4(uv, 0.0, 1.0);
+        if(isnan(outColor.r)
+        || isnan(outColor.g)
+        || isnan(outColor.b)
+        || isnan(outColor.a)
+        )
+        {
+            outColor = vec4((sin(push.frameCount * 0.1)+1.0),0,0,1);
+        }
+
         return;
     }
 
