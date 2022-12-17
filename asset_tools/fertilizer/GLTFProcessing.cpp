@@ -4,7 +4,11 @@
 
 #include <GLTFProcessing.h>
 #include <core/utils/CarrotTinyGLTF.h>
-#include "core/Macros.h"
+#include <core/scene/LoadedScene.h>
+#include <core/Macros.h>
+#include <core/scene/GLTFLoader.h>
+#include <GLTFWriter.h>
+#include <core/io/vfs/VirtualFileSystem.h>
 #include <unordered_set>
 
 namespace Fertilizer {
@@ -12,6 +16,8 @@ namespace Fertilizer {
     constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
 
     using fspath = std::filesystem::path;
+    using namespace Carrot::IO;
+    using namespace Carrot::Render;
 
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
                            std::string* err, const std::string& filepath,
@@ -55,13 +61,19 @@ namespace Fertilizer {
     }
 
     void generateMissingAttributes(tinygltf::Model& model) {
-        for(auto& mesh : model.meshes) {
-            /* TODO mesh.primitives[0].
-            expandMesh(mesh);
-            generateMissingNormals(model);
-            generateMissingTexCoords(model);
-            generateMissingTangents(model);*/
-        }
+        GLTFLoader loader{};
+        LoadedScene scene = loader.load(model, {});
+
+        // TODO: regenerate
+
+
+        // re-export model
+        tinygltf::Model reexported = std::move(writeAsGLTF(scene));
+        // keep copyright+author info
+        model.asset.extras = std::move(model.asset.extras);
+        model.asset.copyright = std::move(model.asset.copyright);
+
+        model = std::move(reexported);
     }
 
     void convertTexturePaths(tinygltf::Model& model, fspath inputFile, fspath outputFile) {
@@ -75,10 +87,6 @@ namespace Fertilizer {
         for(const auto& ext : extensionsRequired) {
             model.extensionsRequired.push_back(ext);
             model.extensionsUsed.push_back(ext);
-        }
-
-        for(const auto& buffer : model.buffers) {
-            copyConvert(parentPath / buffer.uri, outputParentPath / buffer.uri);
         }
 
         std::unordered_set<std::size_t> modifiedImages;
@@ -133,13 +141,14 @@ namespace Fertilizer {
 
         // ----------
 
+        // buffers are regenerated inside 'generateMissingAttributes' method too, so we don't copy the .bin file
         generateMissingAttributes(model);
 
         convertTexturePaths(model, inputFile, outputFile);
 
         // ----------
 
-        if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, false, false)) {
+        if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, true, false)) {
             return {
                 .errorCode = ConversionResultError::GLTFCompressionError,
                 .errorMessage = "Could not write GLTF",

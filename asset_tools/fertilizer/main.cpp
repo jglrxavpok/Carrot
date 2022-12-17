@@ -18,12 +18,15 @@ int main(int argc, char** argv) {
 
     bool hasInput = false;
     bool hasOutput = false;
+    bool forceConvert = false;
     std::filesystem::path inputFile;
     std::filesystem::path outputFile;
     for (int i = 1; i < argc;) {
         const std::string_view arg = argv[i];
         if(arg == "-r" || arg == "--recursive") {
             recursive = true;
+        } else if(arg == "-f" || arg == "--force") {
+            forceConvert = true;
         } else {
             if(!hasInput) {
                 inputFile = arg;
@@ -92,7 +95,7 @@ int main(int argc, char** argv) {
                 const auto& input = allInputs[index];
                 const auto& output = allOutputs[index];
                 std::cout << Carrot::sprintf("Converting %s (%llu / %llu)\n", input.string().c_str(), index+1, allInputs.size());
-                Fertilizer::ConversionResult result = Fertilizer::convert(input, output);
+                Fertilizer::ConversionResult result = Fertilizer::convert(input, output, forceConvert);
                 switch(result.errorCode) {
                     case Fertilizer::ConversionResultError::Success:
                         break;

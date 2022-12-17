@@ -79,33 +79,23 @@ namespace Carrot::Render {
             }
         }
 
-        std::function<void(const aiNode& node, const glm::mat4& parentTransform)> depthFirstTraversal = [&](const aiNode& node, const glm::mat4& parentTransform) {
-            glm::mat4 nodeTransform = parentTransform * Carrot::glmMat4FromAssimp(node.mTransformation);
-            for(std::size_t meshIndex = 0; meshIndex < node.mNumMeshes; meshIndex++) {
-                const aiMesh* mesh = scene->mMeshes[node.mMeshes[meshIndex]];
+        for(std::size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
+            const aiMesh* mesh = scene->mMeshes[meshIndex];
 
-                ZoneScopedN("Loading mesh");
-                ZoneText(mesh->mName.C_Str(), mesh->mName.length);
+            ZoneScopedN("Loading mesh");
+            ZoneText(mesh->mName.C_Str(), mesh->mName.length);
 
-                auto& primitive = currentScene.primitives.emplace_back();
-                loadMesh(primitive, meshIndex, mesh);
-                auto& material = materialMap[mesh->mMaterialIndex];
-                bool hasBones = mesh->HasBones();
-                primitive.name = file.getName()+" ("+std::string(mesh->mName.C_Str(), mesh->mName.length)+")";
+            auto& primitive = currentScene.primitives.emplace_back();
+            loadMesh(primitive, meshIndex, mesh);
+            auto& material = materialMap[mesh->mMaterialIndex];
+            bool hasBones = mesh->HasBones();
+            primitive.name = file.getName()+" ("+std::string(mesh->mName.C_Str(), mesh->mName.length)+")";
 
-                primitive.materialIndex = mesh->mMaterialIndex;
-                primitive.isSkinned = hasBones;
-                primitive.transform = nodeTransform;
-            }
-
-            for(std::size_t childIndex = 0; childIndex < node.mNumChildren; childIndex++) {
-                depthFirstTraversal(*node.mChildren[childIndex], nodeTransform);
-            }
-        };
+            primitive.materialIndex = mesh->mMaterialIndex;
+            primitive.isSkinned = hasBones;
+        }
 
         aiNode* armature = scene->mRootNode;
-        depthFirstTraversal(*armature, glm::mat4(1.0f));
-
         loadSkeleton(armature);
 
         if(scene->HasAnimations()) {
@@ -150,6 +140,7 @@ namespace Carrot::Render {
                         vertexUVW[vertexIndex].x,
                         vertexUVW[vertexIndex].y,
                 };
+                primitive.hadTexCoords = true;
             }
 
             glm::vec3 normal = {
@@ -157,12 +148,14 @@ namespace Carrot::Render {
                     vertexNormal.y,
                     vertexNormal.z,
             };
+            primitive.hadNormals = true;
 
             glm::vec3 tangent = {
                     vertexTangent.x,
                     vertexTangent.y,
                     vertexTangent.z,
             };
+            primitive.hadTangents = true;
 
             glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
 
@@ -351,7 +344,16 @@ namespace Carrot::Render {
         parent.bone.transform = Carrot::glmMat4FromAssimp(subSkeleton->mTransformation);
         parent.bone.originalTransform = parent.bone.transform;
 
-        for (std::size_t i = 0; i < subSkeleton->mNumChildren; ++i) {
+        std::size_t meshCount = subSkeleton->mNumMeshes;
+        if(meshCount > 0) {
+            parent.meshIndices = std::vector<std::size_t>{};
+            parent.meshIndices->resize(subSkeleton->mNumMeshes);
+            for(std::size_t i = 0; i < subSkeleton->mNumMeshes; i++) {
+                parent.meshIndices.value()[i] = subSkeleton->mMeshes[i];
+            }
+        }
+
+        for(std::size_t i = 0; i < subSkeleton->mNumChildren; i++) {
             loadSubSkeleton(subSkeleton->mChildren[i], parent.newChild());
         }
     }

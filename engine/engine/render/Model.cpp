@@ -96,24 +96,35 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         materials.push_back(handle);
     }
 
-    for(const auto& primitive : scene.primitives) {
-        std::shared_ptr<SingleMesh> mesh;
-        const auto& material = materials[primitive.materialIndex];
+    std::function<void(const Carrot::Render::SkeletonTreeNode&, glm::mat4)> recursivelyLoadNodes = [&](const Carrot::Render::SkeletonTreeNode& node, glm::mat4 nodeTransform) {
+        nodeTransform *= node.bone.originalTransform;
+        if(node.meshIndices.has_value()) {
+            for(const std::size_t meshIndex : node.meshIndices.value()) {
+                auto& primitive = scene.primitives[meshIndex];
+                std::shared_ptr<SingleMesh> mesh;
+                const auto& material = materials[primitive.materialIndex];
 
-        if(scene.materials[primitive.materialIndex].blendMode != Render::LoadedMaterial::BlendMode::None) {
-            // TODO: handle alpha blending properly
-            continue;
+                if(scene.materials[primitive.materialIndex].blendMode == Render::LoadedMaterial::BlendMode::None) {
+                    // TODO: handle alpha blending properly
+                    if(primitive.isSkinned) {
+                        mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
+                        skinnedMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+                    } else {
+                        mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
+                        staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+                    }
+                    mesh->name(scene.debugName + " (" + primitive.name + ")");
+                }
+            }
         }
 
-        const glm::mat4& nodeTransform = primitive.transform;
-        if(primitive.isSkinned) {
-            mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-            skinnedMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
-        } else {
-            mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
-            staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+        for(const auto& child : node.getChildren()) {
+            recursivelyLoadNodes(child, nodeTransform);
         }
-        mesh->name(scene.debugName + " (" + primitive.name + ")");
+    };
+
+    if(scene.nodeHierarchy) {
+        recursivelyLoadNodes(scene.nodeHierarchy->hierarchy, glm::mat4{1.0f});
     }
 
     // upload staging buffer to GPU buffer

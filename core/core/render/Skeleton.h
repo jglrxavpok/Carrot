@@ -4,11 +4,16 @@
 
 #pragma once
 
+#include <optional>
 #include <list>
 #include <vector>
 #include <unordered_map>
 #include <string>
 #include <glm/glm.hpp>
+
+namespace Carrot {
+    class Model;
+}
 
 namespace Carrot::Render {
     class AssimpLoader; // forward declaration for friend class declaration
@@ -25,6 +30,7 @@ namespace Carrot::Render {
     class SkeletonTreeNode {
     public:
         Bone bone{};
+        std::optional<std::vector<std::size_t>> meshIndices;
 
         SkeletonTreeNode() = default;
 
@@ -74,7 +80,9 @@ namespace Carrot::Render {
         glm::mat4 globalInverseTransform;
         glm::mat4 invGlobalInverseTransform;
 
-        friend class Carrot::Render::AssimpLoader; // this structure is meant to be loaded by Model
-        friend class Carrot::Render::GLTFLoader; // this structure is meant to be loaded by Model
+        // this structure is meant to be loaded by Model
+        friend class Carrot::Render::AssimpLoader;
+        friend class Carrot::Render::GLTFLoader;
+        friend class Carrot::Model;
     };
 }

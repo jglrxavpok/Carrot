@@ -59,18 +59,16 @@ namespace Fertilizer {
     }
 
     ConversionResult copyConvert(const fspath& inputFile, const fspath& outputFile) {
-        if(requiresModifications(inputFile, outputFile)) {
-            fspath outputFolder = outputFile.parent_path();
-            if(!std::filesystem::exists(outputFolder)) {
-                std::filesystem::create_directories(outputFolder);
-            }
-            std::filesystem::copy(inputFile, outputFile, std::filesystem::copy_options::overwrite_existing);
-            makeTimestampsMatch(inputFile, outputFile);
+        fspath outputFolder = outputFile.parent_path();
+        if(!std::filesystem::exists(outputFolder)) {
+            std::filesystem::create_directories(outputFolder);
         }
+        std::filesystem::copy(inputFile, outputFile, std::filesystem::copy_options::overwrite_existing);
+        makeTimestampsMatch(inputFile, outputFile);
         return {};
     }
 
-    ConversionResult convert(const fspath& inputFile, const fspath& outputFile) {
+    ConversionResult convert(const fspath& inputFile, const fspath& outputFile, bool forceConvert) {
         auto convertorIt = ConversionFunctions.find(inputFile.extension().string());
         if(convertorIt == ConversionFunctions.end()) {
             return {
@@ -86,7 +84,7 @@ namespace Fertilizer {
             };
         }
 
-        if(!requiresModifications(inputFile, outputFile)) {
+        if(!forceConvert && !requiresModifications(inputFile, outputFile)) {
             return {
                 .errorCode = ConversionResultError::Success,
                 .errorMessage = "Asset already up-to-date",

@@ -135,6 +135,9 @@ namespace Carrot::IO {
         if(root.empty()) {
             return path.asString();
         }
+        if(isGeneric()) {
+            return path.asString();
+        }
         return Carrot::sprintf("%s://%s", root.c_str(), path.c_str());
     }
 

@@ -511,9 +511,6 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
         for(; depth < MAX_BOUNCES; depth++) {
-            if(isnan(normal.x)) {
-                return vec3(10000,0,0);
-            }
             const float oldRoughness = roughness;
             roughness = min(1, oldRoughness + roughnessBias);
             roughnessBias += oldRoughness * 0.75f; // firefly rejection

@@ -63,7 +63,7 @@ namespace Carrot::IO {
 
             // For GTest
             friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
-                return os << bar.root << ":" << bar.path;
+                return os << bar.toString();
             }
 
         private:

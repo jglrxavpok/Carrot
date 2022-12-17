@@ -40,9 +40,9 @@ void main() {
 
 #define rotate(vec) normalize(((mat3(modelview))) * vec)
 
-    T = /*rotate*/(inTangent);
-    N = /*rotate*/(inNormal);
-    //T = normalize(T - dot(T, N) * N);
+    T = rotate(inTangent);
+    N = rotate(inNormal);
+    T = normalize(T - dot(T, N) * N);
 
     outUUID = inUUID;
 }

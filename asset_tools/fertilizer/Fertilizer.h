@@ -46,5 +46,5 @@ namespace Fertilizer {
      */
     ConversionResult copyConvert(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
 
-    ConversionResult convert(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
+    ConversionResult convert(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile, bool forceConvert);
 }

@@ -15,12 +15,15 @@ namespace Carrot::Render {
     class GLTFLoader {
     public:
         LoadedScene load(const Carrot::IO::Resource& resource);
+        LoadedScene load(const tinygltf::Model& model, const IO::VFS::Path& modelFilepath);
 
     private:
         struct GLTFMesh {
-            std::vector<LoadedPrimitive> primitives;
+            // index of first primitive inside result LoadedScene
+            std::size_t firstPrimitive = 0;
+            std::size_t primitiveCount = 0;
         };
 
-        void loadNodesRecursively(LoadedScene& scene, tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, glm::mat4 parentTransform);
+        void loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, glm::mat4 parentTransform);
     };
 }

@@ -19,6 +19,8 @@ namespace Carrot::Render {
 
     struct PrimitiveInformation {
         bool hasTangents = false;
+        bool hasTexCoords = false;
+        bool hasNormals = false;
     };
 
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
@@ -159,11 +161,13 @@ namespace Carrot::Render {
         ZoneScoped;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
         const tinygltf::Accessor& normalsAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+        info.hasNormals = true;
 
         int texCoordsAccessorIndex = -1;
         auto texCoordsAttributeIt = primitive.attributes.find("TEXCOORD_0");
         if(texCoordsAttributeIt != primitive.attributes.end()) {
             texCoordsAccessorIndex = texCoordsAttributeIt->second;
+            info.hasTexCoords = true;
         }
 
         int colorAccessorIndex = -1;
@@ -254,30 +258,8 @@ namespace Carrot::Render {
         }
     }
 
-    static void computeTangents(LoadedPrimitive& primitive) {
-        std::size_t indexCount = primitive.indices.size();
-        verify(indexCount % 3 == 0, "expecting triangles only at this point");
-        for(std::size_t i = 0; i < indexCount; i += 3) {
-            Vertex& v0 = primitive.vertices[primitive.indices[i+0]];
-            Vertex& v1 = primitive.vertices[primitive.indices[i+1]];
-            Vertex& v2 = primitive.vertices[primitive.indices[i+2]];
-
-            glm::vec3 edge0 = (v1.pos - v0.pos).xyz;
-            glm::vec3 edge1 = (v2.pos - v0.pos).xyz;
-            glm::vec3 edge2 = (v2.pos - v1.pos).xyz;
-            v0.tangent = v0.tangent + edge0;
-            v1.tangent = v1.tangent + edge1;
-            v2.tangent = v2.tangent + edge2;
-        }
-
-        for(auto& v : primitive.vertices) {
-          //  v.tangent = glm::normalize(v.tangent);
-        }
-    }
-
     LoadedScene GLTFLoader::load(const IO::Resource& resource) {
         ZoneScoped;
-        LoadedScene result;
 
         tinygltf::TinyGLTF parser;
         tinygltf::FsCallbacks callbacks;
@@ -301,8 +283,14 @@ namespace Carrot::Render {
             TODO; // throw exception
         }
 
+        LoadedScene result = load(model, vfsPath);
         result.debugName = resource.getName();
 
+        return std::move(result);
+    }
+
+    LoadedScene GLTFLoader::load(const tinygltf::Model& model, const IO::VFS::Path& modelFilepath) {
+        LoadedScene result;
         for(const auto& requiredExtension : model.extensionsRequired) {
             bool supported = false;
             for(const auto& supportedExtension : SUPPORTED_EXTENSIONS) {
@@ -326,7 +314,7 @@ namespace Carrot::Render {
         std::vector<IO::VFS::Path> imagePaths;
         imagePaths.reserve(model.images.size());
         for(const auto& image : model.images) {
-            imagePaths.emplace_back(vfsPath.relative(IO::VFS::Path { image.uri }));
+            imagePaths.emplace_back(modelFilepath.relative(IO::VFS::Path { image.uri }));
         }
 
         result.materials.reserve(model.materials.size());
@@ -335,7 +323,7 @@ namespace Carrot::Render {
                 if(textureIndex < 0)
                     return nullPath;
 
-                tinygltf::Texture& texture = model.textures[textureIndex];
+                const tinygltf::Texture& texture = model.textures[textureIndex];
                 auto it = texture.extensions.find(KHR_TEXTURE_BASISU_EXTENSION_NAME);
 
                 int source = -1;
@@ -371,9 +359,10 @@ namespace Carrot::Render {
         meshes.reserve(model.meshes.size());
         for(const auto& mesh : model.meshes) {
             GLTFMesh& gltfMesh = meshes.emplace_back();
+            gltfMesh.firstPrimitive = result.primitives.size();
 
             for(const auto& primitive : mesh.primitives) {
-                LoadedPrimitive& loadedPrimitive = gltfMesh.primitives.emplace_back();
+                LoadedPrimitive& loadedPrimitive = result.primitives.emplace_back();
                 loadedPrimitive.materialIndex = primitive.material;
                 loadedPrimitive.name = mesh.name;
 
@@ -381,24 +370,30 @@ namespace Carrot::Render {
                 loadVertices(loadedPrimitive.vertices, model, primitive, info);
                 loadIndices(loadedPrimitive.indices, model, primitive);
 
-                if(!info.hasTangents) {
-                    computeTangents(loadedPrimitive);
-                }
+                loadedPrimitive.hadNormals = info.hasNormals;
+                loadedPrimitive.hadTexCoords = info.hasTexCoords;
+                loadedPrimitive.hadTangents = info.hasTangents;
+
+                gltfMesh.primitiveCount++;
             }
         }
 
+        result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glm::mat4{1.0f});
         for(const auto& scene : model.scenes) {
+            auto& sceneRoot = result.nodeHierarchy->hierarchy.newChild();
             for(const auto& nodeIndex : scene.nodes) {
-                loadNodesRecursively(result, model, nodeIndex, meshes, glm::mat4{1.0f});
+                loadNodesRecursively(result, model, nodeIndex, meshes, sceneRoot, glm::mat4{1.0f});
             }
         }
 
         return std::move(result);
     }
 
-    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, glm::mat4 parentTransform) {
+    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, glm::mat4 parentTransform) {
         ZoneScoped;
-        tinygltf::Node& node = model.nodes[nodeIndex];
+
+        SkeletonTreeNode& newNode = parentNode.newChild();
+        const tinygltf::Node& node = model.nodes[nodeIndex];
         glm::mat4 localTransform{1.0f};
         if(!node.matrix.empty()) {
             // transform given as column-major matrix
@@ -416,21 +411,21 @@ namespace Carrot::Render {
                     glm::scale(glm::mat4{1.0f}, toVec3(node.scale, glm::vec3{1.0f}));
         }
 
-        const glm::mat4 transform = parentTransform * localTransform;
+        const glm::mat4 transform = localTransform;
+        newNode.bone.name = node.name;
+        newNode.bone.originalTransform = transform;
+        newNode.bone.transform = transform;
 
         if(node.mesh != -1) {
-            const GLTFMesh& gltfMesh = meshes[node.mesh];
-            for(const auto& primitive : gltfMesh.primitives) {
-                // making a copy of the entire vtx/idx buffers is probably not the best
-                // TODO: allow for loaded primitives to share buffers
-                LoadedPrimitive copy = primitive;
-                copy.transform = transform;
-                scene.primitives.emplace_back(std::move(copy));
+            newNode.meshIndices = std::vector<std::size_t>{};
+            const GLTFMesh& mesh = meshes[node.mesh];
+            for (std::size_t i = 0; i < mesh.primitiveCount; ++i) {
+                newNode.meshIndices.value().push_back(i + mesh.firstPrimitive);
             }
         }
 
         for(const auto& childIndex : node.children) {
-            loadNodesRecursively(scene, model, childIndex, meshes, transform);
+            loadNodesRecursively(scene, model, childIndex, meshes, newNode, transform);
         }
     }
 }

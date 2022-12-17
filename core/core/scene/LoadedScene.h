@@ -80,6 +80,10 @@ namespace Carrot::Render {
          */
         bool isSkinned = false;
 
+        bool hadTangents = false;
+        bool hadNormals = false;
+        bool hadTexCoords = false;
+
         /**
          * Transform of this primitive, relative to root of scene.
          * Already contains the transform of parent nodes

@@ -12,6 +12,9 @@ The output file will always take the timestamp of the input file, that way, alre
 
 The `[arguments]` are optional and will depend on the type of file.
 
+### General options
+- `-f`/`--force` Ignores whether the file was already processed and forces a reprocessing.
+
 ### Entire folders
 - `-r`/`--recursive` Use this option to input a source folder and a destination folder. Fertilizer will apply its 
 modifications to all compatible files inside the source folder (given via `<file path>`), and write the output to the destination (`<output path>`)
