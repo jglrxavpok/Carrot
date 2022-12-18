@@ -33,7 +33,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getVertexAttributeDescr
     descriptions[3] = {
             .location = 3,
             .binding = 0,
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(Vertex, tangent)),
     };
 
@@ -214,7 +214,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getSkinnedVertexAttribu
     descriptions[3] = {
             .location = 3,
             .binding = 0,
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(SkinnedVertex, tangent)),
     };
 

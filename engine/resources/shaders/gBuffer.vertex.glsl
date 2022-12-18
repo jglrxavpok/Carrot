@@ -5,7 +5,7 @@ DEFINE_CAMERA_SET(0)
 layout(location = 0) in vec4 inPosition;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inTangent;
+layout(location = 3) in vec4 inTangent;
 layout(location = 4) in vec2 inUV;
 
 // Per instance
@@ -40,9 +40,10 @@ void main() {
 
 #define rotate(vec) normalize(((mat3(modelview))) * vec)
 
-    T = rotate(inTangent);
+    T = rotate(inTangent.xyz);
     N = rotate(inNormal);
     T = normalize(T - dot(T, N) * N);
 
+    // TODO: use bitangent sign (inTangent.w)
     outUUID = inUUID;
 }

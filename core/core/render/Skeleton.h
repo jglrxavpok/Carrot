@@ -56,6 +56,8 @@ namespace Carrot::Render {
     //! If you want to read animations from a model file, use Carrot::AnimatedInstances
     class Skeleton {
     public:
+        SkeletonTreeNode hierarchy;
+
         Skeleton(const glm::mat4& globalInverseTransform);
 
     public:
@@ -76,7 +78,6 @@ namespace Carrot::Render {
         void computeTransforms(std::unordered_map<std::string, glm::mat4>& transforms) const;
 
     private:
-        SkeletonTreeNode hierarchy;
         glm::mat4 globalInverseTransform;
         glm::mat4 invGlobalInverseTransform;
 

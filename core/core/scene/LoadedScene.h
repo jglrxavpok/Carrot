@@ -96,6 +96,9 @@ namespace Carrot::Render {
         std::vector<Carrot::Vertex> vertices;
         std::vector<Carrot::SkinnedVertex> skinnedVertices;
 
+        glm::vec3 minPos{0.0f};
+        glm::vec3 maxPos{0.0f};
+
         /**
          * Buffer containing indices of the primitive
          */

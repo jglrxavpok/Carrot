@@ -24,8 +24,8 @@ namespace Carrot {
         /// Vertex Normal
         alignas(16) glm::vec3 normal;
 
-        /// Vertex tangent
-        alignas(16) glm::vec3 tangent;
+        /// Vertex tangent, W is the sign of the bitangent (B = tangent.w * cross(N, T) with N,T orthonormalized)
+        alignas(16) glm::vec4 tangent;
 
         /// UV coordinates
         alignas(16) glm::vec2 uv;
@@ -55,8 +55,8 @@ namespace Carrot {
         /// Vertex normal
         alignas(16) glm::vec3 normal;
 
-        /// Vertex tangent
-        alignas(16) glm::vec3 tangent;
+        /// Vertex tangent, W is the sign of the bitangent (B = tangent.w * cross(N, T) with N,T orthonormalized)
+        alignas(16) glm::vec4 tangent;
 
         /// UV coordinates
         alignas(16) glm::vec2 uv;

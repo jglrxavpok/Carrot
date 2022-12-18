@@ -157,8 +157,9 @@ namespace Carrot::Render {
         return *((const T*)pSource);
     }
 
-    static void loadVertices(std::vector<Vertex>& vertices, const tinygltf::Model& model, const tinygltf::Primitive& primitive, PrimitiveInformation& info) {
+    static void loadVertices(LoadedPrimitive& loadedPrimitive, const tinygltf::Model& model, const tinygltf::Primitive& primitive, PrimitiveInformation& info) {
         ZoneScoped;
+        std::vector<Vertex>& vertices = loadedPrimitive.vertices;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
         const tinygltf::Accessor& normalsAccessor = model.accessors[primitive.attributes.at("NORMAL")];
         info.hasNormals = true;
@@ -202,6 +203,8 @@ namespace Carrot::Render {
             verify(positionsAccessor.count == tangentsAccessor->count, "Mismatched position/tangents count");
         }
 
+        loadedPrimitive.minPos = toVec3(positionsAccessor.minValues, glm::vec3{INFINITY});
+        loadedPrimitive.maxPos = toVec3(positionsAccessor.maxValues, glm::vec3{-INFINITY});
         vertices.resize(positionsAccessor.count);
         for (std::size_t i = 0; i < positionsAccessor.count; ++i) {
             Carrot::Vertex& vertex = vertices[i];
@@ -210,13 +213,13 @@ namespace Carrot::Render {
 
             vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
             if(tangentsAccessor) {
-                vertex.tangent = readFromAccessor<glm::vec4>(i, *tangentsAccessor, model).xyz;
+                vertex.tangent = readFromAccessor<glm::vec4>(i, *tangentsAccessor, model);
             } else {
-                vertex.tangent = glm::vec3(0.0, 0.0, 0.0);
+                vertex.tangent = glm::vec4(0.0, 0.0, 0.0, 1.0);
             }
 
             if(texCoordsAccessor) {
-                vertex.uv = readFromAccessor<glm::vec3>(i, *texCoordsAccessor, model);
+                vertex.uv = readFromAccessor<glm::vec2>(i, *texCoordsAccessor, model);
             } else {
                 vertex.uv = glm::vec2(0.0f);
             }
@@ -367,7 +370,7 @@ namespace Carrot::Render {
                 loadedPrimitive.name = mesh.name;
 
                 PrimitiveInformation info;
-                loadVertices(loadedPrimitive.vertices, model, primitive, info);
+                loadVertices(loadedPrimitive, model, primitive, info);
                 loadIndices(loadedPrimitive.indices, model, primitive);
 
                 loadedPrimitive.hadNormals = info.hasNormals;

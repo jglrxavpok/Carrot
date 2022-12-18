@@ -148,7 +148,7 @@ namespace Fertilizer {
 
         // ----------
 
-        if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, true, false)) {
+        if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, true/* pretty-print */, false)) {
             return {
                 .errorCode = ConversionResultError::GLTFCompressionError,
                 .errorMessage = "Could not write GLTF",

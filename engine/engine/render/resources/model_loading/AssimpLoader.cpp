@@ -119,6 +119,8 @@ namespace Carrot::Render {
         }
         indices.reserve(mesh->mNumFaces * 3);
 
+        primitive.minPos = glm::vec3{INFINITY};
+        primitive.maxPos = glm::vec3{-INFINITY};
         for(size_t vertexIndex = 0; vertexIndex < mesh->mNumVertices; vertexIndex++) {
             const aiVector3D vec = mesh->mVertices[vertexIndex];
             const aiColor4D* vertexColor = mesh->mColors[0];
@@ -150,14 +152,17 @@ namespace Carrot::Render {
             };
             primitive.hadNormals = true;
 
-            glm::vec3 tangent = {
+            glm::vec4 tangent = {
                     vertexTangent.x,
                     vertexTangent.y,
                     vertexTangent.z,
+                    1.0f, // TODO: compute proper sign, use mBitangents
             };
             primitive.hadTangents = true;
 
             glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
+            primitive.minPos = glm::min(primitive.minPos, glm::vec3{ position.xyz });
+            primitive.maxPos = glm::max(primitive.maxPos, glm::vec3{ position.xyz });
 
             if(usesSkinning) {
                 skinnedVertices.push_back({
