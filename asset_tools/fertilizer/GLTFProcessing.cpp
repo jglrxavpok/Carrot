@@ -60,12 +60,98 @@ namespace Fertilizer {
         return std::filesystem::exists(abs_filename);
     }
 
+    struct ExpandedVertex {
+        std::uint32_t originalIndex = 0;
+
+        std::optional<std::uint32_t> newIndex;
+        Carrot::Vertex vertex{};
+    };
+
+    struct ExpandedMesh {
+        std::vector<ExpandedVertex> vertices;
+
+        std::vector<std::vector<std::uint32_t>> duplicatedVertices; // per vertex in the original vertex buffer, where are the copies inside the expanded 'vertices' array
+    };
+
+    /**
+     * "Expands" the vertex buffer: this is the exact opposite of indexing, we separate vertex info for each face
+     *  otherwise keeping the same index buffer will provide incorrect results after attribute generation
+     */
+    static ExpandedMesh expandMesh(const LoadedPrimitive& primitive) {
+        ExpandedMesh expanded;
+        // TODO: handle skinning
+        const std::size_t vertexCount = primitive.vertices.size();
+        const std::size_t indexCount = primitive.indices.size();
+        expanded.vertices.resize(indexCount);
+        expanded.duplicatedVertices.resize(vertexCount);
+        for(std::size_t i = 0; i < indexCount; i++) {
+            const std::uint32_t index = primitive.indices[i];
+            expanded.vertices[i].vertex = primitive.vertices[index];
+            expanded.vertices[i].originalIndex = index;
+
+            expanded.duplicatedVertices[index].push_back(i);
+        }
+
+        return std::move(expanded);
+    }
+
+    static bool areSameVertices(const Carrot::Vertex& a, const Carrot::Vertex& b) {
+        return memcmp(&a, &b, sizeof(Carrot::Vertex)) == 0; // TODO: be less strict, this only works because we don't modify the vertices for now
+    }
+
+    /**
+     * Generate indexed mesh into 'out' from a non-indexed mesh inside ExpandedMesh
+     */
+    static void collapseMesh(LoadedPrimitive& out, ExpandedMesh& mesh) {
+        out.vertices.clear();
+        out.indices.clear();
+        std::uint32_t nextIndex = 0;
+        for(std::size_t vertexIndex = 0; vertexIndex < mesh.vertices.size(); vertexIndex++) {
+            auto& duplicatedVertex = mesh.vertices[vertexIndex];
+            verify(!duplicatedVertex.newIndex.has_value(), "Programming error: duplicated vertex must not already have an index in the new mesh");
+            const std::vector<std::uint32_t>& siblingIndices = mesh.duplicatedVertices[duplicatedVertex.originalIndex];
+
+            // check if any sibling is still the same as our current vertex, and has already been written to vertex buffer
+            std::optional<std::uint32_t> indexToReuse;
+            for(std::uint32_t siblingIndex : siblingIndices) {
+                const ExpandedVertex& sibling = mesh.vertices[siblingIndex];
+                if(!sibling.newIndex.has_value()) {
+                    continue; // not already in vertex buffer
+                }
+
+                if(areSameVertices(sibling.vertex, duplicatedVertex.vertex)) {
+                    indexToReuse = sibling.newIndex.value();
+                    break;
+                }
+            }
+
+            if(indexToReuse.has_value()) {
+                out.indices.push_back(indexToReuse.value());
+            } else {
+                // no index to reuse, create new index and write to vertex buffer
+
+                duplicatedVertex.newIndex = nextIndex;
+                out.indices.push_back(nextIndex);
+                nextIndex++;
+                out.vertices.emplace_back(duplicatedVertex.vertex);
+            }
+        }
+    }
+
     void generateMissingAttributes(tinygltf::Model& model) {
         GLTFLoader loader{};
         LoadedScene scene = loader.load(model, {});
 
-        // TODO: regenerate
+        for(auto& primitive : scene.primitives) {
+            // no need to regenerate anything if every attribute is already present
+            if(primitive.hadTexCoords && primitive.hadNormals && primitive.hadTangents) {
+                continue;
+            }
 
+            ExpandedMesh expandedMesh = expandMesh(primitive);
+            // TODO: generate missing attributes
+            collapseMesh(primitive, expandedMesh);
+        }
 
         // re-export model
         tinygltf::Model reexported = std::move(writeAsGLTF(scene));
@@ -80,7 +166,7 @@ namespace Fertilizer {
         fspath parentPath = inputFile.parent_path();
         fspath outputParentPath = outputFile.parent_path();
 
-        std::vector<std::string> extensionsRequired = {
+        const std::vector<std::string> extensionsRequired = {
                 "KHR_texture_basisu",
         };
 
