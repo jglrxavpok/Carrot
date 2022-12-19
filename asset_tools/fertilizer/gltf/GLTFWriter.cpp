@@ -129,6 +129,8 @@ namespace Fertilizer {
         model.buffers.emplace_back();
         tinygltf::Buffer& indicesBuffer = model.buffers[0];
         tinygltf::Buffer& geometryBuffer = model.buffers[1];
+        indicesBuffer.name = "IndexBuffer";
+        geometryBuffer.name = "VertexBuffer";
 
         std::uint32_t accessorIndex = 0;
         for(const auto& primitive : scene.primitives) {

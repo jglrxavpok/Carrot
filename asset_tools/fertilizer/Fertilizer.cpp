@@ -4,7 +4,7 @@
 
 #include <Fertilizer.h>
 #include <TextureCompression.h>
-#include <GLTFProcessing.h>
+#include <gltf/GLTFProcessing.h>
 #include <iostream>
 #include <unordered_map>
 #include <filesystem>

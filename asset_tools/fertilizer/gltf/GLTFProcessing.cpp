@@ -2,17 +2,21 @@
 // Created by jglrxavpok on 05/11/2022.
 //
 
-#include <GLTFProcessing.h>
+#include <gltf/GLTFProcessing.h>
 #include <core/utils/CarrotTinyGLTF.h>
 #include <core/scene/LoadedScene.h>
 #include <core/Macros.h>
 #include <core/scene/GLTFLoader.h>
-#include <GLTFWriter.h>
+#include <gltf/GLTFWriter.h>
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <unordered_set>
+#include "core/io/Logging.hpp"
+
+#include <gltf/MikkTSpaceInterface.h>
 
 namespace Fertilizer {
 
+    constexpr float Epsilon = 10e-16;
     constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
 
     using fspath = std::filesystem::path;
@@ -60,19 +64,6 @@ namespace Fertilizer {
         return std::filesystem::exists(abs_filename);
     }
 
-    struct ExpandedVertex {
-        std::uint32_t originalIndex = 0;
-
-        std::optional<std::uint32_t> newIndex;
-        Carrot::Vertex vertex{};
-    };
-
-    struct ExpandedMesh {
-        std::vector<ExpandedVertex> vertices;
-
-        std::vector<std::vector<std::uint32_t>> duplicatedVertices; // per vertex in the original vertex buffer, where are the copies inside the expanded 'vertices' array
-    };
-
     /**
      * "Expands" the vertex buffer: this is the exact opposite of indexing, we separate vertex info for each face
      *  otherwise keeping the same index buffer will provide incorrect results after attribute generation
@@ -96,7 +87,8 @@ namespace Fertilizer {
     }
 
     static bool areSameVertices(const Carrot::Vertex& a, const Carrot::Vertex& b) {
-        return memcmp(&a, &b, sizeof(Carrot::Vertex)) == 0; // TODO: be less strict, this only works because we don't modify the vertices for now
+        //return memcmp(&a, &b, sizeof(Carrot::Vertex)) == 0; // TODO: be less strict, this only works because we don't modify the vertices for now
+        return false;
     }
 
     /**
@@ -138,7 +130,38 @@ namespace Fertilizer {
         }
     }
 
-    void generateMissingAttributes(tinygltf::Model& model) {
+    static void generateFlatNormals(ExpandedMesh& mesh) {
+        std::size_t faceCount = mesh.vertices.size() / 3;
+        for(std::size_t face = 0; face < faceCount; face++) {
+            Carrot::Vertex& a = mesh.vertices[face * 3 + 0].vertex;
+            Carrot::Vertex& b = mesh.vertices[face * 3 + 1].vertex;
+            Carrot::Vertex& c = mesh.vertices[face * 3 + 2].vertex;
+
+            glm::vec3 ab = (b.pos - a.pos).xyz;
+            glm::vec3 bc = (c.pos - b.pos).xyz;
+            glm::vec3 ac = (c.pos - a.pos).xyz;
+
+            if(dot(ab, ab) <= Epsilon
+            || dot(bc, bc) <= Epsilon
+            || dot(ac, ac) <= Epsilon
+            ) {
+                Carrot::Log::warn("Degenerate triangle (face = %llu)", face);
+            }
+
+            a.normal = glm::normalize(glm::cross(ab, ac));
+            b.normal = glm::normalize(glm::cross(bc, -ab));
+            c.normal = glm::normalize(glm::cross(ac, -bc));
+        }
+    }
+
+    static void generateMikkTSpaceTangents(ExpandedMesh& mesh) {
+        bool r = generateTangents(mesh);
+        if(!r) {
+            Carrot::Log::error("Could not generate tangents for mesh");
+        }
+    }
+
+    static void generateMissingAttributes(tinygltf::Model& model) {
         GLTFLoader loader{};
         LoadedScene scene = loader.load(model, {});
 
@@ -149,7 +172,23 @@ namespace Fertilizer {
             }
 
             ExpandedMesh expandedMesh = expandMesh(primitive);
-            // TODO: generate missing attributes
+
+            if(!primitive.hadTexCoords) {
+                TODO; // not supported yet
+            }
+
+            if(!primitive.hadNormals) {
+                Carrot::Log::info("Mesh %s has no normals, generating flat normals...", primitive.name.c_str());
+                generateFlatNormals(expandedMesh);
+                Carrot::Log::info("Mesh %s, generated flat normals!", primitive.name.c_str());
+            }
+
+            if(!primitive.hadTangents) {
+                Carrot::Log::info("Mesh %s has no tangents, generated tangents...", primitive.name.c_str());
+                generateMikkTSpaceTangents(expandedMesh);
+                Carrot::Log::info("Mesh %s, generated tangents!", primitive.name.c_str());
+            }
+
             collapseMesh(primitive, expandedMesh);
         }
 
@@ -162,7 +201,7 @@ namespace Fertilizer {
         model = std::move(reexported);
     }
 
-    void convertTexturePaths(tinygltf::Model& model, fspath inputFile, fspath outputFile) {
+    static void convertTexturePaths(tinygltf::Model& model, fspath inputFile, fspath outputFile) {
         fspath parentPath = inputFile.parent_path();
         fspath outputParentPath = outputFile.parent_path();
 
