@@ -141,9 +141,9 @@ namespace Fertilizer {
             glm::vec3 bc = (c.pos - b.pos).xyz;
             glm::vec3 ac = (c.pos - a.pos).xyz;
 
-            if(dot(ab, ab) <= Epsilon
-            || dot(bc, bc) <= Epsilon
-            || dot(ac, ac) <= Epsilon
+            if(glm::dot(ab, ab) <= Epsilon
+            || glm::dot(bc, bc) <= Epsilon
+            || glm::dot(ac, ac) <= Epsilon
             ) {
                 Carrot::Log::warn("Degenerate triangle (face = %llu)", face);
             }
@@ -174,7 +174,7 @@ namespace Fertilizer {
             ExpandedMesh expandedMesh = expandMesh(primitive);
 
             if(!primitive.hadTexCoords) {
-                TODO; // not supported yet
+                //TODO; // not supported yet
             }
 
             if(!primitive.hadNormals) {

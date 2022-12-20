@@ -66,8 +66,13 @@ namespace Fertilizer {
     }
 
     static tinygltf::TextureInfo makeTextureInfo(const Payload& payload, const Carrot::IO::VFS::Path& texturePath) {
+        if(texturePath.isEmpty()) {
+            tinygltf::TextureInfo r;
+            r.index = -1;
+            return r;
+        }
         auto it = payload.textureIndices.find(texturePath);
-        verify(it != payload.textureIndices.end(), "Programming error: a texture was referenced by scene, but not written to Payload");
+        verify(it != payload.textureIndices.end(), Carrot::sprintf("Programming error: a texture was referenced by scene, but not written to Payload, (%s)", texturePath.toString().c_str()));
 
         int index = it->second;
         tinygltf::TextureInfo r;
@@ -184,7 +189,7 @@ namespace Fertilizer {
 
             int positionAccessor = makeVertexAttributeAccessor(Carrot::sprintf("%s-positions", primitive.name.c_str()),
                                                                TINYGLTF_TYPE_VEC3, TINYGLTF_COMPONENT_TYPE_FLOAT,
-                                                               offsetof(Carrot::Vertex, pos));
+                                                               offsetof(Carrot::Vertex, pos)+geometryStartOffset);
             glTFPrimitive.attributes["POSITION"] = positionAccessor;
             model.accessors[positionAccessor].minValues = vectorOfDoubles(primitive.minPos);
             model.accessors[positionAccessor].maxValues = vectorOfDoubles(primitive.maxPos);
@@ -192,15 +197,15 @@ namespace Fertilizer {
             glTFPrimitive.attributes["NORMAL"] =
                     makeVertexAttributeAccessor(Carrot::sprintf("%s-normals", primitive.name.c_str()),
                                                 TINYGLTF_TYPE_VEC3, TINYGLTF_COMPONENT_TYPE_FLOAT,
-                                                offsetof(Carrot::Vertex, normal));
+                                                offsetof(Carrot::Vertex, normal)+geometryStartOffset);
             glTFPrimitive.attributes["TEXCOORD_0"] =
                     makeVertexAttributeAccessor(Carrot::sprintf("%s-texCoords0", primitive.name.c_str()),
                                                 TINYGLTF_TYPE_VEC2, TINYGLTF_COMPONENT_TYPE_FLOAT,
-                                                offsetof(Carrot::Vertex, uv));
+                                                offsetof(Carrot::Vertex, uv)+geometryStartOffset);
             glTFPrimitive.attributes["TANGENT"] =
                     makeVertexAttributeAccessor(Carrot::sprintf("%s-tangents", primitive.name.c_str()),
                                                 TINYGLTF_TYPE_VEC4, TINYGLTF_COMPONENT_TYPE_FLOAT,
-                                                offsetof(Carrot::Vertex, tangent)); // TODO: VEC4 tangents
+                                                offsetof(Carrot::Vertex, tangent)+geometryStartOffset);
         }
 
         {

@@ -5,7 +5,7 @@ struct Vertex {
 
     vec3 normal;
 
-    vec3 tangent;
+    vec4 tangent;
 
     vec2 uv;
 };

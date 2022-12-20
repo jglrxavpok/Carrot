@@ -153,7 +153,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
 
                 data.iterationCount = 3;
                 pass.rasterized = false; // compute pass
-                pass.prerecordable = false;
+                pass.prerecordable = false; // TODO: why?
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const SpatialDenoise& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph spatial denoise");
