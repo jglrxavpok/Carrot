@@ -198,6 +198,7 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
     metallicRoughness = graph.read(other.metallicRoughness, vk::ImageLayout::eShaderReadOnlyOptimal);
     emissive = graph.read(other.emissive, vk::ImageLayout::eShaderReadOnlyOptimal);
     velocity = graph.read(other.velocity, vk::ImageLayout::eShaderReadOnlyOptimal);
+    entityID = graph.read(other.entityID, vk::ImageLayout::eShaderReadOnlyOptimal);
 
     // TODO: fix (double read in two != passes result in no 'previousLayout' change
     depthStencil.previousLayout = depthStencil.layout;
@@ -211,7 +212,7 @@ void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, c
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.swapchainIndex), setID, 2, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(normalTangents, frame.swapchainIndex), setID, 3, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.swapchainIndex), setID, 4, renderer.getVulkanDriver().getNearestSampler());
-    // 5 -> unused
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.swapchainIndex), setID, 5, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(velocity, frame.swapchainIndex), setID, 6, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughness, frame.swapchainIndex), setID, 7, nullptr);
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissive, frame.swapchainIndex), setID, 8, nullptr);

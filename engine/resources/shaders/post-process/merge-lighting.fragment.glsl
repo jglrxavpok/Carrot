@@ -62,6 +62,8 @@ void main() {
             outColor = vec4(abs(g.motionVector), 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {
             outColor = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
+        } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
+            outColor = vec4(g.entityID) / 255.0f;
         } else {
             outColor = vec4(uv, 0.0, 1.0);
         }

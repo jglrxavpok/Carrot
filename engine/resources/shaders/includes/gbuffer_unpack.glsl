@@ -22,7 +22,7 @@ GBuffer unpackGBuffer(vec2 uv) {
     gbuffer.viewNormal = viewNormal;
     gbuffer.viewTangent = viewTangent;
 
-    gbuffer.entityID = uvec4(0,0,0,0); // TODO
+    gbuffer.entityID = texture(usampler2D(gEntityID, gNearestSampler), uv);
 
     vec2 metallicRoughness = texture(sampler2D(gMetallicRoughnessValues, gLinearSampler), uv).rg;
     gbuffer.metallicness = metallicRoughness.x;

@@ -7,7 +7,7 @@ layout(set = setID, binding = 2) uniform texture2D gViewPos;                    
 layout(set = setID, binding = 3) uniform texture2D gViewNormalTangents;                                                 \
 layout(set = setID, binding = 4) uniform usampler2D gIntPropertiesInput;                                                \
                                                                                                                         \
-layout(set = setID, binding = 5) uniform texture2D _unused;                                                             \
+layout(set = setID, binding = 5) uniform utexture2D gEntityID;                                                          \
                                                                                                                         \
 layout(set = setID, binding = 6) uniform texture2D gMotionVectors;                                                      \
 layout(set = setID, binding = 7) uniform texture2D gMetallicRoughnessValues;                                            \

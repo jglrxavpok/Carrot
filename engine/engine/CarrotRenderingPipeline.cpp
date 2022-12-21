@@ -129,6 +129,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
 
     struct SpatialDenoise {
         Render::FrameResource postTemporal;
+        Render::PassData::GBuffer gBuffer;
         Render::FrameResource denoisedPingPong[2];
 
         std::uint8_t iterationCount = 0;
@@ -136,8 +137,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     auto& spatialDenoise = mainGraph.addPass<SpatialDenoise>(
             "spatialDenoise",
 
-            [this, temporalAccumulationPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<SpatialDenoise>& pass, SpatialDenoise& data) {
+            [this, temporalAccumulationPass, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<SpatialDenoise>& pass, SpatialDenoise& data) {
                 data.postTemporal = builder.read(temporalAccumulationPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
                 data.denoisedPingPong[0] = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                       data.postTemporal.size,
                                                                       vk::AttachmentLoadOp::eClear,
@@ -175,14 +177,17 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                         &denoisedResultTexture1,
                 };
 
-                frame.renderer.bindTexture(*pipelinePingPong[0], frame, temporalTexture, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedResultTexture0, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                data.gBuffer.bindInputs(*pipelinePingPong[0], frame, pass.getGraph(), 0);
+                frame.renderer.bindTexture(*pipelinePingPong[0], frame, temporalTexture, 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture1, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                data.gBuffer.bindInputs(*pipelinePingPong[1], frame, pass.getGraph(), 0);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture1, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture0, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                data.gBuffer.bindInputs(*pipelinePingPong[2], frame, pass.getGraph(), 0);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 struct IterationData {
                     std::uint32_t index = 0;

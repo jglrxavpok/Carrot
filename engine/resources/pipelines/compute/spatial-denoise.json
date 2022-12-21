@@ -4,6 +4,10 @@
     {
       "type": "autofill",
       "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
     }
   ],
   "computeShader": "resources/shaders/compute/spatial-denoise.compute.glsl.spv"
