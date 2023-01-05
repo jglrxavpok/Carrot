@@ -468,6 +468,7 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
                                          vk::ImageViewType viewType,
                                          std::uint32_t arrayIndex,
                                          vk::ImageLayout textureLayout) {
+    // TODO: maybe interesting to batch these writes right before starting the rendering
     ZoneScoped;
     if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
@@ -786,6 +787,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Moments (RG), Reprojection history length (B)", &gIndex, DEBUG_GBUFFER_MOMENTS);
                 ImGui::RadioButton("EntityID", &gIndex, DEBUG_GBUFFER_ENTITYID);
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
+                ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
 
                 obj.gBufferType = gIndex;
             }

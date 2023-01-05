@@ -10,6 +10,7 @@ DEFINE_GBUFFER_INPUTS(0)
 
 layout(set = 1, binding = 0) uniform texture2D lighting;
 layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
+layout(set = 1, binding = 2) uniform texture2D noisyLighting;
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -58,6 +59,8 @@ void main() {
             outColor = vec4(g.viewTangent, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_LIGHTING) {
             outColor = vec4(lightingColor.rgb, 1.0);
+        } else if(debug.gBufferType == DEBUG_GBUFFER_NOISY_LIGHTING) {
+            outColor = vec4(texture(sampler2D(noisyLighting, gLinearSampler), uv).rgb, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
             outColor = vec4(abs(g.motionVector), 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {

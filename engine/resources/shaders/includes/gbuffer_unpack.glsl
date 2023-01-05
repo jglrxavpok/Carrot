@@ -1,4 +1,7 @@
-GBuffer unpackGBuffer(vec2 uv) {
+/**
+* Unpacks gbuffer data, without emissive, metallic+roughness nor motion vectors (to reduce strain on texture memory)
+*/
+GBuffer unpackGBufferLight(vec2 uv) {
     GBuffer gbuffer;
 
     gbuffer.albedo = texture(sampler2D(gAlbedo, gLinearSampler), uv);
@@ -19,10 +22,16 @@ GBuffer unpackGBuffer(vec2 uv) {
         viewTangent.z *= -1;
     }
 
-    gbuffer.viewNormal = viewNormal;
-    gbuffer.viewTangent = viewTangent;
+    gbuffer.viewNormal = normalize(viewNormal);
+    gbuffer.viewTangent = normalize(viewTangent);
 
     gbuffer.entityID = texture(usampler2D(gEntityID, gNearestSampler), uv);
+
+    return gbuffer;
+}
+
+GBuffer unpackGBuffer(vec2 uv) {
+    GBuffer gbuffer = unpackGBufferLight(uv);
 
     vec2 metallicRoughness = texture(sampler2D(gMetallicRoughnessValues, gLinearSampler), uv).rg;
     gbuffer.metallicness = metallicRoughness.x;
