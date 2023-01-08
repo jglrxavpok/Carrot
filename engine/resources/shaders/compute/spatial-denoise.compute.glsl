@@ -31,7 +31,7 @@ void main() {
 
     // from SVGF
     const float sigmaNormals = 128.0f;
-    const float sigmaPositions = 0.5f;
+    const float sigmaPositions = 1.0f;
     const float sigmaLuminance = 4.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;
@@ -53,7 +53,8 @@ void main() {
     }
 
     const vec3 currentPosition = currentGBuffer.viewPosition;
-    float totalWeight = 1.0f;
+    float totalWeight = KERNEL_WEIGHTS[FILTER_RADIUS] * KERNEL_WEIGHTS[FILTER_RADIUS];
+    finalPixel *= totalWeight;
 
     for(int dy = -FILTER_RADIUS; dy <= FILTER_RADIUS; dy++) {
         const float yKernelWeight = KERNEL_WEIGHTS[dy+FILTER_RADIUS];
