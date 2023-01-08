@@ -17,19 +17,22 @@ namespace Carrot {
         Carrot::AutocompleteField& field = *reinterpret_cast<Carrot::AutocompleteField*>( data->UserData );
         auto& state = field.getState();
 
+        auto funcCompleteInput = [&]() {
+            if( state.isPopupOpen && state.activeIndex != -1 )
+            {
+                // Tab was pressed, grab the item's text
+                field.setInputFromActiveIndex( data, state.activeIndex );
+            }
+
+            state.isPopupOpen       = false;
+            state.activeIndex         = -1;
+            state.clickedIndex        = -1;
+        };
+
         switch( data->EventFlag )
         {
             case ImGuiInputTextFlags_CallbackCompletion :
-                if( state.isPopupOpen && state.activeIndex != -1 )
-                {
-                    // Tab was pressed, grab the item's text
-                    field.setInputFromActiveIndex( data, state.activeIndex );
-                }
-
-                state.isPopupOpen       = false;
-                state.activeIndex         = -1;
-                state.clickedIndex        = -1;
-
+                funcCompleteInput();
                 break;
 
             case ImGuiInputTextFlags_CallbackHistory :
@@ -66,6 +69,10 @@ namespace Carrot {
             } break;
 
             case ImGuiInputTextFlags_CallbackCharFilter:
+                if(data->EventChar == 178) {
+                    data->EventChar = 0;
+                    return 1;
+                }
                 if(!state.isPopupOpen) {
                     state.isPopupOpen = true;
                     state.activeIndex   = 0;
@@ -114,12 +121,14 @@ namespace Carrot {
                                     ImGuiInputTextFlags_CallbackAlways      |
                                     ImGuiInputTextFlags_CallbackCharFilter  |
                                     ImGuiInputTextFlags_CallbackCompletion  |
+                                    ImGuiInputTextFlags_CallbackEdit        |
                                     ImGuiInputTextFlags_CallbackHistory;
 
         char inputBuffer[256] = { '\0' };
         strcpy_s(inputBuffer, imguiInputBuffer.c_str());
         auto prevInput = imguiInputBuffer;
-        bool pressedEnter = ImGui::InputText("Command##autocomplete", inputBuffer, sizeof(inputBuffer), flags, InputCallback, this);
+        constexpr const char* const fieldID = "Command##autocomplete";
+        bool pressedEnter = ImGui::InputText(fieldID, inputBuffer, sizeof(inputBuffer), flags, InputCallback, this);
         imguiInputBuffer = inputBuffer;
         if(prevInput != imguiInputBuffer) {
             refreshSuggestions();
@@ -132,6 +141,13 @@ namespace Carrot {
                 // the popup was open and we had an 'active' item.
                 // So we copy the entry to the input buffer here
                 imguiInputBuffer = currentSuggestions[currentState.activeIndex];
+
+                auto* window = ImGui::GetCurrentWindow();
+                auto fieldImID = window->GetID(fieldID);
+                ImGuiInputTextState* state = ImGui::GetInputTextState(fieldImID);
+                if(state != nullptr) {
+                    state->Stb.cursor = imguiInputBuffer.size();
+                }
             } else {
                 // Handle text input here
                 callback(imguiInputBuffer);
@@ -187,9 +203,10 @@ namespace Carrot {
         isWindowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_::ImGuiFocusedFlags_RootWindow);
     }
 
-    void AutocompleteField::drawAutocompleteSuggestions() {
+
+    bool AutocompleteField::drawAutocompleteSuggestions() {
         if( !currentState.isPopupOpen )
-            return;
+            return false;
 
         ImGui::PushStyleVar( ImGuiStyleVar_WindowRounding, 0 );
 
@@ -199,7 +216,6 @@ namespace Carrot {
                 ImGuiWindowFlags_NoMove              |
                 ImGuiWindowFlags_HorizontalScrollbar |
                 ImGuiWindowFlags_NoSavedSettings     |
-                ImGuiWindowFlags_NoFocusOnAppearing  |
                 0/*ImGuiWindowFlags_ShowBorders*/;
 
 
@@ -256,6 +272,7 @@ namespace Carrot {
         {
             currentState.isPopupOpen = false;
         }
+        return !wasOpenLastFrame;
     }
 
     void AutocompleteField::refreshSuggestions() {

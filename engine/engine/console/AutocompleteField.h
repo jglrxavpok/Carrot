@@ -21,7 +21,11 @@ namespace Carrot {
     public:
         void drawField();
 
-        void drawAutocompleteSuggestions();
+        /**
+         * Returns true if stole focus to appear on top
+         * @return
+         */
+        bool drawAutocompleteSuggestions();
 
         struct State {
             bool isPopupOpen = false;
@@ -46,6 +50,7 @@ namespace Carrot {
         ImVec2 popupPosition;
         ImVec2 popupSize;
         bool isWindowFocused = false;
+        bool wasOpenLastFrame = false;
 
         std::function<void(const std::string&)> callback;
         std::function<void(std::vector<std::string>&, const std::string&)> updateSuggestions;

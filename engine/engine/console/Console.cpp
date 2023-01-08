@@ -54,10 +54,14 @@ namespace Carrot {
 
     void Console::renderToImGui(Carrot::Engine& engine) {
         this->engine = &engine;
-        if(!visible)
+        if(!visible) {
+            wasVisibleLastFrame = false;
             return;
+        }
 
         ImGuiWindowFlags flags = autocompleteField.getParentWindowFlags() | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse;
+
+        const bool suggestionsStoleFocus = autocompleteField.drawAutocompleteSuggestions();
 
         if(ImGui::Begin("Console", &visible, flags)) {
             if(ImGui::BeginChild("Messages", ImVec2( 0, -ImGui::GetTextLineHeightWithSpacing() * 1.5f))) {
@@ -73,36 +77,59 @@ namespace Carrot {
                     ImGui::TableSetupColumn("Timestamp");
                     ImGui::TableSetupColumn("Message");
                     ImGui::TableHeadersRow();
-                    for(const auto& message : Carrot::Log::getMessages()) {
-                        ImGui::TableNextRow();
-                        ImGui::TableNextColumn();
-                        ImColor color = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        switch(message.severity) {
-                            case Log::Severity::Warning:
-                                color = ImColor(1.0f, 1.0f, 0.0f, 1.0f);
-                                break;
-                            case Log::Severity::Error:
-                                color = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
-                                break;
+
+                    ImGuiListClipper clipper;
+                    clipper.Begin(100);
+                    const auto& messageList = Carrot::Log::getMessages();
+
+                    while(clipper.Step()) {
+                        auto messageIterator = messageList.begin();
+                        for (int index = 0; index < clipper.DisplayStart; index++) {
+                            messageIterator++;
                         }
-                        ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, color.Value);
-                        ImGui::Text("%s", Carrot::Log::getSeverityString(message.severity));
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%llu", message.timestamp);
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%s", message.message.c_str());
-                        ImGui::PopStyleColor();
+
+                        for (int index = clipper.DisplayStart; index < clipper.DisplayEnd && messageIterator != messageList.end(); index++) {
+                            const auto& message = *messageIterator;
+                            messageIterator++;
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImColor color = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
+                            switch(message.severity) {
+                                case Log::Severity::Warning:
+                                    color = ImColor(1.0f, 1.0f, 0.0f, 1.0f);
+                                    break;
+                                case Log::Severity::Error:
+                                    color = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
+                                    break;
+                                case Log::Severity::Debug:
+                                    color = ImColor(0.25f, 0.75f, 0.0f, 1.0f);
+                                    break;
+                            }
+                            ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, color.Value);
+                            ImGui::Text("%s", Carrot::Log::getSeverityString(message.severity));
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", message.timestamp);
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%s", message.message.c_str());
+                            ImGui::PopStyleColor();
+                        }
                     }
+
                     ImGui::EndTable();
                 }
             }
             ImGui::EndChild();
 
-            autocompleteField.drawField();
+            {
+                autocompleteField.drawField();
+                if(suggestionsStoleFocus || !wasVisibleLastFrame) {
+                    ImGui::SetKeyboardFocusHere(-1);
+                }
+            }
         }
         ImGui::End();
 
-        autocompleteField.drawAutocompleteSuggestions();
+        wasVisibleLastFrame = visible;
     }
 
     void Console::toggleVisibility() {

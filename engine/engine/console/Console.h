@@ -29,6 +29,7 @@ namespace Carrot {
     private:
         explicit Console();
 
+        bool wasVisibleLastFrame = false;
         bool visible = false;
         std::map<std::string, CommandCallback> commands;
         Carrot::AutocompleteField autocompleteField;
