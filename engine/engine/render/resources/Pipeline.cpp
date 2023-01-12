@@ -256,21 +256,14 @@ void Carrot::Pipeline::createGraphicsTemplate() {
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
 
-            // R8G8B8A8 metallic+roughness
+            // R32G32B32A32 metallic+roughness+velocity xy
             graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
 
-            // R8G8B8A8 emissive
-            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
-                    .blendEnable = false,
-
-                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-            });
-
-            // R32G32B32 velocity
+            // R32G32B32A32 emissive+velocity z
             graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
@@ -286,7 +279,7 @@ void Carrot::Pipeline::createGraphicsTemplate() {
         }
     } else {
         graphicsPipelineTemplate.colorBlendAttachments = {
-                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 8 : 1),
+                static_cast<std::size_t>(description.type == PipelineType::Particles || description.type == PipelineType::GBuffer ? 7 : 1),
                 vk::PipelineColorBlendAttachmentState {
                         .blendEnable = false,
 

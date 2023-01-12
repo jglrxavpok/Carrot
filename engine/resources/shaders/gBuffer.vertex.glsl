@@ -24,6 +24,8 @@ layout(location = 5) out vec3 _unused;
 layout(location = 6) out uvec4 outUUID;
 layout(location = 7) out vec3 T;
 layout(location = 8) out vec3 N;
+layout(location = 9) out float outBitangentSign;
+layout(location = 10) out flat mat4 outModelview;
 
 void main() {
     uv = inUV;
@@ -38,12 +40,11 @@ void main() {
     outViewPos = viewPosition.xyz / viewPosition.w;
     outPreviousFrameViewPos = previousFrameViewPosition.xyz / previousFrameViewPosition.w;
 
-#define rotate(vec) normalize(((mat3(modelview))) * vec)
-
-    T = rotate(inTangent.xyz);
-    N = rotate(inNormal);
+    T = inTangent.xyz;
+    N = inNormal;
     T = normalize(T - dot(T, N) * N);
+    outBitangentSign = inTangent.w;
 
-    // TODO: use bitangent sign (inTangent.w)
     outUUID = inUUID;
+    outModelview = modelview;
 }

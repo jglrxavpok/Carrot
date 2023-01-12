@@ -79,7 +79,7 @@ void main() {
                 continue;
             }
             const float sameMeshWeight = currentGBuffer.entityID == filterGBuffer.entityID ? 1.0f : 0.0f;
-            const float normalWeight = pow(max(0, dot(filterGBuffer.viewNormal, currentGBuffer.viewNormal)), sigmaNormals);
+            const float normalWeight = pow(max(0, dot(filterGBuffer.viewTBN[2], currentGBuffer.viewTBN[2])), sigmaNormals);
 
             const vec3 filterPosition = filterGBuffer.viewPosition;
             const vec3 dPosition = filterPosition - currentPosition;

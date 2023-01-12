@@ -42,7 +42,7 @@ namespace Carrot::IO {
             Path operator/(std::string_view subpath) const;
 
         public:
-            Path relative(const Path& other) const;
+            Path relative(const BasicPath& other) const;
 
         public:
             /**

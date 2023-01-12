@@ -158,17 +158,13 @@ namespace Carrot::IO {
     }
 
     VirtualFileSystem::Path VirtualFileSystem::Path::operator/(std::string_view subpath) const {
-        return operator/(NormalizedPath(subpath));
+        return operator/(BasicPath(subpath));
     }
 
-    VirtualFileSystem::Path VirtualFileSystem::Path::relative(const VirtualFileSystem::Path& other) const {
-        if(other.isGeneric()) {
-            return Path {
-                root,
-                path.relative(other.path.c_str())
-            };
-        }
-
-        return other;
+    VirtualFileSystem::Path VirtualFileSystem::Path::relative(const BasicPath& other) const {
+        return Path {
+            root,
+            path.relative(other.asString())
+        };
     }
 }

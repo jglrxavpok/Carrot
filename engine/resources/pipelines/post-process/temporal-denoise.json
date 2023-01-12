@@ -12,6 +12,10 @@
     {
       "type": "camera",
       "setID": 1
+    },
+    {
+      "type": "autofill",
+      "setID": 2
     }
   ],
   "depthWrite": false,

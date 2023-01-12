@@ -16,9 +16,9 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 uv;
 layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
-layout(location = 4) out vec3 outViewNormal;
-layout(location = 5) out uvec4 outUUID;
-layout(location = 6) out vec3 outViewTangent;
+layout(location = 4) out uvec4 outUUID;
+layout(location = 5) out vec3 outViewTangent;
+layout(location = 6) out flat mat4 outModelview;
 
 layout(push_constant) uniform TexRegion {
     layout(offset = 24) vec2 center;
@@ -35,8 +35,6 @@ void main() {
     instanceColor = inInstanceColor;
     outViewPos = viewPosition.xyz;
 
-    outViewNormal = normalize(mat3(modelview) * vec3(0,0,1));
-    outViewTangent = normalize(mat3(modelview) * vec3(1,0,0));
-
     outUUID = inUUID;
+    outModelview = modelview;
 }

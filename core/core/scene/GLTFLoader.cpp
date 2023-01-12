@@ -36,9 +36,7 @@ namespace Carrot::Render {
 
     std::string gltfExpandFilePath(const std::string& filepath, void* userData) {
         ZoneScoped;
-        const IO::Resource& modelResource = *(static_cast<const IO::Resource*>(userData));
-        IO::VFS::Path p { modelResource.getName() };
-        return p.relative(IO::VFS::Path { filepath }).toString();
+        return filepath;
     }
 
     bool gltfFileExists(const std::string& abs_filename, void* userData) {
@@ -317,7 +315,7 @@ namespace Carrot::Render {
         std::vector<IO::VFS::Path> imagePaths;
         imagePaths.reserve(model.images.size());
         for(const auto& image : model.images) {
-            imagePaths.emplace_back(modelFilepath.relative(IO::VFS::Path { image.uri }));
+            imagePaths.emplace_back(modelFilepath.relative(std::string_view(image.uri)));
         }
 
         result.materials.reserve(model.materials.size());

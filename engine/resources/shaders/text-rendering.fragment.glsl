@@ -10,7 +10,7 @@ layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 instanceColor;
 layout(location = 3) in vec3 viewPosition;
-layout(location = 4) in vec3 viewNormal;
+layout(location = 4) flat in mat4 inModelview;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -21,11 +21,10 @@ void main() {
         discard;
     }
 
-    GBuffer o = initGBuffer();
+    GBuffer o = initGBuffer(inModelview);
     o.albedo = vec4(1.0, 1.0, 1.0, color) * fragColor * instanceColor;
     o.viewPosition = viewPosition;
-    o.viewNormal = viewNormal;
     o.intProperty = IntPropertiesRayTracedLighting;
 
-    outputGBuffer(o);
+    outputGBuffer(o, inModelview);
 }

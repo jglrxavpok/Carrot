@@ -1,6 +1,7 @@
 #include "includes/camera.glsl"
 #include "includes/lighting_utils.glsl"
 #include "includes/sampling.glsl"
+#include "includes/gbuffer_input.glsl"
 
 layout(set = 0, binding = 0) uniform texture2D currentFrame;
 layout(set = 0, binding = 1) uniform texture2D previousFrame;
@@ -16,12 +17,16 @@ layout(set = 0, binding = 7) uniform sampler linearSampler;
 
 DEFINE_CAMERA_SET(1)
 
+DEFINE_GBUFFER_INPUTS(2)
+#include "includes/gbuffer_unpack.glsl"
+
 layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outMomentHistoryHistoryLength;
 
 void main() {
+    GBuffer gbuffer = unpackGBuffer(uv);
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
     currentFrameColor.a = 1.0;
 
@@ -30,7 +35,7 @@ void main() {
 
     vec4 prevNDC = cbo.projection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
-    prevNDC.xyz += texture(sampler2D(motionVectors, linearSampler), uv).xyz;
+    prevNDC.xyz += gbuffer.motionVector;
 
     vec2 reprojectedUV = (prevNDC.xy + 1.0) / 2.0;
     vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);

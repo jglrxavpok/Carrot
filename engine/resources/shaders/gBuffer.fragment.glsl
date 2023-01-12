@@ -17,6 +17,8 @@ layout(location = 5) in vec3 _unused;
 layout(location = 6) flat in uvec4 uuid;
 layout(location = 7) in vec3 T;
 layout(location = 8) in vec3 N;
+layout(location = 9) flat in float bitangentSign;
+layout(location = 10) flat in mat4 inModelview;
 
 void main() {
     DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
@@ -34,20 +36,25 @@ void main() {
         discard;
     }
 
-    GBuffer o = initGBuffer();
+    GBuffer o = initGBuffer(inModelview);
 
     o.albedo = vec4(texColor.rgb * fragColor * instanceColor.rgb * material.baseColor.rgb, texColor.a * instanceColor.a);
     o.viewPosition = viewPosition;
 
     vec3 N_ = normalize(N);
-    vec3 T_ = normalize(T - dot(T, N) * N);
+    vec3 T_ = normalize(T - dot(T, N_) * N_);
 
-    vec3 B = cross(T_, N_);
-    mat3 TBN = mat3(T_, B, N_);
+    vec3 B_ = normalize(bitangentSign * cross(N_, T_));
+
     vec3 mappedNormal = texture(sampler2D(textures[normalMap], linearSampler), uv).xyz;
     mappedNormal = mappedNormal * 2 -1;
-    o.viewNormal = normalize(TBN * mappedNormal);
-    o.viewTangent = TBN * vec3(1.0, 0.0, 0.0);
+    mappedNormal = normalize(mappedNormal.x * T_ + mappedNormal.y * B_ + mappedNormal.z * N_);
+
+    N_ = mappedNormal;
+    T_ = normalize(T - dot(T, N_) * N_);
+    B_ = normalize(bitangentSign * cross(N_, T_));
+
+    o.viewTBN = mat3(inModelview) * mat3(T_, B_, N_);
 
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = uuid;
@@ -61,5 +68,5 @@ void main() {
     vec4 previousClipPos = previousFrameCBO.projection * vec4(previousFrameViewPosition, 1.0);
     o.motionVector = previousClipPos.xyz/previousClipPos.w - clipPos.xyz/clipPos.w;
 
-    outputGBuffer(o);
+    outputGBuffer(o, inModelview);
 }

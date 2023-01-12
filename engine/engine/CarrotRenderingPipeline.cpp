@@ -66,17 +66,16 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     struct Denoising {
         Render::FrameResource beauty;
         Render::FrameResource viewSpacePositions;
-        Render::FrameResource motionVectors;
+        Render::PassData::GBuffer gBufferInput;
         Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
         Render::FrameResource denoisedResult;
     };
     auto& temporalAccumulationPass = mainGraph.addPass<Denoising>(
             "temporal-denoise",
             [this, lightingPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
+                data.gBufferInput.readFrom(builder, lightingPass.getData().gBuffer);
                 data.beauty = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
-                // TODO: use entire GBuffer
                 data.viewSpacePositions = builder.read(lightingPass.getData().gBuffer.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.motionVectors = builder.read(lightingPass.getData().gBuffer.velocity, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.denoisedResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                  data.beauty.size,
                                                                  vk::AttachmentLoadOp::eClear,
@@ -111,7 +110,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
                 bindLastFrameTexture(data.viewSpacePositions, 3);
 
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.motionVectors, frame.swapchainIndex), 0, 4, nullptr);
                 bindLastFrameTexture(data.momentsHistoryHistoryLength, 5);
 
                 renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
@@ -119,6 +117,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
 
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame), 1, 0);
                 renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame.lastFrame()), 1, 1);
+
+                data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

@@ -557,7 +557,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             if(sampledSpecular) {
                 // sample specular reflection
                 vec3 reflectedRay = reflect(incomingRay, normal);
-                traceRay(intersection, worldPos, invTBN * reflectedRay, MAX_LIGHT_DISTANCE);
+                traceRay(intersection, worldPos, reflectedRay, MAX_LIGHT_DISTANCE);
                 incomingRay = reflectedRay;
             } else {
                 vec3 direction;
@@ -584,28 +584,15 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
 
                 vec3 T = normalize(intersection.surfaceTangent);
                 vec3 N = normalize(intersection.surfaceNormal);
-
-                if(true) {
-                  //  return vec3(0,0,pow(dot(T, N), 2));
-                    //return T;
-                }
-
-                if(isnan(normalize(T - dot(T, N) * N).x)) {
-                    //return vec3(0,10000,0);
-                }
-
-                //T = normalize(T - dot(T, N) * N);
-
                 vec3 B = cross(T, N);
 
                 mat3 tbn = mat3(T, B, N);
                 vec3 mappedNormal = _sample(normalMap).rgb;
 
                 mappedNormal = mappedNormal * 2 -1;
-                mappedNormal = normalize(mappedNormal);
+                mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
 
-
-                normal = tbn * mappedNormal;
+                normal = mappedNormal;
                 tangent = T;
                 vec2 metallicRoughness = _sample(metallicRoughness).rg;
                 metallic = metallicRoughness.x;
@@ -646,14 +633,11 @@ void main() {
 
         GBuffer gbuffer = unpackGBuffer(uv);
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
-        vec3 worldPos = hWorldPos.xyz;// / hWorldPos.w;
+        vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 
-        vec3 normal = mat3(cbo.inverseView) * gbuffer.viewNormal;
-        vec3 tangent = mat3(cbo.inverseView) * gbuffer.viewTangent;
+        vec3 normal = mat3(cbo.inverseView) * gbuffer.viewTBN[2];
+        vec3 tangent = mat3(cbo.inverseView) * gbuffer.viewTBN[0];
         vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
-
-        normal = normalize(normal);
-        tangent = normalize(tangent);
 
         initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 

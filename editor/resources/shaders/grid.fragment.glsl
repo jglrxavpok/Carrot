@@ -8,6 +8,7 @@ DEFINE_CAMERA_SET(0)
 
 layout(location = 0) in vec2 inVertexPosition;
 layout(location = 1) in vec3 inViewPosition;
+layout(location = 2) in flat mat4 inModelView;
 
 void main() {
     vec2 positionInCell = mod(inVertexPosition, grid.cellSize);
@@ -25,11 +26,9 @@ void main() {
         discard;
     }
 
-    GBuffer gbuffer = initGBuffer();
+    GBuffer gbuffer = initGBuffer(inModelView);
 
     gbuffer.albedo = grid.color;
     gbuffer.viewPosition = inViewPosition;
-    gbuffer.viewNormal = vec3(0, 0, 1);
-    gbuffer.viewTangent = vec3(1, 0, 0);
-    outputGBuffer(gbuffer);
+    outputGBuffer(gbuffer, inModelView);
 }

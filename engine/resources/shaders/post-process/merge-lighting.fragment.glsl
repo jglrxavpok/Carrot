@@ -35,9 +35,6 @@ void main() {
     if(debug.gBufferType != DEBUG_GBUFFER_DISABLED) {
         vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1.0)).xyz;
 
-        vec3 normal = normalize((cbo.inverseView * vec4(g.viewNormal, 0.0)).xyz);
-        vec3 tangent = normalize((cbo.inverseView * vec4(g.viewTangent, 0.0)).xyz);
-
         if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
             outColor = albedoColor;
         } else if(debug.gBufferType == DEBUG_GBUFFER_DEPTH) {
@@ -45,7 +42,7 @@ void main() {
         } else if(debug.gBufferType == DEBUG_GBUFFER_POSITION) {
             outColor = vec4(g.viewPosition, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_NORMAL) {
-            outColor = vec4(g.viewNormal, 1.0);
+            outColor = vec4(g.viewTBN[2], 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_METALLIC_ROUGHNESS) {
             outColor = vec4(g.metallicness, g.roughness, 0.0, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_EMISSIVE) {
@@ -56,7 +53,7 @@ void main() {
             initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
             outColor = vec4(sampleNoise(rng).rrr, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_TANGENT) {
-            outColor = vec4(g.viewTangent, 1.0);
+            outColor = vec4(g.viewTBN[0], 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_LIGHTING) {
             outColor = vec4(lightingColor.rgb, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_NOISY_LIGHTING) {

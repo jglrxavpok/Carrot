@@ -9,21 +9,11 @@ GBuffer unpackGBufferLight(vec2 uv) {
     gbuffer.viewPosition = viewPos;
     gbuffer.intProperty = uint(texture(gIntPropertiesInput, uv).r);
 
-    vec4 compressedNormalTangent = texture(sampler2D(gViewNormalTangents, gLinearSampler), uv);
-    vec3 viewNormal = compressedNormalTangent.xyx;
-    viewNormal.z = sqrt(max(0, 1 - dot(viewNormal.xy, viewNormal.xy)));
-    if((gbuffer.intProperty & IntPropertiesNegativeNormalZ) == IntPropertiesNegativeNormalZ) {
-        viewNormal.z *= -1;
-    }
-
-    vec3 viewTangent = compressedNormalTangent.zwx;
-    viewTangent.z = sqrt(max(0, 1 - dot(viewTangent.xy, viewTangent.xy)));
-    if((gbuffer.intProperty & IntPropertiesNegativeTangentZ) == IntPropertiesNegativeTangentZ) {
-        viewTangent.z *= -1;
-    }
-
-    gbuffer.viewNormal = normalize(viewNormal);
-    gbuffer.viewTangent = normalize(viewTangent);
+    decompressTBN(texture(sampler2D(gViewNormalTangents, gLinearSampler), uv),
+                    (gbuffer.intProperty & IntPropertiesNegativeViewNormalZ) == IntPropertiesNegativeViewNormalZ,
+                    (gbuffer.intProperty & IntPropertiesNegativeViewTangentZ) == IntPropertiesNegativeViewTangentZ,
+                    (gbuffer.intProperty & IntPropertiesNegativeViewBitangent) == IntPropertiesNegativeViewBitangent,
+                    gbuffer.viewTBN);
 
     gbuffer.entityID = texture(usampler2D(gEntityID, gNearestSampler), uv);
 
@@ -33,11 +23,12 @@ GBuffer unpackGBufferLight(vec2 uv) {
 GBuffer unpackGBuffer(vec2 uv) {
     GBuffer gbuffer = unpackGBufferLight(uv);
 
-    vec2 metallicRoughness = texture(sampler2D(gMetallicRoughnessValues, gLinearSampler), uv).rg;
-    gbuffer.metallicness = metallicRoughness.x;
-    gbuffer.roughness = metallicRoughness.y;
-    gbuffer.emissiveColor = texture(sampler2D(gEmissiveValues, gLinearSampler), uv).rgb;
-    gbuffer.motionVector = texture(sampler2D(gMotionVectors, gLinearSampler), uv).xyz;
+    vec4 metallicRoughnessVelocityXY = texture(sampler2D(gMetallicRoughnessValuesVelocityXY, gLinearSampler), uv);
+    vec4 emissiveVelocityZ = texture(sampler2D(gEmissiveValuesVelocityZ, gLinearSampler), uv);
+    gbuffer.metallicness = metallicRoughnessVelocityXY.x;
+    gbuffer.roughness = metallicRoughnessVelocityXY.y;
+    gbuffer.emissiveColor = emissiveVelocityZ.rgb;
+    gbuffer.motionVector = vec3(metallicRoughnessVelocityXY.zw, emissiveVelocityZ.w);
 
     return gbuffer;
 }

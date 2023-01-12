@@ -116,13 +116,12 @@ namespace Carrot::Render {
         struct GBuffer {
             FrameResource albedo;
             FrameResource positions;
-            FrameResource normalTangents;
-            FrameResource depthStencil;
+            FrameResource viewSpaceNormalTangents;
             FrameResource flags;
             FrameResource entityID;
-            FrameResource metallicRoughness;
-            FrameResource emissive;
-            FrameResource velocity;
+            FrameResource metallicRoughnessVelocityXY;
+            FrameResource emissiveVelocityZ;
+            FrameResource depthStencil;
 
             void readFrom(Render::GraphBuilder& graph, const GBuffer& other);
             void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID) const;
