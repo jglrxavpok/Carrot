@@ -22,6 +22,8 @@ layout(push_constant) uniform PushConstant {
     uint frameCount;
     uint frameWidth;
     uint frameHeight;
+
+    bool hasTLAS; // handle special cases where no raytraceable geometry is present in the scene
 } push;
 
 #include "includes/gbuffer_input.glsl"
@@ -125,6 +127,10 @@ vec3 computeLightContribution(uint lightIndex, vec3 worldPos, vec3 normal) {
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
+    if(!push.hasTLAS) {
+        return true;
+    }
+
     // Ray Query for shadow
     float tMin      = 0.001f;
 
@@ -141,6 +147,10 @@ bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
 
 void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float maxDistance) {
     r.hasIntersection = false;
+    if(!push.hasTLAS) {
+        return;
+    }
+
     // Ray Query for shadow
     float tMin      = 0.00001f;
 
@@ -201,7 +211,7 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
     vec3 lightContribution = vec3(0.0);
 
     if(activeLights.count <= 0) {
-        lightPDF = 0.0;
+        lightPDF = 1.0;
         return vec3(0.0);
     }
 

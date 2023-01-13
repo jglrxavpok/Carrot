@@ -141,9 +141,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 ZoneScopedN("CPU RenderGraph lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
-                if(useRaytracingVersion) {
-                    useRaytracingVersion &= !!frame.renderer.getASBuilder().getTopLevelAS();
-                }
                 const char* shader = useRaytracingVersion ? "lighting-raytracing" : "lighting-noraytracing";
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
 
@@ -151,6 +148,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     std::uint32_t frameCount;
                     std::uint32_t frameWidth;
                     std::uint32_t frameHeight;
+
+                    bool hasTLAS = false;
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
@@ -161,6 +160,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     block.frameWidth = outputSize.width;
                     block.frameHeight = outputSize.height;
                 }
+                block.hasTLAS = !!frame.renderer.getASBuilder().getTopLevelAS();
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 // GBuffer inputs
