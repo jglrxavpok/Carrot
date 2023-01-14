@@ -86,6 +86,7 @@ namespace Carrot::IO {
         Carrot::UUID mousePositionCallback;
         Carrot::UUID mouseDeltaCallback;
         Carrot::UUID mouseDeltaGrabbedCallback;
+        Carrot::UUID mouseWheelCallback;
 
     private: // OpenXR compatibility
         xr::UniqueActionSet xrActionSet;

@@ -286,6 +286,18 @@ namespace Carrot::IO {
             changeVec2Input(correspondingPath, {static_cast<float>(dx), static_cast<float>(dy)}, true);
         });
 
+        mouseWheelCallback = GetEngine().addGLFWMouseWheelCallback([this, changeButtonInput, changeAxisInput](double dWheel) {
+            if(!active)
+                return;
+
+            const auto correspondingPath = Carrot::IO::GLFWMouseWheel;
+            bool isPressed = abs(dWheel) >= 0.5f;
+            bool isReleased = !isPressed;
+
+            changeButtonInput(correspondingPath, isPressed, isReleased);
+            changeAxisInput(correspondingPath, dWheel);
+        });
+
         readyForUse = true;
     }
 

@@ -243,6 +243,7 @@ namespace Carrot {
         using MouseButtonCallback = std::function<void(int button, bool isPressed, int mods)>;
         using MousePositionCallback = std::function<void(double xpos, double ypos)>;
         using MouseDeltaCallback = std::function<void(double dx, double dy)>;
+        using MouseWheelCallback = std::function<void(double dWheel)>;
 
         Carrot::UUID addGLFWKeyCallback(KeyCallback keyCallback) {
             Carrot::UUID uuid;
@@ -295,6 +296,12 @@ namespace Carrot {
         Carrot::UUID addGLFWMouseDeltaGrabbedCallback(MouseDeltaCallback callback) {
             Carrot::UUID uuid;
             mouseDeltaGrabbedCallbacks[uuid] = callback;
+            return uuid;
+        }
+
+        Carrot::UUID addGLFWMouseWheelCallback(MouseWheelCallback callback) {
+            Carrot::UUID uuid;
+            mouseWheelCallbacks[uuid] = callback;
             return uuid;
         }
 
@@ -512,6 +519,7 @@ namespace Carrot {
         std::unordered_map<Carrot::UUID, MousePositionCallback> mousePositionCallbacks;
         std::unordered_map<Carrot::UUID, MouseDeltaCallback> mouseDeltaCallbacks;
         std::unordered_map<Carrot::UUID, MouseDeltaCallback> mouseDeltaGrabbedCallbacks;
+        std::unordered_map<Carrot::UUID, MouseWheelCallback> mouseWheelCallbacks;
         std::unordered_map<Carrot::UUID, KeysVec2Callback> keysVec2Callbacks;
 
         /// Poll state of gamepads, GLFW does not (yet) post events for gamepad inputs

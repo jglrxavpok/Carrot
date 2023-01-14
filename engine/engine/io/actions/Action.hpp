@@ -258,6 +258,7 @@ namespace Carrot::IO {
 
     static const ActionBinding GLFWMousePositionBinding = "/user/glfw/mouse/pos";
     static const ActionBinding GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
+    static const ActionBinding GLFWMouseWheel = "/user/glfw/mouse/wheel";
     static const ActionBinding GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";
 
     // Input profiles

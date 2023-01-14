@@ -372,6 +372,9 @@ void Carrot::Engine::run() {
 
         {
             ZoneScopedN("Poll inputs");
+            for(auto& [id, callback] : mouseWheelCallbacks) {
+                callback(0.0f); // reset mouse wheel
+            }
             glfwPollEvents();
             pollKeysVec2();
             pollGamepads();
@@ -992,7 +995,10 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
 }
 
 void Carrot::Engine::onScroll(double xScroll, double yScroll) {
-    // TODO: expose to input API
+    // TODO: transfer xScroll?
+    for(auto& [id, callback] : mouseWheelCallbacks) {
+        callback(yScroll);
+    }
 }
 
 void Carrot::Engine::createTracyContexts() {
