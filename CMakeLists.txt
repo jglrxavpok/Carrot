@@ -143,6 +143,13 @@ function(add_includes Target)
             target_include_directories(${Target} PUBLIC ${ProjectRoot}LivePP/API/)
         endif()
         target_compile_options(${Target} PRIVATE "/Z7")
+
+        target_compile_options(${Target} PRIVATE "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+        target_compile_options(${Target} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
+        target_compile_options(${Target} PRIVATE "$<$<C_COMPILER_ID:MSVC>:/bigobj>")
+        target_compile_options(${Target} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
+
     endif()
 
     if(NsightAftermath_FOUND)

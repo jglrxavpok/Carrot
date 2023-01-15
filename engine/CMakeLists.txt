@@ -273,14 +273,6 @@ set(THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/imgui-node-editor/imgui_node_editor_api.cpp
         )
 
-if (MSVC)
-    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-
-    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/bigobj>")
-    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
-endif()
-
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
         Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
@@ -309,3 +301,22 @@ add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)
+
+# Using this instead of REUSE_FROM, because REUSE_FROM seems to take forever to build/validate
+function(add_engine_precompiled_headers Target)
+    target_precompile_headers(${Target} PRIVATE
+            <engine/vulkan/includes.h>
+            <engine/vr/includes.h>
+            <sol/sol.hpp>
+            <glm/glm.hpp>
+            <chrono>
+            <unordered_map>
+            <filesystem>
+            <vector>
+            <string>
+            )
+endfunction()
+
+add_engine_precompiled_headers(Engine-Base)
+add_engine_precompiled_headers(Engine-Base-Renderdoc)
+add_engine_precompiled_headers(Engine-ASAN)
