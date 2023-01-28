@@ -7,6 +7,7 @@
 #include "includes.h"
 #include <functional>
 #include <optional>
+#include <utility>
 #include <vector>
 #include <set>
 #include <core/memory/NakedPtr.hpp>
@@ -58,10 +59,13 @@ namespace Carrot {
     template<typename TResource>
     class DeferredDestruction {
     public:
-        explicit DeferredDestruction(TResource&& toDestroy, std::size_t framesBeforeDestruction): countdown(framesBeforeDestruction) {
+        explicit DeferredDestruction(std::string name, TResource&& toDestroy, std::size_t framesBeforeDestruction):
+            countdown(framesBeforeDestruction),
+            resourceName(std::move(name))
+            {
             resource = std::move(toDestroy);
         };
-        explicit DeferredDestruction(TResource&& toDestroy): DeferredDestruction(std::move(toDestroy), MAX_FRAMES_IN_FLIGHT+10) {};
+        explicit DeferredDestruction(const std::string& name, TResource&& toDestroy): DeferredDestruction(name, std::move(toDestroy), MAX_FRAMES_IN_FLIGHT+10) {};
 
         bool isReadyForDestruction() const {
             return countdown == 0;
@@ -74,6 +78,7 @@ namespace Carrot {
 
     private:
         TResource resource{};
+        std::string resourceName;
         std::size_t countdown = 0; /* number of frames before destruction (swapchain image count by default)*/
     };
 
@@ -202,11 +207,11 @@ namespace Carrot {
         const vk::PhysicalDeviceFeatures& getPhysicalDeviceFeatures() const;
 
     public:
-        void deferDestroy(vk::UniqueImage&& image);
-        void deferDestroy(vk::UniqueImageView&& imageView);
-        void deferDestroy(Carrot::DeviceMemory&& memory);
-        void deferDestroy(vk::UniqueBuffer&& resource);
-        void deferDestroy(vk::UniqueAccelerationStructureKHR&& resource);
+        void deferDestroy(const std::string& name, vk::UniqueImage&& image);
+        void deferDestroy(const std::string& name, vk::UniqueImageView&& imageView);
+        void deferDestroy(const std::string& name, Carrot::DeviceMemory&& memory);
+        void deferDestroy(const std::string& name, vk::UniqueBuffer&& resource);
+        void deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource);
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);

@@ -7,7 +7,6 @@ layout(location = 3) out uint intProperty;
 layout(location = 4) out uvec4 entityID;
 layout(location = 5) out vec4 metallicRoughnessVelocityXY;
 layout(location = 6) out vec4 emissiveVelocityZ;
-layout(location = 7) out vec4 outTangentSpaceNormalTangent;
 
 GBuffer initGBuffer(mat4 modelview) {
     GBuffer gbuffer;

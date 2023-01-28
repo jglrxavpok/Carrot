@@ -135,8 +135,8 @@ Carrot::Buffer::~Buffer() {
     if(mappedPtr) {
         unmap();
     }
-    GetVulkanDriver().deferDestroy(std::move(vkBuffer));
-    GetVulkanDriver().deferDestroy(std::move(memory));
+    GetVulkanDriver().deferDestroy(debugName, std::move(vkBuffer));
+    GetVulkanDriver().deferDestroy(debugName+"-memory", std::move(memory));
 
     BufferByStartAddress.remove(deviceAddress);
     deviceAddress = 0x0;

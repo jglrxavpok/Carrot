@@ -338,6 +338,7 @@ namespace Carrot::Render {
                 vk::BufferUsageFlagBits::eStorageBuffer,
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
+        materialBuffer->name("Materials");
         materialDataPtr = materialBuffer->map<MaterialData>();
         for (std::size_t i = 0; i < materialBufferSize; i++) {
             materialDataPtr[i] = {};

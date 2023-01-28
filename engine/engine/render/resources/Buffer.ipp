@@ -22,6 +22,8 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::vecto
     // allocate staging buffer used for transfer
     auto stagingBuffer = Carrot::Buffer(driver, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
 
+    stagingBuffer.setDebugNames("Carrot::Buffer::stageUploadWithOffsets");
+
     // upload data to staging buffer
     (
             (
@@ -34,7 +36,6 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::vecto
     stagingBuffer.copyTo(*this, 0, 0);
 
     // stagingBuffer will be destroyed, and resources freed after this point
-    stagingBuffer.destroyNow();
 }
 
 template<typename T>
@@ -42,20 +43,22 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
     // allocate staging buffer used for transfer
     auto stagingBuffer = Carrot::Buffer(driver, totalLength, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
 
+    stagingBuffer.setDebugNames("Carrot::Buffer::stageUploadWithOffset");
+
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
 
 
     // copy staging buffer to this buffer
     stagingBuffer.copyTo(*this, 0, offset);
-
-    stagingBuffer.destroyNow();
 }
 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
     auto stagingBuffer = Carrot::Buffer(driver, totalLength, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
+
+    stagingBuffer.setDebugNames("Carrot::Buffer::stageAsyncUploadWithOffset");
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);

@@ -955,24 +955,24 @@ const vk::PhysicalDeviceFeatures& Carrot::VulkanDriver::getPhysicalDeviceFeature
     return physicalDeviceFeatures;
 }
 
-void Carrot::VulkanDriver::deferDestroy(vk::UniqueImage&& resource) {
-    deferredImageDestructions.push_back(std::move(DeferredImageDestruction(std::move(resource))));
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueImage&& resource) {
+    deferredImageDestructions.push_back(std::move(DeferredImageDestruction(name, std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(vk::UniqueImageView&& resource) {
-    deferredImageViewDestructions.push_back(std::move(DeferredImageViewDestruction(std::move(resource))));
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueImageView&& resource) {
+    deferredImageViewDestructions.push_back(std::move(DeferredImageViewDestruction(name, std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(vk::UniqueBuffer&& resource) {
-    deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(std::move(resource))));
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueBuffer&& resource) {
+    deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(name, std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(Carrot::DeviceMemory&& resource) {
-    deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(std::move(resource))));
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, Carrot::DeviceMemory&& resource) {
+    deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(name, std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(vk::UniqueAccelerationStructureKHR&& resource) {
-    deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(std::move(resource))));
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource) {
+    deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {

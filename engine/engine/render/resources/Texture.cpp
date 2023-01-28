@@ -49,7 +49,7 @@ namespace Carrot::Render {
 
     Texture::~Texture() {
         for(auto& [k, imageView] : views) {
-            GetVulkanDriver().deferDestroy(std::move(imageView));
+            GetVulkanDriver().deferDestroy("-imageview", std::move(imageView));
         }
     }
 

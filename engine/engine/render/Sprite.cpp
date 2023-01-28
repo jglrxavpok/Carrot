@@ -16,6 +16,7 @@ namespace Carrot::Render {
 
     Sprite::Sprite() {
         renderingPipeline = GetRenderer().getOrCreatePipeline("gBufferSprite");
+        updateTextureRegion(Carrot::Math::Rect2Df { 0.0f, 0.0f, 1.0f, 1.0f });
     }
 
     Sprite::Sprite(Carrot::Render::Texture::Ref texture, Carrot::Math::Rect2Df textureRegion): textureRegion(std::move(textureRegion)) {

@@ -70,8 +70,8 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3
 
 Carrot::Image::~Image() noexcept {
     if(imageData.ownsImage) {
-        GetVulkanDriver().deferDestroy(std::move(imageData.asOwned.memory));
-        GetVulkanDriver().deferDestroy(std::move(imageData.asOwned.vkImage));
+        GetVulkanDriver().deferDestroy("-memory", std::move(imageData.asOwned.memory));
+        GetVulkanDriver().deferDestroy("-image", std::move(imageData.asOwned.vkImage));
     }
 }
 
@@ -90,6 +90,8 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
                                         vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                         {driver.getQueueFamilies().transferFamily.value()});
+
+    stagingBuffer.setDebugNames("Image upload staging");
 
     // fill buffer
     stagingBuffer.directUpload(data.data(), data.size());

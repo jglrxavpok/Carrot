@@ -117,6 +117,8 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
                                3,2,0,
                      });
 
+    quad.name("Fullscreen quad (loading screen)");
+
     driver.updateViewportAndScissor(cmds, swapchainExtent);
 
     vk::ClearValue color{std::array{1.0f,1.0f,0.0f,1.0f}};

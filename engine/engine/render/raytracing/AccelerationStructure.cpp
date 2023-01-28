@@ -16,6 +16,7 @@ Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& drive
                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     createInfo.buffer = buffer->getVulkanBuffer();
+    buffer->name("AS storage");
 
     as = driver.getLogicalDevice().createAccelerationStructureKHRUnique(createInfo, driver.getAllocationCallbacks());
 
@@ -40,5 +41,5 @@ const Carrot::Buffer& Carrot::AccelerationStructure::getBuffer() const {
 Carrot::AccelerationStructure::~AccelerationStructure() {
     ASByStartAddress.remove(deviceAddress);
     deviceAddress = 0x0;
-    GetVulkanDriver().deferDestroy(std::move(as));
+    GetVulkanDriver().deferDestroy(buffer->getDebugName()+"-as", std::move(as));
 }

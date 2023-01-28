@@ -146,6 +146,7 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getOrCreateModel(const st
         try {
             from = modelPath;
         } catch(std::runtime_error& e) {
+            Carrot::Log::error("Failed to load model %s", modelPath.c_str());
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
         }
