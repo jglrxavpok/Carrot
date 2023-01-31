@@ -9,6 +9,8 @@
 
 #include "core/io/vfs/VirtualFileSystem.h"
 
+#pragma optimize("",off)
+
 namespace Carrot::Render {
 
     constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
@@ -34,9 +36,42 @@ namespace Carrot::Render {
         return true;
     }
 
-    std::string gltfExpandFilePath(const std::string& filepath, void* userData) {
+    static std::string decodeURI(const std::string& uri) {
         ZoneScoped;
-        return filepath;
+        std::string decoded;
+        decoded.reserve(uri.size());
+
+        auto charToHex = [](char c) {
+            if(c >= '0' && c <= '9') {
+                return c - '0';
+            }
+            if(c >= 'A' && c <= 'F') {
+                return c - 'A' + 10;
+            }
+            if(c >= 'a' && c <= 'f') {
+                return c - 'a' + 10;
+            }
+            return 0;
+        };
+
+        for (std::size_t i = 0; i < uri.size(); ) {
+            char c = uri[i];
+            if(c == '%') {
+                verify(uri.size() > i + 2, "unexpected end of string");
+                int characterCode = charToHex(uri[i+1]) * 16 + charToHex(uri[i+2]);
+                decoded.append(1, (char)characterCode);
+                i += 3;
+            } else {
+                decoded.append(1, c);
+                i++;
+            }
+        }
+
+        return decoded;
+    }
+
+    std::string gltfExpandFilePath(const std::string& filepath, void* userData) {
+        return decodeURI(filepath);
     }
 
     bool gltfFileExists(const std::string& abs_filename, void* userData) {
@@ -315,7 +350,8 @@ namespace Carrot::Render {
         std::vector<IO::VFS::Path> imagePaths;
         imagePaths.reserve(model.images.size());
         for(const auto& image : model.images) {
-            imagePaths.emplace_back(modelFilepath.relative(std::string_view(image.uri)));
+
+            imagePaths.emplace_back(modelFilepath.relative(IO::Path(decodeURI(image.uri))));
         }
 
         result.materials.reserve(model.materials.size());
