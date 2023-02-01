@@ -81,7 +81,7 @@ namespace Carrot::IO {
         const std::string& getCurrentFilename() const;
 
     public:
-        void write(const std::span<uint8_t> toWrite, uint64_t offset = 0);
+        void write(const std::span<const uint8_t> toWrite, uint64_t offset = 0);
         void read(void* buffer, uint64_t size, uint64_t offset = 0);
         std::unique_ptr<uint8_t[]> read(uint64_t size, uint64_t offset = 0);
 

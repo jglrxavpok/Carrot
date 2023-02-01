@@ -47,10 +47,10 @@ namespace Carrot::IO {
                 mode = "ab";
                 break;
             case OpenMode::AlreadyExistingReadWrite:
-                mode = "r+b";
+                mode = "rb+";
                 break;
             case OpenMode::NewReadWrite:
-                mode = "w+b";
+                mode = "wb+";
                 break;
             case OpenMode::Invalid:
                 throw std::runtime_error("Cannot open file with mode 'Invalid'");
@@ -113,7 +113,7 @@ namespace Carrot::IO {
         return currentFilename;
     }
 
-    void FileHandle::write(const std::span<uint8_t> toWrite, uint64_t offset) {
+    void FileHandle::write(const std::span<const uint8_t> toWrite, uint64_t offset) {
         assert(opened);
         assert(isWriteableMode(currentOpenMode));
         uint64_t previousPosition = getCurrentPosition();

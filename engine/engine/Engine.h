@@ -341,6 +341,10 @@ namespace Carrot {
             mouseDeltaGrabbedCallbacks.erase(uuid);
         }
 
+        void removeGLFWMouseWheelCallback(const Carrot::UUID& uuid) {
+            mouseWheelCallbacks.erase(uuid);
+        }
+
     public:
         const Capabilities& getCapabilities() const { return capabilities; }
         const Configuration& getConfiguration() const { return config; }

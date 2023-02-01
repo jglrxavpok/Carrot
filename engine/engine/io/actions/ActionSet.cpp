@@ -37,6 +37,7 @@ namespace Carrot::IO {
         GetEngine().removeGLFWMousePositionCallback(mousePositionCallback);
         GetEngine().removeGLFWMouseDeltaCallback(mouseDeltaCallback);
         GetEngine().removeGLFWMouseDeltaGrabbedCallback(mouseDeltaGrabbedCallback);
+        GetEngine().removeGLFWMouseWheelCallback(mouseWheelCallback);
 
         getSetList().erase(std::remove(WHOLE_CONTAINER(getSetList()), this), getSetList().end());
     }

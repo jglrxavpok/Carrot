@@ -69,9 +69,13 @@ namespace Carrot::Render {
         data->normalMap = getSlot(normalMap, materialSystem.flatNormalTextureHandle);
 
         data->metallicRoughness = getSlot(metallicRoughness, materialSystem.blackTextureHandle);
+        everUpdated = true;
     }
 
     MaterialHandle::~MaterialHandle() noexcept {
+        if(!everUpdated) {
+            return;
+        }
         Carrot::Render::MaterialData* data = materialSystem.getData(*this);
         data->emissive = materialSystem.blackTextureHandle->getSlot();
         data->albedo = materialSystem.whiteTextureHandle->getSlot();

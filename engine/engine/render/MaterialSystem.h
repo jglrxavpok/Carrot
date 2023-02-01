@@ -70,6 +70,7 @@ namespace Carrot::Render {
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 
+        bool everUpdated = false;
         MaterialSystem& materialSystem;
         friend class MaterialSystem;
     };
