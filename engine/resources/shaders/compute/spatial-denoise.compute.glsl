@@ -32,7 +32,7 @@ void main() {
     // from SVGF
     const float sigmaNormals = 128.0f;
     const float sigmaPositions = 1.0f;
-    const float sigmaLuminance = 4.0f;
+    const float sigmaLuminance = 1.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;
 
@@ -51,6 +51,8 @@ void main() {
         imageStore(outputImage, coords, finalPixel);
         return;
     }
+
+    float baseLuminance = luminance(finalPixel.rgb);
 
     const vec3 currentPosition = currentGBuffer.viewPosition;
     float totalWeight = KERNEL_WEIGHTS[FILTER_RADIUS] * KERNEL_WEIGHTS[FILTER_RADIUS];
@@ -86,7 +88,10 @@ void main() {
             const float distanceSquared = dot(dPosition, dPosition);
             const float positionWeight = min(1, exp(-distanceSquared/sigmaPositions));
 
-            const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight;
+            const float filterLuminance = luminance(filterPixel.rgb);
+            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance)*sigmaLuminance);
+
+            const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;
             totalWeight += weight;
         }

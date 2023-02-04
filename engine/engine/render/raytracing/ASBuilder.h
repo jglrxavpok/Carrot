@@ -32,16 +32,21 @@ namespace Carrot {
         std::uint32_t hitGroup;
     };
 
+    class ASBuilder;
+
     class BLASHandle: public WeakPoolHandle {
     public:
         BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
                    const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<glm::mat4>& transforms,
-                   const std::vector<std::uint32_t>& materialSlots);
+                   const std::vector<std::uint32_t>& materialSlots,
+                   ASBuilder* builder);
 
         bool isBuilt() const { return built; }
         void update();
         void setDirty();
+
+        virtual ~BLASHandle() noexcept override;
 
     private:
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
@@ -53,6 +58,7 @@ namespace Carrot {
         std::vector<std::uint32_t> materialSlots;
         std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
         bool built = false;
+        ASBuilder* builder = nullptr;
 
         friend class ASBuilder;
         friend class InstanceHandle;
@@ -60,11 +66,16 @@ namespace Carrot {
 
     class InstanceHandle: public WeakPoolHandle {
     public:
-        InstanceHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, std::weak_ptr<BLASHandle> geometry): WeakPoolHandle(index, std::move(destructor)), geometry(geometry) {}
+        InstanceHandle(std::uint32_t index,
+                       std::function<void(WeakPoolHandle*)> destructor,
+                       std::weak_ptr<BLASHandle> geometry,
+                       ASBuilder* builder);
 
         bool isBuilt() const { return built; }
         bool hasBeenModified() const { return modified; }
         void update();
+
+        virtual ~InstanceHandle() noexcept override;
 
     public:
         glm::mat4 transform{1.0f};
@@ -80,6 +91,7 @@ namespace Carrot {
 
         bool modified = false;
         bool built = false;
+        ASBuilder* builder = nullptr;
 
         friend class ASBuilder;
     };
@@ -145,6 +157,8 @@ namespace Carrot {
 
         std::unique_ptr<Carrot::Buffer> geometriesBuffer;
         std::unique_ptr<Carrot::Buffer> instancesBuffer;
+        Carrot::Render::PerFrame<Carrot::BufferView> geometriesBufferPerFrame;
+        Carrot::Render::PerFrame<Carrot::BufferView> instancesBufferPerFrame;
 
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
@@ -167,11 +181,16 @@ namespace Carrot {
 
         std::int8_t framesBeforeRebuildingTLAS = 0;
         std::size_t previousActiveInstances = 0;
+        std::atomic_bool dirtyBlases = false;
+        std::atomic_bool dirtyInstances = false;
 
         std::vector<SceneDescription::Geometry> allGeometries;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;
         std::vector<vk::BufferMemoryBarrier2KHR> topLevelBarriers;
+
+        friend class BLASHandle;
+        friend class InstanceHandle;
     };
 }

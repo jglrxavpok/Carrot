@@ -185,11 +185,14 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     }
     vec2 barycentrics = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
 
-    #define geometry (geometries[nonuniformEXT(geometryID)])
+    Geometry geometry = (geometries[nonuniformEXT(geometryID)]);
 
-    Vertex P2 = (geometry.vertexBuffer.v[nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)])]);
-    Vertex P0 = (geometry.vertexBuffer.v[nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)])]);
-    Vertex P1 = (geometry.vertexBuffer.v[nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)])]);
+    uint index2 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)]);
+    uint index0 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)]);
+    uint index1 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)]);
+    Vertex P2 = (geometry.vertexBuffer.v[index2]);
+    Vertex P0 = (geometry.vertexBuffer.v[index0]);
+    Vertex P1 = (geometry.vertexBuffer.v[index1]);
 
     vec2 uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
     vec3 surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);

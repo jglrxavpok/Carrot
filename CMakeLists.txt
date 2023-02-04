@@ -179,6 +179,23 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     )
 endfunction()
 
+function(prepare_assets_folder INPUT_FOLDER OUTPUT_FOLDER)
+    # TODO: set(depfile "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}.d")
+    set(basePath "${CMAKE_CURRENT_SOURCE_DIR}/")
+    set(inputFilePath "${basePath}${INPUT_FOLDER}")
+    set(outputFilePath "${CMAKE_BINARY_DIR}/${OUTPUT_FOLDER}")
+    add_custom_command(
+            OUTPUT "${outputFilePath}/test"
+            COMMAND fertilizer -f -r "${inputFilePath}" "${outputFilePath}"
+            COMMENT "Preparing assets in folder ${inputFilePath}"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            DEPENDS "${inputFilePath}"
+            DEPENDS fertilizer
+            # TODO: BYPRODUCTS "${depfile}"
+            # TODO: DEPFILE "${depfile}"
+    )
+endfunction()
+
 function(copy_resources TYPE)
     set(input ${CMAKE_CURRENT_SOURCE_DIR}/resources/${TYPE})
     if(EXISTS ${input})

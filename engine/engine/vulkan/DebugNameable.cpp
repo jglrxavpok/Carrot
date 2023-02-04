@@ -7,9 +7,11 @@
 #include "engine/vulkan/VulkanDriver.h"
 
 namespace Carrot {
-    void DebugNameable::doNaming(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) {
-        if(GetVulkanDriver().hasDebugNames()) {
+    std::unordered_map<vk::DebugReportObjectTypeEXT, std::unordered_map<std::uint64_t, std::string>> DebugNameable::objectNames{};
 
+    void DebugNameable::doNaming(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) {
+        objectNames[nameInfo.objectType][nameInfo.object] = nameInfo.pObjectName;
+        if(GetVulkanDriver().hasDebugNames()) {
             GetVulkanDriver().getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
         }
     }

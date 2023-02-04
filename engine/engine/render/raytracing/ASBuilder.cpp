@@ -15,9 +15,10 @@ namespace Carrot {
     BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
                            const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<glm::mat4>& transforms,
-                           const std::vector<std::uint32_t>& materialSlots):
+                           const std::vector<std::uint32_t>& materialSlots,
+                           ASBuilder* builder):
     WeakPoolHandle(index, std::move(destructor)),
-    meshes(meshes), materialSlots(materialSlots) {
+    meshes(meshes), materialSlots(materialSlots), builder(builder) {
         geometries.reserve(meshes.size());
         buildRanges.reserve(meshes.size());
 
@@ -74,6 +75,12 @@ namespace Carrot {
                     .transformOffset = 0,
             });
         }
+
+        builder->dirtyBlases = true;
+    }
+
+    BLASHandle::~BLASHandle() noexcept {
+        builder->dirtyBlases = true;
     }
 
     void BLASHandle::update() {
@@ -82,6 +89,16 @@ namespace Carrot {
 
     void BLASHandle::setDirty() {
         built = false;
+    }
+
+    InstanceHandle::InstanceHandle(std::uint32_t index, std::function<void(WeakPoolHandle *)> destructor,
+                                   std::weak_ptr<BLASHandle> geometry, ASBuilder* builder):
+            WeakPoolHandle(index, destructor), geometry(geometry), builder(builder) {
+        builder->dirtyInstances = true;
+    }
+
+    InstanceHandle::~InstanceHandle() noexcept {
+        builder->dirtyInstances = true;
     }
 
     void InstanceHandle::update() {
@@ -120,11 +137,7 @@ namespace Carrot {
 Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(renderer) {
     enabled = GetCapabilities().supportsRaytracing;
 
-    createSemaphores();
-    createBuildCommandBuffers();
-    createQueryPools();
-    createGraveyard();
-    createDescriptors();
+    onSwapchainImageCountChange(GetEngine().getSwapchainImageCount());
 }
 
 void Carrot::ASBuilder::createBuildCommandBuffers() {
@@ -158,7 +171,7 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
     if(!enabled)
         return nullptr;
     Async::LockGuard l { access };
-    return staticGeometries.create(meshes, transforms, materials);
+    return staticGeometries.create(meshes, transforms, materials, this);
 }
 
 void Carrot::ASBuilder::createSemaphores() {
@@ -196,19 +209,24 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     std::vector<std::shared_ptr<BLASHandle>> toBuild;
     for(auto& [slot, valuePtr] : staticGeometries) {
         if(auto value = valuePtr.lock()) {
-            if(!value->isBuilt()) {
+            if(!value->isBuilt() || dirtyBlases) {
                 toBuild.push_back(value);
+                value->built = false;
             }
         }
     }
 
     builtBLASThisFrame = false;
+    if(dirtyBlases) {
+        allGeometries.clear();
+    }
     if(!toBuild.empty()) {
         buildBottomLevels(renderContext, toBuild, false);
         for(auto& v : toBuild) {
             v->built = true;
         }
     }
+    dirtyBlases = false;
 
     std::size_t activeInstances = 0;
 
@@ -221,17 +239,16 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
-    bool requireTLASRebuildNow = !toBuild.empty() || activeInstances > previousActiveInstances;
+    bool requireTLASRebuildNow = !toBuild.empty() || dirtyInstances || activeInstances > previousActiveInstances;
 
-    previousActiveInstances = activeInstances;
-
+    dirtyInstances = false;
     if(requireTLASRebuildNow) {
         buildTopLevelAS(renderContext, false);
-        framesBeforeRebuildingTLAS = 10;
+        framesBeforeRebuildingTLAS = 11;
     } else {
         if(framesBeforeRebuildingTLAS == 0 || !tlas) {
             buildTopLevelAS(renderContext, false);
-            framesBeforeRebuildingTLAS = 10;
+            framesBeforeRebuildingTLAS = 11;
         } else {
             if(framesBeforeRebuildingTLAS > 0) {
                 framesBeforeRebuildingTLAS--;
@@ -239,6 +256,12 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
             buildTopLevelAS(renderContext, true);
         }
     }
+
+    if(geometriesBuffer)
+        geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer->getWholeView();
+
+    if(instancesBuffer)
+        instancesBufferPerFrame[renderContext.swapchainIndex] = instancesBuffer->getWholeView();
 }
 
 void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry) {
@@ -333,18 +356,20 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         originalSizes[index] = sizeInfo.accelerationStructureSize;
     }
 
-    if(!geometriesBuffer || geometriesBuffer->getSize() < sizeof(SceneDescription::Geometry) * allGeometries.size()) {
+    /*if(!geometriesBuffer || geometriesBuffer->getSize() < sizeof(SceneDescription::Geometry) * allGeometries.size())*/ {
         geometriesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Geometry) * allGeometries.size(),
                                                                           vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                           vk::MemoryPropertyFlagBits::eDeviceLocal);
         geometriesBuffer->setDebugNames("RT Geometries");
     }
 
-    geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
-    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
+    //geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+    geometriesBuffer->stageUploadWithOffset(0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+    //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
 
     // TODO: reuse
     Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    scratchBuffer.name("BLAS build scratch buffer");
 
     bool compactAS = (flags & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
     compactAS = false;
@@ -470,7 +495,7 @@ std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak
     if(!enabled)
         return nullptr;
     Async::LockGuard l { access };
-    return instances.create(correspondingGeometry);
+    return instances.create(correspondingGeometry, this);
 }
 
 void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
@@ -516,11 +541,14 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     });
     GetVulkanDriver().setFormattedMarker(buildCommand, "Start of command buffer for TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
     // upload instances to the device
-    if(!rtInstancesBuffer || lastInstanceCount < vkInstances.size()) {
+
+    // FIXME: Culprit of gpu crash?
+    /*if(!rtInstancesBuffer || lastInstanceCount < vkInstances.size()) */{
         rtInstancesBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                    vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
                                                    vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+                                                   //vk::MemoryPropertyFlagBits::eDeviceLocal
         );
 
         rtInstancesBuffer->setDebugNames("TLAS Instances");
@@ -529,7 +557,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         instanceBufferAddress = rtInstancesBuffer->getDeviceAddress();
     }
 
-    if(!instancesBuffer || instancesBuffer->getSize() < sizeof(SceneDescription::Instance) * logicalInstances.size()) {
+    /*if(!instancesBuffer || instancesBuffer->getSize() < sizeof(SceneDescription::Instance) * logicalInstances.size()) */{
         instancesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
                                                                                                         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                                                         vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -538,9 +566,11 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     {
         ZoneScopedN("Stage upload");
-        instancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
-        GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
+        //instancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+        instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+        //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
 
+        //rtInstancesBuffer->stageUploadWithOffset(0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
         rtInstancesBuffer->directUpload(vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
     }
 
@@ -574,12 +604,13 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     }
 
     // Allocate scratch memory
-    if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) {
+    /*if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) */{
         scratchBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                  sizeInfo.buildScratchSize,
                                                  vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
                                                  vk::MemoryPropertyFlagBits::eDeviceLocal
         );
+        scratchBuffer->name("RT instances build scratch buffer");
         lastScratchSize = sizeInfo.buildScratchSize;
         scratchBufferAddress = renderer.getLogicalDevice().getBufferAddress({
             .buffer = scratchBuffer->getVulkanBuffer(),
@@ -688,6 +719,12 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
     createQueryPools();
     createGraveyard();
     createDescriptors();
+
+    instancesBufferPerFrame.clear();
+    instancesBufferPerFrame.resize(newCount);
+
+    geometriesBufferPerFrame.clear();
+    geometriesBufferPerFrame.resize(newCount);
 }
 
 void Carrot::ASBuilder::onSwapchainSizeChange(int newWidth, int newHeight) {
@@ -698,12 +735,12 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
     if(!geometriesBuffer) {
         return Carrot::BufferView{};
     }
-    return geometriesBuffer->getWholeView();
+    return geometriesBufferPerFrame[renderContext.swapchainIndex];
 }
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
     if(!instancesBuffer) {
         return Carrot::BufferView{};
     }
-    return instancesBuffer->getWholeView();
+    return instancesBufferPerFrame[renderContext.swapchainIndex];
 }
