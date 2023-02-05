@@ -469,6 +469,7 @@ namespace Carrot::ECS {
         entitiesToAdd = toCopy.entitiesToAdd;
         entitiesToRemove = toCopy.entitiesToRemove;
         frozenLogic = toCopy.frozenLogic;
+        entityComponents.clear();
 
         auto copySystems = [&](std::vector<std::unique_ptr<System>>& dest, const std::vector<std::unique_ptr<System>>& src) {
             dest.clear();
@@ -484,7 +485,6 @@ namespace Carrot::ECS {
         copySystems(logicSystems, toCopy.logicSystems);
         copySystems(renderSystems, toCopy.renderSystems);
 
-        entityComponents.clear();
         for(const auto& [entityID, componentMap] : toCopy.entityComponents) {
             auto& destComponents = entityComponents[entityID];
             for(const auto& [id, comp] : componentMap) {
