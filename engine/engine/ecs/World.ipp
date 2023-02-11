@@ -63,6 +63,21 @@ namespace Carrot::ECS {
         return worldRef.getComponent<Comp>(*this);
     }
 
+    template<typename Component>
+    std::vector<Entity> World::getEntitiesWith() const {
+        std::vector<Entity> result;
+        for(auto& [entityID, components] : entityComponents) {
+            auto componentLocation = components.find(Component::getID());
+
+            if(componentLocation == components.end()) {
+                continue;
+            }
+
+            result.push_back(wrap(entityID));
+        }
+        return result;
+    }
+
     template<class RenderSystemType, typename... Args>
     RenderSystemType& World::addRenderSystem(Args&&... args) {
         auto system = std::make_unique<RenderSystemType>(*this, args...);

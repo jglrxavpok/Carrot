@@ -37,6 +37,9 @@ namespace Carrot::ECS {
 
         std::vector<Entity> getEntitiesWithTags(Tags tags) const;
 
+        template<typename Component>
+        std::vector<Entity> getEntitiesWith() const;
+
         std::string& getName(const EntityID& entityID);
         std::string& getName(const Entity& entity);
         const std::string& getName(const EntityID& entityID) const;
