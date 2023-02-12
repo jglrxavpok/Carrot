@@ -141,4 +141,12 @@ namespace Carrot::Render {
     glm::vec2 Viewport::getSizef() const {
         return glm::vec2 { getWidth(), getHeight() };
     }
+
+    glm::vec2 Viewport::getOffset() const {
+        return offset;
+    }
+
+    void Viewport::setOffset(const glm::vec2& offset) {
+        this->offset = offset;
+    }
 }

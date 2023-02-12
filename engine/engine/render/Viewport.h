@@ -42,6 +42,10 @@ namespace Carrot::Render {
         std::uint32_t getHeight() const;
         glm::vec2 getSizef() const;
 
+        /// Offset of this viewport from top left of screen. Not handled automatically for now
+        glm::vec2 getOffset() const;
+        void setOffset(const glm::vec2& offset);
+
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
@@ -59,6 +63,7 @@ namespace Carrot::Render {
         // used only if followSwapchainSize is false, otherwise getWidth/getHeight return the swapchain size
         std::uint32_t width = 100;
         std::uint32_t height = 100;
+        glm::vec2 offset{0.0f};
 
         std::unordered_map<Render::Eye, Camera> cameras{};
         std::vector<Carrot::BufferView> cameraUniformBuffers;

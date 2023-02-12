@@ -497,6 +497,12 @@ namespace Peeler {
 
         float startX = ImGui::GetCursorScreenPos().x;
         float startY = ImGui::GetCursorScreenPos().y;
+
+        std::int32_t windowX, windowY;
+        engine.getVulkanDriver().getWindow().getPosition(windowX, windowY);
+        glm::vec2 offset = glm::mod(glm::vec2{ startX - windowX, startY - windowY }, glm::vec2 { ImGui::GetMainViewport()->Size.x, ImGui::GetMainViewport()->Size.y });
+        gameViewport.setOffset(offset);
+
         ImGui::Image(gameTextureRef->getImguiID(), entireRegion);
         movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
