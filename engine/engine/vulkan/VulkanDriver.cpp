@@ -58,8 +58,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
-//constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+//constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -82,11 +82,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         Carrot::Log::info("Validation layer: %s", pCallbackData->pMessage);
     }
     if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        Carrot::Log::error("Validation layer: %s", pCallbackData->pMessage);
-        if(breakOnVulkanError) {
-            Carrot::Log::flush();
-            debug_break();
-            breakOnVulkanError = false;
+        if(pCallbackData->messageIdNumber != 307231540u
+        && pCallbackData->messageIdNumber != 3730154501u
+        && pCallbackData->messageIdNumber != 2755938772u
+        && pCallbackData->messageIdNumber != 1303270965u
+        ) {
+            Carrot::Log::error("(%llu) Validation layer: %s", pCallbackData->messageIdNumber, pCallbackData->pMessage);
+
+            if(breakOnVulkanError) {
+                Carrot::Log::flush();
+                debug_break();
+                breakOnVulkanError = false;
+            }
         }
     }
 
