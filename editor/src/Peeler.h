@@ -16,6 +16,7 @@
 #include <engine/scene/Scene.h>
 #include "GridRenderer.h"
 #include "panels/ResourcePanel.h"
+#include "layers/ISceneViewLayer.h"
 
 namespace Peeler {
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
@@ -55,8 +56,10 @@ namespace Peeler {
     private:
         void deferredLoad();
 
-    private:
+    public:
         void markDirty();
+
+    private:
         void updateWindowTitle();
 
     private: // UI
@@ -69,13 +72,17 @@ namespace Peeler {
 
     private:
         void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});
+
+    public:
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
 
+    private:
         void addDefaultSystems(Carrot::Scene& scene);
         void addEditingSystems();
         void removeEditingSystems();
 
+    public:
         void selectEntity(const Carrot::ECS::EntityID& entity, bool additive);
         void deselectAllEntities();
 
@@ -98,34 +105,39 @@ namespace Peeler {
         std::filesystem::path projectToLoad;
 
         Tools::EditorSettings settings;
-        Carrot::Render::Viewport& gameViewport;
-        Carrot::Render::FrameResource gameTexture;
 
+    public: // for layers
+        Carrot::Render::Viewport& gameViewport;
+        // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
+        Carrot::Render::Texture::Ref gameTextureRef;
+        std::vector<Carrot::ECS::EntityID> selectedIDs;
+
+    private:
         Carrot::Render::Texture playButtonIcon;
         Carrot::Render::Texture playActiveButtonIcon;
         Carrot::Render::Texture pauseButtonIcon;
         Carrot::Render::Texture pauseActiveButtonIcon;
         Carrot::Render::Texture stepButtonIcon;
         Carrot::Render::Texture stopButtonIcon;
-        Carrot::Render::Texture translateIcon;
-        Carrot::Render::Texture rotateIcon;
-        Carrot::Render::Texture scaleIcon;
 
-        // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
-        Carrot::Render::Texture::Ref gameTextureRef;
+        Carrot::Render::FrameResource gameTexture;
 
         GridRenderer gridRenderer;
 
+        std::vector<std::unique_ptr<ISceneViewLayer>> sceneViewLayersStack;
         ResourcePanel resourcePanel;
 
     private: // Scene manipulation
-        std::vector<Carrot::ECS::EntityID> selectedIDs;
         bool movingGameViewCamera = false;
 
         bool hasUnsavedChanges = false;
 
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
+
+    public:
         Carrot::Scene currentScene;
+
+    private:
         Carrot::Scene savedScene;
 
     private: // inputs

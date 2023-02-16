@@ -42,6 +42,8 @@
 #include "game_specific/ecs/PageComponent.h"
 #include "game_specific/ecs/CharacterControllerSystem.h"
 
+#include "layers/GizmosLayer.h"
+
 namespace Peeler {
 
     void Application::setupCamera(Carrot::Render::Context renderContext) {
@@ -504,117 +506,18 @@ namespace Peeler {
         gameViewport.setOffset(offset);
 
         ImGui::Image(gameTextureRef->getImguiID(), entireRegion);
+
         movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
-        auto& camera = gameViewport.getCamera();
-        glm::mat4 identityMatrix = glm::identity<glm::mat4>();
-        glm::mat4 cameraView = camera.computeViewMatrix();
-        glm::mat4 cameraProjection = camera.getProjectionMatrix();
-        cameraProjection[1][1] *= -1;
+        for (auto& pLayer : sceneViewLayersStack) {
+            pLayer->draw(renderContext, startX, startY);
 
-        ImGuizmo::SetOrthographic(false);
-        ImGuizmo::SetDrawlist();
-        ImGuizmo::SetRect(startX, startY, ImGui::GetWindowContentRegionMax().x, ImGui::GetWindowContentRegionMax().y);
-
-        float* cameraViewImGuizmo = glm::value_ptr(cameraView);
-        float* cameraProjectionImGuizmo = glm::value_ptr(cameraProjection);
-
-        bool usingGizmo = false;
-        if(selectedIDs.size() == 1) {
-            auto transformRef = currentScene.world.getComponent<Carrot::ECS::TransformComponent>(selectedIDs[0]);
-            if(transformRef) {
-                glm::mat4 transformMatrix = transformRef->toTransformMatrix();
-
-                static ImGuizmo::OPERATION gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
-
-                ImVec2 selectionWindowPos = ImVec2(startX, startY);
-
-                // some padding
-                selectionWindowPos.x += 10.0f;
-                selectionWindowPos.y += 10.0f;
-
-                ImGui::SetNextWindowPos(selectionWindowPos, ImGuiCond_Always);
-                ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking
-                        | ImGuiWindowFlags_NoTitleBar
-                        | ImGuiWindowFlags_NoCollapse
-                        | ImGuiWindowFlags_NoScrollbar
-                        | ImGuiWindowFlags_AlwaysAutoResize
-                ;
-                if(ImGui::Begin("##gizmo operation select window", nullptr, windowFlags)) {
-                    auto setupSelectedBg = [](bool selected) {
-                        if(selected) {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0.5,0.6));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0.5,0.8));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0.5,1.0));
-                        } else {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0,0,0.3,0.0));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0,0,0.3,0.3));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0,0,0.3,0.5));
-                        }
-                    };
-
-                    const float iconSize = 32.0f;
-
-                    setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::TRANSLATE);
-                    if(ImGui::ImageButton(translateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                        gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
-                    }
-                    ImGui::PopStyleColor(3);
-
-                    ImGui::SameLine();
-                    setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::ROTATE);
-                    if(ImGui::ImageButton(rotateIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                        gizmoOperation = ImGuizmo::OPERATION::ROTATE;
-                    }
-                    ImGui::PopStyleColor(3);
-
-                    ImGui::SameLine();
-                    setupSelectedBg(gizmoOperation == ImGuizmo::OPERATION::SCALE);
-                    if(ImGui::ImageButton(scaleIcon.getImguiID(), ImVec2(iconSize, iconSize))) {
-                        gizmoOperation = ImGuizmo::OPERATION::SCALE;
-                    }
-                    ImGui::PopStyleColor(3);
-                }
-                ImGui::End();
-
-                ImGuizmo::MODE gizmoMode = ImGuizmo::MODE::LOCAL;
-
-                bool used = ImGuizmo::Manipulate(
-                        cameraViewImGuizmo,
-                        cameraProjectionImGuizmo,
-                        gizmoOperation,
-                        gizmoMode,
-                        glm::value_ptr(transformMatrix)
-                );
-
-                if(used) {
-                    glm::mat4 parentMatrix = glm::identity<glm::mat4>();
-                    auto parentEntity = transformRef->getEntity().getParent();
-                    if(parentEntity) {
-                        auto parentTransform = parentEntity->getComponent<Carrot::ECS::TransformComponent>();
-                        if(parentTransform) {
-                            parentMatrix = parentTransform->toTransformMatrix();
-                        }
-                    }
-
-                    glm::mat4 localTransform = glm::inverse(parentMatrix) * transformMatrix;
-                    float translation[3] = {0.0f};
-                    float scale[3] = {0.0f};
-                    float rotation[3] = {0.0f};
-                    ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransform), translation, rotation, scale);
-
-                    transformRef->localTransform.position = glm::vec3(translation[0], translation[1], translation[2]);
-                    transformRef->localTransform.rotation = glm::quat(glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
-                    transformRef->localTransform.scale = glm::vec3(scale[0], scale[1], scale[2]);
-
-                    markDirty();
-                }
-
-                usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
+            if(!pLayer->showLayersBelow()) {
+                break;
             }
-        }
 
-        movingGameViewCamera &= !usingGizmo;
+            movingGameViewCamera &= pLayer->allowCameraMovement();
+        }
 
         if(!isPlaying) {
             if(movingGameViewCamera) {
@@ -625,23 +528,6 @@ namespace Peeler {
                 engine.ungrabCursor();
             } else if(engine.isGrabbingCursor()) {
                 movingGameViewCamera = true;
-            }
-        }
-
-        if(!usingGizmo && ImGui::IsItemClicked()) {
-            verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
-            const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
-            const auto& entityIDTexture = engine.getVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
-            glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
-            uv -= glm::vec2 { startX, startY };
-            uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };
-            if(uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
-                return;
-            glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
-            Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
-            if(currentScene.world.exists(uuid)) {
-                bool additive = ImGui::GetIO().KeyCtrl;
-                selectEntity(uuid, additive);
             }
         }
 
@@ -793,15 +679,14 @@ namespace Peeler {
         pauseActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button_paused.png"),
         stepButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/step_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
-        translateIcon(engine.getVulkanDriver(), "resources/textures/ui/translate.png"),
-        rotateIcon(engine.getVulkanDriver(), "resources/textures/ui/rotate.png"),
-        scaleIcon(engine.getVulkanDriver(), "resources/textures/ui/scale.png"),
         resourcePanel(*this)
     {
         NFD_Init();
 
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
+
+        sceneViewLayersStack.emplace_back(std::make_unique<GizmosLayer>(*this));
 
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));

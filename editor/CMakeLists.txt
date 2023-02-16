@@ -4,6 +4,8 @@ set(EditorSources
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}GridRenderer.cpp
 
+        ${EditorRoot}layers/GizmosLayer.cpp
+
         ${EditorRoot}panels/ResourcePanel.cpp
 
         ${EditorRoot}ecs/systems/CameraRenderer.cpp
