@@ -45,6 +45,7 @@
 #include "layers/GizmosLayer.h"
 
 namespace Peeler {
+    Application* Instance = nullptr;
 
     void Application::setupCamera(Carrot::Render::Context renderContext) {
         if(&renderContext.viewport == &gameViewport) {
@@ -509,15 +510,19 @@ namespace Peeler {
 
         movingGameViewCamera = ImGui::IsItemClicked(ImGuiMouseButton_Right);
 
-        for (auto& pLayer : sceneViewLayersStack) {
+        bool canPickEntity = true;
+        for (int j = sceneViewLayersStack.size()-1; j >= 0; j--) {
+            auto* pLayer = sceneViewLayersStack[j].get();
             pLayer->draw(renderContext, startX, startY);
+
+            canPickEntity &= pLayer->allowSceneEntityPicking();
+            movingGameViewCamera &= pLayer->allowCameraMovement();
 
             if(!pLayer->showLayersBelow()) {
                 break;
             }
-
-            movingGameViewCamera &= pLayer->allowCameraMovement();
         }
+        flushLayers();
 
         if(!isPlaying) {
             if(movingGameViewCamera) {
@@ -528,6 +533,23 @@ namespace Peeler {
                 engine.ungrabCursor();
             } else if(engine.isGrabbingCursor()) {
                 movingGameViewCamera = true;
+            }
+        }
+
+        if(canPickEntity && ImGui::IsItemClicked()) {
+            verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
+            const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
+            const auto& entityIDTexture = GetVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
+            glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+            uv -= glm::vec2 { startX, startY };
+            uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };
+            if(uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
+                return;
+            glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
+            Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
+            if(currentScene.world.exists(uuid)) {
+                bool additive = ImGui::GetIO().KeyCtrl;
+                selectEntity(uuid, additive);
             }
         }
 
@@ -566,6 +588,14 @@ namespace Peeler {
         stopSimulationRequested = true;
     }
 
+    bool Application::isCurrentlyPlaying() const {
+        return isPlaying;
+    }
+
+    bool Application::isCurrentlyPaused() const {
+        return isCurrentlyPlaying() && isPaused;
+    }
+
     void Application::performSimulationStop() {
         verify(stopSimulationRequested, "Don't call performSimulationStop directly!");
 
@@ -580,6 +610,34 @@ namespace Peeler {
         GetPhysics().pause();
         GetEngine().ungrabCursor();
         stopSimulationRequested = false;
+    }
+
+    void Application::popLayer() {
+        removeLayer(sceneViewLayersStack.back().get());
+    }
+
+    void Application::removeLayer(ISceneViewLayer* layer) {
+        std::size_t j = 0;
+        for (; j < sceneViewLayersStack.size(); ++j) {
+            auto& ptr = sceneViewLayersStack[j];
+            if(ptr.get() == layer) {
+                toDeleteLayers.emplace_back(j);
+                break;
+            }
+        }
+    }
+
+    void Application::flushLayers() {
+        std::size_t removedCount = 0;
+        for (int j = 0; j < toDeleteLayers.size(); ++j) {
+            auto index = toDeleteLayers[j];
+            index -= removedCount;
+            if(index < sceneViewLayersStack.size()) {
+                sceneViewLayersStack.erase(sceneViewLayersStack.begin() + index);
+                removedCount++;
+            }
+        }
+        toDeleteLayers.clear();
     }
 
     void Application::pauseSimulation() {
@@ -681,12 +739,13 @@ namespace Peeler {
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         resourcePanel(*this)
     {
+        Instance = this;
         NFD_Init();
 
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 
-        sceneViewLayersStack.emplace_back(std::make_unique<GizmosLayer>(*this));
+        pushLayer<GizmosLayer>();
 
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -787,6 +846,16 @@ namespace Peeler {
             }
         }
         currentScene.tick(frameTime);
+
+        for (int j = sceneViewLayersStack.size()-1; j >= 0; j--) {
+            auto* pLayer = sceneViewLayersStack[j].get();
+            pLayer->tick(frameTime);
+
+            if(!pLayer->showLayersBelow()) {
+                break;
+            }
+        }
+        flushLayers();
 
         if(movingGameViewCamera && !isPlaying) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),

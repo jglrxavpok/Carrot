@@ -19,8 +19,11 @@
 #include "layers/ISceneViewLayer.h"
 
 namespace Peeler {
+    extern Application* Instance;
+
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
     public:
+
         explicit Application(Carrot::Engine& engine);
 
         void setupCamera(Carrot::Render::Context renderContext) override;
@@ -86,7 +89,44 @@ namespace Peeler {
         void selectEntity(const Carrot::ECS::EntityID& entity, bool additive);
         void deselectAllEntities();
 
-    private: // simulation
+    public:
+        template<typename LayerType, typename... Args>
+        void pushLayer(Args&&... args) {
+            sceneViewLayersStack.emplace_back(std::make_unique<LayerType>(*this, std::forward<Args>(args)...));
+        }
+
+        template<typename LayerType>
+        bool hasLayer() {
+            for (auto& layer : sceneViewLayersStack) {
+                if(typeid(*layer) == typeid(LayerType)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        template<typename LayerType>
+        void removeLayer() {
+            for (auto& layer : sceneViewLayersStack) {
+                if(typeid(*layer) == typeid(LayerType)) {
+                    removeLayer(layer.get());
+                    break;
+                }
+            }
+        }
+
+        void popLayer();
+
+        /**
+         * Remove first occurrence of given layer inside layer stack
+         * @param layer
+         */
+        void removeLayer(ISceneViewLayer* layer);
+
+    private:
+        void flushLayers();
+
+    public: // simulation
         void pauseSimulation();
         void resumeSimulation();
 
@@ -94,6 +134,13 @@ namespace Peeler {
         void startSimulation();
         void stopSimulation();
 
+        // true iif during in game mode
+        bool isCurrentlyPlaying() const;
+
+        // true iif in game mode AND paused
+        bool isCurrentlyPaused() const;
+
+    private:
         // process the request, don't call mid-frame
         void performSimulationStart();
         void performSimulationStop();
@@ -125,6 +172,7 @@ namespace Peeler {
         GridRenderer gridRenderer;
 
         std::vector<std::unique_ptr<ISceneViewLayer>> sceneViewLayersStack;
+        std::vector<std::size_t> toDeleteLayers; // store for a single tick to avoid memory corruption after removing a layer
         ResourcePanel resourcePanel;
 
     private: // Scene manipulation

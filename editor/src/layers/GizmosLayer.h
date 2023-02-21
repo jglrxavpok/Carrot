@@ -17,6 +17,8 @@ namespace Peeler {
 
         bool showLayersBelow() const override;
 
+        bool allowSceneEntityPicking() const override;
+
         virtual void draw(const Carrot::Render::Context& renderContext, float startX, float startY) override final;
 
     private:

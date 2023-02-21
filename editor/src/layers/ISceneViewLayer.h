@@ -31,7 +31,17 @@ namespace Peeler {
          */
         virtual bool showLayersBelow() const { return true; }
 
+        /**
+         * Can the user select an entity with a left click inside the scene?
+         */
+        virtual bool allowSceneEntityPicking() const { return true; }
+
         virtual void draw(const Carrot::Render::Context& renderContext, float startX, float startY) = 0;
+
+        virtual void tick(double dt) {};
+
+    public:
+        void remove();
 
     protected:
         Application& editor;

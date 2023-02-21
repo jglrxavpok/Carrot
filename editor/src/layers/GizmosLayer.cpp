@@ -139,22 +139,9 @@ namespace Peeler {
                 usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
             }
         }
+    }
 
-        if(!usingGizmo && ImGui::IsItemClicked()) {
-            verify(editor.gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
-            const auto gbufferPass = editor.gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
-            const auto& entityIDTexture = GetVulkanDriver().getTextureRepository().get(gbufferPass.entityID, renderContext.lastSwapchainIndex);
-            glm::vec2 uv { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
-            uv -= glm::vec2 { startX, startY };
-            uv /= glm::vec2 { ImGui::GetWindowWidth(), ImGui::GetWindowHeight() };
-            if(uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
-                return;
-            glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
-            Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
-            if(editor.currentScene.world.exists(uuid)) {
-                bool additive = ImGui::GetIO().KeyCtrl;
-                editor.selectEntity(uuid, additive);
-            }
-        }
+    bool GizmosLayer::allowSceneEntityPicking() const {
+        return !usingGizmo;
     }
 } // Peeler
