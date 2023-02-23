@@ -23,8 +23,8 @@ namespace Carrot::Edition {
         epsilonClamp(rotDx);
         epsilonClamp(rotDy);
 
-        eulerAngles.x += rotDy * dt * xSensibility;
-        eulerAngles.z += rotDx * dt * ySensibility;
+        eulerAngles.x -= rotDy * dt * xSensibility;
+        eulerAngles.z -= rotDx * dt * ySensibility;
 
         glm::quat rotationQuat = glm::quat(eulerAngles);
         glm::vec3 movement { strafe * strafeSpeed, 0.0f, forward * forwardSpeed };
@@ -33,14 +33,14 @@ namespace Carrot::Edition {
     }
 
     void FreeCameraController::applyTo(const glm::vec2& viewportSize, Carrot::Camera& camera) const {
-        glm::quat rotationQuat = glm::quat(eulerAngles);
-        glm::mat4 transform = glm::translate(glm::identity<glm::mat4>(), position)
-                * glm::toMat4(rotationQuat);
+        auto modelRotation = glm::toMat4(glm::quat(eulerAngles));
+        auto transform = glm::translate(glm::mat4(1.0f), position) * modelRotation;
         glm::mat4 view = glm::inverse(transform);
 
         float aspectRatio = viewportSize.x / viewportSize.y;
 
         glm::mat4 projection = GetEngine().getConfiguration().runInVR ? glm::identity<glm::mat4>() : glm::perspective(fov, aspectRatio, zNear, zFar);
+        projection[1][1] *= -1;
 
         camera.setViewProjection(view, projection);
     }
