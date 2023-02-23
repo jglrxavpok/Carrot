@@ -5,7 +5,6 @@
 #pragma once
 #include <string>
 #include "engine/constants.h"
-#include "engine/vulkan/includes.h"
 
 namespace Carrot {
     class DebugNameable {

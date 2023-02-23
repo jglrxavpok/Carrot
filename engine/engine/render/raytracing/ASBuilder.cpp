@@ -3,7 +3,6 @@
 //
 
 #include "ASBuilder.h"
-#include <engine/vulkan/includes.h>
 #include <engine/render/resources/Mesh.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>

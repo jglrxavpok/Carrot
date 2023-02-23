@@ -15,7 +15,6 @@ namespace Carrot {
 
 #include <core/io/FileWatcher.h>
 #include <engine/Window.h>
-#include <engine/vulkan/includes.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
 #include "core/memory/NakedPtr.hpp"

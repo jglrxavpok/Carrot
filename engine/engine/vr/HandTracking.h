@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <engine/vr/includes.h>
 #include <core/utils/Lookup.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>

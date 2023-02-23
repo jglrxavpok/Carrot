@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "engine/vulkan/includes.h"
 #include <string>
 
 #ifdef AFTERMATH_ENABLE

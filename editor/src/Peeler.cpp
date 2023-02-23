@@ -300,9 +300,12 @@ namespace Peeler {
             if(ImGui::TreeNodeEx(title, nodeFlags, "%s", title)) {
                 nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
                 for(auto* system : systems) {
-                    const char* id = system->getName();
-                    ImGui::TreeNodeEx(system, nodeFlags, "%s", id);
-                    if(ImGui::BeginPopupContextItem(id)) {
+                    std::string id = system->getName();
+                    if(!system->shouldBeSerialized()) {
+                        id += " (Editor)";
+                    }
+                    ImGui::TreeNodeEx(system, nodeFlags, "%s", id.c_str());
+                    if(ImGui::BeginPopupContextItem(id.c_str())) {
                         if(ImGui::MenuItem("Remove##remove system")) {
                             toRemove = system;
                         }

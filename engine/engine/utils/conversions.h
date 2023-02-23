@@ -17,7 +17,6 @@
 #include <reactphysics3d/mathematics/Vector3.h>
 #include <reactphysics3d/mathematics/Quaternion.h>
 
-#include "engine/vr/includes.h"
 
 namespace Carrot {
     glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);

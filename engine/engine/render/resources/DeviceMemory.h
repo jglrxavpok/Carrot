@@ -9,7 +9,6 @@
 #include <source_location>
 #include <core/data/Hashes.h>
 #include <core/async/ParallelMap.hpp>
-#include "engine/vulkan/includes.h"
 #include "engine/vulkan/DebugNameable.h"
 
 namespace Carrot {

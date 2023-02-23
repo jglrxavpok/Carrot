@@ -5,7 +5,6 @@
 #pragma once
 
 #include <core/render/VertexTypes.h>
-#include "engine/vulkan/includes.h"
 
 namespace Carrot {
     std::vector<vk::VertexInputAttributeDescription> getVertexAttributeDescriptions();

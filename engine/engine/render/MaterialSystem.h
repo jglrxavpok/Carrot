@@ -9,7 +9,6 @@
 #include <queue>
 #include <vector>
 #include <unordered_set>
-#include "engine/vulkan/includes.h"
 #include "engine/render/RenderContext.h"
 #include "resources/Texture.h"
 #include <core/utils/WeakPool.hpp>

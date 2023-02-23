@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "engine/vulkan/includes.h"
 
 namespace Carrot {
     struct Specialization {

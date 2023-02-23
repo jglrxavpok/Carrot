@@ -5,7 +5,6 @@
 #pragma once
 
 #include <memory>
-#include "engine/vr/includes.h"
 #include "engine/vr/Session.h"
 #include "engine/Engine.h"
 

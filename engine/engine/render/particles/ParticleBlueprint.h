@@ -9,7 +9,6 @@
 #include <iostream>
 #include <memory>
 #include <core/expressions/Expressions.h>
-#include "engine/vulkan/includes.h"
 #include "engine/Engine.h"
 
 namespace Carrot {

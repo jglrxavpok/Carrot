@@ -3,8 +3,6 @@
 //
 #pragma once
 
-#include "engine/vulkan/includes.h"
-#include "engine/vr/includes.h"
 #include "engine/vr/HandTracking.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"

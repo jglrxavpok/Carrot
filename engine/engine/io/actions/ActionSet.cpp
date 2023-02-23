@@ -8,7 +8,6 @@
 #include "core/io/Logging.hpp"
 #include "engine/utils/conversions.h"
 
-#include <engine/vr/includes.h>
 
 namespace Carrot::IO {
 

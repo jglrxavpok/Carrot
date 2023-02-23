@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "engine/vulkan/includes.h"
 #include <glm/glm.hpp>
 
 #define DEBUG_GBUFFER_DISABLED 0

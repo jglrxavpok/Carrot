@@ -81,4 +81,9 @@ add_includes(Peeler)
 add_editor_defines(Peeler)
 target_link_libraries(Peeler PUBLIC Peeler-Lib)
 
+add_engine_precompiled_headers(Peeler-Lib)
+add_engine_precompiled_headers(Peeler-Renderdoc-Lib)
+add_engine_precompiled_headers(Peeler-ASAN-Lib)
+add_engine_precompiled_headers(Peeler)
+
 copy_all_resources() # game resources

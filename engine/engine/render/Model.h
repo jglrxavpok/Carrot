@@ -7,7 +7,6 @@
 #include <vector>
 #include <memory>
 #include <map>
-#include "engine/vulkan/includes.h"
 #include <assimp/scene.h>
 #include "engine/render/resources/VertexFormat.h"
 #include <core/render/Skeleton.h>

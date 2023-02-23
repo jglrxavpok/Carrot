@@ -3,7 +3,6 @@
 //
 
 #include <sol/sol.hpp>
-#include "engine/vulkan/includes.h"
 #include "engine/utils/Macros.h"
 
 namespace Carrot::Lua {

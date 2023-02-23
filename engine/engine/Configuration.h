@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "engine/vr/includes.h"
 
 #include "engine/constants.h"
 #include "core/io/Resource.h"

@@ -8,7 +8,6 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
-#include <engine/vulkan/includes.h>
 #include <engine/render/resources/BufferView.h>
 #include <engine/render/ComputePipeline.h>
 #include "ParticleBlueprint.h"
