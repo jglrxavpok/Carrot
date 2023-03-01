@@ -6,4 +6,5 @@
 
 namespace Carrot::Edition {
     const char* DragDropTypes::FilePath = "FILE_PATH";
+    const char* DragDropTypes::EntityUUID = "ENTITY_UUID";
 }

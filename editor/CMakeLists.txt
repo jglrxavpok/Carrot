@@ -3,6 +3,7 @@ set(EditorRoot "src/")
 set(EditorSources
         ${EditorRoot}Peeler.cpp
         ${EditorRoot}GridRenderer.cpp
+        ${EditorRoot}InspectorWidgets.cpp
 
         ${EditorRoot}layers/GizmosLayer.cpp
         ${EditorRoot}layers/ISceneViewLayer.cpp
@@ -37,6 +38,8 @@ set(EditorVertexShaders
 set(EditorShaders "")
 
 function(add_editor_defines Target)
+    target_include_directories("${Target}" PUBLIC ../thirdparty/ImGuizmo)
+    target_include_directories("${Target}" PUBLIC src/)
     target_compile_definitions("${Target}" PRIVATE "EDITOR=1") # Used by code to know whether we are inside the editor or not.
 endfunction()
 
@@ -73,7 +76,6 @@ target_link_libraries(Peeler-Renderdoc-Lib PUBLIC Engine-Base-Renderdoc)
 add_library(Peeler-ASAN-Lib ${EditorSources} ${ImGuizmoSources})
 add_editor_defines(Peeler-ASAN-Lib)
 target_link_libraries(Peeler-ASAN-Lib PUBLIC Engine-ASAN)
-target_include_directories(Peeler-ASAN-Lib PUBLIC ../thirdparty/ImGuizmo)
 make_asan_target(Peeler-ASAN-Lib)
 
 add_executable(Peeler ${EditorRoot}main.cpp)

@@ -28,25 +28,25 @@ namespace Carrot::ECS {
 
     template<typename Comp>
     Entity& Entity::addComponent(std::unique_ptr<Comp>&& component) {
-        auto& componentMap = worldRef.entityComponents[internalEntity];
+        auto& componentMap = getWorld().entityComponents[internalEntity];
         componentMap[component->getComponentTypeID()] = std::move(component);
-        worldRef.entitiesUpdated.push_back(internalEntity);
+        getWorld().entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 
     template<typename Comp, typename... Args>
     Entity& Entity::addComponent(Args&&... args) {
-        auto& componentMap = worldRef.entityComponents[internalEntity];
+        auto& componentMap = getWorld().entityComponents[internalEntity];
         componentMap[Comp::getID()] = std::make_unique<Comp>(*this, args...);
-        worldRef.entitiesUpdated.push_back(internalEntity);
+        getWorld().entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 
     template<typename Comp>
     Entity& Entity::removeComponent() {
-        auto& componentMap = worldRef.entityComponents[internalEntity];
+        auto& componentMap = getWorld().entityComponents[internalEntity];
         componentMap.erase(Comp::getID());
-        worldRef.entitiesUpdated.push_back(internalEntity);
+        getWorld().entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 
@@ -60,7 +60,7 @@ namespace Carrot::ECS {
 
     template<typename Comp>
     Memory::OptionalRef<Comp> Entity::getComponent() {
-        return worldRef.getComponent<Comp>(*this);
+        return getWorld().getComponent<Comp>(*this);
     }
 
     template<typename Component>

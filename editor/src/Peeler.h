@@ -65,13 +65,20 @@ namespace Peeler {
     private:
         void updateWindowTitle();
 
-    private: // UI
+    private: // internal UI
         void UIEditor(const Carrot::Render::Context& renderContext);
         void UIGameView(const Carrot::Render::Context& renderContext);
         void UIPlayBar(const Carrot::Render::Context& renderContext);
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UIInspector(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
+
+    public: // widgets
+
+        /**
+         * Returns true iif an entity was picked this frame. Stores the result in 'destination' if one was found
+         */
+        bool drawPickEntityWidget(const char* label, Carrot::ECS::Entity& destination);
 
     private:
         void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});
@@ -181,6 +188,7 @@ namespace Peeler {
         bool hasUnsavedChanges = false;
 
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
+        Carrot::UUID entityIDPickedThisFrame;
 
     public:
         Carrot::Scene currentScene;

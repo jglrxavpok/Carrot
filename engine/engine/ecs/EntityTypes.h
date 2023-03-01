@@ -22,12 +22,14 @@ namespace Carrot::ECS {
 
     /// Wrapper struct to allow easy addition of components. This does NOT hold the components.
     struct Entity {
-        Entity(EntityID ent, World& worldRef): internalEntity(ent), worldRef(worldRef) {}
+        Entity() = default;
+
+        Entity(EntityID ent, World& worldRef): internalEntity(ent), worldRef(&worldRef) {}
 
         Entity(const Entity& toCopy): internalEntity(toCopy.internalEntity), worldRef(toCopy.worldRef) {}
 
         Entity& operator=(const Entity& toCopy) {
-            assert(&worldRef == &toCopy.worldRef);
+            worldRef = toCopy.worldRef;
             internalEntity = toCopy.internalEntity;
             return *this;
         }
@@ -71,8 +73,8 @@ namespace Carrot::ECS {
 
         void setParent(std::optional<Entity> parent);
 
-        World& getWorld() { return worldRef; }
-        const World& getWorld() const { return worldRef; }
+        World& getWorld() { return *worldRef; }
+        const World& getWorld() const { return *worldRef; }
 
         operator EntityID() const {
             return internalEntity;
@@ -94,8 +96,8 @@ namespace Carrot::ECS {
         void remove();
 
     private:
-        EntityID internalEntity;
-        World& worldRef;
+        EntityID internalEntity = Carrot::UUID::null();
+        World* worldRef = nullptr;
 
         friend class World;
     };

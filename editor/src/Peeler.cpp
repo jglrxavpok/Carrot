@@ -199,6 +199,12 @@ namespace Peeler {
         }
         ImGui::End();
 
+        // all UI has had an opportunity to use this
+        if(entityIDPickedThisFrame != Carrot::UUID::null()) {
+            bool additive = ImGui::GetIO().KeyCtrl;
+            selectEntity(entityIDPickedThisFrame, additive);
+        }
+
         if(wantsToLoadProject && projectToLoad == EmptyProject) {
             static const char* newProjectModalID = "New project";
             ImGui::OpenPopup(newProjectModalID);
@@ -461,10 +467,23 @@ namespace Peeler {
                 }
             };
 
+            auto dragAndDrop = [&]() {
+                bool dragging = ImGui::BeginDragDropSource();
+                if(dragging) {
+                    ImGui::Text("%s", entity.getName().c_str());
+                    ImGui::SetDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID, &entity.getID(), sizeof(Carrot::ECS::EntityID));
+                    ImGui::EndDragDropSource();
+                }
+
+                return dragging;
+            };
+
             if(!children.empty()) {
                 if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str())) {
+                    bool dragging = dragAndDrop();
+
                     addChildMenu();
-                    if(ImGui::IsItemClicked()) {
+                    if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                         bool additive = ImGui::GetIO().KeyCtrl;
                         selectEntity(entity.getID(), additive);
                     }
@@ -479,8 +498,10 @@ namespace Peeler {
                 nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
                 ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
 
+                bool dragging = dragAndDrop();
+
                 addChildMenu();
-                if(ImGui::IsItemClicked()) {
+                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                     bool additive = ImGui::GetIO().KeyCtrl;
                     selectEntity(entity.getID(), additive);
                 }
@@ -539,6 +560,7 @@ namespace Peeler {
             }
         }
 
+        entityIDPickedThisFrame = Carrot::UUID::null();
         if(canPickEntity && ImGui::IsItemClicked()) {
             verify(gameViewport.getRenderGraph() != nullptr, "No render graph for game viewport?");
             const auto gbufferPass = gameViewport.getRenderGraph()->getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
@@ -551,8 +573,7 @@ namespace Peeler {
             glm::vec<4, std::uint32_t> sample = entityIDTexture.sampleUVec4(uv.x, uv.y);
             Carrot::UUID uuid { sample[0], sample[1], sample[2], sample[3] };
             if(currentScene.world.exists(uuid)) {
-                bool additive = ImGui::GetIO().KeyCtrl;
-                selectEntity(uuid, additive);
+                entityIDPickedThisFrame = uuid; // deferred because the inspector can have a widget to select an entity running
             }
         }
 

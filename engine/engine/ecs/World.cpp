@@ -24,48 +24,48 @@ namespace Carrot::ECS {
     }
 
     Entity& Entity::addTag(Tags tag) {
-        worldRef.entityTags[internalEntity] |= tag;
+        getWorld().entityTags[internalEntity] |= tag;
         return *this;
     }
 
     Tags Entity::getTags() const {
-        return worldRef.getTags(*this);
+        return getWorld().getTags(*this);
     }
 
     std::optional<Entity> Entity::getParent() {
-        return worldRef.getParent(*this);
+        return getWorld().getParent(*this);
     }
 
     std::optional<const Entity> Entity::getParent() const {
-        return worldRef.getParent(*this);
+        return getWorld().getParent(*this);
     }
 
     std::optional<Entity> Entity::getNamedChild(std::string_view name, ShouldRecurse recurse) {
-        return worldRef.getNamedChild(name, *this, recurse);
+        return getWorld().getNamedChild(name, *this, recurse);
     }
 
     std::optional<const Entity> Entity::getNamedChild(std::string_view name, ShouldRecurse recurse) const {
-        return worldRef.getNamedChild(name, *this, recurse);
+        return getWorld().getNamedChild(name, *this, recurse);
     }
 
     void Entity::setParent(std::optional<Entity> parent) {
-        worldRef.setParent(*this, parent);
+        getWorld().setParent(*this, parent);
     }
 
     std::string_view Entity::getName() const {
-        return worldRef.getName(*this);
+        return getWorld().getName(*this);
     }
 
     std::string& Entity::getName() {
-        return worldRef.getName(*this);
+        return getWorld().getName(*this);
     }
 
     void Entity::updateName(std::string_view name) {
-        worldRef.entityNames[internalEntity] = name;
+        getWorld().entityNames[internalEntity] = name;
     }
 
     void Entity::remove() {
-        worldRef.removeEntity(*this);
+        getWorld().removeEntity(*this);
     }
 
     Entity::operator bool() const {
@@ -73,15 +73,15 @@ namespace Carrot::ECS {
     }
 
     bool Entity::exists() const {
-        return worldRef.exists(internalEntity);
+        return getWorld().exists(internalEntity);
     }
 
     std::vector<Component*> Entity::getAllComponents() const {
-        return worldRef.getAllComponents(*this);
+        return getWorld().getAllComponents(*this);
     }
 
     Memory::OptionalRef<Component> Entity::getComponent(ComponentID component) const {
-        return worldRef.getComponent(*this, component);
+        return getWorld().getComponent(*this, component);
     }
 
     Entity& Entity::removeComponent(Component& component) {
@@ -89,14 +89,14 @@ namespace Carrot::ECS {
     }
 
     Entity& Entity::removeComponent(const ComponentID& componentID) {
-        auto& componentMap = worldRef.entityComponents[internalEntity];
+        auto& componentMap = getWorld().entityComponents[internalEntity];
         componentMap.erase(componentID);
-        worldRef.entitiesUpdated.push_back(internalEntity);
+        getWorld().entitiesUpdated.push_back(internalEntity);
         return *this;
     }
 
     Signature Entity::getSignature() const {
-        return worldRef.getSignature(*this);
+        return getWorld().getSignature(*this);
     }
 
     World::World() {}

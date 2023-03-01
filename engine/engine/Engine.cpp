@@ -261,8 +261,8 @@ void Carrot::Engine::pollGamepads() {
             }
 
             // Update axis states
-            for(int axisID = 0; axisID <= GLFW_GAMEPAD_BUTTON_LAST; axisID++) {
-                if(state.axes[axisID] != prevState.axes[axisID]) {
+            for(int axisID = 0; axisID <= GLFW_GAMEPAD_AXIS_LAST; axisID++) {
+                 if(state.axes[axisID] != prevState.axes[axisID]) {
                     onGamepadAxisChange(joystickID, axisID, state.axes[axisID], prevState.axes[axisID]);
 
                     for(auto vec2Type = static_cast<std::size_t>(Carrot::IO::GameInputVectorType::First); vec2Type < static_cast<std::size_t>(Carrot::IO::GameInputVectorType::Count); vec2Type++) {
