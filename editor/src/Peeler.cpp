@@ -475,6 +475,20 @@ namespace Peeler {
                     ImGui::EndDragDropSource();
                 }
 
+                if(ImGui::BeginDragDropTarget()) {
+                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID)) {
+                        verify(payload->DataSize == sizeof(Carrot::UUID), "Invalid payload for EntityUUID");
+                        static_assert(sizeof(Carrot::ECS::EntityID) == sizeof(Carrot::UUID), "Assumes EntityID = UUID");
+                        std::uint32_t* data = reinterpret_cast<std::uint32_t*>(payload->Data);
+                        Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
+
+                        if(currentScene.world.exists(uuid)) {
+                            changeEntityParent(uuid, entity/*new parent*/);
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
                 return dragging;
             };
 
@@ -483,7 +497,7 @@ namespace Peeler {
                     bool dragging = dragAndDrop();
 
                     addChildMenu();
-                    if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
                         bool additive = ImGui::GetIO().KeyCtrl;
                         selectEntity(entity.getID(), additive);
                     }
@@ -501,7 +515,7 @@ namespace Peeler {
                 bool dragging = dragAndDrop();
 
                 addChildMenu();
-                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
                     bool additive = ImGui::GetIO().KeyCtrl;
                     selectEntity(entity.getID(), additive);
                 }
@@ -510,6 +524,26 @@ namespace Peeler {
         for(auto& entityObj : currentScene.world.getAllEntities()) {
             if( ! currentScene.world.getParent(entityObj)) {
                 showEntityTree(entityObj);
+            }
+        }
+
+        if(auto* payload = ImGui::GetDragDropPayload()) {
+            if(payload->IsDataType(Carrot::Edition::DragDropTypes::EntityUUID)) {
+                ImGui::TextDisabled("Make it a root entity");
+
+                if(ImGui::BeginDragDropTarget()) {
+                    if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::EntityUUID)) {
+                        verify(payload->DataSize == sizeof(Carrot::UUID), "Invalid payload for EntityUUID");
+                        static_assert(sizeof(Carrot::ECS::EntityID) == sizeof(Carrot::UUID), "Assumes EntityID = UUID");
+                        std::uint32_t* data = reinterpret_cast<std::uint32_t*>(payload->Data);
+                        Carrot::UUID uuid{data[0], data[1], data[2], data[3]};
+
+                        if(currentScene.world.exists(uuid)) {
+                            changeEntityParent(uuid, std::optional<Carrot::ECS::Entity>{} /*no parent*/);
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
             }
         }
     }
@@ -1091,6 +1125,26 @@ namespace Peeler {
 
         markDirty();
         return entity;
+    }
+
+    void Application::changeEntityParent(const Carrot::ECS::EntityID& toChangeID, std::optional<Carrot::ECS::Entity> newParent) {
+        auto entityToChange = currentScene.world.wrap(toChangeID);
+        auto oldParent = entityToChange.getParent();
+
+        // special handling for transform component
+        Carrot::Math::Transform globalTransform;
+        auto transformComp = entityToChange.getComponent<Carrot::ECS::TransformComponent>();
+        if(transformComp.hasValue()) {
+            globalTransform = transformComp->computeGlobalReactPhysicsTransform();
+            globalTransform.scale = transformComp->computeFinalScale();
+        }
+
+        entityToChange.setParent(newParent);
+
+        // special handling for transform component
+        if(transformComp.hasValue()) {
+            transformComp->setGlobalTransform(globalTransform);
+        }
     }
 
     void Application::duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent) {

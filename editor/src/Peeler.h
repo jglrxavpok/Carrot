@@ -55,6 +55,7 @@ namespace Peeler {
 
     public:
         Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
+        void changeEntityParent(const Carrot::ECS::EntityID& entityToChange, std::optional<Carrot::ECS::Entity> newParent);
 
     private:
         void deferredLoad();
