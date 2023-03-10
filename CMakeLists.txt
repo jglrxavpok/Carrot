@@ -42,6 +42,7 @@ include(FetchContent)
 find_package(Vulkan REQUIRED)
 
 find_package(NsightAftermath)
+find_package(MonoNETLibraries)
 if(NsightAftermath_FOUND)
     message("Found Aftermath SDK")
     set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} NsightAftermath::NsightAftermath)
@@ -51,6 +52,12 @@ if(NsightAftermath_FOUND)
     get_filename_component(AFTERMATH_LIB_PATH ${NsightAftermath_LIBRARIES} PATH)
     set(DLL_PATH "${AFTERMATH_LIB_PATH}/${AFTERMATH_LIB_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
     file(COPY ${DLL_PATH} DESTINATION "${CMAKE_BINARY_DIR}")
+endif()
+
+if(MonoNETLibraries_FOUND)
+    file(COPY "${MonoNETLibraries_PATH}/" DESTINATION "${CMAKE_BINARY_DIR}/monolib")
+else()
+    message(Missing Mono .NET libraries.)
 endif()
 
 

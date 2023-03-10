@@ -32,9 +32,10 @@ add_executable(
 add_executable(
         Core-Tests
         core/Coroutines.cpp
+        core/Counters.cpp
+        core/CSharpScripting.cpp
         core/FileWatching.cpp
         core/Lookup.cpp
-        core/Counters.cpp
         core/Paths.cpp
         core/VFS.cpp
 )

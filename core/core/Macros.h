@@ -38,6 +38,8 @@ struct DeferredCleanup {
     }
 };
 
-#define CLEANUP(x) DeferredCleanup _cleanup{.cleanup = [&]() { x; }}
+#define MERGE(x, y) x##y
+#define CLEANUP_HELPER(x,y) DeferredCleanup MERGE(_cleanup, y) {.cleanup = [&]() { x; }}
+#define CLEANUP(x) CLEANUP_HELPER(x, __COUNTER__)
 
 #define GetVFS() (*Carrot::IO::Resource::vfsToUse)

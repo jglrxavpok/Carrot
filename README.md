@@ -19,6 +19,7 @@ Don't expect support for the moment.
 ### What you need to install
 * `Vulkan`: Graphics API. I currently use the 1.2.170.0 LunarG SDK.
 * `Lua`: LuaJIT and Vanilla Lua are both supported by sol3 (C++ lib for Lua support).
+* `Mono`: Carrot engine uses Mono to run C# code. Using mono-6.12.0.182 at the time of writing
 
 ### Thirdparty libraries
 * `Vulkan`: Graphics API. I currently use the 1.2.170.0 LunarG SDK.
@@ -36,6 +37,7 @@ Don't expect support for the moment.
 * `Tracy`: Profiler.
 * `stb_image`, `stb_image_write`, `stb_truetype`, `stb_vorbis`. Various single-file headers
 * `ImGuizmo`: Guizmo lib for Dear ImGui. Used by the Peeler editor.
+* `Mono`: C# runtime
 
 ## Some of its features
 - Vulkan renderer
