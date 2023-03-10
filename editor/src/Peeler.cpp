@@ -84,9 +84,6 @@ namespace Peeler {
                 performSimulationStart();
             }
 
-            auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
-            cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
-
             currentScene.onFrame(renderContext);
 
             if(!isPlaying) {
@@ -225,6 +222,7 @@ namespace Peeler {
                             .task = Carrot::Async::AsTask<void>([=]() {
                                 deferredLoad();
                                 std::filesystem::path projectFolder = projectPath;
+                                projectFolder /= projectName;
                                 std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
 
                                 settings.currentProject = projectFile;
@@ -953,7 +951,14 @@ namespace Peeler {
         }
         GetVFS().addRoot("game", std::filesystem::absolute(projectToLoad).parent_path());
         rapidjson::Document description;
-        description.Parse(Carrot::IO::readFileAsText(projectToLoad.string()).c_str());
+        try {
+            description.Parse(Carrot::IO::readFileAsText(projectToLoad.string()).c_str());
+        } catch(std::runtime_error& e) {
+            Carrot::Log::error("Failed to load project %s: %s", Carrot::toString(projectToLoad.u8string().c_str()).c_str(), e.what());
+            projectToLoad = EmptyProject;
+            deferredLoad();
+            return;
+        }
 
         rapidjson::Document scene;
         {
@@ -1027,6 +1032,10 @@ namespace Peeler {
             sceneData.SetObject();
 
             currentScene.serialise(sceneData);
+
+            if(!GetVFS().hasRoot("game")) {
+                GetVFS().addRoot("game", path.parent_path());
+            }
 
             if(scenePath.isGeneric()) {
                 scenePath = Carrot::IO::VFS::Path("game", scenePath.getPath());

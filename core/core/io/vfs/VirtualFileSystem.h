@@ -96,6 +96,8 @@ namespace Carrot::IO {
         ///  Identifier must also not exist already
         void addRoot(std::string_view identifier, const std::filesystem::path& root);
 
+        bool hasRoot(std::string_view identifier) const;
+
         /// Attemps to remove a given root from the VFS. Returns true if a root with the given identifier was removed.
         bool removeRoot(std::string_view identifier);
 

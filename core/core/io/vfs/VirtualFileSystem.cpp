@@ -35,6 +35,15 @@ namespace Carrot::IO {
         rootPath = root;
     }
 
+    bool VirtualFileSystem::hasRoot(std::string_view identifier) const {
+        auto snapshot = roots.snapshot();
+        for(const auto& [rootID, _] : snapshot) {
+            if(rootID == identifier)
+                return true;
+        }
+        return false;
+    }
+
     bool VirtualFileSystem::removeRoot(std::string_view identifier) {
         return roots.remove(std::string(identifier));
     }
