@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 07/03/2023.
 //
 
-#include "Module.h"
+#include "CSAssembly.h"
 #include <core/utils/Assert.h>
 #include <core/Macros.h>
 #include <core/io/Logging.hpp>
@@ -17,15 +17,22 @@
 #include <cstdint>
 
 namespace Carrot::Scripting {
-    Module::Module(MonoDomain* appDomain, MonoAssembly* assembly): appDomain(appDomain), assembly(assembly) {
-
+    CSAssembly::CSAssembly(MonoDomain* appDomain, MonoAssembly* assembly): appDomain(appDomain), assembly(assembly) {
+        image = mono_assembly_get_image(assembly);
     }
 
-    Module::~Module() {
-        mono_assembly_close(assembly);
+    CSAssembly::CSAssembly(MonoDomain* appDomain, MonoImage* image): appDomain(appDomain), assembly(nullptr), image(image) {
+        verify(image != nullptr, "image == nullptr!");
     }
 
-    int Module::executeMain(std::span<std::string> arguments) {
+    CSAssembly::~CSAssembly() {
+        if(assembly) {
+            mono_assembly_close(assembly);
+        }
+    }
+
+    int CSAssembly::executeMain(std::span<std::string> arguments) {
+        verify(assembly, "Cannot call main on this CSAssembly: not loaded through MonoAssembly");
         std::vector<char*> argv;
         argv.reserve(arguments.size()+1);
 
@@ -40,8 +47,7 @@ namespace Carrot::Scripting {
         return mono_jit_exec(appDomain, assembly, argv.size(), argv.data());
     }
 
-    void Module::dumpTypes() {
-        MonoImage* image = mono_assembly_get_image(assembly);
+    void CSAssembly::dumpTypes() {
         const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(image, MONO_TABLE_TYPEDEF);
         std::int32_t typeCount = mono_table_info_get_rows(typeDefinitionTable);
 
@@ -56,46 +62,40 @@ namespace Carrot::Scripting {
         }
     }
 
-    MonoObject* Module::staticInvoke(const std::string& namespaceName, const std::string& className,
-                                     const std::string& methodName,
-                                     std::span<void*> args) {
-        MonoClass* clazz = findClass(namespaceName, className);
-        verify(clazz, Carrot::sprintf("Could not find class %s.%s", namespaceName.c_str(), className.c_str()));
-
-        MonoMethod* method = findMethod(clazz, methodName, args.size());
-
-        verify(method, Carrot::sprintf("Could not find method %s with %llu arguments in class '%s.%s'", methodName.c_str(), args.size(), namespaceName.c_str(), className.c_str()));
-
-        return mono_runtime_invoke(method, nullptr, args.data(), nullptr); // TODO: exception handling
-    }
-
-    MonoClass* Module::findClass(const std::string& namespaceName, const std::string& className) {
+    CSClass* CSAssembly::findClass(const std::string& namespaceName, const std::string& className) {
         ClassKey key { namespaceName, className };
         auto it = classCache.find(key);
         if(it != classCache.end()) {
-            return it->second;
+            return &it->second;
         }
 
-        auto image = mono_assembly_get_image(assembly);
         MonoClass* clazz = mono_class_from_name(image, namespaceName.c_str(), className.c_str());
-        classCache[key] = clazz;
-        return clazz;
+        if(!clazz) {
+            return nullptr;
+        }
+        auto [newIt, inserted] = classCache.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple(appDomain, clazz));
+        return &newIt->second;
     }
 
-    MonoMethod* Module::findMethod(MonoClass* clazz, const std::string& methodName) {
-        return findMethod(clazz, methodName, -1);
-    }
+    std::vector<CSClass*> CSAssembly::findSubclasses(const CSClass& parentClass) {
+        const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(image, MONO_TABLE_TYPEDEF);
+        std::int32_t typeCount = mono_table_info_get_rows(typeDefinitionTable);
 
-    MonoMethod* Module::findMethod(MonoClass* clazz, const std::string& methodName, int parameterCount) {
-        MethodKey key { clazz, methodName, parameterCount };
-        auto it = methodCache.find(key);
-        if(it != methodCache.end()) {
-            return it->second;
+        std::vector<CSClass*> subclasses;
+        for (std::int32_t i = 0; i < typeCount; ++i) {
+            std::uint32_t cols[MONO_TYPEDEF_SIZE];
+            mono_metadata_decode_row(typeDefinitionTable, i, cols, MONO_TYPEDEF_SIZE);
+
+            const char* nameSpace = mono_metadata_string_heap(image, cols[MONO_TYPEDEF_NAMESPACE]);
+            const char* name = mono_metadata_string_heap(image, cols[MONO_TYPEDEF_NAME]);
+
+            CSClass* clazz = findClass(nameSpace, name);
+            if(clazz->isSubclassOf(parentClass)) {
+                subclasses.push_back(clazz);
+            }
         }
 
-        MonoMethod* method = mono_class_get_method_from_name(clazz, methodName.c_str(), parameterCount);
-        methodCache[key] = method;
-        return method;
+        return subclasses;
     }
 
 } // Carrot::Scripting

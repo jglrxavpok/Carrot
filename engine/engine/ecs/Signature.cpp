@@ -6,3 +6,9 @@
 
 std::unordered_map<Carrot::ComponentID, std::size_t> Carrot::Signature::hash2index{};
 std::mutex Carrot::Signature::mappingAccess{};
+
+namespace Carrot {
+    void Signature::clear() {
+        components.reset();
+    }
+}

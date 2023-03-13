@@ -59,6 +59,8 @@ namespace Carrot {
             components[index] = true;
         }
 
+        void clear();
+
         Signature operator&(const Carrot::Signature& rhs) const {
             Signature result{};
             result.components = components & rhs.components;

@@ -37,9 +37,14 @@ namespace Carrot::ECS {
         virtual void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
         virtual void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
 
-        void onEntitiesAdded(const std::vector<EntityID>& entities);
-        void onEntitiesRemoved(const std::vector<EntityID>& entities);
-        void onEntitiesUpdated(const std::vector<EntityID>& entities);
+        virtual void onEntitiesAdded(const std::vector<EntityID>& entities);
+        virtual void onEntitiesRemoved(const std::vector<EntityID>& entities);
+
+        /**
+         * Called when entities have components added to or removed from them, while they were already active for at least a tick
+         * @param entities
+         */
+        virtual void onEntitiesUpdated(const std::vector<EntityID>& entities);
 
         virtual void reload() {};
         virtual void unload() {};

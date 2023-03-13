@@ -1,4 +1,4 @@
-#include "test_game_main.inc"
+#include "test_game_main.cpp"
 #include <iostream>
 #include <engine/scripting/LuaScript.h>
 #include <glm/glm.hpp>

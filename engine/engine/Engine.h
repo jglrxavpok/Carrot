@@ -34,6 +34,7 @@ namespace Carrot {
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
 #include <core/io/vfs/VirtualFileSystem.h>
+#include <core/scripting/csharp/forward.h>
 
 namespace sol {
     class state;
@@ -375,6 +376,8 @@ namespace Carrot {
         void waitForFrameTasks();
 
     public:
+        Scripting::ScriptingEngine& getCSScriptEngine();
+
         static void registerUsertype(sol::state& destination);
 
     private:
@@ -397,6 +400,8 @@ namespace Carrot {
 
         std::unique_ptr<VR::Interface> vrInterface = nullptr;
         std::unique_ptr<VR::Session> vrSession = nullptr;
+        std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
+        std::shared_ptr<Scripting::CSAssembly> baseModule = nullptr;
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
@@ -453,6 +458,9 @@ namespace Carrot {
 
         /// Init Vulkan for rendering
         void initVulkan();
+
+        /// Init Scripting engine and load base Carrot.dll
+        void initScripting();
 
         /// Init ingame console
         void initConsole();

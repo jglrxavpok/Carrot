@@ -34,6 +34,11 @@ namespace Carrot {
             creationFunctions[Type::getStringRepresentation()] = create;
         }
 
+        void add(const ID& id, const DeserialiseFunction& deserialise, const CreateNewFunction& create) {
+            deserialisers[id] = deserialise;
+            creationFunctions[id] = create;
+        }
+
         template<typename Type> requires IsIdentifiable<Type>
         void addUniquePtrBased() {
             return add<Type>([](const rapidjson::Value& json, Param... params) {

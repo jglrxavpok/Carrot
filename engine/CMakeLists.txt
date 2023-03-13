@@ -51,6 +51,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
         ${EngineRoot}ecs/systems/CameraSystem.cpp
+        ${EngineRoot}ecs/systems/CSharpLogicSystem.cpp
         ${EngineRoot}ecs/systems/LuaSystems.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/System.cpp
@@ -124,6 +125,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/bindings/glm.cpp
         ${EngineRoot}scripting/bindings/Engine.cpp
 
+        ${EngineRoot}scripting/CSharpBindings.cpp
         ${EngineRoot}scripting/bindings/ecs/ECS.cpp
 
         ${EngineRoot}scripting/bindings/io/InputSystem.cpp
@@ -320,3 +322,12 @@ endfunction()
 add_engine_precompiled_headers(Engine-Base)
 add_engine_precompiled_headers(Engine-Base-Renderdoc)
 add_engine_precompiled_headers(Engine-ASAN)
+
+# TODO: move to post-build
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")
+else()
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.dll")
+endif()
+
+file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")

@@ -26,8 +26,11 @@ enable_testing()
 
 add_executable(
         Engine-Tests
-        engine/test_game_main.inc
+        engine/CSharpECS.cpp
+        engine/test_game_main.cpp
 )
+add_core_includes(Engine-Tests)
+add_engine_precompiled_headers(Engine-Tests)
 
 add_executable(
         Core-Tests

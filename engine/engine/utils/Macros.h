@@ -16,6 +16,7 @@
 #define GetCapabilities() GetEngine().getCapabilities()
 #define GetConfiguration() GetEngine().getConfiguration()
 #define GetTaskScheduler() GetEngine().getTaskScheduler()
+#define GetCSharpScripting() GetEngine().getCSScriptEngine()
 
 #undef GetVFS
 #define GetVFS() GetEngine().getVFS()

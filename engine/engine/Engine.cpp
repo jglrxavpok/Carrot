@@ -36,6 +36,11 @@
 #include "engine/io/actions/ActionSet.h"
 #include "core/io/Logging.hpp"
 #include "core/io/FileSystemOS.h"
+#include <core/scripting/csharp/Engine.h>
+#include <core/scripting/csharp/CSAssembly.h>
+#include <core/scripting/csharp/CSClass.h>
+#include <core/scripting/csharp/CSMethod.h>
+#include <core/scripting/csharp/CSObject.h>
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -512,10 +517,29 @@ void Carrot::Engine::initVulkan() {
 
     createCameras();
 
+    initScripting();
     initECS();
     initGame();
 
     createSynchronizationObjects();
+}
+
+namespace Carrot {
+    void registerCSBindings(Scripting::ScriptingEngine& engine);
+}
+
+void Carrot::Engine::initScripting() {
+    scriptingEngine = std::make_unique<Scripting::ScriptingEngine>();
+    const Carrot::IO::VFS::Path dllPath = "engine://scripting/Carrot.dll";
+    baseModule = scriptingEngine->loadAssembly(dllPath);
+
+    registerCSBindings(*scriptingEngine);
+
+    auto* baseClass = baseModule->findClass("Carrot", "Carrot");
+    verify(baseClass, Carrot::sprintf("Missing class Carrot.Carrot inside %s", dllPath.toString().c_str()));
+    auto* method = baseClass->findMethod("EngineInit");
+    verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", dllPath.toString().c_str()));
+    method->staticInvoke({});
 }
 
 void Carrot::Engine::initECS() {
@@ -1315,6 +1339,10 @@ void Carrot::Engine::ungrabCursor() {
 
 void Carrot::Engine::changeTickRate(std::uint32_t tickRate) {
     timeBetweenUpdates = std::chrono::duration<float>(1.0f / tickRate);
+}
+
+Carrot::Scripting::ScriptingEngine& Carrot::Engine::getCSScriptEngine() {
+    return *scriptingEngine;
 }
 
 #ifdef TRACY_ENABLE

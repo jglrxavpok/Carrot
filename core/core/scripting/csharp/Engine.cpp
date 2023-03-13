@@ -9,7 +9,7 @@
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/image.h>
 #include <mono/metadata/environment.h>
-#include <core/scripting/csharp/Module.h>
+#include <core/scripting/csharp/CSAssembly.h>
 #include <mutex>
 
 namespace fs = std::filesystem;
@@ -41,11 +41,11 @@ namespace Carrot::Scripting {
             appDomain = mono_domain_create_appdomain(domainName.data(), nullptr);
             mono_domain_set(appDomain, true);
 
-            // TODO: register internal calls somewhere else
-            mono_add_internal_call("DotNetCpp_DotNetProject.Test::SomeCppFunction", SomeCppFunction);
-
             mono_thread_set_main(mono_thread_current());
         }
+
+        mscorlib = std::shared_ptr<CSAssembly>(new CSAssembly(appDomain, mono_get_corlib()));
+        loadedAssemblies.push_back(mscorlib);
         //mono_jit_thread_attach(rootDomain);
     }
 
@@ -62,7 +62,7 @@ namespace Carrot::Scripting {
         //mono_jit_cleanup(rootDomain);
     }
 
-    std::unique_ptr<Module> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input) {
+    std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input) {
         auto bytes = input.readAll();
 
         MonoImageOpenStatus status;
@@ -80,7 +80,9 @@ namespace Carrot::Scripting {
             return nullptr;
         }
 
-        return std::unique_ptr<Module>(new Module(appDomain, assembly));
+        auto ptr = std::shared_ptr<CSAssembly>(new CSAssembly(appDomain, assembly));
+        loadedAssemblies.push_back(ptr);
+        return ptr;
     }
 
     int ScriptingEngine::runExecutable(const Carrot::IO::Resource& exe, std::span<std::string> arguments) {
@@ -93,7 +95,7 @@ namespace Carrot::Scripting {
         return module->executeMain(arguments);
     }
 
-    bool ScriptingEngine::compileFiles(const fs::path& outputAssembly, std::span<fs::path> sourceFiles) {
+    bool ScriptingEngine::compileFiles(const fs::path& outputAssembly, std::span<fs::path> sourceFiles, std::span<fs::path> referenceAssemblies) {
         const char* sdkPath = std::getenv("MONO_SDK_PATH");
         if(sdkPath == nullptr) {
             Carrot::Log::error("No Mono SDK found, make sure the 'MONO_SDK_PATH' environment variable is set");
@@ -126,6 +128,13 @@ namespace Carrot::Scripting {
             command += Carrot::toString(p.u8string());
             command += "\"";
         }
+
+        for(const auto& p : referenceAssemblies) {
+            command += " -reference:";
+            command += "\"";
+            command += Carrot::toString(p.u8string());
+            command += "\"";
+        }
         command += " -target:library";
 
         command += " -out:";
@@ -144,5 +153,17 @@ namespace Carrot::Scripting {
         }
 
         return true;
+    }
+
+    CSClass* ScriptingEngine::findClass(const std::string& namespaceName, const std::string& className) {
+        for(auto& pModule : loadedAssemblies) {
+            if(auto m = pModule.lock()) {
+                auto* clazz = m->findClass(namespaceName, className);
+                if(clazz) {
+                    return clazz;
+                }
+            }
+        }
+        return nullptr;
     }
 } // Carrot::Scripting

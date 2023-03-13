@@ -30,8 +30,14 @@ set(CORE-SOURCES
 
         ${CoreRoot}scene/GLTFLoader.cpp
 
+        ${CoreRoot}scripting/csharp/CSArray.cpp
+        ${CoreRoot}scripting/csharp/CSAssembly.cpp
+        ${CoreRoot}scripting/csharp/CSClass.cpp
+        ${CoreRoot}scripting/csharp/CSField.cpp
+        ${CoreRoot}scripting/csharp/CSMethod.cpp
+        ${CoreRoot}scripting/csharp/CSObject.cpp
+        ${CoreRoot}scripting/csharp/CSProperty.cpp
         ${CoreRoot}scripting/csharp/Engine.cpp
-        ${CoreRoot}scripting/csharp/Module.cpp
 
         ${CoreRoot}tasks/Tasks.cpp
         ${CoreRoot}tasks/Timer.cpp
@@ -49,6 +55,14 @@ set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
         )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Debug/mono-2.0-sgen.lib")
+    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Debug/*.dll")
+else()
+    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/mono-2.0-sgen.lib")
+    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Release/*.dll")
+endif()
+
 function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}core/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
@@ -64,18 +78,6 @@ function(add_core_includes Target)
     target_compile_definitions(${Target} PUBLIC RAPIDJSON_HAS_STDSTRING=1)
     target_compile_definitions("${Target}" PUBLIC TRACY_ENABLE=1)
     target_compile_definitions("${Target}" PUBLIC TRACY_ON_DEMAND=1)
-
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        #target_link_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mono/lib/${Arch}/Debug/)
-        file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Debug/mono-2.0-sgen.lib")
-        file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Debug/*.dll")
-    else()
-        #target_link_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/)
-        file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/mono-2.0-sgen.lib")
-        file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Release/*.dll")
-    endif()
-
-    file(COPY ${MonoDLLs} DESTINATION ${CMAKE_BINARY_DIR})
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
 
 endfunction()
@@ -84,3 +86,5 @@ set(ALL_CORE_LIBS ktx glm tinygltf)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
+
+file(COPY ${MonoDLLs} DESTINATION ${CMAKE_BINARY_DIR})
