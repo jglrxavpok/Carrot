@@ -40,9 +40,9 @@ TEST(Counters, OnlyOneCoroutine) {
     Counter c;
     Task<> task1 = someTask(c);
     Task<> task2 = someTask(c);
-    ASSERT_TRUE(c.isIdle());
+    EXPECT_TRUE(c.isIdle());
     task1();
-    ASSERT_THROW(task2(), Carrot::Assertions::Error);
+    EXPECT_THROW(task2(), Carrot::Assertions::Error);
 
     c.decrement();
     c.decrement();

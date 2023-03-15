@@ -34,7 +34,6 @@ namespace Carrot {
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
 #include <core/io/vfs/VirtualFileSystem.h>
-#include <core/scripting/csharp/forward.h>
 
 namespace sol {
     class state;
@@ -66,6 +65,11 @@ namespace Carrot {
     class RayTracer;
 
     class ResourceAllocator;
+
+    namespace Scripting {
+        class ScriptingEngine;
+        class CSharpBindings;
+    }
 
     namespace Render {
         class Texture;
@@ -377,6 +381,7 @@ namespace Carrot {
 
     public:
         Scripting::ScriptingEngine& getCSScriptEngine();
+        Scripting::CSharpBindings& getCSBindings();
 
         static void registerUsertype(sol::state& destination);
 
@@ -401,7 +406,7 @@ namespace Carrot {
         std::unique_ptr<VR::Interface> vrInterface = nullptr;
         std::unique_ptr<VR::Session> vrSession = nullptr;
         std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
-        std::shared_ptr<Scripting::CSAssembly> baseModule = nullptr;
+        std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;

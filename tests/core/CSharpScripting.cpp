@@ -135,13 +135,13 @@ TEST_F(CSharpTests, ObjectInstantiation) {
 TEST_F(CSharpTests, Fields) {
     fs::path tempDir = fs::temp_directory_path();
 
-    fs::path testFile = tempDir / "TestSimpleCompilation.cs";
+    fs::path testFile = tempDir / "TestSimpleCompilationFields.cs";
     generateTestFile(testFile);
     CLEANUP(fs::remove(testFile));
     std::vector<fs::path> sourceFiles = {
             testFile
     };
-    fs::path assemblyOutput = tempDir / "TestSimpleCompilation.dll";
+    fs::path assemblyOutput = tempDir / "TestSimpleCompilationFields.dll";
     bool r = engine.compileFiles(assemblyOutput, sourceFiles, {});
     CLEANUP(fs::remove(assemblyOutput));
     ASSERT_TRUE(r);

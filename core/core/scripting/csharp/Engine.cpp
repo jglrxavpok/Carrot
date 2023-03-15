@@ -4,11 +4,13 @@
 
 #include "Engine.h"
 #include "mono/metadata/threads.h"
+#include "mono/metadata/mono-debug.h"
 #include <core/io/Logging.hpp>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/image.h>
 #include <mono/metadata/environment.h>
+#include <core/scripting/csharp/CSAppDomain.h>
 #include <core/scripting/csharp/CSAssembly.h>
 #include <mutex>
 
@@ -17,14 +19,9 @@ namespace fs = std::filesystem;
 namespace Carrot::Scripting {
 
     static MonoDomain* rootDomain = nullptr;
-    static MonoDomain* appDomain = nullptr;
+    static MonoDomain* defaultAppDomain = nullptr;
     static std::mutex runtimeMutex;
     static std::atomic_flag runtimeReady;
-
-    void SomeCppFunction(MonoString* str) {
-        char* s = mono_string_to_utf8(str);
-        Carrot::Log::info("C# called function with arg= %s", s);
-    }
 
     ScriptingEngine::ScriptingEngine() {
         std::lock_guard l { runtimeMutex };
@@ -37,16 +34,38 @@ namespace Carrot::Scripting {
                 return;
             }
 
-            std::string domainName = "CarrotAppDomain";
-            appDomain = mono_domain_create_appdomain(domainName.data(), nullptr);
-            mono_domain_set(appDomain, true);
+            mono_debug_domain_create(rootDomain);
+
+            std::string appDomainName = "Carrot Default AppDomain";
+            defaultAppDomain = mono_domain_create_appdomain(appDomainName.data(), nullptr);
+            mono_domain_set(defaultAppDomain, true);
 
             mono_thread_set_main(mono_thread_current());
         }
 
-        mscorlib = std::shared_ptr<CSAssembly>(new CSAssembly(appDomain, mono_get_corlib()));
+        mscorlib = std::shared_ptr<CSAssembly>(new CSAssembly(defaultAppDomain, mono_get_corlib()));
         loadedAssemblies.push_back(mscorlib);
         //mono_jit_thread_attach(rootDomain);
+    }
+
+    std::unique_ptr<CSAppDomain> ScriptingEngine::makeAppDomain(const std::string& domainName) {
+        std::string nameCopy = domainName;
+        MonoDomain* appDomain = mono_domain_create_appdomain(nameCopy.data(), nullptr);
+        return std::make_unique<CSAppDomain>(appDomain);
+    }
+
+    bool ScriptingEngine::unloadAssembly(std::shared_ptr<CSAssembly>&& toUnload) {
+        bool found = false;
+        std::erase_if(loadedAssemblies, [&](const std::weak_ptr<CSAssembly>& element) {
+            if(auto e = element.lock()) {
+                bool isSame = e.get() == toUnload.get();
+                found |= isSame;
+                return isSame;
+            }
+            return true;
+        });
+        toUnload = nullptr;
+        return found;
     }
 
     ScriptingEngine::~ScriptingEngine() {
@@ -62,7 +81,11 @@ namespace Carrot::Scripting {
         //mono_jit_cleanup(rootDomain);
     }
 
-    std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input) {
+    std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input, MonoDomain* appDomain) {
+        if(appDomain == nullptr) {
+            appDomain = defaultAppDomain;
+        }
+
         auto bytes = input.readAll();
 
         MonoImageOpenStatus status;
@@ -165,5 +188,9 @@ namespace Carrot::Scripting {
             }
         }
         return nullptr;
+    }
+
+    MonoDomain* ScriptingEngine::getRootDomain() const {
+        return rootDomain;
     }
 } // Carrot::Scripting

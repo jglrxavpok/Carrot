@@ -30,6 +30,7 @@ set(CORE-SOURCES
 
         ${CoreRoot}scene/GLTFLoader.cpp
 
+        ${CoreRoot}scripting/csharp/CSAppDomain.cpp
         ${CoreRoot}scripting/csharp/CSArray.cpp
         ${CoreRoot}scripting/csharp/CSAssembly.cpp
         ${CoreRoot}scripting/csharp/CSClass.cpp

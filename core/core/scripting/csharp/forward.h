@@ -6,6 +6,7 @@
 
 namespace Carrot::Scripting {
     class ScriptingEngine;
+    class CSAppDomain;
     class CSArray;
     class CSAssembly;
     class CSClass;
