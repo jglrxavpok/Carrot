@@ -114,6 +114,10 @@ namespace Carrot::ECS {
     }
 
     void CSharpLogicSystem::recreateEntityList() {
+        if(!csSystem) {
+            return;
+        }
+
         auto* entityClass = GetCSharpScripting().findClass("Carrot", "Entity");
         verify(entityClass, "No Carrot.Entity class?");
 

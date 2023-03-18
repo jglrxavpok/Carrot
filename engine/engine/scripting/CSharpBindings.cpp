@@ -59,6 +59,80 @@ namespace Carrot::Scripting {
     */
 
     CSharpBindings::CSharpBindings() {
+        loadEngineAssembly();
+
+        mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
+        mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
+        mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
+        mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
+        mono_add_internal_call("Carrot.Entity::GetName", GetName);
+        mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
+        mono_add_internal_call("Carrot.Entity::GetParent", nullptr); // TODO
+        mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
+    }
+
+    CSharpBindings::~CSharpBindings() {
+        unloadGameAssembly();
+    }
+
+    void CSharpBindings::loadGameAssembly(const IO::VFS::Path& gameDLL) {
+        if(gameModule) {
+            unloadGameAssembly();
+        } else if(baseModule) {
+            unloadOnlyEngineAssembly();
+        }
+
+        gameModuleLocation = gameDLL;
+        loadEngineAssembly();
+
+        gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono());
+        gameModule->dumpTypes();
+
+        loadCallbacks();
+        // TODO: load systems, components
+    }
+
+    void CSharpBindings::reloadGameAssembly() {
+        unloadGameAssembly();
+        loadGameAssembly(gameModuleLocation);
+    }
+
+    void CSharpBindings::unloadGameAssembly() {
+        if(!gameModule) {
+            return;
+        }
+
+        unloadCallbacks();
+        verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded game assembly at this point!")
+
+        // clears the assemblies from the scripting engine
+        GetCSharpScripting().unloadAssembly(std::move(gameModule));
+        GetCSharpScripting().unloadAssembly(std::move(baseModule));
+
+        appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
+    }
+
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
+        return loadCallbacks.append(callback);
+    }
+
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyUnloadCallback(const std::function<void()>& callback) {
+        return unloadCallbacks.append(callback);
+    }
+
+    void CSharpBindings::unregisterGameAssemblyLoadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        loadCallbacks.remove(handle);
+    }
+
+    void CSharpBindings::unregisterGameAssemblyUnloadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        unloadCallbacks.remove(handle);
+    }
+
+    void CSharpBindings::loadEngineAssembly() {
+        verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
+        appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
+
         const Carrot::IO::VFS::Path dllPath = "engine://scripting/Carrot.dll";
 
         auto& engine = GetCSharpScripting();
@@ -68,10 +142,6 @@ namespace Carrot::Scripting {
         auto* method = baseClass->findMethod("EngineInit");
         verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", dllPath.toString().c_str()));
         method->staticInvoke({});
-
-
-
-
 
         {
             HardcodedComponentIDs.clear();
@@ -112,65 +182,19 @@ namespace Carrot::Scripting {
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
         SystemTypeFullNameProperty = typeClass->findProperty("FullName");
-
-        mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
-        mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
-        mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
-        mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
-        mono_add_internal_call("Carrot.Entity::GetName", GetName);
-        mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
-        mono_add_internal_call("Carrot.Entity::GetParent", nullptr); // TODO
-        mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
-        mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
     }
 
-    void CSharpBindings::loadGameAssembly(const IO::VFS::Path& gameDLL) {
-        if(gameModule) {
-            unloadGameAssembly();
-        }
-        gameModuleLocation = gameDLL;
-
-        verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
-        appDomain = GetCSharpScripting().makeAppDomain(gameDLL.toString());
-        gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono());
-        gameModule->dumpTypes();
-
-        loadCallbacks();
-        // TODO: load systems, components
-    }
-
-    void CSharpBindings::reloadGameAssembly() {
-        unloadGameAssembly();
-        loadGameAssembly(gameModuleLocation);
-    }
-
-    void CSharpBindings::unloadGameAssembly() {
-        if(!gameModule) {
-            return;
-        }
+    void CSharpBindings::unloadOnlyEngineAssembly() {
+        verify(!gameModule, "Wrong flow: use unloadGameAssembly if there a game");
 
         unloadCallbacks();
-        verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded game assembly at this point!")
-        GetCSharpScripting().unloadAssembly(std::move(gameModule)); // clears the assembly from the scripting engine
+        verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded engine assembly at this point!")
+
+        // clears the assemblies from the scripting engine
+        GetCSharpScripting().unloadAssembly(std::move(baseModule));
+
         appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
     }
-
-    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
-        return loadCallbacks.append(callback);
-    }
-
-    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyUnloadCallback(const std::function<void()>& callback) {
-        return unloadCallbacks.append(callback);
-    }
-
-    void CSharpBindings::unregisterGameAssemblyLoadCallback(const CSharpBindings::Callbacks::Handle& handle) {
-        loadCallbacks.remove(handle);
-    }
-
-    void CSharpBindings::unregisterGameAssemblyUnloadCallback(const CSharpBindings::Callbacks::Handle& handle) {
-        unloadCallbacks.remove(handle);
-    }
-
 
     //
     // Bindings

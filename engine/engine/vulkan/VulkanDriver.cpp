@@ -848,6 +848,7 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 }
 
 Carrot::VulkanDriver::~VulkanDriver() {
+    shutdownAftermath();
     swapchain.reset();
     instance->destroySurfaceKHR(getSurface(), getAllocationCallbacks());
     // TODO: don't destroy device if in VR

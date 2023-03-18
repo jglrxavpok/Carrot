@@ -38,6 +38,7 @@ namespace Carrot::Scripting {
 
     public:
         CSharpBindings();
+        ~CSharpBindings();
 
         void loadGameAssembly(const IO::VFS::Path& gameDLL);
         void reloadGameAssembly();
@@ -71,6 +72,12 @@ namespace Carrot::Scripting {
         static MonoString* GetName(MonoObject* entityMonoObj);
 
     private:
+        void loadEngineAssembly();
+
+        // used when triggering a game dll load for the first time: remove engine dll from old app domain. It will be reloaded in the new domain after
+        void unloadOnlyEngineAssembly();
+
+    private:
         std::unique_ptr<CSAppDomain> appDomain;
         std::shared_ptr<CSAssembly> baseModule;
 
@@ -80,7 +87,6 @@ namespace Carrot::Scripting {
         Callbacks unloadCallbacks;
         Callbacks loadCallbacks;
 
-    private:
         std::unordered_map<std::string, ComponentID> HardcodedComponentIDs;
         MonoAppDomain* gameAppDomain = nullptr;
     };

@@ -22,9 +22,15 @@
 
 namespace fs = std::filesystem;
 
+#define _START_ENGINE_INTERNAL(APP_NAME)                    \
+Carrot::Configuration config;                               \
+config.applicationName = APP_NAME;                          \
+Carrot::Engine e{ config };
+
+#define START_ENGINE() _START_ENGINE_INTERNAL(__FUNCTION__)
+
 TEST(CSharpECS, EngineBoots) {
-    Carrot::Configuration config;
-    Carrot::Engine e{ config };
+    START_ENGINE();
 }
 
 TEST(CSharpECS, ManualRegistration) {
@@ -55,8 +61,7 @@ public class TestSystem : LogicSystem {
 )c#";
 
     // required for VFS
-    Carrot::Configuration config;
-    Carrot::Engine e{ config };
+    START_ENGINE();
 
     // compile C# code
     fs::path tempDir = fs::temp_directory_path();
@@ -131,12 +136,14 @@ TEST(CSharpECS, HotReload) {
     using namespace Carrot::ECS;
 
     // required for VFS
-    Carrot::Configuration config;
-    Carrot::Engine e{ config };
+    START_ENGINE();
 
-    const std::string code1 = "using Carrot; public class TestClass { public static int GetTestValue() { return 10; } }";
+    const std::string code1 = "public class TestClass { public static int GetTestValue() { return 10; } }";
     const std::string code2 = "public class TestClass { public static int GetTestValue() { return 42; } }";
-    const std::string code3 = "public class TestClass { public static int GetTestValue() { return 100; } }";
+
+    // also test that we can reference content from Carrot.dll
+    const std::string code3 = "using Carrot; public class TestClass { public LogicSystem s; public static int GetTestValue() { return 100; } }";
+
     const std::string code4 = "public class OtherClass {}";
 
     // compile C# code
@@ -266,8 +273,7 @@ public class TestSystem : LogicSystem {
 )c#";
 
     // required for VFS
-    Carrot::Configuration config;
-    Carrot::Engine e{ config };
+    START_ENGINE();
 
     // compile C# code
     fs::path tempDir = fs::temp_directory_path();
@@ -338,16 +344,7 @@ public class TestSystem : LogicSystem {
     }
 
     // load C# code
-    //GetCSharpBindings().loadGameAssembly(gameDLL);
-
-    auto appDomain = GetCSharpScripting().makeAppDomain(gameDLL.toString());
-    auto contents = Carrot::IO::readFile(assemblyOutput.string());
-    auto m = GetCSharpScripting().loadAssembly(Carrot::IO::Resource(std::move(contents) /* don't go through VFS */), appDomain->toMono());
-
-    m->dumpTypes();
-
-    auto ptrNew = w.getLogicSystem<CSharpLogicSystem>();
-    ptrNew->init();
+    GetCSharpBindings().loadGameAssembly(gameDLL);
 
     // now dll is loaded
     // check that system executes properly

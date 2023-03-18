@@ -251,3 +251,7 @@ void initAftermath() {
 
     enabled = true;
 }
+
+void shutdownAftermath() {
+    AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_DisableGpuCrashDumps());
+}

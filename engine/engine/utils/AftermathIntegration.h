@@ -10,4 +10,5 @@
 void setAftermathMarker(vk::CommandBuffer& cmds, const std::string& markerData);
 
 void initAftermath();
+void shutdownAftermath();
 #endif
