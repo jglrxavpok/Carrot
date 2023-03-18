@@ -8,7 +8,7 @@
 
 namespace Carrot::Scripting {
     CSAppDomain::CSAppDomain(MonoDomain* domain): domain(domain) {
-        mono_domain_set(domain, true);
+        mono_domain_set(domain, false);
     }
 
     CSAppDomain::~CSAppDomain() {

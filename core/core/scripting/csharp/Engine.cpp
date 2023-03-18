@@ -86,6 +86,11 @@ namespace Carrot::Scripting {
             appDomain = defaultAppDomain;
         }
 
+        bool isVFS = false;
+        if(input.isFile() && GetVFS().exists(IO::VFS::Path{ input.getName() })) {
+            isVFS = true;
+        }
+
         auto bytes = input.readAll();
 
         MonoImageOpenStatus status;
@@ -96,7 +101,17 @@ namespace Carrot::Scripting {
         }
 
         CLEANUP(mono_image_close(image));
-        MonoAssembly* assembly = mono_assembly_load_from_full(image, input.getName().c_str(), &status, false);
+
+        const std::filesystem::path fullPath = GetVFS().resolve(IO::VFS::Path{ input.getName() });
+        MonoAssembly* assembly = nullptr;
+  //      if(isVFS) {
+    //        assembly = mono_domain_assembly_open(appDomain, Carrot::toString(fullPath.u8string()).c_str());
+//        } else {
+            assembly = mono_assembly_load_from_full(image, input.getName().c_str(), &status, false);
+  //      }
+        if(assembly == nullptr) {
+            return nullptr;
+        }
 
         if(status != MONO_IMAGE_OK) {
             Carrot::Log::error("Could not load assembly '%s': %s", input.getName().c_str(), mono_image_strerror(status));

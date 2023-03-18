@@ -12,12 +12,15 @@
 #include <core/utils/Identifiable.h>
 #include <mono/metadata/appdomain.h>
 #include <engine/ecs/EntityTypes.h>
+#include <eventpp/callbacklist.h>
 
 namespace Carrot::Scripting {
     /// Interface to use Carrot.dll and game dlls made in C#
     /// Contrary to ScriptingEngine, does not support having multiple game assemblies loaded at once
     class CSharpBindings {
     public:
+        using Callbacks = eventpp::CallbackList<void()>;
+
         CSProperty* SystemTypeFullNameProperty = nullptr;
 
         CSClass* EntityClass = nullptr;
@@ -39,6 +42,12 @@ namespace Carrot::Scripting {
         void loadGameAssembly(const IO::VFS::Path& gameDLL);
         void reloadGameAssembly();
         void unloadGameAssembly();
+
+    public:
+        Callbacks::Handle registerGameAssemblyLoadCallback(const std::function<void()>& callback);
+        Callbacks::Handle registerGameAssemblyUnloadCallback(const std::function<void()>& callback);
+        void unregisterGameAssemblyLoadCallback(const Callbacks::Handle& handle);
+        void unregisterGameAssemblyUnloadCallback(const Callbacks::Handle& handle);
 
     public: // public because they might be useful to other parts of the engine
         static std::int32_t GetMaxComponentCount();
@@ -67,6 +76,9 @@ namespace Carrot::Scripting {
 
         IO::VFS::Path gameModuleLocation{};
         std::shared_ptr<CSAssembly> gameModule;
+
+        Callbacks unloadCallbacks;
+        Callbacks loadCallbacks;
 
     private:
         std::unordered_map<std::string, ComponentID> HardcodedComponentIDs;

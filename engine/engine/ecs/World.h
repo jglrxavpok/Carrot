@@ -108,6 +108,9 @@ namespace Carrot::ECS {
         /// Removes the given LogicSystem. Does nothing if it was not inside this world
         void removeLogicSystem(System* system);
 
+        /// Updates the list of
+        void reloadSystemEntities(System* system);
+
         std::vector<System*> getLogicSystems();
         std::vector<System*> getRenderSystems();
 

@@ -555,6 +555,10 @@ namespace Carrot::ECS {
         });
     }
 
+    void World::reloadSystemEntities(System* system) {
+        system->onEntitiesUpdated(entities);
+    }
+
     std::vector<System*> World::getLogicSystems() {
         std::vector<System*> result{ logicSystems.size() };
         for(std::size_t i = 0; i < result.size(); i++) {

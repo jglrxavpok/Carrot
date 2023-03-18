@@ -133,6 +133,10 @@ namespace Carrot::Scripting {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameDLL.toString());
         gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono());
+        gameModule->dumpTypes();
+
+        loadCallbacks();
+        // TODO: load systems, components
     }
 
     void CSharpBindings::reloadGameAssembly() {
@@ -145,10 +149,28 @@ namespace Carrot::Scripting {
             return;
         }
 
+        unloadCallbacks();
         verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded game assembly at this point!")
         GetCSharpScripting().unloadAssembly(std::move(gameModule)); // clears the assembly from the scripting engine
         appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
     }
+
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
+        return loadCallbacks.append(callback);
+    }
+
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyUnloadCallback(const std::function<void()>& callback) {
+        return unloadCallbacks.append(callback);
+    }
+
+    void CSharpBindings::unregisterGameAssemblyLoadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        loadCallbacks.remove(handle);
+    }
+
+    void CSharpBindings::unregisterGameAssemblyUnloadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        unloadCallbacks.remove(handle);
+    }
+
 
     //
     // Bindings

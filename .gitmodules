@@ -61,3 +61,6 @@
 [submodule "thirdparty/MikkTSpace"]
 	path = thirdparty/MikkTSpace
 	url = https://github.com/mmikk/MikkTSpace
+[submodule "thirdparty/eventpp"]
+	path = thirdparty/eventpp
+	url = https://github.com/wqking/eventpp

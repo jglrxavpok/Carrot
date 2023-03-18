@@ -73,6 +73,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/debugbreak)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/MikkTSpace)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mono/include)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/eventpp/include)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)

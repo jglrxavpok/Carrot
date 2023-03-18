@@ -11,25 +11,38 @@ namespace Carrot::ECS {
     CSharpLogicSystem::CSharpLogicSystem(Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className) : Carrot::ECS::System(world),
         namespaceName(namespaceName), className(className)
     {
+        loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
+        unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
+
         init();
     }
 
     CSharpLogicSystem::CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world): Carrot::ECS::System(world) {
+        loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
+        unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
+
         namespaceName = json["cs_namespace"].GetString();
         className = json["cs_class"].GetString();
         init();
     }
 
-    void CSharpLogicSystem::init() {
-        recreateEntityList();
+    CSharpLogicSystem::~CSharpLogicSystem() {
+        GetCSharpBindings().unregisterGameAssemblyLoadCallback(loadCallbackHandle);
+        GetCSharpBindings().unregisterGameAssemblyUnloadCallback(unloadCallbackHandle);
+    }
 
+    void CSharpLogicSystem::init() {
         systemName = namespaceName;
         systemName += '.';
         systemName += className;
         systemName += " (C#)";
 
         Scripting::CSClass* clazz = GetCSharpScripting().findClass(namespaceName, className);
-        verify(clazz, "TODO: gracefully handle case where DLL is not loaded, or class has been deleted from project");
+        if(!clazz) {
+            foundInAssemblies = false;
+            return;
+        }
+        foundInAssemblies = true;
         csTickMethod = clazz->findMethod("Tick", 1);
         std::uint64_t ptr = reinterpret_cast<std::uint64_t>(this);
         void* args[1] { (void*)&ptr };
@@ -66,9 +79,15 @@ namespace Carrot::ECS {
                 signature.addComponent(j);
             }
         }
+
+        world.reloadSystemEntities(this);
+        recreateEntityList();
     }
 
     void CSharpLogicSystem::tick(double dt) {
+        if(!foundInAssemblies) {
+            return;
+        }
         if(*csSystem) {
             void* args[1] { (void*)&dt };
             csTickMethod->invoke(*csSystem, args);
@@ -130,5 +149,15 @@ namespace Carrot::ECS {
 
     Scripting::CSArray* CSharpLogicSystem::getEntityList() {
         return csEntities.get();
+    }
+
+    void CSharpLogicSystem::onAssemblyLoad() {
+        init();
+    }
+
+    void CSharpLogicSystem::onAssemblyUnload() {
+        csSystem = nullptr;
+        csTickMethod = nullptr;
+        csEntities = nullptr;
     }
 }

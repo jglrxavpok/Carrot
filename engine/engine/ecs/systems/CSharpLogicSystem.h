@@ -5,6 +5,7 @@
 #include <engine/ecs/systems/System.h>
 #include <core/utils/Lookup.hpp>
 #include <core/scripting/csharp/CSObject.h>
+#include <engine/scripting/CSharpBindings.h>
 
 namespace Carrot::ECS {
     class CSharpLogicSystem : public Carrot::ECS::System {
@@ -12,6 +13,8 @@ namespace Carrot::ECS {
         explicit CSharpLogicSystem(Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
 
         explicit CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world);
+
+        ~CSharpLogicSystem();
 
         virtual void tick(double dt) override;
 
@@ -32,10 +35,13 @@ namespace Carrot::ECS {
     public:
         Scripting::CSArray* getEntityList();
 
-    private:
+    //private:
         void init();
 
         void recreateEntityList();
+
+        void onAssemblyLoad();
+        void onAssemblyUnload();
 
     private:
         std::shared_ptr<Scripting::CSObject> csSystem;
@@ -45,6 +51,10 @@ namespace Carrot::ECS {
         std::string namespaceName;
         std::string className;
         std::string systemName;
+        bool foundInAssemblies = false; // are the given namespace+class name inside a loaded assembly?
+
+        Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
+        Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
     };
 
 } // Carrot::ECS

@@ -27,7 +27,7 @@ namespace Carrot::Scripting {
 
     CSAssembly::~CSAssembly() {
         if(assembly) {
-            //mono_assembly_close(assembly); Commented because that seemed to crash Mono when unloading an appdomain ?
+            //mono_assembly_close(assembly);// Commented because that seemed to crash Mono when unloading an appdomain ?
         }
     }
 
