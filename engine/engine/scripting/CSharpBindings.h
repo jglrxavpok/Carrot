@@ -38,11 +38,14 @@ namespace Carrot::Scripting {
 
     public:
         CSharpBindings();
+
         ~CSharpBindings();
 
         void loadGameAssembly(const IO::VFS::Path& gameDLL);
         void reloadGameAssembly();
         void unloadGameAssembly();
+
+        const Carrot::IO::VFS::Path& getEngineDllPath() const;
 
     public:
         Callbacks::Handle registerGameAssemblyLoadCallback(const std::function<void()>& callback);
@@ -78,6 +81,7 @@ namespace Carrot::Scripting {
         void unloadOnlyEngineAssembly();
 
     private:
+        Carrot::IO::VFS::Path engineDllPath = "engine://scripting/Carrot.dll";
         std::unique_ptr<CSAppDomain> appDomain;
         std::shared_ptr<CSAssembly> baseModule;
 

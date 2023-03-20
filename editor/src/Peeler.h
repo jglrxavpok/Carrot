@@ -74,6 +74,10 @@ namespace Peeler {
         void UIInspector(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
 
+    private: // C# project handling
+        void buildCSProject(const Carrot::IO::VFS::Path& csproj);
+        void reloadGameAssembly();
+
     public: // widgets
 
         /**

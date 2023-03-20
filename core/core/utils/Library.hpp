@@ -60,6 +60,13 @@ namespace Carrot {
             return deserialisers.find(id) != deserialisers.end();
         }
 
+        bool remove(const ID& id) {
+            bool found = false;
+            found |= deserialisers.erase(id) != 0;
+            found |= creationFunctions.remove(id) != 0;
+            return found;
+        }
+
     private:
         std::unordered_map<ID, DeserialiseFunction> deserialisers;
         std::unordered_map<ID, CreateNewFunction> creationFunctions;

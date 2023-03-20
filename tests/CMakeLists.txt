@@ -40,6 +40,7 @@ add_executable(
         core/FileWatching.cpp
         core/Lookup.cpp
         core/Paths.cpp
+        core/Strings.cpp
         core/VFS.cpp
 )
 target_link_libraries(

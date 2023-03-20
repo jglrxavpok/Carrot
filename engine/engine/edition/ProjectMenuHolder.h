@@ -77,6 +77,8 @@ namespace Tools {
                 } else {
                     auto savedAs = settings->currentProject.value();
                     settings->addToRecentProjects(savedAs);
+
+                    currentProjectName = Carrot::toString(savedAs.stem().u8string());
                 }
             }
         }

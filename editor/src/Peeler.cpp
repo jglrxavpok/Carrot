@@ -38,11 +38,17 @@
 #include "ecs/systems/CollisionShapeRenderer.h"
 #include "ecs/systems/CameraRenderer.h"
 
+#include <core/scripting/csharp/CSProject.h>
+#include <core/scripting/csharp/Engine.h>
+#include <engine/scripting/CSharpBindings.h>
+
 #include "game_specific/ecs/CharacterControllerComponent.h"
 #include "game_specific/ecs/PageComponent.h"
 #include "game_specific/ecs/CharacterControllerSystem.h"
 
 #include "layers/GizmosLayer.h"
+
+namespace fs = std::filesystem;
 
 namespace Peeler {
     Application* Instance = nullptr;
@@ -148,6 +154,69 @@ namespace Peeler {
 
                 if(ImGui::MenuItem("Show ImGui demo", nullptr, showDemo)) {
                     showDemo = !showDemo;
+                }
+
+                ImGui::EndMenu();
+            }
+
+            const bool csharpEnabled = getCurrentProjectFile() != EmptyProject; // must already have a project
+            if(ImGui::BeginMenu("C#", csharpEnabled)) {
+                if(ImGui::MenuItem("Generate C# .sln")) {
+                    // TODO: check that solution does not exist yet
+
+                    const std::string& projectName = getCurrentProjectName();
+                    const Carrot::UUID projectUuid; // generate new UUID
+                    const std::string projectGuidString = projectUuid.toString();
+
+                    const std::filesystem::path projectBasePath = getCurrentProjectFile().parent_path();
+                    const std::filesystem::path carrotDllFilepath = GetVFS().resolve(GetCSharpBindings().getEngineDllPath());
+                    std::error_code ec; // ignored
+                    std::filesystem::path relativeCarrotDllFilepath = std::filesystem::relative(carrotDllFilepath, projectBasePath, ec);
+                    if(ec || relativeCarrotDllFilepath.empty()) {
+                        relativeCarrotDllFilepath = carrotDllFilepath;
+                    }
+
+                    const std::string carrotDll = Carrot::toString(relativeCarrotDllFilepath.u8string());
+
+                    // copy file and replace some tokens by their value
+                    auto templateCopy = [&](const Carrot::IO::VFS::Path& path, const Carrot::IO::VFS::Path& destinationPath) {
+                        const Carrot::IO::Resource r { path };
+                        std::string templateContents = r.readText();
+
+                        const std::array<std::pair<std::string, std::string>, 3> replacements = {
+                                std::pair<std::string, std::string> {"%PROJECT-NAME%", projectName},
+                                                                    {"%GUID%", projectGuidString},
+                                                                    {"%CARROT-DLL%", carrotDll },
+                        };
+
+                        std::string finalContents = templateContents;
+                        for(const auto& [k, v] : replacements) {
+                            finalContents = Carrot::replace(finalContents, k, v);
+                        }
+
+                        const std::filesystem::path destinationFile = GetVFS().resolve(destinationPath);
+
+                        const std::filesystem::path parentPath = destinationFile.parent_path();
+                        if(!std::filesystem::exists(parentPath)) {
+                            std::filesystem::create_directories(parentPath);
+                        }
+
+                        Carrot::IO::writeFile(Carrot::toString(destinationFile.u8string()), (void*)finalContents.c_str(), finalContents.size());
+                    };
+
+                    templateCopy("editor://resources/text/csharp/CSProjTemplate.csproj",
+                                 Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.csproj", projectName.c_str()) });
+                    templateCopy("editor://resources/text/csharp/SolutionTemplate.sln",
+                                 Carrot::IO::VFS::Path { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) });
+                    templateCopy("editor://resources/text/csharp/Properties/AssemblyInfo.cs", "game://code/Properties/AssemblyInfo.cs");
+                    templateCopy("editor://resources/text/csharp/ExampleSystem.cs", "game://code/ExampleSystem.cs");
+                }
+
+                // TODO: should be done automatically
+                if(ImGui::MenuItem("Build C#")) {
+                    const std::string& projectName = getCurrentProjectName();
+                    Carrot::IO::VFS::Path csproj { Carrot::sprintf("game://code/%s.csproj", projectName.c_str()) };
+                    buildCSProject(csproj);
                 }
 
                 ImGui::EndMenu();
@@ -616,6 +685,54 @@ namespace Peeler {
         }
     }
 
+    void Application::buildCSProject(const Carrot::IO::VFS::Path& csproj) {
+        if(!GetVFS().exists(csproj)) {
+            Carrot::Log::error("C# project %s does not exist", csproj.toString().c_str());
+            return;
+        }
+
+        Carrot::Scripting::CSProject project { csproj };
+
+        // TODO: move to another thread?
+        std::vector<fs::path> sourceFiles;
+        sourceFiles.reserve(project.getSourceFiles().size());
+
+        const Carrot::IO::VFS::Path root = "game://code";
+        for(const auto& relativePath : project.getSourceFiles()) {
+            sourceFiles.emplace_back(GetVFS().resolve(root / Carrot::toString(relativePath.u8string())));
+        }
+
+        std::vector<fs::path> references = {
+                GetVFS().resolve("engine://scripting/Carrot.dll")
+        };
+
+        std::string dllName = getCurrentProjectName() + ".dll";
+        const fs::path assemblyOutput = GetVFS().resolve(root / std::string_view{"bin"} / dllName);
+
+        // TODO: redirect output and display in console?
+        bool r = GetCSharpScripting().compileFiles(assemblyOutput, sourceFiles, references);
+        if(r) {
+            Carrot::Log::info("Successfully compiled %s", dllName.c_str());
+
+            reloadGameAssembly();
+        } else {
+            Carrot::Log::error("Failed to compile %s, check output", dllName.c_str());
+        }
+    }
+
+    void Application::reloadGameAssembly() {
+        const Carrot::IO::VFS::Path root = "game://code";
+        std::string dllName = getCurrentProjectName() + ".dll";
+
+        const Carrot::IO::VFS::Path gameDll = root / std::string_view{"bin"} / dllName;
+
+        if(!GetVFS().exists(gameDll)) {
+            GetCSharpBindings().unloadGameAssembly();
+        } else {
+            GetCSharpBindings().loadGameAssembly(gameDll);
+        }
+    }
+
     void Application::startSimulation() {
         startSimulationRequested = true;
     }
@@ -798,6 +915,7 @@ namespace Peeler {
         Instance = this;
         NFD_Init();
 
+        GetVFS().addRoot("editor", std::filesystem::current_path());
         GetEngine().setSkybox(Carrot::Skybox::Type::Forest);
         attachSettings(settings);
 
@@ -1005,6 +1123,8 @@ namespace Peeler {
             }
         }
         updateWindowTitle();
+
+        reloadGameAssembly();
     }
 
     static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {

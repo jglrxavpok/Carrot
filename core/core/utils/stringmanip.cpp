@@ -63,22 +63,48 @@ std::string Carrot::toUpperCase(const std::string& str) {
 }
 
 std::string Carrot::toString(std::u8string_view wstr) {
-    if(wstr.size() == 0)
+    if(wstr.empty())
         return "";
     static std::wstring_convert<std::codecvt<char8_t,char,std::mbstate_t>,char8_t> converter;
     return converter.to_bytes(&wstr[0], &wstr[wstr.size()-1] + sizeof(char8_t));
 }
 
 std::string Carrot::toString(std::u32string_view u32str) {
-    if(u32str.size() == 0)
+    if(u32str.empty())
         return "";
     static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
     return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1] + sizeof(char32_t));
 }
 
 std::u32string Carrot::toU32String(std::string_view str) {
-    if(str.size() == 0)
+    if(str.empty())
         return U"";
     static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
     return converter.from_bytes(str.data());
+}
+
+std::string Carrot::replace(const std::string& str, const std::string& toReplace, const std::string_view& toReplaceWith) {
+    if(str.empty())
+        return str;
+    if(toReplace.empty())
+        return str;
+
+    const std::size_t tokenSize = toReplace.size();
+    std::size_t cursor = 0;
+
+    std::string result = "";
+    result.reserve(str.size());
+    while(cursor < str.size()-tokenSize) {
+        if(strncmp(&str[cursor], toReplace.c_str(), tokenSize) == 0) { // found a match
+            result += toReplaceWith;
+            cursor += tokenSize;
+        } else {
+            result += str[cursor];
+            cursor++;
+        }
+    }
+
+    result += str.substr(cursor); // remaining of string
+
+    return result;
 }

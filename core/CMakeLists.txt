@@ -37,6 +37,7 @@ set(CORE-SOURCES
         ${CoreRoot}scripting/csharp/CSField.cpp
         ${CoreRoot}scripting/csharp/CSMethod.cpp
         ${CoreRoot}scripting/csharp/CSObject.cpp
+        ${CoreRoot}scripting/csharp/CSProject.cpp
         ${CoreRoot}scripting/csharp/CSProperty.cpp
         ${CoreRoot}scripting/csharp/Engine.cpp
 
@@ -69,6 +70,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidxml/rapidxml-1.13)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stduuid/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/debugbreak)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/MikkTSpace)

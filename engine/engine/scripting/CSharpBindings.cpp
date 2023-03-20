@@ -113,6 +113,10 @@ namespace Carrot::Scripting {
         appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
     }
 
+    const Carrot::IO::VFS::Path& CSharpBindings::getEngineDllPath() const {
+        return engineDllPath;
+    }
+
     CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
         return loadCallbacks.append(callback);
     }
@@ -133,14 +137,12 @@ namespace Carrot::Scripting {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
 
-        const Carrot::IO::VFS::Path dllPath = "engine://scripting/Carrot.dll";
-
         auto& engine = GetCSharpScripting();
-        baseModule = engine.loadAssembly(dllPath);
+        baseModule = engine.loadAssembly(getEngineDllPath());
         auto* baseClass = baseModule->findClass("Carrot", "Carrot");
-        verify(baseClass, Carrot::sprintf("Missing class Carrot.Carrot inside %s", dllPath.toString().c_str()));
+        verify(baseClass, Carrot::sprintf("Missing class Carrot.Carrot inside %s", getEngineDllPath().toString().c_str()));
         auto* method = baseClass->findMethod("EngineInit");
-        verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", dllPath.toString().c_str()));
+        verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", getEngineDllPath().toString().c_str()));
         method->staticInvoke({});
 
         {

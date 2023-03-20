@@ -227,6 +227,7 @@ function(copy_all_resources)
     copy_resources(shaders)
     copy_resources(maps)
     copy_resources(scenes)
+    copy_resources(text)
 endfunction()
 
 if(EXISTS "${OPENXR-LOADER-LIB-LOCATION}")

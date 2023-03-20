@@ -27,4 +27,9 @@ namespace Carrot {
         std::snprintf(buffer.get(), size, format.data(), args...);
         return std::string(buffer.get());
     }
+
+    /**
+     * Replace occurrences of 'toReplace' inside 'str' with 'toReplaceWith'
+     */
+    std::string replace(const std::string& str, const std::string& toReplace, const std::string_view& toReplaceWith);
 }
