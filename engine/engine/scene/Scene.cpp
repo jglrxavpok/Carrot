@@ -129,8 +129,12 @@ namespace Carrot {
         auto logicSystems = src["logic_systems"].GetObject();
         for(const auto& [key, data] : logicSystems) {
             std::string systemName = key.GetString();
-            auto system = systemLib.deserialise(systemName, data, world);
-            world.addLogicSystem(std::move(system));
+            if(systemLib.has(systemName)) {
+                auto system = systemLib.deserialise(systemName, data, world);
+                world.addLogicSystem(std::move(system));
+            } else {
+                TODO; // add dummy system
+            }
         }
     }
 

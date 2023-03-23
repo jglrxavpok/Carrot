@@ -63,7 +63,7 @@ namespace Carrot {
         bool remove(const ID& id) {
             bool found = false;
             found |= deserialisers.erase(id) != 0;
-            found |= creationFunctions.remove(id) != 0;
+            found |= creationFunctions.erase(id) != 0;
             return found;
         }
 

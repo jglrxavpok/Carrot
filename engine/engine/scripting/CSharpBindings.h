@@ -12,6 +12,8 @@
 #include <core/utils/Identifiable.h>
 #include <mono/metadata/appdomain.h>
 #include <engine/ecs/EntityTypes.h>
+#include <engine/ecs/systems/System.h>
+#include <engine/ecs/components/Component.h>
 #include <eventpp/callbacklist.h>
 
 namespace Carrot::Scripting {
@@ -93,5 +95,9 @@ namespace Carrot::Scripting {
 
         std::unordered_map<std::string, ComponentID> HardcodedComponentIDs;
         MonoAppDomain* gameAppDomain = nullptr;
+
+        // system & component IDs found inside the game assembly
+        std::vector<ECS::ComponentLibrary::ID> componentIDs;
+        std::vector<ECS::SystemLibrary::ID> systemIDs;
     };
 }

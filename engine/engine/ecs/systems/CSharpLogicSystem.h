@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     public:
         explicit CSharpLogicSystem(Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
 
-        explicit CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world);
+        explicit CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
 
         ~CSharpLogicSystem();
 

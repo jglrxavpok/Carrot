@@ -219,6 +219,10 @@ namespace Peeler {
                     buildCSProject(csproj);
                 }
 
+                if(ImGui::MenuItem("Reload C#")) {
+                    reloadGameAssembly();
+                }
+
                 ImGui::EndMenu();
             }
 
@@ -378,6 +382,13 @@ namespace Peeler {
                         id += " (Editor)";
                     }
                     ImGui::TreeNodeEx(system, nodeFlags, "%s", id.c_str());
+                    if(ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        for(const auto& e : system->getEntities()) {
+                            ImGui::BulletText("%s", e.getName().data());
+                        }
+                        ImGui::EndTooltip();
+                    }
                     if(ImGui::BeginPopupContextItem(id.c_str())) {
                         if(ImGui::MenuItem("Remove##remove system")) {
                             toRemove = system;
@@ -1078,6 +1089,11 @@ namespace Peeler {
             return;
         }
 
+        reloadGameAssembly();
+        settings.currentProject = projectToLoad;
+        settings.addToRecentProjects(projectToLoad);
+        hasUnsavedChanges = false;
+
         rapidjson::Document scene;
         {
             scenePath = description["scene"].GetString();
@@ -1109,10 +1125,6 @@ namespace Peeler {
             }
         }
 
-        settings.currentProject = projectToLoad;
-        settings.addToRecentProjects(projectToLoad);
-        hasUnsavedChanges = false;
-
         selectedIDs.clear();
         if(description.HasMember("selectedIDs")) {
             for(const auto& selectedIDValue : description["selectedIDs"].GetArray()) {
@@ -1123,8 +1135,6 @@ namespace Peeler {
             }
         }
         updateWindowTitle();
-
-        reloadGameAssembly();
     }
 
     static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {

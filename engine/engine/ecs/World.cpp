@@ -480,6 +480,7 @@ namespace Carrot::ECS {
                 for(const auto& srcEntity : src[i]->entities) {
                     dest[i]->entities.emplace_back(srcEntity.internalEntity, *this);
                 }
+                dest[i]->onEntitiesUpdated({});
             }
         };
         copySystems(logicSystems, toCopy.logicSystems);

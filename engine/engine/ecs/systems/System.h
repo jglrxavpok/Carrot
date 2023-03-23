@@ -28,6 +28,7 @@ namespace Carrot::ECS {
         explicit System(const rapidjson::Value& json, World& world): System(world) {};
 
         [[nodiscard]] const Signature& getSignature() const;
+        std::span<const Entity> getEntities() const;
 
         virtual void onFrame(Carrot::Render::Context renderContext) = 0;
         virtual void setupCamera(Carrot::Render::Context renderContext) {};

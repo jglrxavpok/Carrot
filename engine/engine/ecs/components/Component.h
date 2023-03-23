@@ -70,6 +70,7 @@ namespace Carrot::ECS {
         using Storage = Library<std::unique_ptr<Component>, Entity>;
 
     public:
+        using ID = Storage::ID;
         using LuaUsertypeSupplier = std::function<void(sol::state&)>;
 
         template<typename T> requires std::is_base_of_v<Component, T>
@@ -89,11 +90,15 @@ namespace Carrot::ECS {
             }
         }
 
+        void add(const Storage::ID& id, const Storage::DeserialiseFunction& deserialiseFunc, const Storage::CreateNewFunction& createNewFunc);
+
         [[nodiscard]] std::unique_ptr<Component> deserialise(const Storage::ID& id, const rapidjson::Value& json, const Entity& entity) const;
         [[nodiscard]] std::unique_ptr<Component> create(const Storage::ID& id, const Entity& entity) const;
         [[nodiscard]] std::vector<std::string> getAllIDs() const;
 
         void registerBindings(sol::state& d, sol::usertype<Entity>& uEntity);
+
+        void remove(const Storage::ID& id);
 
     private:
         Storage storage;

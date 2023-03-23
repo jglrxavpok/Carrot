@@ -15,7 +15,7 @@ namespace Carrot {
         private BitArray _components = new BitArray(GetMaxComponentCount());
 
         public Signature() {
-            Console.WriteLine("Initialized _components with "+GetMaxComponentCount());
+            
         }
 
         public void AddComponent<T>() where T : IComponent {

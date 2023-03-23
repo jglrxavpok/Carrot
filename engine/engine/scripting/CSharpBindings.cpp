@@ -29,7 +29,7 @@ namespace Carrot::Scripting {
 
     /* Automatic way to create void* from member function & instance().
      * But having many static methods is waaaaaaaay easier to understand
-     * I am having leaving this code in case I see another use case in the future (automatic binding generation?)
+     * I am leaving this code in case I see another use case in the future (automatic binding generation?)
      * Example usage:
      * mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", wrap<&CSharpBindings::GetMaxComponentCount>());
      * mono_add_internal_call("Carrot.Signature::GetComponentID", wrap<&CSharpBindings::GetComponentID>());
@@ -89,8 +89,28 @@ namespace Carrot::Scripting {
         gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono());
         gameModule->dumpTypes();
 
+        auto allSystems = gameModule->findSubclasses(*SystemClass);
+        auto& systemLibrary = ECS::getSystemLibrary();
+        for(auto* systemClass : allSystems) {
+            std::string id = systemClass->getNamespaceName();
+            id += '.';
+            id += systemClass->getName();
+            id += " (C#)";
+
+            systemLibrary.add(
+                    id,
+                    [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](const rapidjson::Value& json, ECS::World& world) {
+                        return std::make_unique<ECS::CSharpLogicSystem>(json, world, namespaceName, className);
+                    },
+                    [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](Carrot::ECS::World& world) {
+                        return std::make_unique<ECS::CSharpLogicSystem>(world, namespaceName, className);
+                    }
+            );
+
+            systemIDs.emplace_back(std::move(id));
+        }
+        // TODO: load components
         loadCallbacks();
-        // TODO: load systems, components
     }
 
     void CSharpBindings::reloadGameAssembly() {
@@ -104,6 +124,15 @@ namespace Carrot::Scripting {
         }
 
         unloadCallbacks();
+
+        for(const auto& id : componentIDs) {
+            ECS::getComponentLibrary().remove(id);
+        }
+
+        for(const auto& id : systemIDs) {
+            ECS::getSystemLibrary().remove(id);
+        }
+
         verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded game assembly at this point!")
 
         // clears the assemblies from the scripting engine

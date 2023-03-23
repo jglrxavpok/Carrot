@@ -90,6 +90,10 @@ namespace Carrot::Scripting {
             const char* name = mono_metadata_string_heap(image, cols[MONO_TYPEDEF_NAME]);
 
             CSClass* clazz = findClass(nameSpace, name);
+            if(!clazz) {
+                Carrot::Log::warn("Class %s.%s was in subclasses of %s, but could not be loaded via findClass?", nameSpace, name, parentClass.getName().c_str());
+                continue;
+            }
             if(clazz->isSubclassOf(parentClass)) {
                 subclasses.push_back(clazz);
             }

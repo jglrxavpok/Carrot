@@ -13,6 +13,10 @@ namespace Carrot::ECS {
         return signature;
     }
 
+    std::span<const Entity> System::getEntities() const {
+        return entities;
+    }
+
     void System::onEntitiesAdded(const std::vector<EntityID>& added) {
         for(const auto& e : added) {
             auto obj = Entity(e, world);

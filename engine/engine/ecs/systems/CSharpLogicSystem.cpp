@@ -1,5 +1,6 @@
 #include "CSharpLogicSystem.h"
 #include "mono/metadata/object.h"
+#include "core/io/Logging.hpp"
 #include <engine/Engine.h>
 #include <core/scripting/csharp/Engine.h>
 #include <core/scripting/csharp/CSArray.h>
@@ -17,12 +18,11 @@ namespace Carrot::ECS {
         init();
     }
 
-    CSharpLogicSystem::CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world): Carrot::ECS::System(world) {
+    CSharpLogicSystem::CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className):
+        Carrot::ECS::System(world), namespaceName(namespaceName), className(className) {
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
-        namespaceName = json["cs_namespace"].GetString();
-        className = json["cs_class"].GetString();
         init();
     }
 
