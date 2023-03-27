@@ -164,6 +164,11 @@ function(add_includes Target)
         target_compile_definitions("${Target}" PRIVATE AFTERMATH_ENABLE=1)
         target_compile_definitions("${Target}" PRIVATE GPU_ASSISTED_VALIDATION=1)
     endif()
+
+    # workaround for Visual Studio to use the right working directory by default
+    set_target_properties(
+            "${Target}" PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 endfunction()
 
 add_subdirectory(core)
