@@ -41,6 +41,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/conversions.cpp
 
         ${EngineRoot}ecs/components/CameraComponent.cpp
+        ${EngineRoot}ecs/components/CSharpComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/LuaScriptComponent.cpp

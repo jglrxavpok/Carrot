@@ -49,10 +49,10 @@ namespace Carrot {
         }
 
         private IComponent GetComponent(Type type) {
-            return GetComponent(type.FullName);
+            return GetComponent(type.Namespace, type.Name);
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern IComponent GetComponent(String type);
+        private extern IComponent GetComponent(string namespaceName, string className);
     }
 }

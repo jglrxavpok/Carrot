@@ -17,3 +17,7 @@ std::optional<Carrot::ComponentID> Carrot::getIDFromName(std::string_view name) 
 
     return *it;
 }
+
+Carrot::ComponentID Carrot::requestComponentID() {
+    return LastComponentID++;
+}

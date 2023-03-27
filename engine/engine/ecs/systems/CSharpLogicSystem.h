@@ -35,7 +35,7 @@ namespace Carrot::ECS {
     public:
         Scripting::CSArray* getEntityList();
 
-    //private:
+    private:
         void init();
 
         void recreateEntityList();

@@ -15,6 +15,7 @@
 #include <engine/ecs/Signature.hpp>
 #include <mono/metadata/object.h>
 #include <engine/ecs/components/CameraComponent.h>
+#include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/systems/CSharpLogicSystem.h>
@@ -109,7 +110,32 @@ namespace Carrot::Scripting {
 
             systemIDs.emplace_back(std::move(id));
         }
-        // TODO: load components
+
+        auto allComponents = gameModule->findSubclasses(*ComponentClass);
+        auto& componentLibrary = ECS::getComponentLibrary();
+        for(auto* componentClass : allComponents) {
+            std::string fullType = componentClass->getNamespaceName();
+            fullType += '.';
+            fullType += componentClass->getName();
+            std::string id = fullType + " (C#)";
+
+            componentLibrary.add(
+                    id,
+                    [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](const rapidjson::Value& json, ECS::Entity entity) {
+                        return std::make_unique<ECS::CSharpComponent>(json, entity, namespaceName, className);
+                    },
+                    [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](Carrot::ECS::Entity entity) {
+                        return std::make_unique<ECS::CSharpComponent>(entity, namespaceName, className);
+                    }
+            );
+
+            csharpComponentIDs.getOrCompute(fullType, []() {
+                return Carrot::requestComponentID();
+            });
+
+            componentIDs.emplace_back(std::move(id));
+        }
+
         loadCallbacks();
     }
 
@@ -162,6 +188,14 @@ namespace Carrot::Scripting {
         unloadCallbacks.remove(handle);
     }
 
+    ComponentID CSharpBindings::requestComponentID(const std::string& namespaceName, const std::string& className) {
+        const std::string fullType = namespaceName + '.' + className;
+        return csharpComponentIDs.getOrCompute(fullType, [&]() {
+            verify(false, Carrot::sprintf("Should not happen: csharpComponentIDs does not have type %s", fullType.c_str()));
+            return -1;
+        });
+    }
+
     void CSharpBindings::loadEngineAssembly() {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
@@ -173,12 +207,6 @@ namespace Carrot::Scripting {
         auto* method = baseClass->findMethod("EngineInit");
         verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", getEngineDllPath().toString().c_str()));
         method->staticInvoke({});
-
-        {
-            HardcodedComponentIDs.clear();
-            HardcodedComponentIDs["Carrot.TransformComponent"] = ECS::TransformComponent::getID();
-            HardcodedComponentIDs["Carrot.CameraComponent"] = ECS::CameraComponent::getID();
-        }
 
         {
             EntityClass = engine.findClass("Carrot", "Entity");
@@ -213,6 +241,15 @@ namespace Carrot::Scripting {
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
         SystemTypeFullNameProperty = typeClass->findProperty("FullName");
+
+        // needs to be done last: references to classes loaded above
+        {
+            HardcodedComponents.clear();
+            HardcodedComponents["Carrot.TransformComponent"] = {
+                    .id = ECS::TransformComponent::getID(),
+                    .clazz = TransformComponentClass,
+            };
+        }
     }
 
     void CSharpBindings::unloadOnlyEngineAssembly() {
@@ -235,21 +272,13 @@ namespace Carrot::Scripting {
         return Carrot::MAX_COMPONENTS;
     }
 
-    ComponentID CSharpBindings::getComponentIDFromTypeName(const std::string& name) {
-        auto it = instance().HardcodedComponentIDs.find(name);
-        if(it != instance().HardcodedComponentIDs.end()) {
-            return it->second;
-        }
+    ComponentID CSharpBindings::GetComponentID(MonoString* namespaceStr, MonoString* classStr) {
+        char* namespaceChars = mono_string_to_utf8(namespaceStr);
+        char* classChars = mono_string_to_utf8(classStr);
 
-        // TODO: handle non-hardcoded
-        return -1;
-    }
-
-    ComponentID CSharpBindings::GetComponentID(MonoString* str) {
-        char* chars = mono_string_to_utf8(str);
-
-        CLEANUP(mono_free(chars));
-        return getComponentIDFromTypeName(chars);
+        CLEANUP(mono_free(namespaceChars));
+        CLEANUP(mono_free(classChars));
+        return instance().getComponentFromType(namespaceChars, classChars).id;
     }
 
     MonoArray* CSharpBindings::LoadEntities(MonoObject* systemObj) {
@@ -278,21 +307,53 @@ namespace Carrot::Scripting {
         return instance().EntityClass->newObject(args);
     }
 
-    MonoObject* CSharpBindings::GetComponent(MonoObject* entityMonoObj, MonoString* type) {
-        ECS::Entity entity = convertToEntity(entityMonoObj);
-        ComponentID componentId = GetComponentID(type);
+    CSharpBindings::CppComponent CSharpBindings::getComponentFromType(const std::string& namespaceName, const std::string& className) {
+        std::string fullType;
+        fullType.reserve(namespaceName.size() + className.size() + 1);
+        fullType += namespaceName;
+        fullType += '.';
+        fullType += className;
+        auto it = HardcodedComponents.find(fullType);
+        if(it != HardcodedComponents.end()) {
+            return it->second;
+        }
+
+        return CppComponent {
+            .isCSharp = true,
+            .id = csharpComponentIDs.getOrCompute(fullType, [&]() {
+                verify(false, Carrot::sprintf("Should not happen: csharpComponentIDs does not have type %s", fullType.c_str()));
+                return -1;
+            }),
+            .clazz = GetCSharpScripting().findClass(namespaceName, className),
+        };
+    }
+
+    MonoObject* CSharpBindings::GetComponent(MonoObject* entityMonoObj, MonoString* namespaceStr, MonoString* classStr) {
+        char* namespaceChars = mono_string_to_utf8(namespaceStr);
+        char* classChars = mono_string_to_utf8(classStr);
+
+        CLEANUP(mono_free(namespaceChars));
+        CLEANUP(mono_free(classChars));
+
+        auto component = instance().getComponentFromType(namespaceChars, classChars);
+        void* args[1] = {
+                entityMonoObj
+        };
+
+        if(component.isCSharp) {
+            auto compRef = convertToEntity(entityMonoObj).getComponent(component.id);
+            if(compRef.hasValue()) {
+                auto csharpComp = dynamic_cast<ECS::CSharpComponent*>(compRef.asPtr());
+                verify(csharpComp, "component isCSharp is true but not a CSharpComponent??");
+                return csharpComp->getCSComponentObject();
+            } else {
+                return nullptr;
+            }
+        }
 
         // TODO: avoid allocations
-
-        if(componentId == ECS::TransformComponent::getID()) {
-            void* args[1] = {
-                    entityMonoObj
-            };
-            auto obj = instance().TransformComponentClass->newObject(args);
-            return (MonoObject*)(*obj); // assumes the GC won't trigger before it is used
-        } else {
-            TODO;
-        }
+        auto obj = component.clazz->newObject(args);
+        return (MonoObject*)(*obj); // assumes the GC won't trigger before it is used
     }
 
     glm::vec3 CSharpBindings::_GetLocalPosition(MonoObject* transformComp) {

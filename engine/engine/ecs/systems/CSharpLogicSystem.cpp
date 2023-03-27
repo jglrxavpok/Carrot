@@ -23,6 +23,7 @@ namespace Carrot::ECS {
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
+        // TODO: load from JSON
         init();
     }
 

@@ -55,12 +55,19 @@ namespace Carrot::Scripting {
         void unregisterGameAssemblyLoadCallback(const Callbacks::Handle& handle);
         void unregisterGameAssemblyUnloadCallback(const Callbacks::Handle& handle);
 
+    public:
+        ComponentID requestComponentID(const std::string& namespaceName, const std::string& className);
+
     public: // public because they might be useful to other parts of the engine
+        struct CppComponent {
+            bool isCSharp = false;
+            ComponentID id = -1;
+            CSClass* clazz = nullptr; // C# class used to represent this C++ component on the script side
+        };
+
         static std::int32_t GetMaxComponentCount();
 
-        static ComponentID getComponentIDFromTypeName(const std::string& name);
-
-        static ComponentID GetComponentID(MonoString* str);
+        static ComponentID GetComponentID(MonoString* namespaceStr, MonoString* classStr);
 
         static MonoArray* LoadEntities(MonoObject* systemObj);
 
@@ -68,7 +75,7 @@ namespace Carrot::Scripting {
 
         static std::shared_ptr<Scripting::CSObject> entityToCSObject(ECS::Entity& e);
 
-        static MonoObject* GetComponent(MonoObject* entityMonoObj, MonoString* type);
+        static MonoObject* GetComponent(MonoObject* entityMonoObj, MonoString* namespaceStr, MonoString* classStr);
 
         static glm::vec3 _GetLocalPosition(MonoObject* transformComp);
 
@@ -82,6 +89,12 @@ namespace Carrot::Scripting {
         // used when triggering a game dll load for the first time: remove engine dll from old app domain. It will be reloaded in the new domain after
         void unloadOnlyEngineAssembly();
 
+        /**
+         * Returns ComponentID + C# class representing the given type.
+         * Returns an object with id = -1 and clazz = nullptr if none match
+         */
+        CppComponent getComponentFromType(const std::string& namespaceName, const std::string& className);
+
     private:
         Carrot::IO::VFS::Path engineDllPath = "engine://scripting/Carrot.dll";
         std::unique_ptr<CSAppDomain> appDomain;
@@ -93,7 +106,8 @@ namespace Carrot::Scripting {
         Callbacks unloadCallbacks;
         Callbacks loadCallbacks;
 
-        std::unordered_map<std::string, ComponentID> HardcodedComponentIDs;
+        Carrot::Async::ParallelMap<std::string, ComponentID> csharpComponentIDs;
+        std::unordered_map<std::string, CppComponent> HardcodedComponents;
         MonoAppDomain* gameAppDomain = nullptr;
 
         // system & component IDs found inside the game assembly

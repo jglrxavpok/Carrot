@@ -27,11 +27,12 @@ namespace Carrot {
         }
 
         private static int GetComponentID<T>() where T : IComponent {
-            return GetComponentID(typeof(T).FullName);
+            var type = typeof(T);
+            return GetComponentID(type.Namespace, type.Name);
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private static extern int GetComponentID(string typeFullName);
+        private static extern int GetComponentID(string typeNamespace, string typeClass);
     }
     
     public abstract class System {

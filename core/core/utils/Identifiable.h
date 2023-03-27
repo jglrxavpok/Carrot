@@ -32,6 +32,8 @@ namespace Carrot {
 
     extern Async::ParallelMap<Carrot::ComponentID, std::string> IdentifiableNames;
     extern Async::ParallelMap<std::string, Carrot::ComponentID> IdentifiableIDs;
+
+    Carrot::ComponentID requestComponentID();
 }
 extern std::atomic<Carrot::ComponentID> LastComponentID;
 
