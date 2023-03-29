@@ -205,7 +205,7 @@ namespace Carrot::IO {
             } else if constexpr(type == ActionType::VibrationOutput) {
                 xrActionType = xr::ActionType::VibrationOutput;
             } else {
-                static_assert(false, "Missing case");
+                verify(false, "Missing case");
             }
 
             xr::ActionCreateInfo createInfo;
