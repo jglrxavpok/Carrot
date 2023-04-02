@@ -22,7 +22,8 @@ namespace Carrot::Scripting {
         std::unique_ptr<CSAppDomain> makeAppDomain(const std::string& domainName);
 
         /// Loads a given assembly
-        std::shared_ptr<CSAssembly> loadAssembly(const Carrot::IO::Resource& input, MonoDomain* appDomain = nullptr);
+        /// Additionally loads symbol information for the given assembly if symbolInput has a value
+        std::shared_ptr<CSAssembly> loadAssembly(const Carrot::IO::Resource& input, MonoDomain* appDomain = nullptr, std::optional<Carrot::IO::Resource> symbolInput = {});
 
         bool unloadAssembly(std::shared_ptr<CSAssembly>&& toUnload);
 
@@ -31,7 +32,11 @@ namespace Carrot::Scripting {
         int runExecutable(const Carrot::IO::Resource& exe, std::span<std::string> arguments);
 
         /// Compiles the given source files with CSC.exe inside %MONO_SDK_PATH%/bin.
-        bool compileFiles(const std::filesystem::path& outputAssembly, std::span<std::filesystem::path> sourceFiles, std::span<std::filesystem::path> referenceAssemblies);
+        /// If outputPDB has a value, output portable debug information inside the given path
+        bool compileFiles(const std::filesystem::path& outputAssembly,
+                          std::span<std::filesystem::path> sourceFiles,
+                          std::span<std::filesystem::path> referenceAssemblies,
+                          std::optional<std::filesystem::path> outputPDB = {});
 
         /// Finds a given class inside all currently loaded assemblies
         CSClass* findClass(const std::string& namespaceName, const std::string& className);

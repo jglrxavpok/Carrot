@@ -60,6 +60,9 @@ namespace Carrot::Scripting {
     */
 
     CSharpBindings::CSharpBindings() {
+        engineDllPath = "engine://scripting/Carrot.dll";
+        enginePdbPath = "engine://scripting/Carrot.pdb";
+
         loadEngineAssembly();
 
         mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
@@ -87,7 +90,12 @@ namespace Carrot::Scripting {
         gameModuleLocation = gameDLL;
         loadEngineAssembly();
 
-        gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono());
+        std::optional<Carrot::IO::Resource> gamePDB;
+        const IO::VFS::Path gamePDBLocation = gameDLL.withExtension(".pdb");
+        if(GetVFS().exists(gamePDBLocation)) {
+            gamePDB = gamePDBLocation;
+        }
+        gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono(), gamePDB);
         gameModule->dumpTypes();
 
         auto allSystems = gameModule->findSubclasses(*SystemClass);
@@ -172,6 +180,10 @@ namespace Carrot::Scripting {
         return engineDllPath;
     }
 
+    const Carrot::IO::VFS::Path& CSharpBindings::getEnginePdbPath() const {
+        return enginePdbPath;
+    }
+
     CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
         return loadCallbacks.append(callback);
     }
@@ -188,6 +200,14 @@ namespace Carrot::Scripting {
         unloadCallbacks.remove(handle);
     }
 
+    std::vector<ComponentProperty> CSharpBindings::findAllComponentProperties(const std::string& namespaceName, const std::string& className) {
+        return reflectionHelper.findAllComponentProperties(namespaceName, className);
+    }
+
+    MonoDomain* CSharpBindings::getAppDomain() {
+        return appDomain->toMono();
+    }
+
     ComponentID CSharpBindings::requestComponentID(const std::string& namespaceName, const std::string& className) {
         const std::string fullType = namespaceName + '.' + className;
         return csharpComponentIDs.getOrCompute(fullType, [&]() {
@@ -201,7 +221,7 @@ namespace Carrot::Scripting {
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
 
         auto& engine = GetCSharpScripting();
-        baseModule = engine.loadAssembly(getEngineDllPath());
+        baseModule = engine.loadAssembly(getEngineDllPath(), nullptr, getEnginePdbPath());
         auto* baseClass = baseModule->findClass("Carrot", "Carrot");
         verify(baseClass, Carrot::sprintf("Missing class Carrot.Carrot inside %s", getEngineDllPath().toString().c_str()));
         auto* method = baseClass->findMethod("EngineInit");
@@ -241,6 +261,8 @@ namespace Carrot::Scripting {
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
         SystemTypeFullNameProperty = typeClass->findProperty("FullName");
+
+        reflectionHelper.reload();
 
         // needs to be done last: references to classes loaded above
         {

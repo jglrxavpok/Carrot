@@ -193,6 +193,8 @@ namespace Carrot::IO {
         if(startSearchIndex == std::string::npos) {
             // no separators, start from start of string
             startSearchIndex = 0;
+        } else {
+            startSearchIndex++; // go after last separator
         }
         const std::size_t index = path.find_last_of('.');
         if(index == std::string::npos) {
@@ -203,12 +205,52 @@ namespace Carrot::IO {
             // dot before last '/'
             return {};
         }
-        if(index == startSearchIndex+1) {
+        if(index == startSearchIndex) {
             // hidden file
             return {};
         }
         std::string_view pathView = path;
         return pathView.substr(index);
+    }
+
+    Path Path::withExtension(std::string_view wantedExtension) const {
+        if(path.empty()) {
+            return wantedExtension;
+        }
+
+        std::string extensionStr;
+        if(!wantedExtension.empty()) {
+            if(wantedExtension[0] != '.') {
+                extensionStr += '.';
+            }
+            extensionStr += wantedExtension;
+        }
+
+        std::size_t startSearchIndex = path.find_last_of('/');
+        if(startSearchIndex == std::string::npos) {
+            // no separators, start from start of string
+            startSearchIndex = 0;
+        } else {
+            startSearchIndex++; // go after last separator
+        }
+        const std::size_t index = path.find_last_of('.');
+        if(index == std::string::npos) {
+            // no extension, add the new one
+            return Path{ path + extensionStr };
+        }
+        if(index < startSearchIndex) {
+            // dot before last '/'
+            return Path{ path + extensionStr };
+        }
+        if(index == startSearchIndex) {
+            // hidden file
+            return Path{ path + extensionStr };
+        }
+        std::string_view pathView = path;
+
+        std::string result { pathView.substr(0, index) };
+        result += extensionStr;
+        return Path { std::move(result) };
     }
 
     // -- NormalizedPath

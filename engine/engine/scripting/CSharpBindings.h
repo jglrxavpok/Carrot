@@ -15,6 +15,8 @@
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/components/Component.h>
 #include <eventpp/callbacklist.h>
+#include <engine/scripting/ComponentProperty.h>
+#include <engine/scripting/CSharpReflectionHelper.h>
 
 namespace Carrot::Scripting {
     /// Interface to use Carrot.dll and game dlls made in C#
@@ -48,12 +50,17 @@ namespace Carrot::Scripting {
         void unloadGameAssembly();
 
         const Carrot::IO::VFS::Path& getEngineDllPath() const;
+        const Carrot::IO::VFS::Path& getEnginePdbPath() const;
 
     public:
         Callbacks::Handle registerGameAssemblyLoadCallback(const std::function<void()>& callback);
         Callbacks::Handle registerGameAssemblyUnloadCallback(const std::function<void()>& callback);
         void unregisterGameAssemblyLoadCallback(const Callbacks::Handle& handle);
         void unregisterGameAssemblyUnloadCallback(const Callbacks::Handle& handle);
+
+    public: // reflection stuff
+        std::vector<ComponentProperty> findAllComponentProperties(const std::string& namespaceName, const std::string& className);
+        MonoDomain* getAppDomain();
 
     public:
         ComponentID requestComponentID(const std::string& namespaceName, const std::string& className);
@@ -96,7 +103,9 @@ namespace Carrot::Scripting {
         CppComponent getComponentFromType(const std::string& namespaceName, const std::string& className);
 
     private:
-        Carrot::IO::VFS::Path engineDllPath = "engine://scripting/Carrot.dll";
+        CSharpReflectionHelper reflectionHelper;
+        Carrot::IO::VFS::Path engineDllPath;
+        Carrot::IO::VFS::Path enginePdbPath;
         std::unique_ptr<CSAppDomain> appDomain;
         std::shared_ptr<CSAssembly> baseModule;
 

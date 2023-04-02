@@ -4,6 +4,8 @@ Game engine in C++, mostly for my own fun.
 
 Don't expect support for the moment.
 
+Compiled with Visual Studio 2022.
+
 ## Structure
 * `core`: Core code. Basic functions such as IO, logging. Also serves as de-duplication of code between offline tools and the engine code.
 * `engine`: Engine code

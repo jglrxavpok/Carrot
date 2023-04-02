@@ -719,9 +719,11 @@ namespace Peeler {
 
         std::string dllName = getCurrentProjectName() + ".dll";
         const fs::path assemblyOutput = GetVFS().resolve(root / std::string_view{"bin"} / dllName);
+        fs::path pdbOutput = assemblyOutput;
+        pdbOutput.replace_extension(".pdb");
 
         // TODO: redirect output and display in console?
-        bool r = GetCSharpScripting().compileFiles(assemblyOutput, sourceFiles, references);
+        bool r = GetCSharpScripting().compileFiles(assemblyOutput, sourceFiles, references, pdbOutput);
         if(r) {
             Carrot::Log::info("Successfully compiled %s", dllName.c_str());
 

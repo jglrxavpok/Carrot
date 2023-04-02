@@ -25,6 +25,19 @@ namespace Carrot::Scripting {
 
         operator MonoObject*() const;
 
+        /**
+         * Unbox this object to the given type
+         * @tparam ToType
+         * @return
+         */
+        template<typename ToType>
+        ToType unbox() const {
+            return *((ToType*)unboxInternal());
+        }
+
+    private:
+        void* unboxInternal() const;
+
     private:
         mutable MonoObject* obj = nullptr;
         std::uint32_t gcHandle = 0;

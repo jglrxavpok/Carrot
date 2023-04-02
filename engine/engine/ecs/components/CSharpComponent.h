@@ -39,6 +39,13 @@ namespace Carrot::ECS {
         void onAssemblyUnload();
 
     private:
+        void drawIntProperty(Scripting::ComponentProperty& property);
+        void drawFloatProperty(Scripting::ComponentProperty& property);
+        void drawBooleanProperty(Scripting::ComponentProperty& property);
+        void drawEntityProperty(Scripting::ComponentProperty& property);
+        void drawUserDefinedProperty(Scripting::ComponentProperty& property);
+
+    private:
         bool foundInAssemblies = false;
         std::string namespaceName;
         std::string className;
@@ -46,6 +53,7 @@ namespace Carrot::ECS {
 
         Carrot::ComponentID componentID = -1;
         std::shared_ptr<Scripting::CSObject> csComponent;
+        std::vector<Scripting::ComponentProperty> componentProperties;
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
     };

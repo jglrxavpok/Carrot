@@ -77,6 +77,8 @@ namespace Carrot::IO {
          */
         std::string_view getExtension() const;
 
+        Path withExtension(std::string_view wantedExtension) const;
+
         friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
             return os << bar.path;
         }

@@ -61,6 +61,9 @@ namespace Carrot::IO {
             const std::string& getRoot() const { return root; }
             const NormalizedPath& getPath() const { return path; }
 
+            std::string_view getExtension() const;
+            Path withExtension(std::string_view extension) const;
+
             // For GTest
             friend std::ostream& operator<<(std::ostream& os, const Path& bar) {
                 return os << bar.toString();

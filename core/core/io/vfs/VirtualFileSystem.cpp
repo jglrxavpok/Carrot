@@ -140,6 +140,14 @@ namespace Carrot::IO {
         return path.isEmpty();
     }
 
+    std::string_view VirtualFileSystem::Path::getExtension() const {
+        return path.getExtension();
+    }
+
+    VirtualFileSystem::Path VirtualFileSystem::Path::withExtension(std::string_view extension) const {
+        return Path { root, path.withExtension(extension) };
+    }
+
     std::string VirtualFileSystem::Path::toString() const {
         if(root.empty()) {
             return path.asString();

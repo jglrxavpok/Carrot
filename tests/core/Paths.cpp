@@ -148,3 +148,19 @@ TEST(Paths, Relative) {
     ASSERT_EQ(Path("folder/").relative("folder2/.."), Path("folder/folder2/.."));
     ASSERT_EQ(Path("folder/").relative("folder2/../folder3/"), Path("folder/folder2/../folder3/"));
 }
+
+TEST(Paths, ExtensionReplace) {
+    ASSERT_EQ(Path("").withExtension(".png"), Path(".png"));
+    ASSERT_EQ(Path("a.txt").withExtension(".png"), Path("a.png"));
+    ASSERT_EQ(Path("a.txt").withExtension("png"), Path("a.png")); // dot not necessary
+
+    ASSERT_EQ(Path("a").withExtension(".png"), Path("a.png"));
+    ASSERT_EQ(Path("/a/b/c.gltf").withExtension(".h"), Path("/a/b/c.h"));
+    ASSERT_EQ(Path("/a/../b.cpp").withExtension(".h"), Path("/a/../b.h")); // does not normalize, only affects extension
+    ASSERT_EQ(Path("/a.subfolder/b.cpp").withExtension(".h"), Path("/a.subfolder/b.h")); // does not modify path parts
+    ASSERT_EQ(Path("/a.tar.gz").withExtension(".zip"), Path("/a.tar.zip")); // only the last '.xyz' is modified
+    ASSERT_EQ(Path("/a").withExtension(".tar.gz"), Path("/a.tar.gz")); // can add any extension, even with multiple dots
+
+
+    ASSERT_EQ(Path(".gitignore").withExtension(".zip"), Path(".gitignore.zip")); // special case: hidden files
+}

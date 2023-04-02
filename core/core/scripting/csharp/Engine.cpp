@@ -28,6 +28,14 @@ namespace Carrot::Scripting {
         if(!runtimeReady.test_and_set()) {
             mono_set_assemblies_path("monolib");
 
+            static const char* options[] = {
+                    "--soft-breakpoints",
+                    "--debugger-agent=transport=dt_socket,address=127.0.0.1:10000,server=y,suspend=n"
+            };
+
+            mono_jit_parse_options(sizeof(options)/sizeof(char*), (char**)options);
+            mono_debug_init(MONO_DEBUG_FORMAT_MONO);
+
             rootDomain = mono_jit_init("CarrotMonoRuntime");
             if(rootDomain == nullptr) {
                 Carrot::Log::error("Could not initialize Mono runtime");
@@ -81,14 +89,11 @@ namespace Carrot::Scripting {
         //mono_jit_cleanup(rootDomain);
     }
 
-    std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input, MonoDomain* appDomain) {
+    std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input,
+                                                              MonoDomain* appDomain,
+                                                              std::optional<Carrot::IO::Resource> symbolInput) {
         if(appDomain == nullptr) {
             appDomain = defaultAppDomain;
-        }
-
-        bool isVFS = false;
-        if(input.isFile() && GetVFS().exists(IO::VFS::Path{ input.getName() })) {
-            isVFS = true;
         }
 
         auto bytes = input.readAll();
@@ -100,15 +105,15 @@ namespace Carrot::Scripting {
             return nullptr;
         }
 
+        if(symbolInput.has_value()) {
+            auto pdbBytes = symbolInput->readAll();
+            mono_debug_open_image_from_memory(image, pdbBytes.get(), symbolInput->getSize());
+        }
+
         CLEANUP(mono_image_close(image));
 
         const std::filesystem::path fullPath = GetVFS().resolve(IO::VFS::Path{ input.getName() });
-        MonoAssembly* assembly = nullptr;
-  //      if(isVFS) {
-    //        assembly = mono_domain_assembly_open(appDomain, Carrot::toString(fullPath.u8string()).c_str());
-//        } else {
-            assembly = mono_assembly_load_from_full(image, input.getName().c_str(), &status, false);
-  //      }
+        MonoAssembly* assembly = mono_assembly_load_from_full(image, input.getName().c_str(), &status, false);
         if(assembly == nullptr) {
             return nullptr;
         }
@@ -133,7 +138,10 @@ namespace Carrot::Scripting {
         return module->executeMain(arguments);
     }
 
-    bool ScriptingEngine::compileFiles(const fs::path& outputAssembly, std::span<fs::path> sourceFiles, std::span<fs::path> referenceAssemblies) {
+    bool ScriptingEngine::compileFiles(const fs::path& outputAssembly,
+                                       std::span<fs::path> sourceFiles,
+                                       std::span<fs::path> referenceAssemblies,
+                                       std::optional<std::filesystem::path> outputPDB) {
         const char* sdkPath = std::getenv("MONO_SDK_PATH");
         if(sdkPath == nullptr) {
             Carrot::Log::error("No Mono SDK found, make sure the 'MONO_SDK_PATH' environment variable is set");
@@ -174,6 +182,14 @@ namespace Carrot::Scripting {
             command += "\"";
         }
         command += " -target:library";
+
+        if(outputPDB.has_value()) {
+            command += " -debug:portable";
+            command += " -pdb:";
+            command += "\"";
+            command += Carrot::toString(outputPDB->u8string());
+            command += "\"";
+        }
 
         command += " -out:";
         command += "\"";

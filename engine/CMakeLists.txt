@@ -121,12 +121,15 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}scene/Scene.cpp
 
+        ${EngineRoot}scripting/ComponentProperty.cpp
+        ${EngineRoot}scripting/CSharpBindings.cpp
+        ${EngineRoot}scripting/CSharpReflectionHelper.cpp
         ${EngineRoot}scripting/LuaScript.cpp
+
         ${EngineRoot}scripting/bindings/all.cpp
         ${EngineRoot}scripting/bindings/glm.cpp
         ${EngineRoot}scripting/bindings/Engine.cpp
 
-        ${EngineRoot}scripting/CSharpBindings.cpp
         ${EngineRoot}scripting/bindings/ecs/ECS.cpp
 
         ${EngineRoot}scripting/bindings/io/InputSystem.cpp
@@ -327,8 +330,10 @@ add_engine_precompiled_headers(Engine-ASAN)
 # TODO: move to post-build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.pdb")
 else()
     file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.dll")
+    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.pdb")
 endif()
 
 file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
