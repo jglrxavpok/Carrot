@@ -155,7 +155,25 @@ namespace Carrot::ECS {
         MAKE_ID(property);
 
         if(property.floatRange.has_value()) {
-            changed |= ImGui::SliderFloat(id.c_str(), &value, property.floatRange->min, property.floatRange->max);
+            float min = std::min(property.floatRange->min, property.floatRange->max);
+            float max = std::max(property.floatRange->min, property.floatRange->max);
+
+            // ImGui limits
+            bool useSlider = true;
+            if(min < -FLT_MAX/2.0f) {
+                min = -FLT_MAX/2.0f;
+                useSlider = false;
+            }
+            if(max > FLT_MAX/2.0f) {
+                max = FLT_MAX/2.0f;
+                useSlider = false;
+            }
+
+            if(useSlider) {
+                changed |= ImGui::SliderFloat(id.c_str(), &value, min, max);
+            } else {
+                changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f, min, max);
+            }
         } else {
             changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
         }
