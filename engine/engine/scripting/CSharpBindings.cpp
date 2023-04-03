@@ -312,6 +312,9 @@ namespace Carrot::Scripting {
     }
 
     ECS::Entity CSharpBindings::convertToEntity(MonoObject* entityMonoObj) {
+        if(entityMonoObj == nullptr) {
+            return ECS::Entity{};
+        }
         auto entityObj = Scripting::CSObject(entityMonoObj);
         ECS::EntityID entityID = *((ECS::EntityID*)mono_object_unbox(instance().EntityIDField->get(entityObj)));
         ECS::World* pWorld = *((ECS::World**)mono_object_unbox(instance().EntityUserPointerField->get(entityObj)));

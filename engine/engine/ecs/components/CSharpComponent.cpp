@@ -5,6 +5,8 @@
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
 
+#include "../../../../editor/src/Peeler.h" // TODO: this is quite ugly, find a cleaner way
+
 namespace Carrot::ECS {
 
     CSharpComponent::CSharpComponent(Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(
@@ -139,11 +141,32 @@ namespace Carrot::ECS {
 
         bool changed = false;
 
-        // TODO
+        MAKE_ID(property);
+
+        if(property.intRange.has_value()) {
+            std::int32_t min = std::min(property.intRange->min, property.intRange->max);
+            std::int32_t max = std::max(property.intRange->min, property.intRange->max);
+
+            // ImGui limits
+            bool useSlider = true;
+            if(min <= -INT_MAX) {
+                useSlider = false;
+            }
+            if(max >= INT_MAX) {
+                useSlider = false;
+            }
+
+            if(useSlider) {
+                changed |= ImGui::SliderInt(id.c_str(), &value, min, max);
+            } else {
+                changed |= ImGui::DragInt(id.c_str(), &value, 0.1f, min, max);
+            }
+        } else {
+            changed |= ImGui::DragInt(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
+        }
 
         if(changed) {
-            MonoObject* newObj = mono_value_box(GetCSharpScripting().getRootDomain(), mono_get_int32_class(), &value);
-            property.field->set(*csComponent, Scripting::CSObject(newObj));
+            property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
         }
     }
 
@@ -179,17 +202,36 @@ namespace Carrot::ECS {
         }
 
         if(changed) {
-            //MonoObject* newObj = mono_value_box(GetCSharpBindings().getAppDomain(), mono_get_single_class(), &value);
             property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
         }
     }
 
     void CSharpComponent::drawBooleanProperty(Scripting::ComponentProperty& property) {
-        // TODO
+        bool value = *((bool*)mono_object_unbox(property.field->get(*csComponent)));
+
+        bool changed = false;
+
+        MAKE_ID(property);
+
+        changed |= ImGui::Checkbox(id.c_str(), &value);
+
+        if(changed) {
+            property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
+        }
     }
 
     void CSharpComponent::drawEntityProperty(Scripting::ComponentProperty& property) {
-        // TODO
+        ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(*csComponent));
+
+        bool changed = false;
+
+        MAKE_ID(property);
+
+        changed |= Peeler::Instance->drawPickEntityWidget(id.c_str(), value);
+
+        if(changed) {
+            property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(value));
+        }
     }
 
     void CSharpComponent::drawUserDefinedProperty(Scripting::ComponentProperty& property) {
