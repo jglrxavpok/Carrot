@@ -4,6 +4,7 @@
 #include <core/async/ParallelMap.hpp>
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
+#include <core/io/Logging.hpp>
 
 #include "../../../../editor/src/Peeler.h" // TODO: this is quite ugly, find a cleaner way
 
@@ -20,10 +21,10 @@ namespace Carrot::ECS {
 
     CSharpComponent::CSharpComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(
             std::move(entity)), namespaceName(namespaceName), className(className) {
+        serializedVersion.CopyFrom(json, serializedDoc.GetAllocator());
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
-        // TODO: load from JSON
         init();
         refresh();
     }
@@ -34,14 +35,50 @@ namespace Carrot::ECS {
     }
 
     std::unique_ptr <Carrot::ECS::Component> CSharpComponent::duplicate(const Carrot::ECS::Entity& newOwner) const {
-        auto result = std::make_unique<CSharpComponent>(newOwner, namespaceName, className);
-        // TODO;
+        serializedVersion = toJSON(serializedDoc);
+        auto result = std::make_unique<CSharpComponent>(serializedVersion, newOwner, namespaceName, className);
         return result;
     }
 
     rapidjson::Value CSharpComponent::toJSON(rapidjson::Document& doc) const {
-        //TODO;
-        return rapidjson::Value{};
+        if(!foundInAssemblies) { // copy last known state
+            rapidjson::Value r{};
+            r.CopyFrom(serializedVersion, doc.GetAllocator());
+            return r;
+        }
+
+        rapidjson::Value r{rapidjson::kObjectType};
+
+        for(auto& property : componentProperties) {
+            switch(property.type) {
+                case Scripting::ComponentType::Int: {
+                    auto v = property.field->get(*csComponent).unbox<std::int32_t>();
+                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                } break;
+
+                case Scripting::ComponentType::Float: {
+                    auto v = property.field->get(*csComponent).unbox<float>();
+                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                } break;
+
+                case Scripting::ComponentType::Boolean: {
+                    auto v = property.field->get(*csComponent).unbox<bool>();
+                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                } break;
+
+                case Scripting::ComponentType::Entity: {
+                    MonoObject* entityObj = property.field->get(*csComponent);
+                    ECS::Entity entity = GetCSharpBindings().convertToEntity(entityObj);
+                    r.AddMember(rapidjson::StringRef(property.serializationName), rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
+                } break;
+
+                case Scripting::ComponentType::UserDefined:
+                default:
+                    Carrot::Log::warn("Property inside %s.%s has type %s which is not supported for serialization", namespaceName.c_str(), className.c_str(), property.typeStr.c_str());
+                    break;
+            }
+        }
+        return r;
     }
 
     const char *const CSharpComponent::getName() const {
@@ -58,23 +95,23 @@ namespace Carrot::ECS {
 
             switch(property.type) {
                 case Scripting::ComponentType::Int:
-                    drawIntProperty(property);
+                    modified |= drawIntProperty(property);
                     break;
 
                 case Scripting::ComponentType::Float:
-                    drawFloatProperty(property);
+                    modified |= drawFloatProperty(property);
                     break;
 
                 case Scripting::ComponentType::Boolean:
-                    drawBooleanProperty(property);
+                    modified |= drawBooleanProperty(property);
                     break;
 
                 case Scripting::ComponentType::Entity:
-                    drawEntityProperty(property);
+                    modified |= drawEntityProperty(property);
                     break;
 
                 case Scripting::ComponentType::UserDefined:
-                    drawUserDefinedProperty(property);
+                    modified |= drawUserDefinedProperty(property);
                     break;
 
                 default:
@@ -116,6 +153,38 @@ namespace Carrot::ECS {
         csComponent = clazz->newObject(args);
 
         componentProperties = GetCSharpBindings().findAllComponentProperties(namespaceName, className);
+
+        for(auto& property : componentProperties) {
+            if(serializedVersion.HasMember(property.serializationName)) {
+                switch(property.type) {
+                    case Scripting::ComponentType::Int: {
+                        std::int32_t v = serializedVersion[property.serializationName].GetInt();
+                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Float: {
+                        float v = serializedVersion[property.serializationName].GetFloat();
+                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Boolean: {
+                        bool v = serializedVersion[property.serializationName].GetBool();
+                        property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
+                    } break;
+
+                    case Scripting::ComponentType::Entity: {
+                        Carrot::UUID uuid = Carrot::UUID::fromString(serializedVersion[property.serializationName].GetString());
+                        Entity e = getEntity().getWorld().wrap(uuid);
+                        property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(e));
+                    } break;
+
+                    case Scripting::ComponentType::UserDefined:
+                    default:
+                        Carrot::Log::warn("Property inside %s.%s has type %s which is not supported for serialization", namespaceName.c_str(), className.c_str(), property.typeStr.c_str());
+                        break;
+                }
+            }
+        }
     }
 
     void CSharpComponent::onAssemblyLoad() {
@@ -123,6 +192,7 @@ namespace Carrot::ECS {
     }
 
     void CSharpComponent::onAssemblyUnload() {
+        serializedVersion = toJSON(serializedDoc);
         csComponent = nullptr;
     }
 
@@ -136,7 +206,7 @@ namespace Carrot::ECS {
     id += "-";                      \
     id += __FUNCTION__;
 
-    void CSharpComponent::drawIntProperty(Scripting::ComponentProperty& property) {
+    bool CSharpComponent::drawIntProperty(Scripting::ComponentProperty& property) {
         std::int32_t value = *((std::int32_t*)mono_object_unbox(property.field->get(*csComponent)));
 
         bool changed = false;
@@ -168,9 +238,11 @@ namespace Carrot::ECS {
         if(changed) {
             property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
         }
+
+        return changed;
     }
 
-    void CSharpComponent::drawFloatProperty(Scripting::ComponentProperty& property) {
+    bool CSharpComponent::drawFloatProperty(Scripting::ComponentProperty& property) {
         float value = *((float*)mono_object_unbox(property.field->get(*csComponent)));
 
         bool changed = false;
@@ -204,9 +276,11 @@ namespace Carrot::ECS {
         if(changed) {
             property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
         }
+
+        return changed;
     }
 
-    void CSharpComponent::drawBooleanProperty(Scripting::ComponentProperty& property) {
+    bool CSharpComponent::drawBooleanProperty(Scripting::ComponentProperty& property) {
         bool value = *((bool*)mono_object_unbox(property.field->get(*csComponent)));
 
         bool changed = false;
@@ -218,9 +292,11 @@ namespace Carrot::ECS {
         if(changed) {
             property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
         }
+
+        return changed;
     }
 
-    void CSharpComponent::drawEntityProperty(Scripting::ComponentProperty& property) {
+    bool CSharpComponent::drawEntityProperty(Scripting::ComponentProperty& property) {
         ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(*csComponent));
 
         bool changed = false;
@@ -232,10 +308,14 @@ namespace Carrot::ECS {
         if(changed) {
             property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(value));
         }
+
+        return changed;
     }
 
-    void CSharpComponent::drawUserDefinedProperty(Scripting::ComponentProperty& property) {
+    bool CSharpComponent::drawUserDefinedProperty(Scripting::ComponentProperty& property) {
         ImGui::Text("%s (%s) - User defined type", property.displayName.c_str(), property.typeStr.c_str());
+
+        return false;
     }
 
 } // Carrot::ECS

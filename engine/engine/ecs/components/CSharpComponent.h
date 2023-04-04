@@ -39,11 +39,11 @@ namespace Carrot::ECS {
         void onAssemblyUnload();
 
     private:
-        void drawIntProperty(Scripting::ComponentProperty& property);
-        void drawFloatProperty(Scripting::ComponentProperty& property);
-        void drawBooleanProperty(Scripting::ComponentProperty& property);
-        void drawEntityProperty(Scripting::ComponentProperty& property);
-        void drawUserDefinedProperty(Scripting::ComponentProperty& property);
+        bool drawIntProperty(Scripting::ComponentProperty& property);
+        bool drawFloatProperty(Scripting::ComponentProperty& property);
+        bool drawBooleanProperty(Scripting::ComponentProperty& property);
+        bool drawEntityProperty(Scripting::ComponentProperty& property);
+        bool drawUserDefinedProperty(Scripting::ComponentProperty& property);
 
     private:
         bool foundInAssemblies = false;
@@ -56,5 +56,8 @@ namespace Carrot::ECS {
         std::vector<Scripting::ComponentProperty> componentProperties;
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
+
+        mutable rapidjson::Document serializedDoc{};
+        mutable rapidjson::Value serializedVersion{}; // always keep the serialized version in case we can't load the component from C#
     };
 }
