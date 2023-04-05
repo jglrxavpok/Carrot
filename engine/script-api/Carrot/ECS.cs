@@ -77,6 +77,13 @@ namespace Carrot {
         #endregion
 
         /**
+         * Ask the engine to find an entity with a matching name.
+         * Can get quite slow if there are many entities.
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern Entity FindEntityByName(string name);
+
+        /**
          * Ask engine to send list of entities for this system
          */
         [MethodImpl(MethodImplOptions.InternalCall)]

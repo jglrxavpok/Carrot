@@ -16,6 +16,7 @@
 #include <mono/metadata/object.h>
 #include <engine/ecs/components/CameraComponent.h>
 #include <engine/ecs/components/CSharpComponent.h>
+#include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/systems/CSharpLogicSystem.h>
@@ -68,12 +69,17 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
         mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
         mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
+        mono_add_internal_call("Carrot.System::FindEntityByName", FindEntityByName);
         mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", GetName);
         mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
         mono_add_internal_call("Carrot.Entity::GetParent", nullptr); // TODO
+
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
+
+        mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
+        mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
     }
 
     CSharpBindings::~CSharpBindings() {
@@ -257,6 +263,10 @@ namespace Carrot::Scripting {
             TransformComponentClass = engine.findClass("Carrot", "TransformComponent");
             verify(TransformComponentClass, "Missing Carrot.TransformComponent class in Carrot.dll !");
         }
+        {
+            TextComponentClass = engine.findClass("Carrot", "TextComponent");
+            verify(TextComponentClass, "Missing Carrot.TextComponent class in Carrot.dll !");
+        }
 
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
@@ -270,6 +280,10 @@ namespace Carrot::Scripting {
             HardcodedComponents["Carrot.TransformComponent"] = {
                     .id = ECS::TransformComponent::getID(),
                     .clazz = TransformComponentClass,
+            };
+            HardcodedComponents["Carrot.TextComponent"] = {
+                    .id = ECS::TextComponent::getID(),
+                    .clazz = TextComponentClass,
             };
         }
     }
@@ -393,8 +407,38 @@ namespace Carrot::Scripting {
         entity.getComponent<ECS::TransformComponent>()->localTransform.position = value;
     }
 
+    MonoString* CSharpBindings::_GetText(MonoObject* textComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return mono_string_new_wrapper(entity.getComponent<ECS::TextComponent>()->getText().data());
+    }
+
+    void CSharpBindings::_SetText(MonoObject* textComp, MonoString* value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+
+        char* valueStr = mono_string_to_utf8(value);
+        CLEANUP(mono_free(valueStr));
+        entity.getComponent<ECS::TextComponent>()->setText(valueStr);
+    }
+
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {
         auto entity = convertToEntity(entityMonoObj);
         return mono_string_new_wrapper(entity.getName().c_str());
+    }
+
+    MonoObject* CSharpBindings::FindEntityByName(MonoObject* systemObj, MonoString* entityName) {
+        char* entityNameStr = mono_string_to_utf8(entityName);
+        CLEANUP(mono_free(entityNameStr));
+
+        Scripting::CSObject handleObj = instance().SystemHandleField->get(Scripting::CSObject(systemObj));
+        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
+        auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
+
+        auto potentialEntity = systemPtr->getWorld().findEntityByName(entityNameStr);
+        if(potentialEntity.has_value()) {
+            return (MonoObject*) (*entityToCSObject(potentialEntity.value()));
+        }
+        return nullptr;
     }
 }

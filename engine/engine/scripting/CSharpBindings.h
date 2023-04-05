@@ -39,6 +39,7 @@ namespace Carrot::Scripting {
         CSField* ComponentOwnerField = nullptr;
 
         CSClass* TransformComponentClass = nullptr;
+        CSClass* TextComponentClass = nullptr;
 
     public:
         CSharpBindings();
@@ -84,11 +85,16 @@ namespace Carrot::Scripting {
 
         static MonoObject* GetComponent(MonoObject* entityMonoObj, MonoString* namespaceStr, MonoString* classStr);
 
-        static glm::vec3 _GetLocalPosition(MonoObject* transformComp);
+        static MonoString* GetName(MonoObject* entityMonoObj);
 
+        static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
+
+    public: // hardcoded component interfaces
+        static glm::vec3 _GetLocalPosition(MonoObject* transformComp);
         static void _SetLocalPosition(MonoObject* transformComp, glm::vec3 value);
 
-        static MonoString* GetName(MonoObject* entityMonoObj);
+        static MonoString* _GetText(MonoObject* textComponent);
+        static void _SetText(MonoObject* textComponent, MonoString* value);
 
     private:
         void loadEngineAssembly();

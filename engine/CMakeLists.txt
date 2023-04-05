@@ -330,10 +330,11 @@ add_engine_precompiled_headers(Engine-ASAN)
 # TODO: move to post-build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.dll")
-    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Debug/*.pdb")
+    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Debug/*.pdb")
 else()
     file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.dll")
-    file(GLOB CarrotScriptDLLs "script-api/Carrot/bin/Release/*.pdb")
+    file(GLOB CarrotScriptPDBs "script-api/Carrot/bin/Release/*.pdb")
 endif()
 
 file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
+file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")

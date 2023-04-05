@@ -74,6 +74,9 @@ namespace Carrot::ECS {
 
         virtual ~System() = default;
 
+        World& getWorld() { return world; }
+        const World& getWorld() const { return world; }
+
     protected:
         void parallelSubmit(const std::function<void()>& action, Async::Counter& counter);
         static std::size_t concurrency(); // avoids to include TaskScheduler

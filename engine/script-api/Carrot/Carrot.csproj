@@ -49,6 +49,7 @@
         <Compile Include="LogicSystem.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Reflection.cs" />
+        <Compile Include="TextComponent.cs" />
         <Compile Include="TransformComponent.cs" />
         <Compile Include="Types.cs" />
         <Compile Include="Utilities.cs" />
