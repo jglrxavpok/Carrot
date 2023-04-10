@@ -57,7 +57,7 @@ namespace Carrot::ECS {
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
 
-        mutable rapidjson::Document serializedDoc{};
-        mutable rapidjson::Value serializedVersion{}; // always keep the serialized version in case we can't load the component from C#
+        mutable rapidjson::Document serializedDoc{rapidjson::kObjectType};
+        mutable rapidjson::Value serializedVersion{rapidjson::kObjectType}; // always keep the serialized version in case we can't load the component from C#
     };
 }

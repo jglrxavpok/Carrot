@@ -35,12 +35,10 @@ namespace Carrot {
         private static extern int GetComponentID(string typeNamespace, string typeClass);
     }
     
-    public abstract class System {
+    public abstract class System: Object {
         private Signature _signature = new Signature();
-        private UInt64 _handle = 0;
         
-        protected System(ulong handle) {
-            this._handle = handle;
+        protected System(ulong handle): base(handle) {
         }
         
         public void AddComponent<T>() where T: IComponent {

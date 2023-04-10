@@ -50,26 +50,27 @@ namespace Carrot::ECS {
         rapidjson::Value r{rapidjson::kObjectType};
 
         for(auto& property : componentProperties) {
+            rapidjson::Value serializationNameJSON(property.serializationName, doc.GetAllocator());
             switch(property.type) {
                 case Scripting::ComponentType::Int: {
                     auto v = property.field->get(*csComponent).unbox<std::int32_t>();
-                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
                 } break;
 
                 case Scripting::ComponentType::Float: {
                     auto v = property.field->get(*csComponent).unbox<float>();
-                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
                 } break;
 
                 case Scripting::ComponentType::Boolean: {
                     auto v = property.field->get(*csComponent).unbox<bool>();
-                    r.AddMember(rapidjson::StringRef(property.serializationName), v, doc.GetAllocator());
+                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
                 } break;
 
                 case Scripting::ComponentType::Entity: {
                     MonoObject* entityObj = property.field->get(*csComponent);
                     ECS::Entity entity = GetCSharpBindings().convertToEntity(entityObj);
-                    r.AddMember(rapidjson::StringRef(property.serializationName), rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
+                    r.AddMember(serializationNameJSON, rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
                 } break;
 
                 case Scripting::ComponentType::UserDefined:

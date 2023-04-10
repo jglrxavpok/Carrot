@@ -8,6 +8,11 @@ namespace Carrot {
             get => _GetLocalPosition();
             set => _SetLocalPosition(value);
         }
+        
+        public Vec3 LocalScale {
+            get => _GetLocalScale();
+            set => _SetLocalScale(value);
+        }
 
         private TransformComponent(Entity owner) : base(owner) {
         }
@@ -17,5 +22,11 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetLocalPosition(Vec3 newPosition);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec3 _GetLocalScale();
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern void _SetLocalScale(Vec3 newScale);
     }
 }

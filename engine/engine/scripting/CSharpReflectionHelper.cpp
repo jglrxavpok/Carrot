@@ -14,18 +14,6 @@
 
 namespace Carrot::Scripting {
 
-#define LOAD_CLASS(CLASS_NAME) \
-    CLASS_NAME##Class = GetCSharpScripting().findClass("Carrot", #CLASS_NAME); \
-    verify(CLASS_NAME##Class != nullptr, "Could not find class " #CLASS_NAME " inside Carrot.dll ?");
-
-#define LOAD_FIELD(CLASS_NAME, FIELD_NAME) \
-    CLASS_NAME##FIELD_NAME##Field = (CLASS_NAME##Class)->findField(#FIELD_NAME); \
-    verify(CLASS_NAME##FIELD_NAME##Field != nullptr, "Could not find field " #FIELD_NAME " in class " #CLASS_NAME " inside Carrot.dll ?");
-
-#define LOAD_METHOD(CLASS_NAME, METHOD_NAME) \
-    CLASS_NAME##METHOD_NAME##Method = (CLASS_NAME##Class)->findMethod(#METHOD_NAME); \
-    verify(CLASS_NAME##METHOD_NAME##Method != nullptr, "Could not find method " #METHOD_NAME " in class " #CLASS_NAME " inside Carrot.dll ?");
-
     void CSharpReflectionHelper::reload() {
         {
             LOAD_CLASS(ComponentProperty);

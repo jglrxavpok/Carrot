@@ -405,8 +405,6 @@ namespace Carrot {
 
         std::unique_ptr<VR::Interface> vrInterface = nullptr;
         std::unique_ptr<VR::Session> vrSession = nullptr;
-        std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
-        std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
@@ -558,6 +556,11 @@ namespace Carrot {
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;
+
+    private:
+        std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
+        std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
+
 
     private:
         static Carrot::Engine* instance;

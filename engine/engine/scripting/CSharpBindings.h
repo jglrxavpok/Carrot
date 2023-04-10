@@ -17,6 +17,7 @@
 #include <eventpp/callbacklist.h>
 #include <engine/scripting/ComponentProperty.h>
 #include <engine/scripting/CSharpReflectionHelper.h>
+#include <engine/scripting/CarrotCSObject.h>
 
 namespace Carrot::Scripting {
     /// Interface to use Carrot.dll and game dlls made in C#
@@ -31,8 +32,10 @@ namespace Carrot::Scripting {
         CSField* EntityIDField = nullptr;
         CSField* EntityUserPointerField = nullptr;
 
+        CSClass* CarrotObjectClass = nullptr;
+        CSField* CarrotObjectHandleField = nullptr;
+
         CSClass* SystemClass = nullptr;
-        CSField* SystemHandleField = nullptr;
         CSField* SystemSignatureField = nullptr;
 
         CSClass* ComponentClass = nullptr;
@@ -41,10 +44,15 @@ namespace Carrot::Scripting {
         CSClass* TransformComponentClass = nullptr;
         CSClass* TextComponentClass = nullptr;
 
+        CSClass* ActionSetClass = nullptr;
+        CSClass* BoolInputActionClass = nullptr;
+
     public:
         CSharpBindings();
 
         ~CSharpBindings();
+
+        void tick(double deltaTime);
 
         void loadGameAssembly(const IO::VFS::Path& gameDLL);
         void reloadGameAssembly();
@@ -65,6 +73,12 @@ namespace Carrot::Scripting {
 
     public:
         ComponentID requestComponentID(const std::string& namespaceName, const std::string& className);
+
+        template<typename T, typename... Args>
+        Scripting::CarrotCSObject<T>& requestCarrotObject(Scripting::CSClass* csType, Args&&... args) {
+            carrotObjects.push_back(std::make_unique<CarrotCSObject<T>>(csType, std::forward<Args>(args)...));
+            return *((CarrotCSObject<T>*)carrotObjects.back().get());
+        }
 
     public: // public because they might be useful to other parts of the engine
         struct CppComponent {
@@ -89,9 +103,23 @@ namespace Carrot::Scripting {
 
         static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
 
+    public: // input API
+        static MonoObject* CreateActionSet(MonoString* nameObj);
+        static void SuggestBinding(MonoObject* actionObj, MonoString* bindingStr);
+
+        static MonoObject* CreateBoolInputAction(MonoString* nameObj);
+        static bool IsBoolInputPressed(MonoObject* boolInput);
+        static bool WasBoolInputJustPressed(MonoObject* boolInput);
+        static bool WasBoolInputJustReleased(MonoObject* boolInput);
+
+        static void _AddToActionSet(MonoObject* setObj, MonoObject* actionObj);
+        static void _ActivateActionSet(MonoObject* setObj);
+
     public: // hardcoded component interfaces
         static glm::vec3 _GetLocalPosition(MonoObject* transformComp);
         static void _SetLocalPosition(MonoObject* transformComp, glm::vec3 value);
+        static glm::vec3 _GetLocalScale(MonoObject* transformComp);
+        static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);
@@ -128,5 +156,7 @@ namespace Carrot::Scripting {
         // system & component IDs found inside the game assembly
         std::vector<ECS::ComponentLibrary::ID> componentIDs;
         std::vector<ECS::SystemLibrary::ID> systemIDs;
+
+        std::vector<std::unique_ptr<Scripting::CarrotCSObjectBase>> carrotObjects;
     };
 }

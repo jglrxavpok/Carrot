@@ -46,7 +46,10 @@
         <Compile Include="Entity.cs" />
         <Compile Include="Carrot.cs" />
         <Compile Include="IComponent.cs" />
+        <Compile Include="Input\Actions.cs" />
+        <Compile Include="Input\ActionSet.cs" />
         <Compile Include="LogicSystem.cs" />
+        <Compile Include="Object.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Reflection.cs" />
         <Compile Include="TextComponent.cs" />

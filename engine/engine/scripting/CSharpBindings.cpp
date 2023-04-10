@@ -23,6 +23,9 @@
 
 #include <core/functional/Reflection.hpp>
 
+#include <engine/io/actions/Action.hpp>
+#include <engine/io/actions/ActionSet.h>
+
 namespace Carrot::Scripting {
 
     static CSharpBindings& instance() {
@@ -77,13 +80,33 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_GetLocalScale", _GetLocalScale);
+        mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", _SetLocalScale);
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
+
+        mono_add_internal_call("Carrot.Input.ActionSet::Create", CreateActionSet);
+        mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", _ActivateActionSet);
+        mono_add_internal_call("Carrot.Input.ActionSet::_AddToActionSet", _AddToActionSet);
+
+        mono_add_internal_call("Carrot.Input.Action::SuggestBinding", SuggestBinding);
+
+        mono_add_internal_call("Carrot.Input.BoolInputAction::Create", CreateBoolInputAction);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::IsPressed", IsBoolInputPressed);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustPressed", WasBoolInputJustPressed);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustReleased", WasBoolInputJustReleased);
     }
 
     CSharpBindings::~CSharpBindings() {
         unloadGameAssembly();
+    }
+
+    void CSharpBindings::tick(double deltaTime) {
+        // clear C++ objects that are no longer referenced by C#
+        Carrot::removeIf(carrotObjects, [&](auto& pObj) {
+            return !pObj->isAlive();
+        });
     }
 
     void CSharpBindings::loadGameAssembly(const IO::VFS::Path& gameDLL) {
@@ -235,8 +258,7 @@ namespace Carrot::Scripting {
         method->staticInvoke({});
 
         {
-            EntityClass = engine.findClass("Carrot", "Entity");
-            verify(EntityClass, "Missing Carrot.Entity class in Carrot.dll !");
+            LOAD_CLASS(Entity);
             EntityIDField = EntityClass->findField("_id");
             verify(EntityIDField, "Missing Carrot.Entity::_id field in Carrot.dll !");
             EntityUserPointerField = EntityClass->findField("_userPointer");
@@ -244,12 +266,21 @@ namespace Carrot::Scripting {
         }
 
         {
-            SystemClass = engine.findClass("Carrot", "System");
-            verify(SystemClass, "Missing Carrot.System class in Carrot.dll !");
-            SystemHandleField = SystemClass->findField("_handle");
-            verify(SystemHandleField, "Missing Carrot.System::_handle field in Carrot.dll !");
+            CarrotObjectClass = engine.findClass("Carrot", "Object");
+            verify(CarrotObjectClass, "Missing Carrot.Object class in Carrot.dll !");
+            CarrotObjectHandleField = CarrotObjectClass->findField("_handle");
+            verify(CarrotObjectHandleField, "Missing Carrot.Object::_handle field in Carrot.dll !");
+        }
+
+        {
+            LOAD_CLASS(System);
             SystemSignatureField = SystemClass->findField("_signature");
             verify(SystemSignatureField, "Missing Carrot.System::_signature field in Carrot.dll !");
+        }
+
+        {
+            LOAD_CLASS_NS("Carrot.Input", ActionSet);
+            LOAD_CLASS_NS("Carrot.Input", BoolInputAction);
         }
 
         {
@@ -259,14 +290,8 @@ namespace Carrot::Scripting {
             verify(ComponentOwnerField, "Missing Carrot.IComponent::owner field in Carrot.dll !");
         }
 
-        {
-            TransformComponentClass = engine.findClass("Carrot", "TransformComponent");
-            verify(TransformComponentClass, "Missing Carrot.TransformComponent class in Carrot.dll !");
-        }
-        {
-            TextComponentClass = engine.findClass("Carrot", "TextComponent");
-            verify(TextComponentClass, "Missing Carrot.TextComponent class in Carrot.dll !");
-        }
+        LOAD_CLASS(TransformComponent);
+        LOAD_CLASS(TextComponent);
 
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
@@ -286,6 +311,16 @@ namespace Carrot::Scripting {
                     .clazz = TextComponentClass,
             };
         }
+    }
+
+    template<typename T>
+    T& getObject(MonoObject* obj) {
+        verify(mono_object_isinst(obj, instance().CSharpBindings::CarrotObjectClass->toMono()), "Input object is not a Carrot.Object instance!");
+
+        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(obj));
+        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
+        auto* ptr = reinterpret_cast<T*>(handle);
+        return *ptr;
     }
 
     void CSharpBindings::unloadOnlyEngineAssembly() {
@@ -318,7 +353,7 @@ namespace Carrot::Scripting {
     }
 
     MonoArray* CSharpBindings::LoadEntities(MonoObject* systemObj) {
-        Scripting::CSObject handleObj = instance().SystemHandleField->get(Scripting::CSObject(systemObj));
+        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(systemObj));
         std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
         auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
 
@@ -407,6 +442,18 @@ namespace Carrot::Scripting {
         entity.getComponent<ECS::TransformComponent>()->localTransform.position = value;
     }
 
+    glm::vec3 CSharpBindings::_GetLocalScale(MonoObject* transformComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::TransformComponent>()->localTransform.scale;
+    }
+
+    void CSharpBindings::_SetLocalScale(MonoObject* transformComp, glm::vec3 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::TransformComponent>()->localTransform.scale = value;
+    }
+
     MonoString* CSharpBindings::_GetText(MonoObject* textComp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
@@ -431,7 +478,7 @@ namespace Carrot::Scripting {
         char* entityNameStr = mono_string_to_utf8(entityName);
         CLEANUP(mono_free(entityNameStr));
 
-        Scripting::CSObject handleObj = instance().SystemHandleField->get(Scripting::CSObject(systemObj));
+        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(systemObj));
         std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
         auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
 
@@ -440,5 +487,62 @@ namespace Carrot::Scripting {
             return (MonoObject*) (*entityToCSObject(potentialEntity.value()));
         }
         return nullptr;
+    }
+
+    MonoObject* CSharpBindings::CreateActionSet(MonoString* nameObj) {
+        char* nameStr = mono_string_to_utf8(nameObj);
+        CLEANUP(mono_free(nameStr));
+
+        return instance().requestCarrotObject<Carrot::IO::ActionSet>(instance().ActionSetClass, nameStr).toMono();
+    }
+
+    void CSharpBindings::SuggestBinding(MonoObject* actionObj, MonoString* bindingObj) {
+        char* bindingStr = mono_string_to_utf8(bindingObj);
+        CLEANUP(mono_free(bindingStr));
+        if(mono_object_isinst(actionObj, instance().BoolInputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::BoolInputAction>(actionObj);
+            action.suggestBinding(bindingStr);
+        } else {
+            MonoClass* objClass = mono_object_get_class(actionObj);
+            CSClass c{ instance().appDomain->toMono(), objClass };
+            verify(false, Carrot::sprintf("Unhandled type: %s.%s", c.getNamespaceName().c_str(), c.getName().c_str())); // TODO
+        }
+    }
+
+    MonoObject* CSharpBindings::CreateBoolInputAction(MonoString* nameObj) {
+        char* nameStr = mono_string_to_utf8(nameObj);
+        CLEANUP(mono_free(nameStr));
+
+        return instance().requestCarrotObject<Carrot::IO::BoolInputAction>(instance().BoolInputActionClass, nameStr).toMono();
+    }
+
+    bool CSharpBindings::IsBoolInputPressed(MonoObject* boolInput) {
+        auto& action = getObject<Carrot::IO::BoolInputAction>(boolInput);
+        return action.isPressed();
+    }
+
+    bool CSharpBindings::WasBoolInputJustPressed(MonoObject* boolInput) {
+        auto& action = getObject<Carrot::IO::BoolInputAction>(boolInput);
+        return action.wasJustPressed();
+    }
+
+    bool CSharpBindings::WasBoolInputJustReleased(MonoObject* boolInput) {
+        auto& action = getObject<Carrot::IO::BoolInputAction>(boolInput);
+        return action.wasJustReleased();
+    }
+
+    void CSharpBindings::_AddToActionSet(MonoObject* setObj, MonoObject* actionObj) {
+        auto& set = getObject<Carrot::IO::ActionSet>(setObj);
+        if(mono_object_isinst(actionObj, instance().BoolInputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::BoolInputAction>(actionObj);
+            set.add(action);
+        } else {
+            verify(false, "Unhandled type!"); // TODO
+        }
+    }
+
+    void CSharpBindings::_ActivateActionSet(MonoObject* setObj) {
+        auto& set = getObject<Carrot::IO::ActionSet>(setObj);
+        set.activate();
     }
 }

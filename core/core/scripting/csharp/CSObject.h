@@ -25,6 +25,8 @@ namespace Carrot::Scripting {
 
         operator MonoObject*() const;
 
+        MonoObject* toMono() const;
+
         /**
          * Unbox this object to the given type
          * @tparam ToType

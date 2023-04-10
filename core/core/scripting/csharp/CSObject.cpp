@@ -23,6 +23,10 @@ namespace Carrot::Scripting {
         return obj;
     }
 
+    MonoObject* CSObject::toMono() const {
+        return obj;
+    }
+
     void* CSObject::unboxInternal() const {
         if(obj == nullptr) {
             return nullptr;
