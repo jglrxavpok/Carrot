@@ -3,7 +3,7 @@
 //
 
 #include "CameraRenderer.h"
-#include <engine/render/DrawData.h>
+#include <engine/render/GBufferDrawData.h>
 
 namespace Peeler::ECS {
     CameraRenderer::CameraRenderer(Carrot::ECS::World& world): Carrot::ECS::RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::CameraComponent>(world) {
@@ -19,7 +19,7 @@ namespace Peeler::ECS {
         static glm::mat4 scaling = glm::scale(glm::mat4{ 1.0f }, glm::vec3 { 0.1f, 0.1f, 0.1f });
 
         Carrot::InstanceData instanceData;
-        Carrot::DrawData data;
+        Carrot::GBufferDrawData data;
 
         Carrot::Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
         pushConstant.id = "drawDataPush";

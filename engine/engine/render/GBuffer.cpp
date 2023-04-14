@@ -94,7 +94,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
                                                                                         [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBufferTransparent>& pass, Carrot::Render::PassData::GBufferTransparent& data)
                                                                                         {
 
-                                                                                            data.transparentOutput = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                                                                                            data.transparentOutput = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                                                                                               framebufferSize,
                                                                                                                                               vk::AttachmentLoadOp::eClear,
                                                                                                                                               clearColor,
@@ -111,7 +111,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuf
 
 Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLightingPass(const Carrot::Render::PassData::GBuffer& opaqueData,
                                                                                            const Carrot::Render::PassData::GBufferTransparent& transparentData,
-                                                                                           const Carrot::Render::FrameResource& skyboxOutput,
                                                                                            Carrot::Render::GraphBuilder& graph,
                                                                                            const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
@@ -160,7 +159,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     block.frameWidth = outputSize.width;
                     block.frameHeight = outputSize.height;
                 }
-                block.hasTLAS = !!frame.renderer.getASBuilder().getTopLevelAS();
+                block.hasTLAS = frame.renderer.getASBuilder().getTopLevelAS() != nullptr;
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 // GBuffer inputs

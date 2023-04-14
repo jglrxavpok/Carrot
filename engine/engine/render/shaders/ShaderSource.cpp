@@ -96,7 +96,8 @@ namespace Carrot::Render {
         if(!fromFile) {
             return "<<from memory>>";
         } else {
-            return Carrot::toString(filepath.u8string());
+            std::u8string u8string = filepath.u8string();
+            return Carrot::toString(u8string);
         }
     }
 }

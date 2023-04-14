@@ -87,8 +87,8 @@ namespace Carrot {
 
         Carrot::Engine& engine;
         std::string debugName;
-        std::shared_ptr<Carrot::Pipeline> staticMeshesPipeline;
-        std::shared_ptr<Carrot::Pipeline> skinnedMeshesPipeline;
+        std::shared_ptr<Carrot::Pipeline> opaqueMeshesPipeline;
+        std::shared_ptr<Carrot::Pipeline> transparentMeshesPipeline;
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> staticMeshes{};
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};

@@ -7,7 +7,7 @@
 #include <core/utils/UUID.h>
 
 namespace Carrot {
-    struct DrawData {
+    struct GBufferDrawData {
         uint32_t materialIndex;
 
         uint32_t uuid0 = 0;

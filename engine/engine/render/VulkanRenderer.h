@@ -282,6 +282,7 @@ namespace Carrot {
 
         std::unique_ptr<RayTracer> raytracer = nullptr;
         std::unique_ptr<GBuffer> gBuffer = nullptr;
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> forwardRenderingFrameInfo;
 
         std::list<CommandBufferConsumer> beforeFrameCommands;
         std::list<CommandBufferConsumer> afterFrameCommands;

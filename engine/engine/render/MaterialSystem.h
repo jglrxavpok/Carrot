@@ -62,6 +62,8 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> normalMap;
         std::shared_ptr<TextureHandle> metallicRoughness;
 
+        bool isTransparent = false;
+
         /*[[deprecated]] */explicit MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system);
 
         ~MaterialHandle();
@@ -83,6 +85,13 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> createTextureHandle(Texture::Ref texture);
         std::shared_ptr<MaterialHandle> createMaterialHandle();
 
+    public:
+        std::weak_ptr<TextureHandle> getTexture(std::uint32_t slot);
+        std::weak_ptr<MaterialHandle> getMaterial(std::uint32_t slot);
+        std::weak_ptr<const TextureHandle> getTexture(std::uint32_t slot) const;
+        std::weak_ptr<const MaterialHandle> getMaterial(std::uint32_t slot) const;
+
+    public:
         void bind(const Context& renderContext, vk::CommandBuffer& cmds, std::uint32_t index, vk::PipelineLayout pipelineLayout, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics);
         void beginFrame(const Context& renderContext);
 

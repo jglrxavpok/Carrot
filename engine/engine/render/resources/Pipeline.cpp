@@ -8,7 +8,7 @@
 #include "engine/render/resources/Buffer.h"
 #include <rapidjson/document.h>
 #include "core/io/IO.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include "Vertex.h"
 #include "engine/render/MaterialSystem.h"
 #include "Mesh.h"
@@ -221,7 +221,7 @@ void Carrot::Pipeline::createGraphicsTemplate() {
                         .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
                         .colorBlendOp = vk::BlendOp::eAdd,
                         .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                        .dstAlphaBlendFactor = vk::BlendFactor::eOne,
+                        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
                         .alphaBlendOp = vk::BlendOp::eAdd,
 
                         .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,

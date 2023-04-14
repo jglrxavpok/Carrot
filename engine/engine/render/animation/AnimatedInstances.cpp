@@ -8,7 +8,7 @@
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/resources/LightMesh.h"
 
@@ -385,10 +385,11 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     verify(instanceCount <= maxInstanceCount, "instanceCount > maxInstanceCount !");
     onFrame(renderContext.swapchainIndex); // TODO: don't yolo it, wait for semaphore
 
-    Carrot::DrawData data;
+    Carrot::GBufferDrawData data;
 
+    bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
     Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
-    packet.pipeline = model->skinnedMeshesPipeline;
+    packet.pipeline = inTransparentPass ? model->transparentMeshesPipeline : model->opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 
     Render::Packet::PushConstant& pushConstant = packet.addPushConstant();

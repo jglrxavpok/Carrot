@@ -379,6 +379,22 @@ namespace Carrot::Render {
         return ptr;
     }
 
+    std::weak_ptr<TextureHandle> MaterialSystem::getTexture(std::uint32_t slot) {
+        return textureHandles.find(slot);
+    }
+
+    std::weak_ptr<MaterialHandle> MaterialSystem::getMaterial(std::uint32_t slot) {
+        return materialHandles.find(slot);
+    }
+
+    std::weak_ptr<const TextureHandle> MaterialSystem::getTexture(std::uint32_t slot) const {
+        return textureHandles.find(slot);
+    }
+
+    std::weak_ptr<const MaterialHandle> MaterialSystem::getMaterial(std::uint32_t slot) const {
+        return materialHandles.find(slot);
+    }
+
     void MaterialSystem::reallocateDescriptorSets() {
         GetVulkanDevice().resetDescriptorPool(*descriptorSetPool);
         std::vector<vk::DescriptorSetLayout> layouts{GetEngine().getSwapchainImageCount(), *descriptorSetLayout};

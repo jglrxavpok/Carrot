@@ -3,7 +3,7 @@
 //
 
 #include "SkeletalModelRenderer.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include <engine/render/resources/Mesh.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <core/render/Animation.h>
@@ -85,7 +85,7 @@ namespace Carrot::Render {
         // push mesh rendering
         {
             ZoneScopedN("SkeletalModelRenderer Push mesh rendering");
-            Carrot::DrawData data;
+            Carrot::GBufferDrawData data;
 
             Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
             packet.pipeline = renderingPipeline;

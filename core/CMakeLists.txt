@@ -57,13 +57,14 @@ set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
         )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+# TODO: Seems like my Release build of Mono is broken?
+#if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Debug/mono-2.0-sgen.lib")
     file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Debug/*.dll")
-else()
-    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/mono-2.0-sgen.lib")
-    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Release/*.dll")
-endif()
+#else()
+#    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/mono-2.0-sgen.lib")
+#    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Release/*.dll")
+#endif()
 
 function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}core/)

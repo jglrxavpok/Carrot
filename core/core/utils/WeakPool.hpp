@@ -102,6 +102,22 @@ namespace Carrot {
             freeSlot(handle.getSlot());
         }
 
+        std::weak_ptr<ElementType> find(std::uint32_t slot) {
+            auto iter = registry.find(slot);
+            if(iter != registry.end()) {
+                return iter->second;
+            }
+            return {};
+        }
+
+        std::weak_ptr<const ElementType> find(std::uint32_t slot) const {
+            auto iter = registry.find(slot);
+            if(iter != registry.end()) {
+                return iter->second;
+            }
+            return {};
+        }
+
     private:
         Registry registry;
         std::queue<std::uint32_t> freeSlots;

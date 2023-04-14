@@ -1,0 +1,36 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "Vertex",
+  "cull": false,
+  "alphaBlending": true,
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "lights",
+      "setID": 1
+    },
+    {
+      "type": "debug",
+      "setID": 2
+    },
+    {
+      "type": "debug",
+      "setID": 3
+    },
+    {
+      "type": "materials",
+      "setID": 4
+    },
+    {
+      "type": "autofill",
+      "setID": 5
+    }
+  ],
+  "depthWrite": false,
+  "depthTest": true,
+  "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv"
+}

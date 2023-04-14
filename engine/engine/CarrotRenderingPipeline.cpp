@@ -31,27 +31,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                                                                          const Carrot::Render::Context&,
                                                                                                                          vk::CommandBuffer&)> transparentCallback,
                                                                                                       const Render::TextureSize& framebufferSize) {
-    /* TODO: remove*/
-    auto& skyboxPass = mainGraph.addPass<Carrot::Render::PassData::Skybox>("skybox",
-                                                                           [this, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Skybox>& pass, Carrot::Render::PassData::Skybox& data) {
-                                                                               data.output = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
-                                                                                                                        framebufferSize,
-                                                                                                                        vk::AttachmentLoadOp::eClear,
-                                                                                                                        vk::ClearColorValue(std::array{0,0,0,0})
-                                                                               );
-                                                                           },
-                                                                           [this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data, vk::CommandBuffer& buffer) {
-                                                                               ZoneScopedN("CPU RenderGraph skybox");
-                                                                               auto skyboxPipeline = renderer.getOrCreateRenderPassSpecificPipeline("skybox", pass.getRenderPass());
-                                                                               renderer.bindTexture(*skyboxPipeline, frame, *loadedSkyboxTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
-                                                                               skyboxPipeline->bind(pass.getRenderPass(), frame, buffer);
-                                                                               skyboxMesh->bind(buffer);
-                                                                               skyboxMesh->draw(buffer);
-                                                                           }
-    );
-    skyboxPass.setCondition([this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Skybox& data) {
-        return false;//currentSkybox != Skybox::Type::None;
-    });
 
     auto& opaqueGBufferPass = getGBuffer().addGBufferPass(mainGraph, [opaqueCallback](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
         ZoneScopedN("CPU RenderGraph Opaque GPass");
@@ -61,7 +40,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         ZoneScopedN("CPU RenderGraph Opaque GPass");
         transparentCallback(pass, frame, cmds);
     }, framebufferSize);
-    auto& lightingPass = getGBuffer().addLightingPass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), skyboxPass.getData().output, mainGraph, framebufferSize);
+    auto& lightingPass = getGBuffer().addLightingPass(opaqueGBufferPass.getData(), transparentGBufferPass.getData(), mainGraph, framebufferSize);
 
     struct Denoising {
         Render::FrameResource beauty;
@@ -173,10 +152,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                         frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 1u + ((std::uint64_t)&frame.viewport)),
                         frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 2u + ((std::uint64_t)&frame.viewport)),
                 };
-                Render::Texture* denoisedPingPong[2] = {
-                        &denoisedResultTexture0,
-                        &denoisedResultTexture1,
-                };
 
                 data.gBuffer.bindInputs(*pipelinePingPong[0], frame, pass.getGraph(), 0);
                 frame.renderer.bindTexture(*pipelinePingPong[0], frame, temporalTexture, 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -230,17 +205,19 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         Render::FrameResource noisyLighting; // for debug
         Render::FrameResource lighting;
         Render::FrameResource momentsHistoryHistoryLength;
+        Render::FrameResource transparentObjects;
         Render::FrameResource mergeResult;
     };
 
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, lightingPass, temporalAccumulationPass, spatialDenoise, skyboxData = skyboxPass.getData(), framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+            [this, lightingPass, temporalAccumulationPass, transparentGBufferPass, spatialDenoise, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
                 data.noisyLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.lighting = builder.read(spatialDenoise.getData().denoisedPingPong[(spatialDenoise.getData().iterationCount + 1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.momentsHistoryHistoryLength = builder.read(temporalAccumulationPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.transparentObjects = builder.read(transparentGBufferPass.getData().transparentOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                               framebufferSize,
                                                               vk::AttachmentLoadOp::eClear,
@@ -273,6 +250,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.momentsHistoryHistoryLength, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.noisyLighting, frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.transparentObjects, frame.swapchainIndex), 1, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral); // TODO shader read only layout?
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

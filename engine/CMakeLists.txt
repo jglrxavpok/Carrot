@@ -190,12 +190,17 @@ set(FRAGMENT_SHADERS
         blit.fragment.glsl
         skybox.fragment.glsl
         particles.fragment.glsl
+
         lighting-noraytracing.fragment.glsl
         lighting-raytracing.fragment.glsl
+
         composer-blit.fragment.glsl
         text-rendering.fragment.glsl
         gBufferSprite.fragment.glsl
         billboards.fragment.glsl
+
+        forward-raytracing.fragment.glsl
+        forward-noraytracing.fragment.glsl
 
         post-process/temporal-denoise.fragment.glsl
         post-process/merge-lighting.fragment.glsl

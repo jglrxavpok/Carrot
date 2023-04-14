@@ -3,7 +3,7 @@
 //
 
 #include <engine/render/InstanceData.h>
-#include <engine/render/DrawData.h>
+#include <engine/render/GBufferDrawData.h>
 #include "CollisionShapeRenderer.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/Engine.h"

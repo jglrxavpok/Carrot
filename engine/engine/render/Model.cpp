@@ -11,7 +11,7 @@
 #include <engine/utils/conversions.h>
 #include <core/io/Logging.hpp>
 #include <core/scene/LoadedScene.h>
-#include <engine/render/DrawData.h>
+#include <engine/render/GBufferDrawData.h>
 #include <engine/render/RenderPacket.h>
 #include <engine/utils/Profiling.h>
 #include "engine/render/raytracing/ASBuilder.h"
@@ -42,8 +42,13 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     }
 
     // TODO: make different pipelines based on loaded materials
-    staticMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
-    skinnedMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
+    opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
+
+    if(GetEngine().getCapabilities().supportsRaytracing) {
+        transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-raytracing");
+    } else {
+        transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-noraytracing");
+    }
 
     Carrot::Async::Counter waitMaterialLoads;
     // TODO: reduce task count
@@ -104,17 +109,16 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 std::shared_ptr<SingleMesh> mesh;
                 const auto& material = materials[primitive.materialIndex];
 
-                if(scene.materials[primitive.materialIndex].blendMode == Render::LoadedMaterial::BlendMode::None) {
-                    // TODO: handle alpha blending properly
-                    if(primitive.isSkinned) {
-                        mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-                        skinnedMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
-                    } else {
-                        mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
-                        staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
-                    }
-                    mesh->name(scene.debugName + " (" + primitive.name + ")");
+                auto& sceneMaterial = scene.materials[primitive.materialIndex];
+                material->isTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
+                if(primitive.isSkinned) {
+                    mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
+                    skinnedMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+                } else {
+                    mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
+                    staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
                 }
+                mesh->name(scene.debugName + " (" + primitive.name + ")");
             }
         }
 
@@ -218,64 +222,93 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 }
 
 void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount, const Carrot::UUID& entityID) {
+    verify(false, "Deprecated, use Render::Packet system instead");
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
 
-    DrawData data;
+    GBufferDrawData data;
     data.setUUID(entityID);
-    auto draw = [&](auto meshes, auto& pipeline) {
+
+    Carrot::Pipeline* boundPipeline = nullptr;
+    auto& materialSystem = renderContext.renderer.getMaterialSystem();
+    auto draw = [&](auto meshes) {
         for(const auto& [mat, meshList] : meshes) {
+            auto weakMat = materialSystem.getMaterial(mat);
+            Carrot::Pipeline* pipeline = nullptr;
+            if(auto pMat = weakMat.lock()) {
+                if(pMat->isTransparent) {
+                    pipeline = transparentMeshesPipeline.get();
+                } else {
+                    pipeline = opaqueMeshesPipeline.get();
+                }
+            }
+            if(pipeline != boundPipeline) {
+                pipeline->bind(pass, renderContext, commands);
+            }
             for(const auto& [mesh, transform] : meshList) {
                 data.materialIndex = mat;
-                renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
+                renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bind(commands);
                 mesh->draw(commands, instanceCount);
             }
         }
     };
     if(!staticMeshes.empty()) {
-        staticMeshesPipeline->bind(pass, renderContext, commands);
-        draw(staticMeshes, *staticMeshesPipeline);
+        draw(staticMeshes);
     }
 
     if(!skinnedMeshes.empty()) {
-        skinnedMeshesPipeline->bind(pass, renderContext, commands);
-        draw(skinnedMeshes, *skinnedMeshesPipeline);
+        draw(skinnedMeshes);
     }
 }
 
 void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID) {
+    verify(false, "Deprecated, use Render::Packet system instead");
     commands.bindVertexBuffers(1, instanceData.getVulkanBuffer(), {0});
 
-    DrawData data;
+    GBufferDrawData data;
     data.setUUID(entityID);
 
-    auto draw = [&](auto meshes, auto& pipeline) {
+    Carrot::Pipeline* boundPipeline = nullptr;
+    auto& materialSystem = renderContext.renderer.getMaterialSystem();
+    auto draw = [&](auto meshes) {
         for(const auto& [mat, meshList] : meshes) {
+            auto weakMat = materialSystem.getMaterial(mat);
+            Carrot::Pipeline* pipeline = nullptr;
+            if(auto pMat = weakMat.lock()) {
+                if(pMat->isTransparent) {
+                    pipeline = transparentMeshesPipeline.get();
+                } else {
+                    pipeline = opaqueMeshesPipeline.get();
+                }
+            }
+            if(pipeline != boundPipeline) {
+                pipeline->bind(pass, renderContext, commands);
+            }
             for(const auto& [mesh, transform] : meshList) {
                 data.materialIndex = mat;
-                renderContext.renderer.pushConstantBlock<DrawData>("drawDataPush", pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
+                renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bindForIndirect(commands);
                 mesh->indirectDraw(commands, *indirectDrawCommands.at(mesh->getMeshID()), drawCount);
             }
         }
     };
     if(!staticMeshes.empty()) {
-        staticMeshesPipeline->bind(pass, renderContext, commands);
-        draw(staticMeshes, *staticMeshesPipeline);
+        draw(staticMeshes);
     }
 
     if(!skinnedMeshes.empty()) {
-        skinnedMeshesPipeline->bind(pass, renderContext, commands);
-        draw(skinnedMeshes, *skinnedMeshesPipeline);
+        draw(skinnedMeshes);
     }
 }
 
 void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
     ZoneScoped;
-    DrawData data;
+    GBufferDrawData data;
+
+    const bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
 
     Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
-    packet.pipeline = staticMeshesPipeline;
+    packet.pipeline = inTransparentPass ? transparentMeshesPipeline : opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 
     Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
@@ -288,29 +321,38 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
     }
 
     Carrot::InstanceData meshInstanceData = instanceData;
+    auto& materialSystem = renderContext.renderer.getMaterialSystem();
     for (const auto&[mat, meshList]: staticMeshes) {
-        for (const auto& [mesh, transform]: meshList) {
-            ZoneScopedN("mesh use");
-            data.materialIndex = mat;
-            packet.useMesh(*mesh);
+        auto weakMat = materialSystem.getMaterial(mat);
+        if(auto pMat = weakMat.lock()) {
+            if(pMat->isTransparent != inTransparentPass) {
+                continue;
+            }
+            for (const auto& [mesh, transform]: meshList) {
+                ZoneScopedN("mesh use");
+                data.materialIndex = mat;
+                packet.useMesh(*mesh);
 
-            meshInstanceData.transform = instanceData.transform * transform;
-            meshInstanceData.lastFrameTransform = instanceData.lastFrameTransform * transform;
-            packet.useInstance(meshInstanceData);
+                meshInstanceData.transform = instanceData.transform * transform;
+                meshInstanceData.lastFrameTransform = instanceData.lastFrameTransform * transform;
+                packet.useInstance(meshInstanceData);
 
 
-            pushConstant.setData(data); // template operator=
+                pushConstant.setData(data); // template operator=
 
-            renderContext.renderer.render(packet);
+                renderContext.renderer.render(packet);
+            }
         }
     }
 }
 
 void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
-    DrawData data;
+    GBufferDrawData data;
+
+    const bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
 
     Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
-    packet.pipeline = skinnedMeshesPipeline;
+    packet.pipeline = inTransparentPass ? transparentMeshesPipeline : opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 
     Render::Packet::PushConstant& pushConstant = packet.addPushConstant();

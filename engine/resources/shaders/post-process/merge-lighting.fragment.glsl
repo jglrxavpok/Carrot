@@ -11,6 +11,7 @@ DEFINE_GBUFFER_INPUTS(0)
 layout(set = 1, binding = 0) uniform texture2D lighting;
 layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
 layout(set = 1, binding = 2) uniform texture2D noisyLighting;
+layout(set = 1, binding = 3) uniform texture2D transparentObjects;
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -24,15 +25,24 @@ layout(push_constant) uniform PushConstant {
     uint frameHeight;
 } push;
 
+bool earlyExits(uint debugMode) {
+    if(debugMode == DEBUG_OPAQUE_OBJECTS) {
+        return false; // debug rendering is handled later
+    }
+    return debugMode != DEBUG_GBUFFER_DISABLED;
+}
+
 void main() {
     GBuffer g = unpackGBuffer(uv);
     vec4 albedoColor = g.albedo;
     vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv);
+    vec4 transparentObjectsColor = texture(sampler2D(transparentObjects, gLinearSampler), uv);
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 
+    bool showTransparentObjects = true;
     // debug rendering
-    if(debug.gBufferType != DEBUG_GBUFFER_DISABLED) {
+    if(earlyExits(debug.gBufferType)) {
         vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1.0)).xyz;
 
         if(debug.gBufferType == DEBUG_GBUFFER_ALBEDO) {
@@ -64,6 +74,8 @@ void main() {
             outColor = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
         } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
             outColor = vec4(g.entityID) / 255.0f;
+        } else if(debug.gBufferType == DEBUG_TRANSPARENT_OBJECTS) {
+            outColor = transparentObjectsColor;
         } else {
             outColor = vec4(uv, 0.0, 1.0);
         }
@@ -80,9 +92,16 @@ void main() {
         return;
     }
 
+    vec3 finalOpaqueColor;
     if(currDepth < 1.0) {
-        outColor = vec4(albedoColor.rgb * lightingColor.rgb, 1.0);
+        finalOpaqueColor = albedoColor.rgb * lightingColor.rgb;
     } else {
-        outColor = vec4(lightingColor.rgb, 1.0);
+        finalOpaqueColor = lightingColor.rgb;
     }
+
+    if(debug.gBufferType == DEBUG_OPAQUE_OBJECTS) {
+        outColor = vec4(finalOpaqueColor, 1.0);
+        return;
+    }
+    outColor = vec4(mix(finalOpaqueColor.rgb, transparentObjectsColor.rgb, transparentObjectsColor.a), 1.0);
 }

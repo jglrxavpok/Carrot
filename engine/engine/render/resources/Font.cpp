@@ -3,7 +3,7 @@
 //
 
 #include "Font.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include "SingleMesh.h"
 #include <engine/utils/Macros.h>
 #include <engine/Engine.h>
@@ -128,7 +128,7 @@ namespace Carrot::Render {
         Render::Packet::PushConstant& pushConstant = renderPacket.addPushConstant();
         pushConstant.id = "drawDataPush";
         pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
-        Carrot::DrawData data;
+        Carrot::GBufferDrawData data;
         data.materialIndex = material->getSlot();
 
         pushConstant.setData(data); // template operator=

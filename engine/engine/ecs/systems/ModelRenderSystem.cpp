@@ -4,7 +4,7 @@
 
 #include "ModelRenderSystem.h"
 #include <engine/vulkan/CustomTracyVulkan.h>
-#include <engine/render/DrawData.h>
+#include <engine/render/GBufferDrawData.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/InstanceData.h>
 #include <engine/render/RenderPacket.h>
@@ -22,25 +22,23 @@ namespace Carrot::ECS {
 
     }
 
-    void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext, bool isTransparent) {
+    void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext) {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
-            if(modelComp.isTransparent == isTransparent) {
-                if (modelComp.asyncModel.isReady()) {
-                    modelComp.loadTLASIfPossible();
-                    Carrot::InstanceData instanceData;
-                    instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
-                    instanceData.transform = transform.toTransformMatrix();
-                    instanceData.uuid = entity.getID();
-                    instanceData.color = modelComp.color;
-                    Render::PassEnum pass = isTransparent ? Render::PassEnum::TransparentGBuffer : Render::PassEnum::OpaqueGBuffer;
+            if (modelComp.asyncModel.isReady()) {
+                modelComp.loadTLASIfPossible();
+                Carrot::InstanceData instanceData;
+                instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
+                instanceData.transform = transform.toTransformMatrix();
+                instanceData.uuid = entity.getID();
+                instanceData.color = modelComp.color;
 
-                    modelComp.asyncModel->renderStatic(renderContext, instanceData, pass);
+                modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
-                    if(modelComp.tlas) {
-                        modelComp.tlas->transform = instanceData.transform;
-                        modelComp.tlas->customIndex = 0; // TODO
-                    }
+                if(modelComp.tlas) {
+                    modelComp.tlas->transform = instanceData.transform;
+                    modelComp.tlas->customIndex = 0; // TODO
                 }
             }
         });
@@ -53,8 +51,7 @@ namespace Carrot::ECS {
     }
 
     void ModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
-        renderModels(renderContext, true);
-        renderModels(renderContext, false);
+        renderModels(renderContext);
     }
 
     std::unique_ptr<System> ModelRenderSystem::duplicate(World& newOwner) const {

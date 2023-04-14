@@ -7,7 +7,7 @@
 #include <engine/render/resources/Vertex.h>
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/SingleMesh.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include <glm/gtx/quaternion.hpp>
 
 namespace Carrot::Render {
@@ -47,7 +47,7 @@ namespace Carrot::Render {
         materialData.id = "drawDataPush";
         materialData.stages = vk::ShaderStageFlagBits::eFragment;
 
-        Carrot::DrawData drawData;
+        Carrot::GBufferDrawData drawData;
         drawData.materialIndex = material->getSlot();
         materialData.setData(drawData);
 

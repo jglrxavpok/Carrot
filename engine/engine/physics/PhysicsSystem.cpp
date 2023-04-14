@@ -7,7 +7,7 @@
 #include "engine/utils/conversions.h"
 #include "engine/Engine.h"
 #include "engine/render/resources/Pipeline.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include "engine/render/InstanceData.h"
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/resources/Vertex.h"
@@ -127,7 +127,7 @@ namespace Carrot::Physics {
         renderPacket.indexBuffer = indexBuffer;
         renderPacket.indexCount = triangles.size() * 3;
 
-        Carrot::DrawData drawData;
+        Carrot::GBufferDrawData drawData;
         drawData.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
 
         Carrot::Render::Packet::PushConstant& pushConstant = renderPacket.addPushConstant();

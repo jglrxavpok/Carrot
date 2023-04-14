@@ -1,0 +1,4 @@
+{
+  "_import": "forward.json",
+  "fragmentShader": "resources/shaders/forward-noraytracing.fragment.glsl.spv"
+}

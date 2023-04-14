@@ -16,7 +16,7 @@
 #include "core/io/Logging.hpp"
 #include "core/io/IO.h"
 #include "engine/render/DebugBufferObject.h"
-#include "engine/render/DrawData.h"
+#include "engine/render/GBufferDrawData.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Font.h"
 #include "engine/render/resources/ResourceAllocator.h"
@@ -29,6 +29,15 @@ static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 
 static thread_local Carrot::VulkanRenderer::ThreadPackets* threadLocalRenderPackets = nullptr;
 static thread_local Carrot::Render::PacketContainer* threadLocalPacketStorage = nullptr;
+
+
+struct ForwardFrameInfo {
+    std::uint32_t frameCount;
+    std::uint32_t frameWidth;
+    std::uint32_t frameHeight;
+
+    bool hasTLAS;
+};
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
 
@@ -261,7 +270,18 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
     materialSystem.onSwapchainImageCountChange(newCount);
+
     lighting.onSwapchainImageCountChange(newCount);
+    forwardRenderingFrameInfo.clear();
+    forwardRenderingFrameInfo.resize(getSwapchainImageCount());
+    for (std::size_t j = 0; j < getSwapchainImageCount(); ++j) {
+        forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
+                sizeof(ForwardFrameInfo),
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        );
+    }
+
     if(asBuilder) {
         asBuilder->onSwapchainImageCountChange(newCount);
     }
@@ -789,6 +809,8 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("EntityID", &gIndex, DEBUG_GBUFFER_ENTITYID);
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
                 ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
+                ImGui::RadioButton("Only opaque objects", &gIndex, DEBUG_OPAQUE_OBJECTS);
+                ImGui::RadioButton("Only transparent objects", &gIndex, DEBUG_TRANSPARENT_OBJECTS);
 
                 obj.gBufferType = gIndex;
             }
@@ -913,6 +935,16 @@ void Carrot::VulkanRenderer::createDefaultResources() {
     cubeMap->stageUpload(blackPixel, 5);
 
     blackCubeMapTexture = std::make_shared<Render::Texture>(std::move(cubeMap));
+
+    forwardRenderingFrameInfo.clear();
+    forwardRenderingFrameInfo.resize(getSwapchainImageCount());
+    for (std::size_t j = 0; j < getSwapchainImageCount(); ++j) {
+        forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
+                sizeof(ForwardFrameInfo),
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+                );
+    }
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
@@ -1028,6 +1060,42 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
         return;
     }
 
+    const bool useRaytracingVersion = GetEngine().getCapabilities().supportsRaytracing;
+    std::shared_ptr<Carrot::Pipeline> forwardPipeline;
+    if(useRaytracingVersion) {
+        forwardPipeline = getOrCreatePipeline("forward-raytracing");
+    } else {
+        forwardPipeline = getOrCreatePipeline("forward-noraytracing");
+    }
+
+    Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
+    if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
+        skyboxCubeMap = getBlackCubeMapTexture();
+    }
+    bindTexture(*forwardPipeline, renderContext, *skyboxCubeMap, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube);
+
+    auto& forwardRenderingFrameInfoBuffer = forwardRenderingFrameInfo[renderContext.swapchainIndex];
+
+    ForwardFrameInfo frameInfo {
+            .frameCount = getFrameCount(),
+            .frameWidth = GetVulkanDriver().getWindowFramebufferExtent().width,
+            .frameHeight = GetVulkanDriver().getWindowFramebufferExtent().height,
+
+            .hasTLAS = getASBuilder().getTopLevelAS() != nullptr
+    };
+
+    forwardRenderingFrameInfoBuffer->directUpload(&frameInfo, sizeof(frameInfo));
+    bindUniformBuffer(*forwardPipeline, renderContext, forwardRenderingFrameInfoBuffer->getWholeView(), 5, 1);
+    if(useRaytracingVersion) {
+        auto& tlas = getASBuilder().getTopLevelAS();
+        if(tlas) {
+            bindAccelerationStructure(*forwardPipeline, renderContext, *tlas, 5, 2);
+            bindTexture(*forwardPipeline, renderContext, *gBuffer->getBlueNoiseTexture(), 5, 3, nullptr);
+            bindBuffer(*forwardPipeline, renderContext, getASBuilder().getGeometriesBuffer(renderContext), 5, 4);
+            bindBuffer(*forwardPipeline, renderContext, getASBuilder().getInstancesBuffer(renderContext), 5, 5);
+        }
+    }
+
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
@@ -1097,6 +1165,10 @@ void Carrot::VulkanRenderer::sortRenderPackets(std::vector<Carrot::Render::Packe
 
         if(a.pass != b.pass) {
             return a.pass < b.pass;
+        }
+
+        if(a.transparentGBuffer.zOrder != b.transparentGBuffer.zOrder) {
+            return a.transparentGBuffer.zOrder < b.transparentGBuffer.zOrder;
         }
 
         if(a.pipeline != b.pipeline) {
@@ -1173,7 +1245,7 @@ void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context
 
 void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
     Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
-    Carrot::DrawData data;
+    Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
     packet.useMesh(*model.getStaticMeshes()[0]); // TODO: find a better way to load individual meshes

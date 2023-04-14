@@ -4,7 +4,7 @@
 
 #include "TextRenderSystem.h"
 #include <engine/vulkan/CustomTracyVulkan.h>
-#include <engine/render/DrawData.h>
+#include <engine/render/GBufferDrawData.h>
 
 namespace Carrot::ECS {
 
