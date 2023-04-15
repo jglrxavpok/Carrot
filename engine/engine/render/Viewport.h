@@ -9,6 +9,7 @@
 #include "Camera.h"
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/resources/BufferView.h"
+#include "engine/render/resources/PerFrame.h"
 
 namespace Carrot {
     class VulkanRenderer;
@@ -29,8 +30,12 @@ namespace Carrot::Render {
     public: // camera
         Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR);
         const Carrot::Camera& getCamera(Carrot::Render::Eye eye = Carrot::Render::Eye::NoVR) const;
+
         vk::DescriptorSet getCameraDescriptorSet(const Carrot::Render::Context& context) const;
         const Carrot::BufferView& getCameraUniformBuffer(const Render::Context& context) const;
+
+        vk::DescriptorSet getViewportDescriptorSet(const Carrot::Render::Context& context) const;
+        const Carrot::BufferView& getViewportUniformBuffer(const Render::Context& context) const;
 
     public:
         void onFrame(const Carrot::Render::Context& context);
@@ -66,7 +71,11 @@ namespace Carrot::Render {
         glm::vec2 offset{0.0f};
 
         std::unordered_map<Render::Eye, Camera> cameras{};
-        std::vector<Carrot::BufferView> cameraUniformBuffers;
-        std::vector<vk::DescriptorSet> cameraDescriptorSets;
+
+        Render::PerFrame<Carrot::BufferView> cameraUniformBuffers;
+        Render::PerFrame<vk::DescriptorSet> cameraDescriptorSets;
+
+        Render::PerFrame<Carrot::BufferView> viewportUniformBuffers;
+        Render::PerFrame<vk::DescriptorSet> viewportDescriptorSets;
     };
 }

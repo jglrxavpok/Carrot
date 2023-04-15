@@ -4,9 +4,13 @@
 #include "draw_data.glsl"
 #include "includes/gbuffer_output.glsl"
 #include "includes/materials.glsl"
+#include "includes/viewport.glsl"
+
+#include "includes/rng.glsl"
 
 DEFINE_CAMERA_SET(0)
 MATERIAL_SYSTEM_SET(1)
+DEFINE_VIEWPORT_CONSTANT(2)
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 uv;
@@ -34,10 +38,13 @@ void main() {
     texColor *= instanceColor;
     texColor.rgb *= fragColor;
 
-    texColor.a = 1.0;
-    if(texColor.a < 0.01) {
+    RandomSampler rng;
+    initRNG(rng, gl_FragCoord.xy / vec2(viewport.frameWidth, viewport.frameHeight), viewport.frameWidth, viewport.frameHeight, viewport.frameCount);
+
+    if(texColor.a < sampleNoise(rng)) {
         discard;
     }
+    texColor.a = 1.0;
 
     GBuffer o = initGBuffer(inModelview);
 

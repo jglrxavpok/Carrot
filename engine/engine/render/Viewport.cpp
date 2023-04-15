@@ -9,6 +9,7 @@
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/Engine.h"
 #include "engine/vr/Session.h"
+#include "ViewportBufferObject.h"
 
 namespace Carrot::Render {
     Viewport::Viewport(VulkanRenderer& renderer): renderer(renderer) {
@@ -27,18 +28,29 @@ namespace Carrot::Render {
 
     void Viewport::onSwapchainImageCountChange(size_t newCount) {
         if(!cameraDescriptorSets.empty()) {
-            auto& device = renderer.getVulkanDriver().getLogicalDevice();
             renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
+        }
+
+        if(!viewportDescriptorSets.empty()) {
+            renderer.destroyViewportDescriptorSets(viewportDescriptorSets);
         }
 
         std::size_t totalCount = newCount * (renderer.getConfiguration().runInVR ? 2 : 1);
         cameraUniformBuffers.resize(totalCount);
-        for (int i = 0; i < totalCount; i++) {
+        viewportUniformBuffers.resize(newCount);
+        for (std::size_t i = 0; i < totalCount; i++) {
             cameraUniformBuffers[i] = renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::CameraBufferObject),
                                                                                        vk::BufferUsageFlagBits::eUniformBuffer,
                                                                                        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
         }
+
+        for(std::size_t i = 0; i < newCount; i++) {
+            viewportUniformBuffers[i] = renderer.getEngine().getResourceAllocator().allocateBuffer(sizeof(Carrot::ViewportBufferObject),
+                                                                                                 vk::BufferUsageFlagBits::eUniformBuffer,
+                                                                                                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        }
         cameraDescriptorSets = renderer.createDescriptorSetForCamera(cameraUniformBuffers);
+        viewportDescriptorSets = renderer.createDescriptorSetForViewport(viewportUniformBuffers);
 
         if(renderGraph) {
             renderGraph->onSwapchainImageCountChange(newCount);
@@ -60,11 +72,15 @@ namespace Carrot::Render {
         }
     }
 
+    vk::DescriptorSet Viewport::getViewportDescriptorSet(const Carrot::Render::Context& context) const {
+        return viewportDescriptorSets[context.swapchainIndex];
+    }
+
     void Viewport::onFrame(const Context& context) {
         verify(&context.viewport == this, "Viewports must match!");
         if(context.renderer.getConfiguration().runInVR && vrCompatible) {
-            static CameraBufferObject objLeftEye{};
-            static CameraBufferObject objRightEye{};
+            CameraBufferObject objLeftEye{};
+            CameraBufferObject objRightEye{};
 
             Camera leftEyeCamera = getCamera(Carrot::Render::Eye::LeftEye);
             Camera rightEyeCamera = getCamera(Carrot::Render::Eye::RightEye);
@@ -83,13 +99,18 @@ namespace Carrot::Render {
             leftBuffer.getBuffer().directUpload(&objLeftEye, sizeof(objLeftEye), leftBuffer.getStart());
             rightBuffer.getBuffer().directUpload(&objRightEye, sizeof(objRightEye), rightBuffer.getStart());
         } else {
-            static CameraBufferObject obj{};
+            CameraBufferObject obj{};
             auto& buffer = cameraUniformBuffers[context.swapchainIndex];
 
             obj.update(getCamera());
 
             buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
         }
+
+        ViewportBufferObject viewportBufferObject{};
+        viewportBufferObject.update(*this);
+        auto& buffer = viewportUniformBuffers[context.swapchainIndex];
+        buffer.getBuffer().directUpload(&viewportBufferObject, sizeof(viewportBufferObject), buffer.getStart());
     }
 
     const Carrot::BufferView& Viewport::getCameraUniformBuffer(const Render::Context& context) const {
@@ -97,6 +118,10 @@ namespace Carrot::Render {
             return cameraUniformBuffers[context.swapchainIndex * 2 + (context.eye == Eye::RightEye ? 1 : 0)];
         }
         return cameraUniformBuffers[context.swapchainIndex];
+    }
+
+    const Carrot::BufferView& Viewport::getViewportUniformBuffer(const Render::Context& context) const {
+        return viewportUniformBuffers[context.swapchainIndex];
     }
 
     void Viewport::render(const Carrot::Render::Context& context, vk::CommandBuffer& cmds) {

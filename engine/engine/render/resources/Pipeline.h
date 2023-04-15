@@ -37,6 +37,7 @@ namespace Carrot {
                 Materials,
                 Lights,
                 Debug,
+                Viewport,
 
                 CountOf
             };

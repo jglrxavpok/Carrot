@@ -57,6 +57,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                        });
 
     createCameraSetResources();
+    createViewportSetResources();
     createDebugSetResources();
     createRayTracer();
     createUIResources();
@@ -573,12 +574,6 @@ void Carrot::VulkanRenderer::newFrame() {
     }
 }
 
-void Carrot::VulkanRenderer::bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID) {
-    auto cameraSet = data.getCameraDescriptorSet();
-    TODO
-    cmds.bindDescriptorSets(bindPoint, pipelineLayout, setID, {cameraSet}, {});
-}
-
 void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset, vk::Offset3D dstOffset) {
     assert(source.getImage().getLayerCount() == destination.getImage().getLayerCount());
 
@@ -862,6 +857,31 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
             .pPoolSizes = &poolSize,
     });
 }
+void Carrot::VulkanRenderer::createViewportSetResources() {
+    vk::DescriptorSetLayoutBinding bindings[] = {
+            {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+            }
+    };
+    viewportDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = 1,
+            .pBindings = bindings,
+    });
+
+    vk::DescriptorPoolSize poolSize {
+            .type = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+    };
+    viewportDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxViewports,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+    });
+}
 
 void Carrot::VulkanRenderer::createDebugSetResources() {
     vk::DescriptorSetLayoutBinding debugBinding {
@@ -990,12 +1010,49 @@ void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::D
     getVulkanDriver().getLogicalDevice().freeDescriptorSets(*cameraDescriptorPool, sets);
 }
 
+std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers) {
+    std::size_t count = getSwapchainImageCount();
+    std::vector<vk::DescriptorSetLayout> layouts {count, *viewportDescriptorSetLayout};
+    auto descriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *viewportDescriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
+    });
+
+    verify(descriptorSets.size() == uniformBuffers.size(), "mismatched camera descriptor count and uniform buffer count");
+    for (int i = 0; i < descriptorSets.size(); i++) {
+        vk::DescriptorBufferInfo buffer = uniformBuffers[i].asBufferInfo();
+        std::vector<vk::WriteDescriptorSet> writes = {
+                {
+                        .dstSet = descriptorSets[i],
+                        .dstBinding = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBuffer,
+                        .pBufferInfo = &buffer,
+                }
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
+    }
+    return descriptorSets;
+}
+
+void Carrot::VulkanRenderer::destroyViewportDescriptorSets(const std::vector<vk::DescriptorSet>& sets) {
+    if(sets.empty())
+        return;
+    getVulkanDriver().getLogicalDevice().freeDescriptorSets(*viewportDescriptorPool, sets);
+}
+
 const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getCameraDescriptorSetLayout() const {
     return *cameraDescriptorSetLayout;
 }
 
 const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getDebugDescriptorSetLayout() const {
     return *debugDescriptorSetLayout;
+}
+
+const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getViewportDescriptorSetLayout() const {
+    return *viewportDescriptorSetLayout;
 }
 
 const vk::DescriptorSet& Carrot::VulkanRenderer::getDebugDescriptorSet(const Render::Context& renderContext) const {

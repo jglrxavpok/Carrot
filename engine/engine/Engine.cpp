@@ -1295,6 +1295,7 @@ Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
 }
 
 Carrot::Render::Viewport& Carrot::Engine::createViewport() {
+    verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
     viewports.emplace_back(renderer);
     return viewports.back();
 }

@@ -34,7 +34,7 @@ namespace Carrot::ECS {
                 instanceData.color = modelComp.color;
 
                 modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
-                modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
+                //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
                 if(modelComp.tlas) {
                     modelComp.tlas->transform = instanceData.transform;

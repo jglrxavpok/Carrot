@@ -44,11 +44,12 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
     // TODO: make different pipelines based on loaded materials
     opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
 
-    if(GetEngine().getCapabilities().supportsRaytracing) {
+/*    if(GetEngine().getCapabilities().supportsRaytracing) {
         transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-raytracing");
     } else {
         transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("forward-noraytracing");
-    }
+    }*/
+    transparentMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer-transparent");
 
     Carrot::Async::Counter waitMaterialLoads;
     // TODO: reduce task count
@@ -325,8 +326,13 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
     for (const auto&[mat, meshList]: staticMeshes) {
         auto weakMat = materialSystem.getMaterial(mat);
         if(auto pMat = weakMat.lock()) {
-            if(pMat->isTransparent != inTransparentPass) {
+            /*if(pMat->isTransparent != inTransparentPass) {
                 continue;
+            }*/
+            if(pMat->isTransparent) {
+                packet.pipeline = transparentMeshesPipeline;
+            } else {
+                packet.pipeline = opaqueMeshesPipeline;
             }
             for (const auto& [mesh, transform]: meshList) {
                 ZoneScopedN("mesh use");

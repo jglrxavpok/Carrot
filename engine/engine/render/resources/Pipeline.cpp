@@ -28,6 +28,7 @@ static Carrot::Lookup DescriptorSetType = std::array {
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Materials, "materials"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Lights, "lights"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Debug, "debug"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Viewport, "viewport"),
 };
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
@@ -415,6 +416,9 @@ const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uin
         case PipelineDescription::DescriptorSet::Type::Debug:
             return GetRenderer().getDebugDescriptorSetLayout();
 
+        case PipelineDescription::DescriptorSet::Type::Viewport:
+            return GetRenderer().getViewportDescriptorSetLayout();
+
         default:
             std::terminate();
             return *((vk::DescriptorSetLayout*)nullptr);
@@ -570,6 +574,12 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
         case PipelineDescription::DescriptorSet::Type::Debug:
         {
             std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getDebugDescriptorSet(renderContext) };
+            return sets;
+        }
+
+        case PipelineDescription::DescriptorSet::Type::Viewport:
+        {
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.viewport.getViewportDescriptorSet(renderContext) };
             return sets;
         }
 

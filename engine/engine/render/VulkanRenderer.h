@@ -106,8 +106,8 @@ namespace Carrot {
 
     class VulkanRenderer: public SwapchainAware {
     public:
-        static constexpr std::uint32_t DefaultCameraDescriptorSetID = 2;
         static constexpr std::uint32_t MaxCameras = 20; // used to determine descriptor set pool size
+        static constexpr std::uint32_t MaxViewports = 32; // used to determine descriptor set pool size
         static constexpr double BlinkDuration = 0.100f;
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
@@ -186,10 +186,14 @@ namespace Carrot {
     public:
         const vk::DescriptorSetLayout& getCameraDescriptorSetLayout() const;
         const vk::DescriptorSetLayout& getDebugDescriptorSetLayout() const;
+        const vk::DescriptorSetLayout& getViewportDescriptorSetLayout() const;
         const vk::DescriptorSet& getDebugDescriptorSet(const Render::Context& renderContext) const;
 
         std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
         void destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
+
+        std::vector<vk::DescriptorSet> createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers);
+        void destroyViewportDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
@@ -202,8 +206,6 @@ namespace Carrot {
 
         template<typename ConstantBlock>
         void pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
-
-        void bindCameraSet(vk::PipelineBindPoint bindPoint, const vk::PipelineLayout& pipelineLayout, const Render::Context& data, vk::CommandBuffer& cmds, std::uint32_t setID = DefaultCameraDescriptorSetID);
 
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 
@@ -262,6 +264,8 @@ namespace Carrot {
 
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
+        vk::UniqueDescriptorSetLayout viewportDescriptorSetLayout{};
+        vk::UniqueDescriptorPool viewportDescriptorPool{};
         vk::UniqueDescriptorSetLayout debugDescriptorSetLayout{};
         vk::UniqueDescriptorPool debugDescriptorPool{};
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> debugBuffers;
@@ -322,6 +326,7 @@ namespace Carrot {
 
     private:
         void createCameraSetResources();
+        void createViewportSetResources();
         void createDebugSetResources();
         void createDefaultResources();
 

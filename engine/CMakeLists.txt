@@ -104,6 +104,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Sprite.cpp
         ${EngineRoot}render/TextureAtlas.cpp
         ${EngineRoot}render/Viewport.cpp
+        ${EngineRoot}render/ViewportBufferObject.cpp
         ${EngineRoot}render/lighting/Lights.cpp
 
         ${EngineRoot}console/Console.cpp
@@ -187,6 +188,8 @@ set(VERTEX_SHADERS
 
 set(FRAGMENT_SHADERS
         gBuffer.fragment.glsl
+        gBuffer-transparent.fragment.glsl
+
         blit.fragment.glsl
         skybox.fragment.glsl
         particles.fragment.glsl
