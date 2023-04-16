@@ -22,6 +22,7 @@
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/math/Transform.h"
 #include <execution>
+#include <robin_hood.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -644,12 +645,16 @@ struct PacketKey {
     bool operator==(const PacketKey& o) const = default;
 };
 
+inline void hash_combine(std::size_t& seed, const std::size_t& v) {
+    seed ^= robin_hood::hash_int(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
 template<>
 struct std::hash<PacketKey> {
     std::size_t operator()(const PacketKey& key) const {
         const std::size_t p = 31;
-#define hash_r(member) h *= p; h += reinterpret_cast<std::size_t>((member));
-#define hash_s(member) h *= p; h += static_cast<std::size_t>((member));
+#define hash_r(member) hash_combine(h, reinterpret_cast<std::size_t>((member)));
+#define hash_s(member) hash_combine(h, static_cast<std::size_t>((member)));
         std::size_t h = 0;
         hash_r(key.pipeline);
         hash_s(key.pass);
@@ -661,7 +666,7 @@ struct std::hash<PacketKey> {
         hash_r((VkBuffer)key.indexBuffer.getStart());
         hash_r((VkBuffer)key.indexBuffer.getSize());
         hash_s(key.indexCount);
-        return 0;
+        return h;
     }
 };
 
@@ -695,8 +700,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
         }
     }
 
-    // TODO: fewer allocations
-    std::unordered_map<PacketKey, std::vector<Carrot::Render::Packet>> packetBins;
+    static robin_hood::unordered_flat_map<PacketKey, std::vector<Carrot::Render::Packet>> packetBins;
     auto snapshot = threadRenderPackets.snapshot();
 
     auto placeInBin = [&](Carrot::Render::Packet&& toPlace) -> void {
@@ -753,6 +757,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
         for(auto& packetOfBin : bin) {
             preparedRenderPackets.emplace_back(std::move(packetOfBin));
         }
+        bin.clear();
     }
 
     sortRenderPackets(preparedRenderPackets);

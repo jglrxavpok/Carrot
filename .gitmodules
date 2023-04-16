@@ -64,3 +64,6 @@
 [submodule "thirdparty/eventpp"]
 	path = thirdparty/eventpp
 	url = https://github.com/wqking/eventpp
+[submodule "thirdparty/robin-hood-hashing"]
+	path = thirdparty/robin-hood-hashing
+	url = https://github.com/martinus/robin-hood-hashing
