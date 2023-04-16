@@ -26,7 +26,7 @@ namespace Carrot {
 
         transformData = GetResourceAllocator().allocateDedicatedBuffer(
                 transforms.size() * sizeof(vk::TransformMatrixKHR),
-                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                 vk::MemoryPropertyFlagBits::eDeviceLocal);
 
         std::vector<vk::TransformMatrixKHR> rtTransforms;

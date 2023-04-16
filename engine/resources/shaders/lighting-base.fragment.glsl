@@ -88,7 +88,7 @@ void main() {
         }
         outColorWorld.rgb = l * INV_SAMPLE_COUNT;
 #else
-        outColorWorld.rgb = calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+        outColorWorld.rgb = calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
 #endif
 
         distanceToCamera = length(gbuffer.viewPosition);

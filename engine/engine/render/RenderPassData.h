@@ -127,11 +127,6 @@ namespace Carrot::Render {
             void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID) const;
         };
 
-        struct GBufferTransparent {
-            FrameResource depthInput;
-            FrameResource transparentOutput;
-        };
-
         struct Lighting {
             GBuffer gBuffer;
             FrameResource resolved;

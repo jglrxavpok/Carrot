@@ -13,6 +13,9 @@ namespace Carrot {
         frameWidth = viewport.getWidth();
         frameHeight = viewport.getHeight();
         frameCount = GetRenderer().getFrameCount();
-        hasTLAS = GetRenderer().getASBuilder().getTopLevelAS() != nullptr;
+
+        if(GetEngine().getCapabilities().supportsRaytracing) {
+            hasTLAS = GetRenderer().getASBuilder().getTopLevelAS() != nullptr;
+        }
     }
 }

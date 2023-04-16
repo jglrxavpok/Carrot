@@ -250,7 +250,7 @@ namespace Fertilizer {
                     auto& newChild = node.newChild();
                     newChild.bone.name = Carrot::sprintf("%s-mesh%llu", node.bone.name.c_str(), meshIndex);
                     newChild.meshIndices = std::vector<std::size_t>{};
-                    newChild.meshIndices.value().push_back(meshIndex);
+                    newChild.meshIndices.value().push_back(node.meshIndices.value()[meshIndex]);
                 }
 
                 node.meshIndices.value().resize(1);
@@ -284,9 +284,9 @@ namespace Fertilizer {
 
             if(!isDefaultTransform(node.bone.originalTransform)) {
                 currentNode.matrix.resize(4*4);
-                for (int x = 0; x < 4; ++x) {
-                    for (int y = 0; y < 4; ++y) {
-                        currentNode.matrix[y + x * 4] = node.bone.originalTransform[x][y];
+                for (int y = 0; y < 4; ++y) {
+                    for (int x = 0; x < 4; ++x) {
+                        currentNode.matrix[x + y * 4] = node.bone.originalTransform[x][y];
                     }
                 }
             }

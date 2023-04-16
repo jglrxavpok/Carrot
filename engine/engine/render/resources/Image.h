@@ -53,6 +53,7 @@ namespace Carrot {
 
         std::uint32_t layerCount = 1;
         vk::Format format = vk::Format::eUndefined;
+        vk::ImageUsageFlags usage = static_cast<vk::ImageUsageFlags>(0);
 
     public:
         /// Creates a new empty image with the given parameters. Will also allocate the corresponding memory

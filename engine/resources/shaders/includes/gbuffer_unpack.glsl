@@ -5,11 +5,12 @@ GBuffer unpackGBufferLight(vec2 uv) {
     GBuffer gbuffer;
 
     gbuffer.albedo = texture(sampler2D(gAlbedo, gLinearSampler), uv);
-    vec3 viewPos = texture(sampler2D(gViewPos, gLinearSampler), uv).xyz;
+    const vec3 viewPos = texture(sampler2D(gViewPos, gLinearSampler), uv).xyz;
     gbuffer.viewPosition = viewPos;
     gbuffer.intProperty = uint(texture(gIntPropertiesInput, uv).r);
 
-    decompressTBN(texture(sampler2D(gViewNormalTangents, gLinearSampler), uv),
+    const vec4 viewNormalTangents = texture(sampler2D(gViewNormalTangents, gLinearSampler), uv);
+    decompressTBN(viewNormalTangents,
                     (gbuffer.intProperty & IntPropertiesNegativeViewNormalZ) == IntPropertiesNegativeViewNormalZ,
                     (gbuffer.intProperty & IntPropertiesNegativeViewTangentZ) == IntPropertiesNegativeViewTangentZ,
                     (gbuffer.intProperty & IntPropertiesNegativeViewBitangent) == IntPropertiesNegativeViewBitangent,

@@ -151,21 +151,21 @@ namespace Carrot::Render {
 
         std::unique_ptr<Carrot::Image> whiteImage = std::make_unique<Image>(GetVulkanDriver(),
             vk::Extent3D{.width = 1, .height = 1, .depth = 1},
-            vk::ImageUsageFlagBits::eSampled,
+            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
             vk::Format::eR8G8B8A8Unorm);
         std::uint8_t whitePixel[4] = {0xFF, 0xFF, 0xFF, 0xFF};
         whiteImage->stageUpload(std::span{whitePixel, 4});
 
         std::unique_ptr<Carrot::Image> blackImage = std::make_unique<Image>(GetVulkanDriver(),
                                                                             vk::Extent3D{.width = 1, .height = 1, .depth = 1},
-                                                                            vk::ImageUsageFlagBits::eSampled,
+                                                                            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
                                                                             vk::Format::eR8G8B8A8Unorm);
         std::uint8_t blackPixel[4] = {0x0, 0x00, 0x00, 0xFF};
         blackImage->stageUpload(std::span{blackPixel, 4});
 
         std::unique_ptr<Carrot::Image> flatNormalImage = std::make_unique<Image>(GetVulkanDriver(),
                                                                             vk::Extent3D{.width = 1, .height = 1, .depth = 1},
-                                                                            vk::ImageUsageFlagBits::eSampled,
+                                                                            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
                                                                             vk::Format::eR8G8B8A8Unorm);
         std::uint8_t flatNormalPixel[4] = {128, 128, 0xFF, 0xFF};
         flatNormalImage->stageUpload(std::span{flatNormalPixel, 4});

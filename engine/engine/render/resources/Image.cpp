@@ -21,7 +21,7 @@
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount):
-        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), format(format), imageData(true) {
+        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), usage(usage), format(format), imageData(true) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
@@ -84,6 +84,7 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
 }
 
 void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_t layerCount) {
+    verify(usage & vk::ImageUsageFlagBits::eTransferDst, "Cannot transfer to this image!");
     // create buffer holding data
     auto stagingBuffer = Carrot::Buffer(driver,
                                         static_cast<vk::DeviceSize>(data.size()),

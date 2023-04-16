@@ -87,30 +87,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
     return opaquePass;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::GBufferTransparent>& Carrot::GBuffer::addTransparentGBufferPass(Render::GraphBuilder& graph, const Carrot::Render::PassData::GBuffer& opaqueData, std::function<void(const Carrot::Render::CompiledPass&, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize) {
-    using namespace Carrot::Render;
-    vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-    auto& transparentPass = graph.addPass<Carrot::Render::PassData::GBufferTransparent>("gbuffer-transparent",
-                                                                                        [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBufferTransparent>& pass, Carrot::Render::PassData::GBufferTransparent& data)
-                                                                                        {
-
-                                                                                            data.transparentOutput = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                                                                                                              framebufferSize,
-                                                                                                                                              vk::AttachmentLoadOp::eClear,
-                                                                                                                                              clearColor,
-                                                                                                                                              vk::ImageLayout::eColorAttachmentOptimal);
-
-                                                                                            data.depthInput = graph.write(opaqueData.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
-                                                                                        },
-                                                                                        [transparentCallback](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::GBufferTransparent& data, vk::CommandBuffer& buffer){
-                                                                                            transparentCallback(pass, frame, buffer);
-                                                                                        }
-    );
-    return transparentPass;
-}
-
 Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLightingPass(const Carrot::Render::PassData::GBuffer& opaqueData,
-                                                                                           const Carrot::Render::PassData::GBufferTransparent& transparentData,
                                                                                            Carrot::Render::GraphBuilder& graph,
                                                                                            const Render::TextureSize& framebufferSize) {
     using namespace Carrot::Render;
@@ -159,7 +136,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     block.frameWidth = outputSize.width;
                     block.frameHeight = outputSize.height;
                 }
-                block.hasTLAS = frame.renderer.getASBuilder().getTopLevelAS() != nullptr;
+                if(useRaytracingVersion) {
+                    block.hasTLAS = frame.renderer.getASBuilder().getTopLevelAS() != nullptr;
+                }
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 // GBuffer inputs

@@ -97,7 +97,7 @@ int main(int argc, const char** argv) {
         filecontents += line;
     }
 
-    std::string preamble = R"(#version 460
+    std::string preamble = R"(
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_control_flow_attributes: enable
@@ -105,18 +105,17 @@ int main(int argc, const char** argv) {
 )";
     auto filepath = inputFile.string();
     std::array strs {
-        preamble.c_str(),
         filecontents.c_str(),
     };
     std::array names {
             filepath.c_str(),
-            "",
     };
+    shader.setPreamble(preamble.c_str());
     shader.setStringsWithLengthsAndNames(strs.data(), nullptr, names.data(), strs.size());
 
     ShaderCompiler::FileIncluder includer { basePath };
     TBuiltInResource Resources = glslang::DefaultTBuiltInResource;
-    if(!shader.parse(&Resources, 100, false, EShMsgDefault, includer)) {
+    if(!shader.parse(&Resources, 460, false, EShMsgDefault, includer)) {
         std::cerr << "Failed shader compilation. " << shader.getInfoLog() << std::endl;
         return -4;
     }

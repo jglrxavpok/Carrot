@@ -102,8 +102,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         materials.push_back(handle);
     }
 
-    std::function<void(const Carrot::Render::SkeletonTreeNode&, glm::mat4)> recursivelyLoadNodes = [&](const Carrot::Render::SkeletonTreeNode& node, glm::mat4 nodeTransform) {
-        nodeTransform *= node.bone.originalTransform;
+    std::function<void(const Carrot::Render::SkeletonTreeNode&, glm::mat4)> recursivelyLoadNodes = [&](const Carrot::Render::SkeletonTreeNode& node, const glm::mat4& nodeTransform) {
+        glm::mat4 transform = nodeTransform * node.bone.originalTransform;
         if(node.meshIndices.has_value()) {
             for(const std::size_t meshIndex : node.meshIndices.value()) {
                 auto& primitive = scene.primitives[meshIndex];
@@ -114,17 +114,17 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 material->isTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
                 if(primitive.isSkinned) {
                     mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-                    skinnedMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform);
                 } else {
                     mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
-                    staticMeshes[material->getSlot()].emplace_back(mesh, nodeTransform);
+                    staticMeshes[material->getSlot()].emplace_back(mesh, transform);
                 }
                 mesh->name(scene.debugName + " (" + primitive.name + ")");
             }
         }
 
         for(const auto& child : node.getChildren()) {
-            recursivelyLoadNodes(child, nodeTransform);
+            recursivelyLoadNodes(child, transform);
         }
     };
 

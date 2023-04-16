@@ -426,7 +426,7 @@ namespace Carrot::Render {
         return std::move(result);
     }
 
-    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, glm::mat4 parentTransform) {
+    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, const glm::mat4& parentTransform) {
         ZoneScoped;
 
         SkeletonTreeNode& newNode = parentNode.newChild();
@@ -434,12 +434,11 @@ namespace Carrot::Render {
         glm::mat4 localTransform{1.0f};
         if(!node.matrix.empty()) {
             // transform given as column-major matrix
-            for (int x = 0; x < 4; ++x) {
-                for (int y = 0; y < 4; ++y) {
-                    localTransform[x][y] = node.matrix[y + x * 4];
+            for (int y = 0; y < 4; ++y) {
+                for (int x = 0; x < 4; ++x) {
+                    localTransform[x][y] = node.matrix[x + y * 4];
                 }
             }
-
         } else {
             // transform given as translation, rotation and scale
             localTransform =

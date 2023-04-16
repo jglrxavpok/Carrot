@@ -448,13 +448,14 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     if (!raytracing)
     {
-        #endif
+    #endif
         vec3 lightContribution = emissive + lights.ambientColor;
-        for (uint i = 0; i < lights.count; i++) {
-            lightContribution += computeLightContribution(i, worldPos, normal);
+        for (uint i = 0; i < activeLights.count; i++) {
+            uint lightIndex = activeLights.indices[i];
+            lightContribution += computeLightContribution(lightIndex, worldPos, normal);
         }
         return lightContribution;
-        #ifdef HARDWARE_SUPPORTS_RAY_TRACING
+    #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     }
     else
     {

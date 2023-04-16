@@ -119,7 +119,7 @@ std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateText
             try {
                 return std::make_shared<Carrot::Render::Texture>(driver, from);
             } catch (const std::exception& e) {
-                Carrot::Log::error("Failed to load texture %s", textureName.c_str());
+                Carrot::Log::error("Failed to load texture %s: %s", textureName.c_str(), e.what());
                 return std::make_shared<Carrot::Render::Texture>(driver, "resources/textures/default.png");
             }
         });

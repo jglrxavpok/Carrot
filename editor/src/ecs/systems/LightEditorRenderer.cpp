@@ -6,6 +6,7 @@
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/MaterialSystem.h"
+#include "../../Peeler.h"
 
 namespace Peeler::ECS {
 
@@ -19,6 +20,9 @@ namespace Peeler::ECS {
     }
 
     void LightEditorRenderer::onFrame(Carrot::Render::Context renderContext) {
+        if(Peeler::Instance->isCurrentlyPlaying()) {
+            return;
+        }
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::ECS::LightComponent& lightComponent) {
             auto& lightHandle = lightComponent.lightRef;
             if(!lightHandle)
