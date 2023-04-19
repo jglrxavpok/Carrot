@@ -720,9 +720,11 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 if(config.runInVR) {
                     game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::LeftEye));
                     game->setupCamera(newRenderContext(imageIndex, v, Carrot::Render::Eye::RightEye));
+                    v.getCamera().updateFrustum();
                     game->onFrame(newRenderContext(imageIndex, v));
                 } else {
                     game->setupCamera(renderContext);
+                    v.getCamera().updateFrustum();
                     game->onFrame(renderContext);
                 }
             }

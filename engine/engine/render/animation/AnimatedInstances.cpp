@@ -402,10 +402,17 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
         data.materialIndex = mat;
         pushConstant.setData(data); // template operator=
 
-        for (const auto& [mesh, meshTransform]: meshList) {
+        for (const auto& [mesh, meshTransform, sphere]: meshList) {
             for(size_t index = 0; index < maxInstanceCount; index++) {
                 Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
                 meshInstanceData.transform = meshInstanceData.transform * meshTransform;
+
+                Math::Sphere s = sphere;
+                s.transform(meshInstanceData.transform);
+                if(!renderContext.getCamera().isInFrustum(s)) {
+                    continue;
+                }
+
                 packet.useInstance(meshInstanceData);
 
                 std::int32_t vertexOffset = (static_cast<std::int32_t>(index * vertexCountPerInstance + meshOffsets[mesh->getMeshID()]));

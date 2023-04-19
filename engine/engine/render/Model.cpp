@@ -19,6 +19,10 @@
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/model_loading/AssimpLoader.h"
 #include <core/scene/GLTFLoader.h>
+#include <engine/console/RuntimeOption.hpp>
+
+static Carrot::RuntimeOption DrawBoundingSpheres("Debug/Draw bounding spheres", false);
+static Carrot::RuntimeOption DisableFrustumCheck("Debug/Disable frustum culling", false);
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
     ZoneScoped;
@@ -112,12 +116,14 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
                 auto& sceneMaterial = scene.materials[primitive.materialIndex];
                 material->isTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
+                Math::Sphere sphere;
+                sphere.loadFromAABB(primitive.minPos, primitive.maxPos);
                 if(primitive.isSkinned) {
                     mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform);
+                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform, sphere);
                 } else {
                     mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
-                    staticMeshes[material->getSlot()].emplace_back(mesh, transform);
+                    staticMeshes[material->getSlot()].emplace_back(mesh, transform, sphere);
                 }
                 mesh->name(scene.debugName + " (" + primitive.name + ")");
             }
@@ -208,7 +214,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         transforms.reserve(staticMeshes.size()); // assume 1 mesh / material
         staticMeshMaterials.reserve(staticMeshes.size()); // assume 1 mesh / material
         for(const auto& [materialSlot, meshes] : staticMeshes) {
-            for(const auto& [mesh, transform] : meshes) {
+            for(const auto& [mesh, transform, _] : meshes) {
                 allStaticMeshes.push_back(mesh);
                 transforms.push_back(transform);
                 staticMeshMaterials.push_back(materialSlot);
@@ -245,7 +251,7 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
             if(pipeline != boundPipeline) {
                 pipeline->bind(pass, renderContext, commands);
             }
-            for(const auto& [mesh, transform] : meshList) {
+            for(const auto& [mesh, transform, sphere] : meshList) {
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bind(commands);
@@ -285,7 +291,7 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
             if(pipeline != boundPipeline) {
                 pipeline->bind(pass, renderContext, commands);
             }
-            for(const auto& [mesh, transform] : meshList) {
+            for(const auto& [mesh, transform, sphere] : meshList) {
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bindForIndirect(commands);
@@ -334,12 +340,33 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
             } else {
                 packet.pipeline = opaqueMeshesPipeline;
             }
-            for (const auto& [mesh, transform]: meshList) {
+            for (const auto& [mesh, transform, sphere]: meshList) {
                 ZoneScopedN("mesh use");
+
+                meshInstanceData.transform = instanceData.transform * transform;
+
+                Math::Sphere s = sphere;
+                s.transform(meshInstanceData.transform);
+
+                bool frustumCheck = renderContext.getCamera().isInFrustum(s);
+                if(DisableFrustumCheck) {
+                    frustumCheck = true;
+                }
+
+                if(!frustumCheck) {
+                    continue;
+                }
+
+                if(DrawBoundingSpheres) {
+                    if(this != renderContext.renderer.getUnitSphere().get()) {
+                        glm::mat4 sphereTransform = glm::translate(glm::mat4{1.0f}, s.center) * glm::scale(glm::mat4{1.0f}, glm::vec3{s.radius*2 /*unit sphere model has a radius of 0.5*/});
+                        renderContext.renderer.renderWireframeSphere(renderContext, sphereTransform, 1.0f, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), instanceData.uuid);
+                    }
+                }
+
                 data.materialIndex = mat;
                 packet.useMesh(*mesh);
 
-                meshInstanceData.transform = instanceData.transform * transform;
                 meshInstanceData.lastFrameTransform = instanceData.lastFrameTransform * transform;
                 packet.useInstance(meshInstanceData);
 
@@ -367,11 +394,18 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
 
     Carrot::AnimatedInstanceData meshInstanceData = instanceData;
     for (const auto&[mat, meshList]: skinnedMeshes) {
-        for (const auto& [mesh, transform]: meshList) {
+        for (const auto& [mesh, transform, sphere]: meshList) {
+            meshInstanceData.transform = instanceData.transform * transform;
+
+            Math::Sphere s = sphere;
+            s.transform(meshInstanceData.transform);
+            if(!renderContext.getCamera().isInFrustum(s)) {
+                continue;
+            }
+
             data.materialIndex = mat;
             packet.useMesh(*mesh);
 
-            meshInstanceData.transform = instanceData.transform * transform;
             packet.useInstance(meshInstanceData);
 
             pushConstant.setData(data); // template operator=
@@ -384,7 +418,7 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
 std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model::getSkinnedMeshes() const {
     std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> result;
     for(const auto& [material, meshes] : skinnedMeshes) {
-        for(const auto& [mesh, transform] : meshes) {
+        for(const auto& [mesh, transform, _] : meshes) {
             result[material].push_back(mesh);
         }
     }
@@ -394,7 +428,7 @@ std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model:
 std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getStaticMeshes() const {
     std::vector<std::shared_ptr<Mesh>> result{};
     for(const auto& [material, meshes] : staticMeshes) {
-        for(const auto& [mesh, transform] : meshes) {
+        for(const auto& [mesh, transform, _] : meshes) {
             result.push_back(mesh);
         }
     }

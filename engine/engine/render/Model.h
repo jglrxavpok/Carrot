@@ -11,6 +11,7 @@
 #include "engine/render/resources/VertexFormat.h"
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
+#include <core/math/Sphere.h>
 #include "engine/Engine.h"
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
@@ -83,6 +84,7 @@ namespace Carrot {
         struct MeshAndTransform {
             std::shared_ptr<Mesh> mesh;
             glm::mat4 transform{1.0f};
+            Math::Sphere boundingSphere;
         };
 
         Carrot::Engine& engine;

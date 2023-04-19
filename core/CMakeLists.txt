@@ -23,7 +23,9 @@ set(CORE-SOURCES
         ${CoreRoot}io/Strings.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
+        ${CoreRoot}math/Plane.cpp
         ${CoreRoot}math/Segment2D.cpp
+        ${CoreRoot}math/Sphere.cpp
 
         ${CoreRoot}render/Skeleton.cpp
         ${CoreRoot}render/VertexTypes.cpp

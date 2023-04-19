@@ -87,5 +87,46 @@ namespace Carrot {
         this->projectionMatrix = projection;
     }
 
+    void Camera::updateFrustum() {
+        glm::mat4 proj = projectionMatrix;
+        //proj[1][1] *= -1;
+        const glm::mat4 viewproj = proj * computeViewMatrix();
+
+        // Based on
+        // Fast Extraction of Viewing Frustum Planes from the World-View-Projection Matrix
+        // Gil Gribb
+        // Klaus Hartmann
+        // &
+        // https://gist.github.com/podgorskiy/e698d18879588ada9014768e3e82a644
+
+        constexpr int Left = 0;
+        constexpr int Right = 1;
+        constexpr int Bottom = 2;
+        constexpr int Top = 3;
+        constexpr int Near = 4;
+        constexpr int Far = 5;
+        glm::mat4 m = glm::transpose(viewproj);
+        frustum[Left]   = m[3] + m[0];
+        frustum[Right]  = m[3] - m[0];
+        frustum[Bottom] = m[3] + m[1];
+        frustum[Top]    = m[3] - m[1];
+        frustum[Near]   = m[3] + m[2];
+        frustum[Far]    = m[3] - m[2];
+
+        for (auto& plane : frustum) {
+            plane.normalize();
+        }
+    }
+
+    bool Camera::isInFrustum(const Math::Sphere& sphere) const {
+        for(int i = 0; i < 6; i++) {
+            auto& plane = frustum[i];
+            if(plane.getSignedDistance(sphere.center) < -sphere.radius) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     Camera& Camera::operator=(const Camera& toCopy) = default;
 }

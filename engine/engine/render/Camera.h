@@ -5,6 +5,8 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <core/math/Sphere.h>
+#include <core/math/Plane.h>
 
 namespace Carrot {
     /// To avoid update-order-dependent artefacts, the matrices used for rendering are only updated to the ones inside
@@ -36,9 +38,11 @@ namespace Carrot {
         void setTargetAndPosition(const glm::vec3& target, const glm::vec3& position);
         void setViewProjection(const glm::mat4& view, const glm::mat4& projection);
 
-        /// Call each frame, after using the camera matrices to update them to use the new frame matrices.
-        ///  Basically double-buffer matrices to avoid update-order-dependent artefacts
-        void swapMatrices();
+        /// Called after camera is modified by game, but before rendering
+        void updateFrustum();
+
+    public:
+        bool isInFrustum(const Math::Sphere& sphere) const;
 
     public:
         glm::vec3& getTargetRef();
@@ -63,6 +67,8 @@ namespace Carrot {
         glm::vec3 up{};
         glm::vec3 position{};
         glm::vec3 target{};
+
+        Math::Plane frustum[6];
     };
 }
 

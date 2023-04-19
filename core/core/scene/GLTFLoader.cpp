@@ -241,8 +241,10 @@ namespace Carrot::Render {
         vertices.resize(positionsAccessor.count);
         for (std::size_t i = 0; i < positionsAccessor.count; ++i) {
             Carrot::Vertex& vertex = vertices[i];
-            glm::vec3 pos = readFromAccessor<glm::vec3>(i, positionsAccessor, model);
+            const glm::vec3 pos = readFromAccessor<glm::vec3>(i, positionsAccessor, model);
             vertex.pos = glm::vec4 { pos, 1.0f };
+            loadedPrimitive.minPos = glm::min(loadedPrimitive.minPos, pos);
+            loadedPrimitive.maxPos = glm::max(loadedPrimitive.maxPos, pos);
 
             vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
             if(tangentsAccessor) {
@@ -337,7 +339,8 @@ namespace Carrot::Render {
             }
 
             if(!supported) {
-                throw std::runtime_error("Unsupported extension: " + requiredExtension);
+                //throw std::runtime_error("Unsupported extension: " + requiredExtension);
+                Carrot::Log::error("Unsupported extension: " + requiredExtension);
             }
         }
 
