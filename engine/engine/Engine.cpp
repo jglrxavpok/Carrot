@@ -778,7 +778,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
         {
             ZoneScopedN("Renderer Pre-Frame actions");
-            renderer.preFrame();
+            renderer.preFrame(mainRenderContext);
         }
 
         {

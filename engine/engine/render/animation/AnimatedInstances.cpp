@@ -47,10 +47,10 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     flatVertices->name("flat vertices");
 
     // copy mesh vertices into a flat buffer to allow for easy indexing inside the compute shader
-    forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
-        int32_t vertexOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
+    engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
+        forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
+            int32_t vertexOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
 
-        engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
             vk::BufferCopy region {
                     .srcOffset = mesh->getVertexBuffer().getStart(),
                     .dstOffset = vertexOffset*sizeof(SkinnedVertex),
@@ -111,7 +111,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
         indirectBuffers[mesh->getMeshID()]->name("Indirect commands for mesh #" + std::to_string(mesh->getMeshID()));
         indirectBuffers[mesh->getMeshID()]->stageUploadWithOffsets(std::make_pair(static_cast<std::uint64_t>(0),
-                                                                             indirectCommands[mesh->getMeshID()]));
+                                                                             std::span(indirectCommands[mesh->getMeshID()])));
     });
 
     createSkinningComputePipeline();
@@ -402,7 +402,10 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
         data.materialIndex = mat;
         pushConstant.setData(data); // template operator=
 
-        for (const auto& [mesh, meshTransform, sphere]: meshList) {
+        for (const auto& meshInfo: meshList) {
+            auto& mesh = meshInfo.mesh;
+            auto& meshTransform = meshInfo.transform;
+            auto& sphere = meshInfo.boundingSphere;
             for(size_t index = 0; index < maxInstanceCount; index++) {
                 Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
                 meshInstanceData.transform = meshInstanceData.transform * meshTransform;
@@ -419,7 +422,9 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
 
                 packet.vertexBuffer = Carrot::BufferView(nullptr, *fullySkinnedUnitVertices, sizeof(Carrot::Vertex) * vertexOffset, sizeof(Carrot::Vertex) * mesh->getVertexCount());
                 packet.indexBuffer = mesh->getIndexBuffer();
-                packet.indexCount = mesh->getIndexCount();
+                auto& cmd = packet.drawCommands.emplace_back();
+                cmd.instanceCount = 1;
+                cmd.indexCount = mesh->getIndexCount();
 
                 renderContext.renderer.render(packet);
             }

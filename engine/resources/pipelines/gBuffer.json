@@ -12,6 +12,10 @@
     {
       "type": "materials",
       "setID": 1
+    },
+    {
+      "type": "per_draw",
+      "setID": 2
     }
   ],
   "depthWrite": true,

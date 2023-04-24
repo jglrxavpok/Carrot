@@ -14,6 +14,7 @@ Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::Buffer*> Carrot::Buf
 
 Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsageFlags usage,
                        vk::MemoryPropertyFlags properties, std::set<uint32_t> families): driver(driver), size(size) {
+    ZoneScopedN("Buffer creation");
     deviceLocal = (properties & vk::MemoryPropertyFlagBits::eDeviceLocal) == vk::MemoryPropertyFlagBits::eDeviceLocal;
 
     usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
@@ -75,7 +76,7 @@ void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk:
         vk::BufferCopy copyRegion = {
                 .srcOffset = srcOffset,
                 .dstOffset = dstOffset,
-                .size = other.size - dstOffset,
+                .size = size,
         };
         stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
     });

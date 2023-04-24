@@ -26,5 +26,5 @@ Carrot::SingleMesh::SingleMesh(const std::vector<VertexType>& vertices, const st
                                                             families);
 
     // upload vertices
-    vertexAndIndexBuffer->stageUploadWithOffsets(std::make_pair(vertexStartOffset, vertices), std::make_pair(static_cast<uint64_t>(0), indices));
+    vertexAndIndexBuffer->stageUploadWithOffsets(std::make_pair(vertexStartOffset, std::span(vertices)), std::make_pair(static_cast<uint64_t>(0), std::span(indices)));
 }

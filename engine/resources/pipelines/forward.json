@@ -18,7 +18,7 @@
       "setID": 2
     },
     {
-      "type": "debug",
+      "type": "per_draw",
       "setID": 3
     },
     {

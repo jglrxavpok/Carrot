@@ -60,3 +60,9 @@ Carrot::Buffer& Carrot::SingleMesh::getBackingBuffer() {
 const Carrot::Buffer& Carrot::SingleMesh::getBackingBuffer() const {
     return *vertexAndIndexBuffer;
 }
+
+Carrot::LightMesh Carrot::SingleMesh::getSubMesh(std::size_t startVertex, std::size_t vertexCount, std::size_t startIndex, std::size_t indexCount) const {
+    Carrot::BufferView vertexBuffer = getVertexBuffer().subView(startVertex * sizeofVertex, vertexCount * sizeofVertex);
+    Carrot::BufferView indexBuffer = getIndexBuffer().subView(startIndex * sizeof(std::uint32_t), indexCount * sizeof(std::uint32_t));
+    return LightMesh(vertexBuffer, indexBuffer, sizeofVertex);
+}

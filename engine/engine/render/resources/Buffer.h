@@ -54,7 +54,10 @@ namespace Carrot {
         void stageUpload(const std::vector<T>&... data);
 
         template<typename... T>
-        void stageUploadWithOffsets(const std::pair<std::uint64_t, std::vector<T>>&... offsetDataPairs);
+        void stageUploadWithOffsets(const std::pair<std::uint64_t, std::span<T>>&... offsetDataPairs);
+
+        template<typename T>
+        void stageUploadWithOffsets(const std::span<std::pair<std::uint64_t, std::span<T>>>& offsetDataPairs);
 
         template<typename T>
         void stageUploadWithOffset(uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));

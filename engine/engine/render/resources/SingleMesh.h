@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Mesh.h"
+#include "LightMesh.h"
 
 namespace Carrot {
     /// Mesh that uploads the given vertices and indices to a single buffer.
@@ -29,6 +30,9 @@ namespace Carrot {
         virtual std::uint64_t getIndexStartOffset() const override;
         virtual Carrot::BufferView getIndexBuffer() override;
         virtual const Carrot::BufferView getIndexBuffer() const override;
+
+    public:
+        LightMesh getSubMesh(std::size_t startVertex, std::size_t vertexCount, std::size_t startIndex, std::size_t indexCount) const;
 
     protected:
         void setDebugNames(const std::string& name) override;

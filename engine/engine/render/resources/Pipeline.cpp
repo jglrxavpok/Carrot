@@ -29,6 +29,7 @@ static Carrot::Lookup DescriptorSetType = std::array {
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Lights, "lights"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Debug, "debug"),
         Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::Viewport, "viewport"),
+        Carrot::LookupEntry<Carrot::PipelineDescription::DescriptorSet::Type>(Carrot::PipelineDescription::DescriptorSet::Type::PerDraw, "per_draw"),
 };
 
 Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription):
@@ -374,7 +375,7 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
     return *vkPipelines[pass];
 }
 
-void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint) const {
+void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, std::vector<std::uint32_t> dynamicOffsets) const {
     ZoneScopedN("Bind pipeline");
 #ifdef TRACY_ENABLE
     std::string zoneText = Carrot::sprintf("Vertex = %s ; Fragment = %s", description.vertexShader.getName().c_str(), description.fragmentShader.getName().c_str());
@@ -383,12 +384,16 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& 
     auto& pipeline = getOrCreatePipelineForRenderPass(pass);
     commands.bindPipeline(bindPoint, pipeline);
 
+    bindOnlyDescriptorSets(renderContext, commands, bindPoint, dynamicOffsets);
+}
+
+void Carrot::Pipeline::bindOnlyDescriptorSets(const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, std::vector<std::uint32_t> dynamicOffsets) const {
     std::vector<vk::DescriptorSet> setsToBind { description.setCount, VK_NULL_HANDLE };
     for(std::uint32_t i = 0; i < setsToBind.size(); i++) {
         setsToBind[i] = getDescriptorSets(renderContext, i)[renderContext.swapchainIndex];
     }
 
-    commands.bindDescriptorSets(bindPoint, *layout, 0, setsToBind, {});
+    commands.bindDescriptorSets(bindPoint, *layout, 0, setsToBind, dynamicOffsets);
 }
 
 const vk::PipelineLayout& Carrot::Pipeline::getPipelineLayout() const {
@@ -418,6 +423,9 @@ const vk::DescriptorSetLayout& Carrot::Pipeline::getDescriptorSetLayout(std::uin
 
         case PipelineDescription::DescriptorSet::Type::Viewport:
             return GetRenderer().getViewportDescriptorSetLayout();
+
+        case PipelineDescription::DescriptorSet::Type::PerDraw:
+            return GetRenderer().getPerDrawDescriptorSetLayout();
 
         default:
             std::terminate();
@@ -580,6 +588,12 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
         case PipelineDescription::DescriptorSet::Type::Viewport:
         {
             std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.viewport.getViewportDescriptorSet(renderContext) };
+            return sets;
+        }
+
+        case PipelineDescription::DescriptorSet::Type::PerDraw:
+        {
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.renderer.getPerDrawDescriptorSet(renderContext) };
             return sets;
         }
 

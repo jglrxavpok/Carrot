@@ -18,6 +18,7 @@
 
 DEFINE_CAMERA_SET(0)
 LIGHT_SET(1)
+DEFINE_PER_DRAW_BUFFER(3)
 MATERIAL_SYSTEM_SET(4)
 
 layout(set = 5, binding = 0) uniform samplerCube gSkybox3D;
@@ -56,11 +57,12 @@ layout(location = 7) in vec3 T;
 layout(location = 8) in vec3 N;
 layout(location = 9) flat in float bitangentSign;
 layout(location = 10) flat in mat4 inModelview;
+layout(location = 14) flat in int inDrawID;
 
 layout(location = 0) out vec4 color;
 
 void main() {
-    DrawData instanceDrawData = drawDataPush.drawData[0]; // TODO: instancing
+    DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset+inDrawID];
     //#define material (materials[instanceDrawData.materialIndex])
 
     const Material material = materials[instanceDrawData.materialIndex];

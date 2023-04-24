@@ -22,6 +22,7 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
 #include "RenderPacketContainer.h"
+#include "GBufferDrawData.h"
 #include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
@@ -143,7 +144,7 @@ namespace Carrot {
 
         /// Call at start of frame (sets ups ImGui stuff)
         void newFrame();
-        void preFrame();
+        void preFrame(const Render::Context& renderContext);
         void postFrame();
 
     public:
@@ -184,10 +185,17 @@ namespace Carrot {
         Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
+        // Camera => Camera matrices
+        // Debug => Anything can that be used for debugging shaders
+        // Viewport => Per-viewport data
+        // Per-Draw => Per-draw call data, used with indirect indexed commands
+
         const vk::DescriptorSetLayout& getCameraDescriptorSetLayout() const;
         const vk::DescriptorSetLayout& getDebugDescriptorSetLayout() const;
         const vk::DescriptorSetLayout& getViewportDescriptorSetLayout() const;
+        const vk::DescriptorSetLayout& getPerDrawDescriptorSetLayout() const;
         const vk::DescriptorSet& getDebugDescriptorSet(const Render::Context& renderContext) const;
+        const vk::DescriptorSet& getPerDrawDescriptorSet(const Render::Context& renderContext) const;
 
         std::vector<vk::DescriptorSet> createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers);
         void destroyCameraDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
@@ -262,14 +270,29 @@ namespace Carrot {
 
         Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
 
+        SingleFrameStackGPUAllocator singleFrameAllocator;
+        std::unique_ptr<Carrot::Buffer> nullBuffer;
+        vk::DescriptorBufferInfo nullBufferInfo;
+
         vk::UniqueDescriptorSetLayout cameraDescriptorSetLayout{};
         vk::UniqueDescriptorPool cameraDescriptorPool{};
         vk::UniqueDescriptorSetLayout viewportDescriptorSetLayout{};
         vk::UniqueDescriptorPool viewportDescriptorPool{};
         vk::UniqueDescriptorSetLayout debugDescriptorSetLayout{};
         vk::UniqueDescriptorPool debugDescriptorPool{};
+
+        vk::UniqueDescriptorSetLayout perDrawDescriptorSetLayout{};
+        vk::UniqueDescriptorPool perDrawDescriptorPool{};
+
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> debugBuffers;
         Render::PerFrame<vk::DescriptorSet> debugDescriptorSets;
+
+        // dynamic SSBO
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawOffsetBuffers;
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawBuffers;
+        Render::PerFrame<vk::DescriptorSet> perDrawDescriptorSets;
+        std::vector<GBufferDrawData> perDrawData;
+        std::vector<std::uint32_t> perDrawOffsets;
 
         std::unique_ptr<ASBuilder> asBuilder = nullptr;
 
@@ -316,7 +339,6 @@ namespace Carrot {
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
         std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
-        SingleFrameStackGPUAllocator singleFrameAllocator;
 
     private:
         bool hasBlinked = false;
@@ -327,6 +349,10 @@ namespace Carrot {
     private:
         void createCameraSetResources();
         void createViewportSetResources();
+
+        void createPerDrawSetResources();
+        void updatePerDrawBuffers(const Carrot::Render::Context& renderContext);
+
         void createDebugSetResources();
         void createDefaultResources();
 
@@ -346,6 +372,15 @@ namespace Carrot {
         void sortRenderPackets(std::vector<Carrot::Render::Packet>& packets);
         void mergeRenderPackets(const std::vector<Carrot::Render::Packet>& inputPackets, std::vector<Carrot::Render::Packet>& outputPackets);
         void renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+
+        /**
+         * Uploads a list of drawdata to the per_draw buffer and returns the dynamic offset to use when binding the descriptor set
+         * @param drawData
+         * @return
+         */
+        std::uint32_t uploadPerDrawData(const std::span<GBufferDrawData>& drawData);
+
+        friend class Render::Packet;
     };
 }
 

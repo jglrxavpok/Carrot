@@ -18,6 +18,7 @@ layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out uvec4 outUUID;
 layout(location = 5) out flat mat4 outModelview;
+layout(location = 9) out flat int outDrawID;
 
 layout(push_constant) uniform TexRegion {
     layout(offset = 24) vec2 center;
@@ -25,6 +26,7 @@ layout(push_constant) uniform TexRegion {
 } region;
 
 void main() {
+    outDrawID = gl_DrawID;
     uv = (inPosition.xy+vec2(0.5)) * (region.halfSize * 2) + region.center - region.halfSize;
     mat4 modelview = cbo.view * inInstanceTransform;
     vec4 viewPosition = modelview * vec4(inPosition, 1.0);

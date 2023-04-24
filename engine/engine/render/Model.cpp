@@ -20,6 +20,7 @@
 #include "engine/render/resources/model_loading/AssimpLoader.h"
 #include <core/scene/GLTFLoader.h>
 #include <engine/console/RuntimeOption.hpp>
+#include <engine/render/resources/LightMesh.h>
 
 static Carrot::RuntimeOption DrawBoundingSpheres("Debug/Draw bounding spheres", false);
 static Carrot::RuntimeOption DisableFrustumCheck("Debug/Disable frustum culling", false);
@@ -96,6 +97,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 setMaterialTexture(handle->emissive, material.emissive, materialSystem.getBlackTexture());
                 setMaterialTexture(handle->metallicRoughness, material.metallicRoughness, materialSystem.getBlackTexture());
 
+                handle->isTransparent = material.blendMode != Render::LoadedMaterial::BlendMode::None;
                 handle->baseColor = material.baseColorFactor;
                 handle->emissiveColor = material.emissiveFactor;
                 handle->roughnessFactor = material.roughnessFactor;
@@ -106,24 +108,83 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         materials.push_back(handle);
     }
 
+    staticMeshInfo.resize(scene.primitives.size());
+
+    std::vector<Carrot::Vertex> staticVertices;
+    std::vector<std::uint32_t> staticIndices;
+
+    std::size_t primitiveIndex = 0;
+
+    std::size_t opaqueMeshIndex = 0;
+    std::size_t transparentMeshIndex = 0;
+    for(const auto& primitive : scene.primitives) {
+        if(primitive.isSkinned) {
+            primitiveIndex++;
+            continue;
+        }
+
+        const std::size_t oldVertexCount = staticVertices.size();
+        const std::size_t oldIndexCount = staticIndices.size();
+        staticVertices.resize(oldVertexCount + primitive.vertices.size());
+        staticIndices.resize(oldIndexCount + primitive.indices.size());
+
+        memcpy(&staticVertices[oldVertexCount], primitive.vertices.data(), primitive.vertices.size() * sizeof(Carrot::Vertex));
+        memcpy(&staticIndices[oldIndexCount], primitive.indices.data(), primitive.indices.size() * sizeof(std::uint32_t));
+
+        auto& info = staticMeshInfo[primitiveIndex];
+        info.startVertex = oldVertexCount;
+        info.startIndex = oldIndexCount;
+        info.vertexCount = primitive.vertices.size();
+        info.indexCount = primitive.indices.size();
+
+        primitiveIndex++;
+    }
+
+    if(!staticVertices.empty()) {
+        verify(!staticIndices.empty(), "Non-indexed meshes not supported");
+        staticMeshData = std::make_unique<SingleMesh>(staticVertices, staticIndices);
+    }
+
     std::function<void(const Carrot::Render::SkeletonTreeNode&, glm::mat4)> recursivelyLoadNodes = [&](const Carrot::Render::SkeletonTreeNode& node, const glm::mat4& nodeTransform) {
         glm::mat4 transform = nodeTransform * node.bone.originalTransform;
         if(node.meshIndices.has_value()) {
             for(const std::size_t meshIndex : node.meshIndices.value()) {
                 auto& primitive = scene.primitives[meshIndex];
-                std::shared_ptr<SingleMesh> mesh;
+                std::shared_ptr<Mesh> mesh;
                 const auto& material = materials[primitive.materialIndex];
 
-                auto& sceneMaterial = scene.materials[primitive.materialIndex];
-                material->isTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
                 Math::Sphere sphere;
                 sphere.loadFromAABB(primitive.minPos, primitive.maxPos);
+
+                // TODO: load all skinned primitive data into same buffer?
                 if(primitive.isSkinned) {
                     mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform, sphere);
+                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform, sphere, -1);
                 } else {
-                    mesh = std::make_shared<SingleMesh>(primitive.vertices, primitive.indices);
-                    staticMeshes[material->getSlot()].emplace_back(mesh, transform, sphere);
+                    StaticMeshInfo& meshInfo = staticMeshInfo[meshIndex];
+                    mesh = std::make_shared<LightMesh>(std::move(staticMeshData->getSubMesh(meshInfo.startVertex, meshInfo.vertexCount, meshInfo.startIndex, meshInfo.indexCount)));
+
+                    auto& sceneMaterial = scene.materials[primitive.materialIndex];
+                    const bool isMaterialTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
+                    auto& drawCommands = isMaterialTransparent ? staticTransparentDrawCommands : staticOpaqueDrawCommands;
+                    auto& drawDataList = isMaterialTransparent ? staticTransparentDrawData : staticOpaqueDrawData;
+                    auto& instanceDataList = isMaterialTransparent ? staticTransparentInstanceData : staticOpaqueInstanceData;
+
+                    staticMeshes[material->getSlot()].emplace_back(mesh, transform, sphere, drawCommands.size());
+
+
+
+                    auto& cmd = drawCommands.emplace_back();
+                    cmd.instanceCount = 1;
+                    cmd.indexCount = meshInfo.indexCount;
+                    cmd.firstInstance = drawCommands.size()-1; // increment just before
+                    cmd.vertexOffset = meshInfo.startVertex;
+                    cmd.firstIndex = meshInfo.startIndex;
+
+                    auto& drawData = drawDataList.emplace_back();
+                    drawData.materialIndex = material->getSlot();
+
+                    auto& instanceData = instanceDataList.emplace_back();
                 }
                 mesh->name(scene.debugName + " (" + primitive.name + ")");
             }
@@ -147,7 +208,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                                                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                          vk::MemoryPropertyFlagBits::eDeviceLocal);
         animationData->setDebugNames("Animations");
-        animationData->stageUploadWithOffsets(make_pair(0ull, allAnimations));
+        animationData->stageUploadWithOffsets(make_pair(0ull, std::span(allAnimations)));
     }
 
     animationMapping = std::move(scene.animationMapping);
@@ -214,7 +275,9 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
         transforms.reserve(staticMeshes.size()); // assume 1 mesh / material
         staticMeshMaterials.reserve(staticMeshes.size()); // assume 1 mesh / material
         for(const auto& [materialSlot, meshes] : staticMeshes) {
-            for(const auto& [mesh, transform, _] : meshes) {
+            for(const auto& meshInfo : meshes) {
+                auto& mesh = meshInfo.mesh;
+                auto& transform = meshInfo.transform;
                 allStaticMeshes.push_back(mesh);
                 transforms.push_back(transform);
                 staticMeshMaterials.push_back(materialSlot);
@@ -251,7 +314,8 @@ void Carrot::Model::draw(vk::RenderPass pass, Carrot::Render::Context renderCont
             if(pipeline != boundPipeline) {
                 pipeline->bind(pass, renderContext, commands);
             }
-            for(const auto& [mesh, transform, sphere] : meshList) {
+            for(const auto& meshInfo : meshList) {
+                auto& mesh = meshInfo.mesh;
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bind(commands);
@@ -291,7 +355,8 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
             if(pipeline != boundPipeline) {
                 pipeline->bind(pass, renderContext, commands);
             }
-            for(const auto& [mesh, transform, sphere] : meshList) {
+            for(const auto& meshInfo : meshList) {
+                auto& mesh = meshInfo.mesh;
                 data.materialIndex = mat;
                 renderContext.renderer.pushConstantBlock<GBufferDrawData>("drawDataPush", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, commands, data);
                 mesh->bindForIndirect(commands);
@@ -310,49 +375,60 @@ void Carrot::Model::indirectDraw(vk::RenderPass pass, Carrot::Render::Context re
 
 void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
     ZoneScoped;
-    GBufferDrawData data;
 
-    const bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
+    Render::Packet& opaquePacket = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+    Render::Packet& transparentPacket = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+    opaquePacket.pipeline = opaqueMeshesPipeline;
+    transparentPacket.pipeline = transparentMeshesPipeline;
+    transparentPacket.transparentGBuffer.zOrder = 0.0f; // TODO
 
-    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
-    packet.pipeline = inTransparentPass ? transparentMeshesPipeline : opaqueMeshesPipeline;
-    packet.transparentGBuffer.zOrder = 0.0f;
+    opaquePacket.drawCommands = staticOpaqueDrawCommands;
+    transparentPacket.drawCommands = staticTransparentDrawCommands;
 
-    Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
-    pushConstant.id = "drawDataPush";
-    pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
+    opaquePacket.vertexBuffer = staticMeshData->getVertexBuffer();
+    opaquePacket.indexBuffer = staticMeshData->getIndexBuffer();
+    transparentPacket.vertexBuffer = staticMeshData->getVertexBuffer();
+    transparentPacket.indexBuffer = staticMeshData->getIndexBuffer();
 
-    {
-        ZoneScopedN("instance use");
-        packet.useInstance(instanceData);
-    }
+    opaquePacket.addPerDrawData(staticOpaqueDrawData);
+    transparentPacket.addPerDrawData(staticTransparentDrawData);
 
-    Carrot::InstanceData meshInstanceData = instanceData;
+    // TODO: per-draw buffer to replace push constants
+    // push constant contains first index for first draw, then access with gl_DrawID
+
     auto& materialSystem = renderContext.renderer.getMaterialSystem();
     for (const auto&[mat, meshList]: staticMeshes) {
         auto weakMat = materialSystem.getMaterial(mat);
         if(auto pMat = weakMat.lock()) {
-            /*if(pMat->isTransparent != inTransparentPass) {
-                continue;
-            }*/
-            if(pMat->isTransparent) {
-                packet.pipeline = transparentMeshesPipeline;
-            } else {
-                packet.pipeline = opaqueMeshesPipeline;
-            }
-            for (const auto& [mesh, transform, sphere]: meshList) {
+            for (const auto& meshInfo: meshList) {
+                auto& mesh = meshInfo.mesh;
+                auto& transform = meshInfo.transform;
+                auto& sphere = meshInfo.boundingSphere;
+                auto& meshIndex = meshInfo.meshIndex;
                 ZoneScopedN("mesh use");
 
-                meshInstanceData.transform = instanceData.transform * transform;
+                InstanceData* pInstanceData = nullptr;
+                vk::DrawIndexedIndirectCommand* pDrawCommand = nullptr;
+                if(!pMat->isTransparent) {
+                    pInstanceData = &staticOpaqueInstanceData[meshIndex];
+                    pDrawCommand = &opaquePacket.drawCommands[meshIndex];
+                } else {
+                    pInstanceData = &staticTransparentInstanceData[meshIndex];
+                    pDrawCommand = &transparentPacket.drawCommands[meshIndex];
+                }
+                *pInstanceData = instanceData;
+
+                pInstanceData->transform = instanceData.transform * transform;
 
                 Math::Sphere s = sphere;
-                s.transform(meshInstanceData.transform);
+                s.transform(pInstanceData->transform);
 
                 bool frustumCheck = renderContext.getCamera().isInFrustum(s);
                 if(DisableFrustumCheck) {
                     frustumCheck = true;
                 }
 
+                pDrawCommand->instanceCount = frustumCheck ? 1 : 0;
                 if(!frustumCheck) {
                     continue;
                 }
@@ -364,22 +440,24 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
                     }
                 }
 
-                data.materialIndex = mat;
-                packet.useMesh(*mesh);
-
-                meshInstanceData.lastFrameTransform = instanceData.lastFrameTransform * transform;
-                packet.useInstance(meshInstanceData);
-
-
-                pushConstant.setData(data); // template operator=
-
-                renderContext.renderer.render(packet);
+                pInstanceData->lastFrameTransform = instanceData.lastFrameTransform * transform;
             }
         }
+    }
+
+    opaquePacket.useInstances(std::span(staticOpaqueInstanceData));
+    transparentPacket.useInstances(std::span(staticTransparentInstanceData));
+
+    if(!opaquePacket.drawCommands.empty()) {
+        renderContext.renderer.render(opaquePacket);
+    }
+    if(!transparentPacket.drawCommands.empty()) {
+        renderContext.renderer.render(transparentPacket);
     }
 }
 
 void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
+/* TODO
     GBufferDrawData data;
 
     const bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
@@ -412,14 +490,14 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
 
             renderContext.renderer.render(packet);
         }
-    }
+    }*/
 }
 
 std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model::getSkinnedMeshes() const {
     std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> result;
     for(const auto& [material, meshes] : skinnedMeshes) {
-        for(const auto& [mesh, transform, _] : meshes) {
-            result[material].push_back(mesh);
+        for(const auto& meshInfo : meshes) {
+            result[material].push_back(meshInfo.mesh);
         }
     }
     return result;
@@ -428,8 +506,8 @@ std::unordered_map<std::uint32_t, std::vector<Carrot::Mesh::Ref>> Carrot::Model:
 std::vector<std::shared_ptr<Carrot::Mesh>> Carrot::Model::getStaticMeshes() const {
     std::vector<std::shared_ptr<Mesh>> result{};
     for(const auto& [material, meshes] : staticMeshes) {
-        for(const auto& [mesh, transform, _] : meshes) {
-            result.push_back(mesh);
+        for(const auto& meshInfo : meshes) {
+            result.push_back(meshInfo.mesh);
         }
     }
     return result;

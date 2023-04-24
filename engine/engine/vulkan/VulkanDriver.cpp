@@ -58,8 +58,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-//constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
+//constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -68,6 +68,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_SPIRV_1_4_EXTENSION_NAME,
         VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+        VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -82,10 +83,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         Carrot::Log::info("Validation layer: %s", pCallbackData->pMessage);
     }
     if(messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        if(pCallbackData->messageIdNumber != 307231540u
+        if(true
+        && pCallbackData->messageIdNumber != 307231540u
         && pCallbackData->messageIdNumber != 3730154501u
         && pCallbackData->messageIdNumber != 2755938772u
         && pCallbackData->messageIdNumber != 1303270965u
+
+        && pCallbackData->messageIdNumber != 3898698738u
+        && pCallbackData->messageIdNumber != 3855709244u
         ) {
             Carrot::Log::error("(%llu) Validation layer: %s", pCallbackData->messageIdNumber, pCallbackData->pMessage);
 
@@ -97,7 +102,21 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         }
     }
 
-    if(strstr(pCallbackData->pMessage, "Threading-MultipleThreads") != nullptr) {
+    if(pCallbackData->messageIdNumber == 1812873262u) /* VUID-vkCmdCopyBuffer-size-00115 */ {
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 2188733524u) {
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 2147704939u) /* VUID-vkMapMemory-size-00681 */ {
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 2484131348u) /* VUID-vkCmdDrawIndexedIndirect-None-02699 */{
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 1318213324u) /* VUID-vkAllocateMemory-maxMemoryAllocationCount-04101 */ {
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 3316570872u) /* VUID-vkCmdBindDescriptorSets-pDynamicOffsets-01972 */ {
+        debug_break();
+    } else if(pCallbackData->messageIdNumber == 2707007331u) /* VUID-vkCmdBindDescriptorSets-pDescriptorSets-01979 */ {
+        //debug_break();
+    } else if(strstr(pCallbackData->pMessage, "Threading-MultipleThreads") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "FreeMemory-memory") != nullptr) {
         debug_break();
@@ -421,6 +440,8 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
 }
 
 void Carrot::VulkanDriver::fillRenderingCapabilities() {
+    physicalDeviceLimits = physicalDevice.getProperties().limits;
+
     const std::vector<vk::ExtensionProperties> available = physicalDevice.enumerateDeviceExtensionProperties(nullptr);
     std::set<std::string> availableSet;
 
@@ -480,6 +501,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                             .independentBlend = true,
 
                             .multiDrawIndirect = true,
+                            .drawIndirectFirstInstance = true,
                             .samplerAnisotropy = true,
                             .shaderUniformBufferArrayDynamicIndexing = true,
                             .shaderSampledImageArrayDynamicIndexing = true,
@@ -498,6 +520,9 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             },
             vk::PhysicalDeviceSynchronization2FeaturesKHR  {
                     .synchronization2 = true,
+            },
+            vk::PhysicalDeviceVulkan11Features {
+                    .shaderDrawParameters = true,
             },
             vk::PhysicalDeviceVulkan12Features {
                     .shaderSampledImageArrayNonUniformIndexing  = true,
@@ -961,6 +986,10 @@ void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext
 
 const vk::PhysicalDeviceFeatures& Carrot::VulkanDriver::getPhysicalDeviceFeatures() const {
     return physicalDeviceFeatures;
+}
+
+const vk::PhysicalDeviceLimits& Carrot::VulkanDriver::getPhysicalDeviceLimits() const {
+    return physicalDeviceLimits;
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueImage&& resource) {

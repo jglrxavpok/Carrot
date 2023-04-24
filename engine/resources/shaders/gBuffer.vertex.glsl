@@ -26,8 +26,11 @@ layout(location = 7) out vec3 T;
 layout(location = 8) out vec3 N;
 layout(location = 9) out float outBitangentSign;
 layout(location = 10) out flat mat4 outModelview;
+layout(location = 14) out flat int outDrawID;
 
 void main() {
+    outDrawID = gl_DrawID;
+
     uv = inUV;
     mat4 modelview = cbo.view * inInstanceTransform;
     mat4 previousFrameModelview = previousFrameCBO.view * inLastFrameInstanceTransform;

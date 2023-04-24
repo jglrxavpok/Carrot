@@ -102,6 +102,7 @@ int main(int argc, const char** argv) {
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_samplerless_texture_functions: enable
+#extension GL_ARB_shader_draw_parameters: enable
 )";
     auto filepath = inputFile.string();
     std::array strs {

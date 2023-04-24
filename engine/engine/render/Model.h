@@ -85,6 +85,8 @@ namespace Carrot {
             std::shared_ptr<Mesh> mesh;
             glm::mat4 transform{1.0f};
             Math::Sphere boundingSphere;
+
+            std::size_t meshIndex = 0;
         };
 
         Carrot::Engine& engine;
@@ -94,6 +96,26 @@ namespace Carrot {
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> staticMeshes{};
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
+
+        struct StaticMeshInfo {
+            std::size_t startVertex = 0;
+            std::size_t vertexCount = 0;
+            std::size_t startIndex = 0;
+            std::size_t indexCount = 0;
+        };
+        std::vector<StaticMeshInfo> staticMeshInfo;
+        std::unique_ptr<Carrot::SingleMesh> staticMeshData;
+
+        std::vector<vk::DrawIndexedIndirectCommand> staticOpaqueDrawCommands;
+        std::vector<vk::DrawIndexedIndirectCommand> staticTransparentDrawCommands;
+        std::vector<Carrot::InstanceData> staticOpaqueInstanceData;
+        std::vector<Carrot::InstanceData> staticTransparentInstanceData;
+        std::vector<Carrot::GBufferDrawData> staticOpaqueDrawData;
+        std::vector<Carrot::GBufferDrawData> staticTransparentDrawData;
+
+        std::size_t staticVertexCount = 0; // Count of all static vertices inside this model
+        std::size_t staticVertexStart = 0; // Start of vertices inside staticMeshData
+        std::size_t staticIndexCount = 0; // Count of all static indices inside this model
 
         std::shared_ptr<BLASHandle> staticBLAS;
         std::shared_ptr<BLASHandle> skinnedBLAS;

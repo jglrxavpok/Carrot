@@ -27,6 +27,8 @@ namespace Carrot {
         [[nodiscard]] const Buffer& getBuffer() const { return *buffer; };
         [[nodiscard]] const vk::Buffer& getVulkanBuffer() const { return getBuffer().getVulkanBuffer(); };
 
+        BufferView subView(std::size_t start, std::size_t count) const;
+
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
         void directUpload(const void* data, vk::DeviceSize length);

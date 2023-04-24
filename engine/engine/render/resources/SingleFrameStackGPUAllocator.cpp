@@ -44,7 +44,14 @@ namespace Carrot {
     // --
 
     SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize instancingBufferSize):
-        instanceBuffers(instancingBufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
+        instanceBuffers(instancingBufferSize,
+                        vk::BufferUsageFlagBits::eVertexBuffer
+                        | vk::BufferUsageFlagBits::eIndexBuffer
+                        | vk::BufferUsageFlagBits::eStorageBuffer
+                        | vk::BufferUsageFlagBits::eUniformBuffer
+                        | vk::BufferUsageFlagBits::eIndirectBuffer
+
+                        , vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
         instanceBuffers.resize(GetEngine().getSwapchainImageCount());
     }
 

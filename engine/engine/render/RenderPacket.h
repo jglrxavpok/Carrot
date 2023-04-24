@@ -8,13 +8,16 @@
 #include <vector>
 #include <source_location>
 #include <list>
+#include <span>
 #include "resources/Buffer.h"
 #include "resources/BufferView.h"
 #include "PassEnum.h"
+#include "GBufferDrawData.h"
 
 namespace Carrot {
     class Pipeline;
     class Mesh;
+    class VulkanRenderer;
 
     namespace Render {
         class Viewport;
@@ -67,8 +70,10 @@ namespace Carrot::Render {
 
         Carrot::BufferView vertexBuffer;
         Carrot::BufferView indexBuffer;
-        std::uint32_t indexCount = 0;
-        std::uint32_t instanceCount = 1;
+
+        std::uint32_t instanceCount = 1; // Total number of instances for this packet, used to offset firstInstance when merging packets
+
+        std::vector<vk::DrawIndexedIndirectCommand> drawCommands;
 
         TransparentPassData transparentGBuffer;
 
@@ -86,10 +91,17 @@ namespace Carrot::Render {
         void useMesh(Carrot::Mesh& mesh);
 
         template<typename T>
-        void useInstance(T&& instance) {
-            instancingDataBuffer = allocateGeneric(sizeof(instance));
-            std::memcpy(instancingDataBuffer.data(), &instance, sizeof(instance));
+        void useInstances(const std::span<T>& instance) {
+            instancingDataBuffer = allocateGeneric(instance.size_bytes());
+            std::memcpy(instancingDataBuffer.data(), instance.data(), instance.size_bytes());
         }
+
+        template<typename T>
+        void useInstance(T& instance) {
+            useInstances(std::span<T>{&instance, 1});
+        }
+
+        void addPerDrawData(const std::span<GBufferDrawData>& data);
 
         PushConstant& addPushConstant(const std::string& id = "", vk::ShaderStageFlags stages = static_cast<vk::ShaderStageFlags>(0));
 
@@ -99,17 +111,22 @@ namespace Carrot::Render {
         /// \param pass
         /// \param renderContext
         /// \param commands
-        /// \param skipPipelineBind if you know the proper pipeline is already bound, you can skip its bind with this parameter to save time
-        void record(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, bool skipPipelineBind = false) const;
+        /// \param previousRenderPacket if you know the proper state is already bound, you can skip its bind thanks to this parameter to save time
+        void record(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
 
     private:
         std::span<std::uint8_t> allocateGeneric(std::size_t size);
+
+        void validate() const;
 
     private:
         PacketContainer& container;
         std::source_location source;
         std::span<std::uint8_t> instancingDataBuffer;
+        std::span<std::uint8_t> perDrawData;
         std::size_t pushConstantCount = 0;
         PushConstant* pushConstants[MAX_PUSH_CONSTANTS];
+
+        friend class VulkanRenderer;
     };
 }

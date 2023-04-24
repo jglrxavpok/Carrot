@@ -32,6 +32,16 @@ bool Carrot::BufferView::operator==(const Carrot::BufferView& other) const {
     return start == other.start && size == other.size && buffer == other.buffer;
 }
 
+Carrot::BufferView Carrot::BufferView::subView(std::size_t substart, std::size_t subcount) const {
+    verify(substart+subcount <= size, "subview exceeds original buffer");
+    return BufferView {
+        allocator,
+        *buffer,
+        start + substart,
+        subcount
+    };
+}
+
 void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length) {
     verify(length <= size, "Cannot upload more data than this view allows");
     getBuffer().directUpload(data, length, start);

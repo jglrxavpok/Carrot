@@ -125,7 +125,10 @@ namespace Carrot::Physics {
 
         renderPacket.vertexBuffer = vertexBuffer;
         renderPacket.indexBuffer = indexBuffer;
-        renderPacket.indexCount = triangles.size() * 3;
+
+        auto& cmd = renderPacket.drawCommands.emplace_back();
+        cmd.indexCount = triangles.size() * 3;
+        cmd.instanceCount = 1;
 
         Carrot::GBufferDrawData drawData;
         drawData.materialIndex = GetRenderer().getWhiteMaterial().getSlot();

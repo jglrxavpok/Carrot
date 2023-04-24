@@ -23,6 +23,7 @@
 #include "engine/math/Transform.h"
 #include <execution>
 #include <robin_hood.h>
+#include <core/math/BasicFunctions.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -45,6 +46,15 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                                                     singleFrameAllocator(SingleFrameAllocatorSize)
 {
     ZoneScoped;
+
+    nullBuffer = std::make_unique<Buffer>(driver,
+                                          1,
+                                          vk::BufferUsageFlagBits::eUniformBuffer
+                                          | vk::BufferUsageFlagBits::eStorageBuffer,
+                                          vk::MemoryPropertyFlagBits::eDeviceLocal
+                                          );
+    nullBufferInfo = nullBuffer->asBufferInfo();
+
     fullscreenQuad = std::make_unique<SingleMesh>(
                                        std::vector<ScreenSpaceVertex>{
                                                { { -1, -1} },
@@ -59,6 +69,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
 
     createCameraSetResources();
     createViewportSetResources();
+    createPerDrawSetResources();
     createDebugSetResources();
     createRayTracer();
     createUIResources();
@@ -284,6 +295,9 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
         );
     }
 
+    perDrawBuffers.resize(getSwapchainImageCount());
+    perDrawOffsetBuffers.resize(getSwapchainImageCount());
+
     if(asBuilder) {
         asBuilder->onSwapchainImageCountChange(newCount);
     }
@@ -306,8 +320,11 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) 
     }
 }
 
-// TODO: thread safety
-void Carrot::VulkanRenderer::preFrame() {
+void Carrot::VulkanRenderer::preFrame(const Render::Context& renderContext) {
+    updatePerDrawBuffers(renderContext);
+    //updateIndirectDrawCommands(renderContext);
+
+    // TODO: thread safety
     if(beforeFrameCommands.empty())
         return;
     driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer cmds) {
@@ -592,6 +609,8 @@ void Carrot::VulkanRenderer::blit(Carrot::Render::Texture& source, Carrot::Rende
 }
 
 void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderContext) {
+    perDrawData.clear();
+    perDrawOffsets.clear();
     {
         ZoneScopedN("Waiting on tasks required before starting the frame");
         mustBeDoneByNextFrameCounter.busyWait();
@@ -678,7 +697,7 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
 
         .vertexBuffer = p.vertexBuffer,
         .indexBuffer = p.indexBuffer,
-        .indexCount = p.indexCount,
+//        .indexCount = p.indexCount,
     };
 }
 
@@ -856,12 +875,13 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
             .descriptorCount = 2,
     };
     cameraDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
             .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxCameras,
             .poolSizeCount = 1,
             .pPoolSizes = &poolSize,
     });
 }
+
 void Carrot::VulkanRenderer::createViewportSetResources() {
     vk::DescriptorSetLayoutBinding bindings[] = {
             {
@@ -881,12 +901,152 @@ void Carrot::VulkanRenderer::createViewportSetResources() {
             .descriptorCount = 1,
     };
     viewportDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
             .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxViewports,
             .poolSizeCount = 1,
             .pPoolSizes = &poolSize,
     });
 }
+
+void Carrot::VulkanRenderer::createPerDrawSetResources() {
+    vk::DescriptorSetLayoutBinding bindings[] = {
+            {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+            },
+            {
+                    .binding = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+            }
+    };
+    perDrawDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
+            .bindingCount = 2,
+            .pBindings = bindings,
+    });
+
+    vk::DescriptorPoolSize poolSizes[2] {
+            {
+                    .type = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+            },
+            {
+                    .type = vk::DescriptorType::eUniformBufferDynamic,
+                    .descriptorCount = 1,
+            }
+    };
+    perDrawDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+            .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()),
+            .poolSizeCount = 2,
+            .pPoolSizes = poolSizes,
+    });
+
+    // allocate default buffers
+
+    std::size_t count = getSwapchainImageCount();
+    std::vector<vk::DescriptorSetLayout> layouts {count, *perDrawDescriptorSetLayout};
+    perDrawDescriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+            .descriptorPool = *perDrawDescriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data(),
+    });
+
+    perDrawBuffers.resize(getSwapchainImageCount());
+    perDrawOffsetBuffers.resize(getSwapchainImageCount());
+
+    for(auto& set : perDrawDescriptorSets) {
+        std::vector<vk::WriteDescriptorSet> writes = {
+                {
+                        .dstSet = set,
+                        .dstBinding = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eStorageBuffer,
+                        .pBufferInfo = &nullBufferInfo,
+                },
+                {
+                        .dstSet = set,
+                        .dstBinding = 1,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+                        .pBufferInfo = &nullBufferInfo,
+                }
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
+    }
+}
+
+void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context& renderContext) {
+    ZoneScoped;
+    const std::size_t elementSize = sizeof(GBufferDrawData);
+    const std::size_t requiredStorage = perDrawData.size() * elementSize;
+    if(requiredStorage == 0)
+        return;
+
+    const std::size_t frameIndex = renderContext.swapchainIndex;
+    if(perDrawBuffers[frameIndex] == nullptr || perDrawBuffers[frameIndex]->getSize() < requiredStorage) {
+        perDrawBuffers[frameIndex] = getEngine().getResourceAllocator().allocateDedicatedBuffer(requiredStorage,
+                                                                                                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                                                                vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+        perDrawBuffers[frameIndex]->setDebugNames(Carrot::sprintf("Per-draw buffer frame %llu", frameIndex));
+
+        vk::DescriptorBufferInfo buffer = perDrawBuffers[frameIndex]->asBufferInfo();
+        auto write = vk::WriteDescriptorSet {
+            .dstSet = perDrawDescriptorSets[frameIndex],
+            .dstBinding = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .pBufferInfo = &buffer,
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
+    }
+
+    const std::size_t alignedElementSize = Carrot::Math::alignUp(sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment);
+    const std::size_t offsetRequiredStorage = perDrawOffsets.size() * alignedElementSize;
+
+    if(perDrawOffsetBuffers[frameIndex] == nullptr || perDrawOffsetBuffers[frameIndex]->getSize() < offsetRequiredStorage) {
+        perDrawOffsetBuffers[frameIndex] = getEngine().getResourceAllocator().allocateDedicatedBuffer(offsetRequiredStorage,
+                                                                                                vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                                                                vk::MemoryPropertyFlagBits::eDeviceLocal);
+        perDrawOffsetBuffers[frameIndex]->setDebugNames(Carrot::sprintf("Per-draw offsets frame %llu", frameIndex));
+        vk::DescriptorBufferInfo buffer = perDrawOffsetBuffers[frameIndex]->asBufferInfo();
+        buffer.range = alignedElementSize;
+        auto write = vk::WriteDescriptorSet {
+            .dstSet = perDrawDescriptorSets[frameIndex],
+            .dstBinding = 1,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+            .pBufferInfo = &buffer,
+        };
+
+        getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
+    }
+
+    std::size_t index = 0;
+    std::vector<std::pair<std::size_t, std::span<const std::uint32_t>>> copyTargets;
+    copyTargets.reserve(perDrawOffsets.size());
+    for(const auto& element : perDrawOffsets) {
+        const std::size_t offset = index * alignedElementSize;
+
+        copyTargets.emplace_back(offset, std::span{&element, 1});
+        index++;
+    }
+
+    // TODO: async upload
+    perDrawOffsetBuffers[frameIndex]->stageUploadWithOffsets(std::span { copyTargets });
+    perDrawBuffers[frameIndex]->stageUploadWithOffset(0ull, perDrawData.data(), perDrawData.size() * sizeof(GBufferDrawData));
+}
+
+/*
+void Carrot::VulkanRenderer::updateIndirectDrawCommands(const Carrot::Render::Context& renderContext) {
+    TODO;
+}*/
 
 void Carrot::VulkanRenderer::createDebugSetResources() {
     vk::DescriptorSetLayoutBinding debugBinding {
@@ -973,6 +1133,7 @@ void Carrot::VulkanRenderer::createDefaultResources() {
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCamera(const std::vector<Carrot::BufferView>& uniformBuffers) {
+    verify(uniformBuffers.size() > 0, "Must have at least one uniform buffer");
     int vrMultiplier = (GetEngine().getConfiguration().runInVR ? 2 : 1);
     std::size_t count = getSwapchainImageCount() * vrMultiplier;
     std::vector<vk::DescriptorSetLayout> layouts {count, *cameraDescriptorSetLayout};
@@ -1016,6 +1177,7 @@ void Carrot::VulkanRenderer::destroyCameraDescriptorSets(const std::vector<vk::D
 }
 
 std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers) {
+    verify(uniformBuffers.size() > 0, "Must have at least one uniform buffer");
     std::size_t count = getSwapchainImageCount();
     std::vector<vk::DescriptorSetLayout> layouts {count, *viewportDescriptorSetLayout};
     auto descriptorSets = getVulkanDriver().getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
@@ -1060,8 +1222,16 @@ const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getViewportDescriptorSetL
     return *viewportDescriptorSetLayout;
 }
 
+const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getPerDrawDescriptorSetLayout() const {
+    return *perDrawDescriptorSetLayout;
+}
+
 const vk::DescriptorSet& Carrot::VulkanRenderer::getDebugDescriptorSet(const Render::Context& renderContext) const {
     return debugDescriptorSets[renderContext.swapchainIndex];
+}
+
+const vk::DescriptorSet& Carrot::VulkanRenderer::getPerDrawDescriptorSet(const Render::Context& renderContext) const {
+    return perDrawDescriptorSets[renderContext.swapchainIndex];
 }
 
 void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds) {
@@ -1107,11 +1277,10 @@ void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot
     verify(viewport, "Viewport cannot be null");
 
     auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::OpaqueGBuffer);
-    Carrot::Pipeline* currentlyBoundPipeline = nullptr;
+    const Carrot::Render::Packet* previousPacket = nullptr;
     for(const auto& p : packets) {
-        bool skipPipelineBind = p.pipeline.get() == currentlyBoundPipeline;
-        p.record(pass, renderContext, commands, skipPipelineBind);
-        currentlyBoundPipeline = p.pipeline.get();
+        p.record(pass, renderContext, commands, previousPacket);
+        previousPacket = &p;
     }
 }
 
@@ -1162,11 +1331,10 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
     verify(viewport, "Viewport cannot be null");
 
     auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::TransparentGBuffer);
-    Carrot::Pipeline* currentlyBoundPipeline = nullptr;
+    const Carrot::Render::Packet* previousPacket = nullptr;
     for(const auto& p : packets) {
-        bool skipPipelineBind = p.pipeline.get() == currentlyBoundPipeline;
-        p.record(pass, renderContext, commands, skipPipelineBind);
-        currentlyBoundPipeline = p.pipeline.get();
+        p.record(pass, renderContext, commands, previousPacket);
+        previousPacket = &p;
     }
 }
 
@@ -1327,6 +1495,18 @@ void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const C
     render(packet);
 }
 
+std::uint32_t Carrot::VulkanRenderer::uploadPerDrawData(const std::span<GBufferDrawData>& drawData) {
+    const std::size_t alignedElementSize = Math::alignUp(sizeof(std::uint32_t), driver.getPhysicalDeviceLimits().minUniformBufferOffsetAlignment);
+
+    std::size_t offset = perDrawOffsets.size() * alignedElementSize;
+    perDrawOffsets.emplace_back(static_cast<std::uint32_t>(perDrawData.size()));
+
+    for(const auto& data : drawData) {
+        perDrawData.emplace_back(data);
+    }
+    return offset;
+}
+
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitSphere() {
     return unitSphereModel;
 }
@@ -1345,13 +1525,7 @@ Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnu
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     ZoneScopedN("Queue RenderPacket");
-    verify(packet.pipeline, "Pipeline must not be null");
-    verify(packet.pass != Render::PassEnum::Undefined, "Render pass must be defined");
-    verify(packet.vertexBuffer, "Vertex buffer must not be null");
-    verify(((VkBuffer)packet.vertexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Vertex buffer must not be null");
-    verify(packet.indexBuffer, "Index buffer must not be null");
-    verify(((VkBuffer)packet.indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null");
-    verify(packet.viewport, "Viewport must not be null");
+    packet.validate();
     verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
     threadLocalRenderPackets->unsorted.emplace_back(packet);
 }

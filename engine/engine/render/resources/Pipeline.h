@@ -38,6 +38,7 @@ namespace Carrot {
                 Lights,
                 Debug,
                 Viewport,
+                PerDraw,
 
                 CountOf
             };
@@ -79,7 +80,15 @@ namespace Carrot {
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription& description);
 
-        void bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics) const;
+        /**
+         * Binds pipeline + descriptor sets
+         */
+        void bind(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics, std::vector<std::uint32_t> dynamicOffsets = {}) const;
+
+        /**
+         * Binds only descriptor sets
+         */
+        void bindOnlyDescriptorSets(const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint = vk::PipelineBindPoint::eGraphics, std::vector<std::uint32_t> dynamicOffsets = {}) const;
 
         void recreateDescriptorPool(std::uint32_t imageCount);
 
