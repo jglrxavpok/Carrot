@@ -76,6 +76,14 @@ namespace Carrot::Render {
         friend class MaterialSystem;
     };
 
+    /**
+     * Indices of textures that can be used outside of materials
+     */
+    struct GlobalTextures {
+        std::uint32_t dithering = -1;
+        std::uint32_t blueNoise = -1;
+    };
+
     class MaterialSystem: public SwapchainAware {
     public:
         constexpr static std::uint32_t MaxTextures = 1024;
@@ -118,6 +126,8 @@ namespace Carrot::Render {
         Texture::Ref whiteTexture = nullptr;
         Texture::Ref blackTexture = nullptr;
         Texture::Ref flatNormalTexture = nullptr;
+        Texture::Ref ditheringTexture = nullptr;
+        Texture::Ref blueNoiseTexture = nullptr;
 
     private:
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
@@ -135,10 +145,12 @@ namespace Carrot::Render {
     private:
         constexpr static std::uint32_t DefaultMaterialBufferSize = 16;
 
+        GlobalTextures globalTextures;
         WeakPool<MaterialHandle> materialHandles;
         MaterialData* materialDataPtr = nullptr;
         std::size_t materialBufferSize = 0; // in number of materials
         std::unique_ptr<Carrot::Buffer> materialBuffer = nullptr;
+        std::unique_ptr<Carrot::Buffer> globalTexturesBuffer = nullptr;
         Async::SpinLock accessLock;
 
     private: // need to be destroyed before the corresponding WeakPoolHandle
@@ -147,7 +159,8 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> whiteTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> flatNormalTextureHandle = nullptr;
-
+        std::shared_ptr<TextureHandle> ditheringTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> blueNoiseTextureHandle = nullptr;
 
     private:
         friend class TextureHandle;

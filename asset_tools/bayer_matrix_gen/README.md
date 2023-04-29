@@ -1,0 +1,1 @@
+Generates a PNG with a bayer matrix, used for ordered dithering.

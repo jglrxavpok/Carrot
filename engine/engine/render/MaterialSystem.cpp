@@ -10,7 +10,7 @@
 #include <core/math/BasicFunctions.h>
 
 namespace Carrot::Render {
-    static const std::uint32_t BindingCount = 4;
+    static const std::uint32_t BindingCount = 5;
     static Carrot::RuntimeOption ShowDebug("Engine/Materials Debug", false);
 
     TextureHandle::TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
@@ -118,6 +118,13 @@ namespace Carrot::Render {
                     .descriptorCount = 1,
                     .stageFlags = stageFlags
             },
+            // Global textures
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 4,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = stageFlags
+            },
         };
         descriptorSetLayout = GetVulkanDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
                 .bindingCount = static_cast<std::uint32_t>(bindings.size()),
@@ -138,6 +145,10 @@ namespace Carrot::Render {
                 },
                 vk::DescriptorPoolSize {
                         .type = vk::DescriptorType::eSampler,
+                        .descriptorCount = GetEngine().getSwapchainImageCount(),
+                },
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eUniformBuffer,
                         .descriptorCount = GetEngine().getSwapchainImageCount(),
                 }
         };
@@ -182,6 +193,19 @@ namespace Carrot::Render {
         invalidMaterialHandle->emissive = invalidTextureHandle;
         invalidMaterialHandle->metallicRoughness = invalidTextureHandle;
 
+        ditheringTexture = GetRenderer().getOrCreateTexture("dithering.png");
+        ditheringTextureHandle = createTextureHandle(ditheringTexture);
+        blueNoiseTexture = GetRenderer().getOrCreateTexture("FreeBlueNoiseTextures/LDR_RGB1_54.png");
+        blueNoiseTextureHandle = createTextureHandle(blueNoiseTexture);
+
+        globalTextures.dithering = ditheringTextureHandle->getSlot();
+        globalTextures.blueNoise = blueNoiseTextureHandle->getSlot();
+        globalTexturesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(GlobalTextures),
+                                                                              vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                                              vk::MemoryPropertyFlagBits::eDeviceLocal /* not expected to change a lot*/);
+
+        globalTexturesBuffer->stageUploadWithOffset(0, &globalTextures);
+
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
         flatNormalTextureHandle = createTextureHandle(flatNormalTexture);
@@ -191,6 +215,7 @@ namespace Carrot::Render {
         if(descriptorNeedsUpdate[renderContext.swapchainIndex]) {
             auto& set = descriptorSets[renderContext.swapchainIndex];
             auto materialBufferInfo = materialBuffer->getWholeView().asBufferInfo();
+            auto globalTexturesInfo = globalTexturesBuffer->getWholeView().asBufferInfo();
             std::array<vk::DescriptorImageInfo, MaxTextures> imageInfo;
             for(std::size_t textureIndex = 0; textureIndex < MaxTextures; textureIndex++) {
                 auto& info = imageInfo[textureIndex];
@@ -237,6 +262,14 @@ namespace Carrot::Render {
                             .descriptorCount = 1,
                             .descriptorType = vk::DescriptorType::eSampler,
                             .pImageInfo = &nearestSampler,
+                    },
+                    // Global textures
+                    vk::WriteDescriptorSet {
+                            .dstSet = set,
+                            .dstBinding = 4,
+                            .descriptorCount = 1,
+                            .descriptorType = vk::DescriptorType::eUniformBuffer,
+                            .pBufferInfo = &globalTexturesInfo,
                     },
             };
             GetVulkanDevice().updateDescriptorSets(writes, {});

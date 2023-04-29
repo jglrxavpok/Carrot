@@ -39,10 +39,7 @@ void main() {
     texColor *= instanceColor;
     texColor.rgb *= fragColor;
 
-    RandomSampler rng;
-    initRNG(rng, gl_FragCoord.xy / vec2(viewport.frameWidth, viewport.frameHeight), viewport.frameWidth, viewport.frameHeight, viewport.frameCount);
-
-    if(texColor.a < sampleNoise(rng)) {
+    if(dither(uvec2(gl_FragCoord.xy)) >= texColor.a) {
         discard;
     }
     texColor.a = 1.0;
