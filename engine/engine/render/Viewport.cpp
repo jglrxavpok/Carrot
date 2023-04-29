@@ -4,6 +4,7 @@
 
 #include "Viewport.h"
 #include "core/Macros.h"
+#include "engine/render/RenderContext.h"
 #include "engine/render/VulkanRenderer.h"
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/ResourceAllocator.h"

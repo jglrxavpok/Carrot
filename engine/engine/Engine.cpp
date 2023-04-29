@@ -707,6 +707,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
 
         vkDriver.startFrame(mainRenderContext);
+        resourceAllocator->beginFrame(mainRenderContext);
         renderer.beginFrame(mainRenderContext);
         GetTaskScheduler().executeRendering();
 

@@ -17,6 +17,7 @@ namespace Carrot {
 
 namespace Carrot::Render {
     class Graph;
+    struct Context;
 
     class Viewport: public SwapchainAware {
     public:

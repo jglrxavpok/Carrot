@@ -4,12 +4,13 @@
 
 #pragma once
 
-#include "Buffer.h"
 #include <memory>
 #include <span>
+#include <engine/vulkan/DeviceAddressable.h>
 
 namespace Carrot {
     class ResourceAllocator;
+    class Buffer;
 
     class BufferView: public DeviceAddressable {
     public:
@@ -25,16 +26,20 @@ namespace Carrot {
 
         [[nodiscard]] Buffer& getBuffer() { return *buffer; };
         [[nodiscard]] const Buffer& getBuffer() const { return *buffer; };
-        [[nodiscard]] const vk::Buffer& getVulkanBuffer() const { return getBuffer().getVulkanBuffer(); };
+        [[nodiscard]] const vk::Buffer& getVulkanBuffer() const;
 
-        BufferView subView(std::size_t start, std::size_t count) const;
+        [[nodiscard]] BufferView subView(std::size_t start) const;
+        [[nodiscard]] BufferView subView(std::size_t start, std::size_t count) const;
 
         /// Mmaps the buffer memory into the application memory space, and copies the data from 'data'. Unmaps the memory when finished.
         /// Only use for host-visible and host-coherent memory
-        void directUpload(const void* data, vk::DeviceSize length);
+        void directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
 
         /// Upload to device-local memory
-        void stageUpload(const void* data, vk::DeviceSize length);
+        void stageUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
+
+        void copyToAndWait(Carrot::BufferView destination) const;
+        void copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const;
 
         template<typename T>
         void directUpload(const std::span<const T>& data) {
@@ -59,6 +64,8 @@ namespace Carrot {
 
         template<typename T>
         T* map();
+
+        void* mapGeneric();
 
         void unmap();
 

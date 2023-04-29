@@ -61,25 +61,11 @@ Carrot::Buffer::Buffer(VulkanDriver& driver, vk::DeviceSize size, vk::BufferUsag
 }
 
 void Carrot::Buffer::asyncCopyTo(vk::Semaphore& semaphore, Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
-    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
-        vk::BufferCopy copyRegion = {
-                .srcOffset = srcOffset,
-                .dstOffset = dstOffset,
-                .size = other.size - dstOffset,
-        };
-        stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
-    }, false, {}, static_cast<vk::PipelineStageFlagBits>(0), semaphore);
+    getWholeView().subView(srcOffset).copyTo(semaphore, other.getWholeView().subView(dstOffset));
 }
 
 void Carrot::Buffer::copyTo(Carrot::Buffer& other, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset) const {
-    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
-        vk::BufferCopy copyRegion = {
-                .srcOffset = srcOffset,
-                .dstOffset = dstOffset,
-                .size = size,
-        };
-        stagingCommands.copyBuffer(*vkBuffer, *other.vkBuffer, {copyRegion});
-    });
+    getWholeView().subView(srcOffset).copyToAndWait(other.getWholeView().subView(dstOffset));
 }
 
 void Carrot::Buffer::copyTo(std::span<std::uint8_t> out, vk::DeviceSize offset) const {
@@ -174,6 +160,10 @@ Carrot::BufferView Carrot::Buffer::getWholeView() {
     return BufferView(nullptr /* allocator does NOT own this buffer view */, *this, 0u, static_cast<vk::DeviceSize>(size));
 }
 
+const Carrot::BufferView Carrot::Buffer::getWholeView() const {
+    return BufferView(nullptr /* allocator does NOT own this buffer view */, *const_cast<Carrot::Buffer*>(this), 0u, static_cast<vk::DeviceSize>(size));
+}
+
 void Carrot::Buffer::flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length) {
     driver.getLogicalDevice().flushMappedMemoryRanges(vk::MappedMemoryRange {
        .memory = memory.getVulkanMemory(),
@@ -188,4 +178,8 @@ void Carrot::Buffer::destroyNow() {
     }
     vkBuffer.reset();
     memory = {};
+}
+
+Carrot::BufferView Carrot::Buffer::internalStagingBuffer(vk::DeviceSize size) {
+    return GetResourceAllocator().allocateStagingBuffer(size);
 }

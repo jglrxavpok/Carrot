@@ -9,11 +9,11 @@
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
 #include <engine/render/resources/DeviceMemory.h>
+#include <engine/render/resources/BufferView.h> // required for Buffer.ipp
 #include <core/async/ParallelMap.hpp>
 
 namespace Carrot {
     class Engine;
-    class BufferView;
     class ResourceAllocator;
 
     /// Abstraction over Vulkan buffers
@@ -83,8 +83,8 @@ namespace Carrot {
 
         vk::DeviceAddress getDeviceAddress() const override;
 
-        // TODO: make const asap
         BufferView getWholeView();
+        const BufferView getWholeView() const;
 
         bool isDeviceLocal() const {
             return deviceLocal;
@@ -92,6 +92,9 @@ namespace Carrot {
 
     public:
         void destroyNow();
+
+    private:
+        static Carrot::BufferView internalStagingBuffer(vk::DeviceSize size); // used to avoid includes inside Buffer.h
 
     private:
         VulkanDriver& driver;

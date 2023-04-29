@@ -19,6 +19,10 @@ vk::DescriptorBufferInfo Carrot::BufferView::asBufferInfo() const {
     };
 }
 
+void* Carrot::BufferView::mapGeneric() {
+    return getBuffer().map<void>();
+}
+
 void Carrot::BufferView::unmap() {
     // TODO: proper segmentation
     getBuffer().unmap();
@@ -32,6 +36,20 @@ bool Carrot::BufferView::operator==(const Carrot::BufferView& other) const {
     return start == other.start && size == other.size && buffer == other.buffer;
 }
 
+const vk::Buffer& Carrot::BufferView::getVulkanBuffer() const {
+    return getBuffer().getVulkanBuffer();
+}
+
+Carrot::BufferView Carrot::BufferView::subView(std::size_t substart) const {
+    verify(substart <= size, "Out-of-bounds subview");
+    return BufferView {
+        allocator,
+        *buffer,
+        start + substart,
+        size - substart,
+    };
+}
+
 Carrot::BufferView Carrot::BufferView::subView(std::size_t substart, std::size_t subcount) const {
     verify(substart+subcount <= size, "subview exceeds original buffer");
     return BufferView {
@@ -42,15 +60,40 @@ Carrot::BufferView Carrot::BufferView::subView(std::size_t substart, std::size_t
     };
 }
 
-void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length) {
+void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
     verify(length <= size, "Cannot upload more data than this view allows");
-    getBuffer().directUpload(data, length, start);
+    getBuffer().directUpload(data, length, start+offset);
 }
 
-void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length) {
+void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
     verify(length <= size, "Cannot upload more data than this view allows");
-    getBuffer().stageUploadWithOffset(start, data, length);
+    getBuffer().stageUploadWithOffset(start+offset, data, length);
 }
+
+void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {
+    verify(destination.size >= size, "copying too much data");
+    GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+        vk::BufferCopy copyRegion = {
+                .srcOffset = start,
+                .dstOffset = destination.start,
+                .size = size,
+        };
+        stagingCommands.copyBuffer(getVulkanBuffer(), destination.getVulkanBuffer(), {copyRegion});
+    });
+}
+
+void Carrot::BufferView::copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const {
+    verify(destination.size >= size, "copying too much data");
+    GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
+        vk::BufferCopy copyRegion = {
+                .srcOffset = start,
+                .dstOffset = destination.start,
+                .size = size,
+        };
+        stagingCommands.copyBuffer(getVulkanBuffer(), destination.getVulkanBuffer(), {copyRegion});
+    }, false, {}, static_cast<vk::PipelineStageFlagBits>(0), signalSemaphore);
+}
+
 
 void Carrot::BufferView::download(const std::span<std::uint8_t>& data, std::uint32_t offset) const {
     verify(offset >= 0, "Offset must be >= 0");

@@ -7,6 +7,7 @@
 #include "EditorSettings.h"
 #include <nfd.h>
 #include <engine/render/RenderContext.h>
+#include <core/utils/stringmanip.h>
 
 namespace Tools {
     class ProjectMenuHolder {

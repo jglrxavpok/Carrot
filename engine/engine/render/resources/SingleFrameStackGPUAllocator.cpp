@@ -43,41 +43,47 @@ namespace Carrot {
 
     // --
 
-    SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize instancingBufferSize):
-        instanceBuffers(instancingBufferSize,
-                        vk::BufferUsageFlagBits::eVertexBuffer
-                        | vk::BufferUsageFlagBits::eIndexBuffer
-                        | vk::BufferUsageFlagBits::eStorageBuffer
-                        | vk::BufferUsageFlagBits::eUniformBuffer
-                        | vk::BufferUsageFlagBits::eIndirectBuffer
+    SingleFrameStackGPUAllocator::SingleFrameStackGPUAllocator(vk::DeviceSize heapSize):
+            totalSizePerBuffer(heapSize),
+            buffers(heapSize,
+                            vk::BufferUsageFlagBits::eVertexBuffer
+                            | vk::BufferUsageFlagBits::eIndexBuffer
+                            | vk::BufferUsageFlagBits::eStorageBuffer
+                            | vk::BufferUsageFlagBits::eUniformBuffer
+                            | vk::BufferUsageFlagBits::eIndirectBuffer
+                            | vk::BufferUsageFlagBits::eTransferSrc
 
-                        , vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
-        instanceBuffers.resize(GetEngine().getSwapchainImageCount());
+                            , vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible) {
+        buffers.resize(GetEngine().getSwapchainImageCount());
     }
 
     void SingleFrameStackGPUAllocator::newFrame(std::size_t frameIndex) {
         currentFrame = frameIndex;
-        instanceBuffers.clear(currentFrame);
+        buffers.clear(currentFrame);
     }
 
     Carrot::BufferView SingleFrameStackGPUAllocator::allocate(std::size_t size) {
-        return instanceBuffers.allocateAligned(currentFrame, size);
+        return buffers.allocateAligned(currentFrame, size);
     }
 
     vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeThisFrame() const {
-        return instanceBuffers.getAllocatedSize(currentFrame);
+        return buffers.getAllocatedSize(currentFrame);
+    }
+
+    vk::DeviceSize SingleFrameStackGPUAllocator::getRemainingSizeThisFrame() const {
+        return totalSizePerBuffer - buffers.getAllocatedSize(currentFrame);
     }
 
     vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeAllFrames() const {
         vk::DeviceSize sum = 0;
         for (std::size_t frameIndex = 0; frameIndex < GetEngine().getSwapchainImageCount(); ++frameIndex) {
-            sum += instanceBuffers.getAllocatedSize(frameIndex);
+            sum += buffers.getAllocatedSize(frameIndex);
         }
         return sum;
     }
 
     void SingleFrameStackGPUAllocator::onSwapchainImageCountChange(size_t newCount) {
-        instanceBuffers.resize(newCount);
+        buffers.resize(newCount);
     }
 
     void SingleFrameStackGPUAllocator::onSwapchainSizeChange(int newWidth, int newHeight) { /* no-op */ }

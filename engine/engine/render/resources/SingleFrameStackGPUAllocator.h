@@ -36,7 +36,7 @@ namespace Carrot {
         };
 
     public:
-        explicit SingleFrameStackGPUAllocator(vk::DeviceSize instancingBufferSize);
+        explicit SingleFrameStackGPUAllocator(vk::DeviceSize heapSize);
 
         /// Starts a new frame and clears the memory to use for this frame
         void newFrame(std::size_t frameIndex);
@@ -47,6 +47,7 @@ namespace Carrot {
     public: // stats
         vk::DeviceSize getAllocatedSizeThisFrame() const;
         vk::DeviceSize getAllocatedSizeAllFrames() const;
+        vk::DeviceSize getRemainingSizeThisFrame() const;
 
     public: // SwapchainAware
         virtual void onSwapchainImageCountChange(size_t newCount) override;
@@ -54,6 +55,7 @@ namespace Carrot {
 
     private:
         std::size_t currentFrame = 0;
-        RingBuffer instanceBuffers;
+        vk::DeviceSize totalSizePerBuffer = 0;
+        RingBuffer buffers;
     };
 }

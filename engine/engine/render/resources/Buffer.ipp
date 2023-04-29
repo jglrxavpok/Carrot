@@ -20,72 +20,56 @@ void Carrot::Buffer::stageUpload(const std::vector<T>&... data) {
 template<typename... T>
 void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::span<T>>&... offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
-
-    stagingBuffer.setDebugNames("Carrot::Buffer::stageUploadWithOffsets");
+    auto stagingBuffer = internalStagingBuffer(size);
 
     // upload data to staging buffer
     (
             (
-                    stagingBuffer.directUpload(offsetDataPairs.second.data(), offsetDataPairs.second.size() * sizeof(T), offsetDataPairs.first)
+                    stagingBuffer.subView(offsetDataPairs.first).directUpload(offsetDataPairs.second.data(), offsetDataPairs.second.size() * sizeof(T))
             )
     , ...);
 
 
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this, 0, 0);
-
-    // stagingBuffer will be destroyed, and resources freed after this point
+    stagingBuffer.copyToAndWait(getWholeView());
 }
 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffsets(const std::span<std::pair<uint64_t, std::span<T>>>& offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
-
-    stagingBuffer.setDebugNames("Carrot::Buffer::stageUploadWithOffsets");
+    auto stagingBuffer = internalStagingBuffer(size);
 
     // upload data to staging buffer
     for(const auto& [offset, data] : offsetDataPairs) {
         stagingBuffer.directUpload(data.data(), data.size() * sizeof(T), offset);
     }
 
-
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this, 0, 0);
-
-    // stagingBuffer will be destroyed, and resources freed after this point
+    stagingBuffer.copyToAndWait(getWholeView());
 }
 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, totalLength, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
-
-    stagingBuffer.setDebugNames("Carrot::Buffer::stageUploadWithOffset");
+    auto stagingBuffer = internalStagingBuffer(totalLength);
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
 
-
     // copy staging buffer to this buffer
-    stagingBuffer.copyTo(*this, 0, offset);
-
-    stagingBuffer.destroyNow();
+    stagingBuffer.copyToAndWait(getWholeView().subView(offset));
 }
 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = Carrot::Buffer(driver, totalLength, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{driver.getQueueFamilies().transferFamily.value()});
-
-    stagingBuffer.setDebugNames("Carrot::Buffer::stageAsyncUploadWithOffset");
+    auto stagingBuffer = internalStagingBuffer(totalLength);
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
 
     // copy staging buffer to this buffer
-    stagingBuffer.asyncCopyTo(semaphore, *this, 0, offset);
+    stagingBuffer.copyTo(semaphore, getWholeView().subView(offset, totalLength));
 }
 
 template<typename T>
