@@ -16,6 +16,7 @@ namespace Carrot::SceneDescription {
     };
 
     struct Instance {
+        glm::vec4 instanceColor{1,1,1,1};
         std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
     };
 }

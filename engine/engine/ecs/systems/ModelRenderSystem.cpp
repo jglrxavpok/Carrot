@@ -38,16 +38,12 @@ namespace Carrot::ECS {
 
                 if(modelComp.tlas) {
                     modelComp.tlas->transform = instanceData.transform;
-                    modelComp.tlas->customIndex = 0; // TODO
+                    modelComp.tlas->customIndex = 0; // TODO?
+                    modelComp.tlas->instanceColor = modelComp.color;
                 }
             }
         });
 
-    }
-
-    static void allocateBuffer(std::uint32_t instanceCount, std::unique_ptr<Buffer>& out) {
-        auto& engine = Carrot::Engine::getInstance();
-        out = std::move(engine.getResourceAllocator().allocateDedicatedBuffer(instanceCount * sizeof(Carrot::InstanceData), vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible));
     }
 
     void ModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {

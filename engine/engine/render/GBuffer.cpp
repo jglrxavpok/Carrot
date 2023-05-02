@@ -93,12 +93,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
 
-    const float scaleFactor = 0.75f;
-    TextureSize outputSize;
-    outputSize.type = framebufferSize.type;
-    outputSize.width = scaleFactor * framebufferSize.width;
-    outputSize.height = scaleFactor * framebufferSize.height;
-
     return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
@@ -108,12 +102,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                // TODO: output into multiple buffer depending on content type (shadows, reflections)
                 resolveData.resolved = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                                outputSize,
+                                                                framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 clearColor,
                                                                 vk::ImageLayout::eColorAttachmentOptimal);
            },
-           [outputSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
+           [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
@@ -129,12 +123,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
-                if(outputSize.type == Render::TextureSize::Type::SwapchainProportional) {
-                    block.frameWidth = outputSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
-                    block.frameHeight = outputSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
+                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                    block.frameWidth = framebufferSize.width * GetVulkanDriver().getWindowFramebufferExtent().width;
+                    block.frameHeight = framebufferSize.height * GetVulkanDriver().getWindowFramebufferExtent().height;
                 } else {
-                    block.frameWidth = outputSize.width;
-                    block.frameHeight = outputSize.height;
+                    block.frameWidth = framebufferSize.width;
+                    block.frameHeight = framebufferSize.height;
                 }
                 if(useRaytracingVersion) {
                     block.hasTLAS = frame.renderer.getASBuilder().getTopLevelAS() != nullptr;

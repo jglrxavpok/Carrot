@@ -390,6 +390,8 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
     transparentPacket.vertexBuffer = staticMeshData->getVertexBuffer();
     transparentPacket.indexBuffer = staticMeshData->getIndexBuffer();
 
+    std::vector<InstanceData> localOpaqueInstanceData = staticOpaqueInstanceData;
+    std::vector<InstanceData> localTransparentInstanceData = staticTransparentInstanceData;
     opaquePacket.addPerDrawData(staticOpaqueDrawData);
     transparentPacket.addPerDrawData(staticTransparentDrawData);
 
@@ -410,10 +412,10 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
                 InstanceData* pInstanceData = nullptr;
                 vk::DrawIndexedIndirectCommand* pDrawCommand = nullptr;
                 if(!pMat->isTransparent) {
-                    pInstanceData = &staticOpaqueInstanceData[meshIndex];
+                    pInstanceData = &localOpaqueInstanceData[meshIndex];
                     pDrawCommand = &opaquePacket.drawCommands[meshIndex];
                 } else {
-                    pInstanceData = &staticTransparentInstanceData[meshIndex];
+                    pInstanceData = &localTransparentInstanceData[meshIndex];
                     pDrawCommand = &transparentPacket.drawCommands[meshIndex];
                 }
                 *pInstanceData = instanceData;
@@ -445,8 +447,8 @@ void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, c
         }
     }
 
-    opaquePacket.useInstances(std::span(staticOpaqueInstanceData));
-    transparentPacket.useInstances(std::span(staticTransparentInstanceData));
+    opaquePacket.useInstances(std::span(localOpaqueInstanceData));
+    transparentPacket.useInstances(std::span(localTransparentInstanceData));
 
     if(!opaquePacket.drawCommands.empty()) {
         renderContext.renderer.render(opaquePacket);

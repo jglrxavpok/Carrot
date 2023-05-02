@@ -27,5 +27,6 @@ struct Geometry {
 };
 
 struct Instance {
+    vec4 instanceColor;
     uint firstGeometryIndex;
 };

@@ -520,7 +520,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
                         vkInstances.push_back(instance->instance);
 
                         logicalInstances.emplace_back(SceneDescription::Instance {
-                                .firstGeometryIndex = pGeometry->firstGeometryIndex,
+                            .instanceColor = instance->instanceColor,
+                            .firstGeometryIndex = pGeometry->firstGeometryIndex,
                         });
                     }
                 }

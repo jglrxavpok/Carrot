@@ -49,7 +49,7 @@ void main() {
         || reprojectedUV.y <= epsilon || reprojectedUV.y >= 1-epsilon
     );
 
-    vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, nearestSampler), reprojectedUV);
+    vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
@@ -67,10 +67,17 @@ void main() {
     }
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-    float momentsAlpha = 1.0f / historyLength;
 
     vec2 moments = vec2(luminance(outColor.rgb), 0.0);
     moments.y = moments.x * moments.x;
 
-    outMomentHistoryHistoryLength = vec4(mix(momentHistoryHistoryLength.xy, moments, momentsAlpha), historyLength, 1.0);
+    vec4 result;
+    if(historyLength <= 0.1f) {
+        result = vec4(moments, historyLength, 1.0);
+    } else {
+        result = vec4(mix(momentHistoryHistoryLength.xy, moments, 1.0f / historyLength), historyLength, 1.0);
+    }
+
+    float variance = max(0.0f, result.g - result.r * result.r);
+    outMomentHistoryHistoryLength = vec4(result.xyz, variance);
 }

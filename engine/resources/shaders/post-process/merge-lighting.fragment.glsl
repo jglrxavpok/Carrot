@@ -11,6 +11,7 @@ DEFINE_GBUFFER_INPUTS(0)
 layout(set = 1, binding = 0) uniform texture2D lighting;
 layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
 layout(set = 1, binding = 2) uniform texture2D noisyLighting;
+layout(set = 1, binding = 3) uniform texture2D temporalDenoiseResult;
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -25,9 +26,6 @@ layout(push_constant) uniform PushConstant {
 } push;
 
 bool earlyExits(uint debugMode) {
-    if(debugMode == DEBUG_OPAQUE_OBJECTS) {
-        return false; // debug rendering is handled later
-    }
     return debugMode != DEBUG_GBUFFER_DISABLED;
 }
 
@@ -68,9 +66,15 @@ void main() {
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
             outColor = vec4(abs(g.motionVector), 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {
-            outColor = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
+            vec4 momentsHistoryVarianceData = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
+            vec2 moments = momentsHistoryVarianceData.rg;
+            float variance = momentsHistoryVarianceData.a;
+            float historyLength = momentsHistoryVarianceData.b;
+            outColor = vec4(moments.x, variance, historyLength, 1.0f);
         } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
             outColor = vec4(g.entityID) / 255.0f;
+        } else if(debug.gBufferType == DEBUG_POST_TEMPORAL_DENOISE) {
+            outColor = texture(sampler2D(temporalDenoiseResult, gNearestSampler), uv);
         } else {
             outColor = vec4(uv, 0.0, 1.0);
         }

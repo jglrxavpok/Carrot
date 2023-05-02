@@ -828,8 +828,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("EntityID", &gIndex, DEBUG_GBUFFER_ENTITYID);
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
                 ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
-                ImGui::RadioButton("Only opaque objects", &gIndex, DEBUG_OPAQUE_OBJECTS);
-                ImGui::RadioButton("Only transparent objects", &gIndex, DEBUG_TRANSPARENT_OBJECTS);
+                ImGui::RadioButton("Temporal denoise result", &gIndex, DEBUG_POST_TEMPORAL_DENOISE);
 
                 obj.gBufferType = gIndex;
             }

@@ -31,8 +31,19 @@ struct ExtractedGBuffer {
     vec4 albedo;
     vec3 viewPosition;
     vec3 normal;
+    float luminanceMoment;
     uvec4 entityID;
 };
+
+ExtractedGBuffer nullGBuffer() {
+    ExtractedGBuffer r;
+    r.albedo = vec4(0);
+    r.viewPosition = vec3(0);
+    r.normal = vec3(1);
+    r.luminanceMoment = 0.0;
+    r.entityID = uvec4(0);
+    return r;
+}
 
 ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
     ExtractedGBuffer e;
@@ -44,6 +55,7 @@ ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
 }
 
 shared ExtractedGBuffer sharedGBufferReads[LOCAL_SIZE][LOCAL_SIZE];
+shared float sharedLuminanceMomentsReads[LOCAL_SIZE][LOCAL_SIZE];
 
 ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) {
 
@@ -61,12 +73,48 @@ ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) 
     || coords.x < 0
     || coords.y < 0
     ) {
-        ExtractedGBuffer null;
-        return null;
+        return nullGBuffer();
     }
 
     const vec2 filterUV = coords / vec2(size);
     return extractUsefulInfo(unpackGBuffer(filterUV));
+}
+
+float readLuminance(ivec2 coordsOffset/* offset from current pixel */) {
+
+    ivec2 localCoords = ivec2(gl_LocalInvocationID.xy) + coordsOffset;
+    if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE
+    && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE) {
+        return sharedLuminanceMomentsReads[localCoords.x][localCoords.y];
+    }
+
+    const ivec2 size = imageSize(lastFrameMomentHistoryHistoryLength);
+    const ivec2 coords = ivec2(gl_GlobalInvocationID) + coordsOffset;
+
+    if(coords.x >= size.x
+    || coords.y >= size.y
+    || coords.x < 0
+    || coords.y < 0
+    ) {
+        return 0.0f;
+    }
+
+    return imageLoad(lastFrameMomentHistoryHistoryLength, coords).g;
+}
+
+float momentGaussianBlurSingleAxis(ivec2 coords, ivec2 direction) {
+    float   color  = readLuminance(-3 * direction) * ( 1.0/64.0);
+            color += readLuminance(-2 * direction) * ( 6.0/64.0);
+            color += readLuminance(-1 * direction) * (15.0/64.0);
+            color += readLuminance(+0 * direction) * (20.0/64.0);
+            color += readLuminance(+1 * direction) * (15.0/64.0);
+            color += readLuminance(+2 * direction) * ( 6.0/64.0);
+            color += readLuminance(+3 * direction) * ( 1.0/64.0);
+    return color;
+}
+
+float momentGaussianBlur(ivec2 coords) {
+    return momentGaussianBlurSingleAxis(coords, ivec2(1, 0)) * momentGaussianBlurSingleAxis(coords, ivec2(0, 1));
 }
 
 void main() {
@@ -76,7 +124,7 @@ void main() {
     // from SVGF
     const float sigmaNormals = 128.0f;
     const float sigmaPositions = 1.0f;
-    const float sigmaLuminance = 1.0f;
+    const float sigmaLuminance = 4.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;
 
@@ -84,12 +132,15 @@ void main() {
 
     if(coords.x >= size.x
     || coords.y >= size.y) {
+        sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = nullGBuffer();
+        sharedLuminanceMomentsReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = 0.0f;
         return;
     }
     vec4 finalPixel = imageLoad(inputImage, coords);
 
     const vec2 currentUV = coords/vec2(size);
     sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = extractUsefulInfo(unpackGBufferLight(currentUV));
+    sharedLuminanceMomentsReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = imageLoad(lastFrameMomentHistoryHistoryLength, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).g;
     #define currentGBuffer (sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y])
 
     barrier();
@@ -99,7 +150,7 @@ void main() {
         return;
     }
 
-    float baseLuminance = luminance(finalPixel.rgb);
+    const float baseLuminance = luminance(finalPixel.rgb);
 
     const vec3 currentPosition = currentGBuffer.viewPosition;
     float totalWeight = KERNEL_WEIGHTS[FILTER_RADIUS] * KERNEL_WEIGHTS[FILTER_RADIUS];
@@ -135,7 +186,7 @@ void main() {
             const float positionWeight = min(1, exp(-distanceSquared/sigmaPositions));
 
             const float filterLuminance = luminance(filterPixel.rgb);
-            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance)*sigmaLuminance);
+            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance)/(sigmaLuminance*sqrt(momentGaussianBlur(dCoord))+10e-12));
 
             const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;

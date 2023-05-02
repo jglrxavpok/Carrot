@@ -104,7 +104,7 @@ float ggxG1(vec3 wo, vec3 wh, float alphax, float alphay) {
 vec2 concentricSampleDisk(inout RandomSampler rng) {
     vec2 u = vec2(sampleNoise(rng), sampleNoise(rng)) * 2.0 - 1.0;
     if(u.x == 0 && u.y == 0)
-    return vec2(0.0);
+        return vec2(0.0);
 
     float theta = 0.0f;
     float r = 0.0f;
@@ -232,11 +232,13 @@ vec3 sampleLambertianF(inout RandomSampler rng, float roughness, vec3 emitDirect
 vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
     float probabilityToSampleDiffuse = 0.5f;
 
-    if(sampleNoise(rng) <= probabilityToSampleDiffuse) {
-        return sampleLambertianF(rng, roughness, emitDirection, incidentDirection, pdf) / probabilityToSampleDiffuse;
+    vec3 result;
+    if(sampleNoise(rng) < probabilityToSampleDiffuse) {
+        result = sampleLambertianF(rng, roughness, emitDirection, incidentDirection, pdf) / probabilityToSampleDiffuse;
     } else {
-        return sampleGGXF(rng, roughness, emitDirection, incidentDirection, pdf) / (1.0f-probabilityToSampleDiffuse);
+        result = sampleGGXF(rng, roughness, emitDirection, incidentDirection, pdf) / (1.0f-probabilityToSampleDiffuse);
     }
+    return result;
 }
 
 // ============= END OF TANGENT SPACE ONLY =============
@@ -385,7 +387,7 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     r.uv = uvPos;
     r.surfaceNormal = modelRotation * surfaceNormal;
     r.surfaceTangent = modelRotation * surfaceTangent;
-    r.surfaceColor = color;
+    r.surfaceColor = color * instance.instanceColor.rgb;
     r.position = rayQueryGetIntersectionTEXT(rayQuery, true) * direction + startPos;
 }
 
@@ -434,7 +436,7 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
             lightContribution += enabledF * visibility * computeLightContribution(i, worldPos, normal) /* cos term already in computeLightContribution */;
         }
     }
-    return lightContribution * pdfInv;
+    return lightContribution;
     #undef light
 }
 #endif
@@ -459,7 +461,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
     }
     else
     {
-        vec3 lightContribution = emissive + lights.ambientColor;
+        vec3 lightContribution = lights.ambientColor;
 
         vec3 incomingRay = normalize(worldPos - cameraPos);
         const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
@@ -515,7 +517,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
             lightContribution += (emissive + lightAtPoint * fresnel) * beta;
 
             if(depth == MAX_BOUNCES - 1)
-            break;
+                break;
 
             if(sampledSpecular) {
                 // sample specular reflection
@@ -528,9 +530,9 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 vec3 f = sampleF(rng, roughness, invTBN * incomingRay, direction, pdf);
 
                 if(pdf == 0.0 || dot(f, f) <= 0.0f)
-                break;
+                    break;
 
-                vec3 worldSpaceDirection = normalize(tbn * -direction);
+                vec3 worldSpaceDirection = tbn * normalize(-direction);
                 beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
 
                 traceRay(intersection, worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
@@ -565,6 +567,7 @@ vec3 calculateLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, ve
                 if(isnan(uv.x))
                 {
                     // incomingRay-> NaN ???
+                    return vec3(0, 100000, 0);
                 }
                 else
                 {

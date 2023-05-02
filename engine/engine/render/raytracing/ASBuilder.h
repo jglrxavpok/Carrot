@@ -79,6 +79,7 @@ namespace Carrot {
 
     public:
         glm::mat4 transform{1.0f};
+        glm::vec4 instanceColor;
         vk::GeometryInstanceFlagsKHR flags = vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable | vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable;
         std::uint8_t mask = 0xFF;
         std::uint32_t customIndex = 0;
