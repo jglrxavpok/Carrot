@@ -125,13 +125,10 @@ namespace Carrot::Render {
         renderPacket.instanceCount = 1;
         renderPacket.useInstance(instance);
 
-        Render::Packet::PushConstant& pushConstant = renderPacket.addPushConstant();
-        pushConstant.id = "drawDataPush";
-        pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
         Carrot::GBufferDrawData data;
         data.materialIndex = material->getSlot();
 
-        pushConstant.setData(data); // template operator=
+        renderPacket.addPerDrawData({&data, 1});
 
         GetRenderer().render(renderPacket);
     }

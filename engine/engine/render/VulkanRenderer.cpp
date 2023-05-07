@@ -829,6 +829,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
                 ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
                 ImGui::RadioButton("Temporal denoise result", &gIndex, DEBUG_POST_TEMPORAL_DENOISE);
+                ImGui::RadioButton("Variance", &gIndex, DEBUG_VARIANCE);
 
                 obj.gBufferType = gIndex;
             }
@@ -1320,7 +1321,7 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
         auto& tlas = getASBuilder().getTopLevelAS();
         if(tlas) {
             bindAccelerationStructure(*forwardPipeline, renderContext, *tlas, 5, 2);
-            bindTexture(*forwardPipeline, renderContext, *gBuffer->getBlueNoiseTexture(), 5, 3, nullptr);
+            bindTexture(*forwardPipeline, renderContext, *getMaterialSystem().getBlueNoiseTextures()[renderContext.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 3, nullptr);
             bindBuffer(*forwardPipeline, renderContext, getASBuilder().getGeometriesBuffer(renderContext), 5, 4);
             bindBuffer(*forwardPipeline, renderContext, getASBuilder().getInstancesBuffer(renderContext), 5, 5);
         }

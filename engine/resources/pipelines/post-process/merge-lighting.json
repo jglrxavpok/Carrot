@@ -20,6 +20,10 @@
     {
       "type": "camera",
       "setID": 3
+    },
+    {
+      "type": "materials",
+      "setID": 4
     }
   ],
   "depthWrite": false,

@@ -14,12 +14,13 @@
 #extension GL_EXT_buffer_reference2 : enable
 #include "includes/buffers.glsl"
 #endif
-#include "includes/rng.glsl"
 
 DEFINE_CAMERA_SET(0)
 LIGHT_SET(1)
 DEFINE_PER_DRAW_BUFFER(3)
 MATERIAL_SYSTEM_SET(4)
+
+#include "includes/rng.glsl"
 
 layout(set = 5, binding = 0) uniform samplerCube gSkybox3D;
 layout(set = 5, binding = 1) uniform FakePushConstant {

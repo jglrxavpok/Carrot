@@ -77,8 +77,8 @@ namespace Carrot {
         }
 
     private:
+        std::string resourceName; // destroyed AFTER the resource, helps debug use-after-free
         TResource resource{};
-        std::string resourceName;
         std::size_t countdown = 0; /* number of frames before destruction (swapchain image count by default)*/
     };
 

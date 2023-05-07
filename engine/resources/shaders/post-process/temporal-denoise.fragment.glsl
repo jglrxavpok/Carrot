@@ -24,6 +24,7 @@ layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outMomentHistoryHistoryLength;
+layout(location = 2) out vec4 outFirstSpatialDenoiseForNextFrame;
 
 void main() {
     GBuffer gbuffer = unpackGBuffer(uv);
@@ -53,7 +54,11 @@ void main() {
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
-    float alpha = 0.8;
+
+    float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
+    float alpha = 0.8f;
+    float momentsAlpha = alpha;//1 - 1.0f / historyLength;//0.8;
+
     //if(uv.x > 0.5)
     {
         if(isnan(previousFrameColor.x))
@@ -66,18 +71,12 @@ void main() {
         }
     }
 
-    float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-
-    vec2 moments = vec2(luminance(outColor.rgb), 0.0);
+    vec2 moments = vec2(luminance(currentFrameColor.rgb), 0.0);
     moments.y = moments.x * moments.x;
 
-    vec4 result;
-    if(historyLength <= 0.1f) {
-        result = vec4(moments, historyLength, 1.0);
-    } else {
-        result = vec4(mix(momentHistoryHistoryLength.xy, moments, 1.0f / historyLength), historyLength, 1.0);
-    }
 
-    float variance = max(0.0f, result.g - result.r * result.r);
-    outMomentHistoryHistoryLength = vec4(result.xyz, variance);
+    vec2 outMoments = reprojected * ((mix(momentHistoryHistoryLength.xy, moments, 1 - momentsAlpha))) + (1.0f-reprojected) * moments;
+
+    outMomentHistoryHistoryLength = vec4(outMoments, historyLength, 1.0f);
+    outFirstSpatialDenoiseForNextFrame = vec4(0.0);
 }

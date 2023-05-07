@@ -10,7 +10,6 @@
 #extension GL_EXT_buffer_reference2 : enable
 #include "includes/buffers.glsl"
 #endif
-#include "includes/rng.glsl"
 
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -33,6 +32,8 @@ DEFINE_GBUFFER_INPUTS(0)
 DEFINE_CAMERA_SET(1)
 LIGHT_SET(2)
 MATERIAL_SYSTEM_SET(4)
+
+#include "includes/rng.glsl"
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 layout(set = 5, binding = 0) uniform accelerationStructureEXT topLevelAS;
@@ -57,7 +58,7 @@ layout(location = 0) out vec4 outColor;
 void main() {
     vec4 outColorWorld;
 
-    vec2 jitter = vec2(push.frameCount % 2 - 0.5, (push.frameCount/2) % 2 - 0.5) / vec2(push.frameWidth, push.frameHeight);
+    vec2 jitter = vec2((push.frameCount % 2) - 0.5, (push.frameCount/2) % 2 - 0.5) / vec2(push.frameWidth, push.frameHeight);
     vec2 uv = inUV + jitter*0.5; // TODO: move jitter earlier in pipeline
 
     float currDepth = texture(sampler2D(gDepth, nearestSampler), uv).r;
@@ -79,7 +80,7 @@ void main() {
 
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 8; // TODO: configurable sample count?
+        const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         vec3 l = vec3(0.0);

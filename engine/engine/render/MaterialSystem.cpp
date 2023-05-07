@@ -195,11 +195,13 @@ namespace Carrot::Render {
 
         ditheringTexture = GetRenderer().getOrCreateTexture("dithering.png");
         ditheringTextureHandle = createTextureHandle(ditheringTexture);
-        blueNoiseTexture = GetRenderer().getOrCreateTexture("FreeBlueNoiseTextures/LDR_RGB1_54.png");
-        blueNoiseTextureHandle = createTextureHandle(blueNoiseTexture);
+        for(int i = 0; i < BlueNoiseTextureCount; i++) {
+            blueNoiseTextures[i] = GetRenderer().getOrCreateTexture(Carrot::sprintf("FreeBlueNoiseTextures/64/LDR_RGBA_%d.png", i));
+            blueNoiseTextureHandles[i] = createTextureHandle(blueNoiseTextures[i]);
+            globalTextures.blueNoises[i] = blueNoiseTextureHandles[i]->getSlot();
+        }
 
         globalTextures.dithering = ditheringTextureHandle->getSlot();
-        globalTextures.blueNoise = blueNoiseTextureHandle->getSlot();
         globalTexturesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(GlobalTextures),
                                                                               vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                               vk::MemoryPropertyFlagBits::eDeviceLocal /* not expected to change a lot*/);

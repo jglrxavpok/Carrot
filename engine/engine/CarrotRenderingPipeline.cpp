@@ -50,6 +50,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         Render::PassData::GBuffer gBufferInput;
         Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
         Render::FrameResource denoisedResult;
+        Render::FrameResource firstSpatialDenoiseColor;
     };
     auto& temporalAccumulationPass = mainGraph.addPass<Denoising>(
             "temporal-denoise",
@@ -62,12 +63,21 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                  vk::ClearColorValue(std::array{0,0,0,0}),
                                                                  vk::ImageLayout::eGeneral // TODO: color attachment?
                 );
+
                 data.momentsHistoryHistoryLength = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                                               data.beauty.size,
                                                                               vk::AttachmentLoadOp::eClear,
                                                                               vk::ClearColorValue(std::array{0,0,0,0}),
                                                                               vk::ImageLayout::eGeneral // TODO: color attachment?
                 );
+
+                data.firstSpatialDenoiseColor = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                                                                           data.denoisedResult.size,
+                                                                           vk::AttachmentLoadOp::eClear,
+                                                                           vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                           vk::ImageLayout::eGeneral
+                );
+                GetVulkanDriver().getTextureRepository().getUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Denoising& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph temporal-denoise");
@@ -75,16 +85,16 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass.getRenderPass());
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.beauty, frame.swapchainIndex), 0, 0, nullptr);
 
-                auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex) {
+                auto bindLastFrameTexture = [&](const Render::FrameResource& resource, std::uint32_t bindingIndex, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal) {
                     Render::Texture* lastFrameTexture = nullptr;
                     if(frame.lastSwapchainIndex >= 0) {
                         lastFrameTexture = &pass.getGraph().getTexture(resource, frame.lastSwapchainIndex);
                     } else {
                         lastFrameTexture = GetRenderer().getMaterialSystem().getBlackTexture()->texture.get();
                     }
-                    renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, bindingIndex, nullptr);
+                    renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, bindingIndex, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, layout);
                 };
-                bindLastFrameTexture(data.denoisedResult, 1);
+                bindLastFrameTexture(data.firstSpatialDenoiseColor, 1, vk::ImageLayout::eGeneral);
 
                 Render::Texture& viewPosTexture = pass.getGraph().getTexture(data.gBufferInput.positions, frame.swapchainIndex);
                 renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
@@ -107,20 +117,65 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             }
     );
 
+    struct VarianceCopy {
+        Render::FrameResource input;
+        Render::FrameResource momentsHistory;
+        Render::FrameResource varianceOutput;
+    };
+
+    auto& varianceCopyPass = mainGraph.addPass<VarianceCopy>(
+            "variance-copy",
+            [this, temporalAccumulationPass](Render::GraphBuilder& builder, Render::Pass<VarianceCopy>& pass, VarianceCopy& data) {
+                data.input = builder.read(temporalAccumulationPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.momentsHistory = builder.read(temporalAccumulationPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.varianceOutput = builder.createRenderTarget(vk::Format::eR32Sfloat,
+                                                                 data.input.size,
+                                                                 vk::AttachmentLoadOp::eClear,
+                                                                 vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                 vk::ImageLayout::eGeneral);
+
+                pass.rasterized = false; // compute pass
+                pass.prerecordable = false;
+            },
+            [](const Render::CompiledPass& pass, const Render::Context& frame, const VarianceCopy& data, vk::CommandBuffer& cmds) {
+                auto copyPipeline = frame.renderer.getOrCreatePipeline("compute/copy-variance");
+                copyPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
+                auto& inputMomentsTexture = pass.getGraph().getTexture(data.momentsHistory, frame.swapchainIndex);
+                auto& outputTexture = pass.getGraph().getTexture(data.varianceOutput, frame.swapchainIndex);
+
+                const auto& extent = inputTexture.getSize();
+                const std::uint8_t localSize = 32;
+                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+
+                frame.renderer.bindStorageImage(*copyPipeline, frame, inputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*copyPipeline, frame, inputMomentsTexture, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*copyPipeline, frame, outputTexture, 0, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                cmds.dispatch(dispatchX, dispatchY, 1);
+            }
+    );
+
     struct SpatialDenoise {
         Render::FrameResource postTemporal;
         Render::PassData::GBuffer gBuffer;
+        Render::FrameResource firstDenoised;
         Render::FrameResource denoisedPingPong[2];
-        Render::FrameResource momentsHistoryHistoryLength;
+        Render::FrameResource variancePingPong[2];
+        Render::FrameResource originalVariance;
 
         std::uint8_t iterationCount = 0;
     };
     auto& spatialDenoise = mainGraph.addPass<SpatialDenoise>(
-            "spatialDenoise",
+            "spatial-denoise",
 
-            [this, temporalAccumulationPass, lightingPass](Render::GraphBuilder& builder, Render::Pass<SpatialDenoise>& pass, SpatialDenoise& data) {
+            [this, varianceCopyPass, temporalAccumulationPass, lightingPass](Render::GraphBuilder& builder, Render::Pass<SpatialDenoise>& pass, SpatialDenoise& data) {
                 data.postTemporal = builder.read(temporalAccumulationPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
+
+                data.firstDenoised = temporalAccumulationPass.getData().firstSpatialDenoiseColor;
 
                 for (int j = 0; j < 2; ++j) {
                     data.denoisedPingPong[j] = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
@@ -129,8 +184,14 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                                                           vk::ClearColorValue(std::array{0,0,0,0}),
                                                                           vk::ImageLayout::eGeneral
                     );
+                    data.variancePingPong[j] = builder.createRenderTarget(vk::Format::eR32Sfloat,
+                                                                          data.postTemporal.size,
+                                                                          vk::AttachmentLoadOp::eClear,
+                                                                          vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                          vk::ImageLayout::eGeneral
+                    );
                 }
-                data.momentsHistoryHistoryLength = builder.read(temporalAccumulationPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.originalVariance = builder.read(varianceCopyPass.getData().varianceOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 data.iterationCount = 4;
                 pass.rasterized = false; // compute pass
@@ -141,33 +202,48 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "spatial denoise");
 
 
-                auto& momentsHistoryHistoryLengthTexture = pass.getGraph().getTexture(data.momentsHistoryHistoryLength, frame.swapchainIndex);
+                auto& originalVariance = pass.getGraph().getTexture(data.originalVariance, frame.swapchainIndex);
                 auto& temporalTexture = pass.getGraph().getTexture(data.postTemporal, frame.swapchainIndex);
+                auto& firstDenoisedColor = pass.getGraph().getTexture(data.firstDenoised, frame.swapchainIndex);
                 auto& denoisedResultTexture0 = pass.getGraph().getTexture(data.denoisedPingPong[0], frame.swapchainIndex);
+                auto& denoisedVarianceTexture0 = pass.getGraph().getTexture(data.variancePingPong[0], frame.swapchainIndex);
                 auto& denoisedResultTexture1 = pass.getGraph().getTexture(data.denoisedPingPong[1], frame.swapchainIndex);
+                auto& denoisedVarianceTexture1 = pass.getGraph().getTexture(data.variancePingPong[1], frame.swapchainIndex);
 
                 const auto& extent = denoisedResultTexture0.getSize();
 
-                std::shared_ptr<Pipeline> pipelinePingPong[3] = {
+                std::shared_ptr<Pipeline> pipelinePingPong[4] = {
                         frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 0u + ((std::uint64_t)&frame.viewport)),
                         frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 1u + ((std::uint64_t)&frame.viewport)),
                         frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 2u + ((std::uint64_t)&frame.viewport)),
+                        frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 3u + ((std::uint64_t)&frame.viewport)),
                 };
 
+                // first pass
+                // denoised texture is fed back to temporal accumulation
                 data.gBuffer.bindInputs(*pipelinePingPong[0], frame, pass.getGraph(), 0);
                 frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, temporalTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, momentsHistoryHistoryLengthTexture, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, firstDenoisedColor, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedVarianceTexture0, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, originalVariance, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 data.gBuffer.bindInputs(*pipelinePingPong[1], frame, pass.getGraph(), 0);
-                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture1, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, momentsHistoryHistoryLengthTexture, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, firstDenoisedColor, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedVarianceTexture1, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedVarianceTexture0, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 data.gBuffer.bindInputs(*pipelinePingPong[2], frame, pass.getGraph(), 0);
-                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, momentsHistoryHistoryLengthTexture, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture0, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedVarianceTexture0, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedVarianceTexture1, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                data.gBuffer.bindInputs(*pipelinePingPong[3], frame, pass.getGraph(), 0);
+                frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedResultTexture1, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedResultTexture0, 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedVarianceTexture1, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedVarianceTexture0, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 struct IterationData {
                     std::uint32_t index = 0;
@@ -208,18 +284,23 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
         Render::FrameResource lighting;
         Render::FrameResource momentsHistoryHistoryLength;
         Render::FrameResource temporalDenoiseResult;
+        Render::FrameResource varianceCopyOutputDebug;
         Render::FrameResource mergeResult;
     };
 
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, lightingPass, temporalAccumulationPass, spatialDenoise, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+            [this, varianceCopyPass, lightingPass, temporalAccumulationPass, spatialDenoise, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer);
                 data.noisyLighting = builder.read(lightingPass.getData().resolved, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.lighting = builder.read(spatialDenoise.getData().denoisedPingPong[(spatialDenoise.getData().iterationCount + 1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.momentsHistoryHistoryLength = builder.read(temporalAccumulationPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.temporalDenoiseResult = builder.read(temporalAccumulationPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+
+                data.varianceCopyOutputDebug = builder.read(spatialDenoise.getData().variancePingPong[(spatialDenoise.getData().iterationCount + 1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
+                //data.varianceCopyOutputDebug = builder.read(varianceCopyPass.getData().varianceOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.mergeResult = builder.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
                                                               framebufferSize,
                                                               vk::AttachmentLoadOp::eClear,
@@ -253,6 +334,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.momentsHistoryHistoryLength, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.noisyLighting, frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.temporalDenoiseResult, frame.swapchainIndex), 1, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.varianceCopyOutputDebug, frame.swapchainIndex), 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

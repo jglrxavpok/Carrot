@@ -58,8 +58,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
-//constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+//constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -106,6 +106,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         debug_break();
     } else if(pCallbackData->messageIdNumber == 2188733524u) {
         debug_break();
+    } else if(pCallbackData->messageIdNumber == 3830750225u) /* VUID-vkDestroyBuffer-buffer-00922 */ {
+         ///* TODO: debug with error, might be cause of device removed: */debug_break();
     } else if(pCallbackData->messageIdNumber == 2147704939u) /* VUID-vkMapMemory-size-00681 */ {
         debug_break();
     } else if(pCallbackData->messageIdNumber == 2484131348u) /* VUID-vkCmdDrawIndexedIndirect-None-02699 */{
@@ -155,7 +157,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(strstr(pCallbackData->pMessage, "VUID-VkFramebufferCreateInfo-pAttachments-00877") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "VUID-VkWriteDescriptorSet-descriptorType-00330") != nullptr) {
-        debug_break();
+         debug_break();
     }
 
 

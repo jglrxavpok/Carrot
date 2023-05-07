@@ -76,12 +76,14 @@ namespace Carrot::Render {
         friend class MaterialSystem;
     };
 
+    constexpr static std::uint32_t BlueNoiseTextureCount = 64;
+
     /**
      * Indices of textures that can be used outside of materials
      */
     struct GlobalTextures {
+        std::uint32_t blueNoises[BlueNoiseTextureCount] = { static_cast<uint32_t>(-1) };
         std::uint32_t dithering = -1;
-        std::uint32_t blueNoise = -1;
     };
 
     class MaterialSystem: public SwapchainAware {
@@ -121,13 +123,15 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> getWhiteTexture() const { return whiteTextureHandle; }
         std::shared_ptr<TextureHandle> getBlackTexture() const { return blackTextureHandle; }
         std::shared_ptr<TextureHandle> getFlatNormalTexture() const { return flatNormalTextureHandle; }
+        std::shared_ptr<TextureHandle> getDitheringTexture() const { return ditheringTextureHandle; }
+        std::array<std::shared_ptr<TextureHandle>, BlueNoiseTextureCount> getBlueNoiseTextures() const { return blueNoiseTextureHandles; }
 
     private:
         Texture::Ref whiteTexture = nullptr;
         Texture::Ref blackTexture = nullptr;
         Texture::Ref flatNormalTexture = nullptr;
         Texture::Ref ditheringTexture = nullptr;
-        Texture::Ref blueNoiseTexture = nullptr;
+        std::array<Texture::Ref, BlueNoiseTextureCount> blueNoiseTextures { nullptr };
 
     private:
         vk::UniqueDescriptorSetLayout descriptorSetLayout{};
@@ -160,7 +164,7 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> flatNormalTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> ditheringTextureHandle = nullptr;
-        std::shared_ptr<TextureHandle> blueNoiseTextureHandle = nullptr;
+        std::array<std::shared_ptr<TextureHandle>, BlueNoiseTextureCount> blueNoiseTextureHandles { nullptr };
 
     private:
         friend class TextureHandle;

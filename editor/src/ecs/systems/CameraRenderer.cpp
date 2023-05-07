@@ -21,12 +21,8 @@ namespace Peeler::ECS {
         Carrot::InstanceData instanceData;
         Carrot::GBufferDrawData data;
 
-        Carrot::Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
-        pushConstant.id = "drawDataPush";
-        pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
-
         data.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
-        pushConstant.setData(data);
+        packet.addPerDrawData({&data, 1});
 
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::ECS::CameraComponent& cameraComponent) {
             instanceData.uuid = entity.getID();

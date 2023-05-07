@@ -400,12 +400,15 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
         return vec3(0.0);
     }
 
-    float pdfInv = activeLights.count;
-    uint i = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
-    i = activeLights.indices[i];
-    lightPDF = 1.0 / pdfInv;
+//    float pdfInv = activeLights.count;
+//    uint i = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
+//    i = activeLights.indices[i];
+//    lightPDF = 1.0 / pdfInv;
+    lightPDF = 1.0;
 
+    for (uint li = 0; li < activeLights.count; li++)
     {
+        uint i = activeLights.indices[li];
         float enabledF = float(light.enabled);
 
         if(light.enabled)

@@ -24,12 +24,8 @@ namespace Carrot {
         Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize = {});
         Render::Pass<Carrot::Render::PassData::Lighting>& addLightingPass(const Carrot::Render::PassData::GBuffer& opaqueData, Render::GraphBuilder& graph, const Render::TextureSize& framebufferSize = {});
 
-    public:
-        Carrot::Render::Texture::Ref getBlueNoiseTexture() { return blueNoise; }
-
     private:
         VulkanRenderer& renderer;
         RayTracer& raytracer;
-        Carrot::Render::Texture::Ref blueNoise;
     };
 }

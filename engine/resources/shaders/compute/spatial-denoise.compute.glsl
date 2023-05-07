@@ -11,7 +11,8 @@ layout (local_size_y = LOCAL_SIZE) in;
 
 layout(rgba32f, set = 1, binding = 0) uniform readonly image2D inputImage;
 layout(rgba32f, set = 1, binding = 1) uniform writeonly image2D outputImage;
-layout(rgba32f, set = 1, binding = 2) uniform readonly image2D lastFrameMomentHistoryHistoryLength;
+layout(rgba32f, set = 1, binding = 2) uniform writeonly image2D varianceOutput;
+layout(rgba32f, set = 1, binding = 3) uniform readonly image2D varianceInput;
 
 layout(push_constant) uniform Push {
     int index;
@@ -80,7 +81,7 @@ ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) 
     return extractUsefulInfo(unpackGBuffer(filterUV));
 }
 
-float readLuminance(ivec2 coordsOffset/* offset from current pixel */) {
+float readVariance(ivec2 coordsOffset/* offset from current pixel */) {
 
     ivec2 localCoords = ivec2(gl_LocalInvocationID.xy) + coordsOffset;
     if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE
@@ -88,7 +89,7 @@ float readLuminance(ivec2 coordsOffset/* offset from current pixel */) {
         return sharedLuminanceMomentsReads[localCoords.x][localCoords.y];
     }
 
-    const ivec2 size = imageSize(lastFrameMomentHistoryHistoryLength);
+    const ivec2 size = imageSize(varianceInput);
     const ivec2 coords = ivec2(gl_GlobalInvocationID) + coordsOffset;
 
     if(coords.x >= size.x
@@ -99,22 +100,22 @@ float readLuminance(ivec2 coordsOffset/* offset from current pixel */) {
         return 0.0f;
     }
 
-    return imageLoad(lastFrameMomentHistoryHistoryLength, coords).g;
+    return imageLoad(varianceInput, coords).r;
 }
 
 float momentGaussianBlurSingleAxis(ivec2 coords, ivec2 direction) {
-    float   color  = readLuminance(-3 * direction) * ( 1.0/64.0);
-            color += readLuminance(-2 * direction) * ( 6.0/64.0);
-            color += readLuminance(-1 * direction) * (15.0/64.0);
-            color += readLuminance(+0 * direction) * (20.0/64.0);
-            color += readLuminance(+1 * direction) * (15.0/64.0);
-            color += readLuminance(+2 * direction) * ( 6.0/64.0);
-            color += readLuminance(+3 * direction) * ( 1.0/64.0);
+    float   color  = readVariance(-3 * direction) * ( 1.0/64.0);
+            color += readVariance(-2 * direction) * ( 6.0/64.0);
+            color += readVariance(-1 * direction) * (15.0/64.0);
+            color += readVariance(+0 * direction) * (20.0/64.0);
+            color += readVariance(+1 * direction) * (15.0/64.0);
+            color += readVariance(+2 * direction) * ( 6.0/64.0);
+            color += readVariance(+3 * direction) * ( 1.0/64.0);
     return color;
 }
 
 float momentGaussianBlur(ivec2 coords) {
-    return momentGaussianBlurSingleAxis(coords, ivec2(1, 0)) * momentGaussianBlurSingleAxis(coords, ivec2(0, 1));
+    return max(0.0f, momentGaussianBlurSingleAxis(coords, ivec2(1, 0)) * momentGaussianBlurSingleAxis(coords, ivec2(0, 1)));
 }
 
 void main() {
@@ -140,13 +141,14 @@ void main() {
 
     const vec2 currentUV = coords/vec2(size);
     sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = extractUsefulInfo(unpackGBufferLight(currentUV));
-    sharedLuminanceMomentsReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = imageLoad(lastFrameMomentHistoryHistoryLength, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).g;
+    sharedLuminanceMomentsReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = imageLoad(varianceInput, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
     #define currentGBuffer (sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y])
 
     barrier();
 
     if(currentGBuffer.albedo.a <= 1.0f / 256.0f) {
         imageStore(outputImage, coords, finalPixel);
+        imageStore(varianceOutput, coords, vec4(1.0f));
         return;
     }
 
@@ -155,6 +157,11 @@ void main() {
     const vec3 currentPosition = currentGBuffer.viewPosition;
     float totalWeight = KERNEL_WEIGHTS[FILTER_RADIUS] * KERNEL_WEIGHTS[FILTER_RADIUS];
     finalPixel *= totalWeight;
+
+    float variance = readVariance(ivec2(0)) * totalWeight * totalWeight;
+    float varianceSum = totalWeight * totalWeight;
+
+    const float invLuminanceWeightScale = 1.0f / (sigmaLuminance*sqrt(max(0.0, momentGaussianBlur(ivec2(0))))+10e-12);
 
     for(int dy = -FILTER_RADIUS; dy <= FILTER_RADIUS; dy++) {
         const float yKernelWeight = KERNEL_WEIGHTS[dy+FILTER_RADIUS];
@@ -182,18 +189,24 @@ void main() {
 
             const vec3 filterPosition = filterGBuffer.viewPosition;
             const vec3 dPosition = filterPosition - currentPosition;
-            const float distanceSquared = dot(dPosition, dPosition);
-            const float positionWeight = min(1, exp(-distanceSquared/sigmaPositions));
+            const float distanceSquared = dot(dPosition.z, dPosition.z);
+            const float positionWeight = 1.0f;//min(1, exp(-abs(dPosition.z)/sigmaPositions)); TODO: FIXME
 
             const float filterLuminance = luminance(filterPixel.rgb);
-            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance)/(sigmaLuminance*sqrt(momentGaussianBlur(dCoord))+10e-12));
+            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale);
 
             const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;
             totalWeight += weight;
+
+            varianceSum += weight * weight;
+            variance += readVariance(dCoord) * weight * weight;
         }
     }
 
     finalPixel /= totalWeight;
     imageStore(outputImage, coords, finalPixel);
+
+    variance /= totalWeight*totalWeight;
+    imageStore(varianceOutput, coords, vec4(max(0.0, variance), 0, 0, 0));
 }

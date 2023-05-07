@@ -296,6 +296,13 @@ void Carrot::Pipeline::createGraphicsTemplate() {
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
+
+            // R32G32B32 first denoised texture
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
         }
     }
 

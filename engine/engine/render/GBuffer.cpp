@@ -7,7 +7,7 @@
 #include "engine/render/Skybox.hpp"
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
-    blueNoise = renderer.getOrCreateTexture("FreeBlueNoiseTextures/LDR_RGB1_54.png");
+
 }
 
 void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
@@ -142,7 +142,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     if(tlas) {
                         renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 5, 0);
-                        renderer.bindTexture(*resolvePipeline, frame, *blueNoise, 5, 1, nullptr);
+                        renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 1, nullptr);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 5, 2);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 5, 3);
                     }

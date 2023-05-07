@@ -1,4 +1,5 @@
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 struct Material {
     vec4 baseColor;
@@ -18,9 +19,9 @@ struct Material {
     layout(set = setID, binding = 1) uniform texture2D textures[];                                                      \
     layout(set = setID, binding = 2) uniform sampler linearSampler;                                                     \
     layout(set = setID, binding = 3) uniform sampler nearestSampler;                                                    \
-    layout(set = setID, binding = 4) uniform GlobalTextures {                                                           \
+    layout(set = setID, binding = 4, scalar) uniform GlobalTextures {                                                   \
+        uint blueNoises[64];                                                                                             \
         uint dithering;                                                                                                 \
-        uint blueNoise;                                                                                                 \
     } globalTextures;                                                                                                   \
                                                                                                                         \
     float dither(uvec2 coords) {                                                                                        \

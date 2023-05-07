@@ -6,12 +6,13 @@
 #include "includes/materials.glsl"
 #include "includes/viewport.glsl"
 
-#include "includes/rng.glsl"
 
 DEFINE_CAMERA_SET(0)
 MATERIAL_SYSTEM_SET(1)
 DEFINE_VIEWPORT_CONSTANT(2)
 DEFINE_PER_DRAW_BUFFER(3)
+
+#include "includes/rng.glsl"
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 uv;
