@@ -17,6 +17,7 @@ void main() {
     vec2 accumulatedMoments = momentsHistoryData.rg;
     float historyLength = momentsHistoryData.b;
 
+    // TODO: share texture reads
     float variance = 0.0f;
     if(historyLength < 4) {
         // spatial estimation

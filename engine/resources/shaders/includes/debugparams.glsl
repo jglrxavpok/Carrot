@@ -14,6 +14,7 @@
 #define DEBUG_GBUFFER_NOISY_LIGHTING 13
 #define DEBUG_POST_TEMPORAL_DENOISE 14
 #define DEBUG_VARIANCE 15
+#define DEBUG_POST_FIREFLY_REJECTION 16
 
 #define DEBUG_OPTIONS_SET(SetID)                                                                                       \
 layout(set = SetID, binding = 0) uniform Debug {                                                                       \

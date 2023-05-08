@@ -829,6 +829,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
                 ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
                 ImGui::RadioButton("Temporal denoise result", &gIndex, DEBUG_POST_TEMPORAL_DENOISE);
+                ImGui::RadioButton("Temporal denoise result (with firefly rejection)", &gIndex, DEBUG_POST_FIREFLY_REJECTION);
                 ImGui::RadioButton("Variance", &gIndex, DEBUG_VARIANCE);
 
                 obj.gBufferType = gIndex;

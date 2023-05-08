@@ -10,12 +10,13 @@ layout (local_size_x = LOCAL_SIZE) in;
 layout (local_size_y = LOCAL_SIZE) in;
 
 layout(rgba32f, set = 1, binding = 0) uniform readonly image2D inputImage;
-layout(rgba32f, set = 1, binding = 1) uniform writeonly image2D outputImage;
-layout(rgba32f, set = 1, binding = 2) uniform writeonly image2D varianceOutput;
-layout(rgba32f, set = 1, binding = 3) uniform readonly image2D varianceInput;
+layout(rgba32f, set = 1, binding = 1) uniform readonly image2D varianceInput;
+
+layout(rgba32f, set = 1, binding = 2) uniform writeonly image2D outputImage;
+layout(rgba32f, set = 1, binding = 3) uniform writeonly image2D varianceOutput;
 
 layout(push_constant) uniform Push {
-    int index;
+    uint index;
 } iterationData;
 
 const int FILTER_RADIUS = 2;
@@ -148,7 +149,7 @@ void main() {
 
     if(currentGBuffer.albedo.a <= 1.0f / 256.0f) {
         imageStore(outputImage, coords, finalPixel);
-        imageStore(varianceOutput, coords, vec4(1.0f));
+        imageStore(varianceOutput, coords, vec4(100000.0f));
         return;
     }
 
@@ -193,7 +194,7 @@ void main() {
             const float positionWeight = 1.0f;//min(1, exp(-abs(dPosition.z)/sigmaPositions)); TODO: FIXME
 
             const float filterLuminance = luminance(filterPixel.rgb);
-            const float luminanceWeight = exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale);
+            const float luminanceWeight = min(1, exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale));
 
             const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;
@@ -208,5 +209,5 @@ void main() {
     imageStore(outputImage, coords, finalPixel);
 
     variance /= totalWeight*totalWeight;
-    imageStore(varianceOutput, coords, vec4(max(0.0, variance), 0, 0, 0));
+    imageStore(varianceOutput, coords, vec4(variance, 0, 0, 0));
 }

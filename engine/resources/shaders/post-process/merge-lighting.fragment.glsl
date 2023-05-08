@@ -13,6 +13,7 @@ layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
 layout(set = 1, binding = 2) uniform texture2D noisyLighting;
 layout(set = 1, binding = 3) uniform texture2D temporalDenoiseResult;
 layout(set = 1, binding = 4) uniform texture2D varianceCopyOutputDebug;
+layout(set = 1, binding = 5) uniform texture2D fireflyRejectionResult;
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -83,6 +84,8 @@ void main() {
             outColor = vec4(variance, variance, variance, 1.0f);
         } else if(debug.gBufferType == DEBUG_POST_TEMPORAL_DENOISE) {
             outColor = texture(sampler2D(temporalDenoiseResult, gNearestSampler), uv);
+        } else if(debug.gBufferType == DEBUG_POST_FIREFLY_REJECTION) {
+            outColor = texture(sampler2D(fireflyRejectionResult, gNearestSampler), uv);
         } else {
             outColor = vec4(uv, 0.0, 1.0);
         }

@@ -56,7 +56,7 @@ void main() {
 
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-    float alpha = 0.8f;
+    float alpha = 0.9f;
     float momentsAlpha = alpha;//1 - 1.0f / historyLength;//0.8;
 
     //if(uv.x > 0.5)

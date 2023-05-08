@@ -215,6 +215,7 @@ set(FRAGMENT_SHADERS
 set(COMPUTE_SHADERS
         compute/animation-skinning.compute.glsl
         compute/copy-variance.compute.glsl
+        compute/firefly-rejection.compute.glsl
         compute/particles.compute.glsl
         compute/skeleton-skinning.compute.glsl
         compute/spatial-denoise.compute.glsl

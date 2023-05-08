@@ -23,7 +23,8 @@ vec2 r2Sequence(uint n) {
 float sampleNoise(inout RandomSampler rng) {
     const uint BLUE_NOISE_SIZE = 64;
     const uint NOISE_COUNT = 64;
-    const vec2 blueNoiseUV = vec2(rng.pixelPos + ivec2(r2Sequence(rng.sampleIndex) * ivec2(BLUE_NOISE_SIZE)) % BLUE_NOISE_SIZE) / BLUE_NOISE_SIZE;
+    const uvec2 noisePosition = rng.pixelPos + uvec2(r2Sequence(rng.sampleIndex) * uvec2(BLUE_NOISE_SIZE));
+    const vec2 blueNoiseUV = vec2(noisePosition % BLUE_NOISE_SIZE) / BLUE_NOISE_SIZE;
     rng.sampleIndex++;
 
     const uint components = 4;

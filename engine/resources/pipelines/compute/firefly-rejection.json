@@ -1,0 +1,10 @@
+{
+  "type": "compute",
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ],
+  "computeShader": "resources/shaders/compute/firefly-rejection.compute.glsl.spv"
+}
