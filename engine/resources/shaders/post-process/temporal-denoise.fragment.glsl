@@ -42,7 +42,7 @@ void main() {
     vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = float(length(hWorldSpacePos-hPreviousWorldSpacePos) <= 0.01);
+    float reprojected = float(length(hWorldSpacePos-hPreviousWorldSpacePos) <= 0.01); // distance clip
 
     const float epsilon = 0.01;
     reprojected *= 1.0f - float(
@@ -50,14 +50,19 @@ void main() {
         || reprojectedUV.y <= epsilon || reprojectedUV.y >= 1-epsilon
     );
 
+    reprojectedUV = clamp(reprojectedUV, vec2(epsilon), vec2(1-epsilon));
+
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
+    const float colorClampStrength = 50.0f;
+    reprojected *= exp(-length(currentFrameColor.rgb - previousFrameColor.rgb) / colorClampStrength); // color clamp
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-    float alpha = 0.9f;
-    float momentsAlpha = alpha;//1 - 1.0f / historyLength;//0.8;
+    float alpha = historyLength <= 0.1 ? 0.9f : 1.0f - 1.0f / historyLength;
+    //float alpha = 0.9f;
+    float momentsAlpha = alpha;////0.8;
 
     //if(uv.x > 0.5)
     {
