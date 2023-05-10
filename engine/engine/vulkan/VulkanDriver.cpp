@@ -42,7 +42,7 @@ const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
     #ifdef DEBUG_MARKERS
         constexpr bool USE_DEBUG_MARKERS = true;
     #else
-        constexpr bool USE_DEBUG_MARKERS = false;
+        constexpr bool USE_DEBUG_MARKERS = true;
     #endif
 #endif
 
@@ -107,7 +107,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(pCallbackData->messageIdNumber == 2188733524u) {
         debug_break();
     } else if(pCallbackData->messageIdNumber == 3830750225u) /* VUID-vkDestroyBuffer-buffer-00922 */ {
-         ///* TODO: debug with error, might be cause of device removed: */debug_break();
+         /* TODO: debug with error, might be cause of device removed: */debug_break();
     } else if(pCallbackData->messageIdNumber == 2147704939u) /* VUID-vkMapMemory-size-00681 */ {
         debug_break();
     } else if(pCallbackData->messageIdNumber == 2484131348u) /* VUID-vkCmdDrawIndexedIndirect-None-02699 */{

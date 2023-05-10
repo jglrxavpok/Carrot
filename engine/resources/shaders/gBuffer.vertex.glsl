@@ -36,7 +36,7 @@ void main() {
     mat4 previousFrameModelview = previousFrameCBO.view * inLastFrameInstanceTransform;
     vec4 viewPosition = modelview * inPosition;
     vec4 previousFrameViewPosition = previousFrameModelview * inPosition;
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
 
     fragColor = inColor;
     instanceColor = inInstanceColor;

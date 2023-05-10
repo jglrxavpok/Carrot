@@ -96,7 +96,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
-                // pass.prerecordable = true; TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
+                pass.prerecordable = false; //TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
                 // TODO (or it should be re-recorded when changes happen)
                 resolveData.gBuffer.readFrom(graph, opaqueData);
 

@@ -15,6 +15,6 @@ void main() {
     mat4 modelview = cbo.view;
     vec4 viewPosition = modelview * vec4(inPosition * grid.size, 1.0);
     outViewPosition = viewPosition.xyz / viewPosition.w;
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
     outModelview = modelview;
 }

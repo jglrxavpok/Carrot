@@ -30,7 +30,7 @@ void main() {
     uv = (inPosition.xy+vec2(0.5)) * (region.halfSize * 2) + region.center - region.halfSize;
     mat4 modelview = cbo.view * inInstanceTransform;
     vec4 viewPosition = modelview * vec4(inPosition, 1.0);
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
 
     fragColor = vec4(1.0);
     instanceColor = inInstanceColor;

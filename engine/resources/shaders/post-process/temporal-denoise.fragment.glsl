@@ -34,7 +34,7 @@ void main() {
     vec4 viewSpacePos = vec4(texture(sampler2D(currentViewPos, linearSampler), uv).rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
-    vec4 prevNDC = cbo.projection * viewSpacePos;
+    vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
     prevNDC.xyz += gbuffer.motionVector;
 
@@ -56,7 +56,7 @@ void main() {
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
-    const float colorClampStrength = 50.0f;
+    const float colorClampStrength = 100.0f;
     reprojected *= exp(-length(currentFrameColor.rgb - previousFrameColor.rgb) / colorClampStrength); // color clamp
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;

@@ -22,7 +22,7 @@ void main() {
     uv = vec2(0.5);
     mat4 modelview = cbo.view * inInstanceTransform;
     vec4 viewPosition = modelview * inPosition;
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
 
     fragColor = inInstanceColor.rgb;
     instanceColor = inInstanceColor;

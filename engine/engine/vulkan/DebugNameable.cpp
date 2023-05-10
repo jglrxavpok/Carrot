@@ -9,10 +9,10 @@
 namespace Carrot {
     std::unordered_map<vk::DebugReportObjectTypeEXT, std::unordered_map<std::uint64_t, std::string>> DebugNameable::objectNames{};
 
-    void DebugNameable::doNaming(const vk::DebugMarkerObjectNameInfoEXT& nameInfo) {
-        objectNames[nameInfo.objectType][nameInfo.object] = nameInfo.pObjectName;
+    /* static */ void DebugNameable::doNaming(const vk::DebugUtilsObjectNameInfoEXT& nameInfo) {
+      //  objectNames[nameInfo.objectType][nameInfo.object] = nameInfo.pObjectName;
         if(GetVulkanDriver().hasDebugNames()) {
-            GetVulkanDriver().getLogicalDevice().debugMarkerSetObjectNameEXT(nameInfo);
+            GetVulkanDriver().getLogicalDevice().setDebugUtilsObjectNameEXT(nameInfo);
         }
     }
 }

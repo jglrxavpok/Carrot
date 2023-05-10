@@ -273,6 +273,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 .dependencyCount = 1,
                 .pDependencies = &mainDependency,
         });
+        DebugNameable::nameSingle(this->name, *renderPass);
 
         auto init = [outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
             auto& graph = pass.getGraph();

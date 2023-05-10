@@ -372,11 +372,15 @@ vk::Pipeline& Carrot::Pipeline::getOrCreatePipelineForRenderPass(vk::RenderPass 
     if(it == vkPipelines.end()) {
         if(description.type == PipelineType::Compute) {
             vk::ComputePipelineCreateInfo info = computePipelineTemplate.pipelineInfo;
-            vkPipelines[pass] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr));
+            vkPipelines[pass] = std::move(driver.getLogicalDevice().createComputePipelineUnique(nullptr, info, nullptr).value);
         } else {
             vk::GraphicsPipelineCreateInfo info = graphicsPipelineTemplate.pipelineInfo;
             info.renderPass = pass;
-            vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr));
+            vkPipelines[pass] = std::move(driver.getLogicalDevice().createGraphicsPipelineUnique(nullptr, info, nullptr).value);
+        }
+
+        if(!debugName.empty()) {
+            DebugNameable::nameSingle(debugName, *vkPipelines[pass]);
         }
     }
     return *vkPipelines[pass];
@@ -642,6 +646,13 @@ void Carrot::Pipeline::onSwapchainImageCountChange(std::size_t newCount) {
 
 void Carrot::Pipeline::onSwapchainSizeChange(int newWidth, int newHeight) {
 
+}
+
+void Carrot::Pipeline::setDebugNames(const std::string& name) {
+    for(auto& [_, pPipeline] : vkPipelines) {
+        DebugNameable::nameSingle(name, *pPipeline);
+    }
+    debugName = name;
 }
 
 Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource jsonFile) {

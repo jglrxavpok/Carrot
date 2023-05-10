@@ -75,7 +75,7 @@ namespace Carrot {
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };
 
-    class Pipeline: public SwapchainAware {
+    class Pipeline: public SwapchainAware, public DebugNameable {
     public:
         explicit Pipeline(Carrot::VulkanDriver& driver, const Carrot::IO::Resource pipelineDescription);
         explicit Pipeline(Carrot::VulkanDriver& driver, const PipelineDescription& description);
@@ -113,6 +113,9 @@ namespace Carrot {
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    protected:
+        void setDebugNames(const std::string& name) override;
 
     public:
         static PipelineType getPipelineType(const std::string& name);
@@ -171,6 +174,7 @@ namespace Carrot {
             vk::ComputePipelineCreateInfo pipelineInfo;
         } computePipelineTemplate;
 
+        std::string debugName;
         Carrot::VulkanDriver& driver;
         vk::UniquePipelineLayout layout{};
         vk::UniqueDescriptorPool descriptorPool{};

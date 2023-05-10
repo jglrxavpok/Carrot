@@ -32,8 +32,10 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/shaders/ShaderSource.cpp
         ${EngineRoot}render/resources/Pipeline.cpp
         ${EngineRoot}render/shaders/Specialization.cpp
-        ${EngineRoot}render/InstanceData.cpp
+
         ${EngineRoot}render/Camera.cpp
+        ${EngineRoot}render/CameraBufferObject.cpp
+        ${EngineRoot}render/InstanceData.cpp
         ${EngineRoot}render/RenderPacket.cpp
 
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp

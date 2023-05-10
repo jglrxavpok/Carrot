@@ -73,7 +73,7 @@ TracyVulkanContext::TracyVulkanContext(vk::PhysicalDevice& physicalDevice, vk::D
 
     // read CPU&GPU Time
     int64_t cpuTime = tracy::Profiler::GetTime();
-    int64_t gpuTime = device.getQueryPoolResult<int64_t>(*queryPool, 0, 1, 0, vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
+    int64_t gpuTime = device.getQueryPoolResult<int64_t>(*queryPool, 0, 1, 0, vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait).value;
 
     // reset query pool
     cmd.begin(vk::CommandBufferBeginInfo {

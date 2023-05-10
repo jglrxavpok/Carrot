@@ -608,6 +608,7 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
             ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
             mainCommandBuffers[i].begin(beginInfo);
 
+            DebugNameable::nameSingle(Carrot::sprintf("Main command buffer, frame %lu", renderer.getFrameCount()), mainCommandBuffers[i]);
             GetVulkanDriver().setMarker(mainCommandBuffers[i], "begin command buffer");
         }
 

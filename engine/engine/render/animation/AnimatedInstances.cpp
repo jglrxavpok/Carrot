@@ -322,7 +322,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
             .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
             .layout = *computePipelineLayout,
-    }, engine.getAllocator());
+    }, engine.getAllocator()).value;
 
     std::uint32_t vertexGroups = (vertexCountPerInstance + 127) / 128;
     std::uint32_t instanceGroups = (maxInstanceCount + 7)/8;

@@ -101,7 +101,9 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
     ZoneText(name.c_str(), name.size());
     auto key = std::make_pair(name, instanceOffset);
     return pipelines.getOrCompute(key, [&]() {
-        return std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+        auto pipeline = std::make_shared<Pipeline>(driver, "resources/pipelines/"+name+".json");
+        pipeline->name(name);
+        return pipeline;
     });
 }
 

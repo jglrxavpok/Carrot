@@ -8,25 +8,30 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Carrot {
+    namespace Render {
+        struct Context;
+    }
+
     /// UBO used by this engine
     struct CameraBufferObject {
-        /// Projection matrix
-        alignas(16) glm::mat4 projection;
-
         /// View matrix (transformation of the camera)
         alignas(16) glm::mat4 view;
 
         /// Inverse view matrix (transformation of the camera)
         alignas(16) glm::mat4 inverseView;
 
-        /// Inverse view matrix (transformation of the camera)
-        alignas(16) glm::mat4 inverseProjection;
+        /// Projection matrix
+        alignas(16) glm::mat4 jitteredProjection;
 
-        void update(Camera& camera) {
-            view = camera.getCurrentFrameViewMatrix();
-            inverseView = glm::inverse(view);
-            projection = camera.getCurrentFrameProjectionMatrix();
-            inverseProjection = glm::inverse(projection);
-        };
+        /// Use for motion vectors and things that should not move from one frame to the next
+        alignas(16) glm::mat4 nonJitteredProjection;
+
+        /// Inverse view matrix (transformation of the camera)
+        alignas(16) glm::mat4 inverseJitteredProjection;
+
+        /// Use for motion vectors and things that should not move from one frame to the next
+        alignas(16) glm::mat4 inverseNonJitteredProjection;
+
+        void update(Camera& camera, const Render::Context& renderContext);
     };
 }

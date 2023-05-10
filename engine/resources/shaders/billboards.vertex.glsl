@@ -18,7 +18,7 @@ void main() {
     mat4 modelview = cbo.view;
     vec3 worldPos = (mat3(cbo.inverseView) * vec3(inPosition.x, inPosition.y, 0)/2) * billboard.scale + billboard.position;
     vec4 viewPosition = modelview * vec4(worldPos, 1.0);
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
 
     outViewPos = viewPosition.xyz;
 }

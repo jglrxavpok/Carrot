@@ -58,8 +58,7 @@ layout(location = 0) out vec4 outColor;
 void main() {
     vec4 outColorWorld;
 
-    vec2 jitter = vec2((push.frameCount % 2) - 0.5, (push.frameCount/2) % 2 - 0.5) / vec2(push.frameWidth, push.frameHeight);
-    vec2 uv = inUV + jitter*0.5; // TODO: move jitter earlier in pipeline
+    vec2 uv = inUV;
 
     float currDepth = texture(sampler2D(gDepth, nearestSampler), uv).r;
 
@@ -94,7 +93,7 @@ void main() {
 
         distanceToCamera = length(gbuffer.viewPosition);
     } else {
-        vec4 viewSpaceDir = cbo.inverseProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
+        vec4 viewSpaceDir = cbo.inverseJitteredProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
         vec3 worldViewDir = mat3(cbo.inverseView) * viewSpaceDir.xyz;
 
         const mat3 rot = mat3(

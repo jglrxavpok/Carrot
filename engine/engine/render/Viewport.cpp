@@ -92,8 +92,8 @@ namespace Carrot::Render {
             rightEyeCamera.getViewMatrixRef() = GetEngine().getVRSession().getEyeView(Carrot::Render::Eye::RightEye) * rightEyeCamera.getViewMatrixRef();
             rightEyeCamera.getProjectionMatrixRef() = GetEngine().getVRSession().getEyeProjection(Carrot::Render::Eye::RightEye);
 
-            objLeftEye.update(leftEyeCamera);
-            objRightEye.update(rightEyeCamera);
+            objLeftEye.update(leftEyeCamera, context);
+            objRightEye.update(rightEyeCamera, context);
 
             auto& leftBuffer = cameraUniformBuffers[context.swapchainIndex * 2];
             auto& rightBuffer = cameraUniformBuffers[context.swapchainIndex * 2 + 1];
@@ -103,7 +103,7 @@ namespace Carrot::Render {
             CameraBufferObject obj{};
             auto& buffer = cameraUniformBuffers[context.swapchainIndex];
 
-            obj.update(getCamera());
+            obj.update(getCamera(), context);
 
             buffer.getBuffer().directUpload(&obj, sizeof(obj), buffer.getStart());
         }

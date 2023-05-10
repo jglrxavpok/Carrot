@@ -203,7 +203,7 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     computePipeline = engine.getLogicalDevice().createComputePipelineUnique(nullptr, vk::ComputePipelineCreateInfo {
             .stage = computeStage.createPipelineShaderStage(vk::ShaderStageFlagBits::eCompute, &specialization),
             .layout = *computePipelineLayout,
-    }, engine.getAllocator());
+    }, engine.getAllocator()).value;
 
     finishedFence = engine.getLogicalDevice().createFenceUnique(vk::FenceCreateInfo {
         .flags = vk::FenceCreateFlagBits::eSignaled

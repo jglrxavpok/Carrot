@@ -438,7 +438,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     if(false) {
         ZoneScopedN("Compress built Acceleration Structures");
 
-        std::vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait);
+        std::vector<vk::DeviceSize> compactSizes = device.getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, blasCount, blasCount*sizeof(vk::DeviceSize), sizeof(vk::DeviceSize), vk::QueryResultFlagBits::eWait).value;
         std::vector<std::unique_ptr<AccelerationStructure>> compactedASes{};
         for (size_t index = 0; index < blasCount; index++) {
             auto& cmds = compactCommands[index];
@@ -561,7 +561,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         instancesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
                                                                                                         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                                                         vk::MemoryPropertyFlagBits::eDeviceLocal);
-        instancesBuffer->setDebugNames("RT Instances");
+        instancesBuffer->setDebugNames(Carrot::sprintf("RT Instances frame %lu", GetRenderer().getFrameCount()));
     }
 
     {
@@ -570,8 +570,8 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
         //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
 
-        //rtInstancesBuffer->stageUploadWithOffset(0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
-        rtInstancesBuffer->directUpload(vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
+        rtInstancesBuffer->stageUploadWithOffset(0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
+        //rtInstancesBuffer->directUpload(vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
     }
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesVk {
@@ -629,7 +629,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
             .srcStageMask = vk::PipelineStageFlagBits2KHR::eTransfer,
             .srcAccessMask = vk::AccessFlagBits2KHR::eTransferWrite,
-            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
+            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuildKHR,
             .dstAccessMask = vk::AccessFlagBits2KHR::eMemoryRead,
 
             .srcQueueFamilyIndex = 0,
@@ -675,10 +675,10 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     bottomLevelBarriers.clear();
     topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-            .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuild,
-            .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWrite,
+            .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuildKHR,
+            .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWriteKHR,
             .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllGraphics,
-            .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureRead,
+            .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureReadKHR,
 
             .srcQueueFamilyIndex = 0,
             .dstQueueFamilyIndex = 0,

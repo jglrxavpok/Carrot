@@ -14,5 +14,5 @@ void main() {
     );
     uv = rot * inPosition;
     mat4 viewNoTranslation = mat4(mat3(cbo.view));
-    gl_Position = cbo.projection * viewNoTranslation * vec4(inPosition, 1);
+    gl_Position = cbo.jitteredProjection * viewNoTranslation * vec4(inPosition, 1);
 }

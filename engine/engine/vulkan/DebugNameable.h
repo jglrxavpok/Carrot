@@ -8,21 +8,22 @@
 
 namespace Carrot {
     class DebugNameable {
-    protected:
-        virtual void setDebugNames(const std::string& name) = 0;
-
+    public:
         template<typename VulkanType>
-        void nameSingle(const std::string& name, const VulkanType& object) {
-            vk::DebugMarkerObjectNameInfoEXT nameInfo {
-                    .objectType = VulkanType::debugReportObjectType,
-                    .object = (uint64_t) ((typename VulkanType::CType&) object),
+        static void nameSingle(const std::string& name, const VulkanType& object) {
+            vk::DebugUtilsObjectNameInfoEXT nameInfo {
+                    .objectType = VulkanType::objectType,
+                    .objectHandle = (uint64_t) ((typename VulkanType::CType&) object),
                     .pObjectName = name.c_str(),
             };
             doNaming(nameInfo);
         }
 
+    protected:
+        virtual void setDebugNames(const std::string& name) = 0;
+
     private:
-        void doNaming(const vk::DebugMarkerObjectNameInfoEXT& nameInfo);
+        static void doNaming(const vk::DebugUtilsObjectNameInfoEXT& nameInfo);
 
     public:
         void name(const std::string& name) {

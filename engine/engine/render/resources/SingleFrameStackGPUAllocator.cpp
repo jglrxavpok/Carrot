@@ -6,7 +6,6 @@
 #include <engine/Engine.h>
 #include <engine/render/resources/BufferView.h>
 #include <engine/utils/Macros.h>
-#include <vk_mem_alloc.hpp>
 #include <core/math/BasicFunctions.h>
 
 namespace Carrot {

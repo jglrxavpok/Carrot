@@ -48,5 +48,5 @@ void main() {
     inPosition += particle.position;
 
     vec4 viewPosition = cbo.view * vec4(inPosition, 1.0);
-    gl_Position = cbo.projection * viewPosition;
+    gl_Position = cbo.jitteredProjection * viewPosition;
 }
