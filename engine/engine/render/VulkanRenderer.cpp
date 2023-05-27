@@ -357,10 +357,10 @@ void Carrot::VulkanRenderer::afterFrameCommand(const CommandBufferConsumer& comm
 }
 
 void Carrot::VulkanRenderer::bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID) {
-    if(boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == samplerToBind) {
+    if(boundSamplers[{pipeline, frame.swapchainIndex, setID, bindingID}] == samplerToBind) {
         return;
     }
-    boundSamplers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = samplerToBind;
+    boundSamplers[{pipeline, frame.swapchainIndex, setID, bindingID}] = samplerToBind;
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo samplerInfo {
@@ -384,10 +384,10 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
 
 void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, Carrot::AccelerationStructure& as, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
-    if(boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == as.getVulkanAS()) {
+    if(boundAS[{pipeline, frame.swapchainIndex, setID, bindingID}] == as.getVulkanAS()) {
         return;
     }
-    boundAS[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = as.getVulkanAS();
+    boundAS[{pipeline, frame.swapchainIndex, setID, bindingID}] = as.getVulkanAS();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
@@ -415,10 +415,10 @@ void Carrot::VulkanRenderer::bindAccelerationStructure(Carrot::Pipeline& pipelin
 
 void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
-    if(boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == view) {
+    if(boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] == view.asBufferInfo()) {
         return;
     }
-    boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = view;
+    boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] = view.asBufferInfo();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     auto bufferInfo = view.asBufferInfo();
@@ -440,10 +440,10 @@ void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render:
 
 void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
-    if(boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] == view) {
+    if(boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] == view.asBufferInfo()) {
         return;
     }
-    boundBuffers[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID}] = view;
+    boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] = view.asBufferInfo();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     auto bufferInfo = view.asBufferInfo();
@@ -472,10 +472,10 @@ void Carrot::VulkanRenderer::bindStorageImage(Carrot::Pipeline& pipeline, const 
                                          std::uint32_t arrayIndex,
                                          vk::ImageLayout textureLayout) {
     ZoneScoped;
-    if(boundStorageImages[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+    if(boundStorageImages[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
-    boundStorageImages[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    boundStorageImages[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
@@ -512,10 +512,10 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
                                          vk::ImageLayout textureLayout) {
     // TODO: maybe interesting to batch these writes right before starting the rendering
     ZoneScoped;
-    if(boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
+    if(boundTextures[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] == textureToBind.getVulkanImage()) {
         return;
     }
-    boundTextures[{pipeline.getPipelineLayout(), frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
+    boundTextures[{pipeline, frame.swapchainIndex, setID, bindingID, textureLayout}] = textureToBind.getVulkanImage();
     auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
 
     vk::DescriptorImageInfo imageInfo {
@@ -544,6 +544,163 @@ void Carrot::VulkanRenderer::bindTexture(Carrot::Pipeline& pipeline, const Carro
         driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
     }
 }
+
+void Carrot::VulkanRenderer::unbindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
+    bindSampler(pipeline, frame, VK_NULL_HANDLE, setID, bindingID);
+}
+
+void Carrot::VulkanRenderer::unbindTexture(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
+    ZoneScoped;
+    BindingKey k { pipeline, frame.swapchainIndex, setID, bindingID };
+    std::erase_if(boundTextures, [&](const auto& pair) {
+        return pair.first == k; // leave out layout by design
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::DescriptorImageInfo imageInfo {
+            .sampler = VK_NULL_HANDLE,
+            .imageView = VK_NULL_HANDLE,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eSampledImage;
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = arrayIndex,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+                    .pImageInfo = &imageInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
+void Carrot::VulkanRenderer::unbindStorageImage(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex) {
+    ZoneScoped;
+    BindingKey k { pipeline, frame.swapchainIndex, setID, bindingID };
+    std::erase_if(boundStorageImages, [&](const auto& pair) {
+        return pair.first == k; // leave out layout by design
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::DescriptorImageInfo imageInfo {
+            .sampler = VK_NULL_HANDLE,
+            .imageView = VK_NULL_HANDLE,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eStorageImage;
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = arrayIndex,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+                    .pImageInfo = &imageInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
+void Carrot::VulkanRenderer::unbindAccelerationStructure(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    BindingKey k { pipeline, frame.swapchainIndex, setID, bindingID };
+    std::erase_if(boundAS, [&](const auto& pair) {
+        return pair.first == k; // leave out layout by design
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::AccelerationStructureKHR nullAS = VK_NULL_HANDLE;
+    vk::WriteDescriptorSetAccelerationStructureKHR  asInfo {
+            .accelerationStructureCount = 1,
+            .pAccelerationStructures = &nullAS,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eAccelerationStructureKHR;
+
+    std::array<vk::WriteDescriptorSet, 1> writeAS {
+            vk::WriteDescriptorSet {
+                    .pNext = &asInfo,
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeAS, {});
+    }
+}
+
+void Carrot::VulkanRenderer::unbindBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    BindingKey k { pipeline, frame.swapchainIndex, setID, bindingID };
+    std::erase_if(boundBuffers, [&](const auto& pair) {
+        return pair.first == k;
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::DescriptorBufferInfo bufferInfo {
+            .buffer = VK_NULL_HANDLE,
+            .offset = 0,
+            .range = VK_WHOLE_SIZE,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eStorageBuffer;
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+                    .pBufferInfo = &bufferInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
+void Carrot::VulkanRenderer::unbindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID) {
+    ZoneScoped;
+    BindingKey k { pipeline, frame.swapchainIndex, setID, bindingID };
+    std::erase_if(boundBuffers, [&](const auto& pair) {
+        return pair.first == k;
+    });
+    auto descriptorSet = pipeline.getDescriptorSets(frame, setID)[frame.swapchainIndex];
+
+    vk::DescriptorBufferInfo bufferInfo {
+            .buffer = VK_NULL_HANDLE,
+    };
+
+    vk::DescriptorType descType = vk::DescriptorType::eUniformBuffer;
+    std::array<vk::WriteDescriptorSet, 1> writeTexture {
+            vk::WriteDescriptorSet {
+                    .dstSet = descriptorSet,
+                    .dstBinding = bindingID,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = descType,
+                    .pBufferInfo = &bufferInfo,
+            }
+    };
+    {
+        ZoneScopedN("driver.getLogicalDevice().updateDescriptorSets");
+        driver.getLogicalDevice().updateDescriptorSets(writeTexture, {});
+    }
+}
+
 
 Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {
     return graph.addPass<Carrot::Render::PassData::ImGui>("imgui",
@@ -1545,6 +1702,10 @@ Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize b
 Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize bytes) {
     // TODO: use different allocator? (even if only for tracking)
     return singleFrameAllocator.allocate(bytes);
+}
+
+const Carrot::BufferView Carrot::VulkanRenderer::getNullBufferInfo() const {
+    return nullBuffer->getWholeView();
 }
 
 Carrot::Async::Task<std::shared_ptr<Carrot::Model>> Carrot::VulkanRenderer::coloadModel(

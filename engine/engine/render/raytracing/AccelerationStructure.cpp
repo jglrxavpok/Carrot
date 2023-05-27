@@ -16,7 +16,7 @@ Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& drive
                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     createInfo.buffer = buffer->getVulkanBuffer();
-    buffer->name("AS storage");
+    buffer->name(Carrot::sprintf("AS storage (%s)", createInfo.type == vk::AccelerationStructureTypeKHR::eBottomLevel ? "Bottom" : "Top"));
 
     as = driver.getLogicalDevice().createAccelerationStructureKHRUnique(createInfo, driver.getAllocationCallbacks());
 

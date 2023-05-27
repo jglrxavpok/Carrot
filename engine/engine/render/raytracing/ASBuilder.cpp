@@ -245,9 +245,10 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         buildTopLevelAS(renderContext, false);
         framesBeforeRebuildingTLAS = 11;
     } else {
+        // TODO merge with requireTLASRebuildNow
         if(framesBeforeRebuildingTLAS == 0 || !tlas) {
             buildTopLevelAS(renderContext, false);
-            framesBeforeRebuildingTLAS = 11;
+            framesBeforeRebuildingTLAS = 20;
         } else {
             if(framesBeforeRebuildingTLAS > 0) {
                 framesBeforeRebuildingTLAS--;
@@ -428,6 +429,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     }
 
 #ifdef AFTERMATH_ENABLE
+    // FIXME: why?
     try {
         renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
     } catch (vk::DeviceLostError& e) {
@@ -532,6 +534,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     if(vkInstances.empty()) {
         tlas = nullptr;
+        instancesBuffer = nullptr;
         return;
     }
 
@@ -560,14 +563,17 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     /*if(!instancesBuffer || instancesBuffer->getSize() < sizeof(SceneDescription::Instance) * logicalInstances.size()) */{
         instancesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
                                                                                                         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                                                                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
+                                                                                                        vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
         instancesBuffer->setDebugNames(Carrot::sprintf("RT Instances frame %lu", GetRenderer().getFrameCount()));
     }
 
     {
         ZoneScopedN("Stage upload");
         //instancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
-        instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+
+        // FIXME wait for transfer queue might not be safe!! (if separate from Graphics, has no impact on graphics synchronisation)
+        //instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+        instancesBuffer->directUpload(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
         //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
 
         rtInstancesBuffer->stageUploadWithOffset(0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));

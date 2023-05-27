@@ -58,8 +58,8 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #ifdef IS_DEBUG_BUILD
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 #else
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
-//constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
+//constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #endif
 #endif
 
@@ -69,6 +69,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_KHR_SPIRV_1_4_EXTENSION_NAME,
         VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
+        VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -92,7 +93,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         && pCallbackData->messageIdNumber != 3898698738u
         && pCallbackData->messageIdNumber != 3855709244u
         ) {
-            Carrot::Log::error("(%llu) Validation layer: %s", pCallbackData->messageIdNumber, pCallbackData->pMessage);
+            Carrot::Log::error("[Frame %lu] (%llu) Validation layer: %s", GetRenderer().getFrameCount(), pCallbackData->messageIdNumber, pCallbackData->pMessage);
 
             if(breakOnVulkanError) {
                 Carrot::Log::flush();
@@ -495,8 +496,6 @@ void Carrot::VulkanDriver::createLogicalDevice() {
         queueCreateInfoStructs.emplace_back(queueCreateInfo);
     }
 
-    // TODO: define features we will use
-
     vk::StructureChain deviceFeatures {
             vk::PhysicalDeviceFeatures2 {
                     .features = {
@@ -535,6 +534,9 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .scalarBlockLayout = true,
                     .bufferDeviceAddress = true,
             },
+            vk::PhysicalDeviceRobustness2FeaturesEXT {
+                    .nullDescriptor = true,
+            }
     };
 
     std::vector<const char*> deviceExtensions = VULKAN_DEVICE_EXTENSIONS; // copy

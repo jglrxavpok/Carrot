@@ -33,18 +33,23 @@ namespace sol {
 
 namespace Carrot {
     struct BindingKey {
-        vk::PipelineLayout pipeline;
+        Carrot::Pipeline& pipeline;
         std::size_t swapchainIndex;
         std::uint32_t setID;
         std::uint32_t bindingID;
 
         bool operator==(const BindingKey& other) const {
-            return pipeline == other.pipeline && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID;
+            return &pipeline == &other.pipeline && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID;
         }
     };
 
     struct ImageBindingKey: public BindingKey {
         vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+
+        bool operator==(const ImageBindingKey& other) const {
+            return &pipeline == &other.pipeline && swapchainIndex == other.swapchainIndex && setID == other.setID && bindingID == other.bindingID
+            && layout == other.layout;
+        }
     };
 };
 
@@ -54,7 +59,7 @@ namespace std {
         std::size_t operator()(const Carrot::BindingKey& key) const {
             const std::size_t prime = 31;
 
-            std::size_t hash = static_cast<std::size_t>((std::uint64_t)key.pipeline.operator VkPipelineLayout_T *());
+            std::size_t hash = static_cast<std::size_t>((std::uint64_t)&key.pipeline);
             hash = key.swapchainIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
@@ -67,7 +72,7 @@ namespace std {
         std::size_t operator()(const Carrot::ImageBindingKey& key) const {
             const std::size_t prime = 31;
 
-            std::size_t hash = static_cast<std::size_t>((std::uint64_t)key.pipeline.operator VkPipelineLayout_T *());
+            std::size_t hash = static_cast<std::size_t>((std::uint64_t)&key.pipeline);
             hash = key.swapchainIndex + hash * prime;
             hash = key.setID + hash * prime;
             hash = key.bindingID + hash * prime;
@@ -212,6 +217,13 @@ namespace Carrot {
         void bindBuffer(Pipeline& pipeline, const Render::Context& data, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID);
         void bindUniformBuffer(Pipeline& pipeline, const Render::Context& data, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID);
 
+        void unbindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID);
+        void unbindTexture(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex = 0);
+        void unbindStorageImage(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID, std::uint32_t arrayIndex = 0);
+        void unbindAccelerationStructure(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID);
+        void unbindBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID);
+        void unbindUniformBuffer(Pipeline& pipeline, const Render::Context& frame, std::uint32_t setID, std::uint32_t bindingID);
+
         template<typename ConstantBlock>
         void pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
 
@@ -245,6 +257,8 @@ namespace Carrot {
         /// Returns a portion of buffer that can be used for the current frame
         Carrot::BufferView getSingleFrameBuffer(vk::DeviceSize size);
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
+        const Carrot::BufferView getNullBufferInfo() const;
+
         void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
 
@@ -323,7 +337,7 @@ namespace Carrot {
         std::unordered_map<ImageBindingKey, vk::Image> boundStorageImages;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
-        std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;
+        std::unordered_map<BindingKey, vk::DescriptorBufferInfo> boundBuffers;
 
         Async::SpinLock threadRegistrationLock;
 

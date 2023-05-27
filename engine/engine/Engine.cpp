@@ -853,6 +853,7 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
+    Carrot::Log::info("recreateSwapchain");
     vkDriver.fetchNewFramebufferSize();
 
     framebufferResized = false;

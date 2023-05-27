@@ -140,11 +140,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
+                    renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 1, nullptr);
                     if(tlas) {
                         renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 5, 0);
-                        renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 1, nullptr);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 5, 2);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 5, 3);
+                    } else {
+                        renderer.unbindAccelerationStructure(*resolvePipeline, frame, 5, 0);
+                        renderer.unbindBuffer(*resolvePipeline, frame, 5, 2);
+                        renderer.unbindBuffer(*resolvePipeline, frame, 5, 3);
                     }
                 }
 
