@@ -56,7 +56,7 @@ void main() {
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
     previousFrameColor.a = 1.0;
 
-    const float colorClampStrength = 100.0f;
+    const float colorClampStrength = 200.0f;
     reprojected *= exp(-length(currentFrameColor.rgb - previousFrameColor.rgb) / colorClampStrength); // color clamp
 
     float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;

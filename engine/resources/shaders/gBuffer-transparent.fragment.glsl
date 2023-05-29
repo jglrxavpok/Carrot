@@ -63,7 +63,7 @@ void main() {
     T_ = normalize(T - dot(T, N_) * N_);
     B_ = normalize(bitangentSign * cross(N_, T_));
 
-    o.viewTBN = mat3(inModelview) * mat3(T_, B_, N_);
+    o.viewTBN = mat3(T_, B_, N_);
 
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = uuid;

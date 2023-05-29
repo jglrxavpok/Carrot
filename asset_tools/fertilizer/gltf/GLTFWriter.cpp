@@ -263,19 +263,6 @@ namespace Fertilizer {
         std::size_t nodeIndex = 0;
         tinygltf::Model& model = payload.glTFModel;
         std::function<void(const Carrot::Render::SkeletonTreeNode&)> exportNode = [&](const Carrot::Render::SkeletonTreeNode& node) {
-            // check if we can skip this node
-            bool skippable = false;
-            skippable = node.getChildren().size() <= 1
-                    && (!node.meshIndices.has_value() || node.meshIndices.value().empty())
-                    && isDefaultTransform(node.bone.originalTransform);
-
-            if(skippable) {
-                if(!node.getChildren().empty()) {
-                    exportNode(node.getChildren().front());
-                }
-                return;
-            }
-
             std::size_t currentNodeIndex = nodeIndex++;
             model.nodes.emplace_back(); // cannot keep a reference, will be invalidated by recursive exportNode calls
 

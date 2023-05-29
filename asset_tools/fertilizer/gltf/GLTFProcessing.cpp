@@ -161,15 +161,54 @@ namespace Fertilizer {
         }
     }
 
+    /**
+     * If tangents are colinear with normals, make tangent follow an edge of the triangle. This case can happen when
+     * applying Mikkt-Space with no UV mapping (either inside 'generateMikkTSpaceTangents' or other tools, eg Blender)
+     * @param mesh the mesh to clean up
+     */
+    static void cleanupTangents(ExpandedMesh& mesh) {
+        verify(mesh.vertices.size() % 3 == 0, "Only triangle meshs are supported");
+        bool needsRegeneration = false;
+        for (std::size_t i = 0; i < mesh.vertices.size(); i += 3) {
+            auto isCloseToCollinear = [](const glm::vec3& a, const glm::vec3& b) {
+                constexpr float epsilon = 10e-12f;
+                const glm::vec3 rejected = b - glm::dot(a, b) * b;
+                return glm::all(glm::lessThan(glm::abs(rejected), glm::vec3(epsilon)));
+            };
+
+            for(std::size_t j = 0; j < 3; j++) {
+                const glm::vec3& normal = mesh.vertices[i + j].vertex.normal;
+                const glm::vec3 tangent = mesh.vertices[i + j].vertex.tangent.xyz;
+                needsRegeneration |= isCloseToCollinear(normal, tangent);
+            }
+
+            if(needsRegeneration) {
+                break;
+            }
+        }
+
+        if(needsRegeneration) {
+            Carrot::Log::warn("Found collinear normals and tangents (maybe due to missing UV mapping), generating basic tangents");
+            // regenerate all tangents for this mesh, we found collinear normal and tangents
+            for (std::size_t i = 0; i < mesh.vertices.size(); i += 3) {
+                const glm::vec3 edge = mesh.vertices[i + 1].vertex.pos.xyz - mesh.vertices[i + 0].vertex.pos.xyz;
+                for (std::size_t j = 0; j < 3; j++) {
+                    glm::vec4& tangentW = mesh.vertices[i + j].vertex.tangent;
+                    tangentW = glm::vec4(glm::normalize(edge), 1.0f); // W=1.0f but no thought was put behind this value
+                }
+            }
+        }
+    }
+
     static void generateMissingAttributes(tinygltf::Model& model) {
         GLTFLoader loader{};
         LoadedScene scene = loader.load(model, {});
 
         for(auto& primitive : scene.primitives) {
             // no need to regenerate anything if every attribute is already present
-            if(primitive.hadTexCoords && primitive.hadNormals && primitive.hadTangents) {
+            /*if(primitive.hadTexCoords && primitive.hadNormals && primitive.hadTangents) {
                 continue;
-            }
+            }*/
 
             ExpandedMesh expandedMesh = expandMesh(primitive);
 
@@ -188,6 +227,8 @@ namespace Fertilizer {
                 generateMikkTSpaceTangents(expandedMesh);
                 Carrot::Log::info("Mesh %s, generated tangents!", primitive.name.c_str());
             }
+
+            cleanupTangents(expandedMesh);
 
             collapseMesh(primitive, expandedMesh);
         }

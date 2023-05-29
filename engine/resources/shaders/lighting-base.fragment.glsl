@@ -93,7 +93,7 @@ void main() {
 
         distanceToCamera = length(gbuffer.viewPosition);
     } else {
-        vec4 viewSpaceDir = cbo.inverseJitteredProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
+        vec4 viewSpaceDir = cbo.inverseNonJitteredProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
         vec3 worldViewDir = mat3(cbo.inverseView) * viewSpaceDir.xyz;
 
         const mat3 rot = mat3(

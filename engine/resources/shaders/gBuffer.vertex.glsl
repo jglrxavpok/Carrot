@@ -21,7 +21,7 @@ layout(location = 2) out vec4 instanceColor;
 layout(location = 3) out vec3 outViewPos;
 layout(location = 4) out vec3 outPreviousFrameViewPos;
 layout(location = 5) out vec3 _unused;
-layout(location = 6) out uvec4 outUUID;
+layout(location = 6) flat out uvec4 outUUID;
 layout(location = 7) out vec3 T;
 layout(location = 8) out vec3 N;
 layout(location = 9) out float outBitangentSign;
@@ -43,9 +43,12 @@ void main() {
     outViewPos = viewPosition.xyz / viewPosition.w;
     outPreviousFrameViewPos = previousFrameViewPosition.xyz / previousFrameViewPosition.w;
 
-    T = inTangent.xyz;
-    N = inNormal;
-    T = normalize(T - dot(T, N) * N);
+    vec3 t = normalize(inTangent.xyz);
+    vec3 n = normalize(inNormal);
+
+    N = normalize(mat3(modelview) * n);
+    T = normalize(mat3(modelview) * (t - dot(t, n) * n));
+
     outBitangentSign = inTangent.w;
 
     outUUID = inUUID;

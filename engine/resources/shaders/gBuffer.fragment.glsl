@@ -43,7 +43,7 @@ void main() {
 
     GBuffer o = initGBuffer(inModelview);
 
-    o.albedo = vec4(texColor.rgb * fragColor * instanceColor.rgb, texColor.a * instanceColor.a);
+    o.albedo = vec4(texColor.rgb, texColor.a * instanceColor.a);
     o.viewPosition = viewPosition;
 
     vec3 N_ = normalize(N);
@@ -59,7 +59,7 @@ void main() {
     T_ = normalize(T - dot(T, N_) * N_);
     B_ = normalize(bitangentSign * cross(N_, T_));
 
-    o.viewTBN = mat3(inModelview) * mat3(T_, B_, N_);
+    o.viewTBN = mat3(T_, B_, N_);
 
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = uuid;

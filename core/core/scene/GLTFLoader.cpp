@@ -247,6 +247,7 @@ namespace Carrot::Render {
             loadedPrimitive.maxPos = glm::max(loadedPrimitive.maxPos, pos);
 
             vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
+
             if(tangentsAccessor) {
                 vertex.tangent = readFromAccessor<glm::vec4>(i, *tangentsAccessor, model);
             } else {
