@@ -45,6 +45,8 @@ namespace Carrot::Physics {
         body->setLinearVelocity(toCopy.body->getLinearVelocity());
         body->setLocalCenterOfMass(toCopy.body->getLocalCenterOfMass());
         body->setLocalInertiaTensor(toCopy.body->getLocalInertiaTensor());
+        body->setAngularLockAxisFactor(toCopy.body->getAngularLockAxisFactor());
+        body->setLinearLockAxisFactor(toCopy.body->getLinearLockAxisFactor());
         body->setType(toCopy.body->getType());
         body->setUserData(this);
 

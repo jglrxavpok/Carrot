@@ -24,19 +24,6 @@ namespace Carrot::ECS {
                 transform.scale = transformComponent.computeGlobalReactPhysicsTransform().scale; // preserve scale
                 transformComponent.setGlobalTransform(transform);
             }
-
-            for(auto& colliderPtr : rigidBodyComp.rigidbody.getColliders()) {
-                auto& shape = colliderPtr->getShape();
-                switch(shape.getType()) {
-                    case Physics::ColliderType::StaticConcaveTriangleMesh: {
-                        auto& asMesh = static_cast<Physics::StaticConcaveMeshCollisionShape&>(shape);
-                        asMesh.setScale(transform.scale);
-                    }
-                    break;
-
-                    // TODO: DynamicConvexTriangleMesh
-                }
-            }
         });
     }
 

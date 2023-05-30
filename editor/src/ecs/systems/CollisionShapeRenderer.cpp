@@ -27,7 +27,9 @@ namespace Peeler::ECS {
                     for(const auto& colliderPtr : rigidBodyComponent.rigidbody.getColliders()) {
                         const auto& collider = *colliderPtr;
 
-                        glm::mat4 transform = transformComponent.toTransformMatrix();
+                        glm::mat4 transform = transformComponent.toTransformMatrix() * collider.getLocalTransform().toTransformMatrix();
+                        const glm::vec3 worldScale = transformComponent.computeFinalScale(); // rigidbody size is separated from object scale
+                        transform = glm::scale(transform, 1.0f / worldScale);
                         switch(collider.getType()) {
                             case Carrot::Physics::ColliderType::Sphere: {
                                 const auto& asSphere = static_cast<Carrot::Physics::SphereCollisionShape&>(collider.getShape());
@@ -41,7 +43,13 @@ namespace Peeler::ECS {
 
                             case Carrot::Physics::ColliderType::Capsule: {
                                 const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
-                                renderContext.renderWireframeCapsule(transform, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
+                                // Reactphysics 3D is Y-up while Carrot is Z-up
+                                const glm::mat4 rp3dCorrection =
+                                        glm::scale(
+                                                glm::rotate(glm::identity<glm::mat4>(), glm::half_pi<float>(), glm::vec3(1, 0, 0)),
+                                                glm::vec3(1, -1, 1)
+                                        );
+                                renderContext.renderWireframeCapsule(transform * rp3dCorrection, asCapsule.getRadius(), asCapsule.getHeight(), ColliderColor, selected);
                             } break;
 
                             default:
