@@ -35,8 +35,6 @@ namespace Carrot::ECS {
             return result;
         }
 
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
         /**
          * Computes the final position of the entity based on the parent orientation & position and this entity's local transform.
          * @return World-space position of the entity

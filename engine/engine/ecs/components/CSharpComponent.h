@@ -21,8 +21,6 @@ namespace Carrot::ECS {
 
         std::unique_ptr <Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
 
-        void drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) override;
-
         ComponentID getComponentTypeID() const override;
 
     public:
@@ -31,19 +29,24 @@ namespace Carrot::ECS {
          */
         Scripting::CSObject& getCSComponentObject();
 
+        /**
+         * Returns true iif the corresponding C# component object was properly loaded.
+         * Can return false if there are compilation errors, the assembly was unloaded or the component class no longer
+         * exist inside the assembly after a reload
+         */
+        bool isLoaded();
+
+        /**
+         * Properties loaded for this component. Can be modified, but no property can be added/removed here.
+         */
+        std::span<Scripting::ComponentProperty> getProperties();
+
     private:
         void init();
 
         void refresh();
         void onAssemblyLoad();
         void onAssemblyUnload();
-
-    private:
-        bool drawIntProperty(Scripting::ComponentProperty& property);
-        bool drawFloatProperty(Scripting::ComponentProperty& property);
-        bool drawBooleanProperty(Scripting::ComponentProperty& property);
-        bool drawEntityProperty(Scripting::ComponentProperty& property);
-        bool drawUserDefinedProperty(Scripting::ComponentProperty& property);
 
     private:
         bool foundInAssemblies = false;

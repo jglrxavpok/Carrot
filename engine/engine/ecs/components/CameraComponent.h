@@ -69,8 +69,6 @@ namespace Carrot::ECS {
             return result;
         }
 
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
         glm::mat4 makeProjectionMatrix() const;
     };
 }

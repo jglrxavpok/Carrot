@@ -29,11 +29,6 @@ namespace Carrot::ECS {
             result->isTransparent = isTransparent;
             return result;
         }
-
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
-    private:
-        static SpriteComponent* inInspector;
     };
 }
 

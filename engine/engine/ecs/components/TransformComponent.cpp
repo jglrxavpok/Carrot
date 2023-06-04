@@ -18,32 +18,6 @@ namespace Carrot::ECS {
         return localTransform.toTransformMatrix();
     }
 
-    void TransformComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        {
-            float arr[] = { localTransform.position.x, localTransform.position.y, localTransform.position.z };
-            if (ImGui::DragFloat3("Position", arr)) {
-                localTransform.position = { arr[0], arr[1], arr[2] };
-                modified = true;
-            }
-        }
-
-        {
-            float arr[] = { localTransform.scale.x, localTransform.scale.y, localTransform.scale.z };
-            if (ImGui::DragFloat3("Scale", arr)) {
-                localTransform.scale = { arr[0], arr[1], arr[2] };
-                modified = true;
-            }
-        }
-
-        {
-            float arr[] = { localTransform.rotation.x, localTransform.rotation.y, localTransform.rotation.z, localTransform.rotation.w };
-            if (ImGui::DragFloat4("Rotation", arr)) {
-                localTransform.rotation = { arr[3], arr[0], arr[1], arr[2] };
-                modified = true;
-            }
-        }
-    }
-
     TransformComponent::TransformComponent(const rapidjson::Value& json, Entity entity): TransformComponent(std::move(entity)) {
         localTransform.loadJSON(json);
     };

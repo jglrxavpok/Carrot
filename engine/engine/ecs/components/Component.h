@@ -25,9 +25,6 @@ namespace Carrot::ECS {
         Entity& getEntity() { return entity; }
         const Entity& getEntity() const { return entity; }
 
-        void drawInspector(const Carrot::Render::Context& renderContext, bool& shouldKeep, bool& modified);
-        virtual void drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) {};
-
         virtual const char* const getName() const = 0;
 
         virtual std::unique_ptr<Component> duplicate(const Entity& newOwner) const = 0;

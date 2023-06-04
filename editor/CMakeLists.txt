@@ -8,6 +8,10 @@ set(EditorSources
         ${EditorRoot}layers/GizmosLayer.cpp
         ${EditorRoot}layers/ISceneViewLayer.cpp
 
+        ${EditorRoot}panels/inspector/CSharpEdition.cpp
+        ${EditorRoot}panels/inspector/EditorFunctions.cpp
+        ${EditorRoot}panels/inspector/RigidBodyEdition.cpp
+        ${EditorRoot}panels/InspectorPanel.cpp
         ${EditorRoot}panels/ResourcePanel.cpp
 
         ${EditorRoot}ecs/systems/CameraRenderer.cpp

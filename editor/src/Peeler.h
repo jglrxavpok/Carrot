@@ -16,6 +16,7 @@
 #include <engine/scene/Scene.h>
 #include "GridRenderer.h"
 #include "panels/ResourcePanel.h"
+#include "panels/InspectorPanel.h"
 #include "layers/ISceneViewLayer.h"
 
 namespace Peeler {
@@ -186,6 +187,7 @@ namespace Peeler {
         std::vector<std::unique_ptr<ISceneViewLayer>> sceneViewLayersStack;
         std::vector<std::size_t> toDeleteLayers; // store for a single tick to avoid memory corruption after removing a layer
         ResourcePanel resourcePanel;
+        InspectorPanel inspectorPanel;
 
     private: // Scene manipulation
         bool movingGameViewCamera = false;

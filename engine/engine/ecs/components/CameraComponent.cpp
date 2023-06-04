@@ -6,28 +6,6 @@
 #include <core/utils/ImGuiUtils.hpp>
 
 namespace Carrot::ECS {
-    void CameraComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        ImGui::Checkbox("Primary", &isPrimary);
-        ImGui::BeginGroup();
-        if(ImGui::RadioButton("Perspective", !isOrthographic)) {
-            isOrthographic = false;
-        }
-        ImGui::SameLine();
-        if(ImGui::RadioButton("Orthographic", isOrthographic)) {
-            isOrthographic = true;
-        }
-        ImGui::EndGroup();
-
-        if(isOrthographic) {
-            float arr[3] = { orthoSize.x, orthoSize.y, orthoSize.z };
-            if(ImGui::DragFloat3("Bounds", arr, 0.5f)) {
-                orthoSize = { arr[0], arr[1], arr[2] };
-            }
-        } else {
-            ImGui::DragFloatRange2("Z Range", &perspectiveNear, &perspectiveFar, 0.0f, 10000.0f);
-            ImGui::SliderAngle("FOV", &perspectiveFov, 0.001f, 360.0f);
-        }
-    }
 
     glm::mat4 CameraComponent::makeProjectionMatrix() const {
         if(isOrthographic) {

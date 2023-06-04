@@ -12,6 +12,7 @@
 #include <imgui.h>
 
 namespace Carrot::ECS {
+    // TODO: still interesting??
     struct ForceSinPosition: public IdentifiableComponent<ForceSinPosition> {
         glm::vec3 angularFrequency{1.0f};
         glm::vec3 amplitude{1.0f};
@@ -49,20 +50,6 @@ namespace Carrot::ECS {
             result->angularOffset = angularOffset;
             result->centerPosition = centerPosition;
             return result;
-        }
-
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override {
-            auto line = [&](const char* id, glm::vec3& vec) {
-                float arr[] = { vec.x, vec.y, vec.z };
-                if (ImGui::DragFloat3(id, arr)) {
-                    vec = { arr[0], arr[1], arr[2] };
-                    modified = true;
-                }
-            };
-            line("Angular Frequency", angularFrequency);
-            line("Amplitude", amplitude);
-            line("Angular Offset", angularOffset);
-            line("Center Position", centerPosition);
         }
     };
 }

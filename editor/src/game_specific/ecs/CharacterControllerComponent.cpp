@@ -26,12 +26,4 @@ namespace Game::ECS {
         return obj;
     }
 
-    void CharacterControllerComponent::drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) {
-        if(ImGui::InputText("Head child entity name##CharacterControllerComponent child name", headChildName, ImGuiInputTextFlags_EnterReturnsTrue)) {
-
-        }
-        if(ImGui::InputText("Score entity name##CharacterControllerComponent child name", scoreEntityName, ImGuiInputTextFlags_EnterReturnsTrue)) {
-
-        }
-    }
 }

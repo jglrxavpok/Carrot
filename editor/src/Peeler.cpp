@@ -255,7 +255,7 @@ namespace Peeler {
         ImGui::End();
 
         if(ImGui::Begin("Properties")) {
-            UIInspector(renderContext);
+            inspectorPanel.draw(renderContext);
         }
         ImGui::End();
 
@@ -436,71 +436,6 @@ namespace Peeler {
                 currentScene.world.addLogicSystem(std::move(ptr));
             },
             [&](Carrot::ECS::System* ptr) { currentScene.world.removeLogicSystem(ptr); });
-    }
-
-    void Application::UIInspector(const Carrot::Render::Context& renderContext) {
-        ZoneScoped;
-        if(selectedIDs.size() == 1) {
-            auto& entityID = selectedIDs[0];
-            if(!currentScene.world.exists(entityID)) {
-                ImGui::Text("Entity no longer exists!");
-                return;
-            }
-            auto entity = currentScene.world.wrap(entityID);
-            auto& str = entity.getName();
-            ImGui::InputText("Entity name##entity name field inspector", str);
-
-            auto components = currentScene.world.getAllComponents(entityID);
-
-            std::unordered_set<Carrot::ComponentID> toRemove;
-            for(auto& comp : components) {
-                bool shouldKeep = true;
-                bool modified = false;
-                comp->drawInspector(renderContext, shouldKeep, modified);
-                if(!shouldKeep) {
-                    toRemove.insert(comp->getComponentTypeID());
-                }
-
-                if(modified) {
-                    markDirty();
-                }
-            }
-
-            for(const auto& id : toRemove) {
-                markDirty();
-                entity.removeComponent(id);
-            }
-
-            if(ImGui::Button("Add component##inspector add component")) {
-                ImGui::OpenPopup("Add component##Add component popup");
-            }
-
-            if(ImGui::BeginPopup("Add component##Add component popup")) {
-                const auto& lib = Carrot::ECS::getComponentLibrary();
-
-                std::unordered_set<std::string> componentsEntityHas;
-                for(const auto* comp : entity.getAllComponents()) {
-                    componentsEntityHas.insert(comp->getName());
-                }
-                for(const auto& compID : lib.getAllIDs()) {
-                    std::string id = compID;
-
-                    if(componentsEntityHas.contains(id)) {
-                        continue;
-                    }
-
-                    id += "##add component menu item inspector";
-                    if(ImGui::MenuItem(id.c_str())) {
-                        auto comp = lib.create(compID, entity);
-                        entity.addComponent(std::move(comp));
-                        markDirty();
-                    }
-                }
-                ImGui::EndPopup();
-            }
-        } else if(selectedIDs.size() > 1) {
-            ImGui::Text("Inspector for multiple entities is not supported yet.");
-        }
     }
 
     void Application::UIWorldHierarchy(const Carrot::Render::Context& renderContext) {
@@ -923,7 +858,8 @@ namespace Peeler {
         pauseActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button_paused.png"),
         stepButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/step_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
-        resourcePanel(*this)
+        resourcePanel(*this),
+        inspectorPanel(*this)
     {
         Instance = this;
         NFD_Init();
@@ -1047,7 +983,7 @@ namespace Peeler {
         if(movingGameViewCamera && !isPlaying) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
                 turnCamera.getValue().x, turnCamera.getValue().y,
-                frameTime);
+                frameTime*3);
         }
     }
 

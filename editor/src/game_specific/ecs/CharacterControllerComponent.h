@@ -42,8 +42,6 @@ namespace Game::ECS {
             result->heldPages = heldPages;
             return result;
         }
-
-        void drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) override;
     };
 }
 

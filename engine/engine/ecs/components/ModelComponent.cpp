@@ -12,7 +12,6 @@
 #include <string>
 
 namespace Carrot::ECS {
-    ModelComponent* ModelComponent::inInspector = nullptr;
 
     ModelComponent::ModelComponent(const rapidjson::Value& json, Entity entity): ModelComponent::ModelComponent(std::move(entity)) {
         auto obj = json.GetObject();
@@ -53,49 +52,6 @@ namespace Carrot::ECS {
         obj.AddMember("model", modelData, doc.GetAllocator());
 
         return obj;
-    }
-
-    void ModelComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
-            ImGui::Text("Model is loading...");
-            return;
-        }
-        std::string path = asyncModel.isEmpty() ? "" : asyncModel->getOriginatingResource().getName();
-        if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            setFile(IO::VFS::Path(path));
-            modified = true;
-        }
-
-        ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &isTransparent);
-
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string str = buffer.get();
-                std::string s = Carrot::toString(str);
-
-                auto vfsPath = IO::VFS::Path(s);
-
-                // TODO: no need to go through disk again
-                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
-                    setFile(vfsPath);
-                    inInspector = nullptr;
-                    modified = true;
-                }
-            }
-
-            ImGui::EndDragDropTarget();
-        }
-
-        float colorArr[4] = { color.r, color.g, color.b, color.a };
-        if(ImGui::ColorPicker4("Model color", colorArr)) {
-            color = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
-            modified = true;
-        }
     }
 
     void ModelComponent::loadTLASIfPossible() {

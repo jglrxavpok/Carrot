@@ -10,8 +10,6 @@
 #include <filesystem>
 
 namespace Carrot::ECS {
-    SpriteComponent* SpriteComponent::inInspector = nullptr;
-
     SpriteComponent::SpriteComponent(const rapidjson::Value& json, Entity entity): SpriteComponent::SpriteComponent(std::move(entity)) {
         auto obj = json.GetObject();
         isTransparent = obj["isTransparent"].GetBool();
@@ -61,69 +59,5 @@ namespace Carrot::ECS {
         }
 
         return obj;
-    }
-
-    void SpriteComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        static std::string path = "<<path>>";
-        if(inInspector != this) {
-            inInspector = this;
-            if(sprite) {
-                path = sprite->getTexture().getOriginatingResource().getName();
-            } else {
-                path = "";
-            }
-        }
-        if(ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(path);
-            if(!sprite) {
-                sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
-            } else {
-                sprite->setTexture(textureRef);
-            }
-            modified = true;
-        }
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+1);
-                std::memcpy(buffer.get(), static_cast<const void*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string newPath = buffer.get();
-
-                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
-                    if(!sprite) {
-                        sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
-                    } else {
-                        sprite->setTexture(textureRef);
-                    }
-                    inInspector = nullptr;
-                    modified = true;
-                }
-            }
-
-            ImGui::EndDragDropTarget();
-        }
-
-        if(sprite) {
-            auto& region = sprite->getTextureRegion();
-            bool recompute = false;
-            float minU = region.getMinX();
-            float minV = region.getMinY();
-            float maxU = region.getMaxX();
-            float maxV = region.getMaxY();
-            if(ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
-               |  ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
-               |  ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
-               |  ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
-                recompute = true;
-            }
-
-            if(recompute) {
-                modified = true;
-                region = Math::Rect2Df(minU, minV, maxU, maxV);
-            }
-        }
     }
 }

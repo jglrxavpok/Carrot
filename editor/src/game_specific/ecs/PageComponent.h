@@ -30,8 +30,6 @@ namespace Game::ECS {
             auto result = std::make_unique<PageComponent>(newOwner);
             return result;
         }
-
-        void drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) override {}
     };
 }
 

@@ -18,8 +18,6 @@ namespace Carrot::ECS {
 
         rapidjson::Value toJSON(rapidjson::Document& doc) const override;
 
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
         const char *const getName() const override {
             return "LightComponent";
         }

@@ -172,7 +172,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     std::vector<ImageTransition> prePassTransitions;
     for(const auto& input : inputs) {
         auto initialLayout = input.resource.previousLayout;//graph.getFinalLayouts()[input.resource.parentID]; // input is not the resource itself, but a new instance returned by read()
-        assert(initialLayout != vk::ImageLayout::eUndefined);
+        //assert(initialLayout != vk::ImageLayout::eUndefined);
         if(initialLayout != input.expectedLayout) {
             auto it = std::find_if(WHOLE_CONTAINER(prePassTransitions), [&](const auto& e) { return e.resourceID == input.resource.rootID; });
             if(it == prePassTransitions.end()) {

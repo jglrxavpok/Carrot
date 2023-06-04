@@ -17,12 +17,6 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    void TextComponent::drawInspectorInternals(const Render::Context& renderContext, bool& modified) {
-        if(ImGui::InputTextMultiline("Content##TextComponent input field", text)) {
-            setText(text);
-        }
-    }
-
     std::string_view TextComponent::getText() const {
         return text;
     }

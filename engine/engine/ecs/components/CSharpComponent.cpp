@@ -86,42 +86,6 @@ namespace Carrot::ECS {
         return fullName.c_str();
     }
 
-    void CSharpComponent::drawInspectorInternals(const Carrot::Render::Context& renderContext, bool& modified) {
-        if(!foundInAssemblies) {
-            ImGui::Text("Not found inside assembly");
-            return;
-        }
-
-        for(auto& property : componentProperties) {
-
-            switch(property.type) {
-                case Scripting::ComponentType::Int:
-                    modified |= drawIntProperty(property);
-                    break;
-
-                case Scripting::ComponentType::Float:
-                    modified |= drawFloatProperty(property);
-                    break;
-
-                case Scripting::ComponentType::Boolean:
-                    modified |= drawBooleanProperty(property);
-                    break;
-
-                case Scripting::ComponentType::Entity:
-                    modified |= drawEntityProperty(property);
-                    break;
-
-                case Scripting::ComponentType::UserDefined:
-                    modified |= drawUserDefinedProperty(property);
-                    break;
-
-                default:
-                    TODO; // missing case!
-                    break;
-            }
-        }
-    }
-
     ComponentID CSharpComponent::getComponentTypeID() const {
         return componentID;
     }
@@ -129,6 +93,14 @@ namespace Carrot::ECS {
     Scripting::CSObject& CSharpComponent::getCSComponentObject() {
         verify(csComponent, "No component loaded at this point");
         return *csComponent;
+    }
+
+    bool CSharpComponent::isLoaded() {
+        return csComponent != nullptr;
+    }
+
+    std::span<Scripting::ComponentProperty> CSharpComponent::getProperties() {
+        return componentProperties;
     }
 
     void CSharpComponent::init() {
@@ -195,128 +167,6 @@ namespace Carrot::ECS {
     void CSharpComponent::onAssemblyUnload() {
         serializedVersion = toJSON(serializedDoc);
         csComponent = nullptr;
-    }
-
-    // component drawing methods
-
-#define MAKE_ID(PROP)               \
-    std::string id;                 \
-    id += PROP.displayName;         \
-    id += "##";                     \
-    id += PROP.fieldName;           \
-    id += "-";                      \
-    id += __FUNCTION__;
-
-    bool CSharpComponent::drawIntProperty(Scripting::ComponentProperty& property) {
-        std::int32_t value = *((std::int32_t*)mono_object_unbox(property.field->get(*csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        if(property.intRange.has_value()) {
-            std::int32_t min = std::min(property.intRange->min, property.intRange->max);
-            std::int32_t max = std::max(property.intRange->min, property.intRange->max);
-
-            // ImGui limits
-            bool useSlider = true;
-            if(min <= -INT_MAX) {
-                useSlider = false;
-            }
-            if(max >= INT_MAX) {
-                useSlider = false;
-            }
-
-            if(useSlider) {
-                changed |= ImGui::SliderInt(id.c_str(), &value, min, max);
-            } else {
-                changed |= ImGui::DragInt(id.c_str(), &value, 0.1f, min, max);
-            }
-        } else {
-            changed |= ImGui::DragInt(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
-        }
-
-        if(changed) {
-            property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
-        }
-
-        return changed;
-    }
-
-    bool CSharpComponent::drawFloatProperty(Scripting::ComponentProperty& property) {
-        float value = *((float*)mono_object_unbox(property.field->get(*csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        if(property.floatRange.has_value()) {
-            float min = std::min(property.floatRange->min, property.floatRange->max);
-            float max = std::max(property.floatRange->min, property.floatRange->max);
-
-            // ImGui limits
-            bool useSlider = true;
-            if(min < -FLT_MAX/2.0f) {
-                min = -FLT_MAX/2.0f;
-                useSlider = false;
-            }
-            if(max > FLT_MAX/2.0f) {
-                max = FLT_MAX/2.0f;
-                useSlider = false;
-            }
-
-            if(useSlider) {
-                changed |= ImGui::SliderFloat(id.c_str(), &value, min, max);
-            } else {
-                changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f, min, max);
-            }
-        } else {
-            changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
-        }
-
-        if(changed) {
-            property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
-        }
-
-        return changed;
-    }
-
-    bool CSharpComponent::drawBooleanProperty(Scripting::ComponentProperty& property) {
-        bool value = *((bool*)mono_object_unbox(property.field->get(*csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= ImGui::Checkbox(id.c_str(), &value);
-
-        if(changed) {
-            property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&value));
-        }
-
-        return changed;
-    }
-
-    bool CSharpComponent::drawEntityProperty(Scripting::ComponentProperty& property) {
-        ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(*csComponent));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= Peeler::Instance->drawPickEntityWidget(id.c_str(), value);
-
-        if(changed) {
-            property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(value));
-        }
-
-        return changed;
-    }
-
-    bool CSharpComponent::drawUserDefinedProperty(Scripting::ComponentProperty& property) {
-        ImGui::Text("%s (%s) - User defined type", property.displayName.c_str(), property.typeStr.c_str());
-
-        return false;
     }
 
 } // Carrot::ECS

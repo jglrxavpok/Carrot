@@ -40,12 +40,7 @@ namespace Carrot::ECS {
             return result;
         }
 
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
         void setFile(const IO::VFS::Path& path);
-
-    private:
-        static ModelComponent* inInspector;
 
     private:
         void loadTLASIfPossible();

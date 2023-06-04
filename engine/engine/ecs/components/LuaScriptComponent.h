@@ -11,6 +11,8 @@ namespace Carrot::ECS {
     struct LuaScriptComponent: public IdentifiableComponent<LuaScriptComponent> {
         using ScriptStorage = std::vector<std::pair<IO::VFS::Path, std::unique_ptr<Lua::Script>>>;
 
+        ScriptStorage scripts; // nullptrs are allowed (for invalid paths)
+
         explicit LuaScriptComponent(Entity entity): IdentifiableComponent<LuaScriptComponent>(std::move(entity)) {}
 
         explicit LuaScriptComponent(const rapidjson::Value& json, Entity entity);
@@ -22,12 +24,8 @@ namespace Carrot::ECS {
         }
 
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override;
-
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
     private:
         bool firstTick = true;
-        ScriptStorage scripts; // nullptrs are allowed (for invalid paths)
 
         friend class LuaRenderSystem;
         friend class LuaUpdateSystem;

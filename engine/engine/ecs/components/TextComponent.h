@@ -32,8 +32,6 @@ namespace Carrot::ECS {
             return result;
         }
 
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override;
-
     private:
         void refreshRenderable();
 

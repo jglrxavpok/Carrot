@@ -39,14 +39,6 @@ namespace Carrot::ECS {
             result->velocity = velocity;
             return result;
         }
-
-        void drawInspectorInternals(const Render::Context& renderContext, bool& modified) override {
-            float arr[] = { velocity.x, velocity.y, velocity.z };
-            if (ImGui::DragFloat3("Velocity", arr)) {
-                velocity = { arr[0], arr[1], arr[2] };
-                modified = true;
-            }
-        }
     };
 }
 
