@@ -9,9 +9,126 @@
 #include <engine/render/Model.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <core/io/Logging.hpp>
+#include <layers/ISceneViewLayer.h>
+#include "../../Peeler.h"
 
+#include <ImGuizmo.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <engine/ecs/components/TransformComponent.h>
 
 namespace Peeler {
+    class ColliderEditionLayer: public ISceneViewLayer {
+    public:
+        explicit ColliderEditionLayer(Application& editor, Carrot::ECS::EntityID targetEntity, std::size_t targetColliderIndex)
+            : ISceneViewLayer(editor), targetEntity(targetEntity), targetColliderIndex(targetColliderIndex) {
+
+        }
+
+        bool allowCameraMovement() const override {
+            return true;
+        }
+
+        bool showLayersBelow() const override {
+            return false;
+        }
+
+        bool allowSceneEntityPicking() const override {
+            return false;
+        }
+
+        virtual void draw(const Carrot::Render::Context& renderContext, float startX, float startY) override final {
+            // make sure we are still editing the entity we think we are
+            if(editor.selectedIDs.empty()) {
+                remove();
+                return;
+            }
+
+            auto selectedEntity = editor.currentScene.world.wrap(editor.selectedIDs[0]);
+            if(!selectedEntity) {
+                remove();
+                return;
+            }
+
+            if(selectedEntity.getID() != targetEntity) {
+                remove();
+                return;
+            }
+
+            auto rigidBodyComp = selectedEntity.getComponent<Carrot::ECS::RigidBodyComponent>();
+            if(!rigidBodyComp.hasValue()) {
+                remove();
+                return;
+            }
+
+            if(rigidBodyComp->rigidbody.getColliderCount() <= targetColliderIndex) {
+                remove();
+                return;
+            }
+
+            // edit the selected collider
+            auto& collider = rigidBodyComp->rigidbody.getCollider(targetColliderIndex);
+
+            auto& camera = editor.gameViewport.getCamera();
+            glm::mat4 identityMatrix = glm::identity<glm::mat4>();
+            glm::mat4 cameraView = camera.computeViewMatrix();
+            glm::mat4 cameraProjection = camera.getProjectionMatrix();
+            cameraProjection[1][1] *= -1;
+
+            ImGuizmo::SetOrthographic(false);
+            ImGuizmo::SetDrawlist();
+            ImGuizmo::SetRect(startX, startY, ImGui::GetWindowContentRegionMax().x,
+                              ImGui::GetWindowContentRegionMax().y);
+
+            float *cameraViewImGuizmo = glm::value_ptr(cameraView);
+            float *cameraProjectionImGuizmo = glm::value_ptr(cameraProjection);
+
+            glm::mat4 objectMatrix = glm::identity<glm::mat4>();
+            auto parentEntity = selectedEntity.getParent();
+
+            if(auto selfTransform = selectedEntity.getComponent<Carrot::ECS::TransformComponent>()) {
+                objectMatrix = selfTransform->toTransformMatrix();
+            }
+
+            Carrot::Math::Transform localTransform = collider.getLocalTransform(); // what we are trying to edit
+
+            glm::mat4 transformMatrix = objectMatrix * localTransform.toTransformMatrix();
+            ImGuizmo::MODE gizmoMode = ImGuizmo::MODE::LOCAL;
+            ImGuizmo::OPERATION gizmoOperation = ImGuizmo::OPERATION::UNIVERSAL;
+
+            // let user edit local transform
+            bool used = ImGuizmo::Manipulate(
+                    cameraViewImGuizmo,
+                    cameraProjectionImGuizmo,
+                    gizmoOperation,
+                    gizmoMode,
+                    glm::value_ptr(transformMatrix)
+            );
+
+            // user has modified transform, update local transform
+            if (used) {
+                glm::mat4 localTransformMatrix = glm::inverse(objectMatrix) * transformMatrix;
+                float translation[3] = {0.0f};
+                float scale[3] = {0.0f};
+                float rotation[3] = {0.0f};
+                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransformMatrix), translation, rotation,
+                                                      scale);
+
+                localTransform.position = glm::vec3(translation[0], translation[1],
+                                                                  translation[2]);
+                localTransform.rotation = glm::quat(
+                        glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
+                localTransform.scale = glm::vec3(scale[0], scale[1], scale[2]);
+                collider.setLocalTransform(localTransform);
+
+                editor.markDirty();
+            }
+        }
+
+    private:
+        Carrot::ECS::EntityID targetEntity;
+        std::size_t targetColliderIndex = 0;
+    };
+
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component) {
         auto& rigidbody = component->rigidbody;
         const reactphysics3d::BodyType type = rigidbody.getBodyType();
@@ -33,10 +150,18 @@ namespace Peeler {
             ImGui::SameLine();
             bool shouldRemove = ImGui::Button("Remove collider");
 
-            bool editLocalTransform = false;
-            ImGui::Checkbox("Edit local transform", &editLocalTransform);
-            if(editLocalTransform) {
-                // TODO: get access to editor??
+            static bool editLocalTransform = false;
+            if(ImGui::Checkbox("Edit local transform", &editLocalTransform)) {
+                bool hasLayer = edition.editor.hasLayer<ColliderEditionLayer>();
+                if(editLocalTransform) {
+                    if(!hasLayer) {
+                        edition.editor.pushLayer<ColliderEditionLayer>(component->getEntity(), index);
+                    }
+                } else {
+                    if(hasLayer) {
+                        edition.editor.removeLayer<ColliderEditionLayer>();
+                    }
+                }
             }
 
             auto& shape = collider.getShape();
