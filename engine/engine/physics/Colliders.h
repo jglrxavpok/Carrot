@@ -206,6 +206,7 @@ namespace Carrot::Physics {
         /// Changes the model used by this collision shape.
         void setModel(const std::shared_ptr<Carrot::Model>& mesh);
         void setScale(const glm::vec3& scaling);
+        glm::vec3 getScale() const;
 
     private:
         StaticConcaveMeshCollisionShape();

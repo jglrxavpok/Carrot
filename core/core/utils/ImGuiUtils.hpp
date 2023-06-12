@@ -64,4 +64,15 @@ namespace ImGui {
         }
         return false;
     }
+
+    /**
+     * Toggle-able button with an icon
+     * @param label text to display inside button. Also used by ImGui as an ID (so use ##something to differentiate between buttons if needed)
+     * @param textureID texture to use as an icon
+     * @param state boolean to set/unset depending on whether the button is pressed
+     * @param imageSize size of the icon
+     * @param buttonSize total size of the button. Set to 0,0 to use imageSize + width of text
+     * @return
+     */
+    bool ImageToggleButton(const char* label, ImTextureID textureID, bool* state, const ImVec2& imageSize, ImVec2 buttonSize = ImVec2(0, 0));
 }

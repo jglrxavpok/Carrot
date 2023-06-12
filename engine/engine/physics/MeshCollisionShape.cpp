@@ -104,6 +104,10 @@ namespace Carrot::Physics {
         shape->setScale(Carrot::reactPhysicsVecFromGlm(scaling));
     }
 
+    glm::vec3 StaticConcaveMeshCollisionShape::getScale() const {
+        return Carrot::glmVecFromReactPhysics(shape->getScale());
+    }
+
     StaticConcaveMeshCollisionShape::~StaticConcaveMeshCollisionShape() {
         GetPhysics().getCommons().destroyConcaveMeshShape(shape);
         GetPhysics().getCommons().destroyTriangleMesh(triangleMesh);

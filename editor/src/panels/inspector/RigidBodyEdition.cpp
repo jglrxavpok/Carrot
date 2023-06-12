@@ -3,6 +3,7 @@
 //
 
 #include "EditorFunctions.h"
+#include <core/utils/ImGuiUtils.hpp>
 #include <engine/Engine.h>
 #include <engine/edition/DragDropTypes.h>
 #include <engine/render/VulkanRenderer.h>
@@ -16,7 +17,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <engine/ecs/components/TransformComponent.h>
 
+using namespace Carrot::Physics;
+
 namespace Peeler {
+
+    static const std::string EditColliderIcon = "resources/textures/ui/wrench.png";
+    static const std::string ResetWidgetTexture = "resources/textures/ui/reset.png";
+
     class ColliderEditionLayer: public ISceneViewLayer {
     public:
         explicit ColliderEditionLayer(Application& editor, Carrot::ECS::EntityID targetEntity, std::size_t targetColliderIndex)
@@ -38,29 +45,29 @@ namespace Peeler {
 
         virtual void draw(const Carrot::Render::Context& renderContext, float startX, float startY) override final {
             // make sure we are still editing the entity we think we are
-            if(editor.selectedIDs.empty()) {
+            if (editor.selectedIDs.empty()) {
                 remove();
                 return;
             }
 
             auto selectedEntity = editor.currentScene.world.wrap(editor.selectedIDs[0]);
-            if(!selectedEntity) {
+            if (!selectedEntity) {
                 remove();
                 return;
             }
 
-            if(selectedEntity.getID() != targetEntity) {
+            if (selectedEntity.getID() != targetEntity) {
                 remove();
                 return;
             }
 
             auto rigidBodyComp = selectedEntity.getComponent<Carrot::ECS::RigidBodyComponent>();
-            if(!rigidBodyComp.hasValue()) {
+            if (!rigidBodyComp.hasValue()) {
                 remove();
                 return;
             }
 
-            if(rigidBodyComp->rigidbody.getColliderCount() <= targetColliderIndex) {
+            if (rigidBodyComp->rigidbody.getColliderCount() <= targetColliderIndex) {
                 remove();
                 return;
             }
@@ -85,11 +92,41 @@ namespace Peeler {
             glm::mat4 objectMatrix = glm::identity<glm::mat4>();
             auto parentEntity = selectedEntity.getParent();
 
-            if(auto selfTransform = selectedEntity.getComponent<Carrot::ECS::TransformComponent>()) {
+            if (auto selfTransform = selectedEntity.getComponent<Carrot::ECS::TransformComponent>()) {
                 objectMatrix = selfTransform->toTransformMatrix();
+
+                const glm::vec3 worldScale = selfTransform->computeFinalScale();
+                objectMatrix = objectMatrix * glm::scale(glm::mat4(1.0f), 1.0f / worldScale);
             }
 
             Carrot::Math::Transform localTransform = collider.getLocalTransform(); // what we are trying to edit
+
+            switch (collider.getType()) {
+                case ColliderType::Box: {
+                    localTransform.scale = dynamic_cast<BoxCollisionShape&>(collider.getShape()).getHalfExtents();
+                }
+                    break;
+
+                case ColliderType::Sphere: {
+                    localTransform.scale = glm::vec3(
+                            dynamic_cast<SphereCollisionShape&>(collider.getShape()).getRadius());
+                }
+                    break;
+
+                case ColliderType::Capsule: {
+                    auto& capsule = dynamic_cast<CapsuleCollisionShape&>(collider.getShape());
+                    localTransform.scale = glm::vec3(capsule.getRadius(), capsule.getHeight(), capsule.getRadius());
+                }
+                    break;
+
+                case ColliderType::StaticConcaveTriangleMesh: {
+                    localTransform.scale = dynamic_cast<StaticConcaveMeshCollisionShape&>(collider.getShape()).getScale();
+                }
+                    break;
+
+                default:
+                    TODO; // not implemented yet
+            }
 
             glm::mat4 transformMatrix = objectMatrix * localTransform.toTransformMatrix();
             ImGuizmo::MODE gizmoMode = ImGuizmo::MODE::LOCAL;
@@ -103,21 +140,65 @@ namespace Peeler {
                     gizmoMode,
                     glm::value_ptr(transformMatrix)
             );
+            DISCARD(used);
 
-            // user has modified transform, update local transform
-            if (used) {
-                glm::mat4 localTransformMatrix = glm::inverse(objectMatrix) * transformMatrix;
-                float translation[3] = {0.0f};
-                float scale[3] = {0.0f};
-                float rotation[3] = {0.0f};
-                ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransformMatrix), translation, rotation,
-                                                      scale);
+            glm::mat4 localTransformMatrix = glm::inverse(objectMatrix) * transformMatrix;
+            float translation[3] = {0.0f};
+            float scale[3] = {0.0f};
+            float rotation[3] = {0.0f};
+            ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(localTransformMatrix), translation, rotation,
+                                                  scale);
 
-                localTransform.position = glm::vec3(translation[0], translation[1],
-                                                                  translation[2]);
-                localTransform.rotation = glm::quat(
-                        glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
-                localTransform.scale = glm::vec3(scale[0], scale[1], scale[2]);
+            localTransform.position = glm::vec3(translation[0], translation[1],
+                                                translation[2]);
+            localTransform.rotation = glm::quat(
+                    glm::radians(glm::vec3(rotation[0], rotation[1], rotation[2])));
+
+            // handle scaling
+            {
+                const glm::vec3 scaleDiff = glm::vec3(scale[0], scale[1], scale[2]) - localTransform.scale;
+                const bool scalingX = glm::abs(scaleDiff.x) >= 10e-6f;
+                const bool scalingY = glm::abs(scaleDiff.y) >= 10e-6f;
+                const bool scalingZ = glm::abs(scaleDiff.z) >= 10e-6f;
+                const bool isScaling = scalingX || scalingY || scalingZ;
+
+                // scale is ignored by Reactphysics
+                if (isScaling) {
+                    switch (collider.getType()) {
+                        case ColliderType::Box: {
+                            dynamic_cast<BoxCollisionShape&>(collider.getShape()).setHalfExtents(
+                                    glm::vec3(scale[0], scale[1], scale[2]));
+                        }
+                            break;
+
+                        case ColliderType::Sphere: {
+                            float radius = scalingX ? scale[0]
+                                                    : scalingY ? scale[1]
+                                                               : scale[2];
+                            dynamic_cast<SphereCollisionShape&>(collider.getShape()).setRadius(radius);
+                        }
+                            break;
+                        case ColliderType::Capsule: {
+                            if (scalingX || scalingZ) {
+                                dynamic_cast<CapsuleCollisionShape&>(collider.getShape()).setRadius(
+                                        scalingX ? scale[0] : scale[2]);
+                            } else {
+                                verify(scalingY, "Must be scaling at least once axis to end up here!");
+                                dynamic_cast<CapsuleCollisionShape&>(collider.getShape()).setHeight(scale[1]);
+                            }
+                        }
+                            break;
+                        case ColliderType::StaticConcaveTriangleMesh: {
+                            dynamic_cast<StaticConcaveMeshCollisionShape&>(collider.getShape()).setScale(
+                                    glm::vec3(scale[0], scale[1], scale[2]));
+                        }
+                            break;
+
+                        default:
+                            TODO; // not implemented yet
+                    }
+                }
+
                 collider.setLocalTransform(localTransform);
 
                 editor.markDirty();
@@ -128,6 +209,15 @@ namespace Peeler {
         Carrot::ECS::EntityID targetEntity;
         std::size_t targetColliderIndex = 0;
     };
+
+    static bool ResetButton(const char* id) {
+        ImGui::PushID(id);
+        float buttonSize = ImGui::GetTextLineHeight();
+        auto texture = GetRenderer().getOrCreateTextureFullPath(ResetWidgetTexture);
+        bool result = ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize));
+        ImGui::PopID();
+        return result;
+    }
 
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component) {
         auto& rigidbody = component->rigidbody;
@@ -144,24 +234,68 @@ namespace Peeler {
             ImGui::EndCombo();
         }
 
+        static Carrot::Physics::Collider* currentlyEditedCollider = nullptr;
+
         auto drawColliderUI = [&](Carrot::Physics::Collider& collider, std::size_t index) {
             ImGui::PushID(&collider);
             ImGui::Text("%s", Carrot::Physics::ColliderTypeNames[collider.getType()]);
             ImGui::SameLine();
-            bool shouldRemove = ImGui::Button("Remove collider");
+            bool shouldRemove = ImGui::Button("Remove");
 
-            static bool editLocalTransform = false;
-            if(ImGui::Checkbox("Edit local transform", &editLocalTransform)) {
+            bool editLocalTransform = currentlyEditedCollider == &collider;
+            float buttonSize = ImGui::GetTextLineHeight();
+            auto texture = GetRenderer().getOrCreateTextureFullPath(EditColliderIcon);
+            if(ImGui::ImageToggleButton("Edit collider", texture->getImguiID(), &editLocalTransform, ImVec2(buttonSize, buttonSize))) {
                 bool hasLayer = edition.editor.hasLayer<ColliderEditionLayer>();
                 if(editLocalTransform) {
+                    currentlyEditedCollider = &collider;
                     if(!hasLayer) {
                         edition.editor.pushLayer<ColliderEditionLayer>(component->getEntity(), index);
                     }
                 } else {
+                    currentlyEditedCollider = nullptr;
                     if(hasLayer) {
                         edition.editor.removeLayer<ColliderEditionLayer>();
                     }
                 }
+            }
+
+            bool localTransformUpdated = false;
+            Carrot::Math::Transform localTransform = collider.getLocalTransform();
+            {
+                float arr[] = { localTransform.position.x, localTransform.position.y, localTransform.position.z };
+                if (ImGui::DragFloat3("Position", arr)) {
+                    localTransform.position = { arr[0], arr[1], arr[2] };
+                    edition.hasModifications = true;
+                    localTransformUpdated = true;
+                }
+
+                ImGui::SameLine();
+                if(ResetButton("Position")) {
+                    localTransform.position = glm::vec3 { 0.0f };
+                    edition.hasModifications = true;
+                    localTransformUpdated = true;
+                }
+            }
+
+            {
+                float arr[] = { localTransform.rotation.x, localTransform.rotation.y, localTransform.rotation.z, localTransform.rotation.w };
+                if (ImGui::DragFloat4("Rotation", arr)) {
+                    localTransform.rotation = { arr[3], arr[0], arr[1], arr[2] };
+                    edition.hasModifications = true;
+                    localTransformUpdated = true;
+                }
+
+                ImGui::SameLine();
+                if(ResetButton("Rotation")) {
+                    localTransform.rotation = glm::identity<glm::quat>();
+                    edition.hasModifications = true;
+                    localTransformUpdated = true;
+                }
+            }
+
+            if(localTransformUpdated) {
+                collider.setLocalTransform(localTransform);
             }
 
             auto& shape = collider.getShape();

@@ -48,6 +48,7 @@ set(CORE-SOURCES
 
         ${CoreRoot}utils/CarrotTinyGLTF.cpp
         ${CoreRoot}utils/Identifiable.cpp
+        ${CoreRoot}utils/ImGuiUtils.cpp
         ${CoreRoot}utils/Profiling.cpp
         ${CoreRoot}utils/stringmanip.cpp
         ${CoreRoot}utils/UUID.cpp
@@ -70,6 +71,8 @@ set(CORE-THIRDPARTY-SOURCES
 
 function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}core/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/misc/cpp/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)

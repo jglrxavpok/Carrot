@@ -19,7 +19,7 @@ namespace Carrot {
     }
 
     glm::quat glmQuatFromReactPhysics(const reactphysics3d::Quaternion& q) {
-        return { q.w, q.x, q.y, q.z };
+        return glm::quat{ q.w, q.x, q.y, q.z };
     }
 
     reactphysics3d::Vector2 reactPhysicsVecFromGlm(const glm::vec2& q) {

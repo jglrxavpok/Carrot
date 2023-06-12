@@ -27,9 +27,8 @@ namespace Peeler::ECS {
                     for(const auto& colliderPtr : rigidBodyComponent.rigidbody.getColliders()) {
                         const auto& collider = *colliderPtr;
 
-                        glm::mat4 transform = transformComponent.toTransformMatrix() * collider.getLocalTransform().toTransformMatrix();
                         const glm::vec3 worldScale = transformComponent.computeFinalScale(); // rigidbody size is separated from object scale
-                        transform = glm::scale(transform, 1.0f / worldScale);
+                        glm::mat4 transform = transformComponent.toTransformMatrix() * glm::scale(glm::mat4(1.0f), 1.0f / worldScale) * collider.getLocalTransform().toTransformMatrix();
                         switch(collider.getType()) {
                             case Carrot::Physics::ColliderType::Sphere: {
                                 const auto& asSphere = static_cast<Carrot::Physics::SphereCollisionShape&>(collider.getShape());
