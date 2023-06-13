@@ -23,6 +23,8 @@ namespace Peeler {
 
     static const std::string EditColliderIcon = "resources/textures/ui/wrench.png";
     static const std::string ResetWidgetTexture = "resources/textures/ui/reset.png";
+    static const std::string LockedWidgetTexture = "resources/textures/ui/locked.png";
+    static const std::string UnlockedWidgetTexture = "resources/textures/ui/unlocked.png";
 
     class ColliderEditionLayer: public ISceneViewLayer {
     public:
@@ -232,6 +234,50 @@ namespace Peeler {
                 }
             }
             ImGui::EndCombo();
+        }
+
+        // handle axis locking
+        {
+            glm::vec3 translationAxes = rigidbody.getTranslationAxes();
+            glm::vec3 rotationAxes = rigidbody.getRotationAxes();
+            auto showLockButton = [&](const char *id, glm::vec3& axes, std::uint8_t axisIndex) -> bool {
+                const ImVec2 buttonSize{ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+                bool isLocked = glm::abs(axes[axisIndex]) < 0.01f;
+
+                const auto textureRef = isLocked ? GetRenderer().getOrCreateTextureFullPath(LockedWidgetTexture)
+                                                 : GetRenderer().getOrCreateTextureFullPath(UnlockedWidgetTexture);
+                const ImTextureID textureID = textureRef->getImguiID();
+                const bool changed = ImGui::ImageToggleButton(id, textureID, &isLocked, buttonSize);
+                if (changed) {
+                    axes[axisIndex] = isLocked ? 0.0f : 1.0f;
+                }
+
+                return changed;
+            };
+
+            ImGui::Text("Lock translation");
+            bool translationAxesChanged = false;
+            ImGui::SameLine();
+            translationAxesChanged |= showLockButton("X##lock translate X", translationAxes, 0);
+            ImGui::SameLine();
+            translationAxesChanged |= showLockButton("Y##lock translate Y", translationAxes, 1);
+            ImGui::SameLine();
+            translationAxesChanged |= showLockButton("Z##lock translate Z", translationAxes, 2);
+            if (translationAxesChanged) {
+                rigidbody.setTranslationAxes(translationAxes);
+            }
+
+            ImGui::Text("Lock rotation");
+            bool rotationAxesChanged = false;
+            ImGui::SameLine();
+            rotationAxesChanged |= showLockButton("X##lock rotation X", rotationAxes, 0);
+            ImGui::SameLine();
+            rotationAxesChanged |= showLockButton("Y##lock rotation Y", rotationAxes, 1);
+            ImGui::SameLine();
+            rotationAxesChanged |= showLockButton("Z##lock rotation Z", rotationAxes, 2);
+            if (rotationAxesChanged) {
+                rigidbody.setRotationAxes(rotationAxes);
+            }
         }
 
         static Carrot::Physics::Collider* currentlyEditedCollider = nullptr;

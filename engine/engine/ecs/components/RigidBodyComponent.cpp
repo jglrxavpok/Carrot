@@ -24,6 +24,13 @@ namespace Carrot::ECS {
         rigidbody.setLocalInertiaTensor(Carrot::JSON::read<3, float>(json["local_inertia_tensor"]));
         rigidbody.setLocalCenterOfMass(Carrot::JSON::read<3, float>(json["local_center_of_mass"]));
 
+        if(json.HasMember("free_translation_axes")) {
+            rigidbody.setTranslationAxes(Carrot::JSON::read<3, float>(json["free_translation_axes"]));
+        }
+        if(json.HasMember("free_rotation_axes")) {
+            rigidbody.setRotationAxes(Carrot::JSON::read<3, float>(json["free_rotation_axes"]));
+        }
+
         for(const auto& colliderData : json["colliders"].GetArray()) {
             rigidbody.addColliderDirectly(Physics::Collider::loadFromJSON(colliderData));
         }
@@ -36,6 +43,8 @@ namespace Carrot::ECS {
         obj.AddMember("mass", rigidbody.getMass(), doc.GetAllocator());
         obj.AddMember("local_inertia_tensor", Carrot::JSON::write(rigidbody.getLocalInertiaTensor(), doc), doc.GetAllocator());
         obj.AddMember("local_center_of_mass", Carrot::JSON::write(rigidbody.getLocalCenterOfMass(), doc), doc.GetAllocator());
+        obj.AddMember("free_translation_axes", Carrot::JSON::write(rigidbody.getTranslationAxes(), doc), doc.GetAllocator());
+        obj.AddMember("free_rotation_axes", Carrot::JSON::write(rigidbody.getRotationAxes(), doc), doc.GetAllocator());
 
         rapidjson::Value colliders{ rapidjson::kArrayType };
         for(const auto& collider : rigidbody.getColliders()) {

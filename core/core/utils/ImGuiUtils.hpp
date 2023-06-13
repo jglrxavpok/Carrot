@@ -72,7 +72,7 @@ namespace ImGui {
      * @param state boolean to set/unset depending on whether the button is pressed
      * @param imageSize size of the icon
      * @param buttonSize total size of the button. Set to 0,0 to use imageSize + width of text
-     * @return
+     * @return true iif button was clicked
      */
     bool ImageToggleButton(const char* label, ImTextureID textureID, bool* state, const ImVec2& imageSize, ImVec2 buttonSize = ImVec2(0, 0));
 }
