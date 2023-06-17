@@ -362,7 +362,6 @@ namespace Peeler {
         ImGui::PopID();
     }
 
-    void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component);
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
 
     void registerEditionFunctions(InspectorPanel& inspector) {

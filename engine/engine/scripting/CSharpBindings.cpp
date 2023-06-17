@@ -96,6 +96,12 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Input.BoolInputAction::IsPressed", IsBoolInputPressed);
         mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustPressed", WasBoolInputJustPressed);
         mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustReleased", WasBoolInputJustReleased);
+
+        mono_add_internal_call("Carrot.Input.FloatInputAction::Create", CreateFloatInputAction);
+        mono_add_internal_call("Carrot.Input.FloatInputAction::GetValue", GetFloatInputValue);
+
+        mono_add_internal_call("Carrot.Input.Vec2InputAction::Create", CreateVec2InputAction);
+        mono_add_internal_call("Carrot.Input.Vec2InputAction::_GetValue", _GetVec2InputValue);
     }
 
     CSharpBindings::~CSharpBindings() {
@@ -245,6 +251,16 @@ namespace Carrot::Scripting {
         });
     }
 
+    std::vector<ComponentID> CSharpBindings::getAllComponentIDs() const {
+        std::vector<ComponentID> components;
+        auto snapshot = csharpComponentIDs.snapshot();
+        components.reserve(snapshot.size());
+        for(auto& [fullType, pComponentID] : snapshot) {
+            components.emplace_back(*pComponentID);
+        }
+        return components;
+    }
+
     void CSharpBindings::loadEngineAssembly() {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
@@ -281,6 +297,8 @@ namespace Carrot::Scripting {
         {
             LOAD_CLASS_NS("Carrot.Input", ActionSet);
             LOAD_CLASS_NS("Carrot.Input", BoolInputAction);
+            LOAD_CLASS_NS("Carrot.Input", FloatInputAction);
+            LOAD_CLASS_NS("Carrot.Input", Vec2InputAction);
         }
 
         {
@@ -502,6 +520,12 @@ namespace Carrot::Scripting {
         if(mono_object_isinst(actionObj, instance().BoolInputActionClass->toMono())) {
             auto& action = getObject<Carrot::IO::BoolInputAction>(actionObj);
             action.suggestBinding(bindingStr);
+        } else if(mono_object_isinst(actionObj, instance().FloatInputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::FloatInputAction>(actionObj);
+            action.suggestBinding(bindingStr);
+        } else if(mono_object_isinst(actionObj, instance().Vec2InputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::Vec2InputAction>(actionObj);
+            action.suggestBinding(bindingStr);
         } else {
             MonoClass* objClass = mono_object_get_class(actionObj);
             CSClass c{ instance().appDomain->toMono(), objClass };
@@ -531,10 +555,40 @@ namespace Carrot::Scripting {
         return action.wasJustReleased();
     }
 
+    MonoObject* CSharpBindings::CreateFloatInputAction(MonoString* nameObj) {
+        char* nameStr = mono_string_to_utf8(nameObj);
+        CLEANUP(mono_free(nameStr));
+
+        return instance().requestCarrotObject<Carrot::IO::FloatInputAction>(instance().FloatInputActionClass, nameStr).toMono();
+    }
+
+    float CSharpBindings::GetFloatInputValue(MonoObject* input) {
+        auto& action = getObject<Carrot::IO::FloatInputAction>(input);
+        return action.getValue();
+    }
+
+    MonoObject* CSharpBindings::CreateVec2InputAction(MonoString* nameObj) {
+        char* nameStr = mono_string_to_utf8(nameObj);
+        CLEANUP(mono_free(nameStr));
+
+        return instance().requestCarrotObject<Carrot::IO::Vec2InputAction>(instance().Vec2InputActionClass, nameStr).toMono();
+    }
+
+    void CSharpBindings::_GetVec2InputValue(MonoObject* input, glm::vec2* out) {
+        auto& action = getObject<Carrot::IO::Vec2InputAction>(input);
+        *out = glm::vec2{ action.getValue().x, action.getValue().y };
+    }
+
     void CSharpBindings::_AddToActionSet(MonoObject* setObj, MonoObject* actionObj) {
         auto& set = getObject<Carrot::IO::ActionSet>(setObj);
         if(mono_object_isinst(actionObj, instance().BoolInputActionClass->toMono())) {
             auto& action = getObject<Carrot::IO::BoolInputAction>(actionObj);
+            set.add(action);
+        } else if(mono_object_isinst(actionObj, instance().FloatInputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::FloatInputAction>(actionObj);
+            set.add(action);
+        } else if(mono_object_isinst(actionObj, instance().Vec2InputActionClass->toMono())) {
+            auto& action = getObject<Carrot::IO::Vec2InputAction>(actionObj);
             set.add(action);
         } else {
             verify(false, "Unhandled type!"); // TODO

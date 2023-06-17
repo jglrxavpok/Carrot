@@ -657,6 +657,10 @@ namespace Peeler {
         fs::path pdbOutput = assemblyOutput;
         pdbOutput.replace_extension(".pdb");
 
+        if(!fs::exists(pdbOutput.parent_path())) {
+            fs::create_directories(pdbOutput.parent_path());
+        }
+
         // TODO: redirect output and display in console?
         bool r = GetCSharpScripting().compileFiles(assemblyOutput, sourceFiles, references, pdbOutput);
         if(r) {
@@ -678,6 +682,8 @@ namespace Peeler {
             GetCSharpBindings().unloadGameAssembly();
         } else {
             GetCSharpBindings().loadGameAssembly(gameDll);
+
+            inspectorPanel.registerCSharpEdition();
         }
     }
 

@@ -6,11 +6,15 @@
 #include <unordered_set>
 #include <core/scripting/csharp/Engine.h>
 #include <core/scripting/csharp/CSAssembly.h>
+#include <core/scripting/csharp/CSClass.h>
+#include <core/scripting/csharp/CSMethod.h>
 #include <core/scripting/csharp/CSObject.h>
 #include <core/io/IO.h>
 #include "mono/metadata/class.h"
 #include "core/utils/stringmanip.h"
 #include "mono/metadata/object.h"
+
+#include <glm/glm.hpp>
 
 using namespace Carrot::Scripting;
 namespace fs = std::filesystem;

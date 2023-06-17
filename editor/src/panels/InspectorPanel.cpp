@@ -4,9 +4,11 @@
 
 #include "InspectorPanel.h"
 #include "../Peeler.h"
-#include <engine/ecs/World.h>
-#include <engine/ecs/EntityTypes.h>
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/ecs/components/CSharpComponent.h>
+#include <engine/ecs/EntityTypes.h>
+#include <engine/ecs/World.h>
+#include <engine/scripting/CSharpBindings.h>
 #include <panels/inspector/EditorFunctions.h>
 
 namespace Peeler {
@@ -16,6 +18,14 @@ namespace Peeler {
 
     void InspectorPanel::registerComponentEditor(Carrot::ComponentID componentID, const ComponentEditor& editionFunction) {
         editionFunctions[componentID] = editionFunction;
+    }
+
+    void InspectorPanel::registerCSharpEdition() {
+        for(const auto& componentID : GetCSharpBindings().getAllComponentIDs()) {
+            registerComponentEditor(componentID, [](EditContext& edition, Carrot::ECS::Component* component) {
+                editCSharpComponent(edition, dynamic_cast<Carrot::ECS::CSharpComponent*>(component));
+            });
+        }
     }
 
     void InspectorPanel::draw(const Carrot::Render::Context &renderContext) {

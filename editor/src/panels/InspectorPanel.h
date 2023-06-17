@@ -31,6 +31,11 @@ namespace Peeler {
          */
         void registerComponentEditor(Carrot::ComponentID componentID, const ComponentEditor& editionFunction);
 
+        /**
+         * Called when C# module is (re-)loaded, allows inspector to register component editors for C# components
+         */
+        void registerCSharpEdition();
+
     public:
         virtual void draw(const Carrot::Render::Context &renderContext) override final;
 

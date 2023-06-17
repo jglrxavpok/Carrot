@@ -46,6 +46,8 @@ namespace Carrot::Scripting {
 
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;
+        CSClass* FloatInputActionClass = nullptr;
+        CSClass* Vec2InputActionClass = nullptr;
 
     public:
         CSharpBindings();
@@ -73,6 +75,8 @@ namespace Carrot::Scripting {
 
     public:
         ComponentID requestComponentID(const std::string& namespaceName, const std::string& className);
+
+        std::vector<ComponentID> getAllComponentIDs() const;
 
         template<typename T, typename... Args>
         Scripting::CarrotCSObject<T>& requestCarrotObject(Scripting::CSClass* csType, Args&&... args) {
@@ -111,6 +115,15 @@ namespace Carrot::Scripting {
         static bool IsBoolInputPressed(MonoObject* boolInput);
         static bool WasBoolInputJustPressed(MonoObject* boolInput);
         static bool WasBoolInputJustReleased(MonoObject* boolInput);
+
+        static MonoObject* CreateFloatInputAction(MonoString* nameObj);
+        static float GetFloatInputValue(MonoObject* input);
+
+        static MonoObject* CreateVec2InputAction(MonoString* nameObj);
+
+        // takes a glm::vec2* instead of returning it: Mono seems to crash when an object with 2 members of size 32 has a constructor
+        // don't ask me why, i don't understand it
+        static void _GetVec2InputValue(MonoObject* input, glm::vec2* out);
 
         static void _AddToActionSet(MonoObject* setObj, MonoObject* actionObj);
         static void _ActivateActionSet(MonoObject* setObj);
