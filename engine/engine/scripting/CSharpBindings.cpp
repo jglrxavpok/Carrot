@@ -25,6 +25,7 @@
 
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
+#include <engine/ecs/components/RigidBodyComponent.h>
 
 namespace Carrot::Scripting {
 
@@ -85,6 +86,9 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
+
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
 
         mono_add_internal_call("Carrot.Input.ActionSet::Create", CreateActionSet);
         mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", _ActivateActionSet);
@@ -310,6 +314,7 @@ namespace Carrot::Scripting {
 
         LOAD_CLASS(TransformComponent);
         LOAD_CLASS(TextComponent);
+        LOAD_CLASS(RigidBodyComponent);
 
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
@@ -327,6 +332,10 @@ namespace Carrot::Scripting {
             HardcodedComponents["Carrot.TextComponent"] = {
                     .id = ECS::TextComponent::getID(),
                     .clazz = TextComponentClass,
+            };
+            HardcodedComponents["Carrot.RigidBodyComponent"] = {
+                    .id = ECS::RigidBodyComponent::getID(),
+                    .clazz = RigidBodyComponentClass,
             };
         }
     }
@@ -485,6 +494,18 @@ namespace Carrot::Scripting {
         char* valueStr = mono_string_to_utf8(value);
         CLEANUP(mono_free(valueStr));
         entity.getComponent<ECS::TextComponent>()->setText(valueStr);
+    }
+
+    glm::vec3 CSharpBindings::_GetRigidBodyVelocity(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.getVelocity();
+    }
+
+    void CSharpBindings::_SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.setVelocity(value);
     }
 
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {

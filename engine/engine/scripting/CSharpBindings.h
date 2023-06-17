@@ -43,6 +43,7 @@ namespace Carrot::Scripting {
 
         CSClass* TransformComponentClass = nullptr;
         CSClass* TextComponentClass = nullptr;
+        CSClass* RigidBodyComponentClass = nullptr;
 
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;
@@ -136,6 +137,9 @@ namespace Carrot::Scripting {
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);
+
+        static glm::vec3 _GetRigidBodyVelocity(MonoObject* comp);
+        static void _SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value);
 
     private:
         void loadEngineAssembly();

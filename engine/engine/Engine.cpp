@@ -119,12 +119,14 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     instance = this;
     changeTickRate(config.tickRate);
 
+    #if 0
 #ifdef USE_LIVEPP
     std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
     livePP = lpp::lppLoadAndRegister(livePPPath.wstring().c_str(), "Carrot");
 
     lpp::lppEnableAllCallingModulesAsync(livePP);
 #endif
+    #endif
 
     if(config.runInVR) {
         vrSession = vrInterface->createSession();
@@ -340,8 +342,10 @@ void Carrot::Engine::run() {
     auto lag = std::chrono::duration<float>(0.0f);
     bool ticked = false;
     while(running) {
+#if 0
 #ifdef USE_LIVEPP
         lpp::lppSyncPoint(livePP);
+#endif
 #endif
 
         auto frameStartTime = std::chrono::steady_clock::now();

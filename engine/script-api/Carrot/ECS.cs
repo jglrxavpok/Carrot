@@ -72,6 +72,51 @@ namespace Carrot {
                 action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>());
             }
         }
+
+        /**
+         * DO NOT STORE THE COMPONENTS
+         */
+        public void ForEachEntity<T0, T1, T2>(Action<Entity, T0, T1, T2> action) 
+            where T0 : IComponent 
+            where T1: IComponent 
+            where T2: IComponent 
+        {
+            //TODO("check signature compatibility");
+            foreach (var entity in LoadEntities()) {
+                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>());
+            }
+        }
+
+        /**
+         * DO NOT STORE THE COMPONENTS
+         */
+        public void ForEachEntity<T0, T1, T2, T3>(Action<Entity, T0, T1, T2, T3> action) 
+            where T0 : IComponent 
+            where T1: IComponent 
+            where T2: IComponent 
+            where T3: IComponent 
+        {
+            //TODO("check signature compatibility");
+            foreach (var entity in LoadEntities()) {
+                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>(), entity.GetComponent<T3>());
+            }
+        }
+
+        /**
+         * DO NOT STORE THE COMPONENTS
+         */
+        public void ForEachEntity<T0, T1, T2, T3, T4>(Action<Entity, T0, T1, T2, T3, T4> action) 
+            where T0 : IComponent 
+            where T1: IComponent 
+            where T2: IComponent 
+            where T3: IComponent 
+            where T4: IComponent 
+        {
+            //TODO("check signature compatibility");
+            foreach (var entity in LoadEntities()) {
+                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>(), entity.GetComponent<T3>(), entity.GetComponent<T4>());
+            }
+        }
         #endregion
 
         /**
