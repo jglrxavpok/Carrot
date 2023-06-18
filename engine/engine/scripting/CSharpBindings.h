@@ -134,6 +134,8 @@ namespace Carrot::Scripting {
         static void _SetLocalPosition(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetLocalScale(MonoObject* transformComp);
         static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
+        static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
+        static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);

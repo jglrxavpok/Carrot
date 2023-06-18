@@ -14,6 +14,14 @@ namespace Carrot {
             set => _SetLocalScale(value);
         }
 
+        /**
+         * Allows to set the rotation with euler angles (in radians).
+         */
+        public Vec3 EulerAngles {
+            get => _GetEulerAngles();
+            set => _SetEulerAngles(value);
+        }
+        
         private TransformComponent(Entity owner) : base(owner) {
         }
 
@@ -28,5 +36,11 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetLocalScale(Vec3 newScale);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec3 _GetEulerAngles();
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern void _SetEulerAngles(Vec3 newScale);
     }
 }

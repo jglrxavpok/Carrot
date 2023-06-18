@@ -25,6 +25,7 @@ namespace Carrot::Physics {
         void tick(double deltaTime);
 
     public: // debug rendering
+        Carrot::Render::Viewport* getDebugViewport();
         void setViewport(Carrot::Render::Viewport* viewport);
         void onFrame(const Carrot::Render::Context& context);
 

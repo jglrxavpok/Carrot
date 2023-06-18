@@ -83,6 +83,8 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalScale", _GetLocalScale);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", _SetLocalScale);
+        mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", _GetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", _SetEulerAngles);
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
@@ -479,6 +481,18 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::TransformComponent>()->localTransform.scale = value;
+    }
+
+    glm::vec3 CSharpBindings::_GetEulerAngles(MonoObject* transformComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return glm::eulerAngles(entity.getComponent<ECS::TransformComponent>()->localTransform.rotation);
+    }
+
+    void CSharpBindings::_SetEulerAngles(MonoObject* transformComp, glm::vec3 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::TransformComponent>()->localTransform.rotation = glm::quat(value);
     }
 
     MonoString* CSharpBindings::_GetText(MonoObject* textComp) {

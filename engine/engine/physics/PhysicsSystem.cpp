@@ -87,7 +87,7 @@ namespace Carrot::Physics {
             return;
 
         auto& triangles = world->getDebugRenderer().getTriangles();
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::TransparentGBuffer, *debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, *debugViewport);
         renderPacket.pipeline = debugTrianglesPipeline;
 
         Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameBuffer(triangles.size() * 3 * sizeof(Carrot::Vertex));
@@ -133,16 +133,15 @@ namespace Carrot::Physics {
         Carrot::GBufferDrawData drawData;
         drawData.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
 
-        Carrot::Render::Packet::PushConstant& pushConstant = renderPacket.addPushConstant();
-        pushConstant.id = "drawDataPush";
-        pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
-
-        pushConstant.setData(drawData);
-
         Carrot::InstanceData instance;
         renderPacket.useInstance(instance);
+        renderPacket.addPerDrawData({&drawData, 1});
 
         GetRenderer().render(renderPacket);
+    }
+
+    Carrot::Render::Viewport* PhysicsSystem::getDebugViewport() {
+        return debugViewport;
     }
 
     void PhysicsSystem::setViewport(Carrot::Render::Viewport *viewport) {
