@@ -19,10 +19,21 @@ namespace Carrot::Physics {
 
         explicit ReactPhysics3DRaycastCallbackWrapper(const PhysicsSystem::RaycastCallback& callback): callbackFunc(callback) {}
 
-        reactphysics3d::decimal notifyRaycastHit(const reactphysics3d::RaycastInfo& raycastInfo) override {
+        reactphysics3d::decimal notifyRaycastHit(const reactphysics3d::RaycastInfo& rp3dInfo) override {
+            RaycastInfo raycastInfo;
+            raycastInfo.fromRP3D(rp3dInfo);
             return callbackFunc(raycastInfo);
         }
     };
+
+    RaycastInfo& RaycastInfo::fromRP3D(const rp3d::RaycastInfo& rp3dInfo) {
+        collider = rp3dInfo.collider ? (Collider*)rp3dInfo.collider->getUserData() : nullptr;
+        worldPoint = Carrot::glmVecFromReactPhysics(rp3dInfo.worldPoint);
+        worldNormal = Carrot::glmVecFromReactPhysics(rp3dInfo.worldNormal);
+        t = rp3dInfo.hitFraction;
+        rigidBody = rp3dInfo.body ? (RigidBody*)rp3dInfo.body->getUserData() : nullptr;
+        return *this;
+    }
 
     PhysicsSystem& PhysicsSystem::getInstance() {
         static PhysicsSystem system;
@@ -54,15 +65,31 @@ namespace Carrot::Physics {
         return *world;
     }
 
-    void PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback) const {
+    void PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback, unsigned short collisionMask) const {
         ReactPhysics3DRaycastCallbackWrapper wrapper { callback };
+
+        glm::vec3 directionToUse = glm::normalize(direction);
+        if(maxDistance < 0.0f) {
+            maxDistance = -maxDistance;
+            directionToUse = -directionToUse;
+        }
+
         rp3d::Vector3 pointA = Carrot::reactPhysicsVecFromGlm(origin);
-        rp3d::Vector3 pointB = Carrot::reactPhysicsVecFromGlm(origin + glm::normalize(direction) * maxDistance);
+        rp3d::Vector3 pointB = Carrot::reactPhysicsVecFromGlm(origin + directionToUse);
 
-        rp3d::Ray ray { pointA, pointB, 1.0f };
+        rp3d::Ray ray { pointA, pointB, maxDistance };
+        world->raycast(ray, &wrapper, collisionMask);
+    }
 
-        // TODO: mask
-        world->raycast(ray, &wrapper);
+    bool PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, RaycastInfo& raycastInfo, unsigned short collisionMask) const {
+        bool hasAHit = false;
+        auto callback = [&](const RaycastInfo& hitInfo) -> float {
+            raycastInfo = hitInfo;
+            hasAHit = true;
+            return 1.0f; // stop at first hit
+        };
+        raycast(origin, direction, maxDistance, callback, collisionMask);
+        return hasAHit;
     }
 
     void PhysicsSystem::pause() {

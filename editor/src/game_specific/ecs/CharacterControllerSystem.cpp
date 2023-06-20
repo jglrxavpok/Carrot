@@ -96,8 +96,8 @@ namespace Game::ECS {
                 glm::vec3 dir { 0, 0, -1 };
                 dir = headTransform.localTransform.rotation * dir;
                 const float maxDistance = 5000.0f;
-                GetPhysics().raycast(headTransform.computeFinalPosition(), dir, maxDistance, [&](const rp3d::RaycastInfo& raycastInfo) -> rp3d::decimal {
-                    auto entityHit = Carrot::ECS::RigidBodySystem::entityFromReactPhysicsBody(world, *raycastInfo.body);
+                GetPhysics().raycast(headTransform.computeFinalPosition(), dir, maxDistance, [&](const Carrot::Physics::RaycastInfo& raycastInfo) -> rp3d::decimal {
+                    auto entityHit = Carrot::ECS::RigidBodySystem::entityFromBody(world, *raycastInfo.rigidBody);
                     if(entityHit) {
                         auto potentialPage = entityHit->getComponent<PageComponent>();
                         if(potentialPage) {

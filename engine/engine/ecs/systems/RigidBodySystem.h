@@ -34,6 +34,7 @@ namespace Carrot::ECS {
 
     public:
         static std::optional<Entity> entityFromReactPhysicsBody(const Carrot::ECS::World& world, const rp3d::CollisionBody& body);
+        static std::optional<Entity> entityFromBody(const Carrot::ECS::World& world, const Physics::RigidBody& body);
     };
 }
 

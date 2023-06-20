@@ -34,6 +34,8 @@ namespace Carrot::Scripting {
 
         CSClass* CarrotObjectClass = nullptr;
         CSField* CarrotObjectHandleField = nullptr;
+        CSClass* CarrotReferenceClass = nullptr;
+        CSField* CarrotReferenceHandleField = nullptr;
 
         CSClass* SystemClass = nullptr;
         CSField* SystemSignatureField = nullptr;
@@ -44,6 +46,13 @@ namespace Carrot::Scripting {
         CSClass* TransformComponentClass = nullptr;
         CSClass* TextComponentClass = nullptr;
         CSClass* RigidBodyComponentClass = nullptr;
+        CSClass* ColliderClass = nullptr;
+
+        CSClass* RaycastInfoClass = nullptr;
+        CSField* RaycastInfoWorldPointField = nullptr;
+        CSField* RaycastInfoWorldNormalField = nullptr;
+        CSField* RaycastInfoTField = nullptr;
+        CSField* RaycastInfoColliderField = nullptr;
 
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;
@@ -83,6 +92,17 @@ namespace Carrot::Scripting {
         Scripting::CarrotCSObject<T>& requestCarrotObject(Scripting::CSClass* csType, Args&&... args) {
             carrotObjects.push_back(std::make_unique<CarrotCSObject<T>>(csType, std::forward<Args>(args)...));
             return *((CarrotCSObject<T>*)carrotObjects.back().get());
+        }
+
+        template<typename T>
+        std::shared_ptr<Scripting::CSObject> requestCarrotReference(Scripting::CSClass* csType, T* ptr) {
+            verify(ptr != nullptr, "Cannot have a reference to a nullptr");
+
+            std::uint64_t ptrValue = reinterpret_cast<std::uint64_t>(static_cast<void*>(ptr));
+            void* args[] = {
+                    &ptrValue
+            };
+            return csType->newObject(args);
         }
 
     public: // public because they might be useful to other parts of the engine
@@ -142,6 +162,12 @@ namespace Carrot::Scripting {
 
         static glm::vec3 _GetRigidBodyVelocity(MonoObject* comp);
         static void _SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value);
+
+        static std::uint64_t GetRigidBodyColliderCount(MonoObject* comp);
+        static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);
+
+        static bool RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo);
+        static bool _DoRaycast(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo, std::uint16_t collisionMask);
 
     private:
         void loadEngineAssembly();

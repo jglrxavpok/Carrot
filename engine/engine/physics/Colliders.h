@@ -12,6 +12,7 @@
 #include <core/utils/Lookup.hpp>
 #include <glm/glm.hpp>
 #include <reactphysics3d/reactphysics3d.h>
+#include <engine/physics/Types.h>
 
 namespace Carrot {
     class SingleMesh;
@@ -22,6 +23,7 @@ namespace Carrot {
 namespace Carrot::Physics {
     class RigidBody;
     class Collider;
+    class CollisionShape;
 
     enum class ColliderType {
         Box,
@@ -52,6 +54,12 @@ namespace Carrot::Physics {
         virtual reactphysics3d::CollisionShape* getReactShape() const = 0;
 
         virtual void tick(Collider& collider, double dt) {};
+
+    public:
+        /**
+         * Performs a raycast against this collider (NOT *using* this collider!)
+         */
+        bool raycast(const glm::vec3& startPoint, const glm::vec3& direction, float maxLength, RaycastInfo& raycastInfo);
 
     public:
         virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const = 0;

@@ -16,6 +16,7 @@
 #include <mono/metadata/object.h>
 #include <engine/ecs/components/CameraComponent.h>
 #include <engine/ecs/components/CSharpComponent.h>
+#include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/systems/System.h>
@@ -25,7 +26,8 @@
 
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
-#include <engine/ecs/components/RigidBodyComponent.h>
+
+#include <engine/physics/PhysicsSystem.h>
 
 namespace Carrot::Scripting {
 
@@ -89,8 +91,15 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
 
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetColliderCount", GetRigidBodyColliderCount);
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", GetRigidBodyCollider);
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_DoRaycast", _DoRaycast);
+
+        {
+            mono_add_internal_call("Carrot.Physics.Collider::Raycast", RaycastCollider);
+        }
 
         mono_add_internal_call("Carrot.Input.ActionSet::Create", CreateActionSet);
         mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", _ActivateActionSet);
@@ -295,6 +304,13 @@ namespace Carrot::Scripting {
         }
 
         {
+            CarrotReferenceClass = engine.findClass("Carrot", "Reference");
+            verify(CarrotReferenceClass, "Missing Carrot.Reference class in Carrot.dll !");
+            CarrotReferenceHandleField = CarrotReferenceClass->findField("_handle");
+            verify(CarrotReferenceHandleField, "Missing Carrot.Reference::_handle field in Carrot.dll !");
+        }
+
+        {
             LOAD_CLASS(System);
             SystemSignatureField = SystemClass->findField("_signature");
             verify(SystemSignatureField, "Missing Carrot.System::_signature field in Carrot.dll !");
@@ -317,6 +333,16 @@ namespace Carrot::Scripting {
         LOAD_CLASS(TransformComponent);
         LOAD_CLASS(TextComponent);
         LOAD_CLASS(RigidBodyComponent);
+
+        {
+            LOAD_CLASS_NS("Carrot.Physics", Collider);
+
+            LOAD_CLASS_NS("Carrot.Physics", RaycastInfo);
+            LOAD_FIELD(RaycastInfo, WorldPoint);
+            LOAD_FIELD(RaycastInfo, WorldNormal);
+            LOAD_FIELD(RaycastInfo, T);
+            LOAD_FIELD(RaycastInfo, Collider);
+        }
 
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
@@ -347,6 +373,16 @@ namespace Carrot::Scripting {
         verify(mono_object_isinst(obj, instance().CSharpBindings::CarrotObjectClass->toMono()), "Input object is not a Carrot.Object instance!");
 
         Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(obj));
+        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
+        auto* ptr = reinterpret_cast<T*>(handle);
+        return *ptr;
+    }
+
+    template<typename T>
+    T& getReference(MonoObject* obj) {
+        verify(mono_object_isinst(obj, instance().CSharpBindings::CarrotReferenceClass->toMono()), "Input object is not a Carrot.Reference instance!");
+
+        Scripting::CSObject handleObj = instance().CarrotReferenceHandleField->get(Scripting::CSObject(obj));
         std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
         auto* ptr = reinterpret_cast<T*>(handle);
         return *ptr;
@@ -520,6 +556,56 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.setVelocity(value);
+    }
+
+    std::uint64_t CSharpBindings::GetRigidBodyColliderCount(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.getColliderCount();
+    }
+
+    MonoObject* CSharpBindings::GetRigidBodyCollider(MonoObject* comp, std::uint64_t index) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& rigidbody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        return instance().requestCarrotReference(instance().ColliderClass, &rigidbody.getCollider(index))->toMono();
+    }
+
+    bool CSharpBindings::RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* pCSRaycastInfo) {
+        auto& colliderRef = getReference<Carrot::Physics::Collider>(collider);
+
+        Carrot::Physics::RaycastInfo raycastInfo;
+        bool hasHit = colliderRef.getShape().raycast(start, direction, maxLength, raycastInfo);
+
+        Scripting::CSObject csRaycastInfo{ pCSRaycastInfo };
+        if(hasHit) {
+            instance().RaycastInfoWorldPointField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldPoint));
+            instance().RaycastInfoWorldNormalField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldNormal));
+            instance().RaycastInfoTField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.t));
+            instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+        }
+
+        return hasHit;
+    }
+
+    bool CSharpBindings::_DoRaycast(MonoObject* rigidbodyComp, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* pCSRaycastInfo, std::uint16_t collisionMask) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(rigidbodyComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& rigidbody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        DISCARD(rigidbody); // unused
+
+        Carrot::Physics::RaycastInfo raycastInfo;
+        bool hasHit = GetPhysics().raycast(start, direction, maxLength, raycastInfo, collisionMask);
+
+        Scripting::CSObject csRaycastInfo{ pCSRaycastInfo };
+        if(hasHit) {
+            instance().RaycastInfoWorldPointField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldPoint));
+            instance().RaycastInfoWorldNormalField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldNormal));
+            instance().RaycastInfoTField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.t));
+            instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+        }
+
+        return hasHit;
     }
 
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {

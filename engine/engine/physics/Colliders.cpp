@@ -62,6 +62,7 @@ namespace Carrot::Physics {
     void Collider::addToBody(RigidBody& body) {
         rigidbody = &body;
         collider = body.body->addCollider(shape->getReactShape(), localTransform);
+        collider->setUserData(this);
     }
 
     void Collider::removeFromBody(RigidBody& body) {
@@ -97,6 +98,17 @@ namespace Carrot::Physics {
     }
 
     // ---- Collision shapes ----
+
+    bool CollisionShape::raycast(const glm::vec3& startPoint, const glm::vec3& direction, float maxLength, RaycastInfo& raycastInfo) {
+        verify(owner, "Must be linked to a Collider!");
+
+        reactphysics3d::Ray ray{ Carrot::reactPhysicsVecFromGlm(startPoint), Carrot::reactPhysicsVecFromGlm(startPoint + direction * maxLength), 1.0f };
+
+        reactphysics3d::RaycastInfo rp3dInfo;
+        bool thereIsAHit = owner->collider->raycast(ray, rp3dInfo);
+        raycastInfo.fromRP3D(rp3dInfo);
+        return thereIsAHit;
+    }
 
     void CollisionShape::reattachCollider() {
         verify(owner, "Must be linked to a Collider!");

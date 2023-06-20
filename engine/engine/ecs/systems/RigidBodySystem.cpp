@@ -50,12 +50,16 @@ namespace Carrot::ECS {
         }
 
         Physics::RigidBody* rigidbody = (Physics::RigidBody*) pData;
-        void* pData2 = rigidbody->getUserData();
-        if(!pData2) {
+        return entityFromBody(world, *rigidbody);
+    }
+
+    /*static*/ std::optional<Entity> RigidBodySystem::entityFromBody(const Carrot::ECS::World& world, const Physics::RigidBody& body) {
+        void* pData = body.getUserData();
+        if(!pData) {
             return {};
         }
 
-        const EntityID* pID = (EntityID*) pData2;
+        const EntityID* pID = (EntityID*) pData;
         return world.wrap(*pID);
     }
 }

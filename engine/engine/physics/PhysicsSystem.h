@@ -6,6 +6,7 @@
 
 #include <reactphysics3d/reactphysics3d.h>
 #include <glm/glm.hpp>
+#include <engine/physics/Types.h>
 
 namespace Carrot {
     class Pipeline;
@@ -40,9 +41,16 @@ namespace Carrot::Physics {
         const reactphysics3d::PhysicsWorld& getPhysicsWorld() const;
 
     public: // queries
-        using RaycastCallback = std::function<float(const rp3d::RaycastInfo& raycastInfo)>;
+        using RaycastCallback = std::function<float(const RaycastInfo& raycastInfo)>;
 
-        void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback) const;
+        void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback, unsigned short collisionMask = 0xFFFF) const;
+
+        /**
+         * Raycasts into the world, stopping at the first hit
+         * @param collisionMask mask for which collider to test against, by default tests for all
+         * @return true iff there was a hit
+         */
+        bool raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, RaycastInfo& raycastInfo, unsigned short collisionMask = 0xFFFF) const;
 
     private:
         explicit PhysicsSystem();
