@@ -13,21 +13,12 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <assimp/types.h>
-#include <reactphysics3d/mathematics/Vector2.h>
-#include <reactphysics3d/mathematics/Vector3.h>
-#include <reactphysics3d/mathematics/Quaternion.h>
-
+#include <Jolt/Math/Vec3.h>
+#include <Jolt/Math/Vec4.h>
+#include <Jolt/Math/Quat.h>
 
 namespace Carrot {
     glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);
-
-    glm::vec2 glmVecFromReactPhysics(const reactphysics3d::Vector2& vec);
-    glm::vec3 glmVecFromReactPhysics(const reactphysics3d::Vector3& vec);
-    glm::quat glmQuatFromReactPhysics(const reactphysics3d::Quaternion& vec);
-
-    reactphysics3d::Vector2 reactPhysicsVecFromGlm(const glm::vec2& vec);
-    reactphysics3d::Vector3 reactPhysicsVecFromGlm(const glm::vec3& vec);
-    reactphysics3d::Quaternion reactPhysicsQuatFromGlm(const glm::quat& vec);
 
     // From https://github.com/jherico/Vulkan/blob/experimental/openxr/examples/vr_openxr/vr_openxr.cpp
     // (MIT License) Code written by Bradley Austin Davis ("jherico")
@@ -101,4 +92,10 @@ namespace Carrot {
         result.z = xrSpace.y;
         return result * correction;
     }
+
+    JPH::Vec3 carrotToJolt(const glm::vec3& v);
+    glm::vec3 joltToCarrot(const JPH::Vec3& v);
+
+    JPH::Quat carrotToJolt(const glm::quat& v);
+    glm::quat joltToCarrot(const JPH::Quat& v);
 }

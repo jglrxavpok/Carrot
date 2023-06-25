@@ -32,9 +32,8 @@ namespace Carrot::ECS {
         void reload();
         void unload();
 
-        static const char* getTypeName(reactphysics3d::BodyType type);
-        static const char* getShapeName(reactphysics3d::CollisionShapeType type);
-        static reactphysics3d::BodyType getTypeFromName(const std::string& name);
+        static const char* getTypeName(Physics::BodyType type);
+        static Physics::BodyType getTypeFromName(const std::string& name);
 
     private:
         bool firstTick = true;

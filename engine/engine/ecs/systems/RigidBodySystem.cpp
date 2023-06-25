@@ -43,16 +43,6 @@ namespace Carrot::ECS {
         });
     }
 
-    /*static*/ std::optional<Entity> RigidBodySystem::entityFromReactPhysicsBody(const Carrot::ECS::World& world, const rp3d::CollisionBody& body) {
-        void* pData = body.getUserData();
-        if(!pData) {
-            return {};
-        }
-
-        Physics::RigidBody* rigidbody = (Physics::RigidBody*) pData;
-        return entityFromBody(world, *rigidbody);
-    }
-
     /*static*/ std::optional<Entity> RigidBodySystem::entityFromBody(const Carrot::ECS::World& world, const Physics::RigidBody& body) {
         void* pData = body.getUserData();
         if(!pData) {

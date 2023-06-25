@@ -7,7 +7,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "reactphysics3d/mathematics/Transform.h"
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 
@@ -25,12 +24,7 @@ namespace Carrot::Math {
         Transform(Transform&&) = default;
         Transform& operator=(const Transform&) = default;
 
-        Transform(const reactphysics3d::Transform&);
-
     public:
-        Transform& operator=(const reactphysics3d::Transform&);
-        operator reactphysics3d::Transform() const;
-
         /// Combines this transform with another to produce a new Transform which will be the composite of this transform, then 'other'.
         Transform operator*(const Transform& other) const;
 

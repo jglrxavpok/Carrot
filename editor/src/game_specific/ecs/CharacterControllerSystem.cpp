@@ -58,8 +58,8 @@ namespace Game::ECS {
 
             pitch = std::min(glm::pi<float>(), std::max(0.0f, pitch));
 
-            rigidbody.setBodyType(reactphysics3d::BodyType::DYNAMIC);
-            rigidbody.setRotationAxes(glm::vec3(0, 0, 0)); // only the player is allowed to rotate the entity
+            rigidbody.setBodyType(Carrot::Physics::BodyType::Dynamic);
+            rigidbody.setRotationAxes(glm::bvec3(false, false, false)); // only the player is allowed to rotate the entity
 
             glm::vec3 forward { -glm::sin(yaw), glm::cos(yaw), 0.0 };
             glm::vec3 strafe { glm::cos(yaw), glm::sin(yaw), 0.0 };
@@ -96,7 +96,7 @@ namespace Game::ECS {
                 glm::vec3 dir { 0, 0, -1 };
                 dir = headTransform.localTransform.rotation * dir;
                 const float maxDistance = 5000.0f;
-                GetPhysics().raycast(headTransform.computeFinalPosition(), dir, maxDistance, [&](const Carrot::Physics::RaycastInfo& raycastInfo) -> rp3d::decimal {
+                GetPhysics().raycast(headTransform.computeFinalPosition(), dir, maxDistance, [&](const Carrot::Physics::RaycastInfo& raycastInfo) -> float {
                     auto entityHit = Carrot::ECS::RigidBodySystem::entityFromBody(world, *raycastInfo.rigidBody);
                     if(entityHit) {
                         auto potentialPage = entityHit->getComponent<PageComponent>();

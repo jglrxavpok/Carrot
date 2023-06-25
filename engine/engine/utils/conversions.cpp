@@ -10,27 +10,19 @@ namespace Carrot {
         return glm::transpose(glm::make_mat4(&assimpMatrix.a1));
     }
 
-    glm::vec2 glmVecFromReactPhysics(const reactphysics3d::Vector2& vec) {
-        return { vec.x, vec.y };
+    JPH::Vec3 carrotToJolt(const glm::vec3& v) {
+        return {v.x, v.y, v.z};
     }
 
-    glm::vec3 glmVecFromReactPhysics(const reactphysics3d::Vector3& vec) {
-        return { vec.x, vec.y, vec.z };
+    glm::vec3 joltToCarrot(const JPH::Vec3& v) {
+        return {v.GetX(), v.GetY(), v.GetZ()};
     }
 
-    glm::quat glmQuatFromReactPhysics(const reactphysics3d::Quaternion& q) {
-        return glm::quat{ q.w, q.x, q.y, q.z };
+    JPH::Quat carrotToJolt(const glm::quat& q) {
+        return {q.x, q.y, q.z, q.w};
     }
 
-    reactphysics3d::Vector2 reactPhysicsVecFromGlm(const glm::vec2& q) {
-        return { q.x, q.y };
-    }
-
-    reactphysics3d::Vector3 reactPhysicsVecFromGlm(const glm::vec3& q) {
-        return { q.x, q.y, q.z };
-    }
-
-    reactphysics3d::Quaternion reactPhysicsQuatFromGlm(const glm::quat& q) {
-        return { q.x, q.y, q.z, q.w };
+    glm::quat joltToCarrot(const JPH::Quat& q) {
+        return {q.GetW(), q.GetX(), q.GetY(), q.GetZ()};
     }
 }

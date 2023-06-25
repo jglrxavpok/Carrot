@@ -39,6 +39,8 @@ namespace Carrot {
                     v[i] = array[i].GetFloat();
                 } else if constexpr(std::is_same_v<Elem, double>){
                     v[i] = array[i].GetDouble();
+                } else if constexpr(std::is_same_v<Elem, bool>){
+                    v[i] = array[i].GetBool();
                 } else {
                     static_assert(!std::is_same_v<Elem, double> && !std::is_same_v<Elem, float>, "Unknown type");
                 }

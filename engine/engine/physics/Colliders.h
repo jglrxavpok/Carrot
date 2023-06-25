@@ -11,8 +11,12 @@
 #include <engine/math/Transform.h>
 #include <core/utils/Lookup.hpp>
 #include <glm/glm.hpp>
-#include <reactphysics3d/reactphysics3d.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <engine/physics/Types.h>
+
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 
 namespace Carrot {
     class SingleMesh;
@@ -51,8 +55,6 @@ namespace Carrot::Physics {
 
         virtual std::unique_ptr<CollisionShape> duplicate() const = 0;
 
-        virtual reactphysics3d::CollisionShape* getReactShape() const = 0;
-
         virtual void tick(Collider& collider, double dt) {};
 
     public:
@@ -69,6 +71,8 @@ namespace Carrot::Physics {
         /// Used when the ReactPhysics3D CollisionShape cannot be modified directly.
         void reattachCollider();
 
+        JPH::ShapeRefC shape;
+
     private:
         void setCollider(Collider* collider);
 
@@ -77,6 +81,7 @@ namespace Carrot::Physics {
         Collider* owner = nullptr;
 
         friend class Collider;
+        friend class RigidBody;
     };
 
     class BoxCollisionShape: public CollisionShape {
@@ -98,10 +103,6 @@ namespace Carrot::Physics {
             return std::make_unique<BoxCollisionShape>(getHalfExtents());
         }
 
-        virtual reactphysics3d::CollisionShape* getReactShape() const {
-            return shape;
-        }
-
     public:
         [[nodiscard]] glm::vec3 getHalfExtents() const;
         void setHalfExtents(const glm::vec3& halfExtents);
@@ -110,7 +111,7 @@ namespace Carrot::Physics {
         BoxCollisionShape();
 
     private:
-        reactphysics3d::BoxShape* shape = nullptr;
+        glm::vec3 currentHalfExtents;
     };
 
     class SphereCollisionShape: public CollisionShape {
@@ -132,10 +133,6 @@ namespace Carrot::Physics {
             return std::make_unique<SphereCollisionShape>(getRadius());
         }
 
-        virtual reactphysics3d::CollisionShape* getReactShape() const {
-            return shape;
-        }
-
     public:
         [[nodiscard]] float getRadius() const;
         void setRadius(float radius);
@@ -144,7 +141,7 @@ namespace Carrot::Physics {
         SphereCollisionShape();
 
     private:
-        reactphysics3d::SphereShape* shape = nullptr;
+        float currentRadius{0.0f};
     };
 
     class CapsuleCollisionShape: public CollisionShape {
@@ -166,10 +163,6 @@ namespace Carrot::Physics {
             return std::make_unique<CapsuleCollisionShape>(getRadius(), getHeight());
         }
 
-        virtual reactphysics3d::CollisionShape* getReactShape() const {
-            return shape;
-        }
-
     public:
         [[nodiscard]] float getRadius() const;
         void setRadius(float radius);
@@ -177,63 +170,14 @@ namespace Carrot::Physics {
         [[nodiscard]] float getHeight() const;
         void setHeight(float height);
 
+        void setRadiusAndHeight(float radius, float height);
+
     private:
         CapsuleCollisionShape();
 
     private:
-        reactphysics3d::CapsuleShape* shape = nullptr;
-    };
-
-    /// Concave mesh. Can only be used for static bodies.
-    class StaticConcaveMeshCollisionShape: public CollisionShape {
-    public:
-        explicit StaticConcaveMeshCollisionShape(const rapidjson::Value& json);
-        explicit StaticConcaveMeshCollisionShape(const std::shared_ptr<Carrot::Model>& model);
-        explicit StaticConcaveMeshCollisionShape(const StaticConcaveMeshCollisionShape&) = delete;
-
-        ~StaticConcaveMeshCollisionShape();
-
-    public:
-        virtual ColliderType getType() const override {
-            return ColliderType::StaticConcaveTriangleMesh;
-        }
-
-        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const override;
-
-        virtual std::unique_ptr<CollisionShape> duplicate() const override {
-            return std::make_unique<StaticConcaveMeshCollisionShape>(gpuModel);
-        }
-
-        virtual reactphysics3d::CollisionShape* getReactShape() const {
-            return shape;
-        }
-
-    public:
-        Carrot::Model& getModel() const;
-
-        /// Changes the model used by this collision shape.
-        void setModel(const std::shared_ptr<Carrot::Model>& mesh);
-        void setScale(const glm::vec3& scaling);
-        glm::vec3 getScale() const;
-
-    private:
-        StaticConcaveMeshCollisionShape();
-
-    private:
-        std::shared_ptr<Carrot::Model> gpuModel;
-
-        struct BasicCPUMesh {
-            std::vector<glm::vec3> positions;
-            std::vector<glm::vec3> normals;
-            std::vector<std::uint32_t> indices;
-
-            std::unique_ptr<reactphysics3d::TriangleVertexArray> vertexArray = nullptr;
-            std::unique_ptr<reactphysics3d::TriangleVertexArray>& makeReactphysicsVertexArray();
-        };
-
-        std::vector<BasicCPUMesh> meshes;
-        reactphysics3d::TriangleMesh* triangleMesh = nullptr;
-        reactphysics3d::ConcaveMeshShape* shape = nullptr;
+        float currentRadius = 0.0f;
+        float currentHeight = 0.0f;
     };
 
     class Collider {
@@ -261,7 +205,6 @@ namespace Carrot::Physics {
 
     private:
         std::unique_ptr<CollisionShape> shape;
-        reactphysics3d::Collider* collider = nullptr;
         Carrot::Math::Transform localTransform;
         RigidBody* rigidbody = nullptr;
 

@@ -121,11 +121,6 @@ namespace Peeler {
                 }
                     break;
 
-                case ColliderType::StaticConcaveTriangleMesh: {
-                    localTransform.scale = dynamic_cast<StaticConcaveMeshCollisionShape&>(collider.getShape()).getScale();
-                }
-                    break;
-
                 default:
                     TODO; // not implemented yet
             }
@@ -190,11 +185,6 @@ namespace Peeler {
                             }
                         }
                             break;
-                        case ColliderType::StaticConcaveTriangleMesh: {
-                            dynamic_cast<StaticConcaveMeshCollisionShape&>(collider.getShape()).setScale(
-                                    glm::vec3(scale[0], scale[1], scale[2]));
-                        }
-                            break;
 
                         default:
                             TODO; // not implemented yet
@@ -223,10 +213,10 @@ namespace Peeler {
 
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component) {
         auto& rigidbody = component->rigidbody;
-        const reactphysics3d::BodyType type = rigidbody.getBodyType();
+        const BodyType type = rigidbody.getBodyType();
 
         if(ImGui::BeginCombo("Type##rigidbodycomponent", component->getTypeName(type))) {
-            for(reactphysics3d::BodyType bodyType : { reactphysics3d::BodyType::DYNAMIC, reactphysics3d::BodyType::KINEMATIC, reactphysics3d::BodyType::STATIC }) {
+            for(BodyType bodyType : { BodyType::Dynamic, BodyType::Kinematic, BodyType::Static }) {
                 bool selected = bodyType == type;
                 if(ImGui::Selectable(component->getTypeName(bodyType), selected)) {
                     rigidbody.setBodyType(bodyType);
@@ -392,42 +382,6 @@ namespace Peeler {
                 }
                     break;
 
-                case Carrot::Physics::ColliderType::StaticConcaveTriangleMesh: {
-                    auto& meshShape = static_cast<Carrot::Physics::StaticConcaveMeshCollisionShape&>(shape);
-
-                    auto setModel = [&](const std::string& modelPath) {
-                        auto model = GetRenderer().getOrCreateModel(modelPath);
-                        if(model) {
-                            meshShape.setModel(model);
-                            edition.hasModifications = true;
-                        } else {
-                            Carrot::Log::error("Could not open model for collisions: %s", modelPath.c_str());
-                        }
-                    };
-                    std::string path = meshShape.getModel().getOriginatingResource().getName();
-                    if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        setModel(path);
-                    }
-
-                    if(ImGui::BeginDragDropTarget()) {
-                        if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                            std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                            std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                            buffer.get()[payload->DataSize] = '\0';
-
-                            std::filesystem::path newPath = buffer.get();
-
-                            std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
-                            if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(fsPath)) {
-                                setModel(Carrot::toString(fsPath.u8string()));
-                            }
-                        }
-
-                        ImGui::EndDragDropTarget();
-                    }
-                }
-                    break;
-
                 default:
                     TODO
                     break;
@@ -464,10 +418,6 @@ namespace Peeler {
                 }
                 if(ImGui::MenuItem("Capsule Collider##rigidbodycomponent colliders")) {
                     rigidbody.addCollider(Carrot::Physics::CapsuleCollisionShape(1.0f, 1.0f));
-                    edition.hasModifications = true;
-                }
-                if(ImGui::MenuItem("Static Concave Mesh Collider##rigidbodycomponent colliders")) {
-                    rigidbody.addCollider(Carrot::Physics::StaticConcaveMeshCollisionShape(GetRenderer().getOrCreateModel("resources/models/simple_cube.obj")));
                     edition.hasModifications = true;
                 }
                 // TODO: convex

@@ -67,3 +67,6 @@
 [submodule "thirdparty/robin-hood-hashing"]
 	path = thirdparty/robin-hood-hashing
 	url = https://github.com/martinus/robin-hood-hashing
+[submodule "thirdparty/JoltPhysics"]
+	path = thirdparty/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics

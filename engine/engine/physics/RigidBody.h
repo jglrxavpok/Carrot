@@ -4,7 +4,9 @@
 
 #pragma once
 
-#include <reactphysics3d/reactphysics3d.h>
+#include <Jolt/Core/Mutex.h>
+#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
+#include <Jolt/Physics/Body/Body.h>
 #include <engine/math/Transform.h>
 #include "Colliders.h"
 
@@ -13,6 +15,12 @@ namespace Carrot::ECS {
 }
 
 namespace Carrot::Physics {
+    enum class BodyType {
+        Static,
+        Dynamic,
+        Kinematic,
+    };
+
     class RigidBody {
     public:
         explicit RigidBody();
@@ -45,28 +53,22 @@ namespace Carrot::Physics {
         const Collider& getCollider(std::size_t index) const;
 
     public:
-        reactphysics3d::BodyType getBodyType() const;
-        void setBodyType(reactphysics3d::BodyType type);
+        BodyType getBodyType() const;
+        void setBodyType(BodyType type);
 
     public:
         float getMass() const;
         void setMass(float mass);
 
-        glm::vec3 getLocalCenterOfMass() const;
-        void setLocalCenterOfMass(const glm::vec3& center);
-
-        glm::vec3 getLocalInertiaTensor() const;
-        void setLocalInertiaTensor(const glm::vec3& inertia);
-
         glm::vec3 getVelocity() const;
         void setVelocity(const glm::vec3& velocity);
 
     public: // axes on which translation & rotation are allowed
-        glm::vec3 getTranslationAxes() const;
-        void setTranslationAxes(const glm::vec3& freeAxes);
+        glm::bvec3 getTranslationAxes() const;
+        void setTranslationAxes(const glm::bvec3& freeAxes);
 
-        glm::vec3 getRotationAxes() const;
-        void setRotationAxes(const glm::vec3& freeAxes);
+        glm::bvec3 getRotationAxes() const;
+        void setRotationAxes(const glm::bvec3& freeAxes);
 
     public:
         bool isActive() const;
@@ -85,8 +87,47 @@ namespace Carrot::Physics {
         void setUserData(void* pData);
 
     private:
-        rp3d::RigidBody* body = nullptr;
+        void createBody(const JPH::BodyCreationSettings& creationSettings);
+        void recreateBody();
+
+        void setupDOFConstraint();
+
+        struct BodyAccessWrite {
+            BodyAccessWrite(const JPH::BodyID& bodyID);
+            ~BodyAccessWrite();
+
+            JPH::Body* operator->();
+            operator bool();
+
+            JPH::Body* get();
+
+        private:
+            JPH::SharedMutex* mutex = nullptr;
+            JPH::Body* body = nullptr;
+        };
+
+        struct BodyAccessRead {
+            BodyAccessRead(const JPH::BodyID& bodyID);
+            ~BodyAccessRead();
+
+            const JPH::Body* operator->();
+            operator bool();
+
+            const JPH::Body* get();
+
+        private:
+            JPH::SharedMutex* mutex = nullptr;
+            JPH::Body* body = nullptr;
+        };
+
         std::vector<std::unique_ptr<Collider>> colliders;
+        BodyType bodyType = BodyType::Dynamic;
+        glm::bvec3 translationAxes{true, true, true};
+        glm::bvec3 rotationAxes{true, true, true};
+
+        JPH::BodyID bodyID;
+        JPH::ShapeRefC bodyShapeRef; // compound shape used when there are multiple colliders
+        JPH::SixDOFConstraint* dofConstraint = nullptr;
         void* userData = nullptr;
 
         friend class Collider;

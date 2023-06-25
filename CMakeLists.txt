@@ -111,7 +111,9 @@ add_subdirectory(thirdparty/assimp)
 
 add_subdirectory(thirdparty/nativefiledialog-extended)
 add_subdirectory(thirdparty/openexr)
-add_subdirectory(thirdparty/reactphysics3d)
+
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF)
+add_subdirectory(thirdparty/JoltPhysics/Build)
 
 set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)

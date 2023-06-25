@@ -4,15 +4,20 @@
 
 #include "Colliders.h"
 #include <engine/utils/Macros.h>
+#include <engine/utils/conversions.h>
 #include <core/utils/JSON.h>
 #include <engine/utils/conversions.h>
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/physics/RigidBody.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+
+using namespace JPH;
 
 namespace Carrot::Physics {
 
-    Collider::Collider(std::unique_ptr<CollisionShape>&& collisionShape, const Carrot::Math::Transform& localTransform): shape(std::move(collisionShape)), localTransform(localTransform) {
+    Collider::Collider(std::unique_ptr<CollisionShape>&& collisionShape, const Carrot::Math::Transform& localTransform): shape(std::move(collisionShape)) {
         shape->setCollider(this);
+        setLocalTransform(localTransform);
     }
 
     std::unique_ptr<Collider> Collider::loadFromJSON(const rapidjson::Value& object) {
@@ -33,7 +38,7 @@ namespace Carrot::Physics {
                 break;
 
             case ColliderType::StaticConcaveTriangleMesh:
-                collisionShape = std::make_unique<StaticConcaveMeshCollisionShape>(object);
+                TODO;
                 break;
 
             default:
@@ -61,26 +66,32 @@ namespace Carrot::Physics {
 
     void Collider::addToBody(RigidBody& body) {
         rigidbody = &body;
-        collider = body.body->addCollider(shape->getReactShape(), localTransform);
-        collider->setUserData(this);
     }
 
     void Collider::removeFromBody(RigidBody& body) {
-        verify(collider, "Must already be on a body");
-        body.body->removeCollider(collider);
+        verify(rigidbody, "Must already be on a body");
         rigidbody = nullptr;
     }
 
     Carrot::Math::Transform Collider::getLocalTransform() const {
-        return collider ? Carrot::Math::Transform(collider->getLocalToBodyTransform()) : localTransform;
+        return localTransform;
     }
 
     void Collider::setLocalTransform(const Carrot::Math::Transform& transform) {
-        if(collider) {
-            collider->setLocalToBodyTransform(transform);
-        } else {
-            localTransform = transform;
+        localTransform = transform;
+        verify(shape->shape, "Must already have a shape");
+        auto oldShapeRef = shape->shape;
+        const JPH::Shape* oldShape = oldShapeRef.GetPtr();
+        if(auto rotatedTranslated = dynamic_cast<const JPH::RotatedTranslatedShape*>(oldShapeRef.GetPtr())) {
+            oldShape = rotatedTranslated->GetInnerShape();
         }
+        shape->shape = JPH::RotatedTranslatedShapeSettings{
+            carrotToJolt(transform.position),
+            carrotToJolt(transform.rotation),
+            oldShape
+        }.Create().Get();
+        oldShapeRef->Release();
+        reattach();
     }
 
     [[nodiscard]] CollisionShape& Collider::getShape() const {
@@ -88,7 +99,7 @@ namespace Carrot::Physics {
     }
 
     void Collider::reattach() {
-        verify(collider, "Must already be attached!");
+        verify(shape, "Must have a shape!");
         verify(rigidbody, "Must be associated to a RigidBody");
 
         // modifies the reactphysics rigidbody, without modifying the engine representation
@@ -100,19 +111,13 @@ namespace Carrot::Physics {
     // ---- Collision shapes ----
 
     bool CollisionShape::raycast(const glm::vec3& startPoint, const glm::vec3& direction, float maxLength, RaycastInfo& raycastInfo) {
-        verify(owner, "Must be linked to a Collider!");
-
-        reactphysics3d::Ray ray{ Carrot::reactPhysicsVecFromGlm(startPoint), Carrot::reactPhysicsVecFromGlm(startPoint + direction * maxLength), 1.0f };
-
-        reactphysics3d::RaycastInfo rp3dInfo;
-        bool thereIsAHit = owner->collider->raycast(ray, rp3dInfo);
-        raycastInfo.fromRP3D(rp3dInfo);
-        return thereIsAHit;
+        TODO;
     }
 
     void CollisionShape::reattachCollider() {
-        verify(owner, "Must be linked to a Collider!");
-        owner->reattach();
+        if(owner) {
+            owner->reattach();
+        }
     }
 
     void CollisionShape::setCollider(Collider* collider) {
@@ -120,7 +125,7 @@ namespace Carrot::Physics {
     }
 
     BoxCollisionShape::BoxCollisionShape() {
-        shape = GetPhysics().getCommons().createBoxShape(reactphysics3d::Vector3 { 0.5f, 0.5f, 0.5f });
+        setHalfExtents({1,1,1});
     }
 
     BoxCollisionShape::BoxCollisionShape(const rapidjson::Value& json): BoxCollisionShape() {
@@ -132,11 +137,13 @@ namespace Carrot::Physics {
     }
 
     void BoxCollisionShape::setHalfExtents(const glm::vec3& halfExtents) {
-        shape->setHalfExtents(Carrot::reactPhysicsVecFromGlm(halfExtents));
+        currentHalfExtents = halfExtents;
+        shape = BoxShapeSettings{carrotToJolt(halfExtents)}.Create().Get();
+        reattachCollider();
     }
 
     glm::vec3 BoxCollisionShape::getHalfExtents() const {
-        return Carrot::glmVecFromReactPhysics(shape->getHalfExtents());
+        return currentHalfExtents;
     }
 
     void BoxCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
@@ -144,11 +151,11 @@ namespace Carrot::Physics {
     }
 
     BoxCollisionShape::~BoxCollisionShape() {
-        GetPhysics().getCommons().destroyBoxShape(shape);
+
     }
 
     SphereCollisionShape::SphereCollisionShape() {
-        shape = GetPhysics().getCommons().createSphereShape(1.0f);
+        setRadius(1.0f);
     }
 
     SphereCollisionShape::SphereCollisionShape(const rapidjson::Value& json): SphereCollisionShape() {
@@ -161,51 +168,54 @@ namespace Carrot::Physics {
 
     void SphereCollisionShape::setRadius(float radius) {
         verify(radius > 0, "radius must be > 0");
-        shape->setRadius(radius);
+        currentRadius = radius;
+        shape = SphereShapeSettings{radius}.Create().Get();
+        reattachCollider();
     }
 
     float SphereCollisionShape::getRadius() const {
-        return shape->getRadius();
+        return currentRadius;
     }
 
     void SphereCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
         object.AddMember("radius", getRadius(), allocator);
     }
 
-    SphereCollisionShape::~SphereCollisionShape() {
-        GetPhysics().getCommons().destroySphereShape(shape);
-    }
+    SphereCollisionShape::~SphereCollisionShape() {}
 
     CapsuleCollisionShape::CapsuleCollisionShape() {
-        shape = GetPhysics().getCommons().createCapsuleShape(1.0f, 1.0f);
+        setRadiusAndHeight(1.0f, 1.0f);
     }
 
     CapsuleCollisionShape::CapsuleCollisionShape(const rapidjson::Value& json): CapsuleCollisionShape() {
-        setRadius(json["radius"].GetFloat());
-        setHeight(json["height"].GetFloat());
+        setRadiusAndHeight(json["radius"].GetFloat(), json["height"].GetFloat());
     }
 
     CapsuleCollisionShape::CapsuleCollisionShape(float radius, float height): CapsuleCollisionShape() {
-        setRadius(radius);
-        setHeight(height);
+        setRadiusAndHeight(radius, height);
     }
 
     void CapsuleCollisionShape::setRadius(float radius) {
-        verify(radius > 0, "radius must be > 0");
-        shape->setRadius(radius);
+        setRadiusAndHeight(radius, currentHeight);
     }
 
     float CapsuleCollisionShape::getRadius() const {
-        return shape->getRadius();
+        return currentRadius;
     }
     
     void CapsuleCollisionShape::setHeight(float height) {
-        verify(height > 0, "height must be > 0");
-        shape->setHeight(height);
+        setRadiusAndHeight(currentRadius, height);
     }
 
     float CapsuleCollisionShape::getHeight() const {
-        return shape->getHeight();
+        return currentHeight;
+    }
+
+    void CapsuleCollisionShape::setRadiusAndHeight(float radius, float height) {
+        currentRadius = radius;
+        currentHeight = height;
+        shape = CapsuleShapeSettings{height/2, radius}.Create().Get();
+        reattachCollider();
     }
 
     void CapsuleCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
@@ -214,6 +224,5 @@ namespace Carrot::Physics {
     }
 
     CapsuleCollisionShape::~CapsuleCollisionShape() {
-        GetPhysics().getCommons().destroyCapsuleShape(shape);
     }
 }

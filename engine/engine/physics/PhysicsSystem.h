@@ -4,7 +4,11 @@
 
 #pragma once
 
-#include <reactphysics3d/reactphysics3d.h>
+#include <thread>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Core/JobSystemThreadPool.h>
 #include <glm/glm.hpp>
 #include <engine/physics/Types.h>
 
@@ -35,11 +39,6 @@ namespace Carrot::Physics {
         void pause();
         void resume();
 
-    public:
-        reactphysics3d::PhysicsCommon& getCommons();
-        reactphysics3d::PhysicsWorld& getPhysicsWorld();
-        const reactphysics3d::PhysicsWorld& getPhysicsWorld() const;
-
     public: // queries
         using RaycastCallback = std::function<float(const RaycastInfo& raycastInfo)>;
 
@@ -57,14 +56,43 @@ namespace Carrot::Physics {
         ~PhysicsSystem();
 
     private:
-        reactphysics3d::PhysicsCommon physics;
-        reactphysics3d::PhysicsWorld* world = nullptr;
+        std::unique_ptr<JPH::PhysicsSystem> jolt;
+
+        // TODO: from HelloWorld example of JoltPhysics, will need to customize & integrate with rest of engine
+
+        // We need a temp allocator for temporary allocations during the physics update. We're
+        // pre-allocating 10 MB to avoid having to do allocations during the physics update.
+        // B.t.w. 10 MB is way too much for this example but it is a typical value you can use.
+        // If you don't want to pre-allocate you can also use TempAllocatorMalloc to fall back to
+        // malloc / free.
+        std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator;
+
+        // We need a job system that will execute physics jobs on multiple threads. Typically
+        // you would implement the JobSystem interface yourself and let Jolt Physics run on top
+        // of your own job scheduler. JobSystemThreadPool is an example implementation.
+        std::unique_ptr<JPH::JobSystemThreadPool> jobSystem;
+
         double accumulator = 0.0;
         bool paused = false;
+
+    private:
+        JPH::SharedMutex* lockReadBody(const JPH::BodyID& bodyID);
+        JPH::SharedMutex* lockWriteBody(const JPH::BodyID& bodyID);
+
+        void unlockReadBody(JPH::SharedMutex* mutex);
+        void unlockWriteBody(JPH::SharedMutex* mutex);
+
+        // gets the body corresponding to the given bodyID, assuming a lock is already held on that body
+        JPH::Body* lockedGetBody(const JPH::BodyID& bodyID);
+
+        JPH::BodyID createRigidbody(const JPH::BodyCreationSettings& creationSettings);
+        void destroyRigidbody(const JPH::BodyID& bodyID);
 
     private: // debug rendering
         std::shared_ptr<Carrot::Pipeline> debugTrianglesPipeline;
         std::shared_ptr<Carrot::Pipeline> debugLinesPipeline;
         Carrot::Render::Viewport* debugViewport = nullptr;
+
+        friend class RigidBody;
     };
 }

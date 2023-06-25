@@ -5,7 +5,6 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <reactphysics3d/reactphysics3d.h>
 
 namespace Carrot::Physics {
     class RigidBody;
@@ -19,7 +18,6 @@ namespace Carrot::Physics {
         Collider* collider = nullptr;
         RigidBody* rigidBody = nullptr;
 
-        RaycastInfo& fromRP3D(const rp3d::RaycastInfo& info);
     };
 
 }

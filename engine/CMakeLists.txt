@@ -154,7 +154,6 @@ set(ENGINE-SOURCES
 
 
         ${EngineRoot}physics/Colliders.cpp
-        ${EngineRoot}physics/MeshCollisionShape.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp
         ${EngineRoot}physics/RigidBody.cpp
 
@@ -293,7 +292,7 @@ set(THIRDPARTY-SOURCES
 
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR reactphysics3d
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
         ${OPENXR-LOADER-LIB-LOCATION}
         ${ADDITIONAL_LIBS})
 
@@ -332,6 +331,7 @@ function(add_engine_precompiled_headers Target)
             <filesystem>
             <vector>
             <string>
+            <Jolt/Jolt.h>
             )
 endfunction()
 

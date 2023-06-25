@@ -6,11 +6,57 @@
 #include <engine/utils/Macros.h>
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/utils/conversions.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Collision/Shape/CompoundShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 namespace Carrot::Physics {
+    RigidBody::BodyAccessWrite::BodyAccessWrite(const JPH::BodyID& bodyID) {
+        mutex = GetPhysics().lockWriteBody(bodyID);
+        if(!bodyID.IsInvalid()) {
+            body = GetPhysics().lockedGetBody(bodyID);
+        }
+    }
+
+    RigidBody::BodyAccessWrite::~BodyAccessWrite() {
+        GetPhysics().unlockWriteBody(mutex);
+    }
+
+    JPH::Body* RigidBody::BodyAccessWrite::operator->() {
+        return body;
+    }
+
+    RigidBody::BodyAccessWrite::operator bool() {
+        return body != nullptr;
+    }
+
+    JPH::Body* RigidBody::BodyAccessWrite::get() {
+        return body;
+    }
+
+    RigidBody::BodyAccessRead::BodyAccessRead(const JPH::BodyID& bodyID) {
+        mutex = GetPhysics().lockReadBody(bodyID);
+        body = GetPhysics().lockedGetBody(bodyID);
+        verify(body != nullptr, "Invalid bodyID");
+    }
+
+    RigidBody::BodyAccessRead::~BodyAccessRead() {
+        GetPhysics().unlockReadBody(mutex);
+    }
+
+    const JPH::Body* RigidBody::BodyAccessRead::operator->() {
+        return body;
+    }
+
+    RigidBody::BodyAccessRead::operator bool() {
+        return body != nullptr;
+    }
+
+    const JPH::Body* RigidBody::BodyAccessRead::get() {
+        return body;
+    }
+
     RigidBody::RigidBody() {
-        body = GetPhysics().getPhysicsWorld().createRigidBody({});
-        body->setUserData(this);
     }
 
     RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
@@ -22,50 +68,39 @@ namespace Carrot::Physics {
     }
 
     RigidBody& RigidBody::operator=(const RigidBody& toCopy) {
-        verify(toCopy.body, "Used after std::move");
+        verify(!toCopy.bodyID.IsInvalid(), "Used after std::move");
 
         if(&toCopy == this) {
             return *this;
         }
 
-        if(body) {
-            GetPhysics().getPhysicsWorld().destroyRigidBody(body);
+        if(!bodyID.IsInvalid()) {
+            GetPhysics().destroyRigidbody(bodyID);
+            bodyID = {};
         }
 
-        body = GetPhysics().getPhysicsWorld().createRigidBody({});
-        body->setUserData(this);
-
-        body->setTransform(toCopy.body->getTransform());
-        body->setMass(toCopy.body->getMass());
-        body->setAngularDamping(toCopy.body->getAngularDamping());
-        body->setAngularVelocity(toCopy.body->getAngularVelocity());
-        body->setIsActive(toCopy.body->isActive());
-        body->setIsAllowedToSleep(toCopy.body->isAllowedToSleep());
-        body->setLinearDamping(toCopy.body->getLinearDamping());
-        body->setLinearVelocity(toCopy.body->getLinearVelocity());
-        body->setLocalCenterOfMass(toCopy.body->getLocalCenterOfMass());
-        body->setLocalInertiaTensor(toCopy.body->getLocalInertiaTensor());
-        body->setAngularLockAxisFactor(toCopy.body->getAngularLockAxisFactor());
-        body->setLinearLockAxisFactor(toCopy.body->getLinearLockAxisFactor());
-        body->setType(toCopy.body->getType());
-        body->setUserData(this);
-
-        for (std::size_t index = 0; index < toCopy.getColliderCount(); index++) {
-            auto& colliderToCopy = toCopy.getCollider(index);
-            auto& collider = addCollider(colliderToCopy.getShape(), colliderToCopy.getLocalTransform());
-            /* TODO collider.setIsTrigger(colliderToCopy.getIsTrigger());
-            collider.setCollideWithMaskBits(colliderToCopy.getCollideWithMaskBits());
-            collider.setCollisionCategoryBits(colliderToCopy.getCollisionCategoryBits());
-             */
+        colliders.resize(toCopy.colliders.size());
+        for (int i = 0; i < colliders.size(); ++i) {
+            colliders[i] = std::make_unique<Collider>(toCopy.colliders[i]->getShape().duplicate(), toCopy.colliders[i]->getLocalTransform());
         }
+
+        BodyAccessRead toCopyBody{toCopy.bodyID};
+        auto creationSettings = toCopyBody->GetBodyCreationSettings();
+
+        createBody(creationSettings);
+
         return *this;
     }
 
     RigidBody& RigidBody::operator=(RigidBody&& toMove) {
-        verify(toMove.body, "Used after std::move");
-        body = toMove.body;
-        body->setUserData(this);
-        toMove.body = nullptr;
+        verify(!toMove.bodyID.IsInvalid(), "Used after std::move");
+        bodyID = toMove.bodyID;
+        BodyAccessWrite body{bodyID};
+        body->SetUserData((std::uint64_t)this);
+
+        colliders = std::move(toMove.colliders);
+
+        toMove.bodyID = {};
         return *this;
     }
 
@@ -77,10 +112,11 @@ namespace Carrot::Physics {
         } else {
             colliders.emplace_back(std::move(collider));
         }
+
+        recreateBody();
     }
 
     Collider& RigidBody::addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform, std::size_t insertionIndex) {
-        verify(body, "Used after std::move");
         addColliderDirectly(std::make_unique<Collider>(shape.duplicate(), localTransform), insertionIndex);
 
         auto& collider = colliders.back();
@@ -88,109 +124,138 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::removeCollider(std::size_t index) {
-        verify(body, "Used after std::move");
+        verify(!bodyID.IsInvalid(), "Used after std::move");
         verify(index >= 0 && index < getColliderCount(), "Out of bounds");
         getCollider(index).removeFromBody(*this);
         colliders.erase(colliders.begin() + index);
+
+        recreateBody();
     }
 
     std::size_t RigidBody::getColliderCount() const {
-        verify(body, "Used after std::move");
-        return body->getNbColliders();
+        return colliders.size();
     }
 
     std::vector<std::unique_ptr<Collider>>& RigidBody::getColliders() {
-        verify(body, "Used after std::move");
         return colliders;
     }
 
     const std::vector<std::unique_ptr<Collider>>& RigidBody::getColliders() const {
-        verify(body, "Used after std::move");
         return colliders;
     }
 
     Collider& RigidBody::getCollider(std::size_t index) {
-        verify(body, "Used after std::move");
         return *colliders[index];
     }
 
     const Collider& RigidBody::getCollider(std::size_t index) const {
-        verify(body, "Used after std::move");
         return *colliders[index];
     }
 
     Carrot::Math::Transform RigidBody::getTransform() const {
-        verify(body, "Used after std::move");
-        return body->getTransform();
+        BodyAccessRead body{bodyID};
+        Carrot::Math::Transform transform;
+        transform.position = joltToCarrot(body->GetPosition());
+        transform.rotation = joltToCarrot(body->GetRotation());
+        return transform;
     }
 
     void RigidBody::setTransform(const Carrot::Math::Transform &transform) {
-        verify(body, "Used after std::move");
-        body->setTransform(transform);
+        BodyAccessWrite body{bodyID};
+        body->SetPositionAndRotationInternal(carrotToJolt(transform.position), carrotToJolt(transform.rotation));
     }
 
-    reactphysics3d::BodyType RigidBody::getBodyType() const {
-        return body->getType();
+    static BodyType joltToCarrot(JPH::EMotionType motionType) {
+        switch (motionType) {
+            case JPH::EMotionType::Static:
+                return BodyType::Static;
+            case JPH::EMotionType::Kinematic:
+                return BodyType::Kinematic;
+            case JPH::EMotionType::Dynamic:
+                return BodyType::Dynamic;
+
+            default:
+                TODO;
+                return BodyType::Static;
+        }
     }
 
-    void RigidBody::setBodyType(reactphysics3d::BodyType type) {
-        body->setType(type);
+    static JPH::EMotionType carrotToJolt(BodyType motionType) {
+        switch (motionType) {
+            case BodyType::Static:
+                return JPH::EMotionType::Static;
+            case BodyType::Kinematic:
+                return JPH::EMotionType::Kinematic;
+            case BodyType::Dynamic:
+                return JPH::EMotionType::Dynamic;
+
+            default:
+                TODO;
+                return JPH::EMotionType::Static;
+        }
+    }
+
+    BodyType RigidBody::getBodyType() const {
+        return bodyType;
+    }
+
+    void RigidBody::setBodyType(BodyType type) {
+        BodyAccessWrite body{bodyID};
+        bodyType = type;
+        if(body) {
+            body->SetMotionType(carrotToJolt(type));
+        }
     }
 
     bool RigidBody::isActive() const {
-        return body->isActive();
+        BodyAccessRead body{bodyID};
+        return body->IsActive();
     }
 
     void RigidBody::setActive(bool active) {
-        body->setIsActive(active);
+        if(active) {
+            GetPhysics().jolt->GetBodyInterface().ActivateBody(bodyID);
+        } else {
+            GetPhysics().jolt->GetBodyInterface().DeactivateBody(bodyID);
+        }
     }
 
     float RigidBody::getMass() const {
-        return body->getMass();
+        BodyAccessRead body{bodyID};
+        return 1.0f / body->GetMotionProperties()->GetInverseMass();
     }
 
     void RigidBody::setMass(float mass) {
-        body->setMass(mass);
-    }
-
-    glm::vec3 RigidBody::getLocalCenterOfMass() const {
-        return Carrot::glmVecFromReactPhysics(body->getLocalCenterOfMass());
-    }
-
-    void RigidBody::setLocalCenterOfMass(const glm::vec3& center) {
-        body->setLocalCenterOfMass(Carrot::reactPhysicsVecFromGlm(center));
-    }
-
-    glm::vec3 RigidBody::getLocalInertiaTensor() const {
-        return Carrot::glmVecFromReactPhysics(body->getLocalInertiaTensor());
-    }
-
-    void RigidBody::setLocalInertiaTensor(const glm::vec3& inertia) {
-        body->setLocalInertiaTensor(Carrot::reactPhysicsVecFromGlm(inertia));
+        BodyAccessWrite body{bodyID};
+        body->GetMotionProperties()->SetInverseMass(1.0f / mass);
     }
 
     glm::vec3 RigidBody::getVelocity() const {
-        return Carrot::glmVecFromReactPhysics(body->getLinearVelocity());
+        BodyAccessRead body{bodyID};
+        return Carrot::joltToCarrot(body->GetLinearVelocity());
     }
 
     void RigidBody::setVelocity(const glm::vec3& velocity) {
-        body->setLinearVelocity(Carrot::reactPhysicsVecFromGlm(velocity));
+        BodyAccessWrite body{bodyID};
+        body->SetLinearVelocity(Carrot::carrotToJolt(velocity));
     }
 
-    glm::vec3 RigidBody::getTranslationAxes() const {
-        return Carrot::glmVecFromReactPhysics(body->getLinearLockAxisFactor());
+    glm::bvec3 RigidBody::getTranslationAxes() const {
+        return translationAxes;
     }
 
-    void RigidBody::setTranslationAxes(const glm::vec3& freeAxes) {
-        body->setLinearLockAxisFactor(Carrot::reactPhysicsVecFromGlm(freeAxes));
+    void RigidBody::setTranslationAxes(const glm::bvec3& freeAxes) {
+        translationAxes = freeAxes;
+        setupDOFConstraint();
     }
 
-    glm::vec3 RigidBody::getRotationAxes() const {
-        return Carrot::glmVecFromReactPhysics(body->getAngularLockAxisFactor());
+    glm::bvec3 RigidBody::getRotationAxes() const {
+        return rotationAxes;
     }
 
-    void RigidBody::setRotationAxes(const glm::vec3& freeAxes) {
-        body->setAngularLockAxisFactor(Carrot::reactPhysicsVecFromGlm(freeAxes));
+    void RigidBody::setRotationAxes(const glm::bvec3& freeAxes) {
+        rotationAxes = freeAxes;
+        setupDOFConstraint();
     }
 
     void RigidBody::setUserData(void* pData) {
@@ -201,12 +266,77 @@ namespace Carrot::Physics {
         return userData;
     }
 
-    RigidBody::~RigidBody() {
-        if(body) {
-            while (getColliderCount() > 0) {
-                removeCollider(0);
+    void RigidBody::createBody(const JPH::BodyCreationSettings& creationSettings) {
+        verify(creationSettings.mUserData == (std::uint64_t)this, "User data must be this Rigidbody instance");
+        bodyID = GetPhysics().createRigidbody(creationSettings);
+        setupDOFConstraint();
+    }
+
+    void RigidBody::recreateBody() {
+        verify(!colliders.empty(), "This body must have at least one collider");
+
+        if(bodyShapeRef) {
+            bodyShapeRef->Release();
+            bodyShapeRef = {};
+        }
+
+        const JPH::Shape* bodyShape = nullptr;
+        if(colliders.size() == 1) {
+            bodyShape = colliders[0]->getShape().shape.GetPtr();
+        } else {
+            JPH::StaticCompoundShapeSettings compoundShapeSettings;
+            for(auto& pCollider : colliders) {
+                // local transform is already handled by collider
+                compoundShapeSettings.AddShape(JPH::Vec3::sZero(), JPH::Quat::sIdentity(), pCollider->getShape().shape.GetPtr());
             }
-            GetPhysics().getPhysicsWorld().destroyRigidBody(body);
+            bodyShapeRef = compoundShapeSettings.Create().Get();
+            bodyShape = bodyShapeRef.GetPtr();
+        }
+
+        JPH::BodyCreationSettings bodyCreationSettings;
+        bodyCreationSettings.mUserData = (std::uint64_t)this;
+        bodyCreationSettings.mMotionType = carrotToJolt(bodyType);
+        bodyCreationSettings.SetShape(bodyShape);
+        createBody(bodyCreationSettings);
+    }
+
+    void RigidBody::setupDOFConstraint() {
+        if(dofConstraint) {
+            GetPhysics().jolt->RemoveConstraint(dofConstraint);
+            dofConstraint = nullptr;
+        }
+
+        if(glm::all(rotationAxes) && glm::all(translationAxes)) {
+            return;
+        }
+
+        BodyAccessWrite body{bodyID};
+        JPH::SixDOFConstraintSettings settings;
+
+        if(!rotationAxes.x)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::RotationX);
+        if(!rotationAxes.y)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::RotationY);
+        if(!rotationAxes.z)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::RotationZ);
+
+        if(!translationAxes.x)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::TranslationX);
+        if(!translationAxes.y)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::TranslationY);
+        if(!translationAxes.z)
+            settings.MakeFixedAxis(JPH::SixDOFConstraintSettings::EAxis::TranslationZ);
+
+        settings.mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+        settings.mPosition1 = body->GetCenterOfMassPosition();
+
+        dofConstraint = (JPH::SixDOFConstraint*)settings.Create(JPH::Body::sFixedToWorld, *body.get());
+        GetPhysics().jolt->AddConstraint(dofConstraint);
+    }
+
+    RigidBody::~RigidBody() {
+        if(!bodyID.IsInvalid()) {
+            GetPhysics().destroyRigidbody(bodyID);
         }
     }
 }
