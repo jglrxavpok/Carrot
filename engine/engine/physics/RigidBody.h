@@ -6,6 +6,7 @@
 
 #include <Jolt/Core/Mutex.h>
 #include <Jolt/Physics/Constraints/SixDOFConstraint.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <engine/math/Transform.h>
 #include "Colliders.h"
@@ -87,8 +88,9 @@ namespace Carrot::Physics {
         void setUserData(void* pData);
 
     private:
-        void createBody(const JPH::BodyCreationSettings& creationSettings);
-        void recreateBody();
+        void createBody(JPH::BodyCreationSettings creationSettings);
+        void createBodyFromColliders();
+        void recreateBodyIfNeeded();
 
         void setupDOFConstraint();
 
@@ -124,6 +126,8 @@ namespace Carrot::Physics {
         BodyType bodyType = BodyType::Dynamic;
         glm::bvec3 translationAxes{true, true, true};
         glm::bvec3 rotationAxes{true, true, true};
+
+        JPH::BodyCreationSettings bodyTemplate;
 
         JPH::BodyID bodyID;
         JPH::ShapeRefC bodyShapeRef; // compound shape used when there are multiple colliders

@@ -20,17 +20,6 @@ using namespace JPH;
 
 // TODO: taken from HelloWorld of JoltPhysics -> adapt
 
-// Layer that objects can be in, determines which other objects it can collide with
-// Typically you at least want to have 1 layer for moving bodies and 1 layer for static bodies, but you can have more
-// layers if you want. E.g. you could have a layer for high detail collision (which is not used by the physics simulation
-// but only if you do collision testing).
-namespace Layers
-{
-    static constexpr ObjectLayer NON_MOVING = 0;
-    static constexpr ObjectLayer MOVING = 1;
-    static constexpr ObjectLayer NUM_LAYERS = 2;
-};
-
 /// Class that determines if two object layers can collide
 class ObjectLayerPairFilterImpl : public ObjectLayerPairFilter
 {
@@ -39,9 +28,9 @@ public:
     {
         switch (inObject1)
         {
-            case Layers::NON_MOVING:
-                return inObject2 == Layers::MOVING; // Non moving only collides with moving
-            case Layers::MOVING:
+            case Carrot::Physics::Layers::NON_MOVING:
+                return inObject2 == Carrot::Physics::Layers::MOVING; // Non moving only collides with moving
+            case Carrot::Physics::Layers::MOVING:
                 return true; // Moving collides with everything
             default:
                 JPH_ASSERT(false);
@@ -70,8 +59,8 @@ public:
     BPLayerInterfaceImpl()
     {
         // Create a mapping table from object to broad phase layer
-        mObjectToBroadPhase[Layers::NON_MOVING] = BroadPhaseLayers::NON_MOVING;
-        mObjectToBroadPhase[Layers::MOVING] = BroadPhaseLayers::MOVING;
+        mObjectToBroadPhase[Carrot::Physics::Layers::NON_MOVING] = BroadPhaseLayers::NON_MOVING;
+        mObjectToBroadPhase[Carrot::Physics::Layers::MOVING] = BroadPhaseLayers::MOVING;
     }
 
     virtual uint					GetNumBroadPhaseLayers() const override
@@ -81,7 +70,7 @@ public:
 
     virtual BroadPhaseLayer			GetBroadPhaseLayer(ObjectLayer inLayer) const override
     {
-        JPH_ASSERT(inLayer < Layers::NUM_LAYERS);
+        JPH_ASSERT(inLayer < Carrot::Physics::Layers::NUM_LAYERS);
         return mObjectToBroadPhase[inLayer];
     }
 
@@ -98,7 +87,7 @@ public:
 #endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
 
 private:
-    BroadPhaseLayer					mObjectToBroadPhase[Layers::NUM_LAYERS];
+    BroadPhaseLayer					mObjectToBroadPhase[Carrot::Physics::Layers::NUM_LAYERS];
 };
 
 /// Class that determines if an object layer can collide with a broadphase layer
@@ -109,9 +98,9 @@ public:
     {
         switch (inLayer1)
         {
-            case Layers::NON_MOVING:
+            case Carrot::Physics::Layers::NON_MOVING:
                 return inLayer2 == BroadPhaseLayers::MOVING;
-            case Layers::MOVING:
+            case Carrot::Physics::Layers::MOVING:
                 return true;
             default:
                 JPH_ASSERT(false);
@@ -167,11 +156,13 @@ namespace Carrot::Physics {
 
         jolt = std::make_unique<JPH::PhysicsSystem>();
         jolt->Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs, cMaxContactConstraints, broad_phase_layer_interface, object_vs_broadphase_layer_filter, object_vs_object_layer_filter);
+
+        jolt->SetGravity(Carrot::carrotToJolt(glm::vec3{0,0,-9.8f}));
     }
 
     void PhysicsSystem::tick(double deltaTime) {
         constexpr int collisionSteps = 3;
-        constexpr int integrationSteps = 8;
+        constexpr int integrationSteps = 4;
         accumulator += deltaTime;
         while(accumulator >= TimeStep) {
             if(!paused) {
@@ -305,7 +296,7 @@ namespace Carrot::Physics {
     }
 
     void PhysicsSystem::unlockWriteBody(JPH::SharedMutex* mutex) {
-        jolt->GetBodyLockInterface().UnlockRead(mutex);
+        jolt->GetBodyLockInterface().UnlockWrite(mutex);
     }
 
     JPH::Body* PhysicsSystem::lockedGetBody(const JPH::BodyID& bodyID) {

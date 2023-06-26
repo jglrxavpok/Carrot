@@ -82,15 +82,14 @@ namespace Carrot::Physics {
         verify(shape->shape, "Must already have a shape");
         auto oldShapeRef = shape->shape;
         const JPH::Shape* oldShape = oldShapeRef.GetPtr();
-        if(auto rotatedTranslated = dynamic_cast<const JPH::RotatedTranslatedShape*>(oldShapeRef.GetPtr())) {
-            oldShape = rotatedTranslated->GetInnerShape();
+        if(oldShapeRef->GetSubType() == JPH::EShapeSubType::RotatedTranslated) {
+            oldShape = reinterpret_cast<const RotatedTranslatedShape*>(oldShapeRef.GetPtr())->GetInnerShape();
         }
         shape->shape = JPH::RotatedTranslatedShapeSettings{
             carrotToJolt(transform.position),
             carrotToJolt(transform.rotation),
             oldShape
         }.Create().Get();
-        oldShapeRef->Release();
         reattach();
     }
 
@@ -100,12 +99,10 @@ namespace Carrot::Physics {
 
     void Collider::reattach() {
         verify(shape, "Must have a shape!");
-        verify(rigidbody, "Must be associated to a RigidBody");
 
-        // modifies the reactphysics rigidbody, without modifying the engine representation
-        RigidBody* body = rigidbody;
-        removeFromBody(*body);
-        addToBody(*body);
+        if(rigidbody) {
+            rigidbody->recreateBodyIfNeeded();
+        }
     }
 
     // ---- Collision shapes ----
@@ -138,7 +135,7 @@ namespace Carrot::Physics {
 
     void BoxCollisionShape::setHalfExtents(const glm::vec3& halfExtents) {
         currentHalfExtents = halfExtents;
-        shape = BoxShapeSettings{carrotToJolt(halfExtents)}.Create().Get();
+        shape = BoxShapeSettings{carrotToJolt(halfExtents), 0.0f}.Create().Get();
         reattachCollider();
     }
 

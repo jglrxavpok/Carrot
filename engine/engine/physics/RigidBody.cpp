@@ -12,14 +12,17 @@
 
 namespace Carrot::Physics {
     RigidBody::BodyAccessWrite::BodyAccessWrite(const JPH::BodyID& bodyID) {
-        mutex = GetPhysics().lockWriteBody(bodyID);
         if(!bodyID.IsInvalid()) {
+            mutex = GetPhysics().lockWriteBody(bodyID);
             body = GetPhysics().lockedGetBody(bodyID);
+            verify(body != nullptr, "Invalid bodyID");
         }
     }
 
     RigidBody::BodyAccessWrite::~BodyAccessWrite() {
-        GetPhysics().unlockWriteBody(mutex);
+        if(mutex) {
+            GetPhysics().unlockWriteBody(mutex);
+        }
     }
 
     JPH::Body* RigidBody::BodyAccessWrite::operator->() {
@@ -35,13 +38,17 @@ namespace Carrot::Physics {
     }
 
     RigidBody::BodyAccessRead::BodyAccessRead(const JPH::BodyID& bodyID) {
-        mutex = GetPhysics().lockReadBody(bodyID);
-        body = GetPhysics().lockedGetBody(bodyID);
-        verify(body != nullptr, "Invalid bodyID");
+        if(!bodyID.IsInvalid()) {
+            mutex = GetPhysics().lockReadBody(bodyID);
+            body = GetPhysics().lockedGetBody(bodyID);
+            verify(body != nullptr, "Invalid bodyID");
+        }
     }
 
     RigidBody::BodyAccessRead::~BodyAccessRead() {
-        GetPhysics().unlockReadBody(mutex);
+        if(mutex) {
+            GetPhysics().unlockReadBody(mutex);
+        }
     }
 
     const JPH::Body* RigidBody::BodyAccessRead::operator->() {
@@ -79,14 +86,20 @@ namespace Carrot::Physics {
             bodyID = {};
         }
 
+        bodyType = toCopy.bodyType;
+        translationAxes = toCopy.translationAxes;
+        rotationAxes = toCopy.rotationAxes;
         colliders.resize(toCopy.colliders.size());
         for (int i = 0; i < colliders.size(); ++i) {
             colliders[i] = std::make_unique<Collider>(toCopy.colliders[i]->getShape().duplicate(), toCopy.colliders[i]->getLocalTransform());
         }
 
-        BodyAccessRead toCopyBody{toCopy.bodyID};
-        auto creationSettings = toCopyBody->GetBodyCreationSettings();
-
+        JPH::BodyCreationSettings creationSettings;
+        {
+            BodyAccessRead toCopyBody{toCopy.bodyID};
+            creationSettings = toCopyBody->GetBodyCreationSettings();
+            bodyTemplate = toCopy.bodyTemplate;
+        }
         createBody(creationSettings);
 
         return *this;
@@ -95,10 +108,17 @@ namespace Carrot::Physics {
     RigidBody& RigidBody::operator=(RigidBody&& toMove) {
         verify(!toMove.bodyID.IsInvalid(), "Used after std::move");
         bodyID = toMove.bodyID;
+
+        bodyType = toMove.bodyType;
+        bodyTemplate = std::move(toMove.bodyTemplate);
         BodyAccessWrite body{bodyID};
-        body->SetUserData((std::uint64_t)this);
+        if(body) {
+            body->SetUserData((std::uint64_t)this);
+        }
 
         colliders = std::move(toMove.colliders);
+        translationAxes = toMove.translationAxes;
+        rotationAxes = toMove.rotationAxes;
 
         toMove.bodyID = {};
         return *this;
@@ -113,7 +133,7 @@ namespace Carrot::Physics {
             colliders.emplace_back(std::move(collider));
         }
 
-        recreateBody();
+        createBodyFromColliders();
     }
 
     Collider& RigidBody::addCollider(const CollisionShape& shape, const Carrot::Math::Transform& localTransform, std::size_t insertionIndex) {
@@ -129,7 +149,7 @@ namespace Carrot::Physics {
         getCollider(index).removeFromBody(*this);
         colliders.erase(colliders.begin() + index);
 
-        recreateBody();
+        recreateBodyIfNeeded();
     }
 
     std::size_t RigidBody::getColliderCount() const {
@@ -161,8 +181,9 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setTransform(const Carrot::Math::Transform &transform) {
-        BodyAccessWrite body{bodyID};
-        body->SetPositionAndRotationInternal(carrotToJolt(transform.position), carrotToJolt(transform.rotation));
+        bodyTemplate.mPosition = Carrot::carrotToJolt(transform.position);
+        bodyTemplate.mRotation = Carrot::carrotToJolt(transform.rotation);
+        recreateBodyIfNeeded();
     }
 
     static BodyType joltToCarrot(JPH::EMotionType motionType) {
@@ -221,13 +242,15 @@ namespace Carrot::Physics {
     }
 
     float RigidBody::getMass() const {
-        BodyAccessRead body{bodyID};
-        return 1.0f / body->GetMotionProperties()->GetInverseMass();
+        return bodyTemplate.mMassPropertiesOverride.mMass;
     }
 
     void RigidBody::setMass(float mass) {
+        bodyTemplate.mMassPropertiesOverride.mMass = mass;
         BodyAccessWrite body{bodyID};
-        body->GetMotionProperties()->SetInverseMass(1.0f / mass);
+        if(body) {
+            body->GetMotionProperties()->SetInverseMass(1.0f / mass);
+        }
     }
 
     glm::vec3 RigidBody::getVelocity() const {
@@ -237,7 +260,11 @@ namespace Carrot::Physics {
 
     void RigidBody::setVelocity(const glm::vec3& velocity) {
         BodyAccessWrite body{bodyID};
-        body->SetLinearVelocity(Carrot::carrotToJolt(velocity));
+        if(body) {
+            body->SetLinearVelocity(Carrot::carrotToJolt(velocity));
+        } else {
+            bodyTemplate.mLinearVelocity = Carrot::carrotToJolt(velocity);
+        }
     }
 
     glm::bvec3 RigidBody::getTranslationAxes() const {
@@ -266,13 +293,23 @@ namespace Carrot::Physics {
         return userData;
     }
 
-    void RigidBody::createBody(const JPH::BodyCreationSettings& creationSettings) {
-        verify(creationSettings.mUserData == (std::uint64_t)this, "User data must be this Rigidbody instance");
+    void RigidBody::createBody(JPH::BodyCreationSettings creationSettings) {
+        creationSettings.mUserData = (std::uint64_t)this;
+
+        creationSettings.mObjectLayer = Layers::MOVING; // TODO
         bodyID = GetPhysics().createRigidbody(creationSettings);
         setupDOFConstraint();
     }
 
-    void RigidBody::recreateBody() {
+    void RigidBody::recreateBodyIfNeeded() {
+        if(bodyID.IsInvalid()) {
+            return;
+        }
+
+        createBodyFromColliders();
+    }
+
+    void RigidBody::createBodyFromColliders() {
         verify(!colliders.empty(), "This body must have at least one collider");
 
         if(bodyShapeRef) {
@@ -293,8 +330,7 @@ namespace Carrot::Physics {
             bodyShape = bodyShapeRef.GetPtr();
         }
 
-        JPH::BodyCreationSettings bodyCreationSettings;
-        bodyCreationSettings.mUserData = (std::uint64_t)this;
+        JPH::BodyCreationSettings bodyCreationSettings = bodyTemplate;
         bodyCreationSettings.mMotionType = carrotToJolt(bodyType);
         bodyCreationSettings.SetShape(bodyShape);
         createBody(bodyCreationSettings);
@@ -304,6 +340,10 @@ namespace Carrot::Physics {
         if(dofConstraint) {
             GetPhysics().jolt->RemoveConstraint(dofConstraint);
             dofConstraint = nullptr;
+        }
+
+        if(bodyID.IsInvalid()) {
+            return;
         }
 
         if(glm::all(rotationAxes) && glm::all(translationAxes)) {
@@ -336,6 +376,10 @@ namespace Carrot::Physics {
 
     RigidBody::~RigidBody() {
         if(!bodyID.IsInvalid()) {
+            if(dofConstraint) {
+                GetPhysics().jolt->RemoveConstraint(dofConstraint);
+                dofConstraint = nullptr;
+            }
             GetPhysics().destroyRigidbody(bodyID);
         }
     }

@@ -589,6 +589,8 @@ namespace Carrot::Scripting {
     }
 
     bool CSharpBindings::_DoRaycast(MonoObject* rigidbodyComp, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* pCSRaycastInfo, std::uint16_t collisionMask) {
+        if(true) // TODO
+            return false;
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(rigidbodyComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         auto& rigidbody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
