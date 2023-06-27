@@ -259,6 +259,7 @@ namespace Carrot {
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         const Carrot::BufferView getNullBufferInfo() const;
 
+        void recordPassPackets(Carrot::Render::PassEnum passEnum, vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
 

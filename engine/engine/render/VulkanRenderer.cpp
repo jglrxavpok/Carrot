@@ -1426,7 +1426,7 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
     return blackCubeMapTexture;
 }
 
-void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassEnum packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
 
     if(blinkTime > 0.0) {
@@ -1436,12 +1436,16 @@ void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot
     Carrot::Render::Viewport* viewport = &renderContext.viewport;
     verify(viewport, "Viewport cannot be null");
 
-    auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::OpaqueGBuffer);
+    auto packets = getRenderPackets(viewport, packetPass);
     const Carrot::Render::Packet* previousPacket = nullptr;
     for(const auto& p : packets) {
         p.record(pass, renderContext, commands, previousPacket);
         previousPacket = &p;
     }
+}
+
+void Carrot::VulkanRenderer::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+    recordPassPackets(Render::PassEnum::OpaqueGBuffer, pass, renderContext, commands);
 }
 
 void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
@@ -1487,15 +1491,7 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
         }
     }
 
-    Carrot::Render::Viewport* viewport = &renderContext.viewport;
-    verify(viewport, "Viewport cannot be null");
-
-    auto packets = getRenderPackets(viewport, Carrot::Render::PassEnum::TransparentGBuffer);
-    const Carrot::Render::Packet* previousPacket = nullptr;
-    for(const auto& p : packets) {
-        p.record(pass, renderContext, commands, previousPacket);
-        previousPacket = &p;
-    }
+    recordPassPackets(Render::PassEnum::TransparentGBuffer, pass, renderContext, commands);
 }
 
 std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const {

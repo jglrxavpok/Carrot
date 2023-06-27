@@ -21,8 +21,7 @@ namespace Carrot::Physics {
     };
 
     DebugRenderer::DebugRenderer(Carrot::Render::Viewport& debugViewport): debugViewport(debugViewport) {
-        debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
-        debugLinesPipeline = GetRenderer().getOrCreatePipeline("gBufferLines");
+        debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("unlitGBufferWireframe");
 
         Initialize();
     }
@@ -154,7 +153,7 @@ namespace Carrot::Physics {
         // TODO: lod selection
         // TODO: handle shadow/cull/draw modes
         TriangleMesh* triangleMesh = (TriangleMesh*)inGeometry->mLODs[0].mTriangleBatch.GetPtr();
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, debugViewport);
 
         renderPacket.pipeline = debugTrianglesPipeline;
         renderPacket.useMesh(*triangleMesh->mesh);

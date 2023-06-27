@@ -10,6 +10,7 @@ namespace Carrot::Render {
         OpaqueGBuffer,
         TransparentGBuffer,
         Lighting,
+        Unlit, // rendered after lighting but before tonemapping
         UI, // TODO: not implemented yet
     };
 }

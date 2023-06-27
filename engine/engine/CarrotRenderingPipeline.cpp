@@ -446,11 +446,28 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             }
     );
 
+    struct UnlitDraw {
+        Render::FrameResource depthBuffer;
+        Render::FrameResource inout;
+    };
+
+    auto& drawUnlit = mainGraph.addPass<UnlitDraw>(
+            "draw-unlit",
+            [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<UnlitDraw>& pass, UnlitDraw& data) {
+                data.depthBuffer = builder.write(mergeLighting.getData().gBuffer.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                data.inout = builder.write(mergeLighting.getData().mergeResult, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const UnlitDraw& data, vk::CommandBuffer& buffer) {
+                ZoneScopedN("CPU RenderGraph draw-unlit");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "draw-unlit");
+                GetRenderer().recordPassPackets(Render::PassEnum::Unlit, pass.getRenderPass(), frame, buffer);
+            });
+
     auto& toneMapping = mainGraph.addPass<Carrot::Render::PassData::PostProcessing>(
             "tone-mapping",
 
-            [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
-                data.postLighting = builder.read(mergeLighting.getData().mergeResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+            [this, drawUnlit, framebufferSize](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::PostProcessing>& pass, Carrot::Render::PassData::PostProcessing& data) {
+                data.postLighting = builder.read(drawUnlit.getData().inout, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.postProcessed = builder.createRenderTarget(vk::Format::eR8G8B8A8Srgb,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,

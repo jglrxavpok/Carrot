@@ -1,0 +1,25 @@
+{
+  "type": "unlit-gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "Vertex",
+  "cull": false,
+  "alphaBlending": true,
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "materials",
+      "setID": 1
+    },
+    {
+      "type": "per_draw",
+      "setID": 2
+    }
+  ],
+  "depthWrite": true,
+  "depthTest": true,
+  "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/unlitGBuffer.fragment.glsl.spv"
+}

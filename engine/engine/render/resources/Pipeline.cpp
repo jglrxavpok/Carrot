@@ -278,6 +278,8 @@ void Carrot::Pipeline::createGraphicsTemplate() {
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
+        } else if(description.type == PipelineType::UnlitGBuffer) {
+            // no op
         }
     } else {
         graphicsPipelineTemplate.colorBlendAttachments = {
@@ -626,6 +628,8 @@ Carrot::PipelineType Carrot::Pipeline::getPipelineType(const std::string& name) 
         return PipelineType::Lighting;
     } else if(name == "gbuffer") {
         return PipelineType::GBuffer;
+    } else if(name == "unlit-gbuffer") {
+        return PipelineType::UnlitGBuffer;
     } else if(name == "blit") {
         return PipelineType::Blit;
     } else if(name == "skybox") {

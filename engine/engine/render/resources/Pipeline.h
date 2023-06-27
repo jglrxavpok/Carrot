@@ -19,6 +19,7 @@ namespace Carrot {
     // TODO: needs to be removed and replaced by data-oriented design
     enum class PipelineType {
         GBuffer,
+        UnlitGBuffer,
         Lighting,
         Skybox,
         Blit,

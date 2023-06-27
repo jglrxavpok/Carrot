@@ -202,8 +202,23 @@ namespace Carrot::Physics {
 
     void PhysicsSystem::onFrame(const Carrot::Render::Context& context) {
         ZoneScoped;
-        if(debugViewport == nullptr)
+
+        if(debugViewport != nullptr) {
+            if(debugRenderer == nullptr) {
+                debugRenderer = std::make_unique<Physics::DebugRenderer>(*debugViewport);
+            }
+        } else {
+            if(debugRenderer != nullptr) {
+                static std::size_t framesWithoutRenderer = 0;
+                framesWithoutRenderer++;
+
+                if(framesWithoutRenderer >= MAX_FRAMES_IN_FLIGHT) {
+                    debugRenderer = nullptr;
+                    framesWithoutRenderer = 0;
+                }
+            }
             return;
+        }
 
         JPH::BodyManager::DrawSettings drawSettings;
         drawSettings.mDrawBoundingBox = true;
@@ -217,13 +232,6 @@ namespace Carrot::Physics {
 
     void PhysicsSystem::setViewport(Carrot::Render::Viewport *viewport) {
         debugViewport = viewport;
-        if(debugViewport != nullptr) {
-            debugRenderer = std::make_unique<Physics::DebugRenderer>(*viewport);
-            JPH::DebugRenderer::sInstance = debugRenderer.get();
-        } else {
-            debugRenderer = nullptr;
-            JPH::DebugRenderer::sInstance = nullptr;
-        }
     }
 
     PhysicsSystem::~PhysicsSystem() {
