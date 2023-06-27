@@ -60,7 +60,7 @@ namespace Carrot::ECS {
         glm::vec3 computeGlobalForward() const;
 
         /// Computes the global transform of this entity, taking into account the hierarchy
-        Carrot::Math::Transform computeGlobalReactPhysicsTransform() const;
+        Carrot::Math::Transform computeGlobalPhysicsTransform() const;
 
         /// Sets up the transform of the entity to match with the given transform, even when parent transforms are taken into account
         void setGlobalTransform(const Carrot::Math::Transform& transform);

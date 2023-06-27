@@ -68,7 +68,7 @@ namespace Carrot::Physics {
 
     protected:
         /// Used to tell the owning collider to remove & re-add itself to a rigidbody.
-        /// Used when the ReactPhysics3D CollisionShape cannot be modified directly.
+        /// Used when the underlying shape cannot be modified directly.
         void reattachCollider();
 
         JPH::ShapeRefC shape;

@@ -18,10 +18,10 @@ namespace Carrot::ECS {
 
             auto transform = rigidBodyComp.rigidbody.getTransform();
             if(rigidBodyComp.firstTick) {
-                rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalReactPhysicsTransform());
+                rigidBodyComp.rigidbody.setTransform(transformComponent.computeGlobalPhysicsTransform());
                 rigidBodyComp.firstTick = false;
             } else {
-                transform.scale = transformComponent.computeGlobalReactPhysicsTransform().scale; // preserve scale
+                transform.scale = transformComponent.computeGlobalPhysicsTransform().scale; // preserve scale
                 transformComponent.setGlobalTransform(transform);
             }
         });

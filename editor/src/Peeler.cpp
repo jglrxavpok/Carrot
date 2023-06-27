@@ -1223,7 +1223,7 @@ namespace Peeler {
         Carrot::Math::Transform globalTransform;
         auto transformComp = entityToChange.getComponent<Carrot::ECS::TransformComponent>();
         if(transformComp.hasValue()) {
-            globalTransform = transformComp->computeGlobalReactPhysicsTransform();
+            globalTransform = transformComp->computeGlobalPhysicsTransform();
             globalTransform.scale = transformComp->computeFinalScale();
         }
 

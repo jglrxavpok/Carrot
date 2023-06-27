@@ -84,7 +84,7 @@ namespace Carrot::ECS {
         return computeFinalOrientation() * forward;
     }
 
-    Carrot::Math::Transform TransformComponent::computeGlobalReactPhysicsTransform() const {
+    Carrot::Math::Transform TransformComponent::computeGlobalPhysicsTransform() const {
         auto parent = getEntity().getParent();
         if(parent) {
             if (auto parentTransform = getEntity().getWorld().getComponent<TransformComponent>(parent.value())) {

@@ -159,7 +159,7 @@ namespace Peeler {
                 const bool scalingZ = glm::abs(scaleDiff.z) >= 10e-6f;
                 const bool isScaling = scalingX || scalingY || scalingZ;
 
-                // scale is ignored by Reactphysics
+                // scale is ignored by physics
                 if (isScaling) {
                     switch (collider.getType()) {
                         case ColliderType::Box: {

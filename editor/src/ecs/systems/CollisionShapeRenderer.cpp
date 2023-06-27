@@ -42,7 +42,7 @@ namespace Peeler::ECS {
 
                             case Carrot::Physics::ColliderType::Capsule: {
                                 const auto& asCapsule = static_cast<Carrot::Physics::CapsuleCollisionShape&>(collider.getShape());
-                                // Reactphysics 3D is Y-up while Carrot is Z-up
+                                // Joltphysics 3D is Y-up while Carrot is Z-up
                                 const glm::mat4 rp3dCorrection =
                                         glm::scale(
                                                 glm::rotate(glm::identity<glm::mat4>(), glm::half_pi<float>(), glm::vec3(1, 0, 0)),
