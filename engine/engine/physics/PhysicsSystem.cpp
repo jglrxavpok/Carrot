@@ -14,7 +14,7 @@
 #include "engine/render/VulkanRenderer.h"
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>
-// TODO: #include <Jolt/Renderer/DebugRenderer.h>
+#include <Jolt/Renderer/DebugRenderer.h>
 
 using namespace JPH;
 
@@ -205,61 +205,10 @@ namespace Carrot::Physics {
         if(debugViewport == nullptr)
             return;
 
-#if 0
-        auto& triangles = world->getDebugRenderer().getTriangles();
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, *debugViewport);
-        renderPacket.pipeline = debugTrianglesPipeline;
-
-        Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameBuffer(triangles.size() * 3 * sizeof(Carrot::Vertex));
-        Carrot::BufferView indexBuffer = GetRenderer().getSingleFrameBuffer(triangles.size() * 3 * sizeof(std::uint32_t));
-
-        // TODO: parallelize
-        auto* vertices = vertexBuffer.map<Carrot::Vertex>();
-        auto* indices = indexBuffer.map<std::uint32_t>();
-        for(std::size_t index = 0; index < triangles.size(); index++) {
-            auto& triangle = triangles[index];
-            auto& vertex1 = vertices[index * 3 + 0];
-            auto& vertex2 = vertices[index * 3 + 1];
-            auto& vertex3 = vertices[index * 3 + 2];
-            vertex1.pos = { triangle.point1.x, triangle.point1.y, triangle.point1.z, 1};
-            vertex2.pos = { triangle.point2.x, triangle.point2.y, triangle.point2.z, 1};
-            vertex3.pos = { triangle.point3.x, triangle.point3.y, triangle.point3.z, 1};
-
-            vertex1.normal = vertex2.normal = vertex3.normal = {0,0,1};
-            vertex1.uv = vertex2.uv = vertex3.uv = { 0, 0 };
-
-            auto toVecColor = [](std::uint32_t color) {
-                auto red = (color >> 16) & 0xFF;
-                auto green = (color >> 8) & 0xFF;
-                auto blue = (color >> 0) & 0xFF;
-                return glm::vec3 { red / 255.0f, green / 255.0f, blue / 255.0f };
-            };
-            vertex1.color = toVecColor(triangle.color1);
-            vertex2.color = toVecColor(triangle.color2);
-            vertex3.color = toVecColor(triangle.color3);
-
-            indices[index * 3 + 0] = index * 3 + 0;
-            indices[index * 3 + 1] = index * 3 + 1;
-            indices[index * 3 + 2] = index * 3 + 2;
-        }
-
-        renderPacket.vertexBuffer = vertexBuffer;
-        renderPacket.indexBuffer = indexBuffer;
-
-        auto& cmd = renderPacket.drawCommands.emplace_back();
-        cmd.indexCount = triangles.size() * 3;
-        cmd.instanceCount = 1;
-
-        Carrot::GBufferDrawData drawData;
-        drawData.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
-
-        Carrot::InstanceData instance;
-        renderPacket.useInstance(instance);
-        renderPacket.addPerDrawData({&drawData, 1});
-
-        GetRenderer().render(renderPacket);
-#endif
-        TODO;
+        JPH::BodyManager::DrawSettings drawSettings;
+        drawSettings.mDrawBoundingBox = true;
+        jolt->DrawBodies(drawSettings, debugRenderer.get());
+        debugRenderer->render(context);
     }
 
     Carrot::Render::Viewport* PhysicsSystem::getDebugViewport() {
@@ -269,13 +218,11 @@ namespace Carrot::Physics {
     void PhysicsSystem::setViewport(Carrot::Render::Viewport *viewport) {
         debugViewport = viewport;
         if(debugViewport != nullptr) {
-            if(!debugTrianglesPipeline) {
-                debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
-            }
-            if(!debugLinesPipeline) {
-                debugLinesPipeline = GetRenderer().getOrCreatePipeline("gBufferLines");
-            }
-            TODO;
+            debugRenderer = std::make_unique<Physics::DebugRenderer>(*viewport);
+            JPH::DebugRenderer::sInstance = debugRenderer.get();
+        } else {
+            debugRenderer = nullptr;
+            JPH::DebugRenderer::sInstance = nullptr;
         }
     }
 

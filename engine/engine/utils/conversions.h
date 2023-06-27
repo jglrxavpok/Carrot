@@ -16,6 +16,7 @@
 #include <Jolt/Math/Vec3.h>
 #include <Jolt/Math/Vec4.h>
 #include <Jolt/Math/Quat.h>
+#include <Jolt/Math/Float2.h>
 
 namespace Carrot {
     glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);
@@ -93,9 +94,20 @@ namespace Carrot {
         return result * correction;
     }
 
+    JPH::Float2 carrotToJolt(const glm::vec2& v);
+    glm::vec2 joltToCarrot(const JPH::Float2& v);
+
     JPH::Vec3 carrotToJolt(const glm::vec3& v);
     glm::vec3 joltToCarrot(const JPH::Vec3& v);
+    glm::vec3 joltToCarrot(const JPH::Float3& v);
+
+    JPH::Vec4 carrotToJolt(const glm::vec4& v);
+    glm::vec4 joltToCarrot(const JPH::Vec4& v);
+    glm::vec4 joltToCarrot(const JPH::Float4& v);
 
     JPH::Quat carrotToJolt(const glm::quat& v);
     glm::quat joltToCarrot(const JPH::Quat& v);
+
+    JPH::Mat44 carrotToJolt(const glm::mat4& m);
+    glm::mat4 joltToCarrot(const JPH::Mat44& m);
 }

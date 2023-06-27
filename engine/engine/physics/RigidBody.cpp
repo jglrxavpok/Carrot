@@ -81,10 +81,7 @@ namespace Carrot::Physics {
             return *this;
         }
 
-        if(!bodyID.IsInvalid()) {
-            GetPhysics().destroyRigidbody(bodyID);
-            bodyID = {};
-        }
+        destroyJoltRepresentation();
 
         bodyType = toCopy.bodyType;
         translationAxes = toCopy.translationAxes;
@@ -108,6 +105,9 @@ namespace Carrot::Physics {
     RigidBody& RigidBody::operator=(RigidBody&& toMove) {
         verify(!toMove.bodyID.IsInvalid(), "Used after std::move");
         bodyID = toMove.bodyID;
+
+        dofConstraint = toMove.dofConstraint;
+        toMove.dofConstraint = nullptr;
 
         bodyType = toMove.bodyType;
         bodyTemplate = std::move(toMove.bodyTemplate);
@@ -230,14 +230,21 @@ namespace Carrot::Physics {
 
     bool RigidBody::isActive() const {
         BodyAccessRead body{bodyID};
-        return body->IsActive();
+        if(!body) {
+            return false;
+        }
+        return body->IsInBroadPhase();
     }
 
     void RigidBody::setActive(bool active) {
         if(active) {
-            GetPhysics().jolt->GetBodyInterface().ActivateBody(bodyID);
+            if(!isActive()) {
+                GetPhysics().jolt->GetBodyInterface().AddBody(bodyID, JPH::EActivation::Activate);
+            }
         } else {
-            GetPhysics().jolt->GetBodyInterface().DeactivateBody(bodyID);
+            if(isActive()) {
+                GetPhysics().jolt->GetBodyInterface().RemoveBody(bodyID);
+            }
         }
     }
 
@@ -312,10 +319,7 @@ namespace Carrot::Physics {
     void RigidBody::createBodyFromColliders() {
         verify(!colliders.empty(), "This body must have at least one collider");
 
-        if(bodyShapeRef) {
-            bodyShapeRef->Release();
-            bodyShapeRef = {};
-        }
+        destroyJoltRepresentation();
 
         const JPH::Shape* bodyShape = nullptr;
         if(colliders.size() == 1) {
@@ -374,13 +378,21 @@ namespace Carrot::Physics {
         GetPhysics().jolt->AddConstraint(dofConstraint);
     }
 
-    RigidBody::~RigidBody() {
+    void RigidBody::destroyJoltRepresentation() {
+        if(dofConstraint) {
+            GetPhysics().jolt->RemoveConstraint(dofConstraint);
+            dofConstraint = nullptr;
+        }
         if(!bodyID.IsInvalid()) {
-            if(dofConstraint) {
-                GetPhysics().jolt->RemoveConstraint(dofConstraint);
-                dofConstraint = nullptr;
-            }
             GetPhysics().destroyRigidbody(bodyID);
         }
+        if(bodyShapeRef) {
+            bodyShapeRef->Release();
+            bodyShapeRef = {};
+        }
+    }
+
+    RigidBody::~RigidBody() {
+        destroyJoltRepresentation();
     }
 }

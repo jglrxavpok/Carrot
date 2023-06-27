@@ -11,6 +11,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <glm/glm.hpp>
 #include <engine/physics/Types.h>
+#include <engine/physics/DebugRenderer.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace Carrot {
@@ -104,9 +105,8 @@ namespace Carrot::Physics {
         void destroyRigidbody(const JPH::BodyID& bodyID);
 
     private: // debug rendering
-        std::shared_ptr<Carrot::Pipeline> debugTrianglesPipeline;
-        std::shared_ptr<Carrot::Pipeline> debugLinesPipeline;
         Carrot::Render::Viewport* debugViewport = nullptr;
+        std::unique_ptr<Physics::DebugRenderer> debugRenderer;
 
         friend class RigidBody;
     };

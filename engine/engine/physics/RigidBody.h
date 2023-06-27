@@ -93,6 +93,7 @@ namespace Carrot::Physics {
         void recreateBodyIfNeeded();
 
         void setupDOFConstraint();
+        void destroyJoltRepresentation();
 
         struct BodyAccessWrite {
             BodyAccessWrite(const JPH::BodyID& bodyID);
