@@ -9,15 +9,15 @@
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
 
-namespace Peeler::ECS {
-    class PhysicsCharacterTestSystem
+namespace Carrot::ECS {
+    class PhysicsCharacterSystem
             : public Carrot::ECS::LogicSystem<Carrot::ECS::TransformComponent, Carrot::ECS::PhysicsCharacterComponent>,
-              public Carrot::Identifiable<PhysicsCharacterTestSystem> {
+              public Carrot::Identifiable<PhysicsCharacterSystem> {
     public:
-        explicit PhysicsCharacterTestSystem(Carrot::ECS::World& world);
+        explicit PhysicsCharacterSystem(Carrot::ECS::World& world);
 
-        explicit PhysicsCharacterTestSystem(const rapidjson::Value& json, Carrot::ECS::World& world)
-                : PhysicsCharacterTestSystem(world) {}
+        explicit PhysicsCharacterSystem(const rapidjson::Value& json, Carrot::ECS::World& world)
+                : PhysicsCharacterSystem(world) {}
 
         virtual void tick(double dt) override;
 
@@ -29,7 +29,7 @@ namespace Peeler::ECS {
 
     public:
         inline static const char *getStringRepresentation() {
-            return "Peeler::ECS::PhysicsCharacterTestSystem";
+            return "PhysicsCharacters";
         }
 
         virtual const char *getName() const override {
@@ -39,15 +39,12 @@ namespace Peeler::ECS {
         virtual std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
     private:
-        Carrot::IO::ActionSet inputSet { "character_controller" };
-        Carrot::IO::Vec2InputAction movementInput{ "move" };
-
         bool firstFrame = true;
     };
 
 } // Peeler::ECS
 
 template<>
-inline const char *Carrot::Identifiable<Peeler::ECS::PhysicsCharacterTestSystem>::getStringRepresentation() {
-    return Peeler::ECS::PhysicsCharacterTestSystem::getStringRepresentation();
+inline const char *Carrot::Identifiable<Carrot::ECS::PhysicsCharacterSystem>::getStringRepresentation() {
+    return Carrot::ECS::PhysicsCharacterSystem::getStringRepresentation();
 }

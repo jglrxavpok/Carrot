@@ -58,6 +58,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/CSharpLogicSystem.cpp
         ${EngineRoot}ecs/systems/LuaSystems.cpp
         ${EngineRoot}ecs/systems/ModelRenderSystem.cpp
+        ${EngineRoot}ecs/systems/PhysicsCharacterSystem.cpp
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemHandleLights.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp

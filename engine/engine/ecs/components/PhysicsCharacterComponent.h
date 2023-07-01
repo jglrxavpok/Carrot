@@ -20,7 +20,7 @@ namespace Carrot::ECS {
         }
 
         const char *const getName() const override {
-            return "Carrot::ECS::PhysicsCharacterComponent";
+            return "PhysicsCharacter";
         }
 
         std::unique_ptr<Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
@@ -29,5 +29,5 @@ namespace Carrot::ECS {
 
 template<>
 inline const char *Carrot::Identifiable<Carrot::ECS::PhysicsCharacterComponent>::getStringRepresentation() {
-    return "Carrot::ECS::PhysicsCharacterComponent";
+    return "PhysicsCharacter";
 }

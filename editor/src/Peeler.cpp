@@ -43,7 +43,6 @@
 #include <engine/scripting/CSharpBindings.h>
 
 #include "game_specific/ecs/CharacterControllerComponent.h"
-#include "game_specific/ecs/PhysicsCharacterTestSystem.h"
 #include "game_specific/ecs/PageComponent.h"
 #include "game_specific/ecs/CharacterControllerSystem.h"
 
@@ -949,7 +948,6 @@ namespace Peeler {
             // LightEditorRenderer is not serializable
 
             systems.addUniquePtrBased<Game::ECS::CharacterControllerSystem>();
-            systems.addUniquePtrBased<Peeler::ECS::PhysicsCharacterTestSystem>();
 
             auto& components = Carrot::ECS::getComponentLibrary();
             components.add<Game::ECS::CharacterControllerComponent>();

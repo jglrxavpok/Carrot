@@ -47,6 +47,7 @@ namespace Carrot::Scripting {
         CSClass* TextComponentClass = nullptr;
         CSClass* RigidBodyComponentClass = nullptr;
         CSClass* ColliderClass = nullptr;
+        CSClass* CharacterComponentClass = nullptr;
 
         CSClass* RaycastInfoClass = nullptr;
         CSField* RaycastInfoWorldPointField = nullptr;
@@ -156,6 +157,10 @@ namespace Carrot::Scripting {
         static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
+
+        static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);
+        static void _SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value);
+        static bool _IsCharacterOnGround(MonoObject* characterComp);
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);

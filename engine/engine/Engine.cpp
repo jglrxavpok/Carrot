@@ -50,6 +50,7 @@
 
 #include "engine/ecs/systems/System.h"
 #include "engine/ecs/systems/ModelRenderSystem.h"
+#include "engine/ecs/systems/PhysicsCharacterSystem.h"
 #include "engine/ecs/systems/RigidBodySystem.h"
 #include "engine/ecs/systems/SpriteRenderSystem.h"
 #include "engine/ecs/systems/SystemHandleLights.h"
@@ -567,6 +568,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
         systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemTransformSwapBuffers>();
+        systems.addUniquePtrBased<Carrot::ECS::PhysicsCharacterSystem>();
 
         systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();

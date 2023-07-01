@@ -14,6 +14,7 @@
 #include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/components/ModelComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
+#include <engine/ecs/components/PhysicsCharacterComponent.h>
 #include <engine/ecs/components/SpriteComponent.h>
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
@@ -362,6 +363,10 @@ namespace Peeler {
         ImGui::PopID();
     }
 
+    void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component) {
+
+    }
+
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
 
     void registerEditionFunctions(InspectorPanel& inspector) {
@@ -375,5 +380,6 @@ namespace Peeler {
         registerFunction(inspector, editSpriteComponent);
         registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
+        registerFunction(inspector, editPhysicsCharacterComponent);
     }
 }

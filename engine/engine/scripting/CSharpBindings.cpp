@@ -15,6 +15,7 @@
 #include <engine/ecs/Signature.hpp>
 #include <mono/metadata/object.h>
 #include <engine/ecs/components/CameraComponent.h>
+#include <engine/ecs/components/PhysicsCharacterComponent.h>
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/TextComponent.h>
@@ -87,6 +88,10 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", _SetLocalScale);
         mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", _GetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", _SetEulerAngles);
+
+        mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", _GetCharacterVelocity);
+        mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", _SetCharacterVelocity);
+        mono_add_internal_call("Carrot.CharacterComponent::IsOnGround", _IsCharacterOnGround);
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
@@ -333,6 +338,7 @@ namespace Carrot::Scripting {
         LOAD_CLASS(TransformComponent);
         LOAD_CLASS(TextComponent);
         LOAD_CLASS(RigidBodyComponent);
+        LOAD_CLASS(CharacterComponent);
 
         {
             LOAD_CLASS_NS("Carrot.Physics", Collider);
@@ -364,6 +370,10 @@ namespace Carrot::Scripting {
             HardcodedComponents["Carrot.RigidBodyComponent"] = {
                     .id = ECS::RigidBodyComponent::getID(),
                     .clazz = RigidBodyComponentClass,
+            };
+            HardcodedComponents["Carrot.CharacterComponent"] = {
+                    .id = ECS::PhysicsCharacterComponent::getID(),
+                    .clazz = CharacterComponentClass,
             };
         }
     }
@@ -529,6 +539,24 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::TransformComponent>()->localTransform.rotation = glm::quat(value);
+    }
+
+    glm::vec3 CSharpBindings::_GetCharacterVelocity(MonoObject* characterComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::PhysicsCharacterComponent>()->character.getVelocity();
+    }
+
+    void CSharpBindings::_SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::PhysicsCharacterComponent>()->character.setVelocity(value);
+    }
+
+    bool CSharpBindings::_IsCharacterOnGround(MonoObject* characterComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::PhysicsCharacterComponent>()->character.isOnGround();
     }
 
     MonoString* CSharpBindings::_GetText(MonoObject* textComp) {

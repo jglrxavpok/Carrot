@@ -39,6 +39,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="CameraComponent.cs" />
+        <Compile Include="CharacterComponent.cs" />
         <Compile Include="ComponentPropertyAttributes\Display.cs" />
         <Compile Include="ComponentPropertyAttributes\Ranges.cs" />
         <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
