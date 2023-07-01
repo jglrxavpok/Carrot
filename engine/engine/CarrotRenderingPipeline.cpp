@@ -454,7 +454,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
     auto& drawUnlit = mainGraph.addPass<UnlitDraw>(
             "draw-unlit",
             [this, mergeLighting, framebufferSize](Render::GraphBuilder& builder, Render::Pass<UnlitDraw>& pass, UnlitDraw& data) {
-                data.depthBuffer = builder.write(mergeLighting.getData().gBuffer.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+                data.depthBuffer = builder.write(mergeLighting.getData().gBuffer.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
                 data.inout = builder.write(mergeLighting.getData().mergeResult, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const UnlitDraw& data, vk::CommandBuffer& buffer) {

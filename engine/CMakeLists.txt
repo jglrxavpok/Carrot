@@ -48,6 +48,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/LuaScriptComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
+        ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
         ${EngineRoot}ecs/components/TextComponent.cpp
@@ -153,6 +154,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/DragDropTypes.cpp
 
 
+        ${EngineRoot}physics/Character.cpp
         ${EngineRoot}physics/Colliders.cpp
         ${EngineRoot}physics/DebugRenderer.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp

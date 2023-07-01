@@ -21,6 +21,7 @@ set(EditorSources
 
         ${EditorRoot}game_specific/ecs/CharacterControllerComponent.cpp
         ${EditorRoot}game_specific/ecs/CharacterControllerSystem.cpp
+        ${EditorRoot}game_specific/ecs/PhysicsCharacterTestSystem.cpp
         )
 
 set(ImGuizmoSources

@@ -108,6 +108,7 @@ namespace Carrot::Physics {
         Carrot::Render::Viewport* debugViewport = nullptr;
         std::unique_ptr<Physics::DebugRenderer> debugRenderer;
 
+        friend class Character;
         friend class RigidBody;
     };
 }

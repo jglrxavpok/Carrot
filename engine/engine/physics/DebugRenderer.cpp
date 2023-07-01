@@ -21,7 +21,7 @@ namespace Carrot::Physics {
     };
 
     DebugRenderer::DebugRenderer(Carrot::Render::Viewport& debugViewport): debugViewport(debugViewport) {
-        debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("unlitGBufferWireframe");
+        debugTrianglesPipeline = GetRenderer().getOrCreatePipeline("unlitGBuffer");
 
         Initialize();
     }

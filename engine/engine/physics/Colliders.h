@@ -80,6 +80,7 @@ namespace Carrot::Physics {
         // Collider which uses this shape. Non-owning pointer
         Collider* owner = nullptr;
 
+        friend class Character;
         friend class Collider;
         friend class RigidBody;
     };
