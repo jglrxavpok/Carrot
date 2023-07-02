@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <core/memory/OptionalRef.h>
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
@@ -39,6 +40,11 @@ namespace Carrot::ECS {
 
         template<typename Component>
         std::vector<Entity> getEntitiesWith() const;
+
+        template<typename... Component>
+        std::vector<Entity> queryEntities() const;
+
+        std::vector<Entity> queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs) const;
 
         std::string& getName(const EntityID& entityID);
         std::string& getName(const Entity& entity);

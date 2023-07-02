@@ -117,6 +117,95 @@ namespace Carrot {
                 action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>(), entity.GetComponent<T3>(), entity.GetComponent<T4>());
             }
         }
+        
+        /**
+         * Queries the entities matching the list of components.
+         * Use this if you need to access entities which do NOT match this system signature
+         * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
+         */
+        public Entity[] Query<T0>() 
+            where T0 : IComponent {
+            string[] componentTypes = new string[] {
+                typeof(T0).Namespace,typeof(T0).Name 
+            };
+            return _Query(componentTypes);
+        }
+        
+        /**
+         * Queries the entities matching the list of components.
+         * Use this if you need to access entities which do NOT match this system signature
+         * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
+         */
+        public Entity[] Query<T0, T1>() 
+            where T0 : IComponent 
+            where T1 : IComponent 
+        {
+            string[] componentTypes = new string[] {
+                typeof(T0).Namespace, typeof(T0).Name,
+                typeof(T1).Namespace, typeof(T1).Name,
+            };
+            return _Query(componentTypes);
+        }
+        
+        /**
+         * Queries the entities matching the list of components.
+         * Use this if you need to access entities which do NOT match this system signature
+         * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
+         */
+        public Entity[] Query<T0, T1, T2>() 
+            where T0 : IComponent 
+            where T1 : IComponent 
+            where T2 : IComponent 
+        {
+            string[] componentTypes = new string[] {
+                typeof(T0).Namespace, typeof(T0).Name,
+                typeof(T1).Namespace, typeof(T1).Name,
+                typeof(T2).Namespace, typeof(T2).Name,
+            };
+            return _Query(componentTypes);
+        }
+        
+        /**
+         * Queries the entities matching the list of components.
+         * Use this if you need to access entities which do NOT match this system signature
+         * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
+         */
+        public Entity[] Query<T0, T1, T2, T3>() 
+            where T0 : IComponent 
+            where T1 : IComponent 
+            where T2 : IComponent 
+            where T3 : IComponent 
+        {
+            string[] componentTypes = new string[] {
+                typeof(T0).Namespace, typeof(T0).Name,
+                typeof(T1).Namespace, typeof(T1).Name,
+                typeof(T2).Namespace, typeof(T2).Name,
+                typeof(T3).Namespace, typeof(T3).Name,
+            };
+            return _Query(componentTypes);
+        }
+        
+        /**
+         * Queries the entities matching the list of components.
+         * Use this if you need to access entities which do NOT match this system signature
+         * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
+         */
+        public Entity[] Query<T0, T1, T2, T3, T4>() 
+            where T0 : IComponent 
+            where T1 : IComponent 
+            where T2 : IComponent 
+            where T3 : IComponent 
+            where T4 : IComponent 
+        {
+            string[] componentTypes = new string[] {
+                typeof(T0).Namespace, typeof(T0).Name,
+                typeof(T1).Namespace, typeof(T1).Name,
+                typeof(T2).Namespace, typeof(T2).Name,
+                typeof(T3).Namespace, typeof(T3).Name,
+                typeof(T4).Namespace, typeof(T4).Name,
+            };
+            return _Query(componentTypes);
+        }
         #endregion
 
         /**
@@ -131,6 +220,12 @@ namespace Carrot {
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern Entity[] LoadEntities();
+        
+        /**
+         * Ask engine to send list of entities with matching components
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Entity[] _Query(string[] types);
     }
     
     public class ECS {

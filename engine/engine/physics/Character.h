@@ -46,6 +46,12 @@ namespace Carrot::Physics {
         /// get world transform of character. updated on update, no scale is applied. updated by physics engine.
         const Carrot::Math::Transform& getWorldTransform() const;
 
+        /// gets the mass of of the character
+        float getMass() const;
+
+        /// updates the mass of the character, triggers a recreation of the physics body
+        void setMass(float mass);
+
         /// check if the character is on the ground
         bool isOnGround();
 

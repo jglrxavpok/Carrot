@@ -76,6 +76,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
         mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
         mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
+        mono_add_internal_call("Carrot.System::_Query", _QueryECS);
         mono_add_internal_call("Carrot.System::FindEntityByName", FindEntityByName);
         mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", GetName);
@@ -88,6 +89,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", _SetLocalScale);
         mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", _GetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", _SetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", _GetWorldPosition);
 
         mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", _GetCharacterVelocity);
         mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", _SetCharacterVelocity);
@@ -435,6 +437,39 @@ namespace Carrot::Scripting {
         return systemPtr->getEntityList()->toMono();
     }
 
+    MonoArray* CSharpBindings::_QueryECS(MonoObject* systemObj, MonoArray* componentClasses) {
+        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(systemObj));
+        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
+        auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
+
+        std::unordered_set<Carrot::ComponentID> components;
+        std::size_t componentCount = mono_array_length(componentClasses);
+
+        for(std::size_t i = 0; i < componentCount/2; ++i) {
+            auto* namespaceString = mono_array_get(componentClasses, MonoString*, i * 2);
+            auto* classNameString = mono_array_get(componentClasses, MonoString*, i*2 + 1);
+
+            ComponentID componentID = GetComponentID(namespaceString, classNameString);
+            components.insert(componentID);
+        }
+
+        components.reserve(componentCount/2);
+        auto queryResult = systemPtr->getWorld().queryEntities(components);
+
+        auto csQueryResult = instance().EntityClass->newArray(queryResult.size());
+        auto* csQueryResultArray = csQueryResult->toMono();
+
+        std::vector<std::shared_ptr<CSObject>> csEntities;
+        csEntities.resize(queryResult.size());
+
+        for(std::size_t i = 0; i < queryResult.size(); i++) {
+            csEntities[i] = entityToCSObject(queryResult[i]);
+            mono_array_set(csQueryResultArray, MonoObject*, i, csEntities[i]->toMono());
+        }
+
+        return csQueryResult->toMono();
+    }
+
     ECS::Entity CSharpBindings::convertToEntity(MonoObject* entityMonoObj) {
         if(entityMonoObj == nullptr) {
             return ECS::Entity{};
@@ -539,6 +574,12 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::TransformComponent>()->localTransform.rotation = glm::quat(value);
+    }
+
+    glm::vec3 CSharpBindings::_GetWorldPosition(MonoObject* transformComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::TransformComponent>()->computeFinalPosition();
     }
 
     glm::vec3 CSharpBindings::_GetCharacterVelocity(MonoObject* characterComp) {

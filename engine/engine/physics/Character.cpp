@@ -19,7 +19,7 @@ namespace Carrot::Physics {
         characterSettings.mUp = JPH::Vec3::sAxisZ();
         characterSettings.mShape = collider.getShape().shape;
         characterSettings.mSupportingVolume = JPH::Plane { JPH::Vec3::sAxisZ(), -0.9f};
-        characterSettings.mFriction = 0.5f;
+        characterSettings.mFriction = 1.0f;
 
         createJoltRepresentation();
     }
@@ -120,6 +120,15 @@ namespace Carrot::Physics {
 
     const Carrot::Math::Transform& Character::getWorldTransform() const {
         return worldTransform;
+    }
+
+    float Character::getMass() const {
+        return characterSettings.mMass;
+    }
+
+    void Character::setMass(float mass) {
+        characterSettings.mMass = mass;
+        createJoltRepresentation();
     }
 
     bool Character::isOnGround() {

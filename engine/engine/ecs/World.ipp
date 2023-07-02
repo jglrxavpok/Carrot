@@ -78,6 +78,13 @@ namespace Carrot::ECS {
         return result;
     }
 
+    template<typename... Component>
+    std::vector<Entity> World::queryEntities() const {
+        std::unordered_set<Carrot::ComponentID> ids;
+        (ids.insert(Component::getID()), ...);
+        return queryEntities(ids);
+    }
+
     template<class RenderSystemType, typename... Args>
     RenderSystemType& World::addRenderSystem(Args&&... args) {
         auto system = std::make_unique<RenderSystemType>(*this, args...);

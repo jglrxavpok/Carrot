@@ -9,6 +9,21 @@ namespace Carrot {
             this.X = x;
             this.Y = y;
         }
+
+        public float LengthSquared() {
+            return X * X + Y * Y;
+        }
+
+        public float Length() {
+            return (float)Math.Sqrt(LengthSquared());
+        }
+
+        public Vec2 Normalize() {
+            float length = Length();
+            X /= length;
+            Y /= length;
+            return this;
+        }
     }
     
     public struct Vec3 {
@@ -20,6 +35,22 @@ namespace Carrot {
             this.X = x;
             this.Y = y;
             this.Z = z;
+        }
+        
+        public float LengthSquared() {
+            return X * X + Y * Y + Z * Z;
+        }
+
+        public float Length() {
+            return (float)Math.Sqrt(LengthSquared());
+        }
+        
+        public Vec3 Normalize() {
+            float length = Length();
+            X /= length;
+            Y /= length;
+            Z /= length;
+            return this;
         }
     }
 

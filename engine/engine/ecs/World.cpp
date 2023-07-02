@@ -385,6 +385,23 @@ namespace Carrot::ECS {
         }
     }
 
+    std::vector<Entity> World::queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs) const {
+        Signature signature;
+        for(const auto& compID : componentIDs) {
+            signature.addComponent(compID);
+        }
+
+        std::vector<Entity> result;
+        for(const auto& entityID : entities) {
+            auto entity = wrap(entityID);
+            if((getSignature(entity) & signature) == signature) {
+                result.push_back(entity);
+            }
+        }
+
+        return result;
+    }
+
     std::string& World::getName(const Entity& entity) {
         return getName(entity.getID());
     }

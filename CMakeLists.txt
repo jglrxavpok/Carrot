@@ -114,6 +114,7 @@ add_subdirectory(thirdparty/openexr)
 
 set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF)
 add_subdirectory(thirdparty/JoltPhysics/Build)
+target_compile_definitions(Jolt PUBLIC "$<$<CONFIG:RelWithDebInfo>:NDEBUG;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER>")
 
 set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)

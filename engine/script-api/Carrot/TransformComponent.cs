@@ -22,6 +22,14 @@ namespace Carrot {
             set => _SetEulerAngles(value);
         }
         
+        /**
+         * World position of this entity (ie takes into account parents' position)
+         * Writing to LocalPosition immediately updates WorldPosition too
+         */
+        public Vec3 WorldPosition {
+            get => _GetWorldPosition();
+        }
+        
         private TransformComponent(Entity owner) : base(owner) {
         }
 
@@ -42,5 +50,9 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetEulerAngles(Vec3 newScale);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec3 _GetWorldPosition();
+
     }
 }

@@ -101,6 +101,7 @@ namespace Peeler {
         std::string s = component->getName();
         s += "##" + component->getEntity().getID().toString();
         if(ImGui::CollapsingHeader(s.c_str(), &shouldKeep)) {
+            ImGui::PushID(s.c_str());
             auto iter = editionFunctions.find(component->getComponentTypeID());
             if(iter == editionFunctions.end()) {
                 ImGui::Text("No edition function registered via registerComponentEditor!");
@@ -108,6 +109,7 @@ namespace Peeler {
                 auto& editor = iter->second;
                 editor(editContext, component);
             }
+            ImGui::PopID();
         }
 
         if(!shouldKeep) {

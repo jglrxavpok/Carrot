@@ -119,6 +119,8 @@ namespace Carrot::Scripting {
 
         static MonoArray* LoadEntities(MonoObject* systemObj);
 
+        static MonoArray* _QueryECS(MonoObject* systemObj, MonoArray* componentClasses);
+
         static ECS::Entity convertToEntity(MonoObject* entityMonoObj);
 
         static std::shared_ptr<Scripting::CSObject> entityToCSObject(ECS::Entity& e);
@@ -157,6 +159,7 @@ namespace Carrot::Scripting {
         static void _SetLocalScale(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
+        static glm::vec3 _GetWorldPosition(MonoObject* transformComp);
 
         static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);
         static void _SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value);
