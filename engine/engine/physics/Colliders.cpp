@@ -20,6 +20,34 @@ namespace Carrot::Physics {
         setLocalTransform(localTransform);
     }
 
+    Collider::Collider(Collider&& o) {
+        *this = std::move(o);
+    }
+
+    Collider& Collider::operator=(Collider&& other) {
+        if(this == &other)
+            return *this;
+
+        if(rigidbody) {
+            removeFromBody(*rigidbody);
+        }
+        verify(rigidbody == nullptr, "Programming error: rigidbody should be null at this point");
+
+        if(other.rigidbody) {
+            rigidbody = other.rigidbody; // other.rigidbody modified by line below
+            other.removeFromBody(*other.rigidbody);
+        }
+        shape = std::move(other.shape);
+        shape->setCollider(this);
+        localTransform = other.getLocalTransform();
+
+        if(rigidbody) {
+            addToBody(*rigidbody);
+        }
+
+        return *this;
+    }
+
     std::unique_ptr<Collider> Collider::loadFromJSON(const rapidjson::Value& object) {
         ColliderType colliderType = ColliderTypeNames[object["type"].GetString()];
 
@@ -87,7 +115,7 @@ namespace Carrot::Physics {
         }
         shape->shape = JPH::RotatedTranslatedShapeSettings{
             carrotToJolt(transform.position),
-            carrotToJolt(transform.rotation),
+            carrotToJolt(transform.rotation).Normalized(),
             oldShape
         }.Create().Get();
         reattach();

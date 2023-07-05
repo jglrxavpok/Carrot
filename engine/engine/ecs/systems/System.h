@@ -34,6 +34,14 @@ namespace Carrot::ECS {
         virtual void setupCamera(Carrot::Render::Context renderContext) {};
         virtual void tick(double dt) {};
 
+        /// Called before physics updates. NOT called if the physics system is paused.
+        /// Will be called at a fixed tickrate
+        virtual void prePhysics() {};
+
+        /// Called after physics updates. NOT called if the physics system is paused.
+        /// Will be called at a fixed tickrate
+        virtual void postPhysics() {};
+
         // TODO: provide a way to render even in other passes -> RenderPacket
         virtual void opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
         virtual void transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};

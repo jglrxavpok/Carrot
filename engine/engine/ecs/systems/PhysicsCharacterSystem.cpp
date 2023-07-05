@@ -6,15 +6,23 @@ namespace Carrot::ECS {
     }
 
     void PhysicsCharacterSystem::tick(double dt) {
+        // no op
+    }
+
+    void PhysicsCharacterSystem::prePhysics() {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
             if(firstFrame) {
                 characterComp.character.setWorldTransform(transformComp.computeGlobalPhysicsTransform());
-                characterComp.character.update(dt);
                 firstFrame = false;
-            } else {
-                characterComp.character.update(dt);
-                transformComp.setGlobalTransform(characterComp.character.getWorldTransform());
             }
+            characterComp.character.prePhysics();
+        });
+    }
+
+    void PhysicsCharacterSystem::postPhysics() {
+        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
+            characterComp.character.postPhysics();
+            transformComp.setGlobalTransform(characterComp.character.getWorldTransform());
         });
     }
 

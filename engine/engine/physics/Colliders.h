@@ -187,8 +187,10 @@ namespace Carrot::Physics {
 
         explicit Collider(std::unique_ptr<CollisionShape>&& shape, const Carrot::Math::Transform& localTransform);
         Collider(const Collider&) = delete;
-        Collider(Collider&&) = default;
+        Collider(Collider&&);
         ~Collider() = default;
+
+        Collider& operator=(Collider&&);
 
     public:
         [[nodiscard]] ColliderType getType() const;

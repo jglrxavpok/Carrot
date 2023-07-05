@@ -11,11 +11,16 @@ namespace Carrot::ECS {
         if(json.HasMember("mass")) {
             character.setMass(json["mass"].GetFloat());
         }
+        if(json.HasMember("collider")) {
+            auto pCollider = Physics::Collider::loadFromJSON(json["collider"]);
+            character.setCollider(std::move(*pCollider));
+        }
     }
 
     rapidjson::Value PhysicsCharacterComponent::toJSON(rapidjson::Document& doc) const {
         rapidjson::Value obj(rapidjson::kObjectType);
         obj.AddMember("mass", character.getMass(), doc.GetAllocator());
+        obj.AddMember("collider", character.getCollider().toJSON(doc.GetAllocator()), doc.GetAllocator());
         return obj;
     }
 

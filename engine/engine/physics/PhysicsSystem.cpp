@@ -160,13 +160,15 @@ namespace Carrot::Physics {
         jolt->SetGravity(Carrot::carrotToJolt(glm::vec3{0,0,-9.8f}));
     }
 
-    void PhysicsSystem::tick(double deltaTime) {
+    void PhysicsSystem::tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback) {
         constexpr int collisionSteps = 3;
         constexpr int integrationSteps = 4;
         accumulator += deltaTime;
         while(accumulator >= TimeStep) {
             if(!paused) {
+                prePhysicsCallback();
                 jolt->Update(TimeStep, collisionSteps, integrationSteps, tempAllocator.get(), jobSystem.get());
+                postPhysicsCallback();
             }
 
             accumulator -= TimeStep;

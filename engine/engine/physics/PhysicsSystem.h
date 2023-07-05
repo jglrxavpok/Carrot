@@ -43,7 +43,7 @@ namespace Carrot::Physics {
         constexpr static double TimeStep = 1.0 / 60.0;
         static PhysicsSystem& getInstance();
 
-        void tick(double deltaTime);
+        void tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback);
 
     public: // debug rendering
         Carrot::Render::Viewport* getDebugViewport();

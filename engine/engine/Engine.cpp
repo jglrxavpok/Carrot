@@ -1055,7 +1055,14 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
     game->tick(deltaTime);
-    GetPhysics().tick(deltaTime);
+
+    auto prePhysics = [&]() {
+        game->prePhysics();
+    };
+    auto postPhysics = [&]() {
+        game->postPhysics();
+    };
+    GetPhysics().tick(deltaTime, prePhysics, postPhysics);
 }
 
 void Carrot::Engine::takeScreenshot() {

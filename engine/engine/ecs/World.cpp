@@ -180,6 +180,30 @@ namespace Carrot::ECS {
         }
     }
 
+    void World::prePhysics() {
+        if(!frozenLogic) {
+            for(const auto& logic : logicSystems) {
+                logic->prePhysics();
+            }
+        }
+
+        for(const auto& render : renderSystems) {
+            render->prePhysics();
+        }
+    }
+
+    void World::postPhysics() {
+        if(!frozenLogic) {
+            for(const auto& logic : logicSystems) {
+                logic->postPhysics();
+            }
+        }
+
+        for(const auto& render : renderSystems) {
+            render->postPhysics();
+        }
+    }
+
     static Carrot::RuntimeOption showWorldHierarchy("Debug/Show World hierarchy", false);
 
     void World::setupCamera(Carrot::Render::Context renderContext) {

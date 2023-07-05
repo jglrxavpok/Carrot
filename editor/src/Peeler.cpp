@@ -998,6 +998,14 @@ namespace Peeler {
         }
     }
 
+    void Application::prePhysics() {
+        currentScene.prePhysics();
+    }
+
+    void Application::postPhysics() {
+        currentScene.postPhysics();
+    }
+
     void Application::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
                                               vk::CommandBuffer& commands) {
         // no op, everything is done inside gameViewport

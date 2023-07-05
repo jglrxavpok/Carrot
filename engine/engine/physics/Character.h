@@ -27,8 +27,15 @@ namespace Carrot::Physics {
         Character& operator=(Character&&);
 
     public:
+        /// use 'applyColliderChanges' if you change this collider to make sure the character is aware of changes
+        Collider& getCollider();
+
+        const Collider& getCollider() const;
+
         /// update shape of character. applies change immediately
-        void setShape(const CollisionShape& shape);
+        void setCollider(Collider&& newCollider);
+
+        void applyColliderChanges();
 
         /// updates height of the character. Used to determine a supporting plane, ie a plane
         /// which determines whether the character is on the ground or not
@@ -59,7 +66,8 @@ namespace Carrot::Physics {
         void jump(float speed);
 
     public:
-        void update(double deltaTime);
+        void prePhysics();
+        void postPhysics();
 
         void addToWorld();
         void removeFromWorld();
@@ -76,6 +84,7 @@ namespace Carrot::Physics {
 
         bool inWorld = false;
 
+        Collider collider;
         JPH::CharacterSettings characterSettings;
         std::unique_ptr<JPH::Character> physics;
     };

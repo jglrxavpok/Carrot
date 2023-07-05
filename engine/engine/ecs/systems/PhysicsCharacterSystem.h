@@ -20,6 +20,8 @@ namespace Carrot::ECS {
                 : PhysicsCharacterSystem(world) {}
 
         virtual void tick(double dt) override;
+        virtual void prePhysics() override;
+        virtual void postPhysics() override;
 
         virtual void onFrame(Carrot::Render::Context renderContext) override;
 

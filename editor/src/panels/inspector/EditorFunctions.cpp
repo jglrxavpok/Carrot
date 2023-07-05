@@ -363,14 +363,8 @@ namespace Peeler {
         ImGui::PopID();
     }
 
-    void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component) {
-        float mass = component->character.getMass();
-        if(ImGui::DragFloat("Mass", &mass, 0.1f, 0.001f, FLT_MAX, "%.2f kg")) {
-            component->character.setMass(mass);
-        }
-    }
-
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
+    void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component);
 
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);

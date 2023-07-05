@@ -9,26 +9,30 @@
 namespace Carrot::Physics {
     static const float cCollisionTolerance = 0.05f;
 
-    Character::Character() {
+    static Collider makeDefaultCollider() {
         auto capsuleShape = std::make_unique<CapsuleCollisionShape>(0.5f, 0.9f);
 
         Carrot::Math::Transform localTransform;
         localTransform.rotation = glm::rotate(glm::identity<glm::quat>(), glm::half_pi<float>(), glm::vec3{1,0,0});
 
         Collider collider{std::move(capsuleShape), localTransform};
+        return collider;
+    }
+
+    Character::Character(): collider(makeDefaultCollider()) {
         characterSettings.mUp = JPH::Vec3::sAxisZ();
         characterSettings.mShape = collider.getShape().shape;
         characterSettings.mSupportingVolume = JPH::Plane { JPH::Vec3::sAxisZ(), -0.9f};
-        characterSettings.mFriction = 1.0f;
+        characterSettings.mFriction = 0.2f;
 
         createJoltRepresentation();
     }
 
-    Character::Character(const Character& other) {
+    Character::Character(const Character& other): collider(other.collider.getShape().duplicate(), other.collider.getLocalTransform()) {
         *this = other;
     }
 
-    Character::Character(Character&& other) {
+    Character::Character(Character&& other): collider(std::move(other.collider)) {
         *this = std::move(other);
     }
 
@@ -42,6 +46,7 @@ namespace Carrot::Physics {
     }
 
     Character& Character::operator=(const Character& other) {
+        collider = Collider{other.collider.getShape().duplicate(), other.collider.getLocalTransform()};
         characterSettings = other.characterSettings;
         worldTransform = other.worldTransform;
         velocity = other.velocity;
@@ -58,6 +63,7 @@ namespace Carrot::Physics {
     }
 
     Character& Character::operator=(Character&& other) {
+        collider = std::move(other.collider);
         characterSettings = std::move(other.characterSettings);
         worldTransform = std::move(other.worldTransform);
         velocity = std::move(other.velocity);
@@ -70,33 +76,48 @@ namespace Carrot::Physics {
     }
 
 
-    void Character::update(double deltaTime) {
-        physics->PostSimulation(cCollisionTolerance);
-
+    void Character::prePhysics() {
         if(dirtyTransform) {
             dirtyTransform = false;
             physics->SetPositionAndRotation(Carrot::carrotToJolt(worldTransform.position), Carrot::carrotToJolt(worldTransform.rotation));
-        } else {
-            JPH::Vec3 position;
-            JPH::Quat rotation;
-
-            physics->GetPositionAndRotation(position, rotation);
-
-            worldTransform.position = Carrot::joltToCarrot(position);
-            worldTransform.rotation = Carrot::joltToCarrot(rotation);
         }
 
-        if(dirtyVelocity) {
-            physics->SetLinearVelocity(Carrot::carrotToJolt(velocity));
+        if(dirtyVelocity && inWorld) {
             dirtyVelocity = false;
+            physics->SetLinearVelocity(Carrot::carrotToJolt(velocity));
         }
-        velocity = Carrot::joltToCarrot(physics->GetLinearVelocity());
-
-        onGround = physics->IsSupported();
     }
 
-    void Character::setShape(const CollisionShape& shape) {
-        physics->SetShape(shape.shape.GetPtr(), cCollisionTolerance);
+    void Character::postPhysics() {
+        physics->PostSimulation(cCollisionTolerance);
+
+        JPH::Vec3 position;
+        JPH::Quat rotation;
+
+        physics->GetPositionAndRotation(position, rotation);
+
+        worldTransform.position = Carrot::joltToCarrot(position);
+        worldTransform.rotation = Carrot::joltToCarrot(rotation);
+
+        velocity = Carrot::joltToCarrot(physics->GetLinearVelocity());
+        onGround = physics->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
+    }
+
+    Collider& Character::getCollider() {
+        return collider;
+    }
+
+    const Collider& Character::getCollider() const {
+        return collider;
+    }
+
+    void Character::setCollider(Collider&& newCollider) {
+        collider = std::move(newCollider);
+        createJoltRepresentation();
+    }
+
+    void Character::applyColliderChanges() {
+        createJoltRepresentation();
     }
 
     void Character::setHeight(float height) {
@@ -154,12 +175,17 @@ namespace Carrot::Physics {
     }
 
     void Character::createJoltRepresentation() {
+        bool wasInWorld = inWorld;
+        removeFromWorld();
         characterSettings.mLayer = Carrot::Physics::Layers::MOVING; // TODO
+        characterSettings.mShape = collider.getShape().shape;
         physics = std::make_unique<JPH::Character>(&characterSettings,
                                                    Carrot::carrotToJolt(worldTransform.position),
                                                    Carrot::carrotToJolt(worldTransform.rotation),
                                                    (std::uint64_t)this,
                                                    GetPhysics().jolt.get());
-        inWorld = false;
+        if(wasInWorld) {
+            addToWorld();
+        }
     }
 } // Carrot::Physics

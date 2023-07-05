@@ -52,6 +52,8 @@ namespace Carrot::ECS {
         const std::string& getName(const Entity& entity) const;
 
         void tick(double dt);
+        void prePhysics();
+        void postPhysics();
         void setupCamera(Carrot::Render::Context renderContext);
         void onFrame(Carrot::Render::Context renderContext);
         void recordOpaqueGBufferPass(const vk::RenderPass& pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands);
