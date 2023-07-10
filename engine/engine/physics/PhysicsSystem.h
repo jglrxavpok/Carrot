@@ -11,6 +11,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <glm/glm.hpp>
 #include <engine/physics/Types.h>
+#include <engine/physics/CollisionLayers.h>
 #include <engine/physics/DebugRenderer.h>
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 
@@ -24,19 +25,51 @@ namespace Carrot {
 }
 
 namespace Carrot::Physics {
+    namespace {
+        // BroadPhaseLayerInterface implementation
+        // This defines a mapping between object and broadphase layers.
+        class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
+        {
+            CollisionLayers& layers;
 
-    // TODO: taken from HelloWorld of JoltPhysics -> adapt
+        public:
+            // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
+            // a layer for non-moving and moving objects to avoid having to update a tree full of static objects every frame.
+            // You can have a 1-on-1 mapping between object layers and broadphase layers (like in this case) but if you have
+            // many object layers you'll be creating many broad phase trees, which is not efficient. If you want to fine tune
+            // your broadphase layers define JPH_TRACK_BROADPHASE_STATS and look at the stats reported on the TTY.
+            static inline JPH::BroadPhaseLayer StaticLayer{0};
+            static inline JPH::BroadPhaseLayer MovingLayer{1};
 
-    // Layer that objects can be in, determines which other objects it can collide with
-    // Typically you at least want to have 1 layer for moving bodies and 1 layer for static bodies, but you can have more
-    // layers if you want. E.g. you could have a layer for high detail collision (which is not used by the physics simulation
-    // but only if you do collision testing).
-    namespace Layers
-    {
-        static constexpr JPH::ObjectLayer NON_MOVING = 0;
-        static constexpr JPH::ObjectLayer MOVING = 1;
-        static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
-    };
+            BPLayerInterfaceImpl(CollisionLayers& layers);
+
+            virtual JPH::uint GetNumBroadPhaseLayers() const override;
+
+            virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override;
+
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+            virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override;
+#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
+        };
+
+        class ObjectVsBroadPhaseLayerFilterImpl: public JPH::ObjectVsBroadPhaseLayerFilter {
+            CollisionLayers& layers;
+        public:
+            ObjectVsBroadPhaseLayerFilterImpl(CollisionLayers& layers);
+
+            bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
+        };
+
+        /// Class that determines if two object layers can collide
+        class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter {
+            CollisionLayers& layers;
+        public:
+            ObjectLayerPairFilterImpl(CollisionLayers& layers);
+
+            virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
+        };
+
+    }
 
     class PhysicsSystem {
     public:
@@ -49,6 +82,13 @@ namespace Carrot::Physics {
         Carrot::Render::Viewport* getDebugViewport();
         void setViewport(Carrot::Render::Viewport* viewport);
         void onFrame(const Carrot::Render::Context& context);
+
+    public:
+        CollisionLayers& getCollisionLayers();
+        const CollisionLayers& getCollisionLayers() const;
+
+        CollisionLayerID getDefaultStaticLayer() const;
+        CollisionLayerID getDefaultMovingLayer() const;
 
     public:
         bool isPaused() const;
@@ -66,6 +106,7 @@ namespace Carrot::Physics {
          * @return true iff there was a hit
          */
         bool raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, RaycastInfo& raycastInfo, unsigned short collisionMask = 0xFFFF) const;
+
 
     private:
         explicit PhysicsSystem();
@@ -107,6 +148,12 @@ namespace Carrot::Physics {
     private: // debug rendering
         Carrot::Render::Viewport* debugViewport = nullptr;
         std::unique_ptr<Physics::DebugRenderer> debugRenderer;
+
+        CollisionLayers collisionLayers;
+
+        BPLayerInterfaceImpl broadphaseLayerInterface{collisionLayers};
+        ObjectVsBroadPhaseLayerFilterImpl objectVsBPFilter{collisionLayers};
+        ObjectLayerPairFilterImpl objectLayerPairFilter{collisionLayers};
 
         friend class Character;
         friend class RigidBody;

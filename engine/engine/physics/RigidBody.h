@@ -57,6 +57,9 @@ namespace Carrot::Physics {
         BodyType getBodyType() const;
         void setBodyType(BodyType type);
 
+        CollisionLayerID getCollisionLayer() const;
+        void setCollisionLayer(CollisionLayerID id);
+
     public:
         float getMass() const;
         void setMass(float mass);
@@ -125,6 +128,7 @@ namespace Carrot::Physics {
 
         std::vector<std::unique_ptr<Collider>> colliders;
         BodyType bodyType = BodyType::Dynamic;
+        CollisionLayerID layerID = 1/*default moving layer*/;
         glm::bvec3 translationAxes{true, true, true};
         glm::bvec3 rotationAxes{true, true, true};
 

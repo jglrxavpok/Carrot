@@ -7,6 +7,7 @@
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Character/CharacterBase.h>
 #include <Jolt/Physics/Character/Character.h>
+#include <engine/physics/Types.h>
 #include <engine/physics/Colliders.h>
 #include <glm/glm.hpp>
 
@@ -66,6 +67,10 @@ namespace Carrot::Physics {
         void jump(float speed);
 
     public:
+        CollisionLayerID getCollisionLayer() const;
+        void setCollisionLayer(CollisionLayerID id);
+
+    public:
         void prePhysics();
         void postPhysics();
 
@@ -84,6 +89,7 @@ namespace Carrot::Physics {
 
         bool inWorld = false;
 
+        CollisionLayerID layerID = 1 /* default moving layer */;
         Collider collider;
         JPH::CharacterSettings characterSettings;
         std::unique_ptr<JPH::Character> physics;

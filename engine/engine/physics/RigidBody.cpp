@@ -228,6 +228,14 @@ namespace Carrot::Physics {
         }
     }
 
+    CollisionLayerID RigidBody::getCollisionLayer() const {
+        return layerID;
+    }
+
+    void RigidBody::setCollisionLayer(CollisionLayerID id) {
+        layerID = id;
+    }
+
     bool RigidBody::isActive() const {
         BodyAccessRead body{bodyID};
         if(!body) {
@@ -303,7 +311,16 @@ namespace Carrot::Physics {
     void RigidBody::createBody(JPH::BodyCreationSettings creationSettings) {
         creationSettings.mUserData = (std::uint64_t)this;
 
-        creationSettings.mObjectLayer = Layers::MOVING; // TODO
+        if(bodyType == BodyType::Static) {
+            creationSettings.mObjectLayer = GetPhysics().getDefaultStaticLayer(); // TODO
+        } else {
+            const auto& layersManager = GetPhysics().getCollisionLayers();
+            if(layersManager.isValid(layerID)) {
+                creationSettings.mObjectLayer = GetPhysics().getCollisionLayers().getLayer(layerID).layerID;
+            } else {
+                creationSettings.mObjectLayer = GetPhysics().getDefaultMovingLayer();
+            }
+        }
         bodyID = GetPhysics().createRigidbody(creationSettings);
         setupDOFConstraint();
     }

@@ -74,8 +74,10 @@ namespace Peeler {
         void UIGameView(const Carrot::Render::Context& renderContext);
         void UIPlayBar(const Carrot::Render::Context& renderContext);
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
-        void UIInspector(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
+
+        void drawSettingsMenu();
+        void drawPhysicsSettingsWindow();
 
     private: // C# project handling
         void buildCSProject(const Carrot::IO::VFS::Path& csproj);
@@ -167,6 +169,8 @@ namespace Peeler {
         std::filesystem::path projectToLoad;
 
         Tools::EditorSettings settings;
+
+        bool showPhysicsSettings = false;
 
     public: // for layers
         Carrot::Render::Viewport& gameViewport;

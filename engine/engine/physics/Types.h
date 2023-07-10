@@ -5,6 +5,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace Carrot::Physics {
     class RigidBody;
@@ -18,6 +19,18 @@ namespace Carrot::Physics {
         Collider* collider = nullptr;
         RigidBody* rigidBody = nullptr;
 
+    };
+
+    using CollisionLayerID = JPH::ObjectLayer;
+
+    /**
+    * Collision layers are used to determine which bodies are allowed to collide with one another.
+    */
+    struct CollisionLayer {
+        CollisionLayerID layerID;
+        std::string name;
+        bool isStatic = false;
+        bool isValid = false;
     };
 
 }

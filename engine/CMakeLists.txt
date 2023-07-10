@@ -157,6 +157,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}physics/Character.cpp
         ${EngineRoot}physics/Colliders.cpp
+        ${EngineRoot}physics/CollisionLayers.cpp
         ${EngineRoot}physics/DebugRenderer.cpp
         ${EngineRoot}physics/PhysicsSystem.cpp
         ${EngineRoot}physics/RigidBody.cpp

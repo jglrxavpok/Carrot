@@ -160,6 +160,14 @@ namespace Carrot::Physics {
         TODO;
     }
 
+    CollisionLayerID Character::getCollisionLayer() const {
+        return layerID;
+    }
+
+    void Character::setCollisionLayer(CollisionLayerID id) {
+        layerID = id;
+    }
+
     void Character::addToWorld() {
         if(!inWorld) {
             physics->AddToPhysicsSystem();
@@ -177,7 +185,14 @@ namespace Carrot::Physics {
     void Character::createJoltRepresentation() {
         bool wasInWorld = inWorld;
         removeFromWorld();
-        characterSettings.mLayer = Carrot::Physics::Layers::MOVING; // TODO
+
+        const auto& layersManager = GetPhysics().getCollisionLayers();
+        if(layersManager.isValid(layerID)) {
+            characterSettings.mLayer = GetPhysics().getCollisionLayers().getLayer(layerID).layerID;
+        } else {
+            characterSettings.mLayer = GetPhysics().getDefaultMovingLayer();
+        }
+
         characterSettings.mShape = collider.getShape().shape;
         physics = std::make_unique<JPH::Character>(&characterSettings,
                                                    Carrot::carrotToJolt(worldTransform.position),

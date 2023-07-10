@@ -145,6 +145,11 @@ namespace Peeler {
                 ImGui::EndMenu();
             }
 
+            if(ImGui::BeginMenu("Settings")) {
+                drawSettingsMenu();
+                ImGui::EndMenu();
+            }
+
             static bool showDemo = false;
 
             if(ImGui::BeginMenu("Tests")) {
@@ -232,6 +237,8 @@ namespace Peeler {
             }
 
             ImGui::EndMenuBar();
+
+            drawPhysicsSettingsWindow();
 
             if(showDemo) {
                 ImGui::ShowDemoWindow();
@@ -633,6 +640,64 @@ namespace Peeler {
         if(requireResize) {
             WaitDeviceIdle();
             gameViewport.resize(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
+        }
+    }
+
+    void Application::drawSettingsMenu() {
+        if(ImGui::MenuItem("Physics settings", nullptr, &showPhysicsSettings /* TODO: save to editor settings */)) {
+            //showPhysicsSettings = !showPhysicsSettings;
+        }
+    }
+
+    void Application::drawPhysicsSettingsWindow() {
+        if(showPhysicsSettings) {
+            if(ImGui::Begin("Physics settings", &showPhysicsSettings)) {
+
+                // draw collision matrix (ie which layers can collide with which other layers)
+                auto& layersManager = GetPhysics().getCollisionLayers();
+                const auto collisionLayers = layersManager.getLayers();
+                const std::size_t layerCount = collisionLayers.size();
+
+                // the first column will be the other layer name
+                if(ImGui::BeginTable("Collision Matrix", layerCount+1)) {
+                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_DefaultHide);
+                    for (std::size_t i = 0; i < layerCount; ++i) {
+                        ImGui::TableSetupColumn(collisionLayers[i].name.c_str());
+                    }
+
+                    ImGui::TableHeadersRow();
+                    for (std::size_t i = 0; i < layerCount; ++i) {
+                        ImGui::PushID(i);
+                        CLEANUP(ImGui::PopID());
+                        ImGui::TableNextRow();
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(collisionLayers[i].name.c_str());
+
+                        ImGui::SameLine();
+                        if(ImGui::Button("X")) {
+                            // TODO: remove
+                        }
+
+                        for (std::size_t j = 0; j < layerCount; ++j) {
+                            ImGui::PushID(j);
+                            CLEANUP(ImGui::PopID());
+
+                            ImGui::TableNextColumn();
+                            bool shouldCollide = layersManager.canCollide(collisionLayers[i].layerID, collisionLayers[j].layerID);
+
+                            std::string id = Carrot::sprintf("##collision_%d_%d", i, j);
+                            if(ImGui::Checkbox("##collision", &shouldCollide)) {
+                                layersManager.setCanCollide(collisionLayers[i].layerID, collisionLayers[j].layerID, shouldCollide);
+                            }
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+
+            }
+            ImGui::End();
         }
     }
 
