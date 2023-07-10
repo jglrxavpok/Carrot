@@ -86,9 +86,8 @@ static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
 static std::unordered_set<int> activeJoysticks{};
 
 #ifdef USE_LIVEPP
-#include <windows.h>
-#include "LPP_API.h"
-static HMODULE livePP = NULL;
+#include "LPP_API_x64_CPP.h"
+static lpp::LppSynchronizedAgent lppAgent;
 #endif
 
 Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
@@ -121,14 +120,19 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     instance = this;
     changeTickRate(config.tickRate);
 
-    #if 0
 #ifdef USE_LIVEPP
     std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
-    livePP = lpp::lppLoadAndRegister(livePPPath.wstring().c_str(), "Carrot");
+    lppAgent = lpp::LppCreateSynchronizedAgent(livePPPath.wstring().c_str());
 
-    lpp::lppEnableAllCallingModulesAsync(livePP);
+    // bail out in case the agent is not valid
+    if (!lpp::LppIsValidSynchronizedAgent(&lppAgent))
+    {
+        throw std::invalid_argument("Could not initialize Live++.");
+    }
+
+    // enable Live++ for all loaded modules
+    lppAgent.EnableModule(lpp::LppGetCurrentModulePath(), lpp::LPP_MODULES_OPTION_ALL_IMPORT_MODULES, nullptr, nullptr);
 #endif
-    #endif
 
     if(config.runInVR) {
         vrSession = vrInterface->createSession();
@@ -344,10 +348,10 @@ void Carrot::Engine::run() {
     auto lag = std::chrono::duration<float>(0.0f);
     bool ticked = false;
     while(running) {
-#if 0
 #ifdef USE_LIVEPP
-        lpp::lppSyncPoint(livePP);
-#endif
+        if (lppAgent.WantsReload()) {
+            lppAgent.CompileAndReloadChanges(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
+        }
 #endif
 
         auto frameStartTime = std::chrono::steady_clock::now();
@@ -586,8 +590,7 @@ Carrot::Engine::~Engine() {
     tracyCtx.clear();
 
 #ifdef USE_LIVEPP
-    lpp::lppShutdown(livePP);
-    ::FreeLibrary(livePP);
+    lpp::LppDestroySynchronizedAgent(&lppAgent);
 #endif
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         TracyVkDestroy(tracyCtx[i]);
