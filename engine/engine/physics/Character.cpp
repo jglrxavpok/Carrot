@@ -52,6 +52,7 @@ namespace Carrot::Physics {
         velocity = other.velocity;
         dirtyTransform = other.dirtyTransform;
         onGround = other.onGround;
+        layerID = other.layerID;
 
         createJoltRepresentation();
 
@@ -70,6 +71,7 @@ namespace Carrot::Physics {
         dirtyTransform = std::move(other.dirtyTransform);
         onGround = std::move(other.onGround);
         inWorld = other.inWorld;
+        layerID = other.layerID;
 
         physics = std::move(other.physics);
         return *this;
@@ -166,6 +168,7 @@ namespace Carrot::Physics {
 
     void Character::setCollisionLayer(CollisionLayerID id) {
         layerID = id;
+        createJoltRepresentation();
     }
 
     void Character::addToWorld() {

@@ -101,6 +101,18 @@ namespace Carrot::Physics {
         return false;
     }
 
+    bool CollisionLayers::findByName(const std::string_view& name, CollisionLayerID& outLayer) {
+        for(const auto& layer : collisionLayersStorage) {
+            if(layer.isValid) {
+                if(layer.name == name) {
+                    outLayer = layer.layerID;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     CollisionLayerID CollisionLayers::getStaticLayer() const {
         return staticLayer;
     }

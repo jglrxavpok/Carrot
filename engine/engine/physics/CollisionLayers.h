@@ -63,6 +63,12 @@ namespace Carrot::Physics {
          */
         bool isValid(CollisionLayerID id) const;
 
+        /**
+         * Finds a layer via its name.
+         * Returns true and modifies 'layer' if a matching layer is found, otherwise return false
+         */
+        bool findByName(const std::string_view& name, CollisionLayerID& layer);
+
         CollisionLayerID getStaticLayer() const;
         CollisionLayerID getMovingLayer() const;
 

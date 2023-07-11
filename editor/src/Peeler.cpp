@@ -692,8 +692,46 @@ namespace Peeler {
                             }
                         }
                     }
-
                     ImGui::EndTable();
+
+                    bool justOpenedPopup = false;
+                    static const char* newLayerModalID = "New collision layer";
+                    if(ImGui::Button(newLayerModalID)) {
+                        ImGui::OpenPopup(newLayerModalID);
+                        justOpenedPopup = true;
+                    }
+
+                    bool open = true;
+                    if(ImGui::BeginPopupModal(newLayerModalID, &open)) {
+                        static std::string layerName = "New layer";
+                        static bool layerIsStatic = false;
+
+                        if(justOpenedPopup) {
+                            layerName = "New layer";
+                        }
+
+                        bool confirm = false;
+                        confirm |= ImGui::InputText("Layer name", layerName, ImGuiInputTextFlags_EnterReturnsTrue /* press enter to directly create layer without mouse */);
+
+                        if(justOpenedPopup) {
+                            ImGui::SetKeyboardFocusHere();
+                        }
+
+                        ImGui::Checkbox("Is static", &layerIsStatic);
+
+                        confirm |= ImGui::Button("Create");
+                        ImGui::SameLine();
+                        if(ImGui::Button("Cancel")) {
+                            ImGui::CloseCurrentPopup();
+                        }
+
+                        if(confirm) {
+                            layersManager.newLayer(layerName, layerIsStatic);
+                            ImGui::CloseCurrentPopup();
+                        }
+
+                        ImGui::EndPopup();
+                    }
                 }
 
             }
@@ -1111,6 +1149,32 @@ namespace Peeler {
             return;
         }
 
+        auto& layersManager = GetPhysics().getCollisionLayers();
+        layersManager.reset();
+        if(description.HasMember("collision_layers")) {
+            std::unordered_map<std::string, Carrot::Physics::CollisionLayerID> name2layer;
+            name2layer[layersManager.getLayer(layersManager.getStaticLayer()).name] = layersManager.getStaticLayer();
+            name2layer[layersManager.getLayer(layersManager.getMovingLayer()).name] = layersManager.getMovingLayer();
+            for(const auto& [key, obj] : description["collision_layers"].GetObject()) {
+                auto layerID = layersManager.newLayer(std::string{ key.GetString(), key.GetStringLength() }, obj["static"].GetBool());
+                name2layer[key.GetString()] = layerID;
+            }
+
+            for(const auto& [key, obj] : description["collision_layers"].GetObject()) {
+                if(obj.HasMember("does_not_collide_with")) {
+                    for(const auto& otherLayerName : obj["does_not_collide_with"].GetArray()) {
+                        auto it = name2layer.find(std::string{ otherLayerName.GetString(), otherLayerName.GetStringLength() });
+                        if(it == name2layer.end()) {
+                            Carrot::Log::warn("Unknown collision layer: %s, when parsing collides_with of %s", otherLayerName.GetString(), key.GetString());
+                            continue;
+                        }
+
+                        layersManager.setCanCollide(name2layer[key.GetString()], it->second, false);
+                    }
+                }
+            }
+        }
+
         reloadGameAssembly();
         settings.currentProject = projectToLoad;
         settings.addToRecentProjects(projectToLoad);
@@ -1156,6 +1220,7 @@ namespace Peeler {
                 }
             }
         }
+
         updateWindowTitle();
     }
 
@@ -1228,6 +1293,40 @@ namespace Peeler {
             windowObj.AddMember("maximised", maximised, document.GetAllocator());
 
             document.AddMember("window", windowObj, document.GetAllocator());
+        }
+
+        {
+            auto& layersManager = GetPhysics().getCollisionLayers();
+            rapidjson::Value layersObj(rapidjson::kObjectType);
+
+            for(const auto& layer : layersManager.getLayers()) {
+                // remove default layers
+                if(layer.layerID == layersManager.getStaticLayer()) {
+                    continue;
+                }
+                if(layer.layerID == layersManager.getMovingLayer()) {
+                    continue;
+                }
+
+                rapidjson::Value layerObj(rapidjson::kObjectType);
+
+                layerObj.AddMember("static", layer.isStatic, document.GetAllocator());
+
+                rapidjson::Value doesNotCollideArray{ rapidjson::kArrayType };
+                for(const auto& otherLayer : layersManager.getLayers()) {
+                    if(!layersManager.canCollide(layer.layerID, otherLayer.layerID)) {
+                        doesNotCollideArray.PushBack(rapidjson::Value{otherLayer.name.c_str(), document.GetAllocator()}, document.GetAllocator());
+                    }
+                }
+
+                if(!doesNotCollideArray.GetArray().Empty()) {
+                    layerObj.AddMember("does_not_collide_with", doesNotCollideArray, document.GetAllocator());
+                }
+
+                layersObj.AddMember(rapidjson::Value(layer.name.c_str(), document.GetAllocator()), layerObj, document.GetAllocator());
+            }
+
+            document.AddMember("collision_layers", layersObj, document.GetAllocator());
         }
 
         writeJSON(path, document);

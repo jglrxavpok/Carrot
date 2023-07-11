@@ -90,6 +90,7 @@ namespace Carrot::Physics {
         for (int i = 0; i < colliders.size(); ++i) {
             colliders[i] = std::make_unique<Collider>(toCopy.colliders[i]->getShape().duplicate(), toCopy.colliders[i]->getLocalTransform());
         }
+        layerID = toCopy.layerID;
 
         JPH::BodyCreationSettings creationSettings;
         {
@@ -119,6 +120,7 @@ namespace Carrot::Physics {
         colliders = std::move(toMove.colliders);
         translationAxes = toMove.translationAxes;
         rotationAxes = toMove.rotationAxes;
+        layerID = toMove.layerID;
 
         toMove.bodyID = {};
         return *this;
@@ -234,6 +236,7 @@ namespace Carrot::Physics {
 
     void RigidBody::setCollisionLayer(CollisionLayerID id) {
         layerID = id;
+        recreateBodyIfNeeded();
     }
 
     bool RigidBody::isActive() const {

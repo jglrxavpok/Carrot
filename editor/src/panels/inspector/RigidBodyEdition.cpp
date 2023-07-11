@@ -5,6 +5,7 @@
 #include "EditorFunctions.h"
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/Engine.h>
+#include <engine/physics/PhysicsSystem.h>
 #include <engine/edition/DragDropTypes.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/render/Model.h>
@@ -367,6 +368,26 @@ namespace Peeler {
             component->character.setMass(mass);
         }
 
+        Carrot::Physics::CollisionLayerID layerID = component->character.getCollisionLayer();
+        auto& layersManager = GetPhysics().getCollisionLayers();
+        const auto& currentLayer = layersManager.getLayer(layerID);
+
+        bool changedLayer = false;
+        if(ImGui::BeginCombo("Collision layer", currentLayer.name.c_str())) {
+            for(const auto& layer : layersManager.getLayers()) {
+                if(ImGui::Selectable(layer.name.c_str(), layer.layerID == layerID)) {
+                    changedLayer = true;
+                    layerID = layer.layerID;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if(changedLayer) {
+            edition.hasModifications = true;
+            component->character.setCollisionLayer(layerID);
+        }
+
         bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr);
         if(modified) {
             component->character.applyColliderChanges();
@@ -386,6 +407,26 @@ namespace Peeler {
                 }
             }
             ImGui::EndCombo();
+        }
+
+        Carrot::Physics::CollisionLayerID layerID = component->rigidbody.getCollisionLayer();
+        auto& layersManager = GetPhysics().getCollisionLayers();
+        const auto& currentLayer = layersManager.getLayer(layerID);
+
+        bool changedLayer = false;
+        if(ImGui::BeginCombo("Collision layer", currentLayer.name.c_str())) {
+            for(const auto& layer : layersManager.getLayers()) {
+                if(ImGui::Selectable(layer.name.c_str(), layer.layerID == layerID)) {
+                    changedLayer = true;
+                    layerID = layer.layerID;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        if(changedLayer) {
+            edition.hasModifications = true;
+            component->rigidbody.setCollisionLayer(layerID);
         }
 
         // handle axis locking
