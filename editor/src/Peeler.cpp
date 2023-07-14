@@ -1010,7 +1010,7 @@ namespace Peeler {
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
 
-        auto& resolvePass = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
+        auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
                                          currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
                                          GetRenderer().recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
@@ -1019,7 +1019,7 @@ namespace Peeler {
                                          currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                          GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
-        gameTexture = resolvePass.getData().postProcessed;
+        gameTexture = resolvePassResult;
 
         engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
         const auto gbufferPass = graphBuilder.getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();

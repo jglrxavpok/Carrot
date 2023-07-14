@@ -23,7 +23,7 @@
 #include "core/Macros.h"
 #include "engine/render/ComputePipeline.h"
 
-Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
+const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
                                                                                                       std::function<void(const Carrot::Render::CompiledPass&,
                                                                                                                          const Carrot::Render::Context&,
                                                                                                                          vk::CommandBuffer&)> opaqueCallback,
@@ -491,11 +491,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
             }
     );
 
-    return toneMapping;
+    return drawUnlit.getData().inout;
 }
 
-Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
-    auto& finalPass = fillInDefaultPipeline(mainGraph, eye,
+const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
+    return fillInDefaultPipeline(mainGraph, eye,
                                             [&](const Render::CompiledPass& pass, const Render::Context& frame, vk::CommandBuffer& cmds) {
                                                 TracyVkZone(tracyCtx[frame.swapchainIndex], cmds, "Opaque Rendering");
                                                 ZoneScopedN("CPU RenderGraph Opaque GPass");
@@ -510,5 +510,4 @@ Carrot::Render::Pass<Carrot::Render::PassData::PostProcessing>& Carrot::Engine::
                                             },
                                             framebufferSize);
 
-    return finalPass;
 }

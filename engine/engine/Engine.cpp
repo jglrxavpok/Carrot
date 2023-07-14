@@ -203,10 +203,10 @@ void Carrot::Engine::init() {
 
         Render::GraphBuilder rightEyeGraph = leftEyeGraph; // reuse most textures
 
-        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass.getData().postProcessed);
+        composers[Render::Eye::LeftEye]->add(leftEyeFinalPass);
         auto& leftEyeComposerPass = composers[Render::Eye::LeftEye]->appendPass(leftEyeGraph);
 
-        composers[Render::Eye::RightEye]->add(rightEyeFinalPass.getData().postProcessed);
+        composers[Render::Eye::RightEye]->add(rightEyeFinalPass);
         auto& rightEyeComposerPass = composers[Render::Eye::RightEye]->appendPass(rightEyeGraph);
 
         companionComposer.add(leftEyeComposerPass.getData().color, -1.0, 0.0);
@@ -229,7 +229,7 @@ void Carrot::Engine::init() {
 
         auto lastPass = fillGraphBuilder(mainGraph);
 
-        composers[Render::Eye::NoVR]->add(lastPass.getData().postProcessed);
+        composers[Render::Eye::NoVR]->add(lastPass);
         auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
         addPresentPass(mainGraph, composerPass.getData().color);
 
@@ -432,12 +432,11 @@ void Carrot::Engine::run() {
             const std::uint32_t maxCatchupTicks = 10;
             std::uint32_t caughtUp = 0;
             while(lag >= timeBetweenUpdates && caughtUp++ < maxCatchupTicks) {
-                Carrot::IO::ActionSet::updatePrePollAllSets(*this);
-
                 GetTaskScheduler().executeMainLoop();
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
 
+                Carrot::IO::ActionSet::updatePrePollAllSets(*this);
                 Carrot::IO::ActionSet::resetAllDeltas();
             }
         }
