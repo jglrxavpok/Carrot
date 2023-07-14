@@ -15,7 +15,7 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
 : graph(graph), id(graph.nextID()), title(std::move(title)), internalName(std::move(internalName)) {}
 
 Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string internalName, const rapidjson::Value& json)
-        : graph(graph), id(Carrot::fromString(json["node_id"].GetString())), title(std::move(title)), internalName(std::move(internalName)) {
+        : graph(graph), id(Carrot::UUID::fromString(json["node_id"].GetString())), title(std::move(title)), internalName(std::move(internalName)) {
     setPosition(ImVec2(json["x"].GetFloat(), json["y"].GetFloat()));
     graph.reserveID(id);
 }
@@ -120,7 +120,7 @@ rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {
     rapidjson::Value object(rapidjson::kObjectType);
     object.AddMember("x", position.x, doc.GetAllocator());
     object.AddMember("y", position.y, doc.GetAllocator());
-    auto uuidStr = Carrot::toString(id);
+    auto uuidStr = id.toString();
     object.AddMember("node_id", Carrot::JSON::makeRef(uuidStr), doc.GetAllocator());
     object.AddMember("node_type", rapidjson::StringRef(internalName.c_str()), doc.GetAllocator());
 
@@ -159,7 +159,7 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressio
 
 rapidjson::Value Tools::Pin::toJSONReference(rapidjson::Document& document) const {
     auto result = rapidjson::Value(rapidjson::kObjectType);
-    result.AddMember("node_id", Carrot::JSON::makeRef(Carrot::toString(owner.getID())), document.GetAllocator());
+    result.AddMember("node_id", Carrot::JSON::makeRef(owner.getID().toString()), document.GetAllocator());
     result.AddMember("pin_index", pinIndex, document.GetAllocator());
     result.AddMember("pin_type", rapidjson::StringRef(getType() == PinType::Input ? "input" : "output"), document.GetAllocator());
     return std::move(result);

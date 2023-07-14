@@ -18,6 +18,7 @@ set(ToolsSources
 
 add_executable(Carrot-Tools ${ToolsSources})
 target_link_libraries(Carrot-Tools PUBLIC Engine-Base)
+add_engine_precompiled_headers(Carrot-Tools)
 
 add_executable(Carrot-Tools-Renderdoc ${ToolsSources})
 target_link_libraries(Carrot-Tools-Renderdoc PUBLIC Engine-Base-Renderdoc)

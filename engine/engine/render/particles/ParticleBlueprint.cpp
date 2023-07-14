@@ -73,16 +73,10 @@ std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildCompute
 }
 
 std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipeline(Carrot::Engine& engine) const {
-    Carrot::PipelineDescription desc;
+    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles.json") };
 
     desc.type = PipelineType::Particles;
-    desc.subpassIndex = 0;
-    desc.vertexFormat = VertexFormat::Particle;
-    desc.vertexShader = "resources/shaders/particles.vertex.glsl.spv";
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});
-    desc.alphaBlending = true;
-    desc.depthWrite = false;
-    desc.depthTest = true;
 
     return std::make_unique<Carrot::Pipeline>(engine.getVulkanDriver(), desc);
 }

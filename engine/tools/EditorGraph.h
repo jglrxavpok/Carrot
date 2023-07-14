@@ -26,7 +26,7 @@ namespace Tools {
     };
 
     struct Link {
-        uuids::uuid id = Carrot::randomUUID();
+        Carrot::UUID id;
         std::weak_ptr<Pin> from;
         std::weak_ptr<Pin> to;
     };
@@ -168,7 +168,7 @@ namespace Tools {
         explicit EditorGraph(Carrot::Engine& engine, std::string name);
         ~EditorGraph();
 
-        uuids::uuid nextID();
+        Carrot::UUID nextID();
         uint32_t reserveID(const Carrot::UUID& id);
         uint32_t getEditorID(const Carrot::UUID& id);
 

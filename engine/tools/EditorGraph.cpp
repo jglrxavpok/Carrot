@@ -285,7 +285,7 @@ void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
     }
 
     auto getPin = [&](const rapidjson::Value& json) -> std::shared_ptr<Pin> {
-        auto node = id2node[Carrot::fromString(json["node_id"].GetString())];
+        auto node = id2node[Carrot::UUID::fromString(json["node_id"].GetString())];
         if(!node) {
             throw ParseError("Invalid node ID: " + std::string(json["node_id"].GetString()));
         }
@@ -367,9 +367,9 @@ void Tools::EditorGraph::clear() {
 }
 
 Carrot::UUID Tools::EditorGraph::nextID() {
-    Carrot::UUID uuid = Carrot::randomUUID();
+    Carrot::UUID uuid;
     while(uuid2id.find(uuid) != uuid2id.end()) {
-        uuid = Carrot::randomUUID();
+        uuid = Carrot::UUID();
     }
     reserveID(uuid);
     return uuid;
