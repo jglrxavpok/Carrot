@@ -72,6 +72,7 @@ namespace Carrot::ECS {
 
     void ModelComponent::setFile(const IO::VFS::Path& path) {
         asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(path.toString())));
+        modelRenderer = nullptr;
         if(GetCapabilities().supportsRaytracing) {
             Async::LockGuard l{ tlasAccess };
             tlasIsWaitingForModel = true;

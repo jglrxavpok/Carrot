@@ -33,7 +33,11 @@ namespace Carrot::ECS {
                 instanceData.uuid = entity.getID();
                 instanceData.color = modelComp.color;
 
-                modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                if(modelComp.modelRenderer) {
+                    modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                } else {
+                    modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                }
                 //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
                 if(modelComp.tlas) {

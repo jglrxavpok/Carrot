@@ -18,3 +18,7 @@ namespace std {
         }
     };
 }
+
+namespace Carrot {
+    void hash_combine(std::size_t& seed, const std::size_t& v);
+}

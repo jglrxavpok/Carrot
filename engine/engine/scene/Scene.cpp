@@ -36,6 +36,8 @@ namespace Carrot {
     }
 
     void Scene::serialise(rapidjson::Document& dest) const {
+        dest.AddMember("world_data", world.getWorldData().toJSON(dest.GetAllocator()), dest.GetAllocator());
+
         rapidjson::Value entitiesMap(rapidjson::kObjectType);
         for(const auto& entity : world.getAllEntities()) {
             rapidjson::Value entityData(rapidjson::kObjectType);
@@ -92,6 +94,13 @@ namespace Carrot {
     void Scene::deserialise(const rapidjson::Value& src) {
         assert(src.IsObject());
         clear();
+
+        // load first, that way entities can refer to shared data
+        if(src.HasMember("world_data")) {
+            ECS::WorldData& worldData = world.getWorldData();
+            worldData.loadFromJSON(src["world_data"]);
+        }
+
         const auto entityMap = src["entities"].GetObject();
         auto& componentLib = Carrot::ECS::getComponentLibrary();
         auto& systemLib = Carrot::ECS::getSystemLibrary();

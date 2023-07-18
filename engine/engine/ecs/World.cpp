@@ -573,6 +573,14 @@ namespace Carrot::ECS {
         }
     }
 
+    WorldData& World::getWorldData() {
+        return worldData;
+    }
+
+    const WorldData& World::getWorldData() const {
+        return worldData;
+    }
+
     void World::addRenderSystem(std::unique_ptr<System>&& system) {
         verify(system, "System must not be nullptr");
         system->onEntitiesAdded(entities);

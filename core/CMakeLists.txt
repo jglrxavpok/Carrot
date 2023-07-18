@@ -7,6 +7,7 @@ set(CORE-SOURCES
         ${CoreRoot}async/Locks.cpp
         ${CoreRoot}async/OSThreads.cpp
 
+        ${CoreRoot}data/Hashes.cpp
         ${CoreRoot}data/ShaderMetadata.cpp
 
         ${CoreRoot}expressions/Expressions.cpp
@@ -82,6 +83,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/MikkTSpace)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mono/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/eventpp/include)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/robin-hood-hashing/src/include/)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)

@@ -68,6 +68,11 @@ namespace Carrot::Render {
 
         ~MaterialHandle();
 
+        bool operator==(const MaterialHandle& other) const;
+        std::size_t hash() const;
+
+        MaterialHandle& operator=(const MaterialHandle& other);
+
     private:
         void updateHandle(const Carrot::Render::Context& renderContext);
 

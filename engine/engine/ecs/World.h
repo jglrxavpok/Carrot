@@ -11,6 +11,7 @@
 #include <core/memory/OptionalRef.h>
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
+#include <engine/ecs/WorldData.h>
 #include "EntityTypes.h"
 
 namespace Carrot::ECS {
@@ -129,6 +130,10 @@ namespace Carrot::ECS {
         void broadcastStartEvent();
         void broadcastStopEvent();
 
+    public: // world data
+        WorldData& getWorldData();
+        const WorldData& getWorldData() const;
+
     public: // hierarchy
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);
@@ -154,6 +159,7 @@ namespace Carrot::ECS {
         void updateEntityLists();
 
     private:
+        WorldData worldData;
         std::vector<EntityID> entities;
         std::vector<EntityID> entitiesToAdd;
         std::vector<EntityID> entitiesToRemove;

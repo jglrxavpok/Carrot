@@ -16,6 +16,7 @@ namespace Carrot {
 namespace Carrot::ECS {
     struct ModelComponent: public IdentifiableComponent<ModelComponent> {
         AsyncModelResource asyncModel;
+        std::shared_ptr<Render::ModelRenderer> modelRenderer;
         glm::vec4 color = glm::vec4{1.0f};
         bool isTransparent = false;
         std::shared_ptr<InstanceHandle> tlas = nullptr;

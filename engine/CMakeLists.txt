@@ -10,6 +10,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}CarrotRenderingPipeline.cpp
         ${EngineRoot}Engine.cpp
         ${EngineRoot}render/Model.cpp
+        ${EngineRoot}render/ModelRenderer.cpp
 
         ${EngineRoot}render/resources/Buffer.cpp
         ${EngineRoot}render/resources/BufferView.cpp
@@ -69,8 +70,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/TextRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
-        ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/Signature.cpp
+        ${EngineRoot}ecs/World.cpp
+        ${EngineRoot}ecs/WorldData.cpp
 
         ${EngineRoot}render/GBuffer.cpp
         ${EngineRoot}render/animation/AnimatedInstances.cpp

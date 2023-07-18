@@ -166,6 +166,7 @@ namespace Peeler {
                     collider.setLocalTransform(localTransform);
                     editor.markDirty();
                 }
+                return used;
             }
         }
 

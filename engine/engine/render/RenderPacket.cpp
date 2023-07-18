@@ -37,7 +37,7 @@ namespace Carrot::Render {
         cmd.instanceCount = 1;
     }
 
-    void Packet::addPerDrawData(const std::span<GBufferDrawData>& data) {
+    void Packet::addPerDrawData(const std::span<const GBufferDrawData>& data) {
         std::span<std::uint8_t> newPerDrawData = allocateGeneric(perDrawData.size() + data.size_bytes());
         if(!perDrawData.empty()) {
             std::memcpy(newPerDrawData.data(), perDrawData.data(), perDrawData.size_bytes());

@@ -29,29 +29,44 @@ namespace Carrot {
     class BLASHandle;
 
     namespace Render {
+        class ModelRenderer;
         class Packet;
     }
 
+    /**
+     * A model is a collection of meshes. To render a model, use ModelRenderer
+     */
     class Model {
     public:
         using Ref = std::shared_ptr<Model>;
 
+        struct MeshAndTransform {
+            std::shared_ptr<Mesh> mesh;
+            glm::mat4 transform{1.0f};
+            Math::Sphere boundingSphere;
+
+            std::size_t meshIndex = 0;
+            std::size_t staticMeshIndex = 0;
+        };
+
+        struct StaticMeshInfo {
+            std::size_t startVertex = 0;
+            std::size_t vertexCount = 0;
+            std::size_t startIndex = 0;
+            std::size_t indexCount = 0;
+        };
+
         explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
-
-        void draw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, std::uint32_t instanceCount, const Carrot::UUID& entityID = Carrot::UUID::null());
-
-        ///
-        /// \param imageIndex
-        /// \param commands
-        /// \param instanceData
-        /// \param indirectDrawCommands a buffer per mesh/material
-        /// \param drawCount
-        void indirectDraw(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, const Carrot::Buffer& instanceData, const std::map<Carrot::MeshID, std::shared_ptr<Carrot::Buffer>>& indirectDrawCommands, std::uint32_t drawCount, const Carrot::UUID& entityID = Carrot::UUID::null());
+        ~Model();
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getStaticMeshes() const;
 
         // [materialSlot] = list of meshes using that material
         [[nodiscard]] std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<Carrot::Mesh>>> getSkinnedMeshes() const;
+
+        [[nodiscard]] const std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>>& getStaticMeshesPerMaterial() const { return staticMeshes; }
+
+        const StaticMeshInfo& getStaticMeshInfo(std::size_t staticMeshIndex) const;
 
         Carrot::Buffer& getAnimationDataBuffer();
 
@@ -80,15 +95,12 @@ namespace Carrot {
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }
 
+        const Carrot::SingleMesh& getStaticMeshData() const;
+
+        std::span<std::shared_ptr<Render::MaterialHandle>> getMaterials() { return materials; }
+        std::span<const std::shared_ptr<Render::MaterialHandle>> getMaterials() const { return materials; }
+
     private:
-        struct MeshAndTransform {
-            std::shared_ptr<Mesh> mesh;
-            glm::mat4 transform{1.0f};
-            Math::Sphere boundingSphere;
-
-            std::size_t meshIndex = 0;
-        };
-
         Carrot::Engine& engine;
         std::string debugName;
         std::shared_ptr<Carrot::Pipeline> opaqueMeshesPipeline;
@@ -97,12 +109,6 @@ namespace Carrot {
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
 
-        struct StaticMeshInfo {
-            std::size_t startVertex = 0;
-            std::size_t vertexCount = 0;
-            std::size_t startIndex = 0;
-            std::size_t indexCount = 0;
-        };
         std::vector<StaticMeshInfo> staticMeshInfo;
         std::unique_ptr<Carrot::SingleMesh> staticMeshData;
 
@@ -134,6 +140,8 @@ namespace Carrot {
         std::vector<vk::DescriptorSet> animationDescriptorSets{};
 
         Carrot::IO::Resource resource; // resource from which this model comes. Used for serialisation
+
+        Render::ModelRenderer* defaultRenderer = nullptr;
 
         friend class Carrot::AnimatedInstances;
     };

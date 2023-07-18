@@ -72,6 +72,9 @@ namespace Carrot {
 
         Render::ShaderSource computeShader;
 
+
+        Carrot::IO::Resource originatingResource;
+
         explicit PipelineDescription() {};
         explicit PipelineDescription(const Carrot::IO::Resource jsonFile);
     };

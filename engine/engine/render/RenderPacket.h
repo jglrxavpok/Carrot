@@ -101,7 +101,7 @@ namespace Carrot::Render {
             useInstances(std::span<T>{&instance, 1});
         }
 
-        void addPerDrawData(const std::span<GBufferDrawData>& data);
+        void addPerDrawData(const std::span<const GBufferDrawData>& data);
 
         PushConstant& addPushConstant(const std::string& id = "", vk::ShaderStageFlags stages = static_cast<vk::ShaderStageFlags>(0));
 

@@ -8,6 +8,8 @@
 #include "engine/console/RuntimeOption.hpp"
 #include <core/io/Logging.hpp>
 #include <core/math/BasicFunctions.h>
+#include <robin_hood.h>
+#include <glm/gtx/hash.hpp>
 
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 5;
@@ -52,6 +54,61 @@ namespace Carrot::Render {
 
     MaterialHandle::MaterialHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
 
+    }
+
+    bool MaterialHandle::operator==(const MaterialHandle& other) const {
+        auto texturesEqual = [](const std::shared_ptr<TextureHandle>& me, const std::shared_ptr<TextureHandle>& other) {
+            if(me == nullptr) {
+                return other == nullptr;
+            }
+
+            return me->texture == other->texture;
+        };
+        return baseColor == other.baseColor
+            && emissiveColor == other.emissiveColor
+            && roughnessFactor == other.roughnessFactor
+            && metallicFactor == other.metallicFactor
+            && isTransparent == other.isTransparent
+            && texturesEqual(albedo, other.albedo)
+            && texturesEqual(emissive, other.emissive)
+            && texturesEqual(metallicRoughness, other.metallicRoughness)
+            && texturesEqual(normalMap, other.normalMap);
+    }
+
+    std::size_t MaterialHandle::hash() const {
+        auto texturesHash = [](const std::shared_ptr<TextureHandle>& texture) -> std::size_t {
+            if(texture == nullptr) {
+                return 0ull;
+            }
+
+            return robin_hood::hash_int((std::uint64_t) texture->texture.get());
+        };
+
+        std::size_t hash = 0;
+        Carrot::hash_combine(hash, std::hash<glm::vec4>{}(baseColor));
+        Carrot::hash_combine(hash, std::hash<glm::vec3>{}(emissiveColor));
+        Carrot::hash_combine(hash, std::hash<float>{}(roughnessFactor));
+        Carrot::hash_combine(hash, std::hash<float>{}(metallicFactor));
+        Carrot::hash_combine(hash, std::hash<bool>{}(isTransparent));
+        Carrot::hash_combine(hash, texturesHash(albedo));
+        Carrot::hash_combine(hash, texturesHash(emissive));
+        Carrot::hash_combine(hash, texturesHash(metallicRoughness));
+        Carrot::hash_combine(hash, texturesHash(normalMap));
+
+        return hash;
+    }
+
+    MaterialHandle& MaterialHandle::operator=(const MaterialHandle& other) {
+        baseColor = other.baseColor;
+        emissiveColor = other.emissiveColor;
+        metallicFactor = other.metallicFactor;
+        roughnessFactor = other.roughnessFactor;
+        albedo = other.albedo;
+        emissive = other.emissive;
+        metallicRoughness = other.metallicRoughness;
+        normalMap = other.normalMap;
+
+        return *this;
     }
 
     void MaterialHandle::updateHandle(const Carrot::Render::Context& renderContext) {

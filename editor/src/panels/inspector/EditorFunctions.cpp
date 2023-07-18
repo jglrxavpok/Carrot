@@ -19,6 +19,7 @@
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <core/io/Logging.hpp>
+#include <engine/render/ModelRenderer.h>
 
 namespace Carrot::ECS {
     struct RigidBodyComponent;
@@ -230,6 +231,64 @@ namespace Peeler {
         if(ImGui::ColorPicker4("Model color", colorArr)) {
             component->color = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
             edition.hasModifications = true;
+        }
+
+        if(asyncModel.isReady() && ImGui::CollapsingHeader("Material overrides")) {
+            auto& worldData = component->getEntity().getWorld().getWorldData();
+            auto cloneRenderer = [&]() {
+                if(component->modelRenderer) {
+                    return component->modelRenderer->clone();
+                }
+
+                return std::make_shared<Carrot::Render::ModelRenderer>(*asyncModel);
+            };
+
+            // handle rendering overrides (replacing pipeline and/or material textures)
+            if(component->modelRenderer) {
+                // TODO
+                std::shared_ptr<Carrot::Render::ModelRenderer> clonedRenderer = nullptr;
+                auto cloneIfNeeded = [&]() {
+                    if(!clonedRenderer) {
+                        clonedRenderer = cloneRenderer();
+                    }
+
+                    return clonedRenderer;
+                };
+
+                static std::string albedoPath = "<<path>>";
+
+                Carrot::Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
+                for(const auto& override : component->modelRenderer->getOverrides()) {
+                    ImGui::Text("%llu", override.meshIndex);
+
+                    auto modifyTextures = [&]() {
+                        auto renderer = cloneIfNeeded();
+                        Carrot::Render::MaterialOverride* pNewOverride = renderer->getOverrides().findForMesh(override.meshIndex);
+                        if(!pNewOverride->materialTextures) {
+                            pNewOverride->materialTextures = materialSystem.createMaterialHandle();
+                        }
+
+                        return pNewOverride->materialTextures;
+                    };
+
+                    if(ImGui::InputText("Albedo##editModelComponent", albedoPath, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        auto textureRef = GetRenderer().getOrCreateTextureFullPath(albedoPath);
+                        modifyTextures()->albedo = materialSystem.createTextureHandle(textureRef);
+                        edition.hasModifications = true;
+                    }
+                }
+
+                if(clonedRenderer) {
+                    component->modelRenderer = clonedRenderer;
+                    clonedRenderer->recreateStructures();
+                }
+            }
+
+            if(ImGui::Button("+")) {
+                component->modelRenderer = cloneRenderer();
+                component->modelRenderer->addOverride({});
+                worldData.storeModelRenderer(component->modelRenderer);
+            }
         }
     }
 

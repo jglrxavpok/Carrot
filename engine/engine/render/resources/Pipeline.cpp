@@ -659,7 +659,7 @@ void Carrot::Pipeline::setDebugNames(const std::string& name) {
     debugName = name;
 }
 
-Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource jsonFile) {
+Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource jsonFile): originatingResource(jsonFile) {
     rapidjson::Document json;
     json.Parse(jsonFile.readText().c_str());
 
