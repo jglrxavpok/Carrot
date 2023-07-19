@@ -178,6 +178,8 @@ namespace Carrot::ECS {
         for(const auto& render : renderSystems) {
             render->tick(dt);
         }
+
+        worldData.update();
     }
 
     void World::prePhysics() {

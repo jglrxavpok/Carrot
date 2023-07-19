@@ -10,6 +10,14 @@ namespace Carrot::ECS {
         modelRendererLookup.clear();
     }
 
+    void WorldData::update() {
+        for(auto it = modelRenderers.begin(); it != modelRenderers.end(); it++) {
+            if(it->second.use_count() <= 1) {
+                it = modelRenderers.erase(it);
+            }
+        }
+    }
+
     std::shared_ptr<Carrot::Render::ModelRenderer> WorldData::loadModelRenderer(const Carrot::UUID& id) const {
         auto it = modelRenderers.find(id);
         if(it == modelRenderers.end()) {
@@ -35,7 +43,7 @@ namespace Carrot::ECS {
             return nullptr;
         }
 
-        return matchingOverrides->second;
+        return matchingOverrides->second.lock();
     }
 
     void WorldData::storeModelRenderer(std::shared_ptr<Carrot::Render::ModelRenderer> value) {
@@ -76,7 +84,7 @@ namespace Carrot::ECS {
                 const Carrot::UUID id = Carrot::UUID::fromString(std::string_view{ key.GetString(), key.GetStringLength() });
                 std::shared_ptr<Render::ModelRenderer> renderer = Render::ModelRenderer::fromJSON(obj);
                 renderer->uuid = id;
-                if(!renderer) { // can be null if not valid
+                if(renderer) { // can be null if not valid
                     storeModelRenderer(renderer);
                 }
             }

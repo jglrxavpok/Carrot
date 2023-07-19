@@ -11,7 +11,8 @@ namespace Carrot::ECS {
 
     /**
      * Per world data.
-     * Used to share data between components & systems, avoiding unnecessary computations and memory allocations
+     * Used to share data between components & systems, avoiding unnecessary computations and memory allocations.
+     * Unused data is cleared each frame
      */
     class WorldData {
     public:
@@ -23,6 +24,11 @@ namespace Carrot::ECS {
          * Remove everything inside this structure
          */
         void clear();
+
+        /**
+         * Removes unused shared data
+         */
+        void update();
 
     public: // access
         /**
@@ -48,7 +54,7 @@ namespace Carrot::ECS {
         std::unordered_map<Carrot::UUID, std::shared_ptr<Carrot::Render::ModelRenderer>> modelRenderers;
 
         // model path -> which overrides -> the renderer
-        std::unordered_map<Carrot::IO::VFS::Path, std::unordered_map<Render::MaterialOverrides, std::shared_ptr<Carrot::Render::ModelRenderer>>> modelRendererLookup;
+        std::unordered_map<Carrot::IO::VFS::Path, std::unordered_map<Render::MaterialOverrides, std::weak_ptr<Carrot::Render::ModelRenderer>>> modelRendererLookup;
     };
 
 } // Carrot::ECS

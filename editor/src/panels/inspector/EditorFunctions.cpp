@@ -281,6 +281,7 @@ namespace Peeler {
                 if(clonedRenderer) {
                     component->modelRenderer = clonedRenderer;
                     clonedRenderer->recreateStructures();
+                    worldData.storeModelRenderer(clonedRenderer);
                 }
             }
 

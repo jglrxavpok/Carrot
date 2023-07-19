@@ -295,31 +295,10 @@ Carrot::Model::~Model() {
     }
 }
 
-static std::mutex m;
-
 void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
     if(defaultRenderer == nullptr) {
         defaultRenderer = new Render::ModelRenderer(*this);
     }
-
-    {
-        std::lock_guard g{ m };
-        std::string id = Carrot::sprintf("Test - %s", getOriginatingResource().getName().c_str());
-        if(ImGui::Begin(id.c_str())) {
-
-            if(ImGui::Button(id.c_str())) {
-                Render::MaterialOverride override;
-                override.meshIndex = 0;
-                override.materialTextures = GetRenderer().getMaterialSystem().createMaterialHandle();
-                override.materialTextures->baseColor = glm::vec4{0.5f,0.5f,0.5f,1.0f};
-                override.materialTextures->albedo = GetRenderer().getMaterialSystem().getDitheringTexture();
-                defaultRenderer->addOverride(override);
-            }
-            ImGui::Separator();
-        }
-        ImGui::End();
-    }
-
     defaultRenderer->render(renderContext, instanceData, renderPass);
 }
 

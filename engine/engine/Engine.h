@@ -554,13 +554,12 @@ namespace Carrot {
     private:
         std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 
-    private: // game-specific members
-        std::unique_ptr<Carrot::CarrotGame> game = nullptr;
-
     private:
         std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
         std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
 
+    private: // game-specific members
+        std::unique_ptr<Carrot::CarrotGame> game = nullptr;
 
     private:
         static Carrot::Engine* instance;

@@ -7,6 +7,9 @@
 #include "core/utils/ImGuiUtils.hpp"
 #include "imgui.h"
 #include "engine/edition/DragDropTypes.h"
+#include "engine/render/ModelRenderer.h"
+#include "engine/ecs/World.h"
+#include "engine/ecs/WorldData.h"
 #include "core/utils/JSON.h"
 #include <filesystem>
 #include <string>
@@ -26,6 +29,15 @@ namespace Carrot::ECS {
                 setFile(IO::VFS::Path(modelPath));
             } else {
                 TODO // cannot load non-file models at the moment
+            }
+
+            if(modelData.HasMember("model_renderer")) {
+                Carrot::UUID rendererID = Carrot::UUID::fromString(std::string_view { modelData["model_renderer"].GetString(), modelData["model_renderer"].GetStringLength() });
+                WorldData& worldData = entity.getWorld().getWorldData();
+                std::shared_ptr<Render::ModelRenderer> renderer = worldData.loadModelRenderer(rendererID);
+                if(renderer != nullptr) {
+                    modelRenderer = renderer;
+                }
             }
         } else {
             TODO // missing model
@@ -48,6 +60,9 @@ namespace Carrot::ECS {
             modelData.AddMember("modelPath", modelPath, doc.GetAllocator());
         }
 
+        if(modelRenderer) {
+            modelData.AddMember("model_renderer", rapidjson::Value { modelRenderer->uuid.toString().c_str(), doc.GetAllocator() }, doc.GetAllocator());
+        }
 
         obj.AddMember("model", modelData, doc.GetAllocator());
 
