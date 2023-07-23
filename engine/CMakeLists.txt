@@ -197,6 +197,7 @@ set(VERTEX_SHADERS
 set(FRAGMENT_SHADERS
         gBuffer.fragment.glsl
         gBuffer-transparent.fragment.glsl
+        gBufferBlockout.fragment.glsl
         unlitGBuffer.fragment.glsl
 
         blit.fragment.glsl

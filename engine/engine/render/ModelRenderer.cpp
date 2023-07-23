@@ -119,7 +119,7 @@ namespace Carrot::Render {
             override.meshIndex = overrideObj["mesh_index"].GetUint64();
 
             if(overrideObj.HasMember("pipeline_name")) {
-                override.pipeline = GetRenderer().getOrCreatePipeline(overrideObj["pipeline_name"].GetString());
+                override.pipeline = GetRenderer().getOrCreatePipelineFullPath(overrideObj["pipeline_name"].GetString());
             }
             if(overrideObj.HasMember("material")) {
                 const auto& texturesObj = overrideObj["material"].GetObject();

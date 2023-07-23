@@ -62,6 +62,18 @@ namespace Carrot::Render {
                 return other == nullptr;
             }
 
+            if(other->texture == nullptr) {
+                return false;
+            }
+
+            if(me->texture == nullptr) {
+                return other->texture == nullptr;
+            }
+
+            if(other->texture == nullptr) {
+                return false;
+            }
+
             return me->texture == other->texture;
         };
         return baseColor == other.baseColor

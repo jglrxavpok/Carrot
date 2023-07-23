@@ -6,11 +6,19 @@
 
 #include "EditorPanel.h"
 #include <core/utils/Identifiable.h>
+#include <engine/render/resources/Texture.h>
 #include <engine/ecs/components/Component.h>
 
+namespace Carrot {
+    class Pipeline;
+}
+
 namespace Peeler {
+    class InspectorPanel;
+
     struct EditContext {
         Application& editor;
+        InspectorPanel& inspector;
         Carrot::Render::Context renderContext;
 
         bool shouldBeRemoved = false; // TODO: replace with action stack (for Undo/Redo)
@@ -38,6 +46,22 @@ namespace Peeler {
 
     public:
         virtual void draw(const Carrot::Render::Context &renderContext) override final;
+
+    public: // widgets
+        /**
+         * Returns true iif an entity was picked this frame. Stores the result in 'destination' if one was found
+         */
+        bool drawPickEntityWidget(const char* label, Carrot::ECS::Entity* destination);
+
+        /**
+         * Returns true iif the texture selection was changed
+         */
+        bool drawPickTextureWidget(const char* label, Carrot::Render::Texture::Ref* pDestination, bool allowNull = true);
+
+        /**
+         * Returns true iif the pipeline selection was changed
+         */
+        bool drawPickPipelineWidget(const char* label, std::shared_ptr<Carrot::Pipeline>* pDestination, bool allowNull = true);
 
     private:
         void editComponent(EditContext& editContext, Carrot::ECS::Component* component);

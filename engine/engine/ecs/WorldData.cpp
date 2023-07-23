@@ -11,9 +11,11 @@ namespace Carrot::ECS {
     }
 
     void WorldData::update() {
-        for(auto it = modelRenderers.begin(); it != modelRenderers.end(); it++) {
+        for(auto it = modelRenderers.begin(); it != modelRenderers.end();) {
             if(it->second.use_count() <= 1) {
                 it = modelRenderers.erase(it);
+            } else {
+                it++;
             }
         }
     }

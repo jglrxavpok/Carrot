@@ -666,6 +666,7 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     if(json.HasMember("_import")) {
         Carrot::IO::Resource imported = jsonFile.relative(json["_import"].GetString());
         *this = PipelineDescription(imported);
+        originatingResource = jsonFile; // otherwise the originatingResource would be considered to be the one we imported from.
     }
 
     if(json.HasMember("subpassIndex")) {

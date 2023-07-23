@@ -115,7 +115,7 @@ namespace Peeler {
 
         MAKE_ID(property);
 
-        changed |= Peeler::Instance->drawPickEntityWidget(id.c_str(), value);
+        changed |= edition.inspector.drawPickEntityWidget(id.c_str(), &value);
 
         if(changed) {
             property.field->set(csComponent, *GetCSharpBindings().entityToCSObject(value));

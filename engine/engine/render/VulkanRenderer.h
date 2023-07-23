@@ -127,6 +127,8 @@ namespace Carrot {
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Instance offset can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)
         std::shared_ptr<Pipeline> getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset = 0);
+        std::shared_ptr<Pipeline> getOrCreatePipelineFullPath(const std::string& name, std::uint64_t instanceOffset = 0);
+        std::shared_ptr<Pipeline> getOrCreatePipelineFromResource(const Carrot::IO::Resource& from, std::uint64_t instanceOffset = 0);
 
         /// Gets or creates the pipeline with the given name (see resources/pipelines).
         /// Different render passes can be used to force the engine to create a new instance. (Can be used for different blit pipelines, each with a different texture)

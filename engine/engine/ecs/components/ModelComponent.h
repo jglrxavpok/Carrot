@@ -38,6 +38,7 @@ namespace Carrot::ECS {
             result->asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(asyncModel->getOriginatingResource().getName())));
             result->isTransparent = isTransparent;
             result->color = color;
+            result->modelRenderer = modelRenderer;
             return result;
         }
 

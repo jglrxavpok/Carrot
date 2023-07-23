@@ -1,0 +1,4 @@
+{
+  "_import": "gBuffer.json",
+  "fragmentShader": "resources/shaders/gBufferBlockout.fragment.glsl.spv"
+}

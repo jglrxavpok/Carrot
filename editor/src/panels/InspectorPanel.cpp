@@ -46,6 +46,7 @@ namespace Peeler {
             for(auto& comp : components) {
                 EditContext editContext {
                     .editor = app,
+                    .inspector = *this,
                     .renderContext = renderContext
                 };
 

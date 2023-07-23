@@ -137,37 +137,16 @@ namespace Peeler {
                 path = "";
             }
         }
-        if(ImGui::InputText("Filepath##SpriteComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            auto textureRef = GetRenderer().getOrCreateTextureFullPath(path);
+
+        Carrot::Render::Texture::Ref textureRef;
+        if(edition.inspector.drawPickTextureWidget("Filepath##Sprite component edition", &textureRef)) {
             if(!sprite) {
-                sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
+                sprite = std::make_shared<Carrot::Render::Sprite>(textureRef);
             } else {
                 sprite->setTexture(textureRef);
             }
+
             edition.hasModifications = true;
-        }
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+1);
-                std::memcpy(buffer.get(), static_cast<const void*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string newPath = buffer.get();
-
-                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    auto textureRef = GetRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
-                    if(!sprite) {
-                        sprite = std::make_unique<Carrot::Render::Sprite>(textureRef);
-                    } else {
-                        sprite->setTexture(textureRef);
-                    }
-                    inInspector = nullptr;
-                    edition.hasModifications = true;
-                }
-            }
-
-            ImGui::EndDragDropTarget();
         }
 
         if(sprite) {
@@ -271,9 +250,37 @@ namespace Peeler {
                         return pNewOverride->materialTextures;
                     };
 
-                    if(ImGui::InputText("Albedo##editModelComponent", albedoPath, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                        auto textureRef = GetRenderer().getOrCreateTextureFullPath(albedoPath);
-                        modifyTextures()->albedo = materialSystem.createTextureHandle(textureRef);
+#define getTexture(TEXTURE_NAME) (override.materialTextures ? (override.materialTextures-> TEXTURE_NAME ? override.materialTextures-> TEXTURE_NAME ->texture : nullptr) : nullptr)
+
+                    Carrot::Render::Texture::Ref albedoRef = getTexture(albedo);
+                    if(edition.inspector.drawPickTextureWidget("Albedo##editModelComponent", &albedoRef)) {
+                        modifyTextures()->albedo = materialSystem.createTextureHandle(albedoRef);
+                        edition.hasModifications = true;
+                    }
+
+                    Carrot::Render::Texture::Ref normalMapRef = getTexture(normalMap);
+                    if(edition.inspector.drawPickTextureWidget("Normal map##editModelComponent", &normalMapRef)) {
+                        modifyTextures()->normalMap = materialSystem.createTextureHandle(normalMapRef);
+                        edition.hasModifications = true;
+                    }
+
+                    Carrot::Render::Texture::Ref metallicRoughnessRef = getTexture(metallicRoughness);
+                    if(edition.inspector.drawPickTextureWidget("Metallic Roughness##editModelComponent", &metallicRoughnessRef)) {
+                        modifyTextures()->metallicRoughness = materialSystem.createTextureHandle(metallicRoughnessRef);
+                        edition.hasModifications = true;
+                    }
+
+                    Carrot::Render::Texture::Ref emissiveRef = getTexture(emissive);
+                    if(edition.inspector.drawPickTextureWidget("Emissive##editModelComponent", &emissiveRef)) {
+                        modifyTextures()->emissive = materialSystem.createTextureHandle(emissiveRef);
+                        edition.hasModifications = true;
+                    }
+
+                    std::shared_ptr<Carrot::Pipeline> pipeline = override.pipeline;
+                    if(edition.inspector.drawPickPipelineWidget("Rendering pipeline##editModelComponent", &pipeline)) {
+                        auto renderer = cloneIfNeeded();
+                        Carrot::Render::MaterialOverride* pNewOverride = renderer->getOverrides().findForMesh(override.meshIndex);
+                        pNewOverride->pipeline = pipeline;
                         edition.hasModifications = true;
                     }
                 }

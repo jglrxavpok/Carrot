@@ -5,6 +5,11 @@
 #include <Peeler.h>
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/edition/DragDropTypes.h>
+#include <engine/render/resources/Pipeline.h>
+#include <panels/InspectorPanel.h>
+#include <core/io/Logging.hpp>
+
+// TODO: asset browser
 
 namespace Peeler {
     constexpr const char* const PickWidgetTexture = "resources/textures/ui/picker.png";
@@ -100,5 +105,102 @@ namespace Peeler {
         }
 
         return hasChanged;
+    }
+
+    bool InspectorPanel::drawPickEntityWidget(const char* label, Carrot::ECS::Entity* destination) { // re-declared in InspectorPanel for consistency
+        return app.drawPickEntityWidget(label, *destination);
+    }
+
+    bool InspectorPanel::drawPickTextureWidget(const char* label, Carrot::Render::Texture::Ref* pOut, bool allowNull) {
+        const ImGuiID currentID = ImGui::GetID(label);
+
+        struct WidgetState {
+            bool init = false;
+            std::string textInputContents;
+        };
+        static std::unordered_map<ImGuiID, WidgetState> states{};
+
+        bool updated = false;
+        WidgetState& state = states[currentID];
+
+        if(!state.init) {
+            if(*pOut) {
+                const Carrot::IO::Resource& source = pOut->get()->getOriginatingResource();
+                if(source.isFile()) {
+                    state.textInputContents = source.getName();
+                }
+            }
+
+            state.init = true;
+        }
+
+        if(ImGui::InputText(label, state.textInputContents, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if(state.textInputContents.empty() && allowNull) {
+                *pOut = nullptr;
+                updated = true;
+            } else {
+                auto textureRef = GetRenderer().getOrCreateTextureFullPath(state.textInputContents);
+                *pOut = textureRef;
+                updated = true;
+            }
+        }
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+1);
+                std::memcpy(buffer.get(), static_cast<const void*>(payload->Data), payload->DataSize);
+                buffer.get()[payload->DataSize] = '\0';
+
+                std::u8string newPath = buffer.get();
+
+                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
+                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
+                    *pOut = GetRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
+                    updated = true;
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
+        return updated;
+    }
+
+    bool InspectorPanel::drawPickPipelineWidget(const char* label, std::shared_ptr<Carrot::Pipeline>* pOut, bool allowNull) {
+        const ImGuiID currentID = ImGui::GetID(label);
+
+        struct WidgetState {
+            bool init = false;
+            std::string textInputContents;
+        };
+        static std::unordered_map<ImGuiID, WidgetState> states{};
+
+        bool updated = false;
+        WidgetState& state = states[currentID];
+
+        // fill pipeline name
+        if(!state.init) {
+            if(*pOut) {
+                const auto& source = (*pOut)->getDescription().originatingResource;
+                if(source.isFile()) {
+                    state.textInputContents = source.getName();
+                    state.init = true;
+                }
+            }
+        }
+
+        if(ImGui::InputText(label, state.textInputContents, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if(state.textInputContents.empty() && allowNull) {
+                *pOut = nullptr;
+                updated = true;
+            } else {
+                try {
+                    *pOut = GetRenderer().getOrCreatePipelineFullPath(state.textInputContents);
+                    updated = true;
+                } catch(std::exception& e) {
+                    Carrot::Log::error("Failed to load pipeline '%s': %s", state.textInputContents.c_str(), e.what());
+                }
+            }
+        }
+        return updated;
     }
 }
