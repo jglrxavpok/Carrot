@@ -29,6 +29,7 @@ namespace Carrot::Render {
 
         const MaterialOverride* begin() const;
         const MaterialOverride* end() const;
+        std::size_t size() const;
 
         /**
          * Tries to find an override with a matching meshIndex. Returns nullptr if none were found.
@@ -40,6 +41,11 @@ namespace Carrot::Render {
          * Tries to find an override with a matching meshIndex. Returns nullptr if none were found
          */
         const MaterialOverride* findForMesh(std::size_t meshIndex) const;
+
+        /**
+         * Call when modifying a MaterialOverride from this object directly.
+         */
+        void sort();
 
     public:
         bool operator==(const MaterialOverrides& other) const;

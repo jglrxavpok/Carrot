@@ -25,9 +25,16 @@ namespace Carrot {
     private:
         static void doNaming(const vk::DebugUtilsObjectNameInfoEXT& nameInfo);
 
+        std::string debugName;
+
     public:
         void name(const std::string& name) {
             setDebugNames(name);
+            debugName = name;
+        }
+
+        const std::string& getDebugName() const {
+            return debugName;
         }
 
         virtual ~DebugNameable() = default;

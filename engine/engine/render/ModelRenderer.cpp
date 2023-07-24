@@ -39,6 +39,10 @@ namespace Carrot::Render {
         return sortedOverrides.data() + sortedOverrides.size();
     }
 
+    std::size_t MaterialOverrides::size() const {
+        return sortedOverrides.size();
+    }
+
     void MaterialOverrides::add(const MaterialOverride& override) {
         for (std::size_t i = 0; i < sortedOverrides.size(); i++) {
             MaterialOverride& o = sortedOverrides[i];
@@ -95,6 +99,16 @@ namespace Carrot::Render {
         }
 
         return nullptr;
+    }
+
+    void MaterialOverrides::sort() {
+        std::sort(sortedOverrides.begin(), sortedOverrides.end(), [](MaterialOverride& a, MaterialOverride& b) {
+            if(a.meshIndex == b.meshIndex) {
+                return 0;
+            }
+
+            return a.meshIndex < b.meshIndex ? -1 : 1;
+        });
     }
 
     ModelRenderer::ModelRenderer(Model& model): model(model) {
