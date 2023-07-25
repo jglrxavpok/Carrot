@@ -56,13 +56,13 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     Carrot::Async::Counter waitMaterialLoads;
     // TODO: reduce task count
+    auto& materialSystem = GetRenderer().getMaterialSystem();
     for(const auto& material : scene.materials) {
         ZoneScopedN("Loading material");
         ZoneText(material.name.c_str(), material.name.size());
 
         Profiling::PrintingScopedTimer _t(Carrot::sprintf("Loading material %s", material.name.c_str()));
 
-        auto& materialSystem = GetRenderer().getMaterialSystem();
         auto handle = materialSystem.createMaterialHandle();
 
         GetTaskScheduler().schedule(Carrot::TaskDescription {
@@ -149,7 +149,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
             for(const std::size_t meshIndex : node.meshIndices.value()) {
                 auto& primitive = scene.primitives[meshIndex];
                 std::shared_ptr<Mesh> mesh;
-                const auto& material = materials[primitive.materialIndex];
+
+                const auto& material = primitive.materialIndex < 0 ? GetRenderer().getWhiteMaterial() : *materials[primitive.materialIndex];
 
                 Math::Sphere sphere;
                 sphere.loadFromAABB(primitive.minPos, primitive.maxPos);
@@ -157,18 +158,17 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 // TODO: load all skinned primitive data into same buffer?
                 if(primitive.isSkinned) {
                     mesh = std::make_shared<SingleMesh>(primitive.skinnedVertices, primitive.indices);
-                    skinnedMeshes[material->getSlot()].emplace_back(mesh, transform, sphere, -1, -1);
+                    skinnedMeshes[material.getSlot()].emplace_back(mesh, transform, sphere, -1, -1);
                 } else {
                     StaticMeshInfo& meshInfo = staticMeshInfo[meshIndex];
                     mesh = std::make_shared<LightMesh>(std::move(staticMeshData->getSubMesh(meshInfo.startVertex, meshInfo.vertexCount, meshInfo.startIndex, meshInfo.indexCount)));
 
-                    auto& sceneMaterial = scene.materials[primitive.materialIndex];
-                    const bool isMaterialTransparent = sceneMaterial.blendMode != Render::LoadedMaterial::BlendMode::None;
+                    const bool isMaterialTransparent = material.isTransparent;
                     auto& drawCommands = isMaterialTransparent ? staticTransparentDrawCommands : staticOpaqueDrawCommands;
                     auto& drawDataList = isMaterialTransparent ? staticTransparentDrawData : staticOpaqueDrawData;
                     auto& instanceDataList = isMaterialTransparent ? staticTransparentInstanceData : staticOpaqueInstanceData;
 
-                    staticMeshes[material->getSlot()].emplace_back(mesh, transform, sphere, drawCommands.size(), meshIndex);
+                    staticMeshes[material.getSlot()].emplace_back(mesh, transform, sphere, drawCommands.size(), meshIndex);
 
 
 
@@ -180,7 +180,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                     cmd.firstIndex = meshInfo.startIndex;
 
                     auto& drawData = drawDataList.emplace_back();
-                    drawData.materialIndex = material->getSlot();
+                    drawData.materialIndex = material.getSlot();
 
                     auto& instanceData = instanceDataList.emplace_back();
                 }

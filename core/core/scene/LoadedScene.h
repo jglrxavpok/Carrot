@@ -107,7 +107,7 @@ namespace Carrot::Render {
         /**
          * Index of material to use inside the 'materials' member of LoadedScene
          */
-        std::uint64_t materialIndex = 0;
+        std::int64_t materialIndex = -1;
     };
 
     /**
