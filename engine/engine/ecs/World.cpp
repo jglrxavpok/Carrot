@@ -2,6 +2,8 @@
 // Created by jglrxavpok on 20/02/2021.
 //
 
+#include <engine/ecs/components/TransformComponent.h>
+#include <engine/math/Transform.h>
 #include "World.h"
 #include "systems/System.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
@@ -50,6 +52,10 @@ namespace Carrot::ECS {
 
     void Entity::setParent(std::optional<Entity> parent) {
         getWorld().setParent(*this, parent);
+    }
+
+    void Entity::reparent(std::optional<Entity> parent) {
+        getWorld().reparent(*this, parent);
     }
 
     std::string_view Entity::getName() const {
@@ -357,6 +363,26 @@ namespace Carrot::ECS {
             entityChildren[*parent].push_back(toSet);
         } else {
             entityParents.erase(toSet);
+        }
+    }
+
+    void World::reparent(Entity& toSet, std::optional<Entity> newParent) {
+        assert(toSet);
+        auto oldParent = toSet.getParent();
+
+        // special handling for transform component
+        Carrot::Math::Transform globalTransform;
+        auto transformComp = toSet.getComponent<Carrot::ECS::TransformComponent>();
+        if(transformComp.hasValue()) {
+            globalTransform = transformComp->computeGlobalPhysicsTransform();
+            globalTransform.scale = transformComp->computeFinalScale();
+        }
+
+        toSet.setParent(newParent);
+
+        // special handling for transform component
+        if(transformComp.hasValue()) {
+            transformComp->setGlobalTransform(globalTransform);
         }
     }
 

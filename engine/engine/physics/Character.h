@@ -74,6 +74,7 @@ namespace Carrot::Physics {
         void prePhysics();
         void postPhysics();
 
+        bool isInWorld();
         void addToWorld();
         void removeFromWorld();
 

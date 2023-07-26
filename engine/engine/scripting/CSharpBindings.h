@@ -129,6 +129,10 @@ namespace Carrot::Scripting {
 
         static MonoString* GetName(MonoObject* entityMonoObj);
 
+        static MonoObject* GetParent(MonoObject* entityMonoObj);
+        static void SetParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
+        static void ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
+
         static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
 
     public: // input API
@@ -164,6 +168,8 @@ namespace Carrot::Scripting {
         static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);
         static void _SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value);
         static bool _IsCharacterOnGround(MonoObject* characterComp);
+        static void EnableCharacterPhysics(MonoObject* characterComp);
+        static void DisableCharacterPhysics(MonoObject* characterComp);
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);

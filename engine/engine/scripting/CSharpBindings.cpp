@@ -81,7 +81,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", GetName);
         mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
-        mono_add_internal_call("Carrot.Entity::GetParent", nullptr); // TODO
+        mono_add_internal_call("Carrot.Entity::GetParent", GetParent);
+        mono_add_internal_call("Carrot.Entity::SetParent", SetParent);
+        mono_add_internal_call("Carrot.Entity::ReParent", ReParent);
 
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
@@ -94,6 +96,8 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", _GetCharacterVelocity);
         mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", _SetCharacterVelocity);
         mono_add_internal_call("Carrot.CharacterComponent::IsOnGround", _IsCharacterOnGround);
+        mono_add_internal_call("Carrot.CharacterComponent::EnablePhysics", EnableCharacterPhysics);
+        mono_add_internal_call("Carrot.CharacterComponent::DisablePhysics", DisableCharacterPhysics);
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
@@ -600,6 +604,19 @@ namespace Carrot::Scripting {
         return entity.getComponent<ECS::PhysicsCharacterComponent>()->character.isOnGround();
     }
 
+    void CSharpBindings::EnableCharacterPhysics(MonoObject* characterComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::PhysicsCharacterComponent>()->character.addToWorld();
+    }
+
+    void CSharpBindings::DisableCharacterPhysics(MonoObject* characterComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::PhysicsCharacterComponent>()->character.removeFromWorld();
+    }
+
+
     MonoString* CSharpBindings::_GetText(MonoObject* textComp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
@@ -682,6 +699,35 @@ namespace Carrot::Scripting {
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {
         auto entity = convertToEntity(entityMonoObj);
         return mono_string_new_wrapper(entity.getName().c_str());
+    }
+
+    MonoObject* CSharpBindings::GetParent(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+        auto optParent = entity.getParent();
+        if(optParent.has_value()) {
+            return entityToCSObject(optParent.value())->toMono();
+        }
+        return nullptr;
+    }
+
+    void CSharpBindings::SetParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+
+        if(newParentMonoObj) {
+            entity.setParent(convertToEntity(newParentMonoObj));
+        } else {
+            entity.setParent(std::optional<ECS::Entity>{});
+        }
+    }
+
+    void CSharpBindings::ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+
+        if(newParentMonoObj) {
+            entity.reparent(convertToEntity(newParentMonoObj));
+        } else {
+            entity.reparent(std::optional<ECS::Entity>{});
+        }
     }
 
     MonoObject* CSharpBindings::FindEntityByName(MonoObject* systemObj, MonoString* entityName) {

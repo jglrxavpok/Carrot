@@ -171,6 +171,10 @@ namespace Carrot::Physics {
         createJoltRepresentation();
     }
 
+    bool Character::isInWorld() {
+        return inWorld;
+    }
+
     void Character::addToWorld() {
         if(!inWorld) {
             physics->AddToPhysicsSystem();

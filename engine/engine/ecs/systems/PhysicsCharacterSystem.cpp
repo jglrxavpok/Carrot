@@ -11,18 +11,25 @@ namespace Carrot::ECS {
 
     void PhysicsCharacterSystem::prePhysics() {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
-            if(firstFrame) {
+            const bool inWorld = characterComp.character.isInWorld();
+            if(firstFrame || !inWorld) {
                 characterComp.character.setWorldTransform(transformComp.computeGlobalPhysicsTransform());
                 firstFrame = false;
             }
-            characterComp.character.prePhysics();
+
+            if(inWorld) {
+                characterComp.character.prePhysics();
+            }
         });
     }
 
     void PhysicsCharacterSystem::postPhysics() {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
-            characterComp.character.postPhysics();
-            transformComp.setGlobalTransform(characterComp.character.getWorldTransform());
+            const bool inWorld = characterComp.character.isInWorld();
+            if(inWorld) {
+                characterComp.character.postPhysics();
+                transformComp.setGlobalTransform(characterComp.character.getWorldTransform());
+            }
         });
     }
 

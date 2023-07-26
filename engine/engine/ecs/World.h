@@ -138,6 +138,9 @@ namespace Carrot::ECS {
         /// Sets the parent of 'toSet' to 'parent'. 'parent' is allowed to be empty.
         void setParent(const Entity& toSet, std::optional<Entity> parent);
 
+        /// Sets the parent, but also modify the entity's tranform (if any) to keep the same world transform after changing the parent
+        void reparent(Entity& toSet, std::optional<Entity> parent);
+
         /// Gets the parent of 'of'. Can return nullptr if no parent exists
         std::optional<Entity> getParent(const Entity& of) const;
 

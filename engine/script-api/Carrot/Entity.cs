@@ -36,6 +36,20 @@ namespace Carrot {
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern Entity GetParent();
+        
+        /**
+         * Changes the parent of this entity. 'null' is valid and is used to remove its parent.
+         * Does NOT fix local transform to keep the same world transform
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void SetParent(Entity newParent);
+        
+        /**
+         * Changes the parent of this entity. 'null' is valid and is used to remove its parent.
+         * Difference with SetParent: this modifies the entity transform to keep the same world transform after changing parent
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void ReParent(Entity newParent);
 
         /**
          * Returns the component on this entity corresponding to the given type, or null if none.

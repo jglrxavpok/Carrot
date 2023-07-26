@@ -1389,22 +1389,7 @@ namespace Peeler {
 
     void Application::changeEntityParent(const Carrot::ECS::EntityID& toChangeID, std::optional<Carrot::ECS::Entity> newParent) {
         auto entityToChange = currentScene.world.wrap(toChangeID);
-        auto oldParent = entityToChange.getParent();
-
-        // special handling for transform component
-        Carrot::Math::Transform globalTransform;
-        auto transformComp = entityToChange.getComponent<Carrot::ECS::TransformComponent>();
-        if(transformComp.hasValue()) {
-            globalTransform = transformComp->computeGlobalPhysicsTransform();
-            globalTransform.scale = transformComp->computeFinalScale();
-        }
-
-        entityToChange.setParent(newParent);
-
-        // special handling for transform component
-        if(transformComp.hasValue()) {
-            transformComp->setGlobalTransform(globalTransform);
-        }
+        entityToChange.reparent(newParent);
     }
 
     void Application::duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent) {
