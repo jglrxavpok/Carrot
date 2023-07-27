@@ -39,9 +39,6 @@ namespace Carrot::ECS {
         }
 
         virtual std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
-
-    private:
-        bool firstFrame = true;
     };
 
 } // Peeler::ECS

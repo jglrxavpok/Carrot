@@ -8,6 +8,7 @@ namespace Carrot::ECS {
     class PhysicsCharacterComponent : public Carrot::ECS::IdentifiableComponent<PhysicsCharacterComponent> {
     public:
         Carrot::Physics::Character character;
+        bool firstFrame = true;
 
         explicit PhysicsCharacterComponent(Carrot::ECS::Entity entity);
 

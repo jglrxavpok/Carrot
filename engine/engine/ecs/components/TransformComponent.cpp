@@ -50,7 +50,10 @@ namespace Carrot::ECS {
             }
         }
 
-        localTransform = newTransform;
+        //localTransform = newTransform;
+        localTransform.position = newTransform.position;
+        //localTransform.scale = newTransform.scale;
+        localTransform.rotation = newTransform.rotation;
     }
 
     glm::vec3 TransformComponent::computeFinalPosition() const {

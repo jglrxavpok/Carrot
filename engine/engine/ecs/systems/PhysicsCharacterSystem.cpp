@@ -12,9 +12,9 @@ namespace Carrot::ECS {
     void PhysicsCharacterSystem::prePhysics() {
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
             const bool inWorld = characterComp.character.isInWorld();
-            if(firstFrame || !inWorld) {
+            if(characterComp.firstFrame || !inWorld) {
                 characterComp.character.setWorldTransform(transformComp.computeGlobalPhysicsTransform());
-                firstFrame = false;
+                characterComp.firstFrame = false;
             }
 
             if(inWorld) {
@@ -43,8 +43,8 @@ namespace Carrot::ECS {
     }
 
     void PhysicsCharacterSystem::reload() {
-        firstFrame = true;
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
+            characterComp.firstFrame = true;
             characterComp.character.addToWorld();
         });
     }
