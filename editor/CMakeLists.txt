@@ -16,6 +16,7 @@ set(EditorSources
         ${EditorRoot}panels/ResourcePanel.cpp
 
         ${EditorRoot}ecs/systems/CameraRenderer.cpp
+        ${EditorRoot}ecs/systems/CharacterPositionSetterSystem.cpp
         ${EditorRoot}ecs/systems/CollisionShapeRenderer.cpp
         ${EditorRoot}ecs/systems/LightEditorRenderer.cpp
 

@@ -38,6 +38,7 @@ namespace Carrot::ECS {
     private:
         bool needsRefresh = false;
         std::string text;
+        std::string previousText;
         std::filesystem::path fontPath;
         std::shared_ptr<Carrot::Render::Font> font;
         Carrot::Render::RenderableText renderableText;

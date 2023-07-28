@@ -61,6 +61,11 @@ namespace Peeler::ECS {
                 }
             }
         }
+
+        // make sure physics debug show collisions at the proper place
+        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComponent, Carrot::ECS::RigidBodyComponent& rigidBodyComponent) {
+            rigidBodyComponent.rigidbody.setTransform(transformComponent.computeGlobalPhysicsTransform());
+        });
     }
 
     void CollisionShapeRenderer::setSelected(const std::vector<Carrot::ECS::EntityID>& selection) {

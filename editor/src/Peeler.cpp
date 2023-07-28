@@ -35,6 +35,7 @@
 #include <engine/ecs/systems/SystemTransformSwapBuffers.h>
 #include <engine/ecs/systems/LuaSystems.h>
 #include "ecs/systems/LightEditorRenderer.h"
+#include "ecs/systems/CharacterPositionSetterSystem.h"
 #include "ecs/systems/CollisionShapeRenderer.h"
 #include "ecs/systems/CameraRenderer.h"
 
@@ -95,16 +96,16 @@ namespace Peeler {
             if(!isPlaying) {
                 // override any primary camera the game might have
                 cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+
+                float gridSize = 100.0f;
+                float cellSize = 1.0f;
+                float lineWidth = 0.005f;
+                glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
+                gridRenderer.render(renderContext, gridColor, lineWidth, cellSize, gridSize);
+
+                gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
+                gridRenderer.render(renderContext, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
             }
-
-            float gridSize = 100.0f;
-            float cellSize = 1.0f;
-            float lineWidth = 0.005f;
-            glm::vec4 gridColor = {0.5f, 0.5f, 0.5f, 1.0f};
-            gridRenderer.render(renderContext, gridColor, lineWidth, cellSize, gridSize);
-
-            gridColor = {0.1f, 0.1f, 0.9f, 1.0f};
-            gridRenderer.render(renderContext, gridColor, 2.0f*lineWidth, gridSize/2.0f, gridSize);
         }
     }
 
@@ -892,6 +893,7 @@ namespace Peeler {
     void Application::addEditingSystems() {
         currentScene.world.addRenderSystem<Peeler::ECS::CameraRenderer>();
         currentScene.world.addRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
+        currentScene.world.addRenderSystem<Peeler::ECS::CharacterPositionSetterSystem>();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
     }
 
@@ -899,6 +901,7 @@ namespace Peeler {
         currentScene.world.removeRenderSystem<Peeler::ECS::LightEditorRenderer>();
         currentScene.world.addRenderSystem<Peeler::ECS::LightEditorRenderer>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CollisionShapeRenderer>();
+        currentScene.world.removeRenderSystem<Peeler::ECS::CharacterPositionSetterSystem>();
         currentScene.world.removeRenderSystem<Peeler::ECS::CameraRenderer>();
     }
 

@@ -33,7 +33,8 @@ namespace Carrot::ECS {
     }
 
     void TextComponent::setText(std::string_view text) {
+        previousText = this->text;
+        needsRefresh |= previousText != text;
         this->text = text;
-        needsRefresh = true;
     }
 }

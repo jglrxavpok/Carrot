@@ -75,7 +75,9 @@ namespace Carrot::Scripting {
             char* typeStr = mono_string_to_utf8((MonoString*)(MonoObject*)typeStrObj);
             CLEANUP(mono_free(typeStr));
 
-            if(std::string_view("System.Int") == typeStr) {
+            if(std::string_view("System.Int") == typeStr
+            || std::string_view("System.Int32") == typeStr
+            ) {
                 property.type = ComponentType::Int;
             } else if(std::string_view("System.Single") == typeStr) {
                 property.type = ComponentType::Float;

@@ -81,7 +81,7 @@ namespace Carrot::Physics {
     void Character::prePhysics() {
         if(dirtyTransform) {
             dirtyTransform = false;
-            physics->SetPositionAndRotation(Carrot::carrotToJolt(worldTransform.position), Carrot::carrotToJolt(worldTransform.rotation));
+            physics->SetPositionAndRotation(Carrot::carrotToJolt(worldTransform.position), Carrot::carrotToJolt(worldTransform.rotation), inWorld ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
         }
 
         if(dirtyVelocity && inWorld) {
