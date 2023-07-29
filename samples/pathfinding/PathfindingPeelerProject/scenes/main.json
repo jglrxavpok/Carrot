@@ -1,0 +1,186 @@
+{
+    "world_data": {
+        "model_renderers": {
+            "663c1a51-3cb4-46e4-b3cd-f92b8141f6d1": {
+                "model": "processed/scene1_navmesh.gltf",
+                "overrides": [
+                    {
+                        "mesh_index": 0,
+                        "pipeline_name": "resources/pipelines/gBufferWireframe.json"
+                    }
+                ]
+            },
+            "ceb0ed95-e61b-4752-b82c-e7b762f00c55": {
+                "model": "processed/scene1.gltf",
+                "overrides": [
+                    {
+                        "mesh_index": 0,
+                        "pipeline_name": "resources/pipelines/gBufferBlockout.json"
+                    }
+                ]
+            }
+        }
+    },
+    "entities": {
+        "5a953fcd-b947-49f1-a833-8fd31473270e": {
+            "Transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "processed/scene1.gltf",
+                    "model_renderer": "ceb0ed95-e61b-4752-b82c-e7b762f00c55"
+                }
+            },
+            "name": "Scene Geometry"
+        },
+        "9dc7262d-60f9-4181-9eb4-d1d0de534709": {
+            "Transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    0.04117631912231445,
+                    0.0,
+                    1.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "processed/scene1_navmesh.gltf",
+                    "model_renderer": "663c1a51-3cb4-46e4-b3cd-f92b8141f6d1"
+                }
+            },
+            "name": "Scene Navmesh"
+        },
+        "d5577523-8895-438a-bb4f-d14f5f73584c": {
+            "Transform": {
+                "position": [
+                    4.127817630767822,
+                    -10.200992584228516,
+                    1.7633811235427857
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "resources/models/simple_cube.obj"
+                }
+            },
+            "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
+                "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
+                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709"
+            },
+            "name": "Agent"
+        },
+        "5fcf1c04-c9ee-4706-8398-1876dde0b33e": {
+            "Transform": {
+                "position": [
+                    -0.4760478734970093,
+                    -9.539717674255371,
+                    1.851586103439331
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    0.6071428060531616,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "resources/models/simple_sphere.obj"
+                }
+            },
+            "name": "Target"
+        }
+    },
+    "lighting": {
+        "ambient": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "raytracedShadows": true
+    },
+    "skybox": "None",
+    "logic_systems": {
+        "Kinematics": {},
+        "TransformSwapBuffers": {},
+        "RigidBodies": {},
+        "LuaUpdate": {},
+        "PathfindingPeelerProject.PathfindToTargetSystem (C#)": {}
+    },
+    "render_systems": {
+        "SpriteRender": {},
+        "ModelRender": {},
+        "HandleLights": {},
+        "LuaRender": {}
+    }
+}

@@ -1,0 +1,48 @@
+{
+    "scene": "game://scenes/main.json",
+    "selectedIDs": [
+        "5a953fcd-b947-49f1-a833-8fd31473270e"
+    ],
+    "camera": {
+        "strafeSpeed": 1.0,
+        "forwardSpeed": 1.0,
+        "verticalSpeed": 1.0,
+        "xSensibility": 1.0,
+        "ySensibility": 1.0,
+        "zNear": 0.0010000000474974514,
+        "zFar": 1000.0,
+        "fov": 1.2217304706573487,
+        "eulerAngles": [
+            -5.0731520652771,
+            0.0,
+            -18.98517608642578
+        ],
+        "position": [
+            -2.216916084289551,
+            -17.21477699279785,
+            7.116430282592773
+        ]
+    },
+    "window": {
+        "x": 1920,
+        "y": 23,
+        "width": 1920,
+        "height": 1027,
+        "maximised": true
+    },
+    "collision_layers": {
+        "Player": {
+            "static": false,
+            "does_not_collide_with": [
+                "Player",
+                "Pikmins"
+            ]
+        },
+        "Pikmins": {
+            "static": false
+        },
+        "Collectibles": {
+            "static": false
+        }
+    }
+}

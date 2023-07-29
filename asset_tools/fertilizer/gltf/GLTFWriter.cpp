@@ -159,6 +159,8 @@ namespace Fertilizer {
 
             // TODO: our glTF loader does not support skinned meshes yet
             tinygltf::Mesh& glTFMesh = model.meshes.emplace_back();
+            glTFMesh.name = primitive.name;
+
             tinygltf::Primitive& glTFPrimitive = glTFMesh.primitives.emplace_back();
             glTFPrimitive.material = primitive.materialIndex;
             glTFPrimitive.mode = TINYGLTF_MODE_TRIANGLES;

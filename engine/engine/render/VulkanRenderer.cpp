@@ -246,6 +246,15 @@ void Carrot::VulkanRenderer::initImGui() {
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsClassic();
 
+    {
+        auto& style = ImGui::GetStyle();
+        style.FrameRounding = 2.0f;
+        style.FrameBorderSize = 1.0f;
+        style.WindowBorderSize = 1.0f;
+
+        auto& colors = style.Colors;
+    }
+
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForVulkan(driver.getWindow().getGLFWPointer(), true);
     imguiInitInfo = {};
@@ -838,7 +847,6 @@ inline void hash_combine(std::size_t& seed, const std::size_t& v) {
 template<>
 struct std::hash<PacketKey> {
     std::size_t operator()(const PacketKey& key) const {
-        const std::size_t p = 31;
 #define hash_r(member) hash_combine(h, reinterpret_cast<std::size_t>((member)));
 #define hash_s(member) hash_combine(h, static_cast<std::size_t>((member)));
         std::size_t h = 0;
@@ -945,6 +953,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
         }
         bin.clear();
     }
+    packetBins.clear();
 
     sortRenderPackets(preparedRenderPackets);
 
