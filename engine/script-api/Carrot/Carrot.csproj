@@ -50,6 +50,7 @@
         <Compile Include="Input\Actions.cs" />
         <Compile Include="Input\ActionSet.cs" />
         <Compile Include="LogicSystem.cs" />
+        <Compile Include="NavMeshComponent.cs" />
         <Compile Include="Object.cs" />
         <Compile Include="Physics\Collider.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />

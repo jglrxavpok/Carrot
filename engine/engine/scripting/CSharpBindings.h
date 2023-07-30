@@ -40,6 +40,9 @@ namespace Carrot::Scripting {
         CSClass* SystemClass = nullptr;
         CSField* SystemSignatureField = nullptr;
 
+        CSClass* Vec2Class = nullptr;
+        CSClass* Vec3Class = nullptr;
+
         CSClass* ComponentClass = nullptr;
         CSField* ComponentOwnerField = nullptr;
 
@@ -48,6 +51,10 @@ namespace Carrot::Scripting {
         CSClass* RigidBodyComponentClass = nullptr;
         CSClass* ColliderClass = nullptr;
         CSClass* CharacterComponentClass = nullptr;
+
+        CSClass* NavMeshComponentClass = nullptr;
+        CSClass* NavPathClass = nullptr;
+        CSField* NavPathWaypointsField = nullptr;
 
         CSClass* RaycastInfoClass = nullptr;
         CSField* RaycastInfoWorldPointField = nullptr;
@@ -182,6 +189,9 @@ namespace Carrot::Scripting {
 
         static bool RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo);
         static bool _DoRaycast(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo, std::uint16_t collisionMask);
+
+        static glm::vec3 GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p);
+        static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);
 
     private:
         void loadEngineAssembly();

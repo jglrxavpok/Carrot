@@ -27,6 +27,7 @@ set(CORE-SOURCES
         ${CoreRoot}math/Plane.cpp
         ${CoreRoot}math/Segment2D.cpp
         ${CoreRoot}math/Sphere.cpp
+        ${CoreRoot}math/Triangle.cpp
 
         ${CoreRoot}render/Skeleton.cpp
         ${CoreRoot}render/VertexTypes.cpp

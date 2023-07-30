@@ -194,8 +194,13 @@ namespace Carrot::Render {
         ZoneScoped;
         std::vector<Vertex>& vertices = loadedPrimitive.vertices;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
-        const tinygltf::Accessor& normalsAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-        info.hasNormals = true;
+
+        int normalsAccessorIndex = -1;
+        auto normalsAttributeIt = primitive.attributes.find("NORMAL");
+        if(normalsAttributeIt != primitive.attributes.end()) {
+            normalsAccessorIndex = normalsAttributeIt->second;
+            info.hasNormals = true;
+        }
 
         int texCoordsAccessorIndex = -1;
         auto texCoordsAttributeIt = primitive.attributes.find("TEXCOORD_0");
@@ -217,6 +222,7 @@ namespace Carrot::Render {
             info.hasTangents = true;
         }
 
+        const tinygltf::Accessor* normalsAccessor = normalsAccessorIndex != -1 ? &model.accessors[normalsAccessorIndex] : nullptr;
         const tinygltf::Accessor* vertexColorAccessor = colorAccessorIndex != -1 ? &model.accessors[colorAccessorIndex] : nullptr;
         const tinygltf::Accessor* texCoordsAccessor = texCoordsAccessorIndex != -1 ? &model.accessors[texCoordsAccessorIndex] : nullptr;
         const tinygltf::Accessor* tangentsAccessor = tangentAccessorIndex != -1 ? &model.accessors[tangentAccessorIndex] : nullptr;
@@ -226,7 +232,9 @@ namespace Carrot::Render {
         // TODO: support skinned meshes
         // TODO: support compressed meshes
 
-        verify(positionsAccessor.count == normalsAccessor.count, "Mismatched position/normal count");
+        if(normalsAccessor != nullptr) {
+            verify(positionsAccessor.count == normalsAccessor->count, "Mismatched position/normal count");
+        }
 
         if(texCoordsAccessor != nullptr) {
             verify(positionsAccessor.count == texCoordsAccessor->count, "Mismatched position/texCoords count");
@@ -246,7 +254,11 @@ namespace Carrot::Render {
             loadedPrimitive.minPos = glm::min(loadedPrimitive.minPos, pos);
             loadedPrimitive.maxPos = glm::max(loadedPrimitive.maxPos, pos);
 
-            vertex.normal = readFromAccessor<glm::vec3>(i, normalsAccessor, model);
+            if(normalsAccessor) {
+                vertex.normal = readFromAccessor<glm::vec3>(i, *normalsAccessor, model);
+            } else {
+                vertex.normal = glm::vec3(0.0f, 0.0f, 1.0f);
+            }
 
             if(tangentsAccessor) {
                 vertex.tangent = readFromAccessor<glm::vec4>(i, *tangentsAccessor, model);

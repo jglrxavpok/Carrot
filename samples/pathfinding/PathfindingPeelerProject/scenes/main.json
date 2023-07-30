@@ -1,21 +1,21 @@
 {
     "world_data": {
         "model_renderers": {
-            "663c1a51-3cb4-46e4-b3cd-f92b8141f6d1": {
-                "model": "processed/scene1_navmesh.gltf",
-                "overrides": [
-                    {
-                        "mesh_index": 0,
-                        "pipeline_name": "resources/pipelines/gBufferWireframe.json"
-                    }
-                ]
-            },
             "ceb0ed95-e61b-4752-b82c-e7b762f00c55": {
                 "model": "processed/scene1.gltf",
                 "overrides": [
                     {
                         "mesh_index": 0,
                         "pipeline_name": "resources/pipelines/gBufferBlockout.json"
+                    }
+                ]
+            },
+            "430e7583-93b1-474e-bbba-932a2e096f04": {
+                "model": "models/scene1_navmesh_debugview.gltf",
+                "overrides": [
+                    {
+                        "mesh_index": 0,
+                        "pipeline_name": "resources/pipelines/gBufferWireframe.json"
                     }
                 ]
             }
@@ -84,18 +84,21 @@
                     1.0
                 ],
                 "model": {
-                    "modelPath": "processed/scene1_navmesh.gltf",
-                    "model_renderer": "663c1a51-3cb4-46e4-b3cd-f92b8141f6d1"
+                    "modelPath": "models/scene1_navmesh_debugview.gltf",
+                    "model_renderer": "430e7583-93b1-474e-bbba-932a2e096f04"
                 }
+            },
+            "NavMesh": {
+                "nav_mesh": "models/scene1_navmesh.gltf"
             },
             "name": "Scene Navmesh"
         },
         "d5577523-8895-438a-bb4f-d14f5f73584c": {
             "Transform": {
                 "position": [
-                    4.127817630767822,
-                    -10.200992584228516,
-                    1.7633811235427857
+                    3.114208698272705,
+                    -9.832283020019532,
+                    1.2737715244293213
                 ],
                 "scale": [
                     1.0,
@@ -123,16 +126,17 @@
             },
             "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
                 "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
-                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709"
+                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
+                "Go": false
             },
             "name": "Agent"
         },
         "5fcf1c04-c9ee-4706-8398-1876dde0b33e": {
             "Transform": {
                 "position": [
-                    -0.4760478734970093,
-                    -9.539717674255371,
-                    1.851586103439331
+                    -7.569531440734863,
+                    7.920760154724121,
+                    1.3105055093765259
                 ],
                 "scale": [
                     1.0,

@@ -68,6 +68,7 @@
 #include "engine/ecs/components/LuaScriptComponent.h"
 #include "engine/ecs/components/LightComponent.h"
 #include "engine/ecs/components/ModelComponent.h"
+#include "engine/ecs/components/NavMeshComponent.h"
 #include "engine/ecs/components/PhysicsCharacterComponent.h"
 #include "engine/ecs/components/RigidBodyComponent.h"
 #include "engine/ecs/components/SpriteComponent.h"
@@ -558,6 +559,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::TextComponent>();
         components.add<Carrot::ECS::LuaScriptComponent>();
         components.add<Carrot::ECS::PhysicsCharacterComponent>();
+        components.add<Carrot::ECS::NavMeshComponent>();
     }
 
     {

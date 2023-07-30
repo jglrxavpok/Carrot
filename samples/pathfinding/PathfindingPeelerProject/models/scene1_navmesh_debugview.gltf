@@ -24,9 +24,12 @@
             "primitives" : [
                 {
                     "attributes" : {
-                        "POSITION" : 0
+                        "POSITION" : 0,
+                        "TEXCOORD_0" : 1,
+                        "NORMAL" : 2,
+                        "TANGENT" : 3
                     },
-                    "indices" : 1
+                    "indices" : 4
                 }
             ]
         }
@@ -35,7 +38,7 @@
         {
             "bufferView" : 0,
             "componentType" : 5126,
-            "count" : 35,
+            "count" : 121,
             "max" : [
                 11.995109558105469,
                 11.927096366882324,
@@ -50,6 +53,24 @@
         },
         {
             "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 121,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 121,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5126,
+            "count" : 121,
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 4,
             "componentType" : 5123,
             "count" : 123,
             "type" : "SCALAR"
@@ -58,21 +79,39 @@
     "bufferViews" : [
         {
             "buffer" : 0,
-            "byteLength" : 420,
+            "byteLength" : 1452,
             "byteOffset" : 0,
             "target" : 34962
         },
         {
             "buffer" : 0,
+            "byteLength" : 968,
+            "byteOffset" : 1452,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 1452,
+            "byteOffset" : 2420,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 1936,
+            "byteOffset" : 3872,
+            "target" : 34962
+        },
+        {
+            "buffer" : 0,
             "byteLength" : 246,
-            "byteOffset" : 420,
+            "byteOffset" : 5808,
             "target" : 34963
         }
     ],
     "buffers" : [
         {
-            "byteLength" : 668,
-            "uri" : "scene1_navmesh.bin"
+            "byteLength" : 6056,
+            "uri" : "scene1_navmesh_debugview.bin"
         }
     ]
 }

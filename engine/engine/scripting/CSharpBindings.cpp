@@ -15,8 +15,9 @@
 #include <engine/ecs/Signature.hpp>
 #include <mono/metadata/object.h>
 #include <engine/ecs/components/CameraComponent.h>
-#include <engine/ecs/components/PhysicsCharacterComponent.h>
 #include <engine/ecs/components/CSharpComponent.h>
+#include <engine/ecs/components/NavMeshComponent.h>
+#include <engine/ecs/components/PhysicsCharacterComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
@@ -107,6 +108,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_DoRaycast", _DoRaycast);
+
+        mono_add_internal_call("Carrot.NavMeshComponent::GetClosestPointInMesh", GetClosestPointInMesh);
+        mono_add_internal_call("Carrot.NavMeshComponent::PathFind", PathFind);
 
         {
             mono_add_internal_call("Carrot.Physics.Collider::Raycast", RaycastCollider);
@@ -299,6 +303,8 @@ namespace Carrot::Scripting {
         verify(method, Carrot::sprintf("Missing method EngineInit inside class Carrot.Carrot inside %s", getEngineDllPath().toString().c_str()));
         method->staticInvoke({});
 
+        LOAD_CLASS(Vec2);
+        LOAD_CLASS(Vec3);
         {
             LOAD_CLASS(Entity);
             EntityIDField = EntityClass->findField("_id");
@@ -345,6 +351,12 @@ namespace Carrot::Scripting {
         LOAD_CLASS(TextComponent);
         LOAD_CLASS(RigidBodyComponent);
         LOAD_CLASS(CharacterComponent);
+        LOAD_CLASS(NavMeshComponent);
+
+        {
+            LOAD_CLASS(NavPath);
+            LOAD_FIELD(NavPath, Waypoints);
+        }
 
         {
             LOAD_CLASS_NS("Carrot.Physics", Collider);
@@ -380,6 +392,10 @@ namespace Carrot::Scripting {
             HardcodedComponents["Carrot.CharacterComponent"] = {
                     .id = ECS::PhysicsCharacterComponent::getID(),
                     .clazz = CharacterComponentClass,
+            };
+            HardcodedComponents["Carrot.NavMeshComponent"] = {
+                    .id = ECS::NavMeshComponent::getID(),
+                    .clazz = NavMeshComponentClass,
             };
         }
     }
@@ -694,6 +710,37 @@ namespace Carrot::Scripting {
         }
 
         return hasHit;
+    }
+
+    glm::vec3 CSharpBindings::GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(navMeshComponent));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& navMesh = entity.getComponent<ECS::NavMeshComponent>()->navMesh;
+
+        return navMesh.getClosestPointInMesh(p);
+    }
+
+    MonoObject* CSharpBindings::PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(navMeshComponent));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& navMesh = entity.getComponent<ECS::NavMeshComponent>()->navMesh;
+
+        AI::NavPath navPath = navMesh.computePath(a, b);
+        auto navPathCSObj = instance().NavPathClass->newObject({});
+        auto waypointsArray = instance().Vec3Class->newArray(navPath.waypoints.size());
+        for (std::size_t i = 0; i < navPath.waypoints.size(); ++i) {
+            void* xyz[3] = {
+                    (void*)&navPath.waypoints[i].x,
+                    (void*)&navPath.waypoints[i].y,
+                    (void*)&navPath.waypoints[i].z
+            };
+            //waypointsArray->set(i, *instance().Vec3Class->newObject(xyz));
+            // mono_array_set(csQueryResultArray, MonoObject*, i, csEntities[i]->toMono());
+            mono_array_set(waypointsArray->toMono(), glm::vec3, i, navPath.waypoints[i]);
+        }
+
+        instance().NavPathWaypointsField->set(*navPathCSObj, Scripting::CSObject((MonoObject*)waypointsArray->toMono()));
+        return navPathCSObj->toMono();
     }
 
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {

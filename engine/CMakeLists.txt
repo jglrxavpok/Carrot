@@ -49,6 +49,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/LuaScriptComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
+        ${EngineRoot}ecs/components/NavMeshComponent.cpp
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
@@ -156,6 +157,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/FreeCameraController.cpp
         ${EngineRoot}edition/DragDropTypes.cpp
 
+        ${EngineRoot}pathfinding/AStar.cpp
+        ${EngineRoot}pathfinding/NavMesh.cpp
+        ${EngineRoot}pathfinding/NavPath.cpp
 
         ${EngineRoot}physics/Character.cpp
         ${EngineRoot}physics/Colliders.cpp

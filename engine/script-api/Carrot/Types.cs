@@ -28,8 +28,8 @@ namespace Carrot {
         public Vec2 Lerp(Vec3 other, float t) {
             float oneMinusT = 1.0f - t;
             return new Vec2(
-                X * t + other.X * oneMinusT,
-                Y * t + other.Y * oneMinusT
+                other.X * t + X * oneMinusT,
+                other.Y * t + Y * oneMinusT
             );
         }
     }
@@ -64,9 +64,9 @@ namespace Carrot {
         public Vec3 Lerp(Vec3 other, float t) {
             float oneMinusT = 1.0f - t;
             return new Vec3(
-                X * t + other.X * oneMinusT,
-                Y * t + other.Y * oneMinusT,
-                Z * t + other.Z * oneMinusT
+                other.X * t + X * oneMinusT,
+                other.Y * t + Y * oneMinusT,
+                other.Z * t + Z * oneMinusT
             );
         }
     }

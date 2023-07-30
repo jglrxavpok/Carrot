@@ -12,6 +12,7 @@
 #include <engine/ecs/components/Kinematics.h>
 #include <engine/ecs/components/LuaScriptComponent.h>
 #include <engine/ecs/components/LightComponent.h>
+#include <engine/ecs/components/NavMeshComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/PhysicsCharacterComponent.h>
 #include <engine/ecs/components/SpriteComponent.h>
@@ -303,6 +304,36 @@ namespace Peeler {
         ImGui::PopID();
     }
 
+    void editNavMeshComponent(EditContext& edition, Carrot::ECS::NavMeshComponent* component) {
+        std::string path = component->meshFile.isFile() ? component->meshFile.getName() : "";
+        if(ImGui::InputText("Mesh##NavMesh filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            component->setMesh(Carrot::IO::VFS::Path(path));
+            edition.hasModifications = true;
+        }
+
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                buffer.get()[payload->DataSize] = '\0';
+
+                std::u8string str = buffer.get();
+                std::string s = Carrot::toString(str);
+
+                auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                // TODO: no need to go through disk again
+                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
+                    component->setMesh(vfsPath);
+                    edition.hasModifications = true;
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+    }
+
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
     void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component);
 
@@ -318,5 +349,6 @@ namespace Peeler {
         registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
         registerFunction(inspector, editPhysicsCharacterComponent);
+        registerFunction(inspector, editNavMeshComponent);
     }
 }
