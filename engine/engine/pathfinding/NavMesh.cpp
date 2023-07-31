@@ -4,10 +4,12 @@
 
 #include "NavMesh.h"
 #include <core/Macros.h>
+#include <core/math/Segment2D.h>
 #include <core/math/Triangle.h>
 #include <core/scene/LoadedScene.h>
 #include <core/scene/GLTFLoader.h>
 #include <glm/gtx/closest_point.hpp>
+#include <core/utils/Profiling.h>
 
 namespace Carrot::AI {
 
@@ -25,12 +27,19 @@ namespace Carrot::AI {
     void NavMesh::loadFromScene(const Render::LoadedScene& scene)  {
         // TODO: maybe //-ize if needed
         std::vector<NavMeshTriangle> triangles;
+
+        std::vector<glm::vec3> allVertices;
         std::unordered_map<std::size_t, std::vector<std::size_t>> vertexToTriangles; // all triangles sharing a given vertex
         for(const auto& primitive : scene.primitives) {
             std::size_t indexCount = primitive.indices.size();
 
             std::size_t vertexIndexOffset = triangles.size() * 3;
             triangles.reserve(triangles.size() + indexCount / 3);
+
+            allVertices.reserve(allVertices.size() + primitive.vertices.size());
+            for(const auto& v : primitive.vertices) {
+                allVertices.emplace_back(v.pos.xyz);
+            }
 
             for (std::size_t i = 0; i < indexCount; i += 3) {
                 std::size_t index0 = primitive.indices[i + 0];
@@ -57,23 +66,28 @@ namespace Carrot::AI {
 
         // triangle index -> connected triangles
         std::unordered_map<std::size_t, std::vector<std::size_t>> adjacency;
-        std::unordered_map<std::size_t, std::size_t> sharedVertices;
+
+        // triangle -> other triangle -> shared vertices
+        std::vector<std::unordered_map<std::size_t, std::vector<glm::vec3>>> allSharedVertices;
+        allSharedVertices.resize(triangles.size());
         for(const auto& triangle : triangles) {
             auto& connected = adjacency[triangle.index];
-
-            sharedVertices.clear();
+            auto& sharedVertices = allSharedVertices[triangle.index];
 
             for (std::size_t vertexIndex : triangle.globalVertexIndices) {
                 for(const auto& triangleIndex : vertexToTriangles[vertexIndex]) {
                     if(triangleIndex != triangle.index) {
-                        sharedVertices[triangleIndex]++;
+                        sharedVertices[triangleIndex].push_back(allVertices[vertexIndex]);
                     }
                 }
             }
 
-            for(const auto& [otherTriangle, sharedVertexCount] : sharedVertices) {
-                if(sharedVertexCount >= 2) {
+            for(const auto& [otherTriangle, sharedVertexList] : sharedVertices) {
+                if(sharedVertexList.size() >= 2) {
                     connected.push_back(otherTriangle);
+                    auto& portal = portalVertices[triangle.index][otherTriangle];
+                    portal[0] = sharedVertexList[0];
+                    portal[1] = sharedVertexList[1];
                 }
             }
         }
@@ -98,8 +112,18 @@ namespace Carrot::AI {
     }
 
     NavPath NavMesh::computePath(const glm::vec3& pointA, const glm::vec3& pointB) {
+        Profiling::PrintingScopedTimer _t("NavMesh::computePath");
+
         NavMeshPosition posA = getClosestPosition(pointA);
         NavMeshPosition posB = getClosestPosition(pointB);
+
+        if(posA.triangleIndex == posB.triangleIndex) {
+            return NavPath {
+                .waypoints = {
+                    pointA, pointB
+                }
+            };
+        }
 
         // 1. find triangles to go through, via A*
         // cost estimate: distance between triangle centers
@@ -117,39 +141,138 @@ namespace Carrot::AI {
         }
 
         NavPath path;
-        NavMeshPosition currentPosition = posA;
-        verify(triangles[0] == currentPosition.triangleIndex, "Path does not start at point A ?");
+        verify(triangles[0] == posA.triangleIndex, "Path does not start at point A ?");
 
         path.waypoints.push_back(pointA);
-        path.waypoints.push_back(posA.position);
-
-        // TODO: funnel/string pulling
-
-        for (std::size_t index = 1; index < triangles.size(); ++index) {
-            const glm::vec3& currentPositionIn3D = currentPosition.position;
-
-            // 2. for each triangle, find closest point of next triangle to current position (closest point is on one of the edges of the triangle)
-            const NavMeshTriangle& navTriangle = pathfinder.getVertices()[triangles[index]];
-            const glm::vec3 closestPoint = navTriangle.triangle.getClosestPointOnEdges(currentPositionIn3D);
-
-            // 3. move current position to closest point of next triangle
-            currentPosition = NavMeshPosition {
-                    .triangleIndex = navTriangle.index,
-                    //.position = closestPoint
-                    .position = navTriangle.center
-            };
-            path.waypoints.push_back(currentPosition.position);
-
-            // 4. repeat until same triangle as posB
-        }
-
-        verify(currentPosition.triangleIndex == posB.triangleIndex, "Path was not completed?");
-
-        // we may have a few units to move still (we reached the wanted triangle, but not the correct point yet)
-        path.waypoints.push_back(posB.position);
+        funnel(posA, posB, triangles, path.waypoints);
         path.waypoints.push_back(pointB);
 
         return path;
+    }
+
+    // Comment from http://jceipek.com/Olin-Coding-Tutorials/pathing.html#funnel-algorithm :
+    //  This function from http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html
+    //  is called "triarea2" because the cross product of two vectors
+    //  returns the area of the parallellogram the two sides form
+    //  (which has twice the area of the triangle they form)
+    //  The sign of the result will tell you the order of the points passed in.
+
+    // also ignore Z component
+    static float triangleArea2(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+        const float ax = b[0] - a[0];
+        const float ay = b[1] - a[1];
+        const float bx = c[0] - a[0];
+        const float by = c[1] - a[1];
+        return bx*ay - ax*by;
+    }
+
+    static bool almostEqual(const glm::vec2& a, const glm::vec2& b) {
+        return glm::dot(a-b, a-b) < 10e-12f;
+    }
+
+    void NavMesh::funnel(const NavMeshPosition& startPos, const NavMeshPosition& endPos, std::span<const std::size_t> triangles, std::vector<glm::vec3>& waypoints) {
+        struct Portal {
+            glm::vec3 left;
+            glm::vec3 right;
+        };
+
+        std::vector<Portal> portals;
+        portals.reserve(triangles.size() + 1);
+
+        auto& startPortal = portals.emplace_back();
+        startPortal.left = startPos.position;
+        startPortal.right = startPos.position;
+
+        // from list of triangles, create portals (with left and right relative to order in which triangles are traversed)
+        for(std::size_t i = 0; i < triangles.size() - 1; i++) {
+            std::size_t triangleIndexA = triangles[i];
+            std::size_t triangleIndexB = triangles[i + 1];
+
+            const NavMeshTriangle& triangleA = pathfinder.getVertices()[triangleIndexA];
+            const NavMeshTriangle& triangleB = pathfinder.getVertices()[triangleIndexB];
+
+            // assume ZUp + entities don't move 100% vertically
+            const auto& vertices = portalVertices.at(triangleIndexA).at(triangleIndexB);
+            Math::Segment2D segment;
+            segment.first = triangleA.center.xy;
+            segment.second = triangleB.center.xy;
+
+            auto& portal = portals.emplace_back();
+            if(segment.getSignedDistance(vertices[0]) < 0) {
+                portal.left = vertices[0];
+                portal.right = vertices[1];
+            } else {
+                portal.left = vertices[1];
+                portal.right = vertices[0];
+            }
+        }
+
+        auto& endPortal = portals.emplace_back();
+        endPortal.left = endPos.position;
+        endPortal.right = endPos.position;
+
+        // funnel/string pulling (stupid simple funnel algorithm) http://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html
+        std::size_t apexIndex = 0;
+        std::size_t leftIndex = 0;
+        std::size_t rightIndex = 0;
+
+        glm::vec3 portalApex = portals[0].left;
+        glm::vec3 portalLeft = portals[0].left;
+        glm::vec3 portalRight = portals[0].right;
+
+        waypoints.push_back(portalApex);
+        for (std::size_t i = 1; i < portals.size() && waypoints.size() < triangles.size(); ++i) {
+            const glm::vec3& left = portals[i].left;
+            const glm::vec3& right = portals[i].right;
+
+            if(triangleArea2(portalApex, portalRight, right) <= 0.0f) { // right vertex is closer
+                if(almostEqual(portalApex, portalRight) || triangleArea2(portalApex, portalLeft, right) > 0.0f) {
+                    // Tighten
+                    portalRight = right;
+                    rightIndex = i;
+                } else { // right vertex crossed over the left, insert new waypoint and restart
+                    if(!almostEqual(portalLeft, waypoints.back())) {
+                        waypoints.push_back(portalLeft);
+                    }
+
+                    portalApex = portalLeft;
+                    apexIndex = leftIndex;
+
+                    portalLeft = portalApex;
+                    portalRight = portalApex;
+                    leftIndex = apexIndex;
+                    rightIndex = apexIndex;
+
+                    // restart at new point
+                    i = apexIndex;
+                    continue;
+                }
+            }
+
+            if(triangleArea2(portalApex, portalLeft, left) >= 0.0f) { // left vertex is closer
+                if(almostEqual(portalApex, portalLeft) || triangleArea2(portalApex, portalRight, left) < 0.0f) {
+                    // Tighten
+                    portalLeft = left;
+                    leftIndex = i;
+                } else { // left vertex crossed over the right, insert new waypoint and restart
+                    if(!almostEqual(portalRight, waypoints.back())) {
+                        waypoints.push_back(portalRight);
+                    }
+
+                    portalApex = portalRight;
+                    apexIndex = rightIndex;
+
+                    portalLeft = portalApex;
+                    portalRight = portalApex;
+                    leftIndex = apexIndex;
+                    rightIndex = apexIndex;
+
+                    // restart at new point
+                    i = apexIndex;
+                    continue;
+                }
+            }
+        }
     }
 
     NavMesh::NavMeshPosition NavMesh::getClosestPosition(const glm::vec3& position) {

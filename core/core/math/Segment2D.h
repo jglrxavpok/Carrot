@@ -19,5 +19,8 @@ namespace Carrot::Math {
         Segment2D& operator=(Segment2D&& toMove) = default;
 
         bool computeIntersection(const Segment2D& other, glm::vec2& outIntersectionPoint) const;
+
+        /// <0 if p on left, >1 if p on right, 0 if p is on line
+        float getSignedDistance(const glm::vec2& p) const;
     };
 }

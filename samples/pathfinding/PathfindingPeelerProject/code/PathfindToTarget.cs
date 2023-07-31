@@ -65,8 +65,8 @@ namespace PathfindingPeelerProject {
                         float targetSpeed = 5.0f;
                         transformComponent.LocalPosition = waypoints[progress.CurrentWaypoint].Lerp(waypoints[progress.CurrentWaypoint+1], progress.ProgressTowardsNextWaypoint);
                         progress.ProgressTowardsNextWaypoint += (float)deltaTime * targetSpeed / distance;
-                        while(progress.ProgressTowardsNextWaypoint >= 1.0f) {
-                            progress.ProgressTowardsNextWaypoint -= 1.0f;
+                        if(progress.ProgressTowardsNextWaypoint >= 1.0f) {
+                            progress.ProgressTowardsNextWaypoint = 0.0f;
                             progress.CurrentWaypoint++;
                         }
                     }

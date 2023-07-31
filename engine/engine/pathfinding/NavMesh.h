@@ -42,9 +42,14 @@ namespace Carrot::AI {
             glm::vec3 center{ 0.0f };
         };
 
+        void funnel(const NavMeshPosition& startPos, const NavMeshPosition& endPos, std::span<const std::size_t> triangles, std::vector<glm::vec3>& waypoints);
+
         NavMeshPosition getClosestPosition(const glm::vec3& position);
 
     private:
+        // triangle -> other triangle -> shared vertices
+        std::unordered_map<std::size_t, std::unordered_map<std::size_t, glm::vec3[2]>> portalVertices;
+
         // nodes are triangles here
         AStar<NavMeshTriangle> pathfinder;
     };

@@ -60,4 +60,11 @@ namespace Carrot::Math {
         }
         return false;
     }
+
+    float Segment2D::getSignedDistance(const glm::vec2& p) const {
+        glm::vec2 dir = second - first;
+        return
+            (dir.x * (first.y - p.y) - dir.y * (first.x - p.x))
+            / glm::length(dir);
+    }
 }
