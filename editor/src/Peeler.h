@@ -15,8 +15,9 @@
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <engine/scene/Scene.h>
 #include "GridRenderer.h"
-#include "panels/ResourcePanel.h"
 #include "panels/InspectorPanel.h"
+#include "panels/NavMeshPanel.h"
+#include "panels/ResourcePanel.h"
 #include "layers/ISceneViewLayer.h"
 
 namespace Peeler {
@@ -194,6 +195,7 @@ namespace Peeler {
         std::vector<std::size_t> toDeleteLayers; // store for a single tick to avoid memory corruption after removing a layer
         ResourcePanel resourcePanel;
         InspectorPanel inspectorPanel;
+        NavMeshPanel navMeshPanel;
 
     private: // Scene manipulation
         bool movingGameViewCamera = false;

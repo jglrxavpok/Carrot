@@ -27,6 +27,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/VertexFormat.cpp
 
         ${EngineRoot}render/resources/model_loading/AssimpLoader.cpp
+        ${EngineRoot}render/resources/model_loading/SceneLoader.cpp
 
         ${EngineRoot}render/shaders/ShaderModule.cpp
         ${EngineRoot}render/shaders/ShaderStages.cpp
@@ -159,6 +160,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}pathfinding/AStar.cpp
         ${EngineRoot}pathfinding/NavMesh.cpp
+        ${EngineRoot}pathfinding/NavMeshBuilder.cpp
         ${EngineRoot}pathfinding/NavPath.cpp
 
         ${EngineRoot}physics/Character.cpp

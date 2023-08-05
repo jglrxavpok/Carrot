@@ -267,6 +267,11 @@ namespace Peeler {
         }
         ImGui::End();
 
+        if(ImGui::Begin("NavMesh utils")) {
+            navMeshPanel.draw(renderContext);
+        }
+        ImGui::End();
+
         if(ImGui::Begin("Properties")) {
             inspectorPanel.draw(renderContext);
         }
@@ -466,7 +471,7 @@ namespace Peeler {
             ImGui::EndPopup();
         }
 
-        std::function<void(Carrot::ECS::Entity&)> showEntityTree = [&] (Carrot::ECS::Entity& entity) {
+        std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
                 return;
             ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -474,6 +479,10 @@ namespace Peeler {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
             auto children = currentScene.world.getChildren(entity, Carrot::ShouldRecurse::NoRecursion);
+
+            if(recursivelySelect) {
+                selectedIDs.push_back(entity.getID());
+            }
 
             auto addChildMenu = [&]() {
                 std::string id = "##add child to entity ";
@@ -525,11 +534,14 @@ namespace Peeler {
                     addChildMenu();
                     if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
                         bool additive = ImGui::GetIO().KeyCtrl;
+                        if(ImGui::GetIO().KeyAlt) {
+                            recursivelySelect = true; // will select children too
+                        }
                         selectEntity(entity.getID(), additive);
                     }
 
                     for(auto& c : children) {
-                        showEntityTree(c);
+                        showEntityTree(c, recursivelySelect);
                     }
 
                     ImGui::TreePop();
@@ -549,7 +561,7 @@ namespace Peeler {
         };
         for(auto& entityObj : currentScene.world.getAllEntities()) {
             if( ! currentScene.world.getParent(entityObj)) {
-                showEntityTree(entityObj);
+                showEntityTree(entityObj, false);
             }
         }
 
@@ -976,7 +988,8 @@ namespace Peeler {
         stepButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/step_button.png"),
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         resourcePanel(*this),
-        inspectorPanel(*this)
+        inspectorPanel(*this),
+        navMeshPanel(*this)
     {
         Instance = this;
         NFD_Init();
@@ -1417,6 +1430,7 @@ namespace Peeler {
 
     void Application::selectEntity(const Carrot::ECS::EntityID& entity, bool additive) {
         if(additive) {
+            // TODO: make sure there are no duplicates
             selectedIDs.push_back(entity);
         } else {
             selectedIDs.clear();

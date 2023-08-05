@@ -60,7 +60,7 @@ static void OnDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDesc
 
 static void ResolveMarker(const void* pMarker, void* pUserData, void** resolvedMarkerData, uint32_t* markerSize) {
     std::lock_guard lk(markersAccess);
-    auto& str = markers[reinterpret_cast<std::uint64_t>(pMarker)];
+    auto& str = markers[(std::uint64_t)pMarker];
     *resolvedMarkerData = (void*)str.data();
     *markerSize = static_cast<std::uint32_t>(str.size());
 }
@@ -234,7 +234,7 @@ void setAftermathMarker(vk::CommandBuffer& cmds, const std::string& markerData) 
 
     std::lock_guard lk(markersAccess);
 
-    cmds.setCheckpointNV(reinterpret_cast<void*>(markers.size()));
+    cmds.setCheckpointNV((const void*)markers.size());
     markers.push_back(markerData);
 }
 

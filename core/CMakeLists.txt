@@ -24,6 +24,7 @@ set(CORE-SOURCES
         ${CoreRoot}io/Strings.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
+        ${CoreRoot}math/AABB.cpp
         ${CoreRoot}math/Plane.cpp
         ${CoreRoot}math/Segment2D.cpp
         ${CoreRoot}math/Sphere.cpp
@@ -60,6 +61,8 @@ set(CORE-SOURCES
 set(CORE-THIRDPARTY-SOURCES
         ${ProjectRoot}thirdparty/tracy/TracyClient.cpp
         ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
+
+        ${ProjectRoot}thirdparty/tribox3/tribox3.cpp
         )
 
 # TODO: Seems like my Release build of Mono is broken?
@@ -85,6 +88,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mono/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/eventpp/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/robin-hood-hashing/src/include/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tribox3/)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)

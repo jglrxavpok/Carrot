@@ -18,6 +18,15 @@
                         "pipeline_name": "resources/pipelines/gBufferWireframe.json"
                     }
                 ]
+            },
+            "e0c3826d-e145-40c5-9a35-3208f5519fe3": {
+                "model": "processed/scene1.gltf",
+                "overrides": [
+                    {
+                        "mesh_index": 0,
+                        "pipeline_name": "resources/pipelines/gBufferBlockout.json"
+                    }
+                ]
             }
         }
     },
@@ -96,9 +105,9 @@
         "d5577523-8895-438a-bb4f-d14f5f73584c": {
             "Transform": {
                 "position": [
-                    -1.8394758701324463,
-                    -10.804962158203125,
-                    1.2737412452697755
+                    5.06560754776001,
+                    -9.103683471679688,
+                    3.3330910205841066
                 ],
                 "scale": [
                     1.0,
@@ -112,6 +121,11 @@
                     1.0
                 ]
             },
+            "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
+                "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
+                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
+                "Go": false
+            },
             "ModelComponent": {
                 "isTransparent": false,
                 "color": [
@@ -123,11 +137,6 @@
                 "model": {
                     "modelPath": "resources/models/simple_cube.obj"
                 }
-            },
-            "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
-                "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
-                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
-                "Go": false
             },
             "name": "Agent"
         },
@@ -163,6 +172,40 @@
                 }
             },
             "name": "Target"
+        },
+        "08f450a4-3b05-4416-9353-5f0a9fab1625": {
+            "Transform": {
+                "position": [
+                    3.681410789489746,
+                    -8.250404357910157,
+                    4.449136257171631
+                ],
+                "scale": [
+                    0.15599995851516725,
+                    0.15600009262561799,
+                    0.15600000321865083
+                ],
+                "rotation": [
+                    -0.8377516269683838,
+                    -0.49243107438087466,
+                    0.19712454080581666,
+                    0.12971468269824983
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "processed/scene1.gltf",
+                    "model_renderer": "e0c3826d-e145-40c5-9a35-3208f5519fe3"
+                }
+            },
+            "name": "Scene Geometry (Copy)"
         }
     },
     "lighting": {

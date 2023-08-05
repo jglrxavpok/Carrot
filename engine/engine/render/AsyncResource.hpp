@@ -79,6 +79,11 @@ namespace Carrot {
             return *storage->value;
         }
 
+        std::shared_ptr<T> get() {
+            throwOrWait();
+            return storage->value;
+        }
+
     public:
         AsyncResource& operator=(const AsyncResource&) = delete;
         AsyncResource& operator=(AsyncResource&& toMove) {

@@ -17,8 +17,7 @@
 #include "engine/render/raytracing/ASBuilder.h"
 
 #include "engine/render/resources/SingleMesh.h"
-#include "engine/render/resources/model_loading/AssimpLoader.h"
-#include <core/scene/GLTFLoader.h>
+#include "engine/render/resources/model_loading/SceneLoader.h"
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/LightMesh.h>
 #include <engine/render/ModelRenderer.h>
@@ -33,16 +32,8 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
     Carrot::Log::info("Loading model %s", file.getName().c_str());
 
-    const Carrot::IO::Path filePath { file.getName() };
-
-    Render::LoadedScene scene;
-    if(filePath.getExtension() == ".gltf") {
-        Render::GLTFLoader loader;
-        scene = std::move(loader.load(file));
-    } else {
-        Render::AssimpLoader loader;
-        scene = std::move(loader.load(file));
-    }
+    Render::SceneLoader sceneLoader;
+    Render::LoadedScene scene = std::move(sceneLoader.load(file));
 
     // TODO: make different pipelines based on loaded materials
     opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
