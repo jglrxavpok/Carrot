@@ -57,22 +57,28 @@ namespace Peeler {
                 selectionWindowPos.x += 10.0f;
                 selectionWindowPos.y += 10.0f;
 
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 0.0f));
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0.0, 0.0));
+                CLEANUP(ImGui::PopStyleColor());
+                CLEANUP(ImGui::PopStyleVar());
+
                 ImGui::SetNextWindowPos(selectionWindowPos, ImGuiCond_Always);
                 ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking
                                                | ImGuiWindowFlags_NoTitleBar
                                                | ImGuiWindowFlags_NoCollapse
                                                | ImGuiWindowFlags_NoScrollbar
                                                | ImGuiWindowFlags_AlwaysAutoResize;
+
                 if (ImGui::Begin("##gizmo operation select window", nullptr, windowFlags)) {
                     auto setupSelectedBg = [](bool selected) {
                         if (selected) {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0.5, 0.6));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0.5, 0.8));
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(2.0f / 255.0f, 2.0f / 255.0f, 110.0f / 255.0f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f / 255.0f, 1.0f / 255.0f, 123.0f / 255.0f, 1.0f));
                             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0.5, 1.0));
                         } else {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0.3, 0.0));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0.3, 0.3));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0.3, 0.5));
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(7.0f / 255.0f, 7.0f / 255.0f, 47.0f / 255.0f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(3.0f / 255.0f, 3.0f / 255.0f, 62.0f / 255.0f, 1.0f));
                         }
                     };
 
