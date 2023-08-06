@@ -18,15 +18,6 @@
                         "pipeline_name": "resources/pipelines/gBufferWireframe.json"
                     }
                 ]
-            },
-            "e0c3826d-e145-40c5-9a35-3208f5519fe3": {
-                "model": "processed/scene1.gltf",
-                "overrides": [
-                    {
-                        "mesh_index": 0,
-                        "pipeline_name": "resources/pipelines/gBufferBlockout.json"
-                    }
-                ]
             }
         }
     },
@@ -172,40 +163,6 @@
                 }
             },
             "name": "Target"
-        },
-        "08f450a4-3b05-4416-9353-5f0a9fab1625": {
-            "Transform": {
-                "position": [
-                    3.681410789489746,
-                    -8.250404357910157,
-                    4.449136257171631
-                ],
-                "scale": [
-                    0.15599995851516725,
-                    0.15600009262561799,
-                    0.15600000321865083
-                ],
-                "rotation": [
-                    -0.8377516269683838,
-                    -0.49243107438087466,
-                    0.19712454080581666,
-                    0.12971468269824983
-                ]
-            },
-            "ModelComponent": {
-                "isTransparent": false,
-                "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "model": {
-                    "modelPath": "processed/scene1.gltf",
-                    "model_renderer": "e0c3826d-e145-40c5-9a35-3208f5519fe3"
-                }
-            },
-            "name": "Scene Geometry (Copy)"
         }
     },
     "lighting": {

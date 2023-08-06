@@ -40,6 +40,7 @@ add_executable(
         core/FileWatching.cpp
         core/Lookup.cpp
         core/Paths.cpp
+        core/SparseArrays.cpp
         core/Strings.cpp
         core/VFS.cpp
 )

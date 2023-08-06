@@ -3,14 +3,14 @@
     {
       "bufferView": 0,
       "componentType": 5125,
-      "count": 129,
+      "count": 123,
       "type": "SCALAR",
       "name": "Navmesh-indices"
     },
     {
       "bufferView": 1,
       "componentType": 5126,
-      "count": 129,
+      "count": 123,
       "min": [
         -11.991701126098633,
         -12.03029727935791,
@@ -28,7 +28,7 @@
       "bufferView": 1,
       "byteOffset": 32,
       "componentType": 5126,
-      "count": 129,
+      "count": 123,
       "type": "VEC3",
       "name": "Navmesh-normals"
     },
@@ -36,7 +36,7 @@
       "bufferView": 1,
       "byteOffset": 64,
       "componentType": 5126,
-      "count": 129,
+      "count": 123,
       "type": "VEC2",
       "name": "Navmesh-texCoords0"
     },
@@ -44,7 +44,7 @@
       "bufferView": 1,
       "byteOffset": 48,
       "componentType": 5126,
-      "count": 129,
+      "count": 123,
       "type": "VEC4",
       "name": "Navmesh-tangents"
     }
@@ -56,12 +56,12 @@
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 516,
+      "byteLength": 492,
       "name": "indexBuffer"
     },
     {
       "buffer": 1,
-      "byteLength": 10320,
+      "byteLength": 9840,
       "byteStride": 80,
       "name": "vertexBuffer"
     }
@@ -123,12 +123,12 @@
   ],
   "buffers": [
     {
-      "byteLength": 516,
+      "byteLength": 492,
       "uri": "scene1_navmesh.bin",
       "name": "IndexBuffer"
     },
     {
-      "byteLength": 10320,
+      "byteLength": 9840,
       "uri": "scene1_navmesh0.bin",
       "name": "VertexBuffer"
     }

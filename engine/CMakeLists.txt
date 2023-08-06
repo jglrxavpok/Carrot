@@ -162,6 +162,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}pathfinding/NavMesh.cpp
         ${EngineRoot}pathfinding/NavMeshBuilder.cpp
         ${EngineRoot}pathfinding/NavPath.cpp
+        ${EngineRoot}pathfinding/SparseVoxelGrid.cpp
 
         ${EngineRoot}physics/Character.cpp
         ${EngineRoot}physics/Colliders.cpp

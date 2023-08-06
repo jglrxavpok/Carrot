@@ -34,9 +34,7 @@ namespace Carrot::AI {
         const glm::vec3 halfExtents {0.5f * voxelSize};
         const glm::vec4 walkableColor = glm::vec4{ 0.0f, 0.0f, 1.0f, 1.0f };
         const glm::vec4 nonWalkableColor = glm::vec4{ 1.0f, 0.0f, 0.0f, 1.0f };
-        for(const auto& position : nonEmptyVoxels) {
-            const auto& voxel = voxelizedMeshes[position.x + position.y * sizeX + position.z * sizeX * sizeY];
-
+        for(const auto& [position, voxel] : voxels) {
             const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, minVoxelPosition + glm::vec3 { position } * voxelSize + halfExtents);
             GetRenderer().renderWireframeCuboid(renderContext, transform, halfExtents, voxel.walkable ? walkableColor : nonWalkableColor);
         }
@@ -76,10 +74,7 @@ namespace Carrot::AI {
         sizeX = ceil(size.x / voxelSize);
         sizeY = ceil(size.y / voxelSize);
         sizeZ = ceil(size.z / voxelSize);
-        voxelizedMeshes.clear();
-        voxelizedMeshes.resize(sizeZ * sizeY * sizeX);
-
-        nonEmptyVoxels.clear();
+        voxels.reset(sizeX, sizeY, sizeZ);
 
         const glm::vec3 halfSize { voxelSize / 2.0f };
         const glm::vec3 upVector { 0.0f, 0.0f, 1.0f };
@@ -145,10 +140,8 @@ namespace Carrot::AI {
                                             if(localPosition.x >= 0 && localPosition.x < sizeX
                                                && localPosition.y >= 0 && localPosition.y < sizeY
                                                && localPosition.z >= 0 && localPosition.z < sizeZ) {
-                                                auto& voxel = voxelizedMeshes[localPosition.x + localPosition.y * sizeX + localPosition.z * sizeX * sizeY];
-                                                voxel.empty = false;
+                                                auto& voxel = voxels.insert(localPosition);
                                                 voxel.walkable &= walkable;
-                                                nonEmptyVoxels.insert(localPosition);
                                             }
                                         }
                                     }
@@ -166,6 +159,13 @@ namespace Carrot::AI {
 
             recursivelyLoadNodes(scene.nodeHierarchy->hierarchy, entries[i].transform);
         }
+        voxels.finishBuild();
+
+        // TODO: voxelisation is done, now compute:
+        //  1. clearance (height & width gaps)
+        //  2. create mesh based on connections
+        //  3. ???
+
         debugStep = "Finished!";
         co_return;
     }

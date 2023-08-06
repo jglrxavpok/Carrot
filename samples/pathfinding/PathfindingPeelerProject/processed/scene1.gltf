@@ -3,14 +3,14 @@
     {
       "bufferView": 0,
       "componentType": 5125,
-      "count": 1188,
+      "count": 1182,
       "type": "SCALAR",
       "name": "Geometry-indices"
     },
     {
       "bufferView": 1,
       "componentType": 5126,
-      "count": 1188,
+      "count": 1182,
       "min": [
         -1.0,
         -1.0,
@@ -28,7 +28,7 @@
       "bufferView": 1,
       "byteOffset": 32,
       "componentType": 5126,
-      "count": 1188,
+      "count": 1182,
       "type": "VEC3",
       "name": "Geometry-normals"
     },
@@ -36,7 +36,7 @@
       "bufferView": 1,
       "byteOffset": 64,
       "componentType": 5126,
-      "count": 1188,
+      "count": 1182,
       "type": "VEC2",
       "name": "Geometry-texCoords0"
     },
@@ -44,7 +44,7 @@
       "bufferView": 1,
       "byteOffset": 48,
       "componentType": 5126,
-      "count": 1188,
+      "count": 1182,
       "type": "VEC4",
       "name": "Geometry-tangents"
     }
@@ -56,12 +56,12 @@
   "bufferViews": [
     {
       "buffer": 0,
-      "byteLength": 4752,
+      "byteLength": 4728,
       "name": "indexBuffer"
     },
     {
       "buffer": 1,
-      "byteLength": 95040,
+      "byteLength": 94560,
       "byteStride": 80,
       "name": "vertexBuffer"
     }
@@ -141,12 +141,12 @@
   ],
   "buffers": [
     {
-      "byteLength": 4752,
+      "byteLength": 4728,
       "uri": "scene1.bin",
       "name": "IndexBuffer"
     },
     {
-      "byteLength": 95040,
+      "byteLength": 94560,
       "uri": "scene10.bin",
       "name": "VertexBuffer"
     }

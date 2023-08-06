@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <engine/pathfinding/SparseVoxelGrid.h>
 #include <engine/render/Model.h>
 #include <core/async/Counter.h>
 #include <core/async/Coroutines.hpp>
@@ -45,14 +46,7 @@ namespace Carrot::AI {
         std::size_t sizeY = 0;
         std::size_t sizeZ = 0;
 
-        struct Voxel {
-            bool empty = true;
-            bool walkable = true;
-        };
-
-        // [Z][Y][X]
-        std::vector<Voxel> voxelizedMeshes;
-        std::unordered_set<glm::ivec3> nonEmptyVoxels;
+        SparseVoxelGrid voxels;
         std::string debugStep = "Idle";
     };
 
