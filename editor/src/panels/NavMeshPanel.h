@@ -20,7 +20,7 @@ namespace Peeler {
         float maximumClearance = 1.8f;
         float minimumWidth = 0.5f;
         float maximumSlope = glm::radians(45.0f);
-        float voxelSize = 0.1f;
+        float voxelSize = 0.5f;
     };
 
 } // Peeler
