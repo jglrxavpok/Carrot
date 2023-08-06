@@ -22,7 +22,13 @@ namespace Carrot::AI {
         NavMeshBuilder() = default;
 
     public:
-        void start(std::vector<MeshEntry>&& entries, float voxelSize, float maxSlope);
+        struct BuildParams {
+            float voxelSize = 0.5f;
+            float maxSlope = glm::radians(45.0f);
+            float characterHeight = 1.8f;
+            float characterRadius = 0.5f;
+        };
+        void start(std::vector<MeshEntry>&& entries, const BuildParams& params);
 
     public:
         bool isRunning();
@@ -34,19 +40,20 @@ namespace Carrot::AI {
         void debugDraw(const Carrot::Render::Context& renderContext);
 
     private:
-        Carrot::Async::Task<void> build(float voxelSize, float maxSlope);
+        Carrot::Async::Task<void> build();
 
     private:
         Carrot::Async::Counter taskRunning;
         std::vector<MeshEntry> entries;
         glm::vec3 minVoxelPosition {0.0f};
-        float voxelSize = 0.0f;
+        BuildParams params;
         glm::vec3 size{0.0f};
         std::size_t sizeX = 0;
         std::size_t sizeY = 0;
         std::size_t sizeZ = 0;
 
         SparseVoxelGrid voxels;
+        std::vector<glm::ivec3> debugVoxelPositions;
         std::string debugStep = "Idle";
     };
 

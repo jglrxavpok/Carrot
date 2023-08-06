@@ -52,13 +52,23 @@ namespace Carrot::AI {
          */
         Voxel& insert(const glm::uvec3& xyz);
 
+        /**
+         * True iif there is a voxel at the given position
+         */
+        bool contains(std::size_t x, std::size_t y, std::size_t z) const;
+
+        /**
+         * Throws if no voxel at that position
+         */
+        const Voxel& get(std::size_t x, std::size_t y, std::size_t z) const;
+
         void finishBuild();
 
         Iterator begin();
         Iterator end();
 
     private:
-        std::size_t posToIndex(const glm::ivec3& pos);
+        std::size_t posToIndex(const glm::ivec3& pos) const;
 
         std::size_t sizeX = 0;
         std::size_t sizeY = 0;

@@ -15,13 +15,14 @@
 
 namespace Carrot::AI {
 
-    void NavMeshBuilder::start(std::vector<MeshEntry>&& _entries, float voxelSize, float maxSlope) {
+    void NavMeshBuilder::start(std::vector<MeshEntry>&& _entries, const BuildParams& buildParams) {
         verify(!isRunning(), "Cannot start a NavMeshBuilder which is still running");
+        params = buildParams;
 
         entries = std::move(_entries);
         GetTaskScheduler().schedule(TaskDescription {
             .name = "Build NavMesh",
-            .task = build(voxelSize, maxSlope),
+            .task = build(),
             .joiner = &taskRunning
         }, TaskScheduler::AssetLoading);
     }
@@ -31,19 +32,25 @@ namespace Carrot::AI {
     }
 
     void NavMeshBuilder::debugDraw(const Carrot::Render::Context& renderContext) {
-        const glm::vec3 halfExtents {0.5f * voxelSize};
+        const glm::vec3 halfExtents {0.5f * params.voxelSize};
         const glm::vec4 walkableColor = glm::vec4{ 0.0f, 0.0f, 1.0f, 1.0f };
         const glm::vec4 nonWalkableColor = glm::vec4{ 1.0f, 0.0f, 0.0f, 1.0f };
-        for(const auto& [position, voxel] : voxels) {
-            const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, minVoxelPosition + glm::vec3 { position } * voxelSize + halfExtents);
+        for(const auto& position : debugVoxelPositions) {
+            const auto& voxel = voxels.get(position.x, position.y, position.z);
+            const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, minVoxelPosition + glm::vec3 { position } * params.voxelSize + halfExtents);
             GetRenderer().renderWireframeCuboid(renderContext, transform, halfExtents, voxel.walkable ? walkableColor : nonWalkableColor);
         }
-        const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, minVoxelPosition + size/2.0f);
-        GetRenderer().renderWireframeCuboid(renderContext, transform, size/2.0f, walkableColor);
+/*        const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, minVoxelPosition + size/2.0f);
+        GetRenderer().renderWireframeCuboid(renderContext, transform, size/2.0f, walkableColor);*/
     }
 
-    Carrot::Async::Task<void> NavMeshBuilder::build(float _voxelSize, float maxSlope) {
-        voxelSize = _voxelSize;
+    Carrot::Async::Task<void> NavMeshBuilder::build() {
+        // 1. voxelise given meshes
+        // 2. remove voxels based on clearance & XY gap (min corridor size)
+        // 3. generate mesh
+
+        const float voxelSize = params.voxelSize;
+        const float maxSlope = params.maxSlope;
         debugStep = "Compute bounds";
 
         Math::AABB completeBounds;
@@ -75,6 +82,7 @@ namespace Carrot::AI {
         sizeY = ceil(size.y / voxelSize);
         sizeZ = ceil(size.z / voxelSize);
         voxels.reset(sizeX, sizeY, sizeZ);
+        debugVoxelPositions.clear();
 
         const glm::vec3 halfSize { voxelSize / 2.0f };
         const glm::vec3 upVector { 0.0f, 0.0f, 1.0f };
@@ -160,6 +168,47 @@ namespace Carrot::AI {
             recursivelyLoadNodes(scene.nodeHierarchy->hierarchy, entries[i].transform);
         }
         voxels.finishBuild();
+
+        auto blocksMovement = [&](std::int64_t x, std::int64_t y, std::int64_t z) {
+            if(x < 0 || x >= sizeX)
+                return false;
+            if(y < 0 || y >= sizeY)
+                return false;
+            if(z < 0 || z >= sizeZ)
+                return false;
+
+            if(!voxels.contains(x, y, z)) {
+                return false;
+            }
+            return !voxels.get(x, y, z).walkable;
+        };
+
+        const std::int64_t clearanceInVoxels = glm::ceil(params.characterHeight / params.voxelSize);
+        const std::int64_t radiusInVoxels = glm::ceil(params.characterRadius / params.voxelSize);
+
+        auto hasClearance = [&](const glm::ivec3& position) -> bool {
+            for (std::int64_t z = 0; z < clearanceInVoxels; ++z) {
+                for (std::int64_t y = -radiusInVoxels; y <= radiusInVoxels; ++y) {
+                    for (std::int64_t x = -radiusInVoxels; x <= radiusInVoxels; ++x) {
+                        if(blocksMovement(x + position.x, y + position.y, z + position.z)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        };
+
+        debugStep = "Remove voxels with unsufficient clearance";
+        std::vector<glm::ivec3> walkablePositions;
+        for(const auto& [position, voxel] : voxels) {
+            if(voxel.walkable) {
+                if(hasClearance(position)) {
+                    walkablePositions.push_back(position);
+                    debugVoxelPositions.push_back(position);
+                }
+            }
+        }
 
         // TODO: voxelisation is done, now compute:
         //  1. clearance (height & width gaps)

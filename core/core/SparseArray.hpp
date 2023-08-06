@@ -146,7 +146,7 @@ namespace Carrot {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }
 
-            Bank* bank = getBank(index);
+            const Bank* bank = getBank(index);
             if(bank == nullptr) {
                 throw std::out_of_range(Carrot::sprintf("No element at index %llu, size is %llu", index, elementCount));
             }

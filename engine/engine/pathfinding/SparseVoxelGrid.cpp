@@ -50,6 +50,14 @@ namespace Carrot::AI {
         return insert(xyz.x, xyz.y, xyz.z);
     }
 
+    bool SparseVoxelGrid::contains(std::size_t x, std::size_t y, std::size_t z) const {
+        return voxelizedMeshes.contains(posToIndex(glm::ivec3 { x, y, z }));
+    }
+
+    const Voxel& SparseVoxelGrid::get(std::size_t x, std::size_t y, std::size_t z) const {
+        return voxelizedMeshes.at(posToIndex(glm::ivec3 { x, y, z }));
+    }
+
     void SparseVoxelGrid::finishBuild() {
         for(auto& v : nonEmptyVoxelsSet) {
             nonEmptyVoxels.emplace_back(std::move(v));
@@ -71,7 +79,7 @@ namespace Carrot::AI {
         return it;
     }
 
-    std::size_t SparseVoxelGrid::posToIndex(const glm::ivec3& pos) {
+    std::size_t SparseVoxelGrid::posToIndex(const glm::ivec3& pos) const {
         return pos.x + pos.y * sizeX + pos.z * sizeX * sizeY;
     }
 

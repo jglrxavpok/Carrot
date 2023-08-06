@@ -32,7 +32,7 @@ namespace Peeler {
         // TODO: schema for explanation (like Unity does it)
         //  + help markers
         ImGui::DragFloat("Minimum width", &minimumWidth, 0.1f, 0.0001f, FLT_MAX);
-        ImGui::DragFloat("Maximum clearance", &maximumClearance, 0.1f, 0.0001f, FLT_MAX);
+        ImGui::DragFloat("Minimum clearance", &minimumClearance, 0.1f, 0.0001f, FLT_MAX);
         ImGui::DragFloat("Voxel size", &voxelSize, 0.01f, 0.01f, 10.0f);
         ImGui::SliderAngle("Maximum slope angle", &maximumSlope, 0.0f, 90.0f, "%.0f°");
 
@@ -54,7 +54,13 @@ namespace Peeler {
                 }
             }
 
-            navMeshBuilder.start(std::move(buildEntries), voxelSize, maximumSlope);
+            Carrot::AI::NavMeshBuilder::BuildParams params {
+                .voxelSize = voxelSize,
+                .maxSlope = maximumSlope,
+                .characterHeight = minimumClearance,
+                .characterRadius = minimumWidth,
+            };
+            navMeshBuilder.start(std::move(buildEntries), params);
         }
         ImGui::EndDisabled();
 
