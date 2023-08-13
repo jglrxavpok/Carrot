@@ -1,0 +1,144 @@
+{
+    "world_data": {
+        "model_renderers": {
+            "d36875b8-a262-4424-9a9e-ef7b162297f0": {
+                "model": "processed/scene2.gltf",
+                "overrides": [
+                    {
+                        "mesh_index": 0,
+                        "pipeline_name": "resources/pipelines/gBufferBlockout.json"
+                    }
+                ]
+            }
+        }
+    },
+    "entities": {
+        "5a953fcd-b947-49f1-a833-8fd31473270e": {
+            "Transform": {
+                "position": [
+                    -0.0023825466632843019,
+                    0.005615115165710449,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "processed/scene2.gltf",
+                    "model_renderer": "d36875b8-a262-4424-9a9e-ef7b162297f0"
+                }
+            },
+            "name": "Scene Geometry"
+        },
+        "d5577523-8895-438a-bb4f-d14f5f73584c": {
+            "Transform": {
+                "position": [
+                    -0.7890010476112366,
+                    -9.126267433166504,
+                    9.882559776306153
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.7999999523162842
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
+                "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
+                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
+                "Go": false
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "resources/models/simple_cube.obj"
+                }
+            },
+            "name": "Agent"
+        },
+        "5fcf1c04-c9ee-4706-8398-1876dde0b33e": {
+            "Transform": {
+                "position": [
+                    -7.569531440734863,
+                    7.920760154724121,
+                    1.3105055093765259
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "ModelComponent": {
+                "isTransparent": false,
+                "color": [
+                    0.6071428060531616,
+                    1.0,
+                    0.0,
+                    1.0
+                ],
+                "model": {
+                    "modelPath": "resources/models/simple_sphere.obj"
+                }
+            },
+            "name": "Target"
+        }
+    },
+    "lighting": {
+        "ambient": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "raytracedShadows": true
+    },
+    "skybox": "None",
+    "logic_systems": {
+        "Kinematics": {},
+        "TransformSwapBuffers": {},
+        "RigidBodies": {},
+        "LuaUpdate": {},
+        "PathfindingPeelerProject.PathfindToTargetSystem (C#)": {}
+    },
+    "render_systems": {
+        "SpriteRender": {},
+        "ModelRender": {},
+        "HandleLights": {},
+        "LuaRender": {}
+    }
+}

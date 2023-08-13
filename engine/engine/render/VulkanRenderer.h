@@ -242,9 +242,17 @@ namespace Carrot {
         /// Reference is valid only for the current frame
         Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
+        void renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+
+        /**
+         * Render 3D arrow pointing towards -Z, with origin on tip of arrow
+         */
+        void render3DArrow(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
 
         /// Must be called between startFrame and endFrame. Otherwise it is not safe.
         void render(const Render::Packet& packet);
@@ -352,6 +360,7 @@ namespace Carrot {
         std::shared_ptr<Carrot::Model> unitSphereModel;
         std::shared_ptr<Carrot::Model> unitCubeModel;
         std::shared_ptr<Carrot::Model> unitCapsuleModel;
+        std::shared_ptr<Carrot::Model> debugArrowModel;
         std::shared_ptr<Carrot::Render::MaterialHandle> whiteMaterial;
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
@@ -388,7 +397,10 @@ namespace Carrot {
         void collectRenderPackets();
         void sortRenderPackets(std::vector<Carrot::Render::Packet>& packets);
         void mergeRenderPackets(const std::vector<Carrot::Render::Packet>& inputPackets, std::vector<Carrot::Render::Packet>& outputPackets);
-        void renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+
+        // debug
+        void renderModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
+        void renderWireframeModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
 
         /**
          * Uploads a list of drawdata to the per_draw buffer and returns the dynamic offset to use when binding the descriptor set

@@ -57,17 +57,54 @@ namespace Peeler {
             Carrot::AI::NavMeshBuilder::BuildParams params {
                 .voxelSize = voxelSize,
                 .maxSlope = maximumSlope,
-                .characterHeight = minimumClearance,
-                .characterRadius = minimumWidth,
+                .characterHeight = (std::size_t)ceil(minimumClearance / voxelSize),
+                .characterRadius = (std::size_t)ceil(minimumWidth / voxelSize),
             };
             navMeshBuilder.start(std::move(buildEntries), params);
         }
         ImGui::EndDisabled();
 
+        static Carrot::AI::NavMeshBuilder::DebugDrawType debugDraw = Carrot::AI::NavMeshBuilder::DebugDrawType::WalkableVoxels;
+        auto typeToName = [](Carrot::AI::NavMeshBuilder::DebugDrawType type) {
+            switch(type) {
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::WalkableVoxels:
+                    return "Walkable voxels";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::OpenHeightField:
+                    return "Open Height Field";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::DistanceField:
+                    return "Distance Field";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::Regions:
+                    return "Regions";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::Contours:
+                    return "Region contours";
+
+                default:
+                    return "Unknown";
+            }
+        };
+
+        using DebugDrawType = Carrot::AI::NavMeshBuilder::DebugDrawType;
+        for(auto type : {
+            DebugDrawType::WalkableVoxels,
+            DebugDrawType::OpenHeightField,
+            DebugDrawType::DistanceField,
+            DebugDrawType::Regions,
+            DebugDrawType::Contours,
+        }) {
+            if(ImGui::RadioButton(typeToName(type), debugDraw == type)) {
+                debugDraw = type;
+            }
+        }
+
+
         ImGui::TextUnformatted(navMeshBuilder.getDebugStep().c_str());
 
         if(!navMeshBuilder.isRunning()) {
-            navMeshBuilder.debugDraw(GetEngine().newRenderContext(renderContext.swapchainIndex, app.gameViewport));
+            navMeshBuilder.debugDraw(GetEngine().newRenderContext(renderContext.swapchainIndex, app.gameViewport), debugDraw);
         }
     }
 } // Peeler

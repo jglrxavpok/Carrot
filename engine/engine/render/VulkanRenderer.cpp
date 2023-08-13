@@ -90,6 +90,9 @@ void Carrot::VulkanRenderer::lateInit() {
     gBufferPipeline = getOrCreatePipeline("gBuffer");
     whiteMaterial = getMaterialSystem().createMaterialHandle();
     whiteMaterial->albedo = getMaterialSystem().getWhiteTexture();
+
+    // requires whiteMaterial
+    debugArrowModel = getOrCreateModel("resources/models/simple_arrow.gltf");
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& renderPass) {
@@ -1634,19 +1637,53 @@ void Carrot::VulkanRenderer::mergeRenderPackets(const std::vector<Carrot::Render
     }
 }
 
+void Carrot::VulkanRenderer::renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderModel(*unitSphereModel, renderContext, glm::scale(transform, glm::vec3(radius)), color, objectID);
+}
+
+void Carrot::VulkanRenderer::renderCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderModel(*unitCapsuleModel, renderContext, glm::scale(transform, glm::vec3(radius, radius, height)), color, objectID);
+}
+
+void Carrot::VulkanRenderer::renderCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderModel(*unitCubeModel, renderContext, transform * glm::scale(glm::mat4(1.0f), halfExtents * 2.0f), color, objectID);
+}
+
 void Carrot::VulkanRenderer::renderWireframeSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID) {
-    renderWireframe(*unitSphereModel, renderContext, glm::scale(transform, glm::vec3(radius)), color, objectID);
+    renderWireframeModel(*unitSphereModel, renderContext, glm::scale(transform, glm::vec3(radius)), color, objectID);
 }
 
 void Carrot::VulkanRenderer::renderWireframeCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
-    renderWireframe(*unitCapsuleModel, renderContext, glm::scale(transform, glm::vec3(radius, radius, height)), color, objectID);
+    renderWireframeModel(*unitCapsuleModel, renderContext, glm::scale(transform, glm::vec3(radius, radius, height)), color, objectID);
 }
 
 void Carrot::VulkanRenderer::renderWireframeCuboid(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec3& halfExtents, const glm::vec4& color, const Carrot::UUID& objectID) {
-    renderWireframe(*unitCubeModel, renderContext, transform * glm::scale(glm::mat4(1.0f), halfExtents * 2.0f), color, objectID);
+    renderWireframeModel(*unitCubeModel, renderContext, transform * glm::scale(glm::mat4(1.0f), halfExtents * 2.0f), color, objectID);
 }
 
-void Carrot::VulkanRenderer::renderWireframe(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
+void Carrot::VulkanRenderer::render3DArrow(const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
+    renderModel(*debugArrowModel, renderContext, transform, color, objectID);
+}
+
+void Carrot::VulkanRenderer::renderModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+    Carrot::GBufferDrawData data;
+    data.materialIndex = whiteMaterial->getSlot();
+
+    packet.useMesh(*model.getStaticMeshes()[0]); // TODO: find a better way to load individual meshes
+    packet.pipeline = gBufferPipeline;
+
+    packet.addPerDrawData({&data, 1});
+
+    Carrot::InstanceData instance;
+    instance.uuid = objectID;
+    instance.color = color;
+    instance.transform = transform;
+    packet.useInstance(instance);
+    render(packet);
+}
+
+void Carrot::VulkanRenderer::renderWireframeModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
     Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
     Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();

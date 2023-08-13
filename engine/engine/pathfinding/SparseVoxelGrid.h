@@ -12,7 +12,7 @@ namespace Carrot::AI {
 
     struct Voxel {
         bool empty = true;
-        bool walkable = true;
+        bool walkable = false;
         //glm::vec3 averageNormal {0.0f};
     };
 
