@@ -92,4 +92,87 @@ namespace Carrot::IO {
         out = next() != 0;
         return *this;
     }
+
+    VectorWriter& VectorWriter::operator<<(const char& input) {
+        grow(1);
+        next() = std::bit_cast<std::uint8_t>(input);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::uint8_t& input) {
+        grow(1);
+        next() = input;
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::uint16_t& input) {
+        grow(2);
+        *this << static_cast<std::uint8_t>(input & 0xFF);
+        *this << static_cast<std::uint8_t>((input >> 8) & 0xFF);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::uint32_t& input) {
+        grow(4);
+        *this << static_cast<std::uint8_t>(input & 0xFF);
+        *this << static_cast<std::uint8_t>((input >> 8) & 0xFF);
+        *this << static_cast<std::uint8_t>((input >> 16) & 0xFF);
+        *this << static_cast<std::uint8_t>((input >> 24) & 0xFF);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::uint64_t& input) {
+        grow(8);
+        *this << static_cast<std::uint32_t>(input & 0xFFFFFFFF);
+        *this << static_cast<std::uint32_t>((input >> 32) & 0xFFFFFFFF);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const float& input) {
+        *this << std::bit_cast<std::uint32_t>(input);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const double& input) {
+        *this << std::bit_cast<std::uint64_t>(input);
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::u32string& input) {
+        std::size_t s = input.size();
+        grow(s * sizeof(std::uint32_t) + sizeof(std::size_t));
+        *this << s;
+        for(const auto& element : input) {
+            std::uint32_t c = std::bit_cast<std::uint32_t>(element);
+            *this << c;
+        }
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const std::string& input) {
+        std::size_t s = input.size();
+        grow(s + sizeof(std::size_t));
+        *this << s;
+        for(const auto& c : input) {
+            *this << c;
+        }
+        return *this;
+    }
+
+    VectorWriter& VectorWriter::operator<<(const bool& input) {
+        grow(1);
+        next() = input ? 1 : 0;
+        return *this;
+    }
+
+    std::uint8_t& VectorWriter::next() {
+        verify(ptr < data.size(), "Writing past end of buffer, missing a 'grow' call?");
+        return data[ptr++];
+    }
+
+    void VectorWriter::grow(std::size_t size) {
+        if(ptr + size >= data.size()) {
+            data.resize(ptr+size);
+        }
+    }
 }

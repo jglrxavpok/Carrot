@@ -41,6 +41,8 @@ namespace Carrot::IO {
 
         JSON,
         TXT,
+
+        CNAV, // Carrot navmeshes
     };
 
     constexpr bool isImageFormat(FileFormat format) {
@@ -90,6 +92,8 @@ namespace Carrot::IO {
 
         CHECK(JSON);
         CHECK(TXT);
+
+        CHECK(CNAV);
         return FileFormat::UNKNOWN;
     }
 

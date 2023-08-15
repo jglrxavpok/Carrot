@@ -14,9 +14,11 @@ namespace Carrot::Math {
         glm::vec3 b { 0.0f };
         glm::vec3 c { 0.0f };
 
-        glm::vec3 getClosestPoint(const glm::vec3& p) const;
-        glm::vec3 getClosestPointOnEdges(const glm::vec3& p) const;
+        [[nodiscard]] glm::vec3 getClosestPoint(const glm::vec3& p) const;
+        [[nodiscard]] glm::vec3 getClosestPointOnEdges(const glm::vec3& p) const;
         bool isPointInside(const glm::vec3& p) const;
+
+        [[nodiscard]] glm::vec3 computeNormal() const;
     };
 
 } // Carrot::Math

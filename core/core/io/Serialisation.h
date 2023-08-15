@@ -9,6 +9,9 @@
 #include <cstdint>
 #include <string>
 #include <glm/glm.hpp>
+#include <core/utils/Concepts.hpp>
+#include <span>
+#include <unordered_map>
 
 // Writes are done in little-endian
 namespace Carrot::IO {
@@ -149,10 +152,149 @@ namespace Carrot::IO {
             return *this;
         }
 
+        template<typename Elem, typename Alloc> requires Concepts::Deserializable<VectorReader, Elem>
+        VectorReader& operator>>(std::vector<Elem, Alloc>& out) {
+            std::size_t size;
+            *this >> size;
+            out.resize(size);
+            for(std::size_t i = 0; i < size; i++) {
+                *this >> out[i];
+            }
+            return *this;
+        }
+
+        template<typename Elem, std::size_t Size> requires Concepts::Deserializable<VectorReader, Elem>
+        VectorReader& operator>>(std::span<Elem, Size> out) {
+            for(std::size_t i = 0; i < out.size(); i++) {
+                *this >> out[i];
+            }
+            return *this;
+        }
+
+        template<typename Elem, std::size_t Size> requires Concepts::Deserializable<VectorReader, Elem>
+        VectorReader& operator>>(std::array<Elem, Size>& out) {
+            for(std::size_t i = 0; i < out.size(); i++) {
+                *this >> out[i];
+            }
+            return *this;
+        }
+
+        template<typename Key, typename Value, typename Hasher, typename EqualFunc, typename Alloc>
+            requires Concepts::Deserializable<VectorReader, Key> && Concepts::Deserializable<VectorReader, Value>
+        VectorReader& operator>>(std::unordered_map<Key, Value, Hasher, EqualFunc, Alloc>& map) {
+            map.clear();
+            std::size_t count;
+            *this >> count;
+            for(std::size_t i = 0; i < count; i++) {
+                Key k;
+                Value v;
+                *this >> k;
+                *this >> v;
+                map[std::move(k)] = std::move(v);
+            }
+            return *this;
+        }
+
+        template<typename Elem, std::size_t N>
+            requires Concepts::Deserializable<VectorReader, Elem>
+        VectorReader& operator>>(Elem map[N]) {
+            for(std::size_t i = 0; i < N; i++) {
+                *this >> map[i];
+            }
+            return *this;
+        }
+
     private:
         std::uint8_t next();
 
         const std::vector<std::uint8_t>& data;
+        std::size_t ptr = 0;
+    };
+
+    /// Allows to write data to a std::vector, with Carrot::IO::write methods. Little-endian is used for both
+    class VectorWriter {
+    public:
+        explicit VectorWriter(std::vector<std::uint8_t>& vector): data(vector) {}
+        ~VectorWriter() = default;
+
+        VectorWriter& operator<<(const char& input);
+        VectorWriter& operator<<(const std::uint8_t& input);
+        VectorWriter& operator<<(const std::uint16_t& input);
+        VectorWriter& operator<<(const std::uint32_t& input);
+        VectorWriter& operator<<(const std::uint64_t& input);
+        VectorWriter& operator<<(const float& input);
+        VectorWriter& operator<<(const double& input);
+        VectorWriter& operator<<(const std::u32string& input);
+
+        VectorWriter& operator<<(const std::string& input);
+        VectorWriter& operator<<(const bool& input);
+
+        template<glm::length_t dim, typename Elem, glm::qualifier qualifier>
+        VectorWriter& operator<<(const glm::vec<dim, Elem, qualifier>& value) {
+            for (int i = 0; i < dim; ++i) {
+                *this << value[i];
+            }
+            return *this;
+        }
+
+        template<typename Elem, glm::qualifier qualifier>
+        VectorWriter& operator<<(const glm::qua<Elem, qualifier>& value) {
+            for (int i = 0; i < 4; ++i) {
+                *this << value[i];
+            }
+            return *this;
+        }
+
+        template<typename Elem, size_t Size> requires Concepts::Serializable<VectorWriter, Elem>
+        VectorWriter& operator<<(const std::span<Elem, Size>& span) {
+            for(const auto& e : span) {
+                *this << e;
+            }
+            return *this;
+        }
+
+        template<typename Elem, size_t Size> requires Concepts::Serializable<VectorWriter, Elem>
+        VectorWriter& operator<<(const std::array<Elem, Size>& span) {
+            for(const auto& e : span) {
+                *this << e;
+            }
+            return *this;
+        }
+
+        template<typename Elem> requires Concepts::Serializable<VectorWriter, Elem>
+        VectorWriter& operator<<(const std::vector<Elem>& v) {
+            *this << v.size();
+            for(const auto& e : v) {
+                *this << e;
+            }
+            return *this;
+        }
+
+        template<typename Key, typename Value, typename Hasher, typename EqualFunc, typename Alloc>
+            requires Concepts::Serializable<VectorWriter, Key> && Concepts::Serializable<VectorWriter, Value>
+        VectorWriter& operator<<(const std::unordered_map<Key, Value, Hasher, EqualFunc, Alloc>& map) {
+            *this << map.size();
+            for(const auto& [k, v] : map) {
+                *this << k;
+                *this << v;
+            }
+            return *this;
+        }
+
+        template<typename Elem, std::size_t N>
+            requires Concepts::Serializable<VectorWriter, Elem>
+        VectorWriter& operator<<(const Elem map[N]) {
+            for(std::size_t i = 0; i < N; i++) {
+                *this << map[i];
+            }
+            return *this;
+        }
+
+    private:
+        std::uint8_t& next();
+        void grow(std::size_t size);
+
+        std::vector<std::uint8_t>& data;
         std::size_t ptr = 0;
     };
 }

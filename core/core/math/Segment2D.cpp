@@ -5,6 +5,8 @@
 #include "Segment2D.h"
 
 namespace Carrot::Math {
+    Segment2D::Segment2D(const glm::vec2& a, const glm::vec2& b): first(a), second(b) {}
+
     bool Segment2D::computeIntersection(const Segment2D& other, glm::vec2& outIntersectionPoint) const {
         float x1 = first.x;
         float y1 = first.y;

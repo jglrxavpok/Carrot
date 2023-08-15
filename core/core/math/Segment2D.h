@@ -12,6 +12,7 @@ namespace Carrot::Math {
         glm::vec2 second{0.0f};
 
         Segment2D() = default;
+        Segment2D(const glm::vec2& a, const glm::vec2& b);
         Segment2D(const Segment2D& toCopy) = default;
         Segment2D(Segment2D&& toMove) = default;
 

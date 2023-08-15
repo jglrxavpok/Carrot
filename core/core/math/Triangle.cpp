@@ -59,4 +59,10 @@ namespace Carrot::Math {
 
         return true;
     }
+
+    glm::vec3 Triangle::computeNormal() const {
+        glm::vec3 normal = glm::cross(b - a, c - a);
+        normal /= glm::length(normal);
+        return normal;
+    }
 } // Carrot::Math

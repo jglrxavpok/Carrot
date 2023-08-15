@@ -89,7 +89,7 @@
                 }
             },
             "NavMesh": {
-                "nav_mesh": "models/scene1_navmesh.gltf"
+                "nav_mesh": "build/test.cnav"
             },
             "name": "Scene Navmesh"
         },

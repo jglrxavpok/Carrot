@@ -5,6 +5,7 @@
 #pragma once
 
 #include <engine/pathfinding/SparseVoxelGrid.h>
+#include <engine/pathfinding/NavMesh.h>
 #include <engine/render/Model.h>
 #include <core/async/Counter.h>
 #include <core/async/Coroutines.hpp>
@@ -25,6 +26,9 @@ namespace Carrot::AI {
             DistanceField,
             Regions,
             Contours,
+            SimplifiedContours,
+            RegionMeshes,
+            Mesh,
         };
 
         NavMeshBuilder() = default;
@@ -41,7 +45,9 @@ namespace Carrot::AI {
         void start(std::vector<MeshEntry>&& entries, const BuildParams& params);
 
     public:
-        bool isRunning();
+        bool isRunning() const;
+
+        const NavMesh& getResult() const;
 
         const std::string& getDebugStep() const {
             return debugStep;
@@ -82,23 +88,55 @@ namespace Carrot::AI {
             std::vector<HeightFieldSpan> spans;
         };
 
+        struct ContourPoint {
+            std::int64_t x = 0;
+            std::int64_t y = 0;
+            std::size_t spanIndex = 0;
+
+            std::uint8_t edgeDirection = 0; //< Direction in which this point was created. Helps determine where to place vertices on the actual border (not at the center of voxels)
+
+            bool operator==(const ContourPoint&) const;
+        };
+
+        struct Graph {
+            struct Face {
+                std::size_t indexA = 0;
+                std::size_t indexB = 0;
+                std::size_t indexC = 0;
+            };
+
+            std::vector<glm::vec3> points;
+            std::vector<Face> faces;
+        };
+
         struct Region {
             std::size_t index = 0; //< index of this region
             glm::ivec3 center { 0 };
-            std::unordered_set<std::size_t> connected; //< indices of regions connected to this one (does not contain itself)
+            std::vector<glm::ivec3> inside;
 
-            std::vector<glm::ivec3> contour;
+            std::vector<ContourPoint> contour;
+            std::vector<ContourPoint> simplifiedContour;
+
+            Graph triangulatedRegion;
+            std::unique_ptr<Carrot::Mesh> triangulatedRegionMesh;
         };
-
 
         using OpenHeightField = SparseArray<HeightFieldColumn>;
 
         Carrot::Async::Task<void> build();
 
         bool doSpansConnect(const HeightFieldSpan& spanA, const HeightFieldSpan& spanB);
+        bool doContourPointsConnect(const OpenHeightField& field, const ContourPoint& pointA, const ContourPoint& pointB);
+
+        /// Converts a contour point to world space
+        glm::vec3 contourToWorld(const OpenHeightField& field, const ContourPoint& point);
+
+        /// Like contourToWorld, but lerps Z with neighbor if there is one (to handle contour points with different height)
+        glm::vec3 contourToWorldBorderAware(const OpenHeightField& field, const ContourPoint& point, const Region& originalRegion, bool& isShared);
 
         void buildOpenHeightField(const SparseVoxelGrid& voxels, OpenHeightField& field);
         void buildDistanceField(OpenHeightField& field);
+        void narrowDistanceField(OpenHeightField& field);
 
         /**
          * Flood-fills the field with the given region (base), filling connected spans that have the same distance to the border
@@ -111,8 +149,18 @@ namespace Carrot::AI {
         void buildContours(const OpenHeightField& field, std::vector<Region>& regions);
         void buildContour(const OpenHeightField& field, Region& region);
 
+        void simplifyContours(const OpenHeightField& field, std::vector<Region>& regions);
+        void simplifyContour(const OpenHeightField& field, Region& region);
+
+        std::unique_ptr<Carrot::Mesh> graphToMesh(const Graph& graph);
+        void triangulateContour(const OpenHeightField& field, const std::vector<Region>& regions, Region& region);
+        void buildMesh(const OpenHeightField& field, std::vector<Region>& region, Graph& rawMesh);
+        void makeNavMesh(const Graph& rawMesh, NavMesh& navMesh);
+
     private:
         Carrot::Async::Counter taskRunning;
+        NavMesh navMesh;
+
         std::vector<MeshEntry> entries;
         glm::vec3 minVoxelPosition {0.0f};
         BuildParams params;
@@ -127,6 +175,9 @@ namespace Carrot::AI {
             OpenHeightField openHeightField;
             std::int64_t maxDistance = 1;
             std::vector<Region> regions;
+
+            Graph rawMesh;
+            std::unique_ptr<Carrot::Mesh> debugRawMesh;
         };
         WorkingData workingData;
 

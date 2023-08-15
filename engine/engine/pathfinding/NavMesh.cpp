@@ -7,9 +7,14 @@
 #include <core/math/Segment2D.h>
 #include <core/math/Triangle.h>
 #include <core/scene/LoadedScene.h>
-#include <core/scene/GLTFLoader.h>
 #include <glm/gtx/closest_point.hpp>
 #include <core/utils/Profiling.h>
+#include <engine/render/resources/model_loading/SceneLoader.h>
+#include <core/io/FileFormats.h>
+#include <core/io/Serialisation.h>
+
+static constexpr std::array<char, 4> CNAVMagic = { 'C', 'N', 'A', 'V' };
+static constexpr std::uint32_t CNAVVersion = 0;
 
 namespace Carrot::AI {
 
@@ -17,11 +22,42 @@ namespace Carrot::AI {
 
     }
 
-    // TODO: "CPU"-Mesh constructor (or something like that)
-
     void NavMesh::loadFromResource(const Carrot::IO::Resource& resource) {
-        Render::GLTFLoader loader;
-        loadFromScene(loader.load(resource));
+        const char* resourceName = resource.getName().c_str();
+        if(IO::getFileFormat(resourceName) == IO::FileFormat::CNAV) {
+            std::vector<std::uint8_t> data;
+            data.resize(resource.getSize());
+            resource.read(data.data(), data.size());
+
+            IO::VectorReader reader { data };
+
+            // write header
+            std::array<char, 4> magic { '\0', '\0', '\0', '\0' };
+            reader >> std::span(magic);
+            if(magic != CNAVMagic) {
+                throw std::invalid_argument(Carrot::sprintf("[NavMesh] File %s does not have the proper magic header", resourceName));
+            }
+
+            std::uint32_t version;
+            reader >> version;
+            if(version != CNAVVersion) {
+                throw std::invalid_argument(Carrot::sprintf("[NavMesh] File %s does not a valid version", resourceName));
+            }
+
+            // write triangles
+            std::vector<NavMeshTriangle> triangles;
+            reader >> triangles;
+
+            // write adjacency
+            std::vector<Edge> edges;
+            reader >> edges;
+
+            reader >> portalVertices;
+            pathfinder.setGraph(std::move(triangles), std::move(edges));
+        } else {
+            Render::SceneLoader loader;
+            loadFromScene(loader.load(resource));
+        }
     }
 
     void NavMesh::loadFromScene(const Render::LoadedScene& scene)  {
@@ -148,6 +184,70 @@ namespace Carrot::AI {
         path.waypoints.push_back(pointB);
 
         return path;
+    }
+
+    IO::VectorReader& operator>>(IO::VectorReader& i, NavMesh::NavMeshTriangle& triangle) {
+        i >> triangle.index;
+        i >> triangle.triangle.a;
+        i >> triangle.triangle.b;
+        i >> triangle.triangle.c;
+
+        triangle.center = (triangle.triangle.a + triangle.triangle.b + triangle.triangle.c) / 3.0f;
+
+        return i;
+    }
+
+    IO::VectorReader& operator>>(IO::VectorReader& i, Edge& edge) {
+        i >> edge.indexA;
+        i >> edge.indexB;
+        return i;
+    }
+
+    IO::VectorWriter& operator<<(IO::VectorWriter& o, const NavMesh::NavMeshTriangle& triangle) {
+        o << triangle.index;
+        o << triangle.triangle.a;
+        o << triangle.triangle.b;
+        o << triangle.triangle.c;
+        return o;
+    }
+
+    IO::VectorWriter& operator<<(IO::VectorWriter& o, const Edge& edge) {
+        o << edge.indexA;
+        o << edge.indexB;
+        return o;
+    }
+
+    void NavMesh::serialize(Carrot::IO::FileHandle& output) const {
+        std::vector<std::uint8_t> data;
+        IO::VectorWriter writer { data };
+
+        // write header
+        writer << std::span(CNAVMagic);
+        writer << CNAVVersion;
+
+        // write triangles
+        std::vector<NavMeshTriangle> triangles;
+        triangles.reserve(pathfinder.getVertices().size());
+        for(const auto& t : pathfinder.getVertices()) {
+            triangles.emplace_back(t);
+        }
+        writer << triangles;
+
+        // write adjacency
+        std::vector<Edge> edges;
+        edges.reserve(pathfinder.getEdges().size());
+        for(const auto& e : pathfinder.getEdges()) {
+            edges.emplace_back(e);
+        }
+        writer << edges;
+
+        writer << portalVertices;
+
+        output.write(data);
+    }
+
+    bool NavMesh::hasTriangles() const {
+        return !pathfinder.getVertices().empty();
     }
 
     // Comment from http://jceipek.com/Olin-Coding-Tutorials/pathing.html#funnel-algorithm :

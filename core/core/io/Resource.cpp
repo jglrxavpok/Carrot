@@ -104,8 +104,8 @@ namespace Carrot::IO {
     }
 
     void Resource::write(const std::span<uint8_t> toWrite, uint64_t offset) {
-        verify(toWrite.size() + offset <= getSize(), "Overflow!");
         if(data.isRawData) {
+            verify(toWrite.size() + offset <= getSize(), "Overflow!");
             auto& vec = *data.raw;
             std::memcpy(vec.data(), toWrite.data() + offset, toWrite.size());
         } else {

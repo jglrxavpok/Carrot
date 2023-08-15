@@ -14,6 +14,11 @@ namespace Carrot::AI {
     };
 
     class AStarImpl {
+    public:
+        std::span<const Edge> getEdges() const {
+            return edges;
+        }
+
     protected:
         std::vector<Edge> edges;
 
@@ -26,7 +31,7 @@ namespace Carrot::AI {
     };
 
     template<typename VertexType>
-    class AStar: private AStarImpl {
+    class AStar: public AStarImpl {
     public:
         explicit AStar() {};
 
@@ -38,6 +43,7 @@ namespace Carrot::AI {
             vertices = std::move(_vertices);
             edges = std::move(_edges);
 
+            adjacency.clear();
             for(const auto& edge : edges) {
                 adjacency[edge.indexA].push_back(&edge);
             }

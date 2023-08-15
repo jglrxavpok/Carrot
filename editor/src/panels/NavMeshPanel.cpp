@@ -34,6 +34,7 @@ namespace Peeler {
         ImGui::DragFloat("Minimum width", &minimumWidth, 0.1f, 0.0001f, FLT_MAX);
         ImGui::DragFloat("Minimum clearance", &minimumClearance, 0.1f, 0.0001f, FLT_MAX);
         ImGui::DragFloat("Voxel size", &voxelSize, 0.01f, 0.01f, 10.0f);
+        ImGui::DragFloat("Maximum step height", &stepHeight, 0.01f, 0.01f, 10.0f);
         ImGui::SliderAngle("Maximum slope angle", &maximumSlope, 0.0f, 90.0f, "%.0f°");
 
         const bool disabled = waitForBaking || navMeshBuilder.isRunning();
@@ -59,6 +60,7 @@ namespace Peeler {
                 .maxSlope = maximumSlope,
                 .characterHeight = (std::size_t)ceil(minimumClearance / voxelSize),
                 .characterRadius = (std::size_t)ceil(minimumWidth / voxelSize),
+                .maxClimbHeight = (std::size_t)ceil(stepHeight / voxelSize)
             };
             navMeshBuilder.start(std::move(buildEntries), params);
         }
@@ -82,6 +84,15 @@ namespace Peeler {
                 case Carrot::AI::NavMeshBuilder::DebugDrawType::Contours:
                     return "Region contours";
 
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::SimplifiedContours:
+                    return "Simplified region contours";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::RegionMeshes:
+                    return "Region Meshes";
+
+                case Carrot::AI::NavMeshBuilder::DebugDrawType::Mesh:
+                    return "Mesh";
+
                 default:
                     return "Unknown";
             }
@@ -94,6 +105,9 @@ namespace Peeler {
             DebugDrawType::DistanceField,
             DebugDrawType::Regions,
             DebugDrawType::Contours,
+            DebugDrawType::SimplifiedContours,
+            DebugDrawType::RegionMeshes,
+            DebugDrawType::Mesh,
         }) {
             if(ImGui::RadioButton(typeToName(type), debugDraw == type)) {
                 debugDraw = type;
@@ -105,6 +119,15 @@ namespace Peeler {
 
         if(!navMeshBuilder.isRunning()) {
             navMeshBuilder.debugDraw(GetEngine().newRenderContext(renderContext.swapchainIndex, app.gameViewport), debugDraw);
+
+            if(navMeshBuilder.getResult().hasTriangles()) {
+                if(ImGui::Button("Save")) {
+                    // create file
+                    Carrot::IO::VFS::Path path { "game://build/test.cnav" };
+                    Carrot::IO::FileHandle file(Carrot::toString(GetVFS().resolve(path).u8string()).c_str(), Carrot::IO::OpenMode::Write);
+                    navMeshBuilder.getResult().serialize(file);
+                }
+            }
         }
     }
 } // Peeler

@@ -21,4 +21,16 @@ namespace Carrot::Concepts {
     {
         { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
     };
+
+    template<typename Serializer, typename T>
+    concept Serializable = requires(Serializer w, T a)
+    {
+        { w << a } -> std::convertible_to<Serializer&>;
+    };
+
+    template<typename Deserializer, typename T>
+    concept Deserializable = requires(Deserializer r, T a)
+    {
+        { r >> a } -> std::convertible_to<Deserializer&>;
+    };
 }

@@ -68,7 +68,7 @@
             },
             "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
                 "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
-                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
+                "Navmesh": "017ac34b-013f-4b62-aade-3db2416868de",
                 "Go": false
             },
             "ModelComponent": {
@@ -117,6 +117,30 @@
                 }
             },
             "name": "Target"
+        },
+        "017ac34b-013f-4b62-aade-3db2416868de": {
+            "Transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "NavMesh": {
+                "nav_mesh": "resources/models/simple_cube.obj"
+            },
+            "name": "NavMesh"
         }
     },
     "lighting": {

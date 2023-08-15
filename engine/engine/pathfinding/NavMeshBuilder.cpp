@@ -6,11 +6,15 @@
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/vector_angle.hpp>
+#include <glm/gtx/vector_query.hpp>
 #include <core/math/AABB.h>
+#include <core/math/Segment2D.h>
 #include <core/math/Sphere.h>
+#include <core/math/Triangle.h>
 #include <tribox3.h>
 #include <core/scene/LoadedScene.h>
 #include <engine/render/resources/model_loading/SceneLoader.h>
+#include <engine/render/resources/SingleMesh.h>
 #include <core/io/Logging.hpp>
 
 namespace Carrot::AI {
@@ -44,6 +48,12 @@ namespace Carrot::AI {
             {130.0f / 255.0f, 137.0f / 255.0f, 143.0f / 255.0f, 1.0f},
     };
 
+    bool NavMeshBuilder::ContourPoint::operator==(const ContourPoint& o) const {
+        return x == o.x
+        && y == o.y
+        && spanIndex == o.spanIndex
+        && edgeDirection == o.edgeDirection;
+    }
 
     void NavMeshBuilder::start(std::vector<MeshEntry>&& _entries, const BuildParams& buildParams) {
         verify(!isRunning(), "Cannot start a NavMeshBuilder which is still running");
@@ -57,8 +67,12 @@ namespace Carrot::AI {
         }, TaskScheduler::AssetLoading);
     }
 
-    bool NavMeshBuilder::isRunning() {
+    bool NavMeshBuilder::isRunning() const {
         return !taskRunning.isIdle();
+    }
+
+    const NavMesh& NavMeshBuilder::getResult() const {
+        return navMesh;
     }
 
     void NavMeshBuilder::debugDraw(const Carrot::Render::Context& renderContext, DebugDrawType drawType) {
@@ -114,28 +128,56 @@ namespace Carrot::AI {
                 const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, position);
                 GetRenderer().render3DArrow(renderContext, transform, color);
             }
-        } else if(drawType == DebugDrawType::Contours) {
+        } else if(drawType == DebugDrawType::Contours || drawType == DebugDrawType::SimplifiedContours) {
             for(const auto& region : workingData.regions) {
-                for(const auto& contourPoint : region.contour) {
-                    const std::size_t columnIndex = contourPoint.x + contourPoint.y * sizeX;
-                    const auto& centerSpan = workingData.openHeightField.at(columnIndex).spans[contourPoint.z];
-                    if(centerSpan.regionID <= 0) {
-                        continue;
-                    }
+                const auto& contour = drawType == DebugDrawType::SimplifiedContours ? region.simplifiedContour : region.contour;
+                for(const auto& contourPoint : contour) {
                     const glm::vec4 color = regionColors[region.index % regionColors.size()];
-                    const glm::vec3 position = minVoxelPosition + glm::vec3 { contourPoint.x, contourPoint.y, centerSpan.bottomZ } * params.voxelSize + halfExtents;
+                    const glm::vec3 position = contourToWorld(workingData.openHeightField, contourPoint);
                     const glm::mat4 transform = glm::translate(glm::mat4{1.0f}, position);
                     GetRenderer().render3DArrow(renderContext, transform, color);
                 }
+            }
+        } else if(drawType == DebugDrawType::RegionMeshes) {
+            for(const auto& region : workingData.regions) {
+                if(region.triangulatedRegionMesh) {
+                    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext.viewport);
+                    Carrot::GBufferDrawData data;
+                    data.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
+
+                    packet.useMesh(*region.triangulatedRegionMesh);
+                    packet.pipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
+
+                    packet.addPerDrawData({&data, 1});
+
+                    Carrot::InstanceData instance;
+                    instance.color = regionColors[region.index % regionColors.size()];
+                    instance.transform = glm::mat4(1.0f);
+                    packet.useInstance(instance);
+                    GetRenderer().render(packet);
+                }
+            }
+        } else if(drawType == DebugDrawType::Mesh) {
+            if(workingData.debugRawMesh) {
+                Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext.viewport);
+                Carrot::GBufferDrawData data;
+                data.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
+
+                packet.useMesh(*workingData.debugRawMesh);
+                packet.pipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
+
+                packet.addPerDrawData({&data, 1});
+
+                Carrot::InstanceData instance;
+                instance.color = glm::vec4(1.0f);
+                instance.transform = glm::mat4(1.0f);
+                packet.useInstance(instance);
+                GetRenderer().render(packet);
             }
         }
     }
 
     Carrot::Async::Task<void> NavMeshBuilder::build() {
-        // 1. voxelise given meshes
-        // 2. remove voxels based on clearance & XY gap (min corridor size)
-        // 3. generate mesh
-
         const float voxelSize = params.voxelSize;
         const float maxSlope = params.maxSlope;
         debugStep = "Compute bounds";
@@ -275,7 +317,7 @@ namespace Carrot::AI {
         buildDistanceField(workingData.openHeightField);
 
         // 3. from distance field, remove cells where agents cannot walk (too narrow)
-        // TODO: narrowDistanceField(workingData.openHeightField);
+        narrowDistanceField(workingData.openHeightField);
 
         // 4. from distance field, create regions (watershed ??) and determine region connectivity (walk along contour and find connected regions)
         buildRegions(workingData.openHeightField, workingData.regions);
@@ -283,8 +325,14 @@ namespace Carrot::AI {
         // 5. create contours
         buildContours(workingData.openHeightField, workingData.regions);
 
-        // 6. from contours, create meshes & triangulate them (reuse vertices between regions to keep connectivity?)
-        // TODO
+        // 6. simplify contours
+        simplifyContours(workingData.openHeightField, workingData.regions);
+
+        // 7. from simplified contours, create mesh (reuse vertices between regions to keep connectivity)
+        buildMesh(workingData.openHeightField, workingData.regions, workingData.rawMesh);
+
+        // 8. create NavMesh instance
+        makeNavMesh(workingData.rawMesh, navMesh);
 
         debugStep = "Finished!";
         co_return;
@@ -292,6 +340,67 @@ namespace Carrot::AI {
 
     bool NavMeshBuilder::doSpansConnect(const HeightFieldSpan& spanA, const HeightFieldSpan& spanB) {
         return abs(spanA.bottomZ - spanB.bottomZ) <= params.maxClimbHeight;
+    }
+
+    bool NavMeshBuilder::doContourPointsConnect(const OpenHeightField& field, const ContourPoint& pointA, const ContourPoint& pointB) {
+        const glm::vec3 worldA = contourToWorld(field, pointA);
+        const glm::vec3 worldB = contourToWorld(field, pointB);
+
+        if(glm::abs(worldA.x - worldB.x) > params.voxelSize*0.5f) {
+            return false;
+        }
+        if(glm::abs(worldA.y - worldB.y) > params.voxelSize*0.5f) {
+            return false;
+        }
+
+        // same "final" X,Y. Check if they are close along Z axis
+        const std::size_t columnIndexA = pointA.x + pointA.y * sizeX;
+        const std::size_t columnIndexB = pointB.x + pointB.y * sizeX;
+        const auto& spanA = field.at(columnIndexA).spans.at(pointA.spanIndex);
+        const auto& spanB = field.at(columnIndexB).spans.at(pointB.spanIndex);
+        return doSpansConnect(spanA, spanB);
+    }
+
+    glm::vec3 NavMeshBuilder::contourToWorld(const OpenHeightField& field, const ContourPoint& point) {
+        const glm::vec3 halfExtents {0.5f * params.voxelSize};
+        const std::size_t columnIndex = point.x + point.y * sizeX;
+        const auto& span = field.at(columnIndex).spans.at(point.spanIndex);
+
+        const glm::vec3 directionOffsets[DirectionCount] = {
+                glm::vec3{ 1.0f, 1.0f, 0.0f }, // Right
+                glm::vec3{ 0.0f, 1.0f, 0.0f }, // Forward
+                glm::vec3{ 0.0f, 0.0f, 0.0f }, // Left
+                glm::vec3{ 1.0f, 0.0f, 0.0f }, // Backwards
+        };
+
+        return minVoxelPosition + glm::vec3 { point.x, point.y, span.bottomZ } * params.voxelSize + directionOffsets[point.edgeDirection] * params.voxelSize;
+    }
+
+    glm::vec3 NavMeshBuilder::contourToWorldBorderAware(const OpenHeightField& field, const ContourPoint& point, const Region& originalRegion, bool& isShared) {
+        isShared = false;
+        const std::size_t columnIndex = point.x + point.y * sizeX;
+        const auto& span = field.at(columnIndex).spans.at(point.spanIndex);
+
+        glm::vec3 worldPositionSum = contourToWorld(field, point);
+        float matchingPointsCount = 1.0f;
+        for(const auto& region : workingData.regions) {
+            for(const auto& contourPoint : region.contour) {
+                if(contourPoint == point) {
+                    continue;
+                }
+
+                if(doContourPointsConnect(field, point, contourPoint)) {
+                    worldPositionSum += contourToWorld(field, contourPoint);
+                    matchingPointsCount += 1.0f;
+
+                    if(region.index != originalRegion.index) {
+                        isShared = true;
+                    }
+                }
+            }
+        }
+
+        return worldPositionSum / matchingPointsCount;
     }
 
     void NavMeshBuilder::buildOpenHeightField(const SparseVoxelGrid& voxels, OpenHeightField& field) {
@@ -522,6 +631,28 @@ namespace Carrot::AI {
         }
     }
 
+    void NavMeshBuilder::narrowDistanceField(OpenHeightField& field) {
+        debugStep = "Narrow distance field";
+        for (std::int64_t y = 0; y < sizeY; y++) {
+            for (std::int64_t x = 0; x < sizeX; x++) {
+                const std::size_t columnIndex = x + y * sizeX;
+                if (!field.contains(columnIndex)) { // column full of non walkable space
+                    continue;
+                }
+
+                auto& column = field[columnIndex];
+                for (std::size_t i = 0; i < column.spans.size();) {
+                    const auto& span = column.spans[i];
+                    if(span.distanceToBorder < params.characterRadius) {
+                        column.spans.erase(column.spans.begin() + i);
+                    } else {
+                        i++;
+                    }
+                }
+            }
+        }
+    }
+
     void NavMeshBuilder::floodFill(OpenHeightField& field, const Region& region) {
         const std::size_t baseColumnIndex = region.center.x + region.center.y * sizeX;
         auto& baseSpan = field.at(baseColumnIndex).spans[region.center.z];
@@ -634,6 +765,7 @@ namespace Carrot::AI {
                                 // check if it has a region, if yes -> connect to the neighbor's region
                                 if(other.regionID > 0) {
                                     span.regionID = other.regionID;
+                                    regions[span.regionID-1].inside.emplace_back(coords.x, coords.y, coords.z);
 
                                     // found a region, no need to go further than that
                                     foundRegion = true;
@@ -711,15 +843,20 @@ namespace Carrot::AI {
 
         // at this point "currentPosition" has a position on the region border
         const glm::ivec3 startPosition = currentPosition;
-
-        region.contour.push_back(startPosition);
-        const std::size_t maxIterationCount = 200;
+        const std::size_t maxIterationCount = 420000;
         std::size_t iterationCount = 0;
 
         std::unordered_set<glm::ivec3> alreadyVisited;
         int attemptsToAdvance = 0;
         // "hug" a wall and continue until you reach the starting position, like when trying to get to the exit of a maze
         for(; iterationCount < maxIterationCount; iterationCount++) {
+            ContourPoint point;
+            point.x = currentPosition.x;
+            point.y = currentPosition.y;
+            point.spanIndex = currentPosition.z;
+            point.edgeDirection = direction;
+            region.contour.push_back(point);
+
             std::int64_t nextX = currentPosition.x + Dx[direction];
             std::int64_t nextY = currentPosition.y + Dy[direction];
 
@@ -754,7 +891,6 @@ namespace Carrot::AI {
 
             if(canAdvanceInDirection) {
                 attemptsToAdvance = 0;
-                region.contour.push_back(positionToAdvanceTo);
                 auto [it, isNextPositionNew] = alreadyVisited.insert(positionToAdvanceTo);
                 currentPosition = positionToAdvanceTo;
 
@@ -784,4 +920,250 @@ namespace Carrot::AI {
         }
     }
 
+    void NavMeshBuilder::simplifyContours(const OpenHeightField& field, std::vector<Region>& regions) {
+        for(auto& r : regions) {
+            simplifyContour(field, r);
+        }
+    }
+
+    void NavMeshBuilder::simplifyContour(const OpenHeightField& field, Region& region) {
+        const float maxError = params.voxelSize; // TODO: make it configurable
+        std::vector<bool> isMandatory;
+        std::vector<glm::vec3> worldPositions;
+        isMandatory.resize(region.contour.size());
+        worldPositions.resize(region.contour.size());
+
+        for(std::size_t i = 0; i < region.contour.size(); i++) {
+            bool isShared = false;
+            worldPositions[i] = contourToWorldBorderAware(field, region.contour[i], region, isShared);
+            isMandatory[i] = isShared;
+        }
+
+        auto& newContour = region.simplifiedContour;
+
+        isMandatory[0] = true; // ensure first point is always mandatory, makes the code simpler (no bounds check)
+
+        std::size_t previousKeptVertexIndex = 0;
+        for(std::size_t i = 0; i < region.contour.size();) {
+            if(isMandatory[i]) { // connected to another region, keep it
+                newContour.emplace_back(region.contour[i]);
+                previousKeptVertexIndex = i;
+            } else {
+                // skip vertices until we can't
+                std::size_t j = i;
+                for(; j < region.contour.size(); j++) {
+
+                    float error = 0.0f;
+                    for(std::size_t k = i; k < j; k++) {
+                        Math::Segment2D previous2j { worldPositions[previousKeptVertexIndex], worldPositions[j] };
+                        Math::Segment2D k2k1 { worldPositions[k], worldPositions[k+1] };
+                        float edgeDistance = 0.0f; // = distance between edges previousKeptVertexIndex -> j and k -> k+1
+                        edgeDistance = std::max(edgeDistance, glm::abs(previous2j.getSignedDistance(worldPositions[k])));
+                        edgeDistance = std::max(edgeDistance, glm::abs(previous2j.getSignedDistance(worldPositions[k+1])));
+                        edgeDistance = std::max(edgeDistance, glm::abs(k2k1.getSignedDistance(worldPositions[previousKeptVertexIndex])));
+                        edgeDistance = std::max(edgeDistance, glm::abs(k2k1.getSignedDistance(worldPositions[j])));
+                        error = std::max(error, edgeDistance);
+                    }
+
+                    if(error >= maxError) {
+                        j--;
+                        break;
+                    }
+                }
+
+                if(j < region.contour.size()) {
+                    newContour.emplace_back(region.contour[j]);
+                    previousKeptVertexIndex = j;
+                }
+                i = j; // ends loops if j >= region.contour.size()
+            }
+            i++;
+        }
+
+        if(previousKeptVertexIndex+1 != region.contour.size()) { // missing the last connection
+            newContour.emplace_back(region.contour.back());
+        }
+    }
+
+    std::unique_ptr<Carrot::Mesh> NavMeshBuilder::graphToMesh(const Graph& graph) {
+        std::vector<Carrot::Vertex> vertices;
+        vertices.reserve(graph.points.size());
+        for(const auto& p : graph.points) {
+            auto& vertex = vertices.emplace_back();
+            vertex.pos = glm::vec4{ p, 1.0f };
+            vertex.color = glm::vec3{ 1.0f };
+        }
+
+        std::vector<std::uint32_t> indices;
+        indices.reserve(graph.faces.size() * 3);
+        for(const auto& edge : graph.faces) {
+            indices.push_back(edge.indexA);
+            indices.push_back(edge.indexB);
+            indices.push_back(edge.indexC);
+        }
+        return std::make_unique<SingleMesh>(vertices, indices);
+    }
+
+    void NavMeshBuilder::triangulateContour(const OpenHeightField& field, const std::vector<Region>& regions, Region& region) {
+        const auto& contour = region.contour;
+        //const auto& contour = region.simplifiedContour;
+        Graph& output = region.triangulatedRegion;
+
+        std::vector<std::size_t> contourIndices;
+        output.points.reserve(contour.size());
+        contourIndices.reserve(contour.size());
+
+        for(std::size_t i = 0; i < contour.size(); i++) {
+            bool isShared; // unused
+            output.points.push_back(contourToWorldBorderAware(field, contour[i], region, isShared));
+            contourIndices.emplace_back(i);
+        }
+
+        auto prev = [&](std::size_t i) {
+            return i == 0 ? contourIndices.size()-1 : i-1;
+        };
+        auto next = [&](std::size_t i) {
+            return i+1 == contourIndices.size() ? 0 : i+1;
+        };
+
+        // remove collinear points
+        for(std::size_t i = 0; i < contourIndices.size();) {
+            const std::size_t prevI = prev(i);
+            const std::size_t nextI = next(i);
+
+            const glm::vec3 point0 = output.points[contourIndices[prevI]];
+            const glm::vec3 point1 = output.points[contourIndices[i]];
+            const glm::vec3 point2 = output.points[contourIndices[nextI]];
+
+            const glm::vec3 edge0 = point1 - point0;
+            const glm::vec3 edge1 = point2 - point1;
+            if(glm::areCollinear(edge0, edge1, 10e-6f)) {
+                contourIndices.erase(contourIndices.begin() + i);
+            } else {
+                i++;
+            }
+        }
+
+        // ear-clipping
+        while(contourIndices.size() > 3) {
+            bool foundEar = false;
+            for(std::size_t i = 0; i < contourIndices.size(); i++) {
+                const std::size_t prevI = prev(i);
+                const std::size_t nextI = next(i);
+                Math::Triangle t {
+                        output.points[contourIndices[prevI]],
+                        output.points[contourIndices[i]],
+                        output.points[contourIndices[nextI]],
+                };
+
+                const glm::vec3 edge0 = t.b - t.a;
+                const glm::vec3 edge1 = t.c - t.b;
+                const float angle = glm::orientedAngle(edge1, edge0, t.computeNormal()); // contours are in clockwise order
+                if(angle >= glm::pi<float>()) {
+                    continue;
+                }
+                // if vertex is convex
+
+                bool otherPointInTriangle = false;
+                for(std::size_t j = 0; j < contourIndices.size(); j++) {
+                    if(i == j || j == prevI || j == nextI) {
+                        continue;
+                    }
+
+                    if(t.isPointInside(output.points[contourIndices[j]])) {
+                        otherPointInTriangle = true;
+                        break;
+                    }
+                }
+                // and no other vertex is inside the triangle
+
+                if(!otherPointInTriangle) {
+                    // clip this ear and resume
+
+                    auto& newFace = output.faces.emplace_back();
+                    newFace.indexA = contourIndices[prevI];
+                    newFace.indexB = contourIndices[i];
+                    newFace.indexC = contourIndices[nextI];
+
+                    contourIndices.erase(contourIndices.begin() + i);
+                    foundEar = true;
+                    break;
+                }
+            }
+
+            verify(foundEar, "found no triangulation");
+        }
+
+        verify(contourIndices.size() == 3, "Only a single triangle should remain");
+        auto& finalFace = output.faces.emplace_back();
+        finalFace.indexA = contourIndices[0];
+        finalFace.indexB = contourIndices[1];
+        finalFace.indexC = contourIndices[2];
+
+        region.triangulatedRegionMesh = graphToMesh(output);
+    }
+
+    void NavMeshBuilder::buildMesh(const OpenHeightField& field, std::vector<Region>& regions, Graph& rawMesh) {
+        debugStep = "Build mesh";
+        rawMesh = {};
+
+        std::unordered_map<glm::vec3, std::size_t> vertexIndices; // index of vertex position inside rawMesh.vertices
+        for(auto& region : regions) {
+            // triangulate region contour
+            triangulateContour(field, regions, region);
+
+            // merge shared vertices
+            std::unordered_map<std::size_t, std::size_t> remap;
+            for(std::size_t i = 0; i < region.triangulatedRegion.points.size(); i++) {
+                const glm::vec3& point = region.triangulatedRegion.points[i];
+                auto iter = vertexIndices.find(point);
+                if(iter == vertexIndices.end()) {
+                    std::size_t index = vertexIndices.size();
+                    vertexIndices[point] = index;
+                    remap[i] = index;
+                    rawMesh.points.push_back(point);
+                } else {
+                    remap[i] = iter->second;
+                }
+            }
+
+            for(const auto& face : region.triangulatedRegion.faces) {
+                auto& newFace = rawMesh.faces.emplace_back();
+                newFace.indexA = remap[face.indexA];
+                newFace.indexB = remap[face.indexB];
+                newFace.indexC = remap[face.indexC];
+            }
+        }
+
+        workingData.debugRawMesh = graphToMesh(rawMesh);
+    }
+
+    void NavMeshBuilder::makeNavMesh(const Graph& rawMesh, NavMesh& navMesh) {
+        Render::LoadedScene tmpScene;
+        // single node with a single mesh
+        tmpScene.nodeHierarchy = std::make_unique<Render::Skeleton>(glm::mat4(1.0f));
+        tmpScene.nodeHierarchy->hierarchy.meshIndices = std::vector<std::size_t>{};
+        tmpScene.nodeHierarchy->hierarchy.meshIndices->emplace_back(0);
+
+        auto& primitive = tmpScene.primitives.emplace_back();
+        auto& vertices = primitive.vertices;
+        vertices.reserve(rawMesh.points.size());
+        for(const auto& p : rawMesh.points) {
+            Carrot::Vertex& newVertex = vertices.emplace_back();
+            newVertex.pos = glm::vec4 { p, 1.0f };
+        }
+
+        auto& indices = primitive.indices;
+        indices.reserve(rawMesh.faces.size() * 3);
+        for(const auto& f : rawMesh.faces) {
+            indices.emplace_back(f.indexA);
+            indices.emplace_back(f.indexB);
+            indices.emplace_back(f.indexC);
+        }
+
+        tmpScene.debugName = "tmp navmesh scene";
+        primitive.name = "tmp navmesh mesh";
+
+        navMesh.loadFromScene(tmpScene);
+    }
 } // Carrot::AI
