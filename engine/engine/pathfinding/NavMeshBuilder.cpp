@@ -19,6 +19,38 @@
 
 namespace Carrot::AI {
 
+    /**
+     * Dump 3D triangle mesh to .obj format
+     */
+    static void dumpModelToConsole(std::span<const Carrot::Vertex> vertices, std::span<std::uint32_t> indices) {
+        printf("# DEBUG MODEL DUMP\n");
+        for(const auto& v : vertices) {
+            printf("v %f %f %f\n", v.pos.x, v.pos.y, v.pos.z);
+        }
+        for(std::size_t i = 0; i < indices.size(); i += 3) {
+            printf("f");
+            printf(" %u", indices[i+0]+1);
+            printf(" %u", indices[i+1]+1);
+            printf(" %u", indices[i+2]+1);
+            printf("\n");
+        }
+    }
+
+    /**
+     * Dump 3D triangle SINGLE polygon to .obj format
+     */
+    static void dumpPolygonToConsole(std::span<const glm::vec3> vertices, std::span<std::uint32_t> indices) {
+        printf("# DEBUG POLYGON DUMP\n");
+        for(const auto& v : vertices) {
+            printf("v %f %f %f\n", v.x, v.y, v.z);
+        }
+        printf("f");
+        for(const auto& i : indices) {
+            printf(" %u", i+1);
+        }
+        printf("\n");
+    }
+
     static std::array<glm::vec4, 45> regionColors {
             glm::vec4
             {189.0f / 255.0f, 236.0f / 255.0f, 182.0f / 255.0f, 1.0f},
@@ -915,6 +947,13 @@ namespace Carrot::AI {
             }
         }
 
+        ContourPoint point;
+        point.x = currentPosition.x;
+        point.y = currentPosition.y;
+        point.spanIndex = currentPosition.z;
+        point.edgeDirection = direction;
+        region.contour.push_back(point);
+
         if(iterationCount == maxIterationCount) {
             Carrot::Log::error("Region %llu had to stop because of too many iterations!", region.index);
         }
@@ -1004,6 +1043,14 @@ namespace Carrot::AI {
         return std::make_unique<SingleMesh>(vertices, indices);
     }
 
+    static float triangleArea2(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+        const float ax = b[0] - a[0];
+        const float ay = b[1] - a[1];
+        const float bx = c[0] - a[0];
+        const float by = c[1] - a[1];
+        return bx*ay - ax*by;
+    }
+
     void NavMeshBuilder::triangulateContour(const OpenHeightField& field, const std::vector<Region>& regions, Region& region) {
         const auto& contour = region.contour;
         //const auto& contour = region.simplifiedContour;
@@ -1035,6 +1082,8 @@ namespace Carrot::AI {
             const glm::vec3 point1 = output.points[contourIndices[i]];
             const glm::vec3 point2 = output.points[contourIndices[nextI]];
 
+            //Carrot::Log::info("v %f %f %f", point1.x, point1.y, point1.z);
+
             const glm::vec3 edge0 = point1 - point0;
             const glm::vec3 edge1 = point2 - point1;
             if(glm::areCollinear(edge0, edge1, 10e-6f)) {
@@ -1047,21 +1096,37 @@ namespace Carrot::AI {
         // ear-clipping
         while(contourIndices.size() > 3) {
             bool foundEar = false;
-            for(std::size_t i = 0; i < contourIndices.size(); i++) {
+
+            int oneWithCorrectAngle = 0;
+            for(std::size_t i = 0; i < contourIndices.size();) {
                 const std::size_t prevI = prev(i);
                 const std::size_t nextI = next(i);
                 Math::Triangle t {
-                        output.points[contourIndices[prevI]],
-                        output.points[contourIndices[i]],
-                        output.points[contourIndices[nextI]],
+                        glm::vec3(output.points[contourIndices[prevI]].xy, 0.0f),
+                        glm::vec3(output.points[contourIndices[i]].xy, 0.0f),
+                        glm::vec3(output.points[contourIndices[nextI]].xy, 0.0f),
                 };
 
                 const glm::vec3 edge0 = t.b - t.a;
                 const glm::vec3 edge1 = t.c - t.b;
-                const float angle = glm::orientedAngle(edge1, edge0, t.computeNormal()); // contours are in clockwise order
-                if(angle >= glm::pi<float>()) {
+
+#if 0
+                float angle = glm::orientedAngle(-glm::normalize(glm::vec2(edge0.xy)), glm::normalize(glm::vec2(edge1.xy))); // contours are in clockwise order
+                if(angle < 0.0f) {
+                    angle += glm::two_pi<float>();
+                }
+                if(angle > glm::pi<float>()) {
+                    i++;
                     continue;
                 }
+#endif
+
+                // based on Blender's source code https://github.com/blender/blender/blob/8ea68765fcace8986b4c23fa729d2933015e949d/source/blender/blenlib/intern/polyfill_2d.c#L674
+                if(triangleArea2(t.a, t.b, t.c) < 0.0f) {
+                    i++;
+                    continue;
+                }
+                oneWithCorrectAngle++;
                 // if vertex is convex
 
                 bool otherPointInTriangle = false;
@@ -1070,7 +1135,9 @@ namespace Carrot::AI {
                         continue;
                     }
 
-                    if(t.isPointInside(output.points[contourIndices[j]])) {
+                    const glm::vec3 p = glm::vec3(output.points[contourIndices[j]].xy, 0.0f);
+                  //  if(t.isPointInside(p)) {
+                    if(triangleArea2(t.c, t.a, p) >= 0.0f && triangleArea2(t.a, t.b, p) >= 0.0f && triangleArea2(t.b, t.c, p) >= 0.0f) {
                         otherPointInTriangle = true;
                         break;
                     }
@@ -1089,9 +1156,20 @@ namespace Carrot::AI {
                     foundEar = true;
                     break;
                 }
+
+                i++;
             }
 
-            verify(foundEar, "found no triangulation");
+            if(!foundEar) {
+                Carrot::Log::info("==== CANNOT CONTINUE TRIANGULATION!!! ====");
+                std::vector<std::uint32_t> indices;
+                indices.reserve(contourIndices.size());
+                for(const auto i : contourIndices) {
+                    indices.emplace_back(i);
+                }
+                dumpPolygonToConsole(output.points, indices);
+            }
+            verify(foundEar, Carrot::sprintf("found no triangulation, region is #%llu one with correct angle: %d", region.index, oneWithCorrectAngle));
         }
 
         verify(contourIndices.size() == 3, "Only a single triangle should remain");
@@ -1160,6 +1238,9 @@ namespace Carrot::AI {
             indices.emplace_back(f.indexB);
             indices.emplace_back(f.indexC);
         }
+
+        //Carrot::Log::info("=== NAVMESH ===");
+        //dumpModelToConsole(primitive.vertices, primitive.indices);
 
         tmpScene.debugName = "tmp navmesh scene";
         primitive.name = "tmp navmesh mesh";

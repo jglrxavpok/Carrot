@@ -9,15 +9,6 @@
                         "pipeline_name": "resources/pipelines/gBufferBlockout.json"
                     }
                 ]
-            },
-            "430e7583-93b1-474e-bbba-932a2e096f04": {
-                "model": "models/scene1_navmesh_debugview.gltf",
-                "overrides": [
-                    {
-                        "mesh_index": 0,
-                        "pipeline_name": "resources/pipelines/gBufferWireframe.json"
-                    }
-                ]
             }
         }
     },
@@ -56,43 +47,6 @@
             },
             "name": "Scene Geometry"
         },
-        "9dc7262d-60f9-4181-9eb4-d1d0de534709": {
-            "Transform": {
-                "position": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                ]
-            },
-            "ModelComponent": {
-                "isTransparent": false,
-                "color": [
-                    0.04117631912231445,
-                    0.0,
-                    1.0,
-                    1.0
-                ],
-                "model": {
-                    "modelPath": "models/scene1_navmesh_debugview.gltf",
-                    "model_renderer": "430e7583-93b1-474e-bbba-932a2e096f04"
-                }
-            },
-            "NavMesh": {
-                "nav_mesh": "build/test.cnav"
-            },
-            "name": "Scene Navmesh"
-        },
         "d5577523-8895-438a-bb4f-d14f5f73584c": {
             "Transform": {
                 "position": [
@@ -114,7 +68,7 @@
             },
             "PathfindingPeelerProject.PathfindToTargetComponent (C#)": {
                 "Target": "5fcf1c04-c9ee-4706-8398-1876dde0b33e",
-                "Navmesh": "9dc7262d-60f9-4181-9eb4-d1d0de534709",
+                "Navmesh": "c95acd54-7ab1-4cc1-91f4-660712dbaf87",
                 "Go": false
             },
             "ModelComponent": {
@@ -163,6 +117,30 @@
                 }
             },
             "name": "Target"
+        },
+        "c95acd54-7ab1-4cc1-91f4-660712dbaf87": {
+            "Transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            },
+            "NavMesh": {
+                "nav_mesh": "resources/models/simple_sphere.obj"
+            },
+            "name": "Navmesh"
         }
     },
     "lighting": {
