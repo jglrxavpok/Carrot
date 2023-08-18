@@ -26,15 +26,23 @@ layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outMomentHistoryHistoryLength;
 layout(location = 2) out vec4 outFirstSpatialDenoiseForNextFrame;
 
+vec4 AdjustHDRColor(vec4 color)
+{
+    float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    float luminanceWeight = 1.0 / (1.0 + luminance);
+    return vec4(color.rgb, 1.0) * luminanceWeight;
+}
+
 void main() {
     GBuffer gbuffer = unpackGBuffer(uv);
     vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
-    currentFrameColor.a = 1.0;
+    vec4 adjustedCurrent = AdjustHDRColor(currentFrameColor);
+    //currentFrameColor.a = 1.0;
 
     vec4 viewSpacePos = vec4(texture(sampler2D(currentViewPos, linearSampler), uv).rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
-    vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
+    vec4 prevNDC = cbo.nonJitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
     prevNDC.xyz += gbuffer.motionVector;
 
@@ -42,27 +50,31 @@ void main() {
     vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = float(length(hWorldSpacePos-hPreviousWorldSpacePos) <= 0.01); // distance clip
+    float reprojected = 1.0f;//float(length(hWorldSpacePos-hPreviousWorldSpacePos) <= 0.01); // distance clip
 
     const float epsilon = 0.01;
-    reprojected *= 1.0f - float(
+/*    reprojected *= 1.0f - float(
         reprojectedUV.x <= epsilon || reprojectedUV.x >= 1-epsilon
         || reprojectedUV.y <= epsilon || reprojectedUV.y >= 1-epsilon
-    );
+    );*/
 
-    reprojectedUV = clamp(reprojectedUV, vec2(epsilon), vec2(1-epsilon));
+    //reprojectedUV = clamp(reprojectedUV, vec2(epsilon), vec2(1-epsilon));
 
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
-    previousFrameColor.a = 1.0;
+    vec4 adjustedPrevious = AdjustHDRColor(previousFrameColor);
+    //previousFrameColor.a = 1.0;
 
     const float colorClampStrength = 200.0f;
-    reprojected *= exp(-length(currentFrameColor.rgb - previousFrameColor.rgb) / colorClampStrength); // color clamp
+    //reprojected *= exp(-length(currentFrameColor.rgb - previousFrameColor.rgb) / colorClampStrength); // color clamp
+//    reprojected = 1.0;
 
-    float historyLength = momentHistoryHistoryLength.z * reprojected + 1.0;
-    float alpha = historyLength <= 0.1 ? 0.9f : 1.0f - 1.0f / historyLength;
+    float historyLength = momentHistoryHistoryLength.b * reprojected + 1.0;
+    float alpha = 0.9f;//historyLength <= 1.1 ? 0.9f : 1.0f - 1.0f / historyLength;
     //float alpha = 0.9f;
-    float momentsAlpha = alpha;////0.8;
+    const float currentWeight = (1-alpha) * adjustedCurrent.a;
+    const float previousWeight = alpha * adjustedPrevious.a;
+    const float normalization = 1.0f / (currentWeight + previousWeight);
 
     //if(uv.x > 0.5)
     {
@@ -72,7 +84,9 @@ void main() {
         }
         else
         {
-            outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
+            //outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
+            vec3 outRGB = (previousFrameColor.rgb * previousWeight + currentFrameColor.rgb * currentWeight) * normalization;
+            outColor = vec4(outRGB, 1.0);
         }
     }
 
@@ -80,7 +94,7 @@ void main() {
     moments.y = moments.x * moments.x;
 
 
-    vec2 outMoments = reprojected * ((mix(momentHistoryHistoryLength.xy, moments, 1 - momentsAlpha))) + (1.0f-reprojected) * moments;
+    vec2 outMoments = (momentHistoryHistoryLength.xy * previousWeight + moments * currentWeight) * normalization;
 
     outMomentHistoryHistoryLength = vec4(outMoments, historyLength, 1.0f);
     outFirstSpatialDenoiseForNextFrame = vec4(0.0);

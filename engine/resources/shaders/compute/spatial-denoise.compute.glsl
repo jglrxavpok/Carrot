@@ -125,7 +125,7 @@ void main() {
 
     // from SVGF
     const float sigmaNormals = 128.0f;
-    const float sigmaPositions = 1.0f;
+    const float sigmaPositions = 1000.0f;
     const float sigmaLuminance = 4.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;
@@ -191,7 +191,7 @@ void main() {
             const vec3 filterPosition = filterGBuffer.viewPosition;
             const vec3 dPosition = filterPosition - currentPosition;
             const float distanceSquared = dot(dPosition.z, dPosition.z);
-            const float positionWeight = 1.0f;//min(1, exp(-abs(dPosition.z)/sigmaPositions)); TODO: FIXME
+            const float positionWeight = min(1, exp(-distanceSquared/sigmaPositions));
 
             const float filterLuminance = luminance(filterPixel.rgb);
             const float luminanceWeight = min(1, exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale));
@@ -208,6 +208,6 @@ void main() {
     finalPixel /= totalWeight;
     imageStore(outputImage, coords, finalPixel);
 
-    variance /= totalWeight*totalWeight;
+    variance /= varianceSum;
     imageStore(varianceOutput, coords, vec4(variance, 0, 0, 0));
 }

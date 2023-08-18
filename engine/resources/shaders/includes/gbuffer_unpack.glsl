@@ -24,8 +24,8 @@ GBuffer unpackGBufferLight(vec2 uv) {
 GBuffer unpackGBuffer(vec2 uv) {
     GBuffer gbuffer = unpackGBufferLight(uv);
 
-    vec4 metallicRoughnessVelocityXY = texture(sampler2D(gMetallicRoughnessValuesVelocityXY, gLinearSampler), uv);
-    vec4 emissiveVelocityZ = texture(sampler2D(gEmissiveValuesVelocityZ, gLinearSampler), uv);
+    vec4 metallicRoughnessVelocityXY = texture(sampler2D(gMetallicRoughnessValuesVelocityXY, gNearestSampler), uv);
+    vec4 emissiveVelocityZ = texture(sampler2D(gEmissiveValuesVelocityZ, gNearestSampler), uv);
     gbuffer.metallicness = metallicRoughnessVelocityXY.x;
     gbuffer.roughness = metallicRoughnessVelocityXY.y;
     gbuffer.emissiveColor = emissiveVelocityZ.rgb;

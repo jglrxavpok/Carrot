@@ -203,7 +203,7 @@ vec3 sampleGGXF(inout RandomSampler rng, float roughness, vec3 emitDirection, in
     float alphay = alphax;
 
     vec3 wh = sampleWH(rng, emitDirection, alphax, alphay);
-    //if(dot(emitDirection, wh) < 0.0) return vec3(0.0f);
+    if(dot(emitDirection, wh) < 0.0) return vec3(0.0f);
     incidentDirection = reflect(emitDirection, wh);
     if(emitDirection.z * incidentDirection.z < 0.0) return vec3(0.0f);
 
