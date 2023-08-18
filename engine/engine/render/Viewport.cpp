@@ -112,6 +112,10 @@ namespace Carrot::Render {
         viewportBufferObject.update(*this);
         auto& buffer = viewportUniformBuffers[context.swapchainIndex];
         buffer.getBuffer().directUpload(&viewportBufferObject, sizeof(viewportBufferObject), buffer.getStart());
+
+        if(renderGraph) {
+            renderGraph->onFrame(context);
+        }
     }
 
     const Carrot::BufferView& Viewport::getCameraUniformBuffer(const Render::Context& context) const {

@@ -10,6 +10,14 @@
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/Engine.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_node_editor.h>
+#include <imgui_node_editor_internal.h>
+
+namespace ed = ax::NodeEditor;
+
 namespace Carrot::Render {
     GraphBuilder::GraphBuilder(VulkanDriver& driver) {
         swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
@@ -139,17 +147,212 @@ namespace Carrot::Render {
     }
 
     Graph::Graph(VulkanDriver& driver): driver(driver) {
+        ed::Config config;
+        nodesContext = ed::CreateEditor(&config);
+    }
 
+    static std::uint32_t uniqueID = 1;
+
+    static std::uint32_t getNodeID(std::uint32_t passIndex) {
+        static std::unordered_map<std::uint32_t, std::uint32_t> nodes;
+
+        if(nodes.find(passIndex) == nodes.end()) {
+            nodes[passIndex] = uniqueID++;
+        }
+        return nodes[passIndex];
+    }
+}
+
+struct PinKey {
+    std::uint32_t passIndex;
+    std::uint32_t pinID;
+
+    auto operator<=>(const PinKey&) const = default;
+};
+
+template<>
+struct std::hash<PinKey> {
+    std::size_t operator()(const PinKey& k) const {
+        return (((std::uint64_t)k.passIndex) << 32) | k.pinID;
+    }
+};
+
+namespace Carrot::Render {
+    static std::uint32_t getInputPinID(const Carrot::UUID& uuid) {
+        static std::unordered_map<Carrot::UUID, std::uint32_t> pinIDs;
+
+        if(pinIDs.find(uuid) == pinIDs.end()) {
+            pinIDs[uuid] = uniqueID++;
+        }
+        return pinIDs[uuid];
+    }
+
+    static std::uint32_t getOutputPinID(const Carrot::UUID& uuid) {
+        static std::unordered_map<Carrot::UUID, std::uint32_t> pinIDs;
+
+        if(pinIDs.find(uuid) == pinIDs.end()) {
+            pinIDs[uuid] = uniqueID++;
+        }
+        return pinIDs[uuid];
+    }
+
+    static std::uint32_t getLinkID(const Carrot::UUID& in, const Carrot::UUID& out) {
+        static std::unordered_map<std::uint32_t, std::unordered_map<std::uint32_t, std::uint32_t>> linkIDs;
+
+        auto& inLinks = linkIDs[getInputPinID(in)];
+        const auto outID = getOutputPinID(out);
+        if(inLinks.find(outID) == inLinks.end()) {
+            inLinks[outID] = uniqueID++;
+        }
+        return inLinks[outID];
+    }
+
+    void Graph::drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex) {
+        std::uint32_t nodeID = getNodeID(passIndex);
+        ed::BeginNode(passIndex+1);
+
+        ImGui::PushID(passIndex);
+
+        ImGui::BeginVertical("node");
+        ImGui::Spring();
+
+        ImGui::Text("%s", std::string(pass->getName()).c_str());
+
+        ImGui::Spring();
+
+        ImGui::BeginHorizontal("content");
+
+        ImGui::BeginVertical("inputs");
+        ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
+        ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
+
+        std::uint32_t inputPinIndex = 0;
+        for(const auto& i : pass->getInputs()) {
+            ed::BeginPin(getInputPinID(i.id), ed::PinKind::Input);
+            ImGui::Text("> %u", inputPinIndex++);
+            ed::EndPin();
+
+            if(ImGui::IsItemHovered()) {
+                hoveredResource = &i;
+            }
+        }
+        /*
+        for (auto& pin : inputs) {
+            ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
+            ImGui::BeginHorizontal(&pin->id);
+            ImGui::Text("> %s", pin->name.c_str());
+            auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+            ImGui::Image(icon, ImVec2(10,10));
+
+            ImGui::EndHorizontal();
+            ed::EndPin();
+        }
+         */
+        ImGui::EndVertical();
+
+        ImGui::BeginVertical("center");
+        ImGui::Text("%s", pass->getName().data());
+        //renderCenter();
+        ImGui::EndVertical();
+
+
+        /*if(inputs.empty()) */{
+            ImGui::Spring(1);
+        }
+        ImGui::BeginVertical("outputs");
+        ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
+        ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
+
+       /* for (auto& pin : outputs) {
+            ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
+            ImGui::BeginHorizontal(&pin->id);
+
+            auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+            ImGui::Image(icon, ImVec2(10,10));
+            ImGui::Text("%s >", pin->name.c_str());
+
+            ImGui::EndHorizontal();
+            ed::EndPin();
+        }*/
+        std::uint32_t outputPinIndex = 0;
+        for(const auto& o : pass->getOutputs()) {
+            ed::BeginPin(getOutputPinID(o.id), ed::PinKind::Output);
+            ImGui::Text("%u >", outputPinIndex++);
+            ed::EndPin();
+
+            if(ImGui::IsItemHovered()) {
+                hoveredResource = &o;
+            }
+        }
+        ImGui::EndVertical();
+
+        /*if(outputs.empty()) */{
+            ImGui::Spring(1);
+        }
+
+        ImGui::EndHorizontal();
+        ImGui::EndVertical();
+
+        ImGui::PopID();
+        ed::EndNode();
+
+        for(const auto& i : pass->getInputs()) {
+            ed::Link(getLinkID(i.id, i.parentID), getInputPinID(i.id), getOutputPinID(i.parentID));
+        }
+    }
+
+    void Graph::onFrame(const Render::Context& context) {
+        const bool debug = true;
+
+        static Graph* graphToDebug = nullptr;
+        if(debug) {
+            if(ImGui::Begin("Debug render graphs")) {
+                ImGui::Separator();
+
+                std::string id = Carrot::sprintf("%x , %llu passes", (std::uint64_t)this, sortedPasses.size());
+                if(ImGui::RadioButton(id.c_str(), graphToDebug == this)) {
+                    graphToDebug = this;
+                }
+
+                if(graphToDebug == this) {
+                    ed::SetCurrentEditor((ed::EditorContext*)nodesContext);
+                    ed::EnableShortcuts(true);
+
+                    hoveredResource = nullptr;
+                    ed::Begin("Render graph debug");
+                    std::uint32_t index = 0;
+                    for (auto *pass: sortedPasses) {
+                        drawPassNodes(context, pass, index++);
+                    }
+                    ed::End();
+                    ed::EnableShortcuts(false);
+
+                    if(hoveredResource != nullptr) {
+                        ImGui::BeginTooltip();
+                        auto& texture = GetVulkanDriver().getTextureRepository().get(*hoveredResource, context.swapchainIndex);
+                        float aspectRatio = texture.getSize().width / (float) texture.getSize().height;
+                        ImGui::Text("%s (%u x %u x %u)", hoveredResource->rootID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
+                        ImGui::Image(texture.getImguiID(hoveredResource->format), ImVec2(aspectRatio * 512.0f, 512.0f));
+                        ImGui::EndTooltip();
+                    }
+                }
+            }
+            ImGui::End();
+        }
     }
 
     void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
         ZoneScoped;
+
+        std::string id = "";
         for(auto* pass : sortedPasses) {
 #ifdef TRACY_ENABLE
             std::string passName = "Execute pass ";
             GetVulkanDriver().setFormattedMarker(cmds, "Pass %s", pass->getName().data());
 
             passName += pass->getName();
+            id += pass->getName();
+            id += " ";
             ZoneScopedN("Execute pass");
 #endif
             pass->execute(data, cmds);

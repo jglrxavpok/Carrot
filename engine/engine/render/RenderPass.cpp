@@ -331,8 +331,21 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         };
         result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     }
+    result->setInputsOutputsForDebug(inputs, outputs);
     postCompile(*result);
     return result;
+}
+
+void Carrot::Render::CompiledPass::setInputsOutputsForDebug(const std::list<Input>& _inputs, const std::list<Output>& _outputs) {
+    inputs.reserve(_inputs.size());
+    outputs.reserve(_outputs.size());
+
+    for(const auto& input : _inputs) {
+        inputs.emplace_back(input.resource);
+    }
+    for(const auto& output : _outputs) {
+        outputs.emplace_back(output.resource);
+    }
 }
 
 void Carrot::Render::CompiledPass::createFramebuffers(){

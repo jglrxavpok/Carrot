@@ -21,6 +21,24 @@ namespace Carrot::Render {
     using CompiledPassCallback = std::function<void(CompiledPass&, const Render::Context&, vk::CommandBuffer&)>;
     using SwapchainRecreationCallback = std::function<void(const CompiledPass&)>;
 
+    struct Input {
+        FrameResource resource;
+        vk::ImageLayout expectedLayout = vk::ImageLayout::eUndefined;
+        vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+
+        Input(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect): resource(resource), expectedLayout(expectedLayout), aspect(aspect) {}
+    };
+
+    struct Output {
+        FrameResource resource;
+        vk::AttachmentLoadOp loadOp;
+        vk::ClearValue clearValue;
+        vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
+        bool isCreatedInThisPass = false;
+
+        Output(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
+    };
+
     struct ImageTransition {
         Carrot::UUID resourceID;
         vk::ImageLayout from;
@@ -76,12 +94,18 @@ namespace Carrot::Render {
 
         std::string_view getName() const { return name; }
 
+        std::span<const FrameResource> getInputs() const { return inputs; }
+        std::span<const FrameResource> getOutputs() const { return outputs; }
+
         void refresh();
 
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
+
+    public:
+        void setInputsOutputsForDebug(const std::list<Input>& inputs, const std::list<Output>& outputs);
 
     private:
         void createFramebuffers();
@@ -107,6 +131,10 @@ namespace Carrot::Render {
         // used to create textures that match the viewport size
         vk::Extent2D viewportSize;
         Carrot::UUID passID; // used to tell texture repository which textures belong to this pass
+
+        // kept for debug
+        std::vector<FrameResource> inputs;
+        std::vector<FrameResource> outputs;
 
     private: // Pre-recording
         vk::UniqueCommandPool commandPool;
@@ -136,24 +164,6 @@ namespace Carrot::Render {
         std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Graph& graph);
 
     protected:
-        struct Input {
-            FrameResource resource;
-            vk::ImageLayout expectedLayout = vk::ImageLayout::eUndefined;
-            vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
-
-            Input(const FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect): resource(resource), expectedLayout(expectedLayout), aspect(aspect) {}
-        };
-
-        struct Output {
-            FrameResource resource;
-            vk::AttachmentLoadOp loadOp;
-            vk::ClearValue clearValue;
-            vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
-            bool isCreatedInThisPass = false;
-
-            Output(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
-        };
-
         Carrot::VulkanDriver& driver;
         std::list<Input> inputs;
         std::list<Output> outputs;

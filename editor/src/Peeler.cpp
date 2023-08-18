@@ -1046,7 +1046,7 @@ namespace Peeler {
         };
         graphBuilder.addPass<TransitionData>("transition for ImGui",
             [&](Carrot::Render::GraphBuilder& graph, Carrot::Render::Pass<TransitionData>& pass, TransitionData& data) {
-                data.textureToTransition = gameTexture;
+                data.textureToTransition = graph.read(gameTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
                 pass.rasterized = false;
             },
             [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, const TransitionData& data, vk::CommandBuffer& cmds) {

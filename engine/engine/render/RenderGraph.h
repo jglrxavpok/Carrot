@@ -15,6 +15,14 @@ namespace Carrot::Render {
     public:
         explicit Graph(VulkanDriver& driver);
 
+        /**
+         * Setups graph for this frame
+         */
+        void onFrame(const Render::Context& data);
+
+        /**
+         * Actually performs rendering (by recording commands)
+         */
         void execute(const Render::Context& data, vk::CommandBuffer& cmds);
 
     public:
@@ -43,10 +51,16 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(int newWidth, int newHeight) override;
 
     private:
+        void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
+
         Carrot::VulkanDriver& driver;
         std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;
         std::vector<Render::CompiledPass*> sortedPasses;
         std::list<std::pair<std::string, std::any>> passesData;
+
+        // for imgui debug
+        void* nodesContext = nullptr;
+        const FrameResource* hoveredResource = nullptr;
 
         friend class GraphBuilder;
     };
