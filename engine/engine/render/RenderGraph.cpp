@@ -163,42 +163,43 @@ namespace Carrot::Render {
     }
 }
 
-struct PinKey {
-    std::uint32_t passIndex;
-    std::uint32_t pinID;
+struct InputKey {
+    std::uint64_t passPtr;
+    Carrot::UUID resourceID;
 
-    auto operator<=>(const PinKey&) const = default;
+    auto operator<=>(const InputKey&) const = default;
 };
 
 template<>
-struct std::hash<PinKey> {
-    std::size_t operator()(const PinKey& k) const {
-        return (((std::uint64_t)k.passIndex) << 32) | k.pinID;
+struct std::hash<InputKey> {
+    std::size_t operator()(const InputKey& k) const {
+        std::size_t hash = 0;
+        Carrot::hash_combine(hash, k.passPtr);
+        Carrot::hash_combine(hash, k.resourceID.hash());
+        return hash;
     }
 };
 
 namespace Carrot::Render {
-    static std::uint32_t getInputPinID(const Carrot::UUID& uuid) {
-        static std::unordered_map<Carrot::UUID, std::uint32_t> pinIDs;
+    static std::unordered_map<Carrot::UUID, std::uint32_t> inputPinIDs;
+    static std::unordered_map<Carrot::UUID, std::uint32_t> outputPinIDs;
+    static std::unordered_map<std::uint32_t, std::unordered_map<std::uint32_t, std::uint32_t>> linkIDs;
 
-        if(pinIDs.find(uuid) == pinIDs.end()) {
-            pinIDs[uuid] = uniqueID++;
+    static std::uint32_t getInputPinID(const Carrot::UUID& uuid) {
+        if(inputPinIDs.find(uuid) == inputPinIDs.end()) {
+            inputPinIDs[uuid] = uniqueID++;
         }
-        return pinIDs[uuid];
+        return inputPinIDs[uuid];
     }
 
     static std::uint32_t getOutputPinID(const Carrot::UUID& uuid) {
-        static std::unordered_map<Carrot::UUID, std::uint32_t> pinIDs;
-
-        if(pinIDs.find(uuid) == pinIDs.end()) {
-            pinIDs[uuid] = uniqueID++;
+        if(outputPinIDs.find(uuid) == outputPinIDs.end()) {
+            outputPinIDs[uuid] = uniqueID++;
         }
-        return pinIDs[uuid];
+        return outputPinIDs[uuid];
     }
 
     static std::uint32_t getLinkID(const Carrot::UUID& in, const Carrot::UUID& out) {
-        static std::unordered_map<std::uint32_t, std::unordered_map<std::uint32_t, std::uint32_t>> linkIDs;
-
         auto& inLinks = linkIDs[getInputPinID(in)];
         const auto outID = getOutputPinID(out);
         if(inLinks.find(outID) == inLinks.end()) {
@@ -227,6 +228,15 @@ namespace Carrot::Render {
         ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
         std::uint32_t inputPinIndex = 0;
+        for(const auto& o : pass->getInputOutputs()) {
+            ed::BeginPin(getInputPinID(o.id), ed::PinKind::Input);
+            ImGui::Text("> %u *", inputPinIndex++);
+            ed::EndPin();
+
+            if(ImGui::IsItemHovered()) {
+                hoveredResource = &o;
+            }
+        }
         for(const auto& i : pass->getInputs()) {
             ed::BeginPin(getInputPinID(i.id), ed::PinKind::Input);
             ImGui::Text("> %u", inputPinIndex++);
@@ -295,10 +305,6 @@ namespace Carrot::Render {
 
         ImGui::PopID();
         ed::EndNode();
-
-        for(const auto& i : pass->getInputs()) {
-            ed::Link(getLinkID(i.id, i.parentID), getInputPinID(i.id), getOutputPinID(i.parentID));
-        }
     }
 
     void Graph::onFrame(const Render::Context& context) {
@@ -321,8 +327,23 @@ namespace Carrot::Render {
                     hoveredResource = nullptr;
                     ed::Begin("Render graph debug");
                     std::uint32_t index = 0;
+
+                    // draw nodes
                     for (auto *pass: sortedPasses) {
                         drawPassNodes(context, pass, index++);
+                    }
+
+                    // draw links
+                    for (auto* pass: sortedPasses) {
+                        for(const auto& inputSet : { pass->getInputs(), pass->getInputOutputs() }) {
+                            for(const auto& i : inputSet) {
+                                if(i.id != i.parentID) {
+                                    if(!ed::Link(getLinkID(i.id, i.parentID), getInputPinID(i.id), getOutputPinID(i.parentID))) {
+                                        ed::Link(getLinkID(i.id, i.parentID), getInputPinID(i.id), getInputPinID(i.parentID));
+                                    }
+                                }
+                            }
+                        }
                     }
                     ed::End();
                     ed::EnableShortcuts(false);
@@ -331,7 +352,7 @@ namespace Carrot::Render {
                         ImGui::BeginTooltip();
                         auto& texture = GetVulkanDriver().getTextureRepository().get(*hoveredResource, context.swapchainIndex);
                         float aspectRatio = texture.getSize().width / (float) texture.getSize().height;
-                        ImGui::Text("%s (%u x %u x %u)", hoveredResource->rootID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
+                        ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                         ImGui::Image(texture.getImguiID(hoveredResource->format), ImVec2(aspectRatio * 512.0f, 512.0f));
                         ImGui::EndTooltip();
                     }

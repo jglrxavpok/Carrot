@@ -96,6 +96,7 @@ namespace Carrot::Render {
 
         std::span<const FrameResource> getInputs() const { return inputs; }
         std::span<const FrameResource> getOutputs() const { return outputs; }
+        std::span<const FrameResource> getInputOutputs() const { return inouts; }
 
         void refresh();
 
@@ -135,6 +136,7 @@ namespace Carrot::Render {
         // kept for debug
         std::vector<FrameResource> inputs;
         std::vector<FrameResource> outputs;
+        std::vector<FrameResource> inouts; // inputs used as read-write
 
     private: // Pre-recording
         vk::UniqueCommandPool commandPool;

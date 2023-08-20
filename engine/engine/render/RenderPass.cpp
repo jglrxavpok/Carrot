@@ -346,6 +346,11 @@ void Carrot::Render::CompiledPass::setInputsOutputsForDebug(const std::list<Inpu
     for(const auto& output : _outputs) {
         outputs.emplace_back(output.resource);
     }
+    for(const auto& output : _outputs) {
+        if(!output.isCreatedInThisPass) {
+            inouts.emplace_back(output.resource);
+        }
+    }
 }
 
 void Carrot::Render::CompiledPass::createFramebuffers(){
