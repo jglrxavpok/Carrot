@@ -125,7 +125,7 @@ void main() {
 
     // from SVGF
     const float sigmaNormals = 128.0f;
-    const float sigmaPositions = 1000.0f;
+    const float sigmaPositions = 1.0f;
     const float sigmaLuminance = 4.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;

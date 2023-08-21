@@ -61,8 +61,22 @@ void main() {
     //reprojectedUV = clamp(reprojectedUV, vec2(epsilon), vec2(1-epsilon));
 
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
+
+    vec4 minColor = vec4(100000);
+    vec4 maxColor = vec4(-100000);
+    const ivec2 size = textureSize(sampler2D(currentFrame, linearSampler), 0);
+
+    for(int x = -1; x <= 1; x++) {
+        for(int y = -1; y <= 1; y++) {
+            const vec2 dUV = vec2(x, y) / size;
+            vec4 color = texture(sampler2D(currentFrame, linearSampler), reprojectedUV + dUV);
+            minColor = min(minColor, color);
+            maxColor = max(maxColor, color);
+        }
+    }
     vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
-    vec4 adjustedPrevious = AdjustHDRColor(previousFrameColor);
+    vec4 adjustedPrevious = AdjustHDRColor(clamp(previousFrameColor, minColor, maxColor));
+    //vec4 adjustedPrevious = AdjustHDRColor(previousFrameColor);
     //previousFrameColor.a = 1.0;
 
     const float colorClampStrength = 200.0f;
