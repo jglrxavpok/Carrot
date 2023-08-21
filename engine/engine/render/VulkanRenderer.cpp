@@ -804,6 +804,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     if(reloadedSomeShaders) {
         boundBuffers.clear();
         boundTextures.clear();
+        boundStorageImages.clear();
         boundSamplers.clear();
         boundAS.clear();
     }
