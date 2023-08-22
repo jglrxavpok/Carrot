@@ -305,6 +305,13 @@ void Carrot::Pipeline::createGraphicsTemplate() {
 
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
+        } else if(description.type == PipelineType::Lighting) {
+            // reflections
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
         }
     }
 

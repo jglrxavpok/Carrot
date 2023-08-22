@@ -87,9 +87,10 @@ namespace Carrot::Render {
         currentPass->present(resourceToPresent);
     }
 
-    FrameResource& GraphBuilder::createRenderTarget(vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
+    FrameResource& GraphBuilder::createRenderTarget(std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
                                                     vk::ClearValue clearValue, vk::ImageLayout layout) {
         auto& r = resources.emplace_back();
+        r.name = std::move(name);
         r.owner = this;
         r.format = format;
         r.size = size;
@@ -227,10 +228,9 @@ namespace Carrot::Render {
         ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
         ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-        std::uint32_t inputPinIndex = 0;
         for(const auto& o : pass->getInputOutputs()) {
             ed::BeginPin(getInputPinID(o.id), ed::PinKind::Input);
-            ImGui::Text("> %u *", inputPinIndex++);
+            ImGui::Text("> %s *", o.name.c_str());
             ed::EndPin();
 
             if(ImGui::IsItemHovered()) {
@@ -239,7 +239,7 @@ namespace Carrot::Render {
         }
         for(const auto& i : pass->getInputs()) {
             ed::BeginPin(getInputPinID(i.id), ed::PinKind::Input);
-            ImGui::Text("> %u", inputPinIndex++);
+            ImGui::Text("> %s", i.name.c_str());
             ed::EndPin();
 
             if(ImGui::IsItemHovered()) {
@@ -284,10 +284,9 @@ namespace Carrot::Render {
             ImGui::EndHorizontal();
             ed::EndPin();
         }*/
-        std::uint32_t outputPinIndex = 0;
         for(const auto& o : pass->getOutputs()) {
             ed::BeginPin(getOutputPinID(o.id), ed::PinKind::Output);
-            ImGui::Text("%u >", outputPinIndex++);
+            ImGui::Text("%s >", o.name.c_str());
             ed::EndPin();
 
             if(ImGui::IsItemHovered()) {
@@ -352,6 +351,7 @@ namespace Carrot::Render {
                         ImGui::BeginTooltip();
                         auto& texture = GetVulkanDriver().getTextureRepository().get(*hoveredResource, context.swapchainIndex);
                         float aspectRatio = texture.getSize().width / (float) texture.getSize().height;
+                        ImGui::Text("%s", hoveredResource->name.c_str());
                         ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                         ImGui::Image(texture.getImguiID(hoveredResource->format), ImVec2(aspectRatio * 512.0f, 512.0f));
                         ImGui::EndTooltip();

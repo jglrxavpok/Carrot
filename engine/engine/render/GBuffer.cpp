@@ -32,49 +32,57 @@ Carrot::Render::Pass<Carrot::Render::PassData::GBuffer>& Carrot::GBuffer::addGBu
            [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::GBuffer>& pass, Carrot::Render::PassData::GBuffer& data)
            {
 
-                data.albedo = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+                data.albedo = graph.createRenderTarget("Albedo",
+                                                       vk::Format::eR8G8B8A8Unorm,
                                                        framebufferSize,
                                                        vk::AttachmentLoadOp::eClear,
                                                        clearColor,
                                                        vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.positions = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                data.positions = graph.createRenderTarget("View Positions",
+                                                          vk::Format::eR32G32B32A32Sfloat,
                                                           framebufferSize,
                                                           vk::AttachmentLoadOp::eClear,
                                                           positionClear,
                                                           vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.viewSpaceNormalTangents = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                data.viewSpaceNormalTangents = graph.createRenderTarget("View space normals tangents",
+                                                        vk::Format::eR32G32B32A32Sfloat,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         positionClear,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.flags = graph.createRenderTarget(vk::Format::eR32Uint,
+                data.flags = graph.createRenderTarget("Flags",
+                                                      vk::Format::eR32Uint,
                                                       framebufferSize,
                                                       vk::AttachmentLoadOp::eClear,
                                                       clearIntProperties,
                                                       vk::ImageLayout::eColorAttachmentOptimal);
 
-                data.entityID = graph.createRenderTarget(vk::Format::eR32G32B32A32Uint,
+                data.entityID = graph.createRenderTarget("EntityID",
+                                                         vk::Format::eR32G32B32A32Uint,
                                                         framebufferSize,
                                                         vk::AttachmentLoadOp::eClear,
                                                         clearEntityID,
                                                         vk::ImageLayout::eColorAttachmentOptimal);
 
-               data.metallicRoughnessVelocityXY = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+               data.metallicRoughnessVelocityXY = graph.createRenderTarget("MetallicnessRoughness+VelocityXY",
+                                                                           vk::Format::eR32G32B32A32Sfloat,
+                                                                           framebufferSize,
+                                                                           vk::AttachmentLoadOp::eClear,
+                                                                           clearColor,
+                                                                           vk::ImageLayout::eColorAttachmentOptimal);
+
+               data.emissiveVelocityZ = graph.createRenderTarget("Emissive + Velocity Z",
+                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                  framebufferSize,
                                                                  vk::AttachmentLoadOp::eClear,
                                                                  clearColor,
                                                                  vk::ImageLayout::eColorAttachmentOptimal);
 
-               data.emissiveVelocityZ = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
-                                                        framebufferSize,
-                                                        vk::AttachmentLoadOp::eClear,
-                                                        clearColor,
-                                                        vk::ImageLayout::eColorAttachmentOptimal);
-
-               data.depthStencil = graph.createRenderTarget(renderer.getVulkanDriver().getDepthFormat(),
+               data.depthStencil = graph.createRenderTarget("Depth Stencil",
+                                                            renderer.getVulkanDriver().getDepthFormat(),
                                                             framebufferSize,
                                                             vk::AttachmentLoadOp::eClear,
                                                             clearDepth,
@@ -100,8 +108,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 // TODO (or it should be re-recorded when changes happen)
                 resolveData.gBuffer.readFrom(graph, opaqueData);
 
-               // TODO: output into multiple buffer depending on content type (shadows, reflections)
-                resolveData.resolved = graph.createRenderTarget(vk::Format::eR32G32B32A32Sfloat,
+                resolveData.globalIllumination = graph.createRenderTarget("Global Illumination",
+                                                                vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                clearColor,
+                                                                vk::ImageLayout::eColorAttachmentOptimal);
+
+                resolveData.reflections = graph.createRenderTarget("Reflections",
+                                                                vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,
                                                                 clearColor,

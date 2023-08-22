@@ -727,7 +727,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
     [this](Render::GraphBuilder& graph, Render::Pass<Carrot::Render::PassData::ImGui>& pass, Carrot::Render::PassData::ImGui& data) {
         vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
         auto& windowSize = getVulkanDriver().getWindowFramebufferExtent();
-        data.output = graph.createRenderTarget(vk::Format::eR8G8B8A8Unorm, windowSize, vk::AttachmentLoadOp::eClear, uiClear);
+        data.output = graph.createRenderTarget("ImGui output", vk::Format::eR8G8B8A8Unorm, windowSize, vk::AttachmentLoadOp::eClear, uiClear);
     },
     [this](const Render::CompiledPass& pass, const Render::Context& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
         ZoneScopedN("CPU RenderGraph ImGui");

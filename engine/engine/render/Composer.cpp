@@ -37,13 +37,15 @@ namespace Carrot::Render {
                 data.elements.emplace_back(r);
                 data.elements.back().toDraw = builder.read(r.toDraw, vk::ImageLayout::eShaderReadOnlyOptimal);
             }
-            data.color = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+            data.color = builder.createRenderTarget("Composed color",
+                                                    vk::Format::eR8G8B8A8Unorm,
                                                    {},
                                                    vk::AttachmentLoadOp::eClear,
                                                    clearColor,
                                                    vk::ImageLayout::eColorAttachmentOptimal);
 
-            data.depthStencil = builder.createRenderTarget(builder.getVulkanDriver().getDepthFormat(),
+            data.depthStencil = builder.createRenderTarget("Composed depth stencil",
+                                                           builder.getVulkanDriver().getDepthFormat(),
                                                            {},
                                                            vk::AttachmentLoadOp::eClear,
                                                            clearDepth,

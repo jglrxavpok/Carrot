@@ -53,7 +53,8 @@ layout(set = 5, binding = 3, scalar) buffer RTInstances {
 
 layout(location = 0) in vec2 inUV;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 outGlobalIllumination;
+layout(location = 1) out vec4 outReflections;
 
 void main() {
     vec4 outColorWorld;
@@ -82,13 +83,21 @@ void main() {
         const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
-        vec3 l = vec3(0.0);
+        vec3 globalIllumination = vec3(0.0);
+        vec3 reflections = vec3(0.0);
         for(int i = 0; i < SAMPLE_COUNT; i++) {
-            l += calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+            vec3 gi;
+            vec3 r;
+            globalIllumination += calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+            reflections += calculateReflections(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
         }
-        outColorWorld.rgb = l * INV_SAMPLE_COUNT;
+        outGlobalIllumination.rgb = globalIllumination * INV_SAMPLE_COUNT;
+        outReflections.rgb = reflections * INV_SAMPLE_COUNT;
 #else
-        outColorWorld.rgb = calculateLighting(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
+        vec3 gi;
+        vec3 r;
+        outGlobalIllumination.rgb = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
+        outReflections.rgb = calculateReflections(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
 #endif
 
         distanceToCamera = length(gbuffer.viewPosition);
@@ -103,14 +112,14 @@ void main() {
         );
         vec3 skyboxRGB = texture(gSkybox3D, (rot) * worldViewDir).rgb;
 
-        outColorWorld = vec4(skyboxRGB.rgb,1.0);
+        outGlobalIllumination = vec4(skyboxRGB.rgb,1.0);
         distanceToCamera = 1.0f/0.0f;
+        outReflections.rgb = vec3(0.0);
     }
 
     float fogFactor = clamp((distanceToCamera - lights.fogDistance) / lights.fogDepth, 0, 1);
-    outColorWorld.rgb = mix(outColorWorld.rgb, lights.fogColor, fogFactor);
+    outGlobalIllumination.rgb = mix(outGlobalIllumination.rgb, lights.fogColor, fogFactor);
 
-
-    outColorWorld.a = 1.0;
-    outColor = outColorWorld;
+    outGlobalIllumination.a = 1.0;
+    outReflections.a = 1.0;
 }

@@ -74,6 +74,7 @@ namespace Carrot::Render {
             owner = toCopy.owner;
             previousLayout = toCopy.previousLayout;
             layout = toCopy.layout;
+            name = toCopy.name;
         }
 
         explicit FrameResource(const FrameResource* parent) {
@@ -85,6 +86,7 @@ namespace Carrot::Render {
             owner = parent->owner;
             previousLayout = parent->previousLayout;
             layout = parent->layout;
+            name = parent->name;
         };
 
         void updateLayout(vk::ImageLayout newLayout);
@@ -98,6 +100,7 @@ namespace Carrot::Render {
         GraphBuilder* owner = nullptr;
         vk::ImageLayout layout = vk::ImageLayout::eUndefined;
         vk::ImageLayout previousLayout = vk::ImageLayout::eUndefined;
+        std::string name;
     };
 
 
@@ -129,7 +132,8 @@ namespace Carrot::Render {
 
         struct Lighting {
             GBuffer gBuffer;
-            FrameResource resolved;
+            FrameResource globalIllumination;
+            FrameResource reflections;
         };
 
         struct PostProcessing {

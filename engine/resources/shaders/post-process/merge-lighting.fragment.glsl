@@ -9,7 +9,8 @@ DEFINE_GBUFFER_INPUTS(0)
 #include <includes/gbuffer_unpack.glsl>
 
 layout(set = 1, binding = 0) uniform texture2D lighting;
-layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
+layout(set = 1, binding = 1) uniform texture2D reflections;
+//layout(set = 1, binding = 1) uniform texture2D momentsHistoryHistoryLength;
 layout(set = 1, binding = 2) uniform texture2D noisyLighting;
 layout(set = 1, binding = 3) uniform texture2D temporalDenoiseResult;
 layout(set = 1, binding = 4) uniform texture2D varianceCopyOutputDebug;
@@ -38,7 +39,7 @@ bool earlyExits(uint debugMode) {
 void main() {
     GBuffer g = unpackGBuffer(uv);
     vec4 albedoColor = g.albedo;
-    vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv);
+    vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv) + texture(sampler2D(reflections, gLinearSampler), uv);
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 
@@ -72,11 +73,11 @@ void main() {
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
             outColor = vec4(abs(g.motionVector), 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_MOMENTS) {
-            vec4 momentsHistoryVarianceData = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
+            /*vec4 momentsHistoryVarianceData = texture(sampler2D(momentsHistoryHistoryLength, gNearestSampler), uv);
             vec2 moments = momentsHistoryVarianceData.rg;
             float variance = momentsHistoryVarianceData.a;
             float historyLength = momentsHistoryVarianceData.b;
-            outColor = vec4(moments.x, moments.y, historyLength, 1.0f);
+            outColor = vec4(moments.x, moments.y, historyLength, 1.0f);*/
         } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
             outColor = vec4(g.entityID) / 255.0f;
         } else if(debug.gBufferType == DEBUG_VARIANCE) {
