@@ -14,17 +14,24 @@
 namespace Peeler {
     InspectorPanel::InspectorPanel(Application& app): EditorPanel(app) {
         registerEditionFunctions(*this);
+        registerDisplayNames(*this);
     }
 
     void InspectorPanel::registerComponentEditor(Carrot::ComponentID componentID, const ComponentEditor& editionFunction) {
         editionFunctions[componentID] = editionFunction;
     }
 
+    void InspectorPanel::registerComponentDisplayName(Carrot::ComponentID componentID, const std::string& name) {
+        displayNames[componentID] = name;
+    }
+
     void InspectorPanel::registerCSharpEdition() {
-        for(const auto& componentID : GetCSharpBindings().getAllComponentIDs()) {
+        for(const auto& [componentName, pComponentID] : GetCSharpBindings().getAllComponents()) {
+            auto componentID = *pComponentID;
             registerComponentEditor(componentID, [](EditContext& edition, Carrot::ECS::Component* component) {
                 editCSharpComponent(edition, dynamic_cast<Carrot::ECS::CSharpComponent*>(component));
             });
+            registerComponentDisplayName(componentID, Carrot::sprintf(ICON_FA_CODE "  %s", componentName.c_str()));
         }
     }
 
@@ -99,10 +106,16 @@ namespace Peeler {
 
     void InspectorPanel::editComponent(EditContext& editContext, Carrot::ECS::Component* component) {
         bool shouldKeep = true;
-        std::string s = component->getName();
-        s += "##" + component->getEntity().getID().toString();
-        if(ImGui::CollapsingHeader(s.c_str(), &shouldKeep)) {
-            ImGui::PushID(s.c_str());
+        std::string displayName;
+        auto displayNameIter = displayNames.find(component->getComponentTypeID());
+        if(displayNameIter == displayNames.end()) {
+            displayName = component->getName();
+        } else {
+            displayName = displayNameIter->second;
+        }
+        displayName += "##" + component->getEntity().getID().toString();
+        if(ImGui::CollapsingHeader(displayName.c_str(), &shouldKeep)) {
+            ImGui::PushID(displayName.c_str());
             auto iter = editionFunctions.find(component->getComponentTypeID());
             if(iter == editionFunctions.end()) {
                 ImGui::Text("No edition function registered via registerComponentEditor!");

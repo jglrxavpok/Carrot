@@ -95,6 +95,7 @@ namespace Carrot::Scripting {
         ComponentID requestComponentID(const std::string& namespaceName, const std::string& className);
 
         std::vector<ComponentID> getAllComponentIDs() const;
+        Carrot::Async::ParallelMap<std::string, ComponentID>::ConstSnapshot getAllComponents() const;
 
         template<typename T, typename... Args>
         Scripting::CarrotCSObject<T>& requestCarrotObject(Scripting::CSClass* csType, Args&&... args) {

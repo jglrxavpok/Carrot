@@ -48,6 +48,7 @@
 #include "game_specific/ecs/CharacterControllerSystem.h"
 
 #include "layers/GizmosLayer.h"
+#include <IconsFontAwesome5.h>
 
 namespace fs = std::filesystem;
 
@@ -141,19 +142,19 @@ namespace Peeler {
         ImGui::PopStyleVar(3);
 
         if (ImGui::BeginMenuBar()) {
-            if(ImGui::BeginMenu("Project")) {
+            if(ImGui::BeginMenu(ICON_FA_FOLDER_OPEN "  Project")) {
                 drawProjectMenu();
                 ImGui::EndMenu();
             }
 
-            if(ImGui::BeginMenu("Settings")) {
+            if(ImGui::BeginMenu(ICON_FA_TOOLS "  Settings")) {
                 drawSettingsMenu();
                 ImGui::EndMenu();
             }
 
             static bool showDemo = false;
 
-            if(ImGui::BeginMenu("Tests")) {
+            if(ImGui::BeginMenu(ICON_FA_VIAL "  Tests")) {
                 bool hasPhysicsDebug = GetPhysics().getDebugViewport() != nullptr;
                 if(ImGui::MenuItem("Activate Physics debug", nullptr, hasPhysicsDebug)) {
                     if(!hasPhysicsDebug) {
@@ -171,7 +172,7 @@ namespace Peeler {
             }
 
             const bool csharpEnabled = getCurrentProjectFile() != EmptyProject; // must already have a project
-            if(ImGui::BeginMenu("C#", csharpEnabled)) {
+            if(ImGui::BeginMenu(ICON_FA_CODE "  C#", csharpEnabled)) {
                 if(ImGui::MenuItem("Generate C# .sln")) {
                     // TODO: check that solution does not exist yet
 
@@ -257,22 +258,22 @@ namespace Peeler {
 
         ImGui::End();
 
-        if(ImGui::Begin("World")) {
+        if(ImGui::Begin(ICON_FA_STREAM "  World")) {
             UIWorldHierarchy(renderContext);
         }
         ImGui::End();
 
-        if(ImGui::Begin("Resources")) {
+        if(ImGui::Begin(ICON_FA_FILE_ALT "  Resources")) {
             resourcePanel.draw(renderContext);
         }
         ImGui::End();
 
-        if(ImGui::Begin("NavMesh utils")) {
+        if(ImGui::Begin(ICON_FA_ROUTE "  NavMesh utils")) {
             navMeshPanel.draw(renderContext);
         }
         ImGui::End();
 
-        if(ImGui::Begin("Properties")) {
+        if(ImGui::Begin(ICON_FA_WRENCH "  Inspector")) {
             inspectorPanel.draw(renderContext);
         }
         ImGui::End();
@@ -282,7 +283,7 @@ namespace Peeler {
         }
         ImGui::End();
 
-        if(ImGui::Begin("Scene properties")) {
+        if(ImGui::Begin(ICON_FA_GLOBE "  Scene properties")) {
             UISceneProperties(renderContext);
         }
         ImGui::End();
@@ -341,7 +342,7 @@ namespace Peeler {
     }
 
     void Application::UISceneProperties(const Carrot::Render::Context& renderContext) {
-        if(ImGui::CollapsingHeader("Lighting")) {
+        if(ImGui::CollapsingHeader(ICON_FA_LIGHTBULB "  Lighting")) {
             if(ImGui::BeginMenu("Ambient color")) {
                 auto& ambientLight = GetRenderer().getLighting().getAmbientLight();
                 float color[3] = { ambientLight.r, ambientLight.g, ambientLight.b };
@@ -657,7 +658,7 @@ namespace Peeler {
     }
 
     void Application::drawSettingsMenu() {
-        if(ImGui::MenuItem("Physics settings", nullptr, &showPhysicsSettings /* TODO: save to editor settings */)) {
+        if(ImGui::MenuItem(ICON_FA_CUBES "  Physics settings", nullptr, &showPhysicsSettings /* TODO: save to editor settings */)) {
             //showPhysicsSettings = !showPhysicsSettings;
         }
     }

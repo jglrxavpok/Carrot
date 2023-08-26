@@ -16,6 +16,7 @@ namespace Peeler {
      * Register all edition functions below to the given inspector
      */
     void registerEditionFunctions(InspectorPanel& inspector);
+    void registerDisplayNames(InspectorPanel& inspector);
 
     void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component);
 }

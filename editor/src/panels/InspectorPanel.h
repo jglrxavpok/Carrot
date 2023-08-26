@@ -34,10 +34,13 @@ namespace Peeler {
     public:
         /**
          * Registers a function to draw widgets to edit components which have an ID matching 'componentID'
-         * @param componentID
-         * @param editionFunction
          */
         void registerComponentEditor(Carrot::ComponentID componentID, const ComponentEditor& editionFunction);
+
+        /**
+         * Registers the name to display for a given component. If none is registered, will display the component's name (Component::getName)
+         */
+        void registerComponentDisplayName(Carrot::ComponentID componentID, const std::string& displayName);
 
         /**
          * Called when C# module is (re-)loaded, allows inspector to register component editors for C# components
@@ -67,6 +70,7 @@ namespace Peeler {
         void editComponent(EditContext& editContext, Carrot::ECS::Component* component);
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;
+        std::unordered_map<Carrot::ComponentID, std::string> displayNames;
         friend class Application;
     };
 

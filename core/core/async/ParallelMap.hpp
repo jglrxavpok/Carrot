@@ -53,10 +53,10 @@ namespace Carrot::Async {
             friend class ParallelMap<KeyType, ValueType>;
         };
 
+    public:
         using NonConstSnapshot = Snapshot<false>;
         using ConstSnapshot = Snapshot<true>;
 
-    public:
         /// Creates an empty map
         ParallelMap() = default;
 

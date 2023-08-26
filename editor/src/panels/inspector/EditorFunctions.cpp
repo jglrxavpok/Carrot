@@ -21,6 +21,7 @@
 #include <core/io/Logging.hpp>
 #include <engine/render/ModelRenderer.h>
 #include <engine/ecs/components/ModelComponent.h>
+#include <IconsFontAwesome5.h>
 
 namespace Carrot::ECS {
     struct ModelComponent;
@@ -350,5 +351,17 @@ namespace Peeler {
         registerFunction(inspector, editTransformComponent);
         registerFunction(inspector, editPhysicsCharacterComponent);
         registerFunction(inspector, editNavMeshComponent);
+    }
+
+    void registerDisplayNames(InspectorPanel& inspector) {
+        inspector.registerComponentDisplayName(Carrot::ECS::TransformComponent::getID(), ICON_FA_ARROWS_ALT "  Transform");
+        inspector.registerComponentDisplayName(Carrot::ECS::LightComponent::getID(), ICON_FA_LIGHTBULB "  Light");
+        inspector.registerComponentDisplayName(Carrot::ECS::ModelComponent::getID(), ICON_FA_CUBE "  Model");
+        inspector.registerComponentDisplayName(Carrot::ECS::CameraComponent::getID(), ICON_FA_CAMERA_RETRO "  Camera");
+        inspector.registerComponentDisplayName(Carrot::ECS::RigidBodyComponent::getID(), ICON_FA_CUBES "  Rigidbody");
+        inspector.registerComponentDisplayName(Carrot::ECS::PhysicsCharacterComponent::getID(), ICON_FA_CHILD "  Physics Character");
+        inspector.registerComponentDisplayName(Carrot::ECS::SpriteComponent::getID(), ICON_FA_IMAGE "  Sprite");
+        inspector.registerComponentDisplayName(Carrot::ECS::TextComponent::getID(), ICON_FA_FONT "  Text");
+        inspector.registerComponentDisplayName(Carrot::ECS::NavMeshComponent::getID(), ICON_FA_ROUTE "  NavMesh");
     }
 }

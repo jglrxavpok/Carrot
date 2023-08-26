@@ -8,6 +8,7 @@
 #include <nfd.h>
 #include <engine/render/RenderContext.h>
 #include <core/utils/stringmanip.h>
+#include <IconsFontAwesome5.h>
 
 namespace Tools {
     class ProjectMenuHolder {
@@ -19,11 +20,11 @@ namespace Tools {
         void attachSettings(EditorSettings& settings) {
             this->settings = &settings;
             popupName = "Unsaved changes##" + settings.getName();
-            newItemName = "New##" + settings.getName();
-            openItemName = "Open##" + settings.getName();
-            openRecentItemName = "Open Recent##" + settings.getName();
-            saveItemName = "Save##" + settings.getName();
-            saveAsItemName = "Save as...##" + settings.getName();
+            newItemName = ICON_FA_FILE "  New##" + settings.getName();
+            openItemName = ICON_FA_FOLDER_OPEN "  Open##" + settings.getName();
+            openRecentItemName = ICON_FA_FOLDER_OPEN "  Open Recent##" + settings.getName();
+            saveItemName = ICON_FA_SAVE "  Save##" + settings.getName();
+            saveAsItemName = ICON_FA_SAVE "  Save as...##" + settings.getName();
             cantSavePopupName = "Can't save##" + settings.getName();
         }
 
@@ -111,7 +112,7 @@ namespace Tools {
                 ImGui::Text("You currently have unsaved changes!");
                 ImGui::Text("Do you still want to continue?");
 
-                if(ImGui::Button("Save")) {
+                if(ImGui::Button(ICON_FA_SAVE "  Save")) {
                     if(triggerSave()) {
                         onContinueAction();
                     } else {
@@ -120,12 +121,12 @@ namespace Tools {
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if(ImGui::Button("Don't save")) {
+                if(ImGui::Button(ICON_FA_TIMES "  Don't save")) {
                     onContinueAction();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if(ImGui::Button("Cancel")) {
+                if(ImGui::Button(ICON_FA_BAN "  Cancel")) {
                     onCancelAction();
                     ImGui::CloseCurrentPopup();
                 }

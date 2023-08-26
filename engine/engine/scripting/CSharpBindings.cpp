@@ -291,6 +291,10 @@ namespace Carrot::Scripting {
         return components;
     }
 
+    Carrot::Async::ParallelMap<std::string, ComponentID>::ConstSnapshot CSharpBindings::getAllComponents() const {
+        return csharpComponentIDs.snapshot();
+    }
+
     void CSharpBindings::loadEngineAssembly() {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
