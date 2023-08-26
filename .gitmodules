@@ -46,9 +46,6 @@
 [submodule "thirdparty/debugbreak"]
     path = thirdparty/debugbreak
     url = https://github.com/scottt/debugbreak
-[submodule "thirdparty/VulkanMemoryAllocator-Hpp"]
-	path = thirdparty/VulkanMemoryAllocator-Hpp
-	url = https://github.com/malte-v/VulkanMemoryAllocator-Hpp
 [submodule "thirdparty/tinygltf"]
 	path = thirdparty/tinygltf
 	url = https://github.com/syoyo/tinygltf
@@ -67,3 +64,6 @@
 [submodule "thirdparty/JoltPhysics"]
 	path = thirdparty/JoltPhysics
 	url = https://github.com/jrouwe/JoltPhysics
+[submodule "thirdparty/VulkanMemoryAllocator"]
+	path = thirdparty/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator

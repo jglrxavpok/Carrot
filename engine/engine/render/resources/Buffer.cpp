@@ -180,6 +180,6 @@ void Carrot::Buffer::destroyNow() {
     memory = {};
 }
 
-Carrot::BufferView Carrot::Buffer::internalStagingBuffer(vk::DeviceSize size) {
+Carrot::StagingBuffer Carrot::Buffer::internalStagingBuffer(vk::DeviceSize size) {
     return GetResourceAllocator().allocateStagingBuffer(size);
 }

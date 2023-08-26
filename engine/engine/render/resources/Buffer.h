@@ -11,6 +11,7 @@
 #include <engine/render/resources/DeviceMemory.h>
 #include <engine/render/resources/BufferView.h> // required for Buffer.ipp
 #include <core/async/ParallelMap.hpp>
+#include "StagingBuffer.h"
 
 namespace Carrot {
     class Engine;
@@ -94,7 +95,7 @@ namespace Carrot {
         void destroyNow();
 
     private:
-        static Carrot::BufferView internalStagingBuffer(vk::DeviceSize size); // used to avoid includes inside Buffer.h
+        static Carrot::StagingBuffer internalStagingBuffer(vk::DeviceSize size);
 
     private:
         VulkanDriver& driver;

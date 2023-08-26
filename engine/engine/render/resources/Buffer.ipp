@@ -20,7 +20,8 @@ void Carrot::Buffer::stageUpload(const std::vector<T>&... data) {
 template<typename... T>
 void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::span<T>>&... offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = internalStagingBuffer(size);
+    auto stagingBufferAlloc = internalStagingBuffer(size);
+    auto stagingBuffer = stagingBufferAlloc.view;
 
     // upload data to staging buffer
     (
@@ -37,7 +38,8 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::pair<uint64_t, std::span<
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffsets(const std::span<std::pair<uint64_t, std::span<T>>>& offsetDataPairs) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = internalStagingBuffer(size);
+    auto stagingBufferAlloc = internalStagingBuffer(size);
+    auto stagingBuffer = stagingBufferAlloc.view;
 
     // upload data to staging buffer
     for(const auto& [offset, data] : offsetDataPairs) {
@@ -51,7 +53,8 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::span<std::pair<uint64_t, 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = internalStagingBuffer(totalLength);
+    auto stagingBufferAlloc = internalStagingBuffer(size);
+    auto stagingBuffer = stagingBufferAlloc.view;
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
@@ -63,7 +66,8 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBuffer = internalStagingBuffer(totalLength);
+    auto stagingBufferAlloc = internalStagingBuffer(size);
+    auto stagingBuffer = stagingBufferAlloc.view;
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
