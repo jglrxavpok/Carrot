@@ -46,17 +46,12 @@ namespace Carrot::IO {
         const std::string& getName() const;
 
     public:
-        void write(const std::span<uint8_t> toWrite, uint64_t offset = 0);
         void read(void* buffer, uint64_t size, uint64_t offset = 0) const;
         std::unique_ptr<uint8_t[]> read(uint64_t size, uint64_t offset = 0) const;
         void readAll(void* buffer) const;
         std::unique_ptr<uint8_t[]> readAll() const;
 
         std::string readText() const;
-
-    public:
-        void writeToFile(const std::string& filename, uint64_t offset = 0) const;
-        void writeToFile(FileHandle& file, uint64_t offset = 0) const;
 
     public:
         /// Copies this resource to a new in-memory Resource.

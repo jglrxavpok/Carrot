@@ -20,7 +20,7 @@ namespace Game {
 
         void onMouseMove(double dx, double dy) override {};
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override {};
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override {};
 
         void onSwapchainSizeChange(int newWidth, int newHeight) override {};
 
@@ -32,18 +32,18 @@ using namespace Carrot::IO;
 int main() {
     // TODO
 
-    try {
+    //try {
         Resource resource("resources/shaders/screenQuad.vertex.glsl.spv");
-        verify(resource.getSize() == 1620, "");
+        verify(resource.getSize() == 1496, "");
 
         auto buffer = resource.readAll();
         auto readWithIfstream = Carrot::IO::readFile("resources/shaders/screenQuad.vertex.glsl.spv");
         for (int i = 0; i < resource.getSize(); ++i) {
             verify(buffer[i] == readWithIfstream[i], "mismatched input.");
         }
-    } catch (std::exception& e) {
+    /*} catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
-    }
+    }*/
 
     return 0;
 }

@@ -9,8 +9,6 @@
 
 #include "core/io/vfs/VirtualFileSystem.h"
 
-#pragma optimize("",off)
-
 namespace Carrot::Render {
 
     constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";

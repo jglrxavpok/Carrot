@@ -4,6 +4,7 @@ function(make_test Test)
     string(REPLACE "/" "-" TestName "${Test}")
     list(APPEND AllTests ${TestName})
     add_executable("Carrot-Test${TestName}" ${Test}.cpp)
+    add_engine_precompiled_headers("Carrot-Test${TestName}")
     target_link_libraries("Carrot-Test${TestName}" PUBLIC Engine-Base)
 endfunction()
 

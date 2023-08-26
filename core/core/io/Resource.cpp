@@ -103,16 +103,6 @@ namespace Carrot::IO {
         }
     }
 
-    void Resource::write(const std::span<uint8_t> toWrite, uint64_t offset) {
-        if(data.isRawData) {
-            verify(toWrite.size() + offset <= getSize(), "Overflow!");
-            auto& vec = *data.raw;
-            std::memcpy(vec.data(), toWrite.data() + offset, toWrite.size());
-        } else {
-            data.fileHandle->write(toWrite, offset);
-        }
-    }
-
     void Resource::read(void* buffer, uint64_t size, uint64_t offset) const {
         verify(size + offset <= getSize(), "Out-of-bounds!");
         if(data.isRawData) {
@@ -126,22 +116,6 @@ namespace Carrot::IO {
         auto ptr = std::make_unique<uint8_t[]>(size);
         read(ptr.get(), size, offset);
         return std::move(ptr);
-    }
-
-    void Resource::writeToFile(const std::string& filename, uint64_t offset) const {
-        FileHandle handle(filename, OpenMode::Write);
-        writeToFile(handle, offset);
-    }
-
-    void Resource::writeToFile(FileHandle& file, uint64_t offset) const {
-        if(data.isRawData) {
-            // TODO: resize?
-            file.write({data.raw->data(), getSize()}, offset);
-        } else {
-            // perform copy
-            auto contents = data.fileHandle->read(getSize(), offset);
-            file.write({contents.get(), getSize()}, offset);
-        }
     }
 
     void Resource::readAll(void* buffer) const {

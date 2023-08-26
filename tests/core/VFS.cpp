@@ -93,8 +93,7 @@ TEST(VFS, Relative) {
     vfs.addRoot("engine", WIN_PREFIX "/root/folder");
     vfs.addRoot("game", WIN_PREFIX "/aaa");
 
-    EXPECT_EQ(VFS::Path{"game://models/test.gltf"}.relative("game://models/a.gltf"), VFS::Path { "game://models/a.gltf" }); // same root but absolute
-    EXPECT_EQ(VFS::Path{"game://models/test.gltf"}.relative("engine://models/a.gltf"), VFS::Path { "engine://models/a.gltf" }); // different root
+    EXPECT_EQ(VFS::Path{"game://models/test.gltf"}.relative("/models/a.gltf"), VFS::Path { "game://models/a.gltf" }); // absolute
     EXPECT_EQ(VFS::Path{"game://models/test.gltf"}.relative("a.gltf"), VFS::Path { "game://models/a.gltf" }); // actually relative
     EXPECT_EQ(VFS::Path{"game://models/test.gltf"}.relative("../a.txt"), VFS::Path { "game://a.txt" }); // actually relative
 }

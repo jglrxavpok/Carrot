@@ -24,6 +24,8 @@ set(CORE-SOURCES
         ${CoreRoot}io/Strings.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
+        ${CoreRoot}io/windows/PlatformFileHandle.cpp
+
         ${CoreRoot}math/AABB.cpp
         ${CoreRoot}math/Plane.cpp
         ${CoreRoot}math/Segment2D.cpp

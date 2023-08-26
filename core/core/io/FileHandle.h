@@ -51,11 +51,16 @@ namespace Carrot::IO {
         throw std::runtime_error("Invalid open mode");
     }
 
+    /**
+     * Type selected based on compilation flag (Are you on Windows? On Linux? Other?)
+     */
+    class PlatformFileHandle;
+
     class FileHandle {
     public:
         explicit FileHandle() = default;
         explicit FileHandle(const std::filesystem::path& filename, OpenMode openMode);
-        explicit FileHandle(const std::string filename, OpenMode openMode);
+        explicit FileHandle(const std::string& filename, OpenMode openMode);
         explicit FileHandle(const char* const filename, OpenMode openMode);
         FileHandle(FileHandle&& toMove);
         FileHandle(const FileHandle&) = delete;
@@ -69,7 +74,7 @@ namespace Carrot::IO {
             return opened;
         }
 
-        void open(const std::string& filename, OpenMode mode);
+        void open(const std::filesystem::path& filename, OpenMode mode);
         void close();
         void seek(size_t position);
         void seekEnd();
@@ -78,10 +83,10 @@ namespace Carrot::IO {
 
         uint64_t getCurrentPosition() const;
         uint64_t getSize() const;
-        const std::string& getCurrentFilename() const;
+        const std::filesystem::path& getCurrentFilename() const;
 
     public:
-        void write(const std::span<const uint8_t> toWrite, uint64_t offset = 0);
+        void write(std::span<const uint8_t> toWrite, uint64_t offset = 0);
         void read(void* buffer, uint64_t size, uint64_t offset = 0);
         std::unique_ptr<uint8_t[]> read(uint64_t size, uint64_t offset = 0);
 
@@ -89,13 +94,10 @@ namespace Carrot::IO {
         std::unique_ptr<uint8_t[]> readAll();
 
     private:
-        void checkStdError(int err, const std::string& operation);
-
-    private:
-        std::FILE* handle = nullptr;
+        PlatformFileHandle* handle = nullptr;
         bool opened = false;
         uint64_t fileSize = 0;
         OpenMode currentOpenMode = OpenMode::Invalid;
-        std::string currentFilename = "";
+        std::filesystem::path currentFilename = "";
     };
 }

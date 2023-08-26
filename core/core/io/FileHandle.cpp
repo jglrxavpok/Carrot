@@ -7,18 +7,39 @@
 #include <cassert>
 #include "core/utils/Assert.h"
 #include "core/utils/stringmanip.h"
+#include "core/io/IO.h"
+
+
+#ifdef _WIN32
+#include "windows/PlatformFileHandle.h"
+#endif
+
 
 namespace Carrot::IO {
+    template<typename T>
+    concept IsPlatformFileFormatValid = requires(T t, OpenMode m, const std::filesystem::path& filename, std::int64_t seek, int seekDirection, std::span<const std::uint8_t> constdata, std::span<std::uint8_t> data) {
+        { T::open(filename, m) } -> std::convertible_to<PlatformFileHandle*>; // opens a file, throws if error
+        { t.close() } -> std::convertible_to<void>; // closes a file
+        { t.read(data) } -> std::convertible_to<void>; // fills the span with the data, advances cursor, throws if error
+        { t.write(constdata) } -> std::convertible_to<void>; // fills the file with the data, advances cursor, throws if error
+        { t.seek(seek, seekDirection) } -> std::convertible_to<void>; // fills the file with the data, advances cursor, throws if error
+        { t.tell() } -> std::convertible_to<std::uint64_t>; // where is the cursor?
+    };
+
+    static_assert(IsPlatformFileFormatValid<PlatformFileHandle>, "Platform file handle for this configuration is not valid.");
+
+#define PLATFORM_HANDLE ((PlatformFileHandle*)handle)
+
     FileHandle::FileHandle(const std::filesystem::path& filepath, OpenMode openMode) {
-        open(Carrot::toString(filepath.u8string()), openMode);
+        open(filepath, openMode);
     }
 
-    FileHandle::FileHandle(const std::string filename, OpenMode openMode) {
-        open(filename, openMode);
+    FileHandle::FileHandle(const std::string& filename, OpenMode openMode) {
+        open(std::filesystem::path{ filename }, openMode);
     }
 
     FileHandle::FileHandle(const char* const filename, OpenMode openMode) {
-        open(filename, openMode);
+        open(std::filesystem::path{ filename }, openMode);
     }
 
     FileHandle::FileHandle(FileHandle&& toMove) {
@@ -34,29 +55,9 @@ namespace Carrot::IO {
         toMove.currentOpenMode = OpenMode::Invalid;
     }
 
-    void FileHandle::open(const std::string& filename, OpenMode openMode) {
-        const char* mode = "";
-        switch (openMode) {
-            case OpenMode::Read:
-                mode = "rb";
-                break;
-            case OpenMode::Write:
-                mode = "wb";
-                break;
-            case OpenMode::Append:
-                mode = "ab";
-                break;
-            case OpenMode::AlreadyExistingReadWrite:
-                mode = "rb+";
-                break;
-            case OpenMode::NewReadWrite:
-                mode = "wb+";
-                break;
-            case OpenMode::Invalid:
-                throw std::runtime_error("Cannot open file with mode 'Invalid'");
-        }
+    void FileHandle::open(const std::filesystem::path& filename, OpenMode openMode) {
         currentFilename = filename;
-        checkStdError(fopen_s(&handle, filename.c_str(), mode), "open");
+        handle = PlatformFileHandle::open(filename, openMode);
         opened = true;
         currentOpenMode = openMode;
 
@@ -74,33 +75,34 @@ namespace Carrot::IO {
         assert(opened);
         currentFilename = "";
         currentOpenMode = OpenMode::Invalid;
-        checkStdError(fclose(handle), "close");
+        PLATFORM_HANDLE->close();
+        delete PLATFORM_HANDLE;
         handle = nullptr;
     }
 
     void FileHandle::seek(size_t position) {
         assert(opened);
-        checkStdError(fseek(handle, position, SEEK_SET), "seek");
+        PLATFORM_HANDLE->seek(position, SEEK_SET);
     }
 
     void FileHandle::seekEnd() {
         assert(opened);
-        checkStdError(fseek(handle, 0, SEEK_END), "seekEnd");
+        PLATFORM_HANDLE->seek(0, SEEK_END);
     }
 
     void FileHandle::skip(size_t bytes) {
         assert(opened);
-        checkStdError(fseek(handle, bytes, SEEK_CUR), "skip");
+        PLATFORM_HANDLE->seek(bytes, SEEK_CUR);
     }
 
     void FileHandle::rewind(size_t bytes) {
         assert(opened);
-        checkStdError(fseek(handle, -bytes, SEEK_CUR), "rewind");
+        PLATFORM_HANDLE->seek(-bytes, SEEK_CUR);
     }
 
     uint64_t FileHandle::getCurrentPosition() const {
         assert(opened);
-        return ftell(handle);
+        return PLATFORM_HANDLE->tell();
     }
 
     uint64_t FileHandle::getSize() const {
@@ -108,18 +110,17 @@ namespace Carrot::IO {
         return fileSize;
     }
 
-    const std::string& FileHandle::getCurrentFilename() const {
+    const std::filesystem::path& FileHandle::getCurrentFilename() const {
         assert(opened);
         return currentFilename;
     }
 
-    void FileHandle::write(const std::span<const uint8_t> toWrite, uint64_t offset) {
+    void FileHandle::write(std::span<const uint8_t> toWrite, uint64_t offset) {
         assert(opened);
         assert(isWriteableMode(currentOpenMode));
         uint64_t previousPosition = getCurrentPosition();
         seek(offset);
-        auto written = fwrite(toWrite.data(), sizeof(uint8_t), toWrite.size(), handle);
-        verify(written == toWrite.size(), "write error");
+        PLATFORM_HANDLE->write(toWrite);
         seek(previousPosition);
     }
 
@@ -129,9 +130,7 @@ namespace Carrot::IO {
         assert(isReadableMode(currentOpenMode));
         uint64_t previousPosition = getCurrentPosition();
         seek(offset);
-        auto read = fread(buffer, sizeof(uint8_t), size, handle);
-        checkStdError(ferror(handle), "read");
-        verify(read == size, "hit unexpected EOF");
+        PLATFORM_HANDLE->read(std::span{ (std::uint8_t*)buffer, size });
         seek(previousPosition);
     }
 
@@ -157,11 +156,5 @@ namespace Carrot::IO {
 
     std::unique_ptr<uint8_t[]> FileHandle::readAll() {
         return read(getSize());
-    }
-
-    void FileHandle::checkStdError(int err, const std::string& operation) {
-        if(err) {
-            throw std::runtime_error("Failed to perform '" + operation + "', error code is " + std::to_string(err) + ", " + currentFilename);
-        }
     }
 }
