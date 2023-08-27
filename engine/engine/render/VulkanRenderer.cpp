@@ -101,20 +101,16 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassS
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset) {
-    return getOrCreatePipelineFromResource("resources/pipelines/"+name+".json", instanceOffset);
+    return getOrCreatePipelineFullPath("resources/pipelines/"+name+".json", instanceOffset);
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipelineFullPath(const std::string& name, std::uint64_t instanceOffset) {
-    return getOrCreatePipelineFromResource(Carrot::IO::Resource { name }, instanceOffset);
-}
-
-std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipelineFromResource(const Carrot::IO::Resource& from, std::uint64_t instanceOffset) {
     ZoneScopedN("Loading pipeline");
-    ZoneText(from.getName().c_str(), from.getName().size());
-    auto key = std::make_pair(from.getName(), instanceOffset);
+    ZoneText(name.c_str(), name.size());
+    auto key = std::make_pair(name, instanceOffset);
     return pipelines.getOrCompute(key, [&]() {
-        auto pipeline = std::make_shared<Pipeline>(driver, from);
-        pipeline->name(from.getName());
+        auto pipeline = std::make_shared<Pipeline>(driver, Carrot::IO::Resource { name });
+        pipeline->name(name);
         return pipeline;
     });
 }
