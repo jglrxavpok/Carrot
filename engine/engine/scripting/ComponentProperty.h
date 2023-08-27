@@ -22,9 +22,13 @@ namespace Carrot::Scripting {
     enum class ComponentType {
         Int,
         Float,
+        Double,
+        Vec2,
+        Vec3,
         Boolean,
         Entity,
 
+        UserEnum,
         UserDefined,
     };
 

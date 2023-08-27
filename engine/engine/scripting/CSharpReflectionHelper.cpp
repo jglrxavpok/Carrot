@@ -81,10 +81,16 @@ namespace Carrot::Scripting {
                 property.type = ComponentType::Int;
             } else if(std::string_view("System.Single") == typeStr) {
                 property.type = ComponentType::Float;
+            } else if(std::string_view("System.Double") == typeStr) {
+                property.type = ComponentType::Double;
             } else if(std::string_view("System.Boolean") == typeStr) {
                 property.type = ComponentType::Boolean;
             } else if(std::string_view("Carrot.Entity") == typeStr) {
                 property.type = ComponentType::Entity;
+            } else if(std::string_view("Carrot.Vec2") == typeStr) {
+                property.type = ComponentType::Vec2;
+            } else if(std::string_view("Carrot.Vec3") == typeStr) {
+                property.type = ComponentType::Vec3;
             } else {
                 property.type = ComponentType::UserDefined;
             }

@@ -7,6 +7,7 @@
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/scripting/CSharpReflectionHelper.h>
 #include <Peeler.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Peeler {
     using namespace Carrot;
@@ -93,6 +94,46 @@ namespace Peeler {
         }
     }
 
+    static void drawDoubleProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
+        double value = *((double*)mono_object_unbox(property.field->get(csComponent)));
+        float floatValue = (float)value;
+
+        bool changed = false;
+
+        MAKE_ID(property);
+
+        if(property.floatRange.has_value()) {
+            float min = std::min(property.floatRange->min, property.floatRange->max);
+            float max = std::max(property.floatRange->min, property.floatRange->max);
+
+            // ImGui limits
+            bool useSlider = true;
+            const double MaxDouble = std::numeric_limits<double>::max();
+            if(min < -MaxDouble/2.0f) {
+                min = -MaxDouble/2.0f;
+                useSlider = false;
+            }
+            if(max > MaxDouble/2.0f) {
+                max = MaxDouble/2.0f;
+                useSlider = false;
+            }
+
+            if(useSlider) {
+                changed |= ImGui::SliderFloat(id.c_str(), &floatValue, min, max);
+            } else {
+                changed |= ImGui::DragFloat(id.c_str(), &floatValue, 0.1f, min, max);
+            }
+        } else {
+            changed |= ImGui::DragFloat(id.c_str(), &floatValue, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
+        }
+
+        if(changed) {
+            value = (double)floatValue;
+            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
+            edition.hasModifications = true;
+        }
+    }
+
     static void drawBooleanProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
         bool value = *((bool*)mono_object_unbox(property.field->get(csComponent)));
 
@@ -101,6 +142,36 @@ namespace Peeler {
         MAKE_ID(property);
 
         changed |= ImGui::Checkbox(id.c_str(), &value);
+
+        if(changed) {
+            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
+            edition.hasModifications = true;
+        }
+    }
+
+    static void drawVec2Property(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
+        glm::vec2 value = *(glm::vec2*)mono_object_unbox(property.field->get(csComponent).toMono());
+
+        bool changed = false;
+
+        MAKE_ID(property);
+
+        changed |= ImGui::InputFloat2(id.c_str(), glm::value_ptr(value));
+
+        if(changed) {
+            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
+            edition.hasModifications = true;
+        }
+    }
+
+    static void drawVec3Property(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
+        glm::vec3 value = *(glm::vec3*)mono_object_unbox(property.field->get(csComponent).toMono());
+
+        bool changed = false;
+
+        MAKE_ID(property);
+
+        changed |= ImGui::InputFloat3(id.c_str(), glm::value_ptr(value));
 
         if(changed) {
             property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
@@ -144,8 +215,20 @@ namespace Peeler {
                     drawFloatProperty(edition, component->getCSComponentObject(), property);
                     break;
 
+                case Scripting::ComponentType::Double:
+                    drawDoubleProperty(edition, component->getCSComponentObject(), property);
+                    break;
+
                 case Scripting::ComponentType::Boolean:
                     drawBooleanProperty(edition, component->getCSComponentObject(), property);
+                    break;
+
+                case Scripting::ComponentType::Vec2:
+                    drawVec2Property(edition, component->getCSComponentObject(), property);
+                    break;
+
+                case Scripting::ComponentType::Vec3:
+                    drawVec3Property(edition, component->getCSComponentObject(), property);
                     break;
 
                 case Scripting::ComponentType::Entity:
