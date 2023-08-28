@@ -18,51 +18,71 @@ namespace Carrot::IO {
     Resource::Resource(const std::string& path): Resource::Resource(VFS::Path(path)) {}
 
     Resource::Resource(const VFS::Path& path): data(false) {
+        std::filesystem::path fullPath;
         if(vfsToUse != nullptr) {
-            std::filesystem::path fullPath = vfsToUse->resolve(path);
-            data.fileHandle = std::make_unique<FileHandle>(fullPath, OpenMode::Read);
-            name(path.toString());
+            fullPath = vfsToUse->resolve(path);
         } else {
-            data.fileHandle = std::make_unique<FileHandle>(path.toString(), OpenMode::Read);
-            name(path.toString());
+            fullPath = path.toString();
         }
+        name(fullPath, path.toString());
+
+        if(!std::filesystem::exists(fullPath)) {
+            throw std::filesystem::filesystem_error("File does not exist", fullPath, std::error_code{ 1, std::system_category() });
+        }
+        data.fileSize = std::filesystem::file_size(fullPath);
     }
 
     Resource::Resource(const std::vector<std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
         this->data.raw = container;
-        name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
+        name("", std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
     Resource::Resource(std::vector<std::uint8_t>&& dataToMove): data(true) {
         this->data.raw = std::make_shared<std::vector<std::uint8_t>>();
         *this->data.raw = std::move(dataToMove);
+        name("", std::string("RawData <")+std::to_string((std::uint64_t)data.raw->data())+", "+std::to_string(data.raw->size())+">");
     }
 
     Resource::Resource(const std::span<const std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
         this->data.raw = container;
-        name(std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
+        name("", std::string("RawData <")+std::to_string((std::uint64_t)data.data())+", "+std::to_string(data.size())+">");
     }
 
     Resource::Resource(const Resource& toCopy): data(toCopy.data.isRawData) {
-        if(data.isRawData) {
-            data.raw = toCopy.data.raw;
-        } else {
-            data.fileHandle = toCopy.data.fileHandle->copyReadable();
-        }
-        name(toCopy.filename);
+        data = toCopy.data;
+        name(toCopy.filename, toCopy.debugName);
     }
 
     Resource::Resource(Resource&& toMove): data(std::move(toMove.data)) {
         filename = std::move(toMove.filename);
+        debugName = std::move(toMove.debugName);
+    }
+
+    void Resource::open() {
+        if(!data.isRawData) {
+            if(data.fileHandle) {
+                return; // already open
+            }
+
+            data.fileHandle = std::make_unique<FileHandle>(filename, OpenMode::Read);
+        }
+    }
+
+    void Resource::close() {
+        if(!data.isRawData) {
+            verify(data.fileHandle, "File was not open");
+            data.fileHandle = nullptr;
+        }
     }
 
     Resource& Resource::operator=(Resource&& toMove) {
         data = std::move(toMove.data);
         filename = std::move(toMove.filename);
+        debugName = std::move(toMove.debugName);
         return *this;
     }
 
@@ -75,11 +95,14 @@ namespace Carrot::IO {
 
         data.isRawData = toCopy.data.isRawData;
         filename = toCopy.filename;
+        debugName = toCopy.debugName;
 
         if(data.isRawData) {
             data.raw = toCopy.data.raw;
         } else {
-            data.fileHandle = toCopy.data.fileHandle->copyReadable();
+            if(toCopy.data.fileHandle) {
+                data.fileHandle = toCopy.data.fileHandle->copyReadable();
+            }
         }
         return *this;
     }
@@ -91,7 +114,7 @@ namespace Carrot::IO {
         if(data.isRawData) {
             return data.raw == rhs.data.raw;
         } else {
-            return data.fileHandle->getCurrentFilename() == rhs.data.fileHandle->getCurrentFilename();
+            return filename == rhs.filename;
         }
     }
 
@@ -99,27 +122,39 @@ namespace Carrot::IO {
         if(data.isRawData) {
             return data.raw->size();
         } else {
-            return data.fileHandle->getSize();
+            return data.fileSize;
         }
     }
 
-    void Resource::read(void* buffer, uint64_t size, uint64_t offset) const {
-        verify(size + offset <= getSize(), "Out-of-bounds!");
+    void Resource::read(std::span<std::uint8_t> buffer, uint64_t offset) const {
+        verify(buffer.size_bytes() + offset <= getSize(), "Out-of-bounds!");
         if(data.isRawData) {
-            std::memcpy(buffer, data.raw->data() + offset, size);
+            std::memcpy(buffer.data(), data.raw->data() + offset, buffer.size_bytes());
         } else {
-            data.fileHandle->read(buffer, size, offset);
+            const bool opened = data.fileHandle != nullptr;
+
+            FileHandle* handle;
+            if(opened) {
+                handle = data.fileHandle.get();
+            } else {
+                handle = new FileHandle(filename, OpenMode::Read);
+            }
+            handle->read(buffer.data(), buffer.size_bytes(), offset);
+
+            if(!opened) {
+                delete handle;
+            }
         }
     }
 
     std::unique_ptr<uint8_t[]> Resource::read(uint64_t size, uint64_t offset) const {
         auto ptr = std::make_unique<uint8_t[]>(size);
-        read(ptr.get(), size, offset);
+        read(std::span { (std::uint8_t*)ptr.get(), size }, offset);
         return std::move(ptr);
     }
 
     void Resource::readAll(void* buffer) const {
-        read(buffer, getSize());
+        read(std::span { (std::uint8_t*)buffer, getSize() });
     }
 
     std::unique_ptr<uint8_t[]> Resource::readAll() const {
@@ -135,12 +170,13 @@ namespace Carrot::IO {
         return result;
     }
 
-    void Resource::name(const std::string& name) {
-        filename = name;
+    void Resource::name(const std::filesystem::path& _filename, const std::string& _name) {
+        filename = _filename;
+        debugName = _name;
     }
 
     const std::string& Resource::getName() const {
-        return filename;
+        return debugName;
     }
 
     Carrot::IO::Resource Resource::inMemory(const std::string& text) {
@@ -165,10 +201,10 @@ namespace Carrot::IO {
         if(!isFile() || path.is_absolute()) {
             return Resource{ VFS::Path(path.string()) };
         }
-        std::filesystem::path fullPath = getName();
-        fullPath = fullPath.parent_path();
-        fullPath /= path;
-        return Resource{ VFS::Path(fullPath.string()) };
+        std::filesystem::path vfsPath = debugName;
+        vfsPath = vfsPath.parent_path();
+        vfsPath /= path;
+        return Resource{ VFS::Path(vfsPath.string()) };
     }
 
     Resource::Data::Data(bool isRawData): isRawData(isRawData) {}
@@ -180,6 +216,10 @@ namespace Carrot::IO {
     Resource::Data& Resource::Data::operator=(Resource::Data&& toMove) {
         bool wasRawData = isRawData;
         isRawData = toMove.isRawData;
+
+        fileSize = toMove.fileSize;
+        toMove.fileSize = 0;
+
         if(wasRawData && !isRawData) {
             raw = nullptr;
         } else if(!wasRawData && isRawData) {
@@ -189,6 +229,27 @@ namespace Carrot::IO {
             raw = std::move(toMove.raw);
         } else {
             fileHandle = std::move(toMove.fileHandle);
+        }
+        return *this;
+    }
+
+    Resource::Data& Resource::Data::operator=(const Resource::Data& toCopy) {
+        bool wasRawData = isRawData;
+        isRawData = toCopy.isRawData;
+
+        fileSize = toCopy.fileSize;
+
+        if(wasRawData && !isRawData) {
+            raw = nullptr;
+        } else if(!wasRawData && isRawData) {
+            fileHandle = nullptr;
+        }
+        if(isRawData) {
+            raw = toCopy.raw;
+        } else {
+            if(toCopy.fileHandle) {
+                fileHandle = toCopy.fileHandle->copyReadable();
+            }
         }
         return *this;
     }

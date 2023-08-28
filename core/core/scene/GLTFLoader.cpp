@@ -30,7 +30,7 @@ namespace Carrot::Render {
         IO::Resource resource { IO::VFS::Path { filepath } };
         std::uint64_t resourceSize = resource.getSize();
         out->resize(resourceSize);
-        resource.read(out->data(), resourceSize);
+        resource.read(*out);
         return true;
     }
 

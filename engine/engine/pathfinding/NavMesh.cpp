@@ -27,7 +27,7 @@ namespace Carrot::AI {
         if(IO::getFileFormat(resourceName) == IO::FileFormat::CNAV) {
             std::vector<std::uint8_t> data;
             data.resize(resource.getSize());
-            resource.read(data.data(), data.size());
+            resource.read(data);
 
             IO::VectorReader reader { data };
 
