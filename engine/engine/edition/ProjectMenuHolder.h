@@ -86,9 +86,13 @@ namespace Tools {
         }
 
         void openUnsavedChangesPopup(const std::function<void()>& onContinue, const std::function<void()>& onCancel) {
+            if(!showUnsavedChangesPopup()) {
+                onContinue();
+                return;
+            }
             this->onContinueAction = onContinue;
             this->onCancelAction = onCancel;
-            ImGui::OpenPopup(popupName.c_str());
+            unsavedChangePopupIsOpen = true;
         }
 
         virtual void onFrame(Carrot::Render::Context renderContext) {
@@ -108,38 +112,54 @@ namespace Tools {
                                             tryingToOpenFile = false;
                                         });
             }
-            if(ImGui::BeginPopupModal(popupName.c_str())) {
-                ImGui::Text("You currently have unsaved changes!");
-                ImGui::Text("Do you still want to continue?");
 
-                if(ImGui::Button(ICON_FA_SAVE "  Save")) {
-                    if(triggerSave()) {
-                        onContinueAction();
-                    } else {
-                        onCancelAction();
+            if(unsavedChangePopupIsOpen) {
+                ImGui::OpenPopup(popupName.c_str());
+                bool isOpen = true;
+                if(ImGui::BeginPopupModal(popupName.c_str(), &isOpen)) {
+                    ImGui::Text("You currently have unsaved changes!");
+                    ImGui::Text("Do you still want to continue?");
+
+                    if(ImGui::Button(ICON_FA_SAVE "  Save")) {
+                        if(triggerSave()) {
+                            onContinueAction();
+                        } else {
+                            onCancelAction();
+                        }
+                        unsavedChangePopupIsOpen = false;
+                        ImGui::CloseCurrentPopup();
                     }
-                    ImGui::CloseCurrentPopup();
+                    ImGui::SameLine();
+                    if(ImGui::Button(ICON_FA_TIMES "  Don't save")) {
+                        onContinueAction();
+                        unsavedChangePopupIsOpen = false;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if(ImGui::Button(ICON_FA_BAN "  Cancel")) {
+                        onCancelAction();
+                        unsavedChangePopupIsOpen = false;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
                 }
-                ImGui::SameLine();
-                if(ImGui::Button(ICON_FA_TIMES "  Don't save")) {
-                    onContinueAction();
-                    ImGui::CloseCurrentPopup();
+                if(!isOpen) {
+                    unsavedChangePopupIsOpen = false;
                 }
-                ImGui::SameLine();
-                if(ImGui::Button(ICON_FA_BAN "  Cancel")) {
-                    onCancelAction();
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
 
-            if(ImGui::BeginPopupModal(cantSavePopupName.c_str())) {
-                drawCantSavePopup();
-                if(ImGui::Button("OK##cantsavepopup ok")) {
-                    cantSavePopup = false;
-                    ImGui::CloseCurrentPopup();
+                isOpen = true;
+                if(ImGui::BeginPopupModal(cantSavePopupName.c_str(), &isOpen)) {
+                    drawCantSavePopup();
+                    if(ImGui::Button("OK##cantsavepopup ok")) {
+                        cantSavePopup = false;
+                        unsavedChangePopupIsOpen = false;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
                 }
-                ImGui::EndPopup();
+                if(!isOpen) {
+                    unsavedChangePopupIsOpen = false;
+                }
             }
         }
 
@@ -251,6 +271,7 @@ namespace Tools {
         std::filesystem::path currentFile = EmptyProject;
         std::string currentProjectName = "Untitled";
 
+        bool unsavedChangePopupIsOpen = false;
         std::function<void()> onContinueAction;
         std::function<void()> onCancelAction;
 

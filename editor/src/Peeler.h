@@ -47,6 +47,12 @@ namespace Peeler {
 
         bool onCloseButtonPressed() override;
 
+    public: // scene management
+        void addCurrentSceneToSceneList();
+        void newScene(const Carrot::IO::VFS::Path& path);
+        void openScene(const Carrot::IO::VFS::Path& path);
+        void saveCurrentScene();
+
     public: // project management
         void performLoad(std::filesystem::path path) override;
 
@@ -77,7 +83,9 @@ namespace Peeler {
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
 
+        void drawScenesMenu();
         void drawSettingsMenu();
+        void drawNewSceneWindow();
         void drawPhysicsSettingsWindow();
 
     private: // C# project handling
@@ -171,6 +179,7 @@ namespace Peeler {
 
         Tools::EditorSettings settings;
 
+        bool showNewScenePopup = false;
         bool showPhysicsSettings = false;
 
     public: // for layers
@@ -202,6 +211,7 @@ namespace Peeler {
 
         bool hasUnsavedChanges = false;
 
+        std::vector<Carrot::IO::VFS::Path> knownScenes;
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
         Carrot::UUID entityIDPickedThisFrame;
 

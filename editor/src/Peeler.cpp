@@ -147,6 +147,11 @@ namespace Peeler {
                 ImGui::EndMenu();
             }
 
+            if(ImGui::BeginMenu(ICON_FA_STREAM "  Scenes")) {
+                drawScenesMenu();
+                ImGui::EndMenu();
+            }
+
             if(ImGui::BeginMenu(ICON_FA_TOOLS "  Settings")) {
                 drawSettingsMenu();
                 ImGui::EndMenu();
@@ -241,6 +246,7 @@ namespace Peeler {
             ImGui::EndMenuBar();
 
             drawPhysicsSettingsWindow();
+            drawNewSceneWindow();
 
             if(showDemo) {
                 ImGui::ShowDemoWindow();
@@ -258,7 +264,7 @@ namespace Peeler {
 
         ImGui::End();
 
-        if(ImGui::Begin(ICON_FA_STREAM "  World")) {
+        if(ImGui::Begin(ICON_FA_STREAM "  Scene")) {
             UIWorldHierarchy(renderContext);
         }
         ImGui::End();
@@ -657,9 +663,71 @@ namespace Peeler {
         }
     }
 
+    void Application::drawScenesMenu() {
+        if(ImGui::MenuItem(ICON_FA_FILE "  New")) {
+            showNewScenePopup = true;
+        }
+
+        if(ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Open")) {
+            // TODO
+        }
+
+        if(ImGui::BeginMenu(ICON_FA_FOLDER_OPEN "  Open recent")) {
+            for(const auto& known : knownScenes) {
+                const std::string label = known.toString();
+                const bool selected = known == scenePath;
+                if(ImGui::MenuItem(label.c_str(), nullptr, selected) && !selected) {
+                    openScene(known);
+                }
+            }
+            ImGui::EndMenu();
+        }
+
+        if(ImGui::MenuItem(ICON_FA_SAVE "  Save")) {
+            saveCurrentScene();
+        }
+
+        if(ImGui::MenuItem(ICON_FA_SAVE "  Save as")) {
+            // TODO
+        }
+    }
+
     void Application::drawSettingsMenu() {
         if(ImGui::MenuItem(ICON_FA_CUBES "  Physics settings", nullptr, &showPhysicsSettings /* TODO: save to editor settings */)) {
             //showPhysicsSettings = !showPhysicsSettings;
+        }
+    }
+
+    void Application::drawNewSceneWindow() {
+        if(!showNewScenePopup) {
+            return;
+        }
+
+        // TODO: unsaved changes window
+
+        const char* popupID = "New Scene##popup title";
+        ImGui::OpenPopup(popupID);
+        bool isOpen = true;
+        if(ImGui::BeginPopupModal(popupID, &isOpen)) {
+            static std::string sceneName = "New scene";
+
+            bool finished = false;
+            finished |= ImGui::InputText("Name", sceneName, ImGuiInputTextFlags_EnterReturnsTrue);
+            finished |= ImGui::Button(ICON_FA_PLUS "  Create");
+
+            ImGui::SameLine();
+            if(ImGui::Button(ICON_FA_BAN "  Cancel")) {
+                showNewScenePopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            if(finished && !sceneName.empty()) {
+                newScene(Carrot::IO::VFS::Path { "game://scenes/" + sceneName + ".json" });
+                showNewScenePopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
     }
 
@@ -733,9 +801,9 @@ namespace Peeler {
 
                         ImGui::Checkbox("Is static", &layerIsStatic);
 
-                        confirm |= ImGui::Button("Create");
+                        confirm |= ImGui::Button(ICON_FA_PLUS "  Create");
                         ImGui::SameLine();
-                        if(ImGui::Button("Cancel")) {
+                        if(ImGui::Button(ICON_FA_BAN "  Cancel")) {
                             ImGui::CloseCurrentPopup();
                         }
 
@@ -1141,6 +1209,75 @@ namespace Peeler {
         wantsToLoadProject = true;
     }
 
+    static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {
+        if(!std::filesystem::exists(targetFile.parent_path())) {
+            std::filesystem::create_directories(targetFile.parent_path());
+        }
+        FILE* fp = fopen(targetFile.string().c_str(), "wb"); // non-Windows use "w"
+
+        char writeBuffer[65536];
+        rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+
+        rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
+
+        toWrite.Accept(writer);
+        fclose(fp);
+    }
+
+    void Application::addCurrentSceneToSceneList() {
+        if(std::find(knownScenes.begin(), knownScenes.end(), scenePath) == knownScenes.end()) {
+            knownScenes.push_back(scenePath);
+        }
+    }
+
+    void Application::newScene(const Carrot::IO::VFS::Path& path) {
+        openUnsavedChangesPopup([this, path]() {
+            scenePath = path;
+            currentScene.clear();
+
+            addEditingSystems();
+            currentScene.world.freezeLogic();
+            currentScene.load();
+
+            hasUnsavedChanges = true;
+            addCurrentSceneToSceneList();
+        }, [](){});
+    }
+
+    void Application::openScene(const Carrot::IO::VFS::Path& path) {
+        openUnsavedChangesPopup([this, path]() {
+            rapidjson::Document scene;
+            scenePath = path;
+            try {
+                Carrot::IO::Resource sceneData = scenePath;
+                scene.Parse(sceneData.readText());
+                currentScene.deserialise(scene);
+            } catch (std::exception& e) {
+                Carrot::Log::error("Failed to open scene: %s", e.what());
+                currentScene.clear();
+            }
+
+            addEditingSystems();
+            currentScene.world.freezeLogic();
+            currentScene.load();
+
+            hasUnsavedChanges = true;
+            addCurrentSceneToSceneList();
+        }, [](){});
+    }
+
+    void Application::saveCurrentScene() {
+        rapidjson::Value scene(rapidjson::kObjectType);
+        rapidjson::Document sceneData;
+        sceneData.SetObject();
+
+        currentScene.serialise(sceneData);
+
+        writeJSON(GetVFS().resolve(scenePath), sceneData);
+
+        addCurrentSceneToSceneList();
+    }
+
     void Application::deferredLoad() {
         wantsToLoadProject = false;
         GetVFS().removeRoot("game");
@@ -1197,16 +1334,19 @@ namespace Peeler {
         settings.addToRecentProjects(projectToLoad);
         hasUnsavedChanges = false;
 
-        rapidjson::Document scene;
-        {
-            scenePath = description["scene"].GetString();
-            Carrot::IO::Resource sceneData = scenePath;
-            scene.Parse(sceneData.readText());
-            currentScene.deserialise(scene);
+        knownScenes.clear();
+        if(description.HasMember("scenes")) {
+            for(const auto& element : description["scenes"].GetArray()) {
+                std::string_view scenePathStr = std::string_view{ element.GetString(), element.GetStringLength() };
+                knownScenes.emplace_back(scenePathStr);
+            }
+        } else {
+            knownScenes.push_back(scenePath);
         }
-        addEditingSystems();
-        currentScene.world.freezeLogic();
-        currentScene.load();
+        {
+            openScene(description["scene"].GetString());
+        }
+
         if(description.HasMember("camera")) {
             cameraController.deserialise(description["camera"].GetObject());
         }
@@ -1241,32 +1381,11 @@ namespace Peeler {
         updateWindowTitle();
     }
 
-    static void writeJSON(const std::filesystem::path& targetFile, const rapidjson::Document& toWrite) {
-        if(!std::filesystem::exists(targetFile.parent_path())) {
-            std::filesystem::create_directories(targetFile.parent_path());
-        }
-        FILE* fp = fopen(targetFile.string().c_str(), "wb"); // non-Windows use "w"
-
-        char writeBuffer[65536];
-        rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
-
-        rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
-
-        toWrite.Accept(writer);
-        fclose(fp);
-    }
-
     void Application::saveToFile(std::filesystem::path path) {
         rapidjson::Document document;
         document.SetObject();
 
         {
-            rapidjson::Value scene(rapidjson::kObjectType);
-            rapidjson::Document sceneData;
-            sceneData.SetObject();
-
-            currentScene.serialise(sceneData);
-
             if(!GetVFS().hasRoot("game")) {
                 GetVFS().addRoot("game", path.parent_path());
             }
@@ -1275,9 +1394,16 @@ namespace Peeler {
                 scenePath = Carrot::IO::VFS::Path("game", scenePath.getPath());
             }
 
-            writeJSON(GetVFS().resolve(scenePath), sceneData);
-
+            saveCurrentScene();
             document.AddMember("scene", scenePath.toString(), document.GetAllocator());
+
+            if(!knownScenes.empty()) {
+                rapidjson::Value knownScenesArray { rapidjson::kArrayType };
+                for(const auto& knownScene : knownScenes) {
+                    knownScenesArray.PushBack(rapidjson::Value { knownScene.toString().c_str(), document.GetAllocator() }, document.GetAllocator());
+                }
+                document.AddMember("scenes", knownScenesArray, document.GetAllocator());
+            }
         }
 
         if(!selectedIDs.empty()) {
