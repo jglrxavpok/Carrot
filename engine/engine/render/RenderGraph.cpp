@@ -15,10 +15,13 @@
 #include <imgui_internal.h>
 #include <imgui_node_editor.h>
 #include <imgui_node_editor_internal.h>
+#include <engine/console/RuntimeOption.hpp>
 
 namespace ed = ax::NodeEditor;
 
 namespace Carrot::Render {
+    static RuntimeOption DebugRenderGraphs("Debug/Render Graphs", false);
+
     GraphBuilder::GraphBuilder(VulkanDriver& driver) {
         swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
         swapchainImage.imageOrigin = ImageOrigin::SurfaceSwapchain;
@@ -307,11 +310,10 @@ namespace Carrot::Render {
     }
 
     void Graph::onFrame(const Render::Context& context) {
-        const bool debug = true;
-
         static Graph* graphToDebug = nullptr;
-        if(debug) {
-            if(ImGui::Begin("Debug render graphs")) {
+        if(DebugRenderGraphs) {
+            bool isOpen = true;
+            if(ImGui::Begin("Debug render graphs", &isOpen)) {
                 ImGui::Separator();
 
                 std::string id = Carrot::sprintf("%x , %llu passes", (std::uint64_t)this, sortedPasses.size());
@@ -359,6 +361,10 @@ namespace Carrot::Render {
                 }
             }
             ImGui::End();
+
+            if(!isOpen) {
+                DebugRenderGraphs.setValue(false);
+            }
         }
     }
 
