@@ -216,7 +216,7 @@ namespace Peeler {
         Carrot::UUID entityIDPickedThisFrame;
 
     public:
-        Carrot::Scene currentScene;
+        Carrot::Scene& currentScene;
 
     private:
         Carrot::Scene savedScene;

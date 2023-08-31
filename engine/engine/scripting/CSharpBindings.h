@@ -87,6 +87,11 @@ namespace Carrot::Scripting {
         void unregisterGameAssemblyLoadCallback(const Callbacks::Handle& handle);
         void unregisterGameAssemblyUnloadCallback(const Callbacks::Handle& handle);
 
+        Callbacks::Handle registerEngineAssemblyLoadCallback(const std::function<void()>& callback);
+        Callbacks::Handle registerEngineAssemblyUnloadCallback(const std::function<void()>& callback);
+        void unregisterEngineAssemblyLoadCallback(const Callbacks::Handle& handle);
+        void unregisterEngineAssemblyUnloadCallback(const Callbacks::Handle& handle);
+
     public: // reflection stuff
         std::vector<ComponentProperty> findAllComponentProperties(const std::string& namespaceName, const std::string& className);
         MonoDomain* getAppDomain();
@@ -218,6 +223,8 @@ namespace Carrot::Scripting {
 
         Callbacks unloadCallbacks;
         Callbacks loadCallbacks;
+        Callbacks unloadEngineCallbacks;
+        Callbacks loadEngineCallbacks;
 
         Carrot::Async::ParallelMap<std::string, ComponentID> csharpComponentIDs;
         std::unordered_map<std::string, CppComponent> HardcodedComponents;

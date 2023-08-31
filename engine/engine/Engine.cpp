@@ -540,6 +540,8 @@ void Carrot::Engine::initVulkan() {
 void Carrot::Engine::initScripting() {
     scriptingEngine = std::make_unique<Scripting::ScriptingEngine>();
     csBindings = std::make_unique<Scripting::CSharpBindings>();
+
+    sceneManager.initScripting();
 }
 
 void Carrot::Engine::initECS() {
@@ -1322,6 +1324,10 @@ Carrot::Render::Viewport& Carrot::Engine::createViewport() {
     verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
     viewports.emplace_back(renderer);
     return viewports.back();
+}
+
+Carrot::SceneManager& Carrot::Engine::getSceneManager() {
+    return sceneManager;
 }
 
 std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const Carrot::IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch) {

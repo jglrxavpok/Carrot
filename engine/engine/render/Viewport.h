@@ -13,6 +13,7 @@
 
 namespace Carrot {
     class VulkanRenderer;
+    class Scene;
 }
 
 namespace Carrot::Render {
@@ -23,6 +24,7 @@ namespace Carrot::Render {
     public:
         explicit Viewport(VulkanRenderer& renderer);
         Viewport(const Viewport&) = delete;
+        ~Viewport();
 
     public:
         //! Is this viewport expected to support dual eye rendering?
@@ -41,6 +43,17 @@ namespace Carrot::Render {
     public:
         void onFrame(const Carrot::Render::Context& context);
         void render(const Carrot::Render::Context& context, vk::CommandBuffer& cmds);
+
+    public:
+        /**
+         * Add scene to render to this viewport automatically
+         */
+        void addScene(Scene* scene);
+
+        /**
+         * Remove scene to render to this viewport automatically
+         */
+        void removeScene(Scene* scene);
 
     public:
         void resize(std::uint32_t width, std::uint32_t height);
@@ -64,6 +77,7 @@ namespace Carrot::Render {
     private:
         VulkanRenderer& renderer;
         std::unique_ptr<Graph> renderGraph;
+        std::vector<Carrot::Scene*> scenes; // scenes to render inside this viewport, not owning. Assuming the Scene instances remove themselves from the vector on destruction
         bool followSwapchainSize = true;
 
         // used only if followSwapchainSize is false, otherwise getWidth/getHeight return the swapchain size

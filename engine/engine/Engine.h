@@ -33,6 +33,7 @@ namespace Carrot {
 #include "engine/io/actions/InputVectors.h"
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
+#include <engine/scene/SceneManager.h>
 #include <core/io/vfs/VirtualFileSystem.h>
 
 namespace sol {
@@ -236,6 +237,8 @@ namespace Carrot {
     public: // viewports
         Render::Viewport& getMainViewport();
         Render::Viewport& createViewport();
+
+        SceneManager& getSceneManager();
 
     public: // inputs
 
@@ -552,6 +555,7 @@ namespace Carrot {
         TaskScheduler taskScheduler;
 
     private:
+        SceneManager sceneManager;
         std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 
     private:

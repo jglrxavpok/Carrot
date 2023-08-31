@@ -8,6 +8,7 @@
 #include "engine/render/resources/Mesh.h"
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/TextureRepository.h"
+#include <engine/utils/Profiling.h>
 
 namespace Carrot::Render {
     PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {

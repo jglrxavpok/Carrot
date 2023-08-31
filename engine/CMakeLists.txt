@@ -44,6 +44,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
         ${EngineRoot}utils/conversions.cpp
+        ${EngineRoot}utils/Macros.cpp
 
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
@@ -130,6 +131,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}network/packets/HandshakePackets.cpp
 
         ${EngineRoot}scene/Scene.cpp
+        ${EngineRoot}scene/SceneManager.cpp
 
         ${EngineRoot}scripting/ComponentProperty.cpp
         ${EngineRoot}scripting/CSharpBindings.cpp

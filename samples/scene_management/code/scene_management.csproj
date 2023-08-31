@@ -1,14 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Be aware that the Carrot Engine has very rudimentary support for .csproj
+    Only <Compile> tag are really supported for now
+-->
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
     <PropertyGroup>
-        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
         <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-        <ProjectGuid>{0B0844B9-CA3C-4A77-9B77-CC3029603F4F}</ProjectGuid>
+        <ProjectGuid>{321d6822-f9f0-4871-9df4-e75b5891dbdc}</ProjectGuid>
         <OutputType>Library</OutputType>
         <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>Carrot</RootNamespace>
-        <AssemblyName>Carrot</AssemblyName>
+        <RootNamespace>scene_management</RootNamespace>
+        <AssemblyName>scene_management</AssemblyName>
         <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
     </PropertyGroup>
@@ -32,44 +36,17 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
+        <Reference Include="Carrot">
+          <HintPath>..\..\..\cmake-build-relwithdebinfo\scripting\Carrot.dll</HintPath>
+        </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="CameraComponent.cs" />
-        <Compile Include="CharacterComponent.cs" />
-        <Compile Include="ComponentPropertyAttributes\Display.cs" />
-        <Compile Include="ComponentPropertyAttributes\Ranges.cs" />
-        <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
-        <Compile Include="ECS.cs" />
-        <Compile Include="Entity.cs" />
-        <Compile Include="Carrot.cs" />
-        <Compile Include="IComponent.cs" />
-        <Compile Include="Input\Actions.cs" />
-        <Compile Include="Input\ActionSet.cs" />
-        <Compile Include="LogicSystem.cs" />
-        <Compile Include="NavMeshComponent.cs" />
-        <Compile Include="Object.cs" />
-        <Compile Include="Physics\Collider.cs" />
+        <Compile Include="SceneSwitchSystem.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-        <Compile Include="Reflection.cs" />
-        <Compile Include="RigidBodyComponent.cs" />
-        <Compile Include="Scenes\Scene.cs" />
-        <Compile Include="Scenes\SceneManager.cs" />
-        <Compile Include="TextComponent.cs" />
-        <Compile Include="TransformComponent.cs" />
-        <Compile Include="Types.cs" />
-        <Compile Include="Utilities.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-    <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-         Other similar extension points exist, see Microsoft.Common.targets.
-    <Target Name="BeforeBuild">
-    </Target>
-    <Target Name="AfterBuild">
-    </Target>
-    -->
-
 </Project>

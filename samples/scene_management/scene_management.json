@@ -1,0 +1,39 @@
+{
+    "scene": "game://scenes/main.json",
+    "scenes": [
+        "game://scenes/main.json",
+        "game://scenes/second.json",
+        "game://scenes/third.json"
+    ],
+    "selectedIDs": [
+        "2a022c4c-04d7-4b40-8df1-586969ace61e"
+    ],
+    "camera": {
+        "strafeSpeed": 1.0,
+        "forwardSpeed": 1.0,
+        "verticalSpeed": 1.0,
+        "xSensibility": 1.0,
+        "ySensibility": 1.0,
+        "zNear": 0.0010000000474974514,
+        "zFar": 1000.0,
+        "fov": 1.2217304706573487,
+        "eulerAngles": [
+            1.1791366338729859,
+            0.0,
+            -23.533390045166017
+        ],
+        "position": [
+            6.447196006774902,
+            0.5246932506561279,
+            4.218037128448486
+        ]
+    },
+    "window": {
+        "x": -1680,
+        "y": 57,
+        "width": 1680,
+        "height": 997,
+        "maximised": true
+    },
+    "collision_layers": {}
+}

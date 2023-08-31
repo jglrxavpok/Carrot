@@ -3,6 +3,7 @@
 //
 
 #include "WorldData.h"
+#include <engine/render/Model.h>
 
 namespace Carrot::ECS {
     void WorldData::clear() {

@@ -753,6 +753,20 @@ Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::a
 void Carrot::VulkanRenderer::newFrame() {
     ZoneScoped;
 
+    for(auto& resource : deferredCarrotBufferDestructions) {
+        resource.tickDown();
+    }
+
+    for(auto it = deferredCarrotBufferDestructions.begin(); it != deferredCarrotBufferDestructions.end();) {
+        if(it->isReadyForDestruction()) {
+            Carrot::Buffer* buf = it->resource;
+            delete buf;
+            it = deferredCarrotBufferDestructions.erase(it);
+        } else {
+            it++;
+        }
+    }
+
     frameCount++;
 
     {
@@ -1400,6 +1414,10 @@ void Carrot::VulkanRenderer::destroyViewportDescriptorSets(const std::vector<vk:
     if(sets.empty())
         return;
     getVulkanDriver().getLogicalDevice().freeDescriptorSets(*viewportDescriptorPool, sets);
+}
+
+void Carrot::VulkanRenderer::deferDestroy(const std::string& name, Carrot::Buffer* resource) {
+    deferredCarrotBufferDestructions.push_back(std::move(DeferredCarrotBufferDestruction(name, std::move(resource))));
 }
 
 const vk::DescriptorSetLayout& Carrot::VulkanRenderer::getCameraDescriptorSetLayout() const {

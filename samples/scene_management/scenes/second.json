@@ -1,0 +1,55 @@
+{
+    "world_data": {
+        "model_renderers": {}
+    },
+    "entities": {
+        "4a446232-e822-445a-beaa-33dbf6105b87": {
+            "Transform": {
+                "position": [
+                    0.06936462968587876,
+                    0.0004589179588947445,
+                    1.7460960149765015
+                ],
+                "scale": [
+                    1.1369085311889649,
+                    3.080000638961792,
+                    3.080000638961792
+                ],
+                "rotation": [
+                    -0.48833540081977847,
+                    -0.49161064624786379,
+                    0.5115270018577576,
+                    0.5081217885017395
+                ]
+            },
+            "Text": {
+                "text": "2",
+                "font": "resources/fonts/Roboto-Medium.ttf"
+            },
+            "name": "Entity"
+        }
+    },
+    "lighting": {
+        "ambient": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "raytracedShadows": true
+    },
+    "skybox": "None",
+    "logic_systems": {
+        "Kinematics": {},
+        "TransformSwapBuffers": {},
+        "RigidBodies": {},
+        "LuaUpdate": {},
+        ".SceneSwitchSystem (C#)": {}
+    },
+    "render_systems": {
+        "SpriteRender": {},
+        "ModelRender": {},
+        "HandleLights": {},
+        "LuaRender": {},
+        "TextRender": {}
+    }
+}

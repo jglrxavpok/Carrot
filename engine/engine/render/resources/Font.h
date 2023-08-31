@@ -11,6 +11,7 @@
 #include <stb_truetype.h>
 #include <engine/render/resources/BufferView.h>
 #include "engine/render/InstanceData.h"
+#include "engine/render/MaterialSystem.h"
 
 namespace Carrot::Render {
     struct TextMetrics {

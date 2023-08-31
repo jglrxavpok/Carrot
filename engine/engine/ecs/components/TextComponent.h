@@ -6,6 +6,7 @@
 
 #include "Component.h"
 #include "engine/render/resources/Font.h"
+#include "engine/render/VulkanRenderer.h"
 
 namespace Carrot::ECS {
     /// Not meant for quickly changing text

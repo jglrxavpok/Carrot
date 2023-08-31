@@ -10,6 +10,7 @@
 #include <core/io/Logging.hpp>
 #include "PageComponent.h"
 #include "engine/ecs/components/TextComponent.h"
+#include "engine/Engine.h"
 
 namespace Game::ECS {
     CharacterControllerSystem::CharacterControllerSystem(Carrot::ECS::World& world): Carrot::ECS::LogicSystem<Carrot::ECS::RigidBodyComponent, Game::ECS::CharacterControllerComponent>(world) {

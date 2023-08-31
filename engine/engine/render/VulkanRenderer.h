@@ -112,6 +112,8 @@ namespace Carrot {
 
     class VulkanRenderer: public SwapchainAware {
     public:
+        using DeferredCarrotBufferDestruction = DeferredDestruction<Carrot::Buffer*>;
+
         static constexpr std::uint32_t MaxCameras = 20; // used to determine descriptor set pool size
         static constexpr std::uint32_t MaxViewports = 32; // used to determine descriptor set pool size
         static constexpr double BlinkDuration = 0.100f;
@@ -208,6 +210,8 @@ namespace Carrot {
 
         std::vector<vk::DescriptorSet> createDescriptorSetForViewport(const std::vector<Carrot::BufferView>& uniformBuffers);
         void destroyViewportDescriptorSets(const std::vector<vk::DescriptorSet>& sets);
+
+        void deferDestroy(const std::string& name, Carrot::Buffer* resource);
 
     public:
         void bindSampler(Carrot::Pipeline& pipeline, const Carrot::Render::Context& frame, const vk::Sampler& samplerToBind, std::uint32_t setID, std::uint32_t bindingID);
@@ -364,6 +368,8 @@ namespace Carrot {
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
         std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
+
+        std::list<DeferredCarrotBufferDestruction> deferredCarrotBufferDestructions;
 
     private:
         bool hasBlinked = false;

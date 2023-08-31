@@ -9,12 +9,19 @@
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/Engine.h"
+#include "engine/scene/Scene.h"
 #include "engine/vr/Session.h"
 #include "ViewportBufferObject.h"
 
 namespace Carrot::Render {
     Viewport::Viewport(VulkanRenderer& renderer): renderer(renderer) {
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
+    }
+
+    Viewport::~Viewport() {
+        for(auto& pScene : scenes) {
+            pScene->unbindFromViewport(*this);
+        }
     }
 
     Carrot::Camera& Viewport::getCamera(Carrot::Render::Eye eye) {
@@ -113,6 +120,9 @@ namespace Carrot::Render {
         auto& buffer = viewportUniformBuffers[context.swapchainIndex];
         buffer.getBuffer().directUpload(&viewportBufferObject, sizeof(viewportBufferObject), buffer.getStart());
 
+        for(auto& pScene : scenes) {
+            pScene->onFrame(context);
+        }
         if(renderGraph) {
             renderGraph->onFrame(context);
         }
@@ -133,6 +143,16 @@ namespace Carrot::Render {
         if(renderGraph) {
             renderGraph->execute(context, cmds);
         }
+    }
+
+    void Viewport::addScene(Scene* pScene) {
+        verify(pScene != nullptr, "Cannot add null scene");
+        scenes.emplace_back(pScene);
+    }
+
+    void Viewport::removeScene(Scene* pScene) {
+        verify(pScene != nullptr, "Cannot remove null scene");
+        std::erase(scenes, pScene);
     }
 
     Render::Graph* Viewport::getRenderGraph() {

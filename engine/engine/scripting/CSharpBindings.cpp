@@ -30,6 +30,7 @@
 #include <engine/io/actions/ActionSet.h>
 
 #include <engine/physics/PhysicsSystem.h>
+#include <engine/scripting/CSharpHelpers.ipp>
 
 namespace Carrot::Scripting {
 
@@ -265,6 +266,22 @@ namespace Carrot::Scripting {
         unloadCallbacks.remove(handle);
     }
 
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerEngineAssemblyLoadCallback(const std::function<void()>& callback) {
+        return loadEngineCallbacks.append(callback);
+    }
+
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerEngineAssemblyUnloadCallback(const std::function<void()>& callback) {
+        return unloadEngineCallbacks.append(callback);
+    }
+
+    void CSharpBindings::unregisterEngineAssemblyLoadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        loadEngineCallbacks.remove(handle);
+    }
+
+    void CSharpBindings::unregisterEngineAssemblyUnloadCallback(const CSharpBindings::Callbacks::Handle& handle) {
+        unloadEngineCallbacks.remove(handle);
+    }
+
     std::vector<ComponentProperty> CSharpBindings::findAllComponentProperties(const std::string& namespaceName, const std::string& className) {
         return reflectionHelper.findAllComponentProperties(namespaceName, className);
     }
@@ -402,26 +419,8 @@ namespace Carrot::Scripting {
                     .clazz = NavMeshComponentClass,
             };
         }
-    }
 
-    template<typename T>
-    T& getObject(MonoObject* obj) {
-        verify(mono_object_isinst(obj, instance().CSharpBindings::CarrotObjectClass->toMono()), "Input object is not a Carrot.Object instance!");
-
-        Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(obj));
-        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
-        auto* ptr = reinterpret_cast<T*>(handle);
-        return *ptr;
-    }
-
-    template<typename T>
-    T& getReference(MonoObject* obj) {
-        verify(mono_object_isinst(obj, instance().CSharpBindings::CarrotReferenceClass->toMono()), "Input object is not a Carrot.Reference instance!");
-
-        Scripting::CSObject handleObj = instance().CarrotReferenceHandleField->get(Scripting::CSObject(obj));
-        std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
-        auto* ptr = reinterpret_cast<T*>(handle);
-        return *ptr;
+        loadEngineCallbacks();
     }
 
     void CSharpBindings::unloadOnlyEngineAssembly() {

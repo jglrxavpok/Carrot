@@ -5,10 +5,17 @@
 #pragma once
 
 #include <rapidjson/document.h>
-#include <engine/render/Model.h>
+#include <engine/render/MeshAndTransform.h>
 #include <engine/render/InstanceData.h>
+#include <engine/render/GBufferDrawData.h>
 #include <engine/render/PassEnum.h>
 #include <engine/render/RenderContext.h>
+#include <engine/render/resources/Pipeline.h>
+#include <engine/render/MaterialSystem.h>
+
+namespace Carrot {
+    class Model;
+}
 
 namespace Carrot::Render {
 
@@ -62,7 +69,7 @@ namespace Carrot::Render {
     };
 
     struct MeshRenderingInfo {
-        Model::MeshAndTransform meshAndTransform;
+        MeshAndTransform meshAndTransform;
         std::shared_ptr<Carrot::Render::MaterialHandle> materialTextures;
     };
 

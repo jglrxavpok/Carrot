@@ -7,19 +7,41 @@
 #include <stdexcept>
 #include <core/Macros.h>
 
-#define GetEngine() Carrot::Engine::getInstance()
-#define GetRenderer() GetEngine().getRenderer()
-#define GetVulkanDriver() GetEngine().getVulkanDriver()
-#define GetResourceAllocator() GetEngine().getResourceAllocator()
-#define GetVulkanDevice() GetVulkanDriver().getLogicalDevice()
-#define WaitDeviceIdle() GetVulkanDriver().waitDeviceIdle()
-#define GetCapabilities() GetEngine().getCapabilities()
-#define GetConfiguration() GetEngine().getConfiguration()
-#define GetTaskScheduler() GetEngine().getTaskScheduler()
-#define GetCSharpScripting() GetEngine().getCSScriptEngine()
-#define GetCSharpBindings() GetEngine().getCSBindings()
+namespace Carrot {
+    class Engine;
+    class ResourceAllocator;
+    class VulkanRenderer;
+    class VulkanDriver;
+    struct Configuration;
+    struct Capabilities;
+    class TaskScheduler;
+    class SceneManager;
+
+    namespace Scripting {
+        class CSharpBindings;
+        class ScriptingEngine;
+    }
+
+    namespace Physics {
+        class PhysicsSystem;
+    }
+
+}
+
+Carrot::Engine& GetEngine();
+Carrot::VulkanRenderer& GetRenderer();
+Carrot::VulkanDriver& GetVulkanDriver();
+Carrot::ResourceAllocator& GetResourceAllocator();
+vk::Device& GetVulkanDevice();
+void WaitDeviceIdle();
+const Carrot::Capabilities& GetCapabilities();
+const Carrot::Configuration& GetConfiguration();
+Carrot::TaskScheduler& GetTaskScheduler();
+Carrot::Scripting::ScriptingEngine& GetCSharpScripting();
+Carrot::Scripting::CSharpBindings& GetCSharpBindings();
+Carrot::SceneManager& GetSceneManager();
 
 #undef GetVFS
 #define GetVFS() GetEngine().getVFS()
 
-#define GetPhysics() Carrot::Physics::PhysicsSystem::getInstance()
+Carrot::Physics::PhysicsSystem& GetPhysics();

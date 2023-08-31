@@ -9,6 +9,7 @@
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/GBufferDrawData.h"
 #include <glm/gtx/quaternion.hpp>
+#include <engine/utils/Profiling.h>
 
 namespace Carrot::Render {
 

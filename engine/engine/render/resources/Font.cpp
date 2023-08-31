@@ -31,6 +31,9 @@ namespace Carrot::Render {
     }
 
     RenderableText Font::bake(std::u32string_view text, float pixelSize) {
+        if(text.empty()) {
+            return RenderableText {};
+        }
         // TODO: this does not take newlines into account, nor any other control character
         std::uint32_t w = 0;
         std::uint32_t h = 0;

@@ -92,8 +92,6 @@ namespace Peeler {
                 performSimulationStart();
             }
 
-            currentScene.onFrame(renderContext);
-
             if(!isPlaying) {
                 // override any primary camera the game might have
                 cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
@@ -185,7 +183,7 @@ namespace Peeler {
                     const Carrot::UUID projectUuid; // generate new UUID
                     const std::string projectGuidString = projectUuid.toString();
 
-                    const std::filesystem::path projectBasePath = getCurrentProjectFile().parent_path();
+                    const std::filesystem::path projectBasePath = getCurrentProjectFile().parent_path() / "code";
                     const std::filesystem::path carrotDllFilepath = GetVFS().resolve(GetCSharpBindings().getEngineDllPath());
                     std::error_code ec; // ignored
                     std::filesystem::path relativeCarrotDllFilepath = std::filesystem::relative(carrotDllFilepath, projectBasePath, ec);
@@ -888,7 +886,7 @@ namespace Peeler {
         isPaused = false;
         requestedSingleStep = false;
         hasDoneSingleStep = false;
-        savedScene = currentScene;
+        savedScene.copyFrom(currentScene);
 
         savedScene.unload();
 
@@ -922,7 +920,7 @@ namespace Peeler {
         hasDoneSingleStep = false;
         currentScene.world.broadcastStopEvent();
         savedScene.load();
-        currentScene = savedScene;
+        currentScene.copyFrom(savedScene);
         savedScene.clear();
         GetPhysics().pause();
         GetEngine().ungrabCursor();
@@ -1049,7 +1047,10 @@ namespace Peeler {
         ImGui::PopStyleVar(3);
     }
 
-    Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(), settings("peeler"), gameViewport(engine.createViewport()),
+    Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(),
+        currentScene(engine.getSceneManager().getMainScene()),
+        settings("peeler"),
+        gameViewport(engine.createViewport()),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
         playActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button_playing.png"),
         pauseButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button.png"),
@@ -1092,6 +1093,7 @@ namespace Peeler {
 
         addDefaultSystems(currentScene);
         currentScene.world.freezeLogic();
+        currentScene.bindToViewport(gameViewport);
 
         Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
 
@@ -1251,6 +1253,7 @@ namespace Peeler {
             try {
                 Carrot::IO::Resource sceneData = scenePath;
                 scene.Parse(sceneData.readText());
+                currentScene.clear();
                 currentScene.deserialise(scene);
             } catch (std::exception& e) {
                 Carrot::Log::error("Failed to open scene: %s", e.what());

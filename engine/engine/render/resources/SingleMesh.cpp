@@ -4,6 +4,12 @@
 
 #include "SingleMesh.h"
 #include "engine/Engine.h"
+#include "engine/utils/Macros.h"
+#include "engine/render/VulkanRenderer.h"
+
+Carrot::SingleMesh::~SingleMesh() {
+    GetRenderer().deferDestroy(getDebugName(), vertexAndIndexBuffer.release()); // BufferViews keeps a pointer to this buffer (for instance inside RenderPackets)
+}
 
 void Carrot::SingleMesh::setDebugNames(const std::string& name) {
     vertexAndIndexBuffer->setDebugNames(name);

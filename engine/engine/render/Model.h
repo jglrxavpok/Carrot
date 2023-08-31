@@ -16,6 +16,7 @@
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
 #include "engine/render/InstanceData.h"
+#include "engine/render/MeshAndTransform.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -39,15 +40,6 @@ namespace Carrot {
     class Model {
     public:
         using Ref = std::shared_ptr<Model>;
-
-        struct MeshAndTransform {
-            std::shared_ptr<Mesh> mesh;
-            glm::mat4 transform{1.0f};
-            Math::Sphere boundingSphere;
-
-            std::size_t meshIndex = 0;
-            std::size_t staticMeshIndex = 0;
-        };
 
         struct StaticMeshInfo {
             std::size_t startVertex = 0;

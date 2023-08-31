@@ -11,6 +11,12 @@
 #include "engine/render/VulkanRenderer.h"
 
 namespace Carrot {
+    Scene::~Scene() {
+        for(auto& pViewport : viewports) {
+            unbindFromViewport(*pViewport);
+        }
+    }
+
     void Scene::tick(double frameTime) {
         world.tick(frameTime);
     }
@@ -32,7 +38,7 @@ namespace Carrot {
     }
 
     void Scene::clear() {
-        *this = Scene();
+        copyFrom(Scene{});
     }
 
     void Scene::serialise(rapidjson::Document& dest) const {
@@ -93,7 +99,6 @@ namespace Carrot {
 
     void Scene::deserialise(const rapidjson::Value& src) {
         assert(src.IsObject());
-        clear();
 
         // load first, that way entities can refer to shared data
         if(src.HasMember("world_data")) {
@@ -164,5 +169,21 @@ namespace Carrot {
 
     void Scene::unload() {
         world.unloadSystems();
+    }
+
+    void Scene::bindToViewport(Carrot::Render::Viewport& viewport) {
+        viewport.addScene(this);
+        viewports.emplace_back(&viewport);
+    }
+
+    void Scene::unbindFromViewport(Carrot::Render::Viewport& viewport) {
+        viewport.removeScene(this);
+        std::erase(viewports, &viewport);
+    }
+
+    void Scene::copyFrom(const Scene& toCopy) {
+        world = toCopy.world;
+        lighting = toCopy.lighting;
+        skybox = toCopy.skybox;
     }
 }

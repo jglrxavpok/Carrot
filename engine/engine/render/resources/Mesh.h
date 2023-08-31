@@ -5,7 +5,6 @@
 #pragma once
 #include "Vertex.h"
 #include "engine/render/resources/Buffer.h"
-#include "engine/Engine.h"
 
 namespace Carrot {
     class Mesh: public DebugNameable {

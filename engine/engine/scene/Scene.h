@@ -21,11 +21,15 @@ namespace Carrot {
         Carrot::Skybox::Type skybox = Carrot::Skybox::Type::None;
 
         explicit Scene() = default;
-        Scene(const Scene& toCopy) {
-            *this = toCopy;
-        }
+        Scene(const Scene& toCopy) = delete;
+
+        ~Scene();
 
     public:
+        /**
+         * Removes world data (entities & systems) and resets configuration.
+         * Does not change viewport bindings
+         */
         void clear();
 
     public:
@@ -47,6 +51,25 @@ namespace Carrot {
         void load();
 
     public:
-        Scene& operator=(const Scene& toCopy) = default;
+        /**
+         * Binds to the given viewport. Bound scenes will have their 'onFrame' function called automatically with the proper context.
+         */
+        void bindToViewport(Carrot::Render::Viewport& viewport);
+
+        /**
+         * Unbinds from the given viewport.
+         */
+        void unbindFromViewport(Carrot::Render::Viewport& viewport);
+
+    public:
+        /**
+         * Copies settings and world from 'toCopy'.
+         * Does NOT copy viewport bindings
+         */
+        void copyFrom(const Scene& toCopy);
+        Scene& operator=(const Scene& toCopy) = delete;
+
+    private:
+        std::vector<Carrot::Render::Viewport*> viewports;
     };
 }

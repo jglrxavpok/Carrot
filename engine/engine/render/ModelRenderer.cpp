@@ -6,6 +6,7 @@
 #include "ModelRenderer.h"
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/SingleMesh.h>
+#include <engine/render/Model.h>
 #include <core/utils/JSON.h>
 #include <core/data/Hashes.h>
 #include <robin_hood.h>
