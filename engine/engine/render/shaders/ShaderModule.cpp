@@ -12,13 +12,15 @@
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
 
+static Carrot::Log::Category category { "Shader" };
+
 Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const Render::ShaderSource& source, const std::string& entryPoint)
         : driver(driver), entryPoint(entryPoint), source(source) {
     reload();
 }
 
 void Carrot::ShaderModule::reload() {
-    Carrot::Log::info("[Shader] Loading shader %s", source.getName().c_str());
+    Carrot::Log::info(category, "Loading shader %s", source.getName().c_str());
     auto code = source.getCode();
     auto& device = driver.getLogicalDevice();
 

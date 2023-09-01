@@ -16,6 +16,7 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+make_test(core/Logging)
 make_test(engine/Audio)
 make_test(engine/Resources)
 make_test(engine/Network-Client)
@@ -39,6 +40,7 @@ add_executable(
         core/Counters.cpp
         core/CSharpScripting.cpp
         core/FileWatching.cpp
+        core/Logging.cpp
         core/Lookup.cpp
         core/Paths.cpp
         core/SparseArrays.cpp

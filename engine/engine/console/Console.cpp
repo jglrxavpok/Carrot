@@ -70,12 +70,14 @@ namespace Carrot {
                         | ImGuiTableFlags_::ImGuiTableFlags_Borders
                   // TODO     | ImGuiTableFlags_::ImGuiTableFlags_Sortable
                         | ImGuiTableFlags_::ImGuiTableFlags_Reorderable
-                        | ImGuiTableFlags_::ImGuiTableFlags_SizingFixedFit
+                        | ImGuiTableFlags_::ImGuiTableFlags_Resizable
                         ;
-                if(ImGui::BeginTable("Messages table", 3, tableFlags)) {
+                if(ImGui::BeginTable("Messages table", 5, tableFlags)) {
                     ImGui::TableSetupColumn("Severity");
+                    ImGui::TableSetupColumn("Category");
                     ImGui::TableSetupColumn("Timestamp");
                     ImGui::TableSetupColumn("Message");
+                    ImGui::TableSetupColumn("Location");
                     ImGui::TableHeadersRow();
 
                     ImGuiListClipper clipper;
@@ -108,9 +110,13 @@ namespace Carrot {
                             ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, color.Value);
                             ImGui::Text("%s", Carrot::Log::getSeverityString(message.severity));
                             ImGui::TableNextColumn();
+                            ImGui::Text("%s", message.category.name.c_str());
+                            ImGui::TableNextColumn();
                             ImGui::Text("%llu", message.timestamp);
                             ImGui::TableNextColumn();
                             ImGui::Text("%s", message.message.c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%s : %llu", message.sourceLoc.file_name(), (std::uint64_t)message.sourceLoc.line());
                             ImGui::PopStyleColor();
                         }
                     }

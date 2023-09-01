@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 namespace Carrot::Profiling {
+    static Carrot::Log::Category category { "Profiler" };
     static Async::SpinLock timesAccess;
     static std::unordered_map<std::string, std::chrono::duration<float>> times{};
     static std::unordered_map<std::string, std::chrono::duration<float>> lastFrameTimes{};
@@ -39,6 +40,6 @@ namespace Carrot::Profiling {
 
     PrintingScopedTimer::~PrintingScopedTimer() {
         auto elapsed = duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start));
-        Carrot::Log::debug("[Profiler] '%s' took %f", name.c_str(), elapsed.count());
+        Carrot::Log::debug(category, "'%s' took %f", name.c_str(), elapsed.count());
     }
 }
