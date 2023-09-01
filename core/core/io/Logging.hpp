@@ -69,27 +69,7 @@ namespace Carrot::Log {
         throw std::runtime_error("Unknown severity. Have you tested your code in debug?");
     }
 
-    inline void log(Severity severity, const Category& category, const std::string& message, const std::source_location& src, std::ostream& out = std::cout) {
-/*#ifndef IS_DEBUG_BUILD
-        if(severity == Severity::Debug)
-            return;
-#endif*/
-        // TODO: write to file?
-
-        const auto timestamp = std::chrono::system_clock::now() - getStartTime();
-
-        out << Carrot::sprintf("[%s] [%s] (T %llu) %s [%s : %llu]\n", getSeverityString(severity), category.name.c_str(), timestamp.count(), message.c_str(), src.file_name(), (std::uint64_t)src.line());
-//        out << "[" << getSeverityString(severity) << "] (T " << timestamp << ") " << message << '\n';
-
-        getMessages().emplace_back(Message {
-            .severity = severity,
-            .timestamp = static_cast<std::uint64_t>(timestamp.count()),
-            .message = message,
-
-            .category = category,
-            .sourceLoc = src,
-        });
-    }
+    void log(Severity severity, const Category& category, const std::string& message, const std::source_location& src, std::ostream& out = std::cout);
 
     inline void flush() {
         std::cout.flush();
