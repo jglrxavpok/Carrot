@@ -166,7 +166,7 @@ namespace Carrot::IO {
         std::filesystem::path fullPath = path;
         fullPath = fullPath.parent_path();
         fullPath /= relativePath;
-        return {fullPath.string()};
+        return Carrot::IO::Path { std::string_view(fullPath.string()) };
     }
 
     Path Path::relative(const char* relativePath) const {
