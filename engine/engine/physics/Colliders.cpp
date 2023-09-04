@@ -167,6 +167,10 @@ namespace Carrot::Physics {
         reattachCollider();
     }
 
+    void BoxCollisionShape::changeShapeScale(const glm::vec3& scale) {
+        setHalfExtents(scale/2.0f);
+    }
+
     glm::vec3 BoxCollisionShape::getHalfExtents() const {
         return currentHalfExtents;
     }
@@ -200,6 +204,10 @@ namespace Carrot::Physics {
 
     float SphereCollisionShape::getRadius() const {
         return currentRadius;
+    }
+
+    void SphereCollisionShape::changeShapeScale(const glm::vec3& r) {
+        setRadius(glm::compMax(r));
     }
 
     void SphereCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
@@ -241,6 +249,10 @@ namespace Carrot::Physics {
         currentHeight = height;
         shape = CapsuleShapeSettings{height/2, radius}.Create().Get();
         reattachCollider();
+    }
+
+    void CapsuleCollisionShape::changeShapeScale(const glm::vec3& scale) {
+        setRadiusAndHeight(glm::max(scale.x, scale.z), scale[1]);
     }
 
     void CapsuleCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {

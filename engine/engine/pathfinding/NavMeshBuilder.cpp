@@ -358,7 +358,7 @@ namespace Carrot::AI {
         buildContours(workingData.openHeightField, workingData.regions);
 
         // 6. simplify contours
-        simplifyContours(workingData.openHeightField, workingData.regions);
+        //simplifyContours(workingData.openHeightField, workingData.regions);
 
         // 7. from simplified contours, create mesh (reuse vertices between regions to keep connectivity)
         buildMesh(workingData.openHeightField, workingData.regions, workingData.rawMesh);
@@ -450,14 +450,14 @@ namespace Carrot::AI {
                     if(voxels.contains(x, y, z)) {
                         const Voxel& voxel = voxels.get(x, y, z);
                         if(voxel.walkable) {
-                            if(emptySpace || span == nullptr) { // new column starting here
+                            /*if(emptySpace || span == nullptr)*/ { // new column starting here
                                 span = &field[columnIndex].spans.emplace_back();
                                 span->bottomZ = z;
                                 span->height = 1;
                                 emptySpace = false;
-                            } else { // continuing column below this voxel
+                            } /*else { // continuing column below this voxel
                                 span->height++;
-                            }
+                            }*/
                         } else { // stop this column, if any
                             span = nullptr;
                         }
@@ -1078,14 +1078,14 @@ namespace Carrot::AI {
             const std::size_t prevI = prev(i);
             const std::size_t nextI = next(i);
 
-            const glm::vec3 point0 = output.points[contourIndices[prevI]];
-            const glm::vec3 point1 = output.points[contourIndices[i]];
-            const glm::vec3 point2 = output.points[contourIndices[nextI]];
+            const glm::vec2 point0 = output.points[contourIndices[prevI]].xy;
+            const glm::vec2 point1 = output.points[contourIndices[i]].xy;
+            const glm::vec2 point2 = output.points[contourIndices[nextI]].xy;
 
             //Carrot::Log::info("v %f %f %f", point1.x, point1.y, point1.z);
 
-            const glm::vec3 edge0 = point1 - point0;
-            const glm::vec3 edge1 = point2 - point1;
+            const glm::vec2 edge0 = point1 - point0;
+            const glm::vec2 edge1 = point2 - point1;
             if(glm::areCollinear(edge0, edge1, 10e-6f)) {
                 contourIndices.erase(contourIndices.begin() + i);
             } else {
@@ -1187,6 +1187,7 @@ namespace Carrot::AI {
 
         std::unordered_map<glm::vec3, std::size_t> vertexIndices; // index of vertex position inside rawMesh.vertices
         for(auto& region : regions) {
+            debugStep = Carrot::sprintf("Build mesh %llu / %llu", region.index, regions.size());
             // triangulate region contour
             triangulateContour(field, regions, region);
 

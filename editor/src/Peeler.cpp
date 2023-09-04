@@ -503,6 +503,23 @@ namespace Peeler {
                     if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
                         removeEntity(entity);
                     }
+
+                    ImGui::Separator();
+                    if(ImGui::MenuItem("Apply transform to colliders")) {
+                        for(const auto& selectedID : selectedIDs) {
+                            Carrot::ECS::Entity selectedEntity = currentScene.world.wrap(selectedID);
+                            if(selectedEntity) {
+                                auto transformRef = selectedEntity.getComponent<Carrot::ECS::TransformComponent>();
+                                auto componentRef = selectedEntity.getComponent<Carrot::ECS::RigidBodyComponent>();
+                                if(transformRef.hasValue() && componentRef.hasValue()) {
+                                    for(auto& pCollider : componentRef->rigidbody.getColliders()) {
+                                        pCollider->getShape().changeShapeScale(transformRef->computeFinalScale());
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     ImGui::EndPopup();
                 }
             };

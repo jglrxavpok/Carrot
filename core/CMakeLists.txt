@@ -102,7 +102,7 @@ function(add_core_includes Target)
 
 endfunction()
 
-set(ALL_CORE_LIBS ktx glm tinygltf)
+set(ALL_CORE_LIBS ktx glm tinygltf nfd)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})

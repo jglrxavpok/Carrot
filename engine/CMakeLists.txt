@@ -311,7 +311,7 @@ set(THIRDPARTY-SOURCES
 
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV nfd ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
         ${OPENXR-LOADER-LIB-LOCATION}
         ${ADDITIONAL_LIBS})
 

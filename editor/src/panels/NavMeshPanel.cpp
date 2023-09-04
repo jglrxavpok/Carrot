@@ -3,6 +3,7 @@
 //
 
 #include "NavMeshPanel.h"
+#include <core/io/Files.h>
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/ModelComponent.h>
@@ -114,7 +115,6 @@ namespace Peeler {
             }
         }
 
-
         ImGui::TextUnformatted(navMeshBuilder.getDebugStep().c_str());
 
         if(!navMeshBuilder.isRunning()) {
@@ -123,9 +123,12 @@ namespace Peeler {
             if(navMeshBuilder.getResult().hasTriangles()) {
                 if(ImGui::Button("Save")) {
                     // create file
-                    Carrot::IO::VFS::Path path { "game://build/test.cnav" };
-                    Carrot::IO::FileHandle file(Carrot::toString(GetVFS().resolve(path).u8string()).c_str(), Carrot::IO::OpenMode::Write);
-                    navMeshBuilder.getResult().serialize(file);
+                    std::filesystem::path absolutePath;
+                    Carrot::IO::Files::NativeFileDialogFilter filter{"NavMesh", "cnav"};
+                    if(Carrot::IO::Files::showSaveDialog(absolutePath, std::span{&filter, 1})) {
+                        Carrot::IO::FileHandle file(Carrot::toString(absolutePath.u8string()).c_str(), Carrot::IO::OpenMode::NewReadWrite);
+                        navMeshBuilder.getResult().serialize(file);
+                    }
                 }
             }
         }

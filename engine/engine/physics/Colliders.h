@@ -17,6 +17,7 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <core/Macros.h>
 
 namespace Carrot {
     class SingleMesh;
@@ -56,6 +57,8 @@ namespace Carrot::Physics {
         virtual std::unique_ptr<CollisionShape> duplicate() const = 0;
 
         virtual void tick(Collider& collider, double dt) {};
+
+        virtual void changeShapeScale(const glm::vec3& scale) { TODO("Not supported for this shape"); };
 
     public:
         /**
@@ -108,6 +111,8 @@ namespace Carrot::Physics {
         [[nodiscard]] glm::vec3 getHalfExtents() const;
         void setHalfExtents(const glm::vec3& halfExtents);
 
+        virtual void changeShapeScale(const glm::vec3& scale) override;
+
     private:
         BoxCollisionShape();
 
@@ -137,6 +142,9 @@ namespace Carrot::Physics {
     public:
         [[nodiscard]] float getRadius() const;
         void setRadius(float radius);
+
+        /// Sets radius as maximum component of 'scale'
+        virtual void changeShapeScale(const glm::vec3& scale) override;
 
     private:
         SphereCollisionShape();
@@ -172,6 +180,9 @@ namespace Carrot::Physics {
         void setHeight(float height);
 
         void setRadiusAndHeight(float radius, float height);
+
+        /// Sets radius as maximum component of 'scale'
+        virtual void changeShapeScale(const glm::vec3& scale) override;
 
     private:
         CapsuleCollisionShape();

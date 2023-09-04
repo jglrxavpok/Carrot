@@ -93,17 +93,9 @@ namespace Carrot::IO {
             data.fileHandle = nullptr;
         }
 
-        data.isRawData = toCopy.data.isRawData;
+        data = toCopy.data;
         filename = toCopy.filename;
         debugName = toCopy.debugName;
-
-        if(data.isRawData) {
-            data.raw = toCopy.data.raw;
-        } else {
-            if(toCopy.data.fileHandle) {
-                data.fileHandle = toCopy.data.fileHandle->copyReadable();
-            }
-        }
         return *this;
     }
 
