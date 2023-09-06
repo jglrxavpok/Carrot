@@ -555,12 +555,12 @@ namespace Carrot {
         TaskScheduler taskScheduler;
 
     private:
-        SceneManager sceneManager;
-        std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
-
-    private:
         std::unique_ptr<Scripting::ScriptingEngine> scriptingEngine = nullptr;
         std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
+
+    private:
+        SceneManager sceneManager;
+        std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;

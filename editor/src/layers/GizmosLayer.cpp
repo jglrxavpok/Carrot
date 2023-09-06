@@ -47,8 +47,6 @@ namespace Peeler {
         if (editor.selectedIDs.size() == 1) {
             auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(editor.selectedIDs[0]);
             if (transformRef) {
-                glm::mat4 transformMatrix = transformRef->toTransformMatrix();
-
                 static ImGuizmo::OPERATION gizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
 
                 ImVec2 selectionWindowPos = ImVec2(startX, startY);
@@ -108,6 +106,21 @@ namespace Peeler {
 
                 ImGuizmo::MODE gizmoMode = ImGuizmo::MODE::LOCAL;
 
+                glm::mat4 parentMatrix = glm::identity<glm::mat4>();
+                auto parentEntity = transformRef->getEntity().getParent();
+                if (parentEntity) {
+                    auto parentTransform = parentEntity->getComponent<Carrot::ECS::TransformComponent>();
+                    if (parentTransform) {
+                        parentMatrix = parentTransform->toTransformMatrix();
+
+                        const glm::vec3 worldScale = parentTransform->computeFinalScale();
+                        parentMatrix = parentMatrix * glm::scale(glm::mat4(1.0f), 1.0f / worldScale);
+                    }
+                }
+
+
+                glm::mat4 transformMatrix = parentMatrix * transformRef->localTransform.toTransformMatrix();
+
                 bool used = ImGuizmo::Manipulate(
                         cameraViewImGuizmo,
                         cameraProjectionImGuizmo,
@@ -117,15 +130,6 @@ namespace Peeler {
                 );
 
                 if (used) {
-                    glm::mat4 parentMatrix = glm::identity<glm::mat4>();
-                    auto parentEntity = transformRef->getEntity().getParent();
-                    if (parentEntity) {
-                        auto parentTransform = parentEntity->getComponent<Carrot::ECS::TransformComponent>();
-                        if (parentTransform) {
-                            parentMatrix = parentTransform->toTransformMatrix();
-                        }
-                    }
-
                     glm::mat4 localTransform = glm::inverse(parentMatrix) * transformMatrix;
                     float translation[3] = {0.0f};
                     float scale[3] = {0.0f};

@@ -142,6 +142,7 @@ namespace Carrot::Scripting {
 
         static MonoString* GetName(MonoObject* entityMonoObj);
 
+        static void Remove(MonoObject* entityMonoObj);
         static MonoObject* GetParent(MonoObject* entityMonoObj);
         static void SetParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
         static void ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);

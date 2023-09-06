@@ -82,6 +82,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.System::FindEntityByName", FindEntityByName);
         mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", GetName);
+        mono_add_internal_call("Carrot.Entity::Remove", Remove);
         mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
         mono_add_internal_call("Carrot.Entity::GetParent", GetParent);
         mono_add_internal_call("Carrot.Entity::SetParent", SetParent);
@@ -744,6 +745,11 @@ namespace Carrot::Scripting {
 
         instance().NavPathWaypointsField->set(*navPathCSObj, Scripting::CSObject((MonoObject*)waypointsArray->toMono()));
         return navPathCSObj->toMono();
+    }
+
+    void CSharpBindings::Remove(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+        entity.remove();
     }
 
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {

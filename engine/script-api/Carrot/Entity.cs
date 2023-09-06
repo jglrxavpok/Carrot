@@ -20,6 +20,12 @@ namespace Carrot {
         }
         
         /**
+         * Mark this entity for removal, will be removed next tick
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void Remove();
+        
+        /**
          * Name of this entity
          */
         [MethodImpl(MethodImplOptions.InternalCall)]

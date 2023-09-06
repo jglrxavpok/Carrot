@@ -183,9 +183,16 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::setTransform(const Carrot::Math::Transform &transform) {
-        bodyTemplate.mPosition = Carrot::carrotToJolt(transform.position);
-        bodyTemplate.mRotation = Carrot::carrotToJolt(transform.rotation);
-        recreateBodyIfNeeded();
+        JPH::Vec3 joltPos = Carrot::carrotToJolt(transform.position);
+        JPH::Quat joltRot = Carrot::carrotToJolt(transform.rotation);
+        bool needUpdate = bodyTemplate.mPosition != joltPos;
+            needUpdate |= bodyTemplate.mRotation != joltRot;
+            needUpdate |= !bodyID.IsInvalid();
+        bodyTemplate.mPosition = joltPos;
+        bodyTemplate.mRotation = joltRot;
+        if(needUpdate) {
+            recreateBodyIfNeeded();
+        }
     }
 
     static BodyType joltToCarrot(JPH::EMotionType motionType) {

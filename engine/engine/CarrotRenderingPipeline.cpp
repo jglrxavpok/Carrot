@@ -175,7 +175,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                         cmds.pipelineBarrier2KHR(dependencyInfo);
                     }
 
-                    auto pipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("compute/firefly-rejection", pass.getRenderPass());
+                    auto pipeline = frame.renderer.getOrCreatePipeline("compute/firefly-rejection", (std::uint64_t)&pass);
                     pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                     auto& outputTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
@@ -226,7 +226,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     pass.prerecordable = false;
                 },
                 [](const Render::CompiledPass& pass, const Render::Context& frame, const VarianceCompute& data, vk::CommandBuffer& cmds) {
-                    auto copyPipeline = frame.renderer.getOrCreateRenderPassSpecificPipeline("compute/copy-variance", pass.getRenderPass());
+                    auto copyPipeline = frame.renderer.getOrCreatePipeline("compute/copy-variance", (std::uint64_t)&pass);
                     copyPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                     auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
