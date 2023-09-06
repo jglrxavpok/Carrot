@@ -10,6 +10,7 @@
 #include <engine/physics/Types.h>
 #include <engine/physics/Colliders.h>
 #include <glm/glm.hpp>
+#include "BodyUserData.h"
 
 namespace Carrot::Physics {
 
@@ -94,6 +95,7 @@ namespace Carrot::Physics {
         Collider collider;
         JPH::CharacterSettings characterSettings;
         std::unique_ptr<JPH::Character> physics;
+        BodyUserData bodyUserData { BodyUserData::Type::Character, this };
     };
 
 } // Carrot::Physics

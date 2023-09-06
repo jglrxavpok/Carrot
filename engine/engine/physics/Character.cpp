@@ -74,6 +74,13 @@ namespace Carrot::Physics {
         layerID = other.layerID;
 
         physics = std::move(other.physics);
+
+        if(physics) {
+            JPH::SharedMutex* bodyMutex = GetPhysics().lockReadBody(physics->GetBodyID());
+            CLEANUP(GetPhysics().unlockReadBody(bodyMutex));
+            JPH::Body* body = GetPhysics().lockedGetBody(physics->GetBodyID());
+            body->SetUserData((std::uint64_t)&bodyUserData);
+        }
         return *this;
     }
 
@@ -206,6 +213,10 @@ namespace Carrot::Physics {
                                                    Carrot::carrotToJolt(worldTransform.rotation),
                                                    (std::uint64_t)this,
                                                    GetPhysics().jolt.get());
+        JPH::SharedMutex* bodyMutex = GetPhysics().lockReadBody(physics->GetBodyID());
+        CLEANUP(GetPhysics().unlockReadBody(bodyMutex));
+        JPH::Body* body = GetPhysics().lockedGetBody(physics->GetBodyID());
+        body->SetUserData((std::uint64_t)&bodyUserData);
         if(wasInWorld) {
             addToWorld();
         }

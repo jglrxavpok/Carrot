@@ -109,7 +109,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", GetRigidBodyCollider);
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_DoRaycast", _DoRaycast);
+
+        mono_add_internal_call("Carrot.RigidBodyComponent::Raycast", RaycastRigidbody);
+        mono_add_internal_call("Carrot.CharacterComponent::Raycast", RaycastCharacter);
 
         mono_add_internal_call("Carrot.NavMeshComponent::GetClosestPointInMesh", GetClosestPointInMesh);
         mono_add_internal_call("Carrot.NavMeshComponent::PathFind", PathFind);
@@ -388,6 +390,13 @@ namespace Carrot::Scripting {
             LOAD_FIELD(RaycastInfo, WorldNormal);
             LOAD_FIELD(RaycastInfo, T);
             LOAD_FIELD(RaycastInfo, Collider);
+
+            LOAD_CLASS_NS("Carrot.Physics", RayCastSettings);
+            LOAD_FIELD(RayCastSettings, Origin);
+            LOAD_FIELD(RayCastSettings, Dir);
+            LOAD_FIELD(RayCastSettings, MaxLength);
+            LOAD_FIELD(RayCastSettings, IgnoreBody);
+            LOAD_FIELD(RayCastSettings, IgnoreCharacter);
         }
 
         auto* typeClass = engine.findClass("System", "Type");
@@ -694,26 +703,54 @@ namespace Carrot::Scripting {
         return hasHit;
     }
 
-    bool CSharpBindings::_DoRaycast(MonoObject* rigidbodyComp, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* pCSRaycastInfo, std::uint16_t collisionMask) {
-        if(true) // TODO
-            return false;
-        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(rigidbodyComp));
-        ECS::Entity entity = convertToEntity(ownerEntity);
-        auto& rigidbody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
-        DISCARD(rigidbody); // unused
+    bool CSharpBindings::_RaycastHelper(MonoObject* _csRaycastSettings, MonoObject* pCSRaycastInfo) {
+        Carrot::Physics::PhysicsSystem::RayCastSettings raycastSettings;
+
+        Scripting::CSObject csRaycastSettings { _csRaycastSettings };
+        raycastSettings.origin = instance().RayCastSettingsOriginField->get(csRaycastSettings).unbox<glm::vec3>();
+        raycastSettings.direction = instance().RayCastSettingsDirField->get(csRaycastSettings).unbox<glm::vec3>();
+        raycastSettings.maxLength = instance().RayCastSettingsMaxLengthField->get(csRaycastSettings).unbox<float>();
+
+        if(MonoObject* ignoreBodyValue = instance().RayCastSettingsIgnoreBodyField->get(csRaycastSettings)) {
+            auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(ignoreBodyValue));
+            ECS::Entity entity = convertToEntity(ownerEntity);
+            auto& ignoreBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+
+            raycastSettings.collideAgainstBody = [&](const Physics::RigidBody& body) {
+                return &body != &ignoreBody;
+            };
+        }
+
+        if(MonoObject* ignoreCharacterValue = instance().RayCastSettingsIgnoreCharacterField->get(csRaycastSettings)) {
+            auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(ignoreCharacterValue));
+            ECS::Entity entity = convertToEntity(ownerEntity);
+            auto& ignoreCharacter = entity.getComponent<ECS::PhysicsCharacterComponent>()->character;
+
+            raycastSettings.collideAgainstCharacter = [&](const Physics::Character& character) {
+                return &character != &ignoreCharacter;
+            };
+        }
 
         Carrot::Physics::RaycastInfo raycastInfo;
-        bool hasHit = GetPhysics().raycast(start, direction, maxLength, raycastInfo, collisionMask);
+        bool hasHit = GetPhysics().raycast(raycastSettings, raycastInfo);
 
         Scripting::CSObject csRaycastInfo{ pCSRaycastInfo };
         if(hasHit) {
             instance().RaycastInfoWorldPointField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldPoint));
             instance().RaycastInfoWorldNormalField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.worldNormal));
             instance().RaycastInfoTField->set(csRaycastInfo, Scripting::CSObject((MonoObject*)&raycastInfo.t));
-            instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
+           // instance().RaycastInfoColliderField->set(csRaycastInfo, *instance().requestCarrotReference(instance().ColliderClass, raycastInfo.collider));
         }
 
         return hasHit;
+    }
+
+    bool CSharpBindings::RaycastRigidbody(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo) {
+        return _RaycastHelper(raycastSettings, pCSRaycastInfo);
+    }
+
+    bool CSharpBindings::RaycastCharacter(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo) {
+        return _RaycastHelper(raycastSettings, pCSRaycastInfo);
     }
 
     glm::vec3 CSharpBindings::GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p) {

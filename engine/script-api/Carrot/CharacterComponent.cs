@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Carrot.Physics;
 
 namespace Carrot {
     public class CharacterComponent: IComponent {
@@ -8,6 +9,15 @@ namespace Carrot {
         }
         
         public CharacterComponent(Entity owner) : base(owner) { }
+        
+        /**
+         * Performs a raycast against the physics world
+         * 'settings.dir' is expected to be normalized
+         * 'raycastInfo' is modified if there is a hit
+         * returns true iff there is an intersection
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern bool Raycast(RayCastSettings settings, RaycastInfo raycastInfo);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void EnablePhysics();

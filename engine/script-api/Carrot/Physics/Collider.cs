@@ -1,16 +1,16 @@
 ﻿using System.Runtime.CompilerServices;
 
 namespace Carrot.Physics {
-    public struct RaycastInfo {
-        public Vec3 WorldPoint;
-        public Vec3 WorldNormal;
+    public class RaycastInfo {
+        public Vec3 WorldPoint = new Vec3();
+        public Vec3 WorldNormal = new Vec3();
         
         /**
          * Length from start point to intersection point
          */
-        public float T;
+        public float T = -1.0f;
         
-        public Collider Collider;
+        public Collider Collider = null;
     }
     
     public class Collider: Reference {

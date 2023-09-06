@@ -8,6 +8,7 @@
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 
 namespace Carrot::Physics {
+    class Character;
     class RigidBody;
     class Collider;
     class CollisionShape;
@@ -18,7 +19,7 @@ namespace Carrot::Physics {
         float t = -1.0f;
         Collider* collider = nullptr;
         RigidBody* rigidBody = nullptr;
-
+        Character* character = nullptr;
     };
 
     using CollisionLayerID = JPH::ObjectLayer;

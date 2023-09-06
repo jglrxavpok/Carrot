@@ -62,6 +62,13 @@ namespace Carrot::Scripting {
         CSField* RaycastInfoTField = nullptr;
         CSField* RaycastInfoColliderField = nullptr;
 
+        CSClass* RayCastSettingsClass = nullptr;
+        CSField* RayCastSettingsOriginField = nullptr;
+        CSField* RayCastSettingsDirField = nullptr;
+        CSField* RayCastSettingsMaxLengthField = nullptr;
+        CSField* RayCastSettingsIgnoreCharacterField = nullptr;
+        CSField* RayCastSettingsIgnoreBodyField = nullptr;
+
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;
         CSClass* FloatInputActionClass = nullptr;
@@ -195,7 +202,10 @@ namespace Carrot::Scripting {
         static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);
 
         static bool RaycastCollider(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo);
-        static bool _DoRaycast(MonoObject* collider, glm::vec3 start, glm::vec3 direction, float maxLength, MonoObject* raycastInfo, std::uint16_t collisionMask);
+
+        static bool _RaycastHelper(MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
+        static bool RaycastRigidbody(MonoObject* rigidbodyComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
+        static bool RaycastCharacter(MonoObject* characterComp, MonoObject* raycastSettings, MonoObject* pCSRaycastInfo);
 
         static glm::vec3 GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p);
         static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);

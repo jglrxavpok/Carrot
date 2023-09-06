@@ -22,16 +22,12 @@ namespace Carrot {
 
         /**
          * Performs a raycast against the physics world
-         * 'dir' is expected to be normalized
+         * 'settings.dir' is expected to be normalized
          * 'raycastInfo' is modified if there is a hit
          * returns true iff there is an intersection
          */
-        public bool Raycast(Vec3 start, Vec3 dir, float maxLength, ref RaycastInfo raycastInfo, UInt16 collisionMask = 0xFFFF) {
-            return _DoRaycast(start, dir, maxLength, ref raycastInfo, collisionMask);
-        }
-        
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern bool _DoRaycast(Vec3 start, Vec3 dir, float maxLength, ref RaycastInfo raycastInfo, UInt16 collisionMask);
+        public extern bool Raycast(RayCastSettings settings, RaycastInfo raycastInfo);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern Vec3 _GetVelocity();

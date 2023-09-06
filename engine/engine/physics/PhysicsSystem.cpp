@@ -12,9 +12,12 @@
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/resources/Vertex.h"
 #include "engine/render/VulkanRenderer.h"
+#include "BodyUserData.h"
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Renderer/DebugRenderer.h>
+#include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/CastResult.h>
 
 using namespace JPH;
 
@@ -116,19 +119,104 @@ namespace Carrot::Physics {
         }
     }
 
-    void PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback, unsigned short collisionMask) const {
-        TODO;
-    }
+    bool PhysicsSystem::raycast(const RayCastSettings& settings, RaycastInfo& raycastInfo) {
+        const JPH::RRayCast ray { Carrot::carrotToJolt(settings.origin), Carrot::carrotToJolt(settings.direction * settings.maxLength) };
+        JPH::RayCastResult rayResult;
+        std::unique_ptr<BroadPhaseLayerFilter> broadphaseLayerFilter;
+        switch(settings.allowedLayers) {
+            case RayCastLayers::All:
+                broadphaseLayerFilter = std::make_unique<BroadPhaseLayerFilter>();
+                break;
+            case RayCastLayers::StaticOnly:
+                broadphaseLayerFilter = std::make_unique<SpecifiedBroadPhaseLayerFilter>(BPLayerInterfaceImpl::StaticLayer);
+                break;
+            case RayCastLayers::DynamicOnly:
+                broadphaseLayerFilter = std::make_unique<SpecifiedBroadPhaseLayerFilter>(BPLayerInterfaceImpl::MovingLayer);
+                break;
+        }
 
-    bool PhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, RaycastInfo& raycastInfo, unsigned short collisionMask) const {
-        bool hasAHit = false;
-        auto callback = [&](const RaycastInfo& hitInfo) -> float {
-            raycastInfo = hitInfo;
-            hasAHit = true;
-            return 1.0f; // stop at first hit
+        struct CustomLayerFilter: public ObjectLayerFilter {
+            std::function<bool(const CollisionLayerID&)> collideAgainstLayer;
+
+            CustomLayerFilter(const function<bool(const CollisionLayerID&)> f): collideAgainstLayer(f) {};
+
+            virtual bool ShouldCollide(ObjectLayer inLayer) const {
+                return collideAgainstLayer(inLayer);
+            }
         };
-        raycast(origin, direction, maxDistance, callback, collisionMask);
-        return hasAHit;
+        CustomLayerFilter objectLayerFilter { settings.collideAgainstLayer };
+
+        struct CustomBodyFilter: public BodyFilter {
+            std::function<bool(const RigidBody&)> collideAgainstBody;
+            std::function<bool(const Character&)> collideAgainstCharacter;
+
+            CustomBodyFilter(const function<bool(const RigidBody&)> b, const function<bool(const Character&)> c): collideAgainstBody(b), collideAgainstCharacter(c) {};
+
+            struct BodyHandle {
+                BodyHandle(const BodyID& inBodyID) {
+                    mutex = GetPhysics().lockReadBody(inBodyID);
+                    body = GetPhysics().lockedGetBody(inBodyID);
+                }
+
+                ~BodyHandle() {
+                    GetPhysics().unlockReadBody(mutex);
+                }
+
+                JPH::SharedMutex* mutex = nullptr;
+                JPH::Body* body = nullptr;
+            };
+
+            bool check(const Body& inBody) const {
+                BodyUserData* bodyUserData = (BodyUserData*)inBody.GetUserData();
+                verify(bodyUserData != nullptr, "No body user data attached to this body??");
+
+                switch(bodyUserData->type) {
+                    case BodyUserData::Type::Rigidbody:
+                        return collideAgainstBody(*(RigidBody*)bodyUserData->ptr);
+
+                    case BodyUserData::Type::Character:
+                        return collideAgainstCharacter(*(Character*)bodyUserData->ptr);
+                }
+                return false;
+            }
+
+            bool ShouldCollide(const BodyID& inBodyID) const override {
+                BodyHandle body{ inBodyID };
+                return check(*body.body);
+            }
+
+            bool ShouldCollideLocked(const Body& inBody) const override {
+                return check(inBody);
+            }
+        };
+
+        CustomBodyFilter bodyFilter { settings.collideAgainstBody, settings.collideAgainstCharacter };
+        bool intersected = jolt->GetNarrowPhaseQuery().CastRay(ray, rayResult, *broadphaseLayerFilter, objectLayerFilter, bodyFilter);
+        if(intersected) {
+            raycastInfo.t = rayResult.mFraction;
+            raycastInfo.worldPoint = settings.origin + settings.direction * raycastInfo.t * settings.maxLength;
+
+            JPH::SharedMutex* mutex = lockReadBody(rayResult.mBodyID);
+            CLEANUP(unlockReadBody(mutex));
+            JPH::Body* body = lockedGetBody(rayResult.mBodyID);
+            verify(body != nullptr, "body is null but was collided against??");
+
+            BodyUserData* bodyUserData = (BodyUserData*)body->GetUserData();
+            verify(bodyUserData != nullptr, "No body user data attached to this body??");
+
+            raycastInfo.worldNormal = Carrot::joltToCarrot(body->GetWorldSpaceSurfaceNormal(rayResult.mSubShapeID2, ray.GetPointOnRay(rayResult.mFraction)));
+            switch(bodyUserData->type) {
+                case BodyUserData::Type::Rigidbody:
+                    raycastInfo.rigidBody = (RigidBody*)bodyUserData->ptr;
+                    break;
+
+                case BodyUserData::Type::Character:
+                    raycastInfo.character = (Character*)bodyUserData->ptr;
+                    break;
+            }
+            raycastInfo.collider = nullptr; // TODO
+        }
+        return intersected;
     }
 
     void PhysicsSystem::pause() {

@@ -53,6 +53,7 @@
         <Compile Include="NavMeshComponent.cs" />
         <Compile Include="Object.cs" />
         <Compile Include="Physics\Collider.cs" />
+        <Compile Include="Physics\RayCastSettings.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Reflection.cs" />
         <Compile Include="RigidBodyComponent.cs" />

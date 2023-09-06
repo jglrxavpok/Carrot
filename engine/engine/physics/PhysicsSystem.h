@@ -25,6 +25,8 @@ namespace Carrot {
 }
 
 namespace Carrot::Physics {
+    class Character;
+
     namespace {
         // BroadPhaseLayerInterface implementation
         // This defines a mapping between object and broadphase layers.
@@ -96,16 +98,34 @@ namespace Carrot::Physics {
         void resume();
 
     public: // queries
-        using RaycastCallback = std::function<float(const RaycastInfo& raycastInfo)>;
+        enum class RayCastLayers {
+            All,
+            StaticOnly,
+            DynamicOnly,
+        };
 
-        void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, const RaycastCallback& callback, unsigned short collisionMask = 0xFFFF) const;
+        struct RayCastSettings {
+            glm::vec3 origin {0.0f};
+            glm::vec3 direction {1.0f}; // must be normalized
+            float maxLength {0.0f};
+
+            RayCastLayers allowedLayers { RayCastLayers::All };
+            /// Should we report collisions against the given layer? By default yes
+            std::function<bool(const CollisionLayerID&)> collideAgainstLayer = [](const CollisionLayerID&) { return true; };
+
+            /// Should we report collisions against the given rigidbody? By default yes
+            std::function<bool(const RigidBody&)> collideAgainstBody = [](const RigidBody&) { return true; };
+
+            /// Should we report collisions against the given character? By default yes
+            std::function<bool(const Character&)> collideAgainstCharacter = [](const Character&) { return true; };
+        };
 
         /**
          * Raycasts into the world, stopping at the first hit
          * @param collisionMask mask for which collider to test against, by default tests for all
          * @return true iff there was a hit
          */
-        bool raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance, RaycastInfo& raycastInfo, unsigned short collisionMask = 0xFFFF) const;
+        bool raycast(const RayCastSettings& settings, RaycastInfo& raycastInfo);
 
 
     private:

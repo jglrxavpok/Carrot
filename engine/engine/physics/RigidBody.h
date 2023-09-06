@@ -10,6 +10,7 @@
 #include <Jolt/Physics/Body/Body.h>
 #include <engine/math/Transform.h>
 #include "Colliders.h"
+#include "BodyUserData.h"
 
 namespace Carrot::ECS {
     class RigidBodyComponent;
@@ -137,6 +138,7 @@ namespace Carrot::Physics {
         JPH::BodyID bodyID;
         JPH::ShapeRefC bodyShapeRef; // compound shape used when there are multiple colliders
         JPH::SixDOFConstraint* dofConstraint = nullptr;
+        BodyUserData bodyUserData { BodyUserData::Type::Rigidbody, this };
         void* userData = nullptr;
 
         friend class Collider;

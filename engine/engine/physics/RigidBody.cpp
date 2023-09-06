@@ -114,7 +114,7 @@ namespace Carrot::Physics {
         bodyTemplate = std::move(toMove.bodyTemplate);
         BodyAccessWrite body{bodyID};
         if(body) {
-            body->SetUserData((std::uint64_t)this);
+            body->SetUserData((std::uint64_t)&bodyUserData);
         }
 
         colliders = std::move(toMove.colliders);
@@ -187,7 +187,7 @@ namespace Carrot::Physics {
         JPH::Quat joltRot = Carrot::carrotToJolt(transform.rotation);
         bool needUpdate = bodyTemplate.mPosition != joltPos;
             needUpdate |= bodyTemplate.mRotation != joltRot;
-            needUpdate |= !bodyID.IsInvalid();
+            needUpdate &= !bodyID.IsInvalid();
         bodyTemplate.mPosition = joltPos;
         bodyTemplate.mRotation = joltRot;
         if(needUpdate) {
@@ -319,7 +319,7 @@ namespace Carrot::Physics {
     }
 
     void RigidBody::createBody(JPH::BodyCreationSettings creationSettings) {
-        creationSettings.mUserData = (std::uint64_t)this;
+        creationSettings.mUserData = (std::uint64_t)&bodyUserData;
 
         if(bodyType == BodyType::Static) {
             creationSettings.mObjectLayer = GetPhysics().getDefaultStaticLayer(); // TODO
