@@ -10,13 +10,18 @@
         public float MaxLength = 0.0f;
 
         /**
-         * RigidBody to ignore while doing raycast
+         * RigidBodies to ignore while doing raycast, can be null
          */
-        public RigidBodyComponent IgnoreBody = null;
+        public RigidBodyComponent[] IgnoreBodies = null;
 
-        /**s
-         * Character to ignore while doing raycast
+        /**
+         * Characters to ignore while doing raycast, can be null
          */
-        public CharacterComponent IgnoreCharacter = null;
+        public CharacterComponent[] IgnoreCharacters = null;
+
+        /**
+         * Name of layers to ignore while doing raycast, can be null
+         */
+        public string[] IgnoreLayers = null;
     }
 }

@@ -66,8 +66,9 @@ namespace Carrot::Scripting {
         CSField* RayCastSettingsOriginField = nullptr;
         CSField* RayCastSettingsDirField = nullptr;
         CSField* RayCastSettingsMaxLengthField = nullptr;
-        CSField* RayCastSettingsIgnoreCharacterField = nullptr;
-        CSField* RayCastSettingsIgnoreBodyField = nullptr;
+        CSField* RayCastSettingsIgnoreCharactersField = nullptr;
+        CSField* RayCastSettingsIgnoreBodiesField = nullptr;
+        CSField* RayCastSettingsIgnoreLayersField = nullptr;
 
         CSClass* ActionSetClass = nullptr;
         CSClass* BoolInputActionClass = nullptr;
@@ -186,6 +187,7 @@ namespace Carrot::Scripting {
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetWorldPosition(MonoObject* transformComp);
 
+        static void TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos);
         static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);
         static void _SetCharacterVelocity(MonoObject* characterComp, glm::vec3 value);
         static bool _IsCharacterOnGround(MonoObject* characterComp);

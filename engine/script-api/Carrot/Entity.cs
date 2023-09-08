@@ -64,6 +64,9 @@ namespace Carrot {
             return (T)GetComponent(typeof(T));
         }
 
+        /**
+         * Convenience method to get the transform of an entity. May return null
+         */
         public TransformComponent GetTransform() { 
             return GetComponent<TransformComponent>();
         }

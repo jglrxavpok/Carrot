@@ -19,6 +19,13 @@ namespace Carrot {
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern bool Raycast(RayCastSettings settings, RaycastInfo raycastInfo);
 
+        /**
+         * Teleport the physical representation of the entity at the given position.
+         * Does NOT modify TransformComponent's values immediately. They will be updated on the next physics update.
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void Teleport(Vec3 newPosition);
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void EnablePhysics();
 

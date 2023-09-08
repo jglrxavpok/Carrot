@@ -96,6 +96,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", _SetEulerAngles);
         mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", _GetWorldPosition);
 
+        mono_add_internal_call("Carrot.CharacterComponent::Teleport", TeleportCharacter);
         mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", _GetCharacterVelocity);
         mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", _SetCharacterVelocity);
         mono_add_internal_call("Carrot.CharacterComponent::IsOnGround", _IsCharacterOnGround);
@@ -395,8 +396,9 @@ namespace Carrot::Scripting {
             LOAD_FIELD(RayCastSettings, Origin);
             LOAD_FIELD(RayCastSettings, Dir);
             LOAD_FIELD(RayCastSettings, MaxLength);
-            LOAD_FIELD(RayCastSettings, IgnoreBody);
-            LOAD_FIELD(RayCastSettings, IgnoreCharacter);
+            LOAD_FIELD(RayCastSettings, IgnoreBodies);
+            LOAD_FIELD(RayCastSettings, IgnoreCharacters);
+            LOAD_FIELD(RayCastSettings, IgnoreLayers);
         }
 
         auto* typeClass = engine.findClass("System", "Type");
@@ -615,6 +617,14 @@ namespace Carrot::Scripting {
         return entity.getComponent<ECS::TransformComponent>()->computeFinalPosition();
     }
 
+    void CSharpBindings::TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Carrot::Math::Transform updatedTransform = entity.getComponent<ECS::PhysicsCharacterComponent>()->character.getWorldTransform();
+        updatedTransform.position = newPos;
+        entity.getComponent<ECS::PhysicsCharacterComponent>()->character.setWorldTransform(updatedTransform);
+    }
+
     glm::vec3 CSharpBindings::_GetCharacterVelocity(MonoObject* characterComp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(characterComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
@@ -711,23 +721,48 @@ namespace Carrot::Scripting {
         raycastSettings.direction = instance().RayCastSettingsDirField->get(csRaycastSettings).unbox<glm::vec3>();
         raycastSettings.maxLength = instance().RayCastSettingsMaxLengthField->get(csRaycastSettings).unbox<float>();
 
-        if(MonoObject* ignoreBodyValue = instance().RayCastSettingsIgnoreBodyField->get(csRaycastSettings)) {
-            auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(ignoreBodyValue));
-            ECS::Entity entity = convertToEntity(ownerEntity);
-            auto& ignoreBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        std::unordered_set<const Physics::RigidBody*> bodiesToIgnore;
+        std::unordered_set<const Physics::Character*> charactersToIgnore;
+        std::unordered_set<std::string> layersToIgnore;
+        if(MonoArray* array = (MonoArray*)instance().RayCastSettingsIgnoreBodiesField->get(csRaycastSettings).toMono()) {
+            std::size_t count = mono_array_length(array);
+            for (int i = 0; i < count; ++i) {
+                auto ownerEntity = instance().ComponentOwnerField->get(CSObject(mono_array_get(array, MonoObject*, i)));
+                ECS::Entity entity = convertToEntity(ownerEntity);
+                auto& toIgnore = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+                bodiesToIgnore.insert(&toIgnore);
+            }
 
             raycastSettings.collideAgainstBody = [&](const Physics::RigidBody& body) {
-                return &body != &ignoreBody;
+                return !bodiesToIgnore.contains(&body);
             };
         }
 
-        if(MonoObject* ignoreCharacterValue = instance().RayCastSettingsIgnoreCharacterField->get(csRaycastSettings)) {
-            auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(ignoreCharacterValue));
-            ECS::Entity entity = convertToEntity(ownerEntity);
-            auto& ignoreCharacter = entity.getComponent<ECS::PhysicsCharacterComponent>()->character;
+        if(MonoArray* array = (MonoArray*)instance().RayCastSettingsIgnoreCharactersField->get(csRaycastSettings).toMono()) {
+            std::size_t count = mono_array_length(array);
+            for (int i = 0; i < count; ++i) {
+                auto ownerEntity = instance().ComponentOwnerField->get(CSObject(mono_array_get(array, MonoObject*, i)));
+                ECS::Entity entity = convertToEntity(ownerEntity);
+                auto& toIgnore = entity.getComponent<ECS::PhysicsCharacterComponent>()->character;
+                charactersToIgnore.insert(&toIgnore);
+            }
 
-            raycastSettings.collideAgainstCharacter = [&](const Physics::Character& character) {
-                return &character != &ignoreCharacter;
+            raycastSettings.collideAgainstCharacter = [&](const Physics::Character& body) {
+                return !charactersToIgnore.contains(&body);
+            };
+        }
+
+        if(MonoArray* array = (MonoArray*)instance().RayCastSettingsIgnoreLayersField->get(csRaycastSettings).toMono()) {
+            std::size_t count = mono_array_length(array);
+            for (int i = 0; i < count; ++i) {
+                MonoString* layerName = mono_array_get(array, MonoString*, i);
+                char* layerNameStr = mono_string_to_utf8(layerName);
+                layersToIgnore.emplace(layerNameStr);
+                mono_free(layerNameStr);
+            }
+
+            raycastSettings.collideAgainstLayer = [&](const Physics::CollisionLayerID& collisionLayerID) {
+                return !layersToIgnore.contains(GetPhysics().getCollisionLayers().getLayer(collisionLayerID).name);
             };
         }
 
