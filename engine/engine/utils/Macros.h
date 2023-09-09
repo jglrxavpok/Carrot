@@ -17,6 +17,10 @@ namespace Carrot {
     class TaskScheduler;
     class SceneManager;
 
+    namespace Audio {
+        class AudioManager;
+    }
+
     namespace Scripting {
         class CSharpBindings;
         class ScriptingEngine;
@@ -40,6 +44,7 @@ Carrot::TaskScheduler& GetTaskScheduler();
 Carrot::Scripting::ScriptingEngine& GetCSharpScripting();
 Carrot::Scripting::CSharpBindings& GetCSharpBindings();
 Carrot::SceneManager& GetSceneManager();
+Carrot::Audio::AudioManager& GetAudioManager();
 
 #undef GetVFS
 #define GetVFS() GetEngine().getVFS()

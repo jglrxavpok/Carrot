@@ -43,6 +43,12 @@ namespace Carrot::IO {
         TXT,
 
         CNAV, // Carrot navmeshes
+
+        MP3,
+        OGG,
+        WAV,
+        SoundFirst = MP3,
+        SoundLast = WAV,
     };
 
     constexpr bool isImageFormat(FileFormat format) {
@@ -55,6 +61,10 @@ namespace Carrot::IO {
 
     constexpr bool isScriptFormat(FileFormat format) {
         return format >= FileFormat::ScriptFirst && format <= FileFormat::ScriptLast;
+    }
+
+    constexpr bool isSoundFormat(FileFormat format) {
+        return format >= FileFormat::SoundFirst && format <= FileFormat::SoundLast;
     }
 
     inline FileFormat getFileFormat(const char* filepath) {
@@ -94,6 +104,10 @@ namespace Carrot::IO {
         CHECK(TXT);
 
         CHECK(CNAV);
+
+        CHECK(MP3);
+        CHECK(OGG);
+        CHECK(WAV);
         return FileFormat::UNKNOWN;
     }
 
@@ -122,5 +136,14 @@ namespace Carrot::IO {
     inline bool isScriptFormatFromPath(const std::filesystem::path& path) {
         std::string extension = Carrot::toString(path.u8string());
         return isScriptFormat(extension.c_str());
+    }
+
+    inline bool isSoundFormat(const char* filepath) {
+        return isSoundFormat(getFileFormat(filepath));
+    }
+
+    inline bool isSoundFormatFromPath(const std::filesystem::path& path) {
+        std::string extension = Carrot::toString(path.u8string());
+        return isSoundFormat(extension.c_str());
     }
 }

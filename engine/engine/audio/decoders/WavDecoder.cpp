@@ -6,6 +6,7 @@
 
 #include <utility>
 #include <stdexcept>
+#include <core/utils/Assert.h>
 
 Carrot::WavDecoder::WavDecoder(const std::string& filename): AudioDecoder(filename), wav() {
     if(!drwav_init_file(&wav, this->filename.c_str(), nullptr)) {
@@ -23,8 +24,8 @@ uint64_t Carrot::WavDecoder::getFrequency() {
 
 std::vector<float> Carrot::WavDecoder::extractSamples(size_t sampleCount) {
     std::vector<float> buffer;
-    buffer.resize(sampleCount * sizeof(float) * wav.channels);
-    auto read = drwav_read_pcm_frames_f32(&wav, sampleCount, buffer.data());
+    buffer.resize(sampleCount * wav.channels);
+    auto read = drwav_read_pcm_frames_f32(&wav, sampleCount * wav.channels, buffer.data());
     buffer.resize(read);
     return buffer;
 }
@@ -39,6 +40,7 @@ ALenum Carrot::WavDecoder::getFormat() {
     if(wav.channels == 1) {
         return AL_FORMAT_MONO_FLOAT32;
     }
+    verify(wav.channels == 2, "more than 2 channels not supported");
     return AL_FORMAT_STEREO_FLOAT32;
 }
 

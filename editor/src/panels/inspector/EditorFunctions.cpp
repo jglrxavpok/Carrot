@@ -15,6 +15,7 @@
 #include <engine/ecs/components/NavMeshComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/PhysicsCharacterComponent.h>
+#include <engine/ecs/components/SoundListenerComponent.h>
 #include <engine/ecs/components/SpriteComponent.h>
 #include <engine/ecs/components/TextComponent.h>
 #include <engine/ecs/components/TransformComponent.h>
@@ -363,5 +364,6 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::SpriteComponent::getID(), ICON_FA_IMAGE "  Sprite");
         inspector.registerComponentDisplayName(Carrot::ECS::TextComponent::getID(), ICON_FA_FONT "  Text");
         inspector.registerComponentDisplayName(Carrot::ECS::NavMeshComponent::getID(), ICON_FA_ROUTE "  NavMesh");
+        inspector.registerComponentDisplayName(Carrot::ECS::SoundListenerComponent::getID(), ICON_FA_PODCAST "  SoundListener");
     }
 }

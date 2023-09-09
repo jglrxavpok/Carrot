@@ -55,6 +55,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/NavMeshComponent.cpp
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
+        ${EngineRoot}ecs/components/SoundListenerComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
         ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp
@@ -67,6 +68,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemHandleLights.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
+        ${EngineRoot}ecs/systems/SoundListenerSystem.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
         ${EngineRoot}ecs/systems/SystemTransformSwapBuffers.cpp
@@ -87,13 +89,18 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}LoadingScreen.cpp
 
+        ${EngineRoot}audio/AudioManager.cpp
+        ${EngineRoot}audio/AudioThread.cpp
+        ${EngineRoot}audio/OpenAL.cpp
+        ${EngineRoot}audio/SFX.cpp
         ${EngineRoot}audio/SoundSource.cpp
         ${EngineRoot}audio/Sound.cpp
-        ${EngineRoot}audio/SoundThread.cpp
-        ${EngineRoot}audio/decoders/WavDecoder.cpp
+        ${EngineRoot}audio/SoundListener.cpp
+
+        ${EngineRoot}audio/decoders/noDecoder.cpp
         ${EngineRoot}audio/decoders/MP3Decoder.cpp
         ${EngineRoot}audio/decoders/VorbisDecoder.cpp
-        ${EngineRoot}audio/SoundListener.cpp
+        ${EngineRoot}audio/decoders/WavDecoder.cpp
 
         ${EngineRoot}render/particles/ParticleSystem.cpp
         ${EngineRoot}render/particles/ParticleEmitter.cpp

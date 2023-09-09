@@ -34,6 +34,7 @@ namespace Carrot {
 #include "core/async/Coroutines.hpp"
 #include "engine/task/TaskScheduler.h"
 #include <engine/scene/SceneManager.h>
+#include <engine/audio/AudioManager.h>
 #include <core/io/vfs/VirtualFileSystem.h>
 
 namespace sol {
@@ -66,6 +67,10 @@ namespace Carrot {
     class RayTracer;
 
     class ResourceAllocator;
+
+    namespace Audio {
+        class AudioManager;
+    }
 
     namespace Scripting {
         class ScriptingEngine;
@@ -385,6 +390,7 @@ namespace Carrot {
     public:
         Scripting::ScriptingEngine& getCSScriptEngine();
         Scripting::CSharpBindings& getCSBindings();
+        Audio::AudioManager& getAudioManager();
 
         static void registerUsertype(sol::state& destination);
 
@@ -559,6 +565,7 @@ namespace Carrot {
         std::shared_ptr<Scripting::CSharpBindings> csBindings = nullptr;
 
     private:
+        Audio::AudioManager audioManager;
         SceneManager sceneManager;
         std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 

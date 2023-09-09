@@ -43,6 +43,8 @@
 #include <core/scripting/csharp/CSMethod.h>
 #include <core/scripting/csharp/CSObject.h>
 #include <engine/scripting/CSharpBindings.h>
+#include <engine/ecs/components/SoundListenerComponent.h>
+#include <engine/ecs/systems/SoundListenerSystem.h>
 
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
@@ -562,6 +564,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::LuaScriptComponent>();
         components.add<Carrot::ECS::PhysicsCharacterComponent>();
         components.add<Carrot::ECS::NavMeshComponent>();
+        components.add<Carrot::ECS::SoundListenerComponent>();
     }
 
     {
@@ -576,6 +579,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemTransformSwapBuffers>();
         systems.addUniquePtrBased<Carrot::ECS::PhysicsCharacterSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::SoundListenerSystem>();
 
         systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();
@@ -1061,6 +1065,7 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
     game->tick(deltaTime);
+    audioManager.tick(deltaTime);
 
     auto prePhysics = [&]() {
         game->prePhysics();
@@ -1324,6 +1329,10 @@ Carrot::Render::Viewport& Carrot::Engine::createViewport() {
     verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
     viewports.emplace_back(renderer);
     return viewports.back();
+}
+
+Carrot::Audio::AudioManager& Carrot::Engine::getAudioManager() {
+    return audioManager;
 }
 
 Carrot::SceneManager& Carrot::Engine::getSceneManager() {

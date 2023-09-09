@@ -9,8 +9,12 @@
 #include <stdexcept>
 #include "OpenAL.hpp"
 #include "decoders/AudioDecoder.h"
+#include "decoders/NoDecoder.h"
 
-namespace Carrot {
+namespace Carrot::Audio {
+    /**
+     * Represents a sound instance. Can be a music or a sound effect.
+     */
     class Sound {
     private:
         constexpr static size_t SAMPLES_AT_ONCE = 44100;
@@ -19,7 +23,8 @@ namespace Carrot {
         std::unique_ptr<AudioDecoder> decoder = nullptr;
 
     public:
-        Sound(const std::string& filename, bool streaming);
+        Sound(std::unique_ptr<AudioDecoder>&& decoder, bool streaming);
+        Sound(const std::string& filename, bool streaming); // TODO: support for Carrot::IO::Resource
 
         std::shared_ptr<AL::Buffer> getNextBuffer();
 
@@ -29,10 +34,8 @@ namespace Carrot {
 
         bool hasBeenFullyRead() const {
             return endOfFile;
-        };
+        }
 
-        static std::unique_ptr<Sound> loadSoundEffect(const std::string& filename);
-
-        static std::unique_ptr<Sound> loadMusic(const std::string& filename);
+        NoDecoder copyInMemory();
     };
 }

@@ -6,7 +6,7 @@
 
 #include "Sound.h"
 
-namespace Carrot {
+namespace Carrot::Audio {
     enum class CleanupPolicy {
         /**
          * Clean sound resources manually
@@ -47,6 +47,8 @@ namespace Carrot {
         bool isReadyForCleanup();
 
         void setGain(float gain);
+
+        void setPosition(const glm::vec3& position);
 
         float getGain() const { return gain; };
 

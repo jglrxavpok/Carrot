@@ -36,7 +36,7 @@ namespace AL {
             ALenum error = alGetError();
             if(error != AL_NO_ERROR) {
                 std::string humanReadableCode = getHumanReadableCode(error);
-                throw std::runtime_error("OpenAL error: " + std::to_string(error));
+                throw std::runtime_error("OpenAL error: " + humanReadableCode);
             }
         }
     }
@@ -124,79 +124,39 @@ namespace AL {
         std::vector<ALuint> unqueueContainer;
 
     public:
-        explicit Source() {
-            alGenSources(1, &source);
-            checkALError();
-        }
+        explicit Source();
 
-        void queue(const std::shared_ptr<Buffer>& buffer) {
-            alSourceQueueBuffers(source, 1, &buffer->getALBuffer());
-            queuedBuffers.push_back(buffer);
-        }
+        void queue(const std::shared_ptr<Buffer>& buffer);
 
-        void play() {
-            alSourcePlay(source);
-        }
+        void play();
 
-        void pause() {
-            alSourcePause(source);
-        }
+        void pause();
 
-        void resume() {
-            play();
-        }
+        void resume();
 
-        void stop() {
-            alSourceStop(source);
-        }
+        void stop();
 
-        void unqueue(ALuint count) {
-            if(unqueueContainer.size() < count) {
-                unqueueContainer.resize(count);
-            }
-            alSourceUnqueueBuffers(source, count, unqueueContainer.data());
-            queuedBuffers.erase(queuedBuffers.begin(), queuedBuffers.begin() + count);
-        }
+        void unqueue(ALuint count);
 
-        size_t getQueuedBufferCount() const {
-            return queuedBuffers.size();
-        }
+        size_t getQueuedBufferCount() const;
 
-        bool isPlaying() const {
-            ALenum state;
-            alGetSourcei(source, AL_SOURCE_STATE, &state);
-            return state == AL_PLAYING;
-        }
+        bool isPlaying() const;
 
-        bool isPaused() const {
-            ALenum state;
-            alGetSourcei(source, AL_SOURCE_STATE, &state);
-            return state == AL_PAUSED;
-        }
+        bool isPaused() const;
 
-        bool isStopped() const {
-            ALenum state;
-            alGetSourcei(source, AL_SOURCE_STATE, &state);
-            return state == AL_STOPPED;
-        }
+        bool isStopped() const;
 
-        ALint getProcessedBufferCount() const {
-            ALint count;
-            alGetSourcei(source, AL_BUFFERS_PROCESSED, &count);
-            return count;
-        }
+        ALint getProcessedBufferCount() const;
 
-        operator ALuint() { return source; };
+        operator ALuint();
 
-        ALuint getALSource() { return source; };
+        ALuint getALSource();
 
-        void updateGain(float gain) {
-            alSourcef(source, AL_GAIN, gain);
-        }
+        void updateGain(float gain);
 
-        ~Source() {
-            alDeleteSources(1, &source);
-        }
+        void setPosition(const glm::vec3& position);
+
+        ~Source();
     };
 
     inline Device openDefaultDevice() {

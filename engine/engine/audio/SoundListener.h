@@ -6,18 +6,13 @@
 
 #include <glm/glm.hpp>
 
-namespace Carrot {
+namespace Carrot::Audio {
     class SoundListener {
     private:
         explicit SoundListener() = default;
 
     public:
-        void updatePosition(glm::vec3 position);
-        void updateVelocity(glm::vec3 velocity);
-
-        static SoundListener& instance() {
-            static SoundListener listener;
-            return listener;
-        }
+        static void updatePosition(const glm::vec3& position);
+        static void updateVelocity(const glm::vec3& velocity);
     };
 }
