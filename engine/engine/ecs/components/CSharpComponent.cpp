@@ -90,6 +90,18 @@ namespace Carrot::ECS {
         return componentID;
     }
 
+    void CSharpComponent::repairLinks(const EntityRemappingFunction& remap) {
+        for (auto& property: componentProperties) {
+            if(property.type != Scripting::ComponentType::Entity) {
+                continue;
+            }
+
+            ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(*csComponent));
+            Entity e = getEntity().getWorld().wrap(remap(value.getID()));
+            property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(e));
+        }
+    }
+
     Scripting::CSObject& CSharpComponent::getCSComponentObject() {
         verify(csComponent, "No component loaded at this point");
         return *csComponent;

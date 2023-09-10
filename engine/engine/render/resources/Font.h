@@ -41,10 +41,12 @@ namespace Carrot::Render {
         explicit RenderableText(
                 TextMetrics metrics,
                 Carrot::InstanceData&& instanceData,
+                glm::mat4 localOffset,
                 std::unique_ptr<Carrot::Mesh>&& mesh,
                 std::shared_ptr<Carrot::Render::MaterialHandle> material
                 ):
-            metrics(metrics), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)) {};
+            metrics(metrics), localOffset(localOffset), mesh(std::move(mesh)), material(std::move(material)), instance(std::move(instanceData)) {};
+        glm::mat4 localOffset {1.0f};
         Carrot::InstanceData instance;
         std::unique_ptr<Carrot::Mesh> mesh = nullptr; // TODO: use generic square mesh
 

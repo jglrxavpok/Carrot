@@ -20,6 +20,8 @@ namespace Carrot::ECS {
 
     struct Component {
     public:
+        using EntityRemappingFunction = std::function<Carrot::ECS::EntityID(const Carrot::ECS::EntityID&)>;
+
         explicit Component(Entity entity): entity(std::move(entity)) {}
 
         Entity& getEntity() { return entity; }
@@ -32,6 +34,12 @@ namespace Carrot::ECS {
         virtual rapidjson::Value toJSON(rapidjson::Document& doc) const {
             return rapidjson::Value(rapidjson::kObjectType);
         };
+
+        /**
+         * Called when duplicating entities, to ensure components of this entity (and its children) reference the newly created entities.
+         * 'remap' should return the input if the input ID does NOT correspond to an entity that was duplicated
+         */
+        virtual void repairLinks(const EntityRemappingFunction& remap) {};
 
         virtual ~Component() = default;
 

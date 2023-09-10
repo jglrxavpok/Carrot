@@ -51,6 +51,7 @@
 #include "engine/physics/PhysicsSystem.h"
 
 #include "engine/ecs/systems/System.h"
+#include "engine/ecs/systems/BillboardSystem.h"
 #include "engine/ecs/systems/ModelRenderSystem.h"
 #include "engine/ecs/systems/PhysicsCharacterSystem.h"
 #include "engine/ecs/systems/RigidBodySystem.h"
@@ -64,6 +65,7 @@
 #include "engine/ecs/systems/TextRenderSystem.h"
 
 #include "engine/ecs/components/Component.h"
+#include "engine/ecs/components/BillboardComponent.h"
 #include "engine/ecs/components/CameraComponent.h"
 #include "engine/ecs/components/ForceSinPosition.h"
 #include "engine/ecs/components/Kinematics.h"
@@ -566,6 +568,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::PhysicsCharacterComponent>();
         components.add<Carrot::ECS::NavMeshComponent>();
         components.add<Carrot::ECS::SoundListenerComponent>();
+        components.add<Carrot::ECS::BillboardComponent>();
     }
 
     {
@@ -581,6 +584,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::SystemTransformSwapBuffers>();
         systems.addUniquePtrBased<Carrot::ECS::PhysicsCharacterSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SoundListenerSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::BillboardSystem>();
 
         systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();

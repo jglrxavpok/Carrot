@@ -16,7 +16,16 @@ namespace Carrot::Audio {
         while(running) {
             std::shared_ptr<SoundSource> pNewSource;
             while(newSources.popSafe(pNewSource)) {
-                currentSources.emplace_back(std::move(pNewSource));
+                bool add = true;
+                for(auto& source : currentSources) {
+                    if(source.get() == pNewSource.get()) {
+                        add = false;
+                        break;
+                    }
+                }
+                if(add) {
+                    currentSources.emplace_back(std::move(pNewSource));
+                }
             }
             for(auto& source : currentSources) {
                 source->updateAudio();

@@ -77,6 +77,12 @@ namespace Carrot::ECS {
         /// Sets the parent, but also modify the entity's tranform (if any) to keep the same world transform after changing the parent
         void reparent(std::optional<Entity> parent);
 
+        /**
+         * Duplicate this entity, and optionally change the parent of the duplicated entity.
+         * If newParent is empty, the new entity will have the same parent as this current entity
+         */
+        Carrot::ECS::Entity duplicate(std::optional<Carrot::ECS::Entity> newParent = {});
+
         World& getWorld() { return *worldRef; }
         const World& getWorld() const { return *worldRef; }
 

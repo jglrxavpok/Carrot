@@ -1556,20 +1556,7 @@ namespace Peeler {
     }
 
     void Application::duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent) {
-        auto clone = currentScene.world.newEntity(std::string(entity.getName())+" (Copy)");
-        for(const auto* comp : entity.getAllComponents()) {
-            clone.addComponent(std::move(comp->duplicate(clone)));
-        }
-
-        for(const auto& child : currentScene.world.getChildren(entity)) {
-            duplicateEntity(child, clone);
-        }
-
-        if(parent) {
-            clone.setParent(*parent);
-        } else {
-            clone.setParent(entity.getParent());
-        }
+        auto clone = currentScene.world.duplicate(entity, parent);
 
         selectEntity(clone.getID(), false);
         markDirty();

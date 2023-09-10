@@ -46,6 +46,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/conversions.cpp
         ${EngineRoot}utils/Macros.cpp
 
+        ${EngineRoot}ecs/components/BillboardComponent.cpp
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
@@ -60,6 +61,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
+        ${EngineRoot}ecs/systems/BillboardSystem.cpp
         ${EngineRoot}ecs/systems/CameraSystem.cpp
         ${EngineRoot}ecs/systems/CSharpLogicSystem.cpp
         ${EngineRoot}ecs/systems/LuaSystems.cpp

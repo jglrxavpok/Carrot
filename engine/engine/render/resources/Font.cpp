@@ -96,14 +96,15 @@ namespace Carrot::Render {
         );
         Carrot::InstanceData instanceData;
         instanceData.color = glm::vec4{1.0f};
-        instanceData.transform = glm::scale(glm::mat4{1.0f}, glm::vec3{w, h, 0.0f});
+        glm::mat4 localOffset = glm::translate(glm::mat4{1.0f}, glm::vec3 { -static_cast<float>(w) / 2.0f, static_cast<float>(h) / 2.0f, 0.0f})
+                * glm::scale(glm::mat4{1.0f}, glm::vec3{static_cast<float>(w), -static_cast<float>(h), 1.0f});
         TextMetrics metrics {
             .width = static_cast<float>(w),
             .height = static_cast<float>(h),
             .baseline = static_cast<float>(baseline),
             .basePixelSize = pixelSize,
         };
-        return std::move(RenderableText(metrics, std::move(instanceData), std::move(mesh), material));
+        return std::move(RenderableText(metrics, std::move(instanceData), localOffset, std::move(mesh), material));
     }
 
     std::vector<std::uint64_t>& Font::getAsciiCodepoints() {
@@ -126,7 +127,11 @@ namespace Carrot::Render {
         renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering");
         renderPacket.useMesh(*mesh);
         renderPacket.instanceCount = 1;
-        renderPacket.useInstance(instance);
+
+        Carrot::InstanceData instanceData = instance;
+        instanceData.transform = instance.transform * localOffset;
+        instanceData.lastFrameTransform = instance.lastFrameTransform * localOffset;
+        renderPacket.useInstance(instanceData);
 
         Carrot::GBufferDrawData data;
         data.materialIndex = material->getSlot();

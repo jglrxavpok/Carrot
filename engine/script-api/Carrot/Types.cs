@@ -76,5 +76,25 @@ namespace Carrot {
         private UInt32 data1;
         private UInt32 data2;
         private UInt32 data3;
+        
+        public static bool operator==(EntityID a, EntityID b) {
+            return
+                a.data0 == b.data0
+                && a.data1 == b.data1
+                && a.data2 == b.data2
+                && a.data3 == b.data3;
+        }
+
+        public static bool operator!=(EntityID a, EntityID b) {
+            return !(a == b);
+        }
+
+        public override bool Equals(object obj) {
+            if (obj is EntityID e) {
+                return this == e;
+            }
+
+            return false;
+        }
     }
 }

@@ -87,6 +87,8 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::GetParent", GetParent);
         mono_add_internal_call("Carrot.Entity::SetParent", SetParent);
         mono_add_internal_call("Carrot.Entity::ReParent", ReParent);
+        mono_add_internal_call("Carrot.Entity::Duplicate", Duplicate);
+        mono_add_internal_call("Carrot.Entity::Exists", EntityExists);
 
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
@@ -865,6 +867,17 @@ namespace Carrot::Scripting {
         } else {
             entity.reparent(std::optional<ECS::Entity>{});
         }
+    }
+
+    MonoObject* CSharpBindings::Duplicate(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+        Carrot::ECS::Entity clone = entity.duplicate();
+        return entityToCSObject(clone)->toMono();
+    }
+
+    bool CSharpBindings::EntityExists(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+        return entity.exists();
     }
 
     MonoObject* CSharpBindings::FindEntityByName(MonoObject* systemObj, MonoString* entityName) {

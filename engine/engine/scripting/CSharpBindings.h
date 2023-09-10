@@ -154,6 +154,8 @@ namespace Carrot::Scripting {
         static MonoObject* GetParent(MonoObject* entityMonoObj);
         static void SetParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
         static void ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
+        static MonoObject* Duplicate(MonoObject* entityMonoObj);
+        static bool EntityExists(MonoObject* entityMonoObj);
 
         static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
 

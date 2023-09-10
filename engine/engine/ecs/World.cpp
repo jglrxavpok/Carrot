@@ -58,6 +58,10 @@ namespace Carrot::ECS {
         getWorld().reparent(*this, parent);
     }
 
+    Carrot::ECS::Entity Entity::duplicate(std::optional<Carrot::ECS::Entity> newParent) {
+        return getWorld().duplicate(*this, newParent);
+    }
+
     std::string_view Entity::getName() const {
         return getWorld().getName(*this);
     }
@@ -135,6 +139,30 @@ namespace Carrot::ECS {
                 render->onEntitiesUpdated(entitiesUpdated);
             }
         }
+    }
+
+    void World::repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remapMap) {
+        auto remap = [&](const Carrot::ECS::EntityID& id) {
+            auto iter = remapMap.find(id);
+            if(iter == remapMap.end()) {
+                return id;
+            }
+            return iter->second;
+        };
+
+        std::function<void(const Carrot::ECS::Entity&)> recurse = [&](const Carrot::ECS::Entity& e) {
+            auto& components = entityComponents[e.getID()];
+            for (auto& [componentID, pComponent] : components) {
+                pComponent->repairLinks(remap);
+            }
+
+            auto& children = entityChildren[e.getID()];
+            for(auto& c : children) {
+                recurse(wrap(c));
+            }
+        };
+
+        recurse(root);
     }
 
     void World::tick(double dt) {
@@ -384,6 +412,34 @@ namespace Carrot::ECS {
         if(transformComp.hasValue()) {
             transformComp->setGlobalTransform(globalTransform);
         }
+    }
+
+    Carrot::ECS::Entity World::duplicate(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> newParent) {
+        std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
+        std::function<Carrot::ECS::Entity(const Carrot::ECS::Entity&, std::optional<Carrot::ECS::Entity> newParent)> duplicateEntity =
+            [&](const Carrot::ECS::Entity& toClone, std::optional<Carrot::ECS::Entity> newParent) {
+                auto clone = newEntity(std::string(toClone.getName())+" (Copy)");
+                remap[toClone.getID()] = clone.getID();
+                for(const auto* comp : toClone.getAllComponents()) {
+                    clone.addComponent(std::move(comp->duplicate(clone)));
+                }
+
+                for(const auto& child : getChildren(toClone)) {
+                    duplicateEntity(child, clone);
+                }
+
+                if(newParent) {
+                    clone.setParent(*newParent);
+                } else {
+                    clone.setParent(entity.getParent());
+                }
+                return clone;
+            };
+
+        auto clone = duplicateEntity(entity, std::move(newParent));
+
+        repairLinks(clone, remap);
+        return clone;
     }
 
     std::vector<Entity> World::getChildren(const Entity& parent, ShouldRecurse recurse) const {

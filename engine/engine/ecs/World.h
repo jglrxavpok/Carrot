@@ -141,6 +141,8 @@ namespace Carrot::ECS {
         /// Sets the parent, but also modify the entity's tranform (if any) to keep the same world transform after changing the parent
         void reparent(Entity& toSet, std::optional<Entity> parent);
 
+        Carrot::ECS::Entity duplicate(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> newParent = {});
+
         /// Gets the parent of 'of'. Can return nullptr if no parent exists
         std::optional<Entity> getParent(const Entity& of) const;
 
@@ -160,6 +162,12 @@ namespace Carrot::ECS {
         /// updates the systems entity list (based on entity signatures) called each tick and each frame
         /// (because components can be modified during a tick)
         void updateEntityLists();
+
+        /**
+         * Go through the entire hierarchy starting from 'root', and change the components references to entities based on 'remap'.
+         * Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
+         */
+        void repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);
 
     private:
         WorldData worldData;

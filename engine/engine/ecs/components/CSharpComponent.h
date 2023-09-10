@@ -23,6 +23,8 @@ namespace Carrot::ECS {
 
         ComponentID getComponentTypeID() const override;
 
+        virtual void repairLinks(const EntityRemappingFunction& remap) override;
+
     public:
         /**
          * Returns the C# sharp of this component

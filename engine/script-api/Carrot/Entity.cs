@@ -18,6 +18,44 @@ namespace Carrot {
             this._id = id;
             this._userPointer = userPointer;
         }
+
+        public override string ToString() { 
+            return GetName();
+        }
+
+        public static bool operator==(Entity a, Entity b) {
+            if (ReferenceEquals(a, b)) {
+                return true;
+            }
+            if (ReferenceEquals(a, null)) {
+                return false;
+            }
+            if (ReferenceEquals(b, null)) {
+                return false;
+            }
+
+            return a._userPointer == b._userPointer && a._id == b._id;
+        }
+
+        public static bool operator!=(Entity a, Entity b) {
+            return !(a == b);
+        }
+
+        public override bool Equals(object obj) {
+            if (obj is Entity e) {
+                return this == e;
+            }
+
+            return false;
+        }
+
+
+        /**
+         * Does this object point to an existing entity?
+         * The entity can be a null entity, or it may have been removed from the current world
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern bool Exists();
         
         /**
          * Mark this entity for removal, will be removed next tick
@@ -56,6 +94,14 @@ namespace Carrot {
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void ReParent(Entity newParent);
+        
+        /**
+         * Duplicate this entity and its children
+         * Components in the duplicated hierarchy that reference entities from said hierarchy, will have their reference
+         *  updated to point to the duplicated entities. 
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern Entity Duplicate();
 
         /**
          * Returns the component on this entity corresponding to the given type, or null if none.
