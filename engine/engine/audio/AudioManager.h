@@ -11,12 +11,18 @@
 namespace Carrot::Audio {
     class SFX;
 
+    struct AudioManagerBindings;
+
     class AudioManager {
     public:
         /**
          * Inits the manager, inits the sound engine (OpenAL at the time of writing)
          */
         AudioManager();
+        ~AudioManager();
+
+        // called by engine once C# scripting engine is ready. is NOT called once an assembly is reloaded
+        void initScripting();
 
         /**
          * Loads the wanted SFX. Meant to be kept in memory and played multiple times at once
@@ -38,12 +44,15 @@ namespace Carrot::Audio {
         void registerSoundSource(std::shared_ptr<SoundSource> source);
 
     private:
+        void* bindingsImpl = nullptr;
         AL::Device alDevice;
         AL::Context alContext;
 
         AudioThread thread;
         Async::ParallelMap<std::string, std::weak_ptr<SFX>> loadedSFX;
 
+
+        friend struct AudioManagerBindings;
         friend class SoundSource;
     };
 

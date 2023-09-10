@@ -77,7 +77,7 @@ namespace Carrot {
 
         Scene mainScene{};
         std::list<Scene> scenes;
-        friend class Bindings;
+        friend struct Bindings;
     };
 
 } // Carrot

@@ -40,6 +40,7 @@ namespace Carrot::Scripting {
         {
             LOAD_CLASS(Reflection);
             LOAD_METHOD(Reflection, FindAllComponentProperties);
+            LOAD_METHOD(Reflection, IsInternalComponent);
         }
     }
 
@@ -136,5 +137,21 @@ namespace Carrot::Scripting {
         }
 
         return properties;
+    }
+
+    bool CSharpReflectionHelper::isInternalComponent(const std::string& namespaceName, const std::string& className) {
+        MonoString* namespaceStr = mono_string_new_wrapper(namespaceName.c_str());
+        MonoString* classStr = mono_string_new_wrapper(className.c_str());
+        CSClass* klass = GetCSharpScripting().findClass(namespaceName, className);
+        if(!klass) {
+            return false;
+        }
+
+        void* args[2] = {
+                namespaceStr,
+                classStr,
+        };
+        auto result = ReflectionIsInternalComponentMethod->staticInvoke(args);
+        return result.unbox<bool>();
     }
 } // Carrot::Scripting

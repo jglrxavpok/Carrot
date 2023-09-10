@@ -1,6 +1,8 @@
 ﻿using System;
+using Carrot.ComponentPropertyAttributes;
 
 namespace Carrot {
+    [InternalComponent]
     public class CameraComponent: IComponent {
         // TODO
 

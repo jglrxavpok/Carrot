@@ -40,6 +40,11 @@ namespace Carrot::Scripting {
          */
         std::vector<ComponentProperty> findAllComponentProperties(const std::string& namespaceName, const std::string& className);
 
+        /**
+         * Returns true iif the given class has the [InternalComponent] attribute
+         */
+        bool isInternalComponent(const std::string& namespaceName, const std::string& className);
+
     private:
         CSClass* ComponentPropertyClass = nullptr;
         CSField* ComponentPropertyFieldNameField = nullptr;
@@ -59,6 +64,7 @@ namespace Carrot::Scripting {
 
         CSClass* ReflectionClass = nullptr;
         CSMethod* ReflectionFindAllComponentPropertiesMethod = nullptr;
+        CSMethod* ReflectionIsInternalComponentMethod = nullptr;
     };
 
 } // Carrot::Scripting

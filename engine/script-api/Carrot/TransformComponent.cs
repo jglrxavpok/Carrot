@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Carrot.ComponentPropertyAttributes;
 
 namespace Carrot {
+    [InternalComponent]
     public class TransformComponent: IComponent {
 
         public Vec3 LocalPosition {

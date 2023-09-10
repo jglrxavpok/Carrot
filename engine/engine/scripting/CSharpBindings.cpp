@@ -168,51 +168,60 @@ namespace Carrot::Scripting {
         gameModule = GetCSharpScripting().loadAssembly(gameDLL, appDomain->toMono(), gamePDB);
         gameModule->dumpTypes();
 
-        auto allSystems = gameModule->findSubclasses(*SystemClass);
-        auto& systemLibrary = ECS::getSystemLibrary();
-        for(auto* systemClass : allSystems) {
-            std::string id = systemClass->getNamespaceName();
-            id += '.';
-            id += systemClass->getName();
-            id += " (C#)";
+        auto loadECSTypesFromModule = [&](CSAssembly& assembly) {
+            auto allSystems = assembly.findSubclasses(*SystemClass);
+            auto& systemLibrary = ECS::getSystemLibrary();
+            for(auto* systemClass : allSystems) {
+                std::string id = systemClass->getNamespaceName();
+                id += '.';
+                id += systemClass->getName();
+                id += " (C#)";
 
-            systemLibrary.add(
-                    id,
-                    [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](const rapidjson::Value& json, ECS::World& world) {
-                        return std::make_unique<ECS::CSharpLogicSystem>(json, world, namespaceName, className);
-                    },
-                    [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](Carrot::ECS::World& world) {
-                        return std::make_unique<ECS::CSharpLogicSystem>(world, namespaceName, className);
-                    }
-            );
+                systemLibrary.add(
+                        id,
+                        [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](const rapidjson::Value& json, ECS::World& world) {
+                            return std::make_unique<ECS::CSharpLogicSystem>(json, world, namespaceName, className);
+                        },
+                        [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](Carrot::ECS::World& world) {
+                            return std::make_unique<ECS::CSharpLogicSystem>(world, namespaceName, className);
+                        }
+                );
 
-            systemIDs.emplace_back(std::move(id));
-        }
+                systemIDs.emplace_back(std::move(id));
+            }
 
-        auto allComponents = gameModule->findSubclasses(*ComponentClass);
-        auto& componentLibrary = ECS::getComponentLibrary();
-        for(auto* componentClass : allComponents) {
-            std::string fullType = componentClass->getNamespaceName();
-            fullType += '.';
-            fullType += componentClass->getName();
-            std::string id = fullType + " (C#)";
+            auto allComponents = assembly.findSubclasses(*ComponentClass);
+            auto& componentLibrary = ECS::getComponentLibrary();
+            for(auto* componentClass : allComponents) {
+                if(reflectionHelper.isInternalComponent(componentClass->getNamespaceName(), componentClass->getName())) {
+                    continue;
+                }
 
-            componentLibrary.add(
-                    id,
-                    [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](const rapidjson::Value& json, ECS::Entity entity) {
-                        return std::make_unique<ECS::CSharpComponent>(json, entity, namespaceName, className);
-                    },
-                    [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](Carrot::ECS::Entity entity) {
-                        return std::make_unique<ECS::CSharpComponent>(entity, namespaceName, className);
-                    }
-            );
+                std::string fullType = componentClass->getNamespaceName();
+                fullType += '.';
+                fullType += componentClass->getName();
+                std::string id = fullType + " (C#)";
 
-            csharpComponentIDs.getOrCompute(fullType, []() {
-                return Carrot::requestComponentID();
-            });
+                componentLibrary.add(
+                        id,
+                        [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](const rapidjson::Value& json, ECS::Entity entity) {
+                            return std::make_unique<ECS::CSharpComponent>(json, entity, namespaceName, className);
+                        },
+                        [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](Carrot::ECS::Entity entity) {
+                            return std::make_unique<ECS::CSharpComponent>(entity, namespaceName, className);
+                        }
+                );
 
-            componentIDs.emplace_back(std::move(id));
-        }
+                csharpComponentIDs.getOrCompute(fullType, []() {
+                    return Carrot::requestComponentID();
+                });
+
+                componentIDs.emplace_back(std::move(id));
+            }
+        };
+
+        loadECSTypesFromModule(*baseModule);
+        loadECSTypesFromModule(*gameModule);
 
         loadCallbacks();
     }

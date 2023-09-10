@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Carrot.ComponentPropertyAttributes;
 using Carrot.Physics;
 
 namespace Carrot {
     /**
      * Represents the rigidbody attached to an entity
      */
+    [InternalComponent]
     public class RigidBodyComponent: IComponent {
         public Vec3 Velocity {
             get => _GetVelocity();

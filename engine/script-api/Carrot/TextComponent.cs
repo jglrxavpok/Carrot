@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Carrot.ComponentPropertyAttributes;
 
 namespace Carrot {
+    [InternalComponent]
     public class TextComponent: IComponent {
 
         public string Text {

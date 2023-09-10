@@ -1,7 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
+using Carrot.ComponentPropertyAttributes;
 using Carrot.Physics;
 
 namespace Carrot {
+    [InternalComponent]
     public class CharacterComponent: IComponent {
         public Vec3 Velocity {
             get => _GetVelocity();

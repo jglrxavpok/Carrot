@@ -1571,7 +1571,7 @@ namespace Peeler {
             clone.setParent(entity.getParent());
         }
 
-        selectEntity(entity.getID(), false);
+        selectEntity(clone.getID(), false);
         markDirty();
     }
 

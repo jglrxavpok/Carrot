@@ -38,9 +38,14 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Audio\SFX.cs" />
+        <Compile Include="Audio\SoundSource.cs" />
         <Compile Include="CameraComponent.cs" />
         <Compile Include="CharacterComponent.cs" />
         <Compile Include="ComponentPropertyAttributes\Display.cs" />
+        <Compile Include="ComponentPropertyAttributes\FloatDefault.cs" />
+        <Compile Include="ComponentPropertyAttributes\IntDefault.cs" />
+        <Compile Include="ComponentPropertyAttributes\InternalComponent.cs" />
         <Compile Include="ComponentPropertyAttributes\Ranges.cs" />
         <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
         <Compile Include="ECS.cs" />
@@ -59,6 +64,8 @@
         <Compile Include="RigidBodyComponent.cs" />
         <Compile Include="Scenes\Scene.cs" />
         <Compile Include="Scenes\SceneManager.cs" />
+        <Compile Include="SoundSourceComponent.cs" />
+        <Compile Include="Systems\SoundSourceUpdaterSystem.cs" />
         <Compile Include="TextComponent.cs" />
         <Compile Include="TransformComponent.cs" />
         <Compile Include="Types.cs" />

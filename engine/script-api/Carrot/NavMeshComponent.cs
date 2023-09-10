@@ -1,10 +1,12 @@
 ﻿using System.Runtime.CompilerServices;
+using Carrot.ComponentPropertyAttributes;
 
 namespace Carrot {
     public class NavPath {
         public Vec3[] Waypoints = new Vec3[0];
     }
     
+    [InternalComponent]
     public class NavMeshComponent: IComponent {
         public NavMeshComponent(Entity owner) : base(owner) { }
 

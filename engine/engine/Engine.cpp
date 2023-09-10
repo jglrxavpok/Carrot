@@ -544,6 +544,7 @@ void Carrot::Engine::initScripting() {
     csBindings = std::make_unique<Scripting::CSharpBindings>();
 
     sceneManager.initScripting();
+    audioManager.initScripting();
 }
 
 void Carrot::Engine::initECS() {

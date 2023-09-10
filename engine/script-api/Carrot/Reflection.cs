@@ -26,6 +26,22 @@ namespace Carrot {
         }
     }
 
+    public class BoxedFloat {
+        public float Value;
+
+        public BoxedFloat(float value) {
+            Value = value;
+        }
+    }
+
+    public class BoxedInt {
+        public int Value;
+
+        public BoxedInt(int value) {
+            Value = value;
+        }
+    }
+
     public class ComponentProperty {
         /**
          * Name of field
@@ -56,6 +72,9 @@ namespace Carrot {
          * Valid if type == 'float'. Specifies the range that can be input inside the editor. Null if no limit
          */
         public FloatRange FloatRange = null;
+
+        public BoxedFloat DefaultFloatValue = null;
+        public BoxedInt DefaultIntValue = null;
     };
     
     public static class Reflection {
@@ -125,6 +144,14 @@ namespace Carrot {
                 if (fieldAttributes.ContainsKey(typeof(DisplayNameAttribute))) {
                     prop.DisplayName = GetAttribute<DisplayNameAttribute>(fieldAttributes).Value;
                 }
+                
+                // handle default values
+                if (fieldAttributes.ContainsKey(typeof(FloatDefaultAttribute))) {
+                    prop.DefaultFloatValue = new BoxedFloat(GetAttribute<FloatDefaultAttribute>(fieldAttributes).Value);
+                }
+                if (fieldAttributes.ContainsKey(typeof(IntDefaultAttribute))) {
+                    prop.DefaultIntValue = new BoxedInt(GetAttribute<IntDefaultAttribute>(fieldAttributes).Value);
+                }
 
                 properties.Add(prop);
             }
@@ -132,6 +159,24 @@ namespace Carrot {
             ComponentProperty[] output = new ComponentProperty[properties.Count];
             properties.CopyTo(output);
             return output;
+        }
+
+        /**
+         * Returns true iif the given class has the [InternalComponent] attribute
+         */
+        public static bool IsInternalComponent(string namespaceName, string className) {
+            Type componentType = FindTypeByName(namespaceName, className);
+            if (componentType == null) {
+                return false;
+            }
+
+            foreach (var classAttribute in componentType.GetCustomAttributes(true)) {
+                if (classAttribute.GetType() == typeof(InternalComponentAttribute)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
