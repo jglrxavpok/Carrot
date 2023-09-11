@@ -86,6 +86,8 @@ namespace Carrot::ECS {
     }
 
     void CSharpLogicSystem::tick(double dt) {
+        ZoneScopedN("C# tick");
+        ZoneName(systemName.c_str(), systemName.size());
         if(!foundInAssemblies) {
             return;
         }

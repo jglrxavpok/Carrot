@@ -135,6 +135,8 @@ namespace Carrot::Scripting {
         };
 
         static std::int32_t GetMaxComponentCount();
+        static void BeginProfilingZone(MonoString* zoneName);
+        static void EndProfilingZone(MonoString* zoneName);
 
         static ComponentID GetComponentID(MonoString* namespaceStr, MonoString* classStr);
 

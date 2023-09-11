@@ -31,8 +31,11 @@
 
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/scripting/CSharpHelpers.ipp>
+#include <engine/utils/Profiling.h>
+#include <TracyC.h>
 
 namespace Carrot::Scripting {
+    static thread_local std::stack<TracyCZoneCtx> ProfilingZones_TLS;
 
     static CSharpBindings& instance() {
         return GetCSharpBindings();
@@ -75,6 +78,9 @@ namespace Carrot::Scripting {
 
         loadEngineAssembly();
 
+        mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
+        mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", BeginProfilingZone);
+        mono_add_internal_call("Carrot.Utilities::EndProfilingZone", EndProfilingZone);
         mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
         mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
         mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
@@ -464,6 +470,21 @@ namespace Carrot::Scripting {
 
     std::int32_t CSharpBindings::GetMaxComponentCount() {
         return Carrot::MAX_COMPONENTS;
+    }
+
+    void CSharpBindings::BeginProfilingZone(MonoString* zoneName) {
+        TracyCZoneN(newZone, "C# zone", true);
+        char* str = mono_string_to_utf8(zoneName);
+        TracyCZoneName(newZone, str, strlen(str));
+        mono_free(str);
+        ProfilingZones_TLS.push(newZone);
+    }
+
+    void CSharpBindings::EndProfilingZone(MonoString* zoneName) {
+        verify(!ProfilingZones_TLS.empty(), "Cannot end profiling zone if none is active!");
+        TracyCZoneCtx currentZone = ProfilingZones_TLS.top();
+        ProfilingZones_TLS.pop();
+        TracyCZoneEnd(currentZone);
     }
 
     ComponentID CSharpBindings::GetComponentID(MonoString* namespaceStr, MonoString* classStr) {

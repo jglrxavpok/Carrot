@@ -1069,7 +1069,10 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
-    game->tick(deltaTime);
+    {
+        ZoneScopedN("Game tick");
+        game->tick(deltaTime);
+    }
     audioManager.tick(deltaTime);
 
     auto prePhysics = [&]() {

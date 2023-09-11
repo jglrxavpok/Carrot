@@ -105,6 +105,7 @@ namespace Carrot::Physics {
     }
 
     void PhysicsSystem::tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback) {
+        ZoneScoped;
         constexpr int collisionSteps = 3;
         constexpr int integrationSteps = 4;
         accumulator += deltaTime;

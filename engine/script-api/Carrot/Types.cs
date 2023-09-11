@@ -96,5 +96,15 @@ namespace Carrot {
 
             return false;
         }
+
+        public override int GetHashCode() {
+            unchecked {
+                var hashCode = (int)data0;
+                hashCode = (hashCode * 397) ^ (int)data1;
+                hashCode = (hashCode * 397) ^ (int)data2;
+                hashCode = (hashCode * 397) ^ (int)data3;
+                return hashCode;
+            }
+        }
     }
 }

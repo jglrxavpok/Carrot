@@ -49,6 +49,12 @@ namespace Carrot {
             return false;
         }
 
+        public override int GetHashCode() {
+            unchecked {
+                return (_id.GetHashCode() * 397) ^ _userPointer.GetHashCode();
+            }
+        }
+
 
         /**
          * Does this object point to an existing entity?
