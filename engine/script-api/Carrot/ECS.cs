@@ -12,27 +12,62 @@ namespace Carrot {
      * Represents the list of components available to a System
      */
     public class Signature {
-        private BitArray _components = new BitArray(GetMaxComponentCount());
+        private readonly BitArray _components = new BitArray(GetMaxComponentCount());
+        private readonly int[] _indices = new int[GetMaxComponentCount()];
 
         public Signature() {
             
         }
 
         public void AddComponent<T>() where T : IComponent {
-            _components[GetComponentID<T>()] = true;
+            _components[GetComponentIndex<T>()] = true;
+            _Reindex();
         }
 
         public bool HasComponent<T>() where T : IComponent {
-            return _components[GetComponentID<T>()];
+            return _components[GetComponentIndex<T>()];
         }
 
-        private static int GetComponentID<T>() where T : IComponent {
+        /**
+         * Returns the index of the component inside this signature:
+         * the index is the number of 1s inside _components before reaching the index of the given component
+         */
+        public int GetIndex<T>() where T : IComponent {
+            int compID = GetComponentIndex<T>();
+            if (!_components[compID]) {
+                throw new ArgumentException($"Component {typeof(T).FullName} is not present inside signature");
+            }
+            return _indices[compID];
+        }
+
+        private static int GetComponentIndex<T>() where T : IComponent {
             var type = typeof(T);
-            return GetComponentID(type.Namespace, type.Name);
+            return GetComponentIndex(type.Namespace, type.Name);
+        }
+
+        private void _Reindex() {
+            int index = 0;
+            for (int i = 0; i < GetMaxComponentCount(); i++) {
+                if (_components[i]) {
+                    _indices[i] = index++;
+                } else {
+                    _indices[i] = -1;
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private static extern int GetComponentID(string typeNamespace, string typeClass);
+        private static extern int GetComponentIndex(string typeNamespace, string typeClass);
+    }
+    
+    public class EntityWithComponents {
+        public readonly Entity Entity;
+        public readonly IComponent[] Components;
+
+        public EntityWithComponents(Entity e, IComponent[] comps) {
+            Entity = e;
+            Components = comps;
+        }
     }
     
     public abstract class System: Object {
@@ -57,9 +92,9 @@ namespace Carrot {
          * DO NOT STORE THE COMPONENTS
          */
         public void ForEachEntity<T0>(Action<Entity, T0> action) where T0: IComponent {
-            //TODO("check signature compatibility");
+            int index0 = _signature.GetIndex<T0>();
             foreach (var entity in LoadEntities()) {
-                action(entity, entity.GetComponent<T0>());
+                action(entity.Entity, (T0)entity.Components[index0]);
             }
         }
 
@@ -67,9 +102,10 @@ namespace Carrot {
          * DO NOT STORE THE COMPONENTS
          */
         public void ForEachEntity<T0, T1>(Action<Entity, T0, T1> action) where T0 : IComponent where T1: IComponent {
-            //TODO("check signature compatibility");
+            int index0 = _signature.GetIndex<T0>();
+            int index1 = _signature.GetIndex<T1>();
             foreach (var entity in LoadEntities()) {
-                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>());
+                action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1]);
             }
         }
 
@@ -81,9 +117,11 @@ namespace Carrot {
             where T1: IComponent 
             where T2: IComponent 
         {
-            //TODO("check signature compatibility");
+            int index0 = _signature.GetIndex<T0>();
+            int index1 = _signature.GetIndex<T1>();
+            int index2 = _signature.GetIndex<T2>();
             foreach (var entity in LoadEntities()) {
-                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>());
+                action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2]);
             }
         }
 
@@ -96,9 +134,12 @@ namespace Carrot {
             where T2: IComponent 
             where T3: IComponent 
         {
-            //TODO("check signature compatibility");
+            int index0 = _signature.GetIndex<T0>();
+            int index1 = _signature.GetIndex<T1>();
+            int index2 = _signature.GetIndex<T2>();
+            int index3 = _signature.GetIndex<T3>();
             foreach (var entity in LoadEntities()) {
-                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>(), entity.GetComponent<T3>());
+                action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2], (T3) entity.Components[index3]);
             }
         }
 
@@ -110,11 +151,14 @@ namespace Carrot {
             where T1: IComponent 
             where T2: IComponent 
             where T3: IComponent 
-            where T4: IComponent 
-        {
-            //TODO("check signature compatibility");
+            where T4: IComponent {
+            int index0 = _signature.GetIndex<T0>();
+            int index1 = _signature.GetIndex<T1>();
+            int index2 = _signature.GetIndex<T2>();
+            int index3 = _signature.GetIndex<T3>();
+            int index4 = _signature.GetIndex<T4>();
             foreach (var entity in LoadEntities()) {
-                action(entity, entity.GetComponent<T0>(), entity.GetComponent<T1>(), entity.GetComponent<T2>(), entity.GetComponent<T3>(), entity.GetComponent<T4>());
+                action(entity.Entity, (T0) entity.Components[index0], (T1) entity.Components[index1], (T2) entity.Components[index2], (T3) entity.Components[index3], (T4) entity.Components[index4]);
             }
         }
         
@@ -219,7 +263,7 @@ namespace Carrot {
          * Ask engine to send list of entities for this system
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern Entity[] LoadEntities();
+        private extern EntityWithComponents[] LoadEntities();
         
         /**
          * Ask engine to send list of entities with matching components

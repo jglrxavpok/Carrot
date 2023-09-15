@@ -7,6 +7,7 @@
 #include <core/scripting/csharp/CSObject.h>
 #include <core/scripting/csharp/CSClass.h>
 #include <core/scripting/csharp/CSMethod.h>
+#include <engine/ecs/components/CSharpComponent.h>
 
 namespace Carrot::ECS {
     CSharpLogicSystem::CSharpLogicSystem(Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className) : Carrot::ECS::System(world),
@@ -77,7 +78,7 @@ namespace Carrot::ECS {
             };
             bool hasComponent = *((bool*)mono_object_unbox(getMethod->invoke(bitArrayObj, args)));
             if(hasComponent) {
-                signature.addComponent(j);
+                signature.addComponentFromComponentIndex_Internal(j);
             }
         }
 
@@ -123,19 +124,49 @@ namespace Carrot::ECS {
 
         auto* entityClass = GetCSharpScripting().findClass("Carrot", "Entity");
         verify(entityClass, "No Carrot.Entity class?");
+        auto* entityWithComponentsClass = GetCSharpScripting().findClass("Carrot", "EntityWithComponents");
+        verify(entityWithComponentsClass, "No Carrot.EntityWithComponents class?");
+        auto* componentClass = GetCSharpScripting().findClass("Carrot", "IComponent");
+        verify(componentClass, "No Carrot.IComponent class?");
 
-        csEntities = entityClass->newArray(entities.size());
+        csEntities = entityWithComponentsClass->newArray(entities.size());
 
         std::size_t i = 0;
-        for(auto& e : entities) {
-            EntityID uuid = e.getID();
+        for(auto& e : entitiesWithComponents) {
+            EntityID uuid = e.entity.getID();
             World* worldPtr = &world;
             void* args[2] = {
                     &uuid,
                     &worldPtr,
             };
             auto entityObj = entityClass->newObject(args);
-            csEntities->set(i, *entityObj);
+
+            std::shared_ptr<Scripting::CSArray> componentsArray = componentClass->newArray(e.components.size());
+
+            for(std::size_t componentIndex = 0; componentIndex < e.components.size(); componentIndex++) {
+                Component* pComponent = e.components[componentIndex];
+                if(auto* csharpComponent = dynamic_cast<CSharpComponent*>(pComponent)) {
+                    componentsArray->set(componentIndex, csharpComponent->getCSComponentObject());
+                } else {
+                    Scripting::CSClass* hardcodedComponentClass = GetCSharpBindings().getHardcodedComponentClass(pComponent->getComponentTypeID());
+                    if(hardcodedComponentClass == nullptr) {
+                        hardcodedComponentClass = componentClass; // will create an empty instance of IComponent
+                    }
+
+                    void* compArgs[1] = {
+                            entityObj->toMono()
+                    };
+                    componentsArray->set(componentIndex, *hardcodedComponentClass->newObject(compArgs));
+                }
+            }
+
+            void* withCompsArgs[2] = {
+                    entityObj->toMono(),
+                    (MonoObject*)componentsArray->toMono(),
+            };
+            auto entityWithComponentsObj = entityWithComponentsClass->newObject(withCompsArgs);
+
+            csEntities->set(i, *entityWithComponentsObj);
             i++;
         }
     }

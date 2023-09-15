@@ -22,6 +22,11 @@ namespace Carrot::ECS {
         Render,
     };
 
+    struct EntityWithComponents {
+        Entity entity;
+        std::vector<Component*> components; // order of components is based on index of component inside Signature used to create this EntityWithComponents
+    };
+
     class System {
     public:
         explicit System(World& world);
@@ -90,12 +95,16 @@ namespace Carrot::ECS {
         static std::size_t concurrency(); // avoids to include TaskScheduler
 
     protected:
-
         World& world;
         Signature signature;
         std::vector<Entity> entities;
+        std::vector<EntityWithComponents> entitiesWithComponents;
 
         virtual void onEntityAdded(Entity& entity) {};
+
+    private:
+
+        void recreateEntityWithComponentsList();
 
         friend class World;
     };

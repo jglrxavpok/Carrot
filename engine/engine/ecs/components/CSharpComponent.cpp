@@ -22,7 +22,7 @@ namespace Carrot::ECS {
     CSharpComponent::CSharpComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(
             std::move(entity)), namespaceName(namespaceName), className(className) {
         serializedVersion.CopyFrom(json, serializedDoc.GetAllocator());
-        loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
+        loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); }, true/*prepend*/); // prepend because we want components to reload before systems
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
         init();

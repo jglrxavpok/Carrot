@@ -90,7 +90,7 @@ namespace Carrot::Scripting {
         const Carrot::IO::VFS::Path& getEnginePdbPath() const;
 
     public:
-        Callbacks::Handle registerGameAssemblyLoadCallback(const std::function<void()>& callback);
+        Callbacks::Handle registerGameAssemblyLoadCallback(const std::function<void()>& callback, bool prepend = false);
         Callbacks::Handle registerGameAssemblyUnloadCallback(const std::function<void()>& callback);
         void unregisterGameAssemblyLoadCallback(const Callbacks::Handle& handle);
         void unregisterGameAssemblyUnloadCallback(const Callbacks::Handle& handle);
@@ -139,6 +139,7 @@ namespace Carrot::Scripting {
         static void EndProfilingZone(MonoString* zoneName);
 
         static ComponentID GetComponentID(MonoString* namespaceStr, MonoString* classStr);
+        static ComponentID GetComponentIndex(MonoString* namespaceStr, MonoString* classStr);
 
         static MonoArray* LoadEntities(MonoObject* systemObj);
 
@@ -216,6 +217,12 @@ namespace Carrot::Scripting {
         static glm::vec3 GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p);
         static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);
 
+        /**
+         * From a given component ID, returns the C# class used to represent that component type.
+         * Can return null if there is none.
+         */
+        CSClass* getHardcodedComponentClass(const ComponentID& componentID);
+
     private:
         void loadEngineAssembly();
 
@@ -244,7 +251,7 @@ namespace Carrot::Scripting {
         Callbacks loadEngineCallbacks;
 
         Carrot::Async::ParallelMap<std::string, ComponentID> csharpComponentIDs;
-        std::unordered_map<std::string, CppComponent> HardcodedComponents;
+        std::unordered_map<std::string, CppComponent> hardcodedComponents;
         MonoAppDomain* gameAppDomain = nullptr;
 
         // system & component IDs found inside the game assembly

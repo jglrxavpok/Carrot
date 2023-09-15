@@ -137,9 +137,10 @@ namespace Carrot::ECS {
 
     template<SystemType type, typename... RequiredComponents>
     void SignedSystem<type, RequiredComponents...>::forEachEntity(const std::function<void(Entity&, RequiredComponents&...)>& action) {
-        for(auto& entity : entities) {
-            if (entity) {
-                action(entity, (world.getComponent<RequiredComponents>(entity).asRef())...);
+        for(auto& entity : entitiesWithComponents) {
+            if (entity.entity) {
+                // TODO: lift getComponentIndex out of loop
+                action(entity.entity, (*((RequiredComponents*)entity.components[signature.getComponentIndex(RequiredComponents::getID())]))...);
             }
         }
     }
@@ -154,9 +155,10 @@ namespace Carrot::ECS {
         for(std::size_t index = 0; index < entityCount; index += stepSize) {
             parallelSubmit([&, startIndex = index, endIndex = index + stepSize -1]() {
                 for(std::size_t localIndex = startIndex; localIndex <= endIndex && localIndex < entityCount; localIndex++) {
-                    auto& entity = entities[localIndex];
-                    if (entity) {
-                        action(entity, (world.getComponent<RequiredComponents>(entity).asRef())...);
+                    auto& entity = entitiesWithComponents[localIndex];
+                    if (entity.entity) {
+                        // TODO: lift getComponentIndex out of loop
+                        action(entity.entity, (*((RequiredComponents*)entity.components[signature.getComponentIndex(RequiredComponents::getID())]))...);
                     }
                 }
             }, counter);

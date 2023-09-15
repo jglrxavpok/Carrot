@@ -82,7 +82,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", BeginProfilingZone);
         mono_add_internal_call("Carrot.Utilities::EndProfilingZone", EndProfilingZone);
         mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
-        mono_add_internal_call("Carrot.Signature::GetComponentID", GetComponentID);
+        mono_add_internal_call("Carrot.Signature::GetComponentIndex", GetComponentIndex);
         mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
         mono_add_internal_call("Carrot.System::_Query", _QueryECS);
         mono_add_internal_call("Carrot.System::FindEntityByName", FindEntityByName);
@@ -271,8 +271,12 @@ namespace Carrot::Scripting {
         return enginePdbPath;
     }
 
-    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback) {
-        return loadCallbacks.append(callback);
+    CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyLoadCallback(const std::function<void()>& callback, bool prepend) {
+        if(prepend) {
+            return loadCallbacks.prepend(callback);
+        } else {
+            return loadCallbacks.append(callback);
+        }
     }
 
     CSharpBindings::Callbacks::Handle CSharpBindings::registerGameAssemblyUnloadCallback(const std::function<void()>& callback) {
@@ -331,6 +335,15 @@ namespace Carrot::Scripting {
 
     Carrot::Async::ParallelMap<std::string, ComponentID>::ConstSnapshot CSharpBindings::getAllComponents() const {
         return csharpComponentIDs.snapshot();
+    }
+
+    CSClass* CSharpBindings::getHardcodedComponentClass(const ComponentID& componentID) {
+        for(auto& [_, hardcodedComp] : hardcodedComponents) {
+            if(hardcodedComp.id == componentID) {
+                return hardcodedComp.clazz;
+            }
+        }
+        return nullptr;
     }
 
     void CSharpBindings::loadEngineAssembly() {
@@ -426,24 +439,24 @@ namespace Carrot::Scripting {
 
         // needs to be done last: references to classes loaded above
         {
-            HardcodedComponents.clear();
-            HardcodedComponents["Carrot.TransformComponent"] = {
+            hardcodedComponents.clear();
+            hardcodedComponents["Carrot.TransformComponent"] = {
                     .id = ECS::TransformComponent::getID(),
                     .clazz = TransformComponentClass,
             };
-            HardcodedComponents["Carrot.TextComponent"] = {
+            hardcodedComponents["Carrot.TextComponent"] = {
                     .id = ECS::TextComponent::getID(),
                     .clazz = TextComponentClass,
             };
-            HardcodedComponents["Carrot.RigidBodyComponent"] = {
+            hardcodedComponents["Carrot.RigidBodyComponent"] = {
                     .id = ECS::RigidBodyComponent::getID(),
                     .clazz = RigidBodyComponentClass,
             };
-            HardcodedComponents["Carrot.CharacterComponent"] = {
+            hardcodedComponents["Carrot.CharacterComponent"] = {
                     .id = ECS::PhysicsCharacterComponent::getID(),
                     .clazz = CharacterComponentClass,
             };
-            HardcodedComponents["Carrot.NavMeshComponent"] = {
+            hardcodedComponents["Carrot.NavMeshComponent"] = {
                     .id = ECS::NavMeshComponent::getID(),
                     .clazz = NavMeshComponentClass,
             };
@@ -494,6 +507,10 @@ namespace Carrot::Scripting {
         CLEANUP(mono_free(namespaceChars));
         CLEANUP(mono_free(classChars));
         return instance().getComponentFromType(namespaceChars, classChars).id;
+    }
+
+    ComponentID CSharpBindings::GetComponentIndex(MonoString* namespaceStr, MonoString* classStr) {
+        return Signature::getIndex(GetComponentID(namespaceStr, classStr));
     }
 
     MonoArray* CSharpBindings::LoadEntities(MonoObject* systemObj) {
@@ -564,8 +581,8 @@ namespace Carrot::Scripting {
         fullType += namespaceName;
         fullType += '.';
         fullType += className;
-        auto it = HardcodedComponents.find(fullType);
-        if(it != HardcodedComponents.end()) {
+        auto it = hardcodedComponents.find(fullType);
+        if(it != hardcodedComponents.end()) {
             return it->second;
         }
 

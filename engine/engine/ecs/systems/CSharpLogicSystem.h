@@ -46,7 +46,7 @@ namespace Carrot::ECS {
     private:
         std::shared_ptr<Scripting::CSObject> csSystem;
         Scripting::CSMethod* csTickMethod = nullptr;
-        std::shared_ptr<Scripting::CSArray> csEntities = nullptr;
+        std::shared_ptr<Scripting::CSArray> csEntities = nullptr; // array of Carrot::System.EntityWithComponents
 
         std::string namespaceName;
         std::string className;

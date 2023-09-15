@@ -13,6 +13,10 @@ namespace Carrot {
     constexpr int MAX_COMPONENTS = 64;
 
     class Signature {
+    public:
+        using IndexType = std::int8_t;
+        static_assert(MAX_COMPONENTS < std::numeric_limits<IndexType>::max());
+
     private:
         /// Hash to ID mapping
         static std::unordered_map<ComponentID, std::size_t> hash2index;
@@ -20,30 +24,19 @@ namespace Carrot {
 
         /// Components present in this signature
         std::bitset<MAX_COMPONENTS> components;
+        std::vector<IndexType> componentIndices; // map of ComponentID -> index of component when returning multiple components based on Signature (for example LoadAllEntities in C#)
+        std::size_t componentCount = 0;
 
         /// Gets or generates the index for the given component
         template<typename Component>
         static std::size_t getIndex();
 
-        static std::size_t getIndex(ComponentID id) {
-            // check if component already has an index
-            auto position = hash2index.find(id);
-            if(position == hash2index.end()) { // no index
-                std::lock_guard lk(mappingAccess);
-                position = hash2index.find(id);
-                if(position == hash2index.end()) { // still no index after lock
-                    auto newIndex = hash2index.size();
-                    hash2index[id] = newIndex;
-                    return newIndex;
-                }
-                return position->second;
-            }
-
-            return position->second;
-        }
+        void reindex();
 
     public:
-        explicit Signature() = default;
+        static std::size_t getIndex(ComponentID id);
+
+        explicit Signature();
 
         template<typename... Components>
         void addComponents();
@@ -52,14 +45,18 @@ namespace Carrot {
         void addComponent();
 
         template<typename Component>
-        bool hasComponent();
+        bool hasComponent() const;
 
-        void addComponent(size_t id) {
-            auto index = getIndex(id);
-            components[index] = true;
-        }
+        bool hasComponent(ComponentID componentID) const;
+
+        void addComponent(std::size_t componentID);
+        void addComponentFromComponentIndex_Internal(std::size_t componentID);
 
         void clear();
+
+        IndexType getComponentIndex(std::size_t componentID) const;
+
+        std::size_t getComponentCount() const;
 
         Signature operator&(const Carrot::Signature& rhs) const {
             Signature result{};
@@ -84,6 +81,7 @@ template<typename Component>
 void Carrot::Signature::addComponent() {
     auto index = getIndex<Component>();
     components[index] = true;
+    reindex();
 }
 
 template<typename Component>
@@ -92,7 +90,7 @@ std::size_t Carrot::Signature::getIndex() {
 }
 
 template<typename Component>
-bool Carrot::Signature::hasComponent() {
+bool Carrot::Signature::hasComponent() const {
     auto index = getIndex<Component>();
     return components[index];
 }
