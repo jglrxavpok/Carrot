@@ -42,7 +42,7 @@ const std::vector<const char*> VULKAN_VALIDATION_LAYERS = {
     #ifdef DEBUG_MARKERS
         constexpr bool USE_DEBUG_MARKERS = true;
     #else
-        constexpr bool USE_DEBUG_MARKERS = true;
+        constexpr bool USE_DEBUG_MARKERS = false;
     #endif
 #endif
 
@@ -1057,8 +1057,9 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 
             if(memoryBudgetSupported) {
                 double trackedPercent = Carrot::DeviceMemory::TotalMemoryUsed.load() / (double)totalUsage;
-                ImGui::Text("Tracked device memory: %s (%f%%)", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str(), 100.0 * trackedPercent);
+                ImGui::Text("Tracked device memory: %s", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
                 ImGui::Text("Untracked device memory: %s", Carrot::IO::toReadableFormat(totalUsage - Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
+                ImGui::Text("Untracked memory percentage: %f%%", 100.0 - 100.0 * trackedPercent);
             } else {
                 ImGui::Text("Tracked device memory: %s", Carrot::IO::toReadableFormat(Carrot::DeviceMemory::TotalMemoryUsed.load()).c_str());
             }
