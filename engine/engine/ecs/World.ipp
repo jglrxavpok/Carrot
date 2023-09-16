@@ -63,23 +63,8 @@ namespace Carrot::ECS {
         return getWorld().getComponent<Comp>(*this);
     }
 
-    template<typename Component>
-    std::vector<Entity> World::getEntitiesWith() const {
-        std::vector<Entity> result;
-        for(auto& [entityID, components] : entityComponents) {
-            auto componentLocation = components.find(Component::getID());
-
-            if(componentLocation == components.end()) {
-                continue;
-            }
-
-            result.push_back(wrap(entityID));
-        }
-        return result;
-    }
-
     template<typename... Component>
-    std::vector<Entity> World::queryEntities() const {
+    std::span<const EntityWithComponents> World::queryEntities() {
         std::unordered_set<Carrot::ComponentID> ids;
         (ids.insert(Component::getID()), ...);
         return queryEntities(ids);

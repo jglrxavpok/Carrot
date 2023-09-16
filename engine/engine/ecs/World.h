@@ -39,13 +39,17 @@ namespace Carrot::ECS {
 
         std::vector<Entity> getEntitiesWithTags(Tags tags) const;
 
-        template<typename Component>
-        std::vector<Entity> getEntitiesWith() const;
-
         template<typename... Component>
-        std::vector<Entity> queryEntities() const;
+        std::span<const EntityWithComponents> queryEntities();
 
-        std::vector<Entity> queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs) const;
+        std::span<const EntityWithComponents> queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs);
+        std::span<const EntityWithComponents> queryEntities(const Signature& signature);
+
+        /**
+         * From the given entity list, fill 'toFill' with the components matching the given signature.
+         * See documentation of EntityWithComponents for the order in which components are stored
+         */
+        void fillComponents(const Signature& signature, std::span<const Entity> entities, std::span<EntityWithComponents> toFill);
 
         std::string& getName(const EntityID& entityID);
         std::string& getName(const Entity& entity);
@@ -163,6 +167,12 @@ namespace Carrot::ECS {
         /// (because components can be modified during a tick)
         void updateEntityLists();
 
+        /// Based on entities added, removed and updated (components added/removed), removes cached queries which are impacted
+        ///  by these changes.
+        /// The next call to queryEntities will therefore recompute the proper list of entities matching a signature
+        /// Called *before* changes are applied, because we need to get the signature of entities which are being removed
+        void invalidateQueries();
+
         /**
          * Go through the entire hierarchy starting from 'root', and change the components references to entities based on 'remap'.
          * Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
@@ -179,6 +189,8 @@ namespace Carrot::ECS {
         std::unordered_map<EntityID, std::unordered_map<ComponentID, std::unique_ptr<Component>>> entityComponents;
         std::unordered_map<EntityID, Tags> entityTags;
         std::unordered_map<EntityID, std::string> entityNames;
+
+        std::vector<QueryResult> queries; //< cache result of queries to avoid recomputing the list on each call of queryEntities
 
         std::vector<std::unique_ptr<System>> logicSystems;
         std::vector<std::unique_ptr<System>> renderSystems;

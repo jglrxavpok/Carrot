@@ -7,8 +7,18 @@ namespace Carrot {
             throw new NotImplementedException(message);
         }
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern int GetMaxComponentCount();
+
+        private static bool _queriedMaxComponentCount = false;
+        private static int _maxComponentCount = -1;
+
+        public static int GetMaxComponentCount() {
+            if (!_queriedMaxComponentCount) {
+                _maxComponentCount = _GetMaxComponentCountUncached();
+                _queriedMaxComponentCount = true;
+            }
+
+            return _maxComponentCount;
+        }
         
         public delegate T Action<out T>();
         public delegate void SimpleAction();
@@ -31,5 +41,8 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern void EndProfilingZone(string name);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern int _GetMaxComponentCountUncached();
     }
 }

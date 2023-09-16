@@ -38,6 +38,11 @@ namespace Carrot {
 
         explicit Signature();
 
+        /**
+         * Loads a signature from the given bitset
+         */
+        void fromBitset(const std::bitset<MAX_COMPONENTS>& components);
+
         template<typename... Components>
         void addComponents();
 
@@ -68,9 +73,18 @@ namespace Carrot {
             return a.components == b.components;
         }
 
+        std::size_t hash() const;
+
         ~Signature() = default;
     };
 }
+
+template<>
+struct std::hash<Carrot::Signature> {
+    std::size_t operator()(const Carrot::Signature& s) const {
+        return s.hash();
+    }
+};
 
 template<typename... Components>
 void Carrot::Signature::addComponents() {

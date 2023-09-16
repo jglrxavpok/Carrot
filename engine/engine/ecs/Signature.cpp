@@ -5,6 +5,7 @@
 #include <core/utils/Assert.h>
 #include <core/Macros.h>
 #include "Signature.hpp"
+#include <robin_hood.h>
 
 std::unordered_map<Carrot::ComponentID, std::size_t> Carrot::Signature::hash2index{};
 std::mutex Carrot::Signature::mappingAccess{};
@@ -12,6 +13,11 @@ std::mutex Carrot::Signature::mappingAccess{};
 namespace Carrot {
     Signature::Signature() {
         componentIndices.resize(MAX_COMPONENTS, -1);
+    }
+
+    void Signature::fromBitset(const std::bitset<MAX_COMPONENTS>& _components) {
+        components = _components;
+        reindex();
     }
 
     std::size_t Signature::getIndex(ComponentID id) {
@@ -72,5 +78,9 @@ namespace Carrot {
 
     std::size_t Signature::getComponentCount() const {
         return componentCount;
+    }
+
+    std::size_t Signature::hash() const {
+        return robin_hood::hash_int(components.to_ullong());
     }
 }

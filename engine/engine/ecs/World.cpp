@@ -141,6 +141,37 @@ namespace Carrot::ECS {
         }
     }
 
+    void World::invalidateQueries() {
+        ZoneScoped;
+        // maybe there's a smarter thing to do: add and remove entities from queries directly instead of recomputing query result
+        // maybe for the future
+        for(const auto& entitySet : { entitiesToAdd, entitiesToRemove }) {
+            for(const auto& e : entitySet) {
+                const Signature entitySignature = getSignature(wrap(e));
+
+                // if entity matches all components from the query signature, remove the query
+                std::erase_if(queries, [&](const QueryResult& query) {
+                    if((entitySignature & query.signature) == query.signature) {
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+
+        // entity updates are a bit more involved: the entity signature may no longer match the current signature
+        for(const auto& e : entitiesUpdated) {
+            std::erase_if(queries, [&](const QueryResult& query) {
+                for(const auto& queryEntity : query.matchingEntities) {
+                    if(queryEntity.entity.getID() == e) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+    }
+
     void World::repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remapMap) {
         auto remap = [&](const Carrot::ECS::EntityID& id) {
             auto iter = remapMap.find(id);
@@ -169,6 +200,7 @@ namespace Carrot::ECS {
         for(const auto& toAdd : entitiesToAdd) {
             entities.push_back(toAdd);
         }
+        invalidateQueries();
         if(!entitiesToAdd.empty()) {
             for(const auto& logic : logicSystems) {
                 logic->onEntitiesAdded(entitiesToAdd);
@@ -493,12 +525,24 @@ namespace Carrot::ECS {
         }
     }
 
-    std::vector<Entity> World::queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs) const {
+    std::span<const EntityWithComponents> World::queryEntities(const std::unordered_set<Carrot::ComponentID>& componentIDs) {
         Signature signature;
         for(const auto& compID : componentIDs) {
             signature.addComponent(compID);
         }
 
+        return queryEntities(signature);
+    }
+
+    std::span<const EntityWithComponents> World::queryEntities(const Signature& signature) {
+        for(auto& query : queries) {
+            if(query.signature == signature) {
+                return query.matchingEntities;
+            }
+        }
+
+        QueryResult& newQuery = queries.emplace_back();
+        newQuery.signature = signature;
         std::vector<Entity> result;
         for(const auto& entityID : entities) {
             auto entity = wrap(entityID);
@@ -506,8 +550,32 @@ namespace Carrot::ECS {
                 result.push_back(entity);
             }
         }
+        newQuery.matchingEntities.resize(result.size());
 
-        return result;
+        fillComponents(newQuery.signature, result, newQuery.matchingEntities);
+        return newQuery.matchingEntities;
+    }
+
+    void World::fillComponents(const Signature& signature, std::span<const Entity> _entities, std::span<EntityWithComponents> entitiesWithComponents) {
+        verify(_entities.size() == entitiesWithComponents.size(), "entities.size() != entitiesWithComponents.size()");
+        std::size_t componentCount = signature.getComponentCount();
+
+        for(std::size_t componentID = 0; componentID < MAX_COMPONENTS; componentID++) {
+            if(signature.hasComponent(componentID)) {
+                Signature::IndexType componentIndex = signature.getComponentIndex(componentID);
+
+                for(std::size_t i = 0; i < _entities.size(); i++) {
+                    auto& withComponents = entitiesWithComponents[i];
+                    const auto& entity = _entities[i];
+                    withComponents.entity = entity;
+                    withComponents.components.resize(componentCount);
+
+                    Memory::OptionalRef<Component> component = entity.getComponent(componentID);
+                    verify(component.hasValue(), "Component is not in entity??");
+                    withComponents.components[componentIndex] = component.asPtr();
+                }
+            }
+        }
     }
 
     std::string& World::getName(const Entity& entity) {

@@ -111,4 +111,14 @@ namespace Carrot::ECS {
 
         friend class World;
     };
+
+    struct EntityWithComponents {
+        Entity entity;
+        std::vector<Component*> components; // order of components is based on index of component inside Signature used to create this EntityWithComponents
+    };
+
+    struct QueryResult {
+        Signature signature;
+        std::vector<EntityWithComponents> matchingEntities;
+    };
 }

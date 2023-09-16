@@ -40,6 +40,15 @@ namespace Carrot {
             return _indices[compID];
         }
 
+        public UInt64 ToU64() {
+            UInt64 result = 0;
+            for (int i = 0; i < GetMaxComponentCount(); i++) {
+                result |= (_components[i] ? 1ul : 0ul) << i;
+            }
+
+            return result;
+        }
+
         private static int GetComponentIndex<T>() where T : IComponent {
             var type = typeof(T);
             return GetComponentIndex(type.Namespace, type.Name);
@@ -68,6 +77,11 @@ namespace Carrot {
             Entity = e;
             Components = comps;
         }
+    }
+
+    public class QueryResult {
+        public Signature Signature;
+        public EntityWithComponents[] Entities;
     }
     
     public abstract class System: Object {
@@ -167,12 +181,11 @@ namespace Carrot {
          * Use this if you need to access entities which do NOT match this system signature
          * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
          */
-        public Entity[] Query<T0>() 
+        public QueryResult Query<T0>() 
             where T0 : IComponent {
-            string[] componentTypes = new string[] {
-                typeof(T0).Namespace,typeof(T0).Name 
-            };
-            return _Query(componentTypes);
+            Signature s = new Signature();
+            s.AddComponent<T0>();
+            return Query(s);
         }
         
         /**
@@ -180,15 +193,14 @@ namespace Carrot {
          * Use this if you need to access entities which do NOT match this system signature
          * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
          */
-        public Entity[] Query<T0, T1>() 
+        public QueryResult Query<T0, T1>() 
             where T0 : IComponent 
             where T1 : IComponent 
         {
-            string[] componentTypes = new string[] {
-                typeof(T0).Namespace, typeof(T0).Name,
-                typeof(T1).Namespace, typeof(T1).Name,
-            };
-            return _Query(componentTypes);
+            Signature s = new Signature();
+            s.AddComponent<T0>();
+            s.AddComponent<T1>();
+            return Query(s);
         }
         
         /**
@@ -196,17 +208,16 @@ namespace Carrot {
          * Use this if you need to access entities which do NOT match this system signature
          * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
          */
-        public Entity[] Query<T0, T1, T2>() 
+        public QueryResult Query<T0, T1, T2>() 
             where T0 : IComponent 
             where T1 : IComponent 
             where T2 : IComponent 
         {
-            string[] componentTypes = new string[] {
-                typeof(T0).Namespace, typeof(T0).Name,
-                typeof(T1).Namespace, typeof(T1).Name,
-                typeof(T2).Namespace, typeof(T2).Name,
-            };
-            return _Query(componentTypes);
+            Signature s = new Signature();
+            s.AddComponent<T0>();
+            s.AddComponent<T1>();
+            s.AddComponent<T2>();
+            return Query(s);
         }
         
         /**
@@ -214,19 +225,18 @@ namespace Carrot {
          * Use this if you need to access entities which do NOT match this system signature
          * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
          */
-        public Entity[] Query<T0, T1, T2, T3>() 
+        public QueryResult Query<T0, T1, T2, T3>() 
             where T0 : IComponent 
             where T1 : IComponent 
             where T2 : IComponent 
             where T3 : IComponent 
         {
-            string[] componentTypes = new string[] {
-                typeof(T0).Namespace, typeof(T0).Name,
-                typeof(T1).Namespace, typeof(T1).Name,
-                typeof(T2).Namespace, typeof(T2).Name,
-                typeof(T3).Namespace, typeof(T3).Name,
-            };
-            return _Query(componentTypes);
+            Signature s = new Signature();
+            s.AddComponent<T0>();
+            s.AddComponent<T1>();
+            s.AddComponent<T2>();
+            s.AddComponent<T3>();
+            return Query(s);
         }
         
         /**
@@ -234,21 +244,27 @@ namespace Carrot {
          * Use this if you need to access entities which do NOT match this system signature
          * (ie does not match the components given by AddComponent). Otherwise, you should use ForEachEntity 
          */
-        public Entity[] Query<T0, T1, T2, T3, T4>() 
+        public QueryResult Query<T0, T1, T2, T3, T4>() 
             where T0 : IComponent 
             where T1 : IComponent 
             where T2 : IComponent 
             where T3 : IComponent 
-            where T4 : IComponent 
-        {
-            string[] componentTypes = new string[] {
-                typeof(T0).Namespace, typeof(T0).Name,
-                typeof(T1).Namespace, typeof(T1).Name,
-                typeof(T2).Namespace, typeof(T2).Name,
-                typeof(T3).Namespace, typeof(T3).Name,
-                typeof(T4).Namespace, typeof(T4).Name,
+            where T4 : IComponent {
+            Signature s = new Signature();
+            s.AddComponent<T0>();
+            s.AddComponent<T1>();
+            s.AddComponent<T2>();
+            s.AddComponent<T3>();
+            s.AddComponent<T4>();
+            return Query(s);
+        }
+
+        public QueryResult Query(Signature signature) {
+            QueryResult result = new QueryResult {
+                Signature = signature,
+                Entities = _Query(signature.ToU64())
             };
-            return _Query(componentTypes);
+            return result;
         }
         #endregion
 
@@ -269,7 +285,7 @@ namespace Carrot {
          * Ask engine to send list of entities with matching components
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern Entity[] _Query(string[] types);
+        private extern EntityWithComponents[] _Query(UInt64 signature);
     }
     
     public class ECS {

@@ -31,6 +31,7 @@ namespace Carrot::Scripting {
         CSClass* EntityClass = nullptr;
         CSField* EntityIDField = nullptr;
         CSField* EntityUserPointerField = nullptr;
+        CSClass* EntityWithComponentsClass = nullptr;
 
         CSClass* CarrotObjectClass = nullptr;
         CSField* CarrotObjectHandleField = nullptr;
@@ -127,6 +128,8 @@ namespace Carrot::Scripting {
             return csType->newObject(args);
         }
 
+        std::shared_ptr<Scripting::CSArray> entityListToCSharp(std::span<const ECS::EntityWithComponents> entities);
+
     public: // public because they might be useful to other parts of the engine
         struct CppComponent {
             bool isCSharp = false;
@@ -134,7 +137,7 @@ namespace Carrot::Scripting {
             CSClass* clazz = nullptr; // C# class used to represent this C++ component on the script side
         };
 
-        static std::int32_t GetMaxComponentCount();
+        static std::int32_t _GetMaxComponentCountUncached();
         static void BeginProfilingZone(MonoString* zoneName);
         static void EndProfilingZone(MonoString* zoneName);
 
@@ -143,7 +146,7 @@ namespace Carrot::Scripting {
 
         static MonoArray* LoadEntities(MonoObject* systemObj);
 
-        static MonoArray* _QueryECS(MonoObject* systemObj, MonoArray* componentClasses);
+        static MonoArray* _QueryECS(MonoObject* systemObj, std::uint64_t componentsBitset);
 
         static ECS::Entity convertToEntity(MonoObject* entityMonoObj);
 

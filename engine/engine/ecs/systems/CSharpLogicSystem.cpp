@@ -122,53 +122,7 @@ namespace Carrot::ECS {
             return;
         }
 
-        auto* entityClass = GetCSharpScripting().findClass("Carrot", "Entity");
-        verify(entityClass, "No Carrot.Entity class?");
-        auto* entityWithComponentsClass = GetCSharpScripting().findClass("Carrot", "EntityWithComponents");
-        verify(entityWithComponentsClass, "No Carrot.EntityWithComponents class?");
-        auto* componentClass = GetCSharpScripting().findClass("Carrot", "IComponent");
-        verify(componentClass, "No Carrot.IComponent class?");
-
-        csEntities = entityWithComponentsClass->newArray(entities.size());
-
-        std::size_t i = 0;
-        for(auto& e : entitiesWithComponents) {
-            EntityID uuid = e.entity.getID();
-            World* worldPtr = &world;
-            void* args[2] = {
-                    &uuid,
-                    &worldPtr,
-            };
-            auto entityObj = entityClass->newObject(args);
-
-            std::shared_ptr<Scripting::CSArray> componentsArray = componentClass->newArray(e.components.size());
-
-            for(std::size_t componentIndex = 0; componentIndex < e.components.size(); componentIndex++) {
-                Component* pComponent = e.components[componentIndex];
-                if(auto* csharpComponent = dynamic_cast<CSharpComponent*>(pComponent)) {
-                    componentsArray->set(componentIndex, csharpComponent->getCSComponentObject());
-                } else {
-                    Scripting::CSClass* hardcodedComponentClass = GetCSharpBindings().getHardcodedComponentClass(pComponent->getComponentTypeID());
-                    if(hardcodedComponentClass == nullptr) {
-                        hardcodedComponentClass = componentClass; // will create an empty instance of IComponent
-                    }
-
-                    void* compArgs[1] = {
-                            entityObj->toMono()
-                    };
-                    componentsArray->set(componentIndex, *hardcodedComponentClass->newObject(compArgs));
-                }
-            }
-
-            void* withCompsArgs[2] = {
-                    entityObj->toMono(),
-                    (MonoObject*)componentsArray->toMono(),
-            };
-            auto entityWithComponentsObj = entityWithComponentsClass->newObject(withCompsArgs);
-
-            csEntities->set(i, *entityWithComponentsObj);
-            i++;
-        }
+        csEntities = GetCSharpBindings().entityListToCSharp(entitiesWithComponents);
     }
 
     std::unique_ptr <Carrot::ECS::System> CSharpLogicSystem::duplicate(Carrot::ECS::World& newWorld) const {

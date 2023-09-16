@@ -95,26 +95,7 @@ namespace Carrot::ECS {
 
     void System::recreateEntityWithComponentsList() {
         entitiesWithComponents.resize(entities.size());
-        std::size_t componentCount = signature.getComponentCount();
-
-        for(std::size_t componentID = 0; componentID < MAX_COMPONENTS; componentID++) {
-            if(signature.hasComponent(componentID)) {
-                Signature::IndexType componentIndex = signature.getComponentIndex(componentID);
-
-                for(std::size_t i = 0; i < entities.size(); i++) {
-                    auto& withComponents = entitiesWithComponents[i];
-                    const auto& entity = entities[i];
-                    withComponents.entity = entity;
-                    withComponents.components.resize(componentCount);
-
-                    // if component hardcoded: create new object to reference it
-                    // if not hardcoded: get from entity
-                    Memory::OptionalRef<Component> component = entity.getComponent(componentID);
-                    verify(component.hasValue(), "Component is not in entity??");
-                    withComponents.components[componentIndex] = component.asPtr();
-                }
-            }
-        }
+        world.fillComponents(signature, entities, entitiesWithComponents);
     }
 
     SystemLibrary& getSystemLibrary() {

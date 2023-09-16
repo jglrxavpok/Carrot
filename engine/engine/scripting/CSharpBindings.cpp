@@ -78,10 +78,9 @@ namespace Carrot::Scripting {
 
         loadEngineAssembly();
 
-        mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
+        mono_add_internal_call("Carrot.Utilities::_GetMaxComponentCountUncached", _GetMaxComponentCountUncached);
         mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", BeginProfilingZone);
         mono_add_internal_call("Carrot.Utilities::EndProfilingZone", EndProfilingZone);
-        mono_add_internal_call("Carrot.Utilities::GetMaxComponentCount", GetMaxComponentCount);
         mono_add_internal_call("Carrot.Signature::GetComponentIndex", GetComponentIndex);
         mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
         mono_add_internal_call("Carrot.System::_Query", _QueryECS);
@@ -337,6 +336,50 @@ namespace Carrot::Scripting {
         return csharpComponentIDs.snapshot();
     }
 
+    std::shared_ptr<Scripting::CSArray> CSharpBindings::entityListToCSharp(std::span<const ECS::EntityWithComponents> entities) {
+        std::shared_ptr<Scripting::CSArray> result = EntityWithComponentsClass->newArray(entities.size());
+
+        std::size_t i = 0;
+        for(auto& e : entities) {
+            ECS::EntityID uuid = e.entity.getID();
+            const ECS::World* worldPtr = &e.entity.getWorld();
+            void* args[2] = {
+                    &uuid,
+                    &worldPtr,
+            };
+            auto entityObj = EntityClass->newObject(args);
+
+            std::shared_ptr<Scripting::CSArray> componentsArray = ComponentClass->newArray(e.components.size());
+
+            for(std::size_t componentIndex = 0; componentIndex < e.components.size(); componentIndex++) {
+                ECS::Component* pComponent = e.components[componentIndex];
+                if(auto* csharpComponent = dynamic_cast<ECS::CSharpComponent*>(pComponent)) {
+                    componentsArray->set(componentIndex, csharpComponent->getCSComponentObject());
+                } else {
+                    Scripting::CSClass* hardcodedComponentClass = GetCSharpBindings().getHardcodedComponentClass(pComponent->getComponentTypeID());
+                    if(hardcodedComponentClass == nullptr) {
+                        hardcodedComponentClass = ComponentClass; // will create an empty instance of IComponent
+                    }
+
+                    void* compArgs[1] = {
+                            entityObj->toMono()
+                    };
+                    componentsArray->set(componentIndex, *hardcodedComponentClass->newObject(compArgs));
+                }
+            }
+
+            void* withCompsArgs[2] = {
+                    entityObj->toMono(),
+                    (MonoObject*)componentsArray->toMono(),
+            };
+            auto entityWithComponentsObj = EntityWithComponentsClass->newObject(withCompsArgs);
+
+            result->set(i, *entityWithComponentsObj);
+            i++;
+        }
+        return result;
+    }
+
     CSClass* CSharpBindings::getHardcodedComponentClass(const ComponentID& componentID) {
         for(auto& [_, hardcodedComp] : hardcodedComponents) {
             if(hardcodedComp.id == componentID) {
@@ -366,6 +409,8 @@ namespace Carrot::Scripting {
             verify(EntityIDField, "Missing Carrot.Entity::_id field in Carrot.dll !");
             EntityUserPointerField = EntityClass->findField("_userPointer");
             verify(EntityUserPointerField, "Missing Carrot.Entity::_userPointer field in Carrot.dll !");
+
+            LOAD_CLASS(EntityWithComponents);
         }
 
         {
@@ -481,7 +526,7 @@ namespace Carrot::Scripting {
     // Bindings
     //
 
-    std::int32_t CSharpBindings::GetMaxComponentCount() {
+    std::int32_t CSharpBindings::_GetMaxComponentCountUncached() {
         return Carrot::MAX_COMPONENTS;
     }
 
@@ -521,37 +566,17 @@ namespace Carrot::Scripting {
         return systemPtr->getEntityList()->toMono();
     }
 
-    MonoArray* CSharpBindings::_QueryECS(MonoObject* systemObj, MonoArray* componentClasses) {
+    MonoArray* CSharpBindings::_QueryECS(MonoObject* systemObj, std::uint64_t componentsBitset) {
+        static_assert(MAX_COMPONENTS <= 64, "_QueryECS has to be modified if MAX_COMPONENTS > 64");
         Scripting::CSObject handleObj = instance().CarrotObjectHandleField->get(Scripting::CSObject(systemObj));
         std::uint64_t handle = *((std::uint64_t*)mono_object_unbox(handleObj));
         auto* systemPtr = reinterpret_cast<ECS::CSharpLogicSystem*>(handle);
 
-        std::unordered_set<Carrot::ComponentID> components;
-        std::size_t componentCount = mono_array_length(componentClasses);
+        Signature signature;
+        signature.fromBitset(std::bitset<MAX_COMPONENTS>(componentsBitset));
+        auto queryResult = systemPtr->getWorld().queryEntities(signature);
 
-        for(std::size_t i = 0; i < componentCount/2; ++i) {
-            auto* namespaceString = mono_array_get(componentClasses, MonoString*, i * 2);
-            auto* classNameString = mono_array_get(componentClasses, MonoString*, i*2 + 1);
-
-            ComponentID componentID = GetComponentID(namespaceString, classNameString);
-            components.insert(componentID);
-        }
-
-        components.reserve(componentCount/2);
-        auto queryResult = systemPtr->getWorld().queryEntities(components);
-
-        auto csQueryResult = instance().EntityClass->newArray(queryResult.size());
-        auto* csQueryResultArray = csQueryResult->toMono();
-
-        std::vector<std::shared_ptr<CSObject>> csEntities;
-        csEntities.resize(queryResult.size());
-
-        for(std::size_t i = 0; i < queryResult.size(); i++) {
-            csEntities[i] = entityToCSObject(queryResult[i]);
-            mono_array_set(csQueryResultArray, MonoObject*, i, csEntities[i]->toMono());
-        }
-
-        return csQueryResult->toMono();
+        return instance().entityListToCSharp(queryResult)->toMono();
     }
 
     ECS::Entity CSharpBindings::convertToEntity(MonoObject* entityMonoObj) {
