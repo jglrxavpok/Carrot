@@ -47,7 +47,7 @@ void main() {
 
     GBuffer o = initGBuffer(inModelview);
 
-    o.albedo = vec4(texColor.rgb * fragColor * instanceColor.rgb, texColor.a * instanceColor.a);
+    o.albedo = vec4(texColor.rgb, texColor.a * instanceColor.a);
     o.viewPosition = viewPosition;
 
     vec3 N_ = normalize(N);

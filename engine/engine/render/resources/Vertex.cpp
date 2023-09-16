@@ -47,7 +47,7 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getVertexAttributeDescr
     descriptions[5] = {
             .location = 5,
             .binding = 1,
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
             .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
     };
 
