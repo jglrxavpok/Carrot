@@ -476,6 +476,11 @@ namespace Peeler {
             ImGui::EndPopup();
         }
 
+        ImGuiTableFlags flags = 0;
+        ImGui::BeginTable("EntityList##UIWorldHierarchy", 2, flags);
+        ImGui::TableSetupColumn("Entity", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
+
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
             if(!entity)
                 return;
@@ -549,23 +554,44 @@ namespace Peeler {
                 return dragging;
             };
 
-            if(!children.empty()) {
-                if(ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str())) {
-                    bool dragging = dragAndDrop();
+            auto drawSettingsColumn = [&]() {
+                ImGui::TableSetColumnIndex(1);
 
-                    addChildMenu();
-                    if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
-                        bool additive = ImGui::GetIO().KeyCtrl;
-                        if(ImGui::GetIO().KeyAlt) {
-                            recursivelySelect = true; // will select children too
-                        }
-                        selectEntity(entity.getID(), additive);
+                std::string id = "##change entity visibility";
+                id += std::to_string(entity.getID().hash());
+                bool visible = (entity.getFlags() & Carrot::ECS::EntityFlags::Hidden) == 0;
+
+                const char* icon = visible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
+                if(ImGui::SmallButton(Carrot::sprintf("%s##%s", icon, id.c_str()).c_str())) {
+                    if(visible) {
+                        entity.setFlags(Carrot::ECS::EntityFlags::Hidden);
+                    } else {
+                        entity.removeFlags(Carrot::ECS::EntityFlags::Hidden);
                     }
+                }
+            };
 
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if(!children.empty()) {
+                bool showChildren = ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
+                bool dragging = dragAndDrop();
+
+                addChildMenu();
+                if(!dragging && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::IsMouseDragPastThreshold(ImGuiMouseButton_Left)) {
+                    bool additive = ImGui::GetIO().KeyCtrl;
+                    if(ImGui::GetIO().KeyAlt) {
+                        recursivelySelect = true; // will select children too
+                    }
+                    selectEntity(entity.getID(), additive);
+                }
+
+                drawSettingsColumn();
+
+                if(showChildren) {
                     for(auto& c : children) {
                         showEntityTree(c, recursivelySelect);
                     }
-
                     ImGui::TreePop();
                 }
             } else { // has no children
@@ -579,6 +605,8 @@ namespace Peeler {
                     bool additive = ImGui::GetIO().KeyCtrl;
                     selectEntity(entity.getID(), additive);
                 }
+
+                drawSettingsColumn();
             }
         };
         for(auto& entityObj : currentScene.world.getAllEntities()) {
@@ -586,6 +614,7 @@ namespace Peeler {
                 showEntityTree(entityObj, false);
             }
         }
+        ImGui::EndTable();
 
         if(auto* payload = ImGui::GetDragDropPayload()) {
             if(payload->IsDataType(Carrot::Edition::DragDropTypes::EntityUUID)) {
@@ -1267,15 +1296,15 @@ namespace Peeler {
         openUnsavedChangesPopup([this, path]() {
             rapidjson::Document scene;
             scenePath = path;
-            try {
+            //try {
                 Carrot::IO::Resource sceneData = scenePath;
                 scene.Parse(sceneData.readText());
                 currentScene.clear();
                 currentScene.deserialise(scene);
-            } catch (std::exception& e) {
+            /*} catch (std::exception& e) {
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();
-            }
+            }*/
 
             addEditingSystems();
             currentScene.world.freezeLogic();

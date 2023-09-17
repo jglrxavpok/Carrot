@@ -60,6 +60,15 @@ namespace Carrot {
             return at(str);
         }
 
+        constexpr const T* find(const std::string& str) const {
+            for(const auto& entry : storage) {
+                if(str == entry.name) {
+                    return &entry.value;
+                }
+            }
+            return nullptr;
+        }
+
         constexpr const LookupEntry<T>* begin() const {
             static_assert(Size > 0);
             return &storage[0];
@@ -67,7 +76,7 @@ namespace Carrot {
 
         constexpr const LookupEntry<T>* end() const {
             static_assert(Size > 0);
-            return &storage[Size-1];
+            return &storage[Size];
         }
 
     private:

@@ -94,6 +94,9 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::ReParent", ReParent);
         mono_add_internal_call("Carrot.Entity::Duplicate", Duplicate);
         mono_add_internal_call("Carrot.Entity::Exists", EntityExists);
+        mono_add_internal_call("Carrot.Entity::IsVisible", IsEntityVisible);
+        mono_add_internal_call("Carrot.Entity::Hide", HideEntity);
+        mono_add_internal_call("Carrot.Entity::Show", ShowEntity);
 
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
@@ -941,6 +944,20 @@ namespace Carrot::Scripting {
     bool CSharpBindings::EntityExists(MonoObject* entityMonoObj) {
         auto entity = convertToEntity(entityMonoObj);
         return entity.exists();
+    }
+
+    bool CSharpBindings::IsEntityVisible(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+        return entity.isVisible();
+    }
+
+    void CSharpBindings::HideEntity(MonoObject* entityMonoObj, bool recursive) {
+        auto entity = convertToEntity(entityMonoObj);
+        entity.hide(recursive);
+    }
+    void CSharpBindings::ShowEntity(MonoObject* entityMonoObj, bool recursive) {
+        auto entity = convertToEntity(entityMonoObj);
+        entity.show(recursive);
     }
 
     MonoObject* CSharpBindings::FindEntityByName(MonoObject* systemObj, MonoString* entityName) {

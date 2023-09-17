@@ -25,13 +25,40 @@ namespace Carrot::ECS {
         return toReturn;
     }
 
-    Entity& Entity::addTag(Tags tag) {
-        getWorld().entityTags[internalEntity] |= tag;
+    Entity& Entity::setFlags(EntityFlags flags) {
+        getWorld().entityFlags[internalEntity] |= flags;
         return *this;
     }
 
-    Tags Entity::getTags() const {
-        return getWorld().getTags(*this);
+    Entity& Entity::removeFlags(EntityFlags flags) {
+        getWorld().entityFlags[internalEntity] &= ~flags;
+        return *this;
+    }
+
+    EntityFlags Entity::getFlags() const {
+        return getWorld().getFlags(*this);
+    }
+
+    bool Entity::isVisible() const {
+        return (getFlags() & EntityFlags::Hidden) == 0;
+    }
+
+    void Entity::hide(bool recursive) {
+        setFlags(EntityFlags::Hidden);
+        if(recursive) {
+            for(auto& child : getWorld().getChildren(*this)) {
+                child.hide(recursive);
+            }
+        }
+    }
+
+    void Entity::show(bool recursive) {
+        removeFlags(EntityFlags::Hidden);
+        if(recursive) {
+            for(auto& child : getWorld().getChildren(*this)) {
+                child.show(recursive);
+            }
+        }
     }
 
     std::optional<Entity> Entity::getParent() {
@@ -111,19 +138,19 @@ namespace Carrot::ECS {
 
     World::World() {}
 
-    Tags World::getTags(const Entity& entity) const {
-        auto it = entityTags.find(entity);
-        if(it != entityTags.end()) {
+    EntityFlags World::getFlags(const Entity& entity) const {
+        auto it = entityFlags.find(entity);
+        if(it != entityFlags.end()) {
             return it->second;
         }
         return {};
     }
 
-    std::vector<Entity> World::getEntitiesWithTags(Tags tags) const {
+    std::vector<Entity> World::getEntitiesWithFlags(EntityFlags tags) const {
         std::vector<Entity> result;
         for(const auto& entity : entities) {
             auto obj = wrap(entity);
-            if((getTags(obj) & tags) == tags) {
+            if((getFlags(obj) & tags) == tags) {
                 result.push_back(obj);
             }
         }
@@ -657,7 +684,7 @@ namespace Carrot::ECS {
         entityParents = toCopy.entityParents;
         entityChildren = toCopy.entityChildren;
         entityNames = toCopy.entityNames;
-        entityTags = toCopy.entityTags;
+        entityFlags = toCopy.entityFlags;
         entities = toCopy.entities;
         entitiesToAdd = toCopy.entitiesToAdd;
         entitiesToRemove = toCopy.entitiesToRemove;

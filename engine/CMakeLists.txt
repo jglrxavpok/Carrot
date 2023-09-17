@@ -78,6 +78,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/TextRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
+        ${EngineRoot}ecs/EntityTypes.cpp
         ${EngineRoot}ecs/Signature.cpp
         ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/WorldData.cpp

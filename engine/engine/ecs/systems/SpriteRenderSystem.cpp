@@ -9,6 +9,10 @@
 namespace Carrot::ECS {
     void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
+            if(!entity.isVisible()) {
+                return;
+            }
+
             if(spriteComp.sprite && spriteComp.isTransparent) {
                 setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
                 spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
@@ -18,6 +22,10 @@ namespace Carrot::ECS {
 
     void SpriteRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
+            if(!entity.isVisible()) {
+                return;
+            }
+
             if(spriteComp.sprite && !spriteComp.isTransparent) {
                 setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
                 spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
@@ -34,6 +42,10 @@ namespace Carrot::ECS {
 
     void SpriteRenderSystem::onFrame(Carrot::Render::Context renderContext) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
+            if(!entity.isVisible()) {
+                return;
+            }
+
             if(spriteComp.sprite) {
                 updateSprite(renderContext, transform, *spriteComp.sprite);
             }

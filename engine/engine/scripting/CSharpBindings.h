@@ -162,6 +162,9 @@ namespace Carrot::Scripting {
         static void ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
         static MonoObject* Duplicate(MonoObject* entityMonoObj);
         static bool EntityExists(MonoObject* entityMonoObj);
+        static bool IsEntityVisible(MonoObject* entityMonoObj);
+        static void HideEntity(MonoObject* entityMonoObj, bool recursive);
+        static void ShowEntity(MonoObject* entityMonoObj, bool recursive);
 
         static MonoObject* FindEntityByName(MonoObject* systemObj, MonoString* entityName);
 

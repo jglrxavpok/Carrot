@@ -55,6 +55,28 @@ namespace Carrot {
             }
         }
 
+        /**
+         * Is this entity currently visible?
+         * Only affects rendering, not logic
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern bool IsVisible();
+
+        /**
+         * Hides this entity and potentially its children, if recursive is set to true
+         * (opposite of Show)
+         * By default entities are visible
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern bool Hide(bool recursive);
+
+        /**
+         * Shows this entity and potentially its children, if recursive is set to true
+         * (opposite of Hide).
+         * By default entities are visible
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern bool Show(bool recursive);
 
         /**
          * Does this object point to an existing entity?

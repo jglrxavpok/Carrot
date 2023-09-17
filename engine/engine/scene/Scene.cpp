@@ -63,6 +63,12 @@ namespace Carrot {
             rapidjson::Value nameKey(std::string(entity.getName()), dest.GetAllocator());
             entityData.AddMember("name", nameKey, dest.GetAllocator());
 
+            const ECS::EntityFlags entityFlags = entity.getFlags();
+            if(entityFlags != ECS::EntityFlags::None) {
+                rapidjson::Value flagsKey(ECS::flagsToString(entityFlags), dest.GetAllocator());
+                entityData.AddMember("flags", flagsKey, dest.GetAllocator());
+            }
+
             rapidjson::Value key(entity.getID().toString(), dest.GetAllocator());
             entitiesMap.AddMember(key, entityData, dest.GetAllocator());
         }
@@ -119,9 +125,14 @@ namespace Carrot {
                 Carrot::UUID parent = data["parent"].GetString();
                 entity.setParent(world.wrap(parent));
             }
+            if(data.HasMember("flags")) {
+                const auto& flagsJson = data["flags"];
+                const ECS::EntityFlags flags = ECS::stringToFlags(std::string(flagsJson.GetString(), flagsJson.GetStringLength()));
+                entity.setFlags(flags);
+            }
             for(const auto& [componentNameKey, componentDataKey] : data) {
                 std::string componentName = componentNameKey.GetString();
-                if(componentName == "name" || componentName == "parent") {
+                if(componentName == "name" || componentName == "parent" || componentName == "flags") {
                     continue;
                 }
                 auto component = componentLib.deserialise(componentName, componentDataKey, entity);

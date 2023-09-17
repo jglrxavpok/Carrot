@@ -14,8 +14,8 @@ namespace Carrot::ECS {
 
         auto entityUsertype = ecsNamespace.new_usertype<Carrot::ECS::Entity>("Entity", sol::no_constructor,
                                                        "exists", &ECS::Entity::exists,
-                                                       "addTag", &ECS::Entity::addTag,
-                                                       "getTags", &ECS::Entity::getTags,
+                                                       "addFlag", &ECS::Entity::setFlags,
+                                                       "getFlags", &ECS::Entity::getFlags,
                                                        "parent", sol::property([](Carrot::ECS::Entity& e) { return e.getParent(); }, [](Carrot::ECS::Entity& e, std::optional<Carrot::ECS::Entity> parent) { return e.setParent(parent); }),
                                                        "name", sol::property([](Carrot::ECS::Entity& e) { return e.getName(); }, [](Carrot::ECS::Entity& e, std::string name) { e.updateName(name); }),
                                                        "world", sol::property([](ECS::Entity& e) { return e.getWorld(); }),

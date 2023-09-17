@@ -25,6 +25,10 @@ namespace Carrot::ECS {
     void ModelRenderSystem::renderModels(const Carrot::Render::Context& renderContext) {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
+            if(!entity.isVisible()) {
+                return;
+            }
+
             if (modelComp.asyncModel.isReady()) {
                 Carrot::InstanceData instanceData;
                 instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;

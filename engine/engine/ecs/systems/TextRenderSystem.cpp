@@ -10,6 +10,10 @@ namespace Carrot::ECS {
 
     void TextRenderSystem::onFrame(Carrot::Render::Context renderContext) {
         forEachEntity([&](Entity& entity, TransformComponent& transform, TextComponent& textComponent) {
+            if(!entity.isVisible()) {
+                return;
+            }
+
             textComponent.refreshRenderable();
             textComponent.renderableText.getTransform() = transform.toTransformMatrix();
             textComponent.renderableText.render(renderContext);

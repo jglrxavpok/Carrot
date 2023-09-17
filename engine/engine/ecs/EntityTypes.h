@@ -14,7 +14,44 @@
 #include "Signature.hpp"
 
 namespace Carrot::ECS {
-    using Tags = std::uint64_t;
+    enum class EntityFlags : std::uint64_t {
+        None = 0,
+        Hidden = 1 << 0,
+    };
+
+    inline EntityFlags operator&(const EntityFlags& a, const EntityFlags& b) {
+        return static_cast<EntityFlags>(static_cast<std::uint64_t>(a) & static_cast<std::uint64_t>(b));
+    }
+
+    inline EntityFlags operator|(const EntityFlags& a, const EntityFlags& b) {
+        return static_cast<EntityFlags>(static_cast<std::uint64_t>(a) | static_cast<std::uint64_t>(b));
+    }
+
+    inline EntityFlags& operator&=(EntityFlags& self, const EntityFlags& b) {
+        self = static_cast<EntityFlags>(static_cast<std::uint64_t>(self) & static_cast<std::uint64_t>(b));
+        return self;
+    }
+
+    inline EntityFlags& operator|=(EntityFlags& self, const EntityFlags& b) {
+        self = static_cast<EntityFlags>(static_cast<std::uint64_t>(self) | static_cast<std::uint64_t>(b));
+        return self;
+    }
+
+    inline bool operator==(const EntityFlags& flags, const std::uint64_t& v) {
+        return static_cast<std::uint64_t>(flags) == v;
+    }
+
+    inline bool operator!=(const EntityFlags& flags, const std::uint64_t& v) {
+        return static_cast<std::uint64_t>(flags) != v;
+    }
+
+    inline EntityFlags operator~(const EntityFlags& flags) {
+        return static_cast<EntityFlags>(~static_cast<std::uint64_t>(flags));
+    }
+
+    EntityFlags stringToFlags(const std::string& str);
+    std::string flagsToString(const EntityFlags& flags);
+
     using EntityID = Carrot::UUID;
 
     class World;
@@ -62,9 +99,27 @@ namespace Carrot::ECS {
 
         Entity& removeComponent(const ComponentID& id);
 
-        Entity& addTag(Tags tag);
+        Entity& setFlags(EntityFlags tag);
+        Entity& removeFlags(EntityFlags tag);
 
-        Tags getTags() const;
+        EntityFlags getFlags() const;
+
+        /// Shorthand for checking the flags for Hidden
+        bool isVisible() const;
+
+        /**
+         * Hides this entity and potentially its children, if recursive is set to true
+         * (opposite of show)
+         * By default entities are visible
+         */
+        void hide(bool recursive);
+
+        /**
+         * Shows this entity and potentially its children, if recursive is set to true
+         * (opposite of hide)
+         * By default entities are visible
+         */
+        void show(bool recursive);
 
         std::optional<Entity> getNamedChild(std::string_view name, ShouldRecurse recurse = ShouldRecurse::Recursion);
         std::optional<const Entity> getNamedChild(std::string_view name, ShouldRecurse recurse = ShouldRecurse::Recursion) const;

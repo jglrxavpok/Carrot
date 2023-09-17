@@ -35,9 +35,9 @@ namespace Carrot::ECS {
 
         Memory::OptionalRef<Component> getComponent(const EntityID& entityID, ComponentID component) const;
 
-        Tags getTags(const Entity& entity) const;
+        EntityFlags getFlags(const Entity& entity) const;
 
-        std::vector<Entity> getEntitiesWithTags(Tags tags) const;
+        std::vector<Entity> getEntitiesWithFlags(EntityFlags tags) const;
 
         template<typename... Component>
         std::span<const EntityWithComponents> queryEntities();
@@ -187,7 +187,7 @@ namespace Carrot::ECS {
         std::vector<EntityID> entitiesUpdated;
 
         std::unordered_map<EntityID, std::unordered_map<ComponentID, std::unique_ptr<Component>>> entityComponents;
-        std::unordered_map<EntityID, Tags> entityTags;
+        std::unordered_map<EntityID, EntityFlags> entityFlags;
         std::unordered_map<EntityID, std::string> entityNames;
 
         std::vector<QueryResult> queries; //< cache result of queries to avoid recomputing the list on each call of queryEntities
