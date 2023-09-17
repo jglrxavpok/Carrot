@@ -128,6 +128,8 @@ namespace AL {
 
         void queue(const std::shared_ptr<Buffer>& buffer);
 
+        void removeAllBuffers();
+
         void play();
 
         void pause();

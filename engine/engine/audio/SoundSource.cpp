@@ -4,6 +4,7 @@
 
 #include <engine/utils/Macros.h>
 #include <engine/audio/AudioManager.h>
+#include <core/io/Logging.hpp>
 #include "SoundSource.h"
 #include "AudioThread.h"
 
@@ -14,6 +15,7 @@ namespace Carrot::Audio {
 
     void SoundSource::play(std::unique_ptr<Sound>&& sound) {
         currentSound = std::move(sound);
+        source.removeAllBuffers();
         for (int i = 0; i < BUFFERS_AT_ONCE; ++i) {
             auto buffer = currentSound->getNextBuffer();
             if(buffer == nullptr)

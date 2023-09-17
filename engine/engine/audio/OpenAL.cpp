@@ -15,6 +15,10 @@ namespace AL {
         queuedBuffers.push_back(buffer);
     }
 
+    void Source::removeAllBuffers() {
+        alSourcei(source, AL_BUFFER, 0);
+    }
+
     void Source::play() {
         alSourcePlay(source);
     }
