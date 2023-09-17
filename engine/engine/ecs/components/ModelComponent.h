@@ -39,6 +39,7 @@ namespace Carrot::ECS {
             result->isTransparent = isTransparent;
             result->color = color;
             result->modelRenderer = modelRenderer;
+            result->castsShadows = castsShadows;
             return result;
         }
 

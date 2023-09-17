@@ -26,7 +26,6 @@ namespace Carrot::ECS {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if (modelComp.asyncModel.isReady()) {
-                modelComp.loadTLASIfPossible();
                 Carrot::InstanceData instanceData;
                 instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
                 instanceData.transform = transform.toTransformMatrix();
@@ -40,10 +39,19 @@ namespace Carrot::ECS {
                 }
                 //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
+                modelComp.loadTLASIfPossible();
                 if(modelComp.tlas) {
                     modelComp.tlas->transform = instanceData.transform;
                     modelComp.tlas->customIndex = 0; // TODO?
                     modelComp.tlas->instanceColor = modelComp.color;
+
+                    if(modelComp.tlas->enabled != modelComp.castsShadows) { // avoid locking for a simple check
+                        if(modelComp.castsShadows) {
+                            modelComp.enableTLAS();
+                        } else {
+                            modelComp.disableTLAS();
+                        }
+                    }
                 }
             }
         });

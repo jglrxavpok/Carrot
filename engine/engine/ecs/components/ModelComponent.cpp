@@ -21,6 +21,10 @@ namespace Carrot::ECS {
         isTransparent = obj["isTransparent"].GetBool();
         color = JSON::read<4, float>(obj["color"]);
 
+        if(obj.HasMember("castsShadows")) {
+            castsShadows = obj["castsShadows"].GetBool();
+        }
+
         if(obj.HasMember("model")) {
             auto modelData = obj["model"].GetObject();
 
@@ -51,6 +55,7 @@ namespace Carrot::ECS {
 
         obj.AddMember("isTransparent", isTransparent, doc.GetAllocator());
         obj.AddMember("color", JSON::write(color, doc), doc.GetAllocator());
+        obj.AddMember("castsShadows", castsShadows, doc.GetAllocator());
 
         rapidjson::Value modelData(rapidjson::kObjectType);
         auto& resource = asyncModel->getOriginatingResource();
@@ -73,15 +78,13 @@ namespace Carrot::ECS {
         if(!GetCapabilities().supportsRaytracing) {
             return;
         }
-        if(castsShadows && tlasIsWaitingForModel && asyncModel.isReady()) {
+        if(tlasIsWaitingForModel && asyncModel.isReady()) {
             Async::LockGuard l{ tlasAccess };
             if(tlasIsWaitingForModel) {
                 tlasIsWaitingForModel = false;
                 tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
                 tlas->enabled = true;
             }
-        } else if(!castsShadows && tlas) {
-            tlas = nullptr;
         }
     }
 

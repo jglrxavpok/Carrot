@@ -99,6 +99,7 @@ namespace Peeler {
         }
 
         ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &component->isTransparent);
+        ImGui::Checkbox("Casts shadows##ModelComponent casts shadows inspector", &component->castsShadows);
 
         if(ImGui::BeginDragDropTarget()) {
             if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
