@@ -1296,15 +1296,15 @@ namespace Peeler {
         openUnsavedChangesPopup([this, path]() {
             rapidjson::Document scene;
             scenePath = path;
-            //try {
+            try {
                 Carrot::IO::Resource sceneData = scenePath;
                 scene.Parse(sceneData.readText());
                 currentScene.clear();
                 currentScene.deserialise(scene);
-            /*} catch (std::exception& e) {
+            } catch (std::exception& e) {
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();
-            }*/
+            }
 
             addEditingSystems();
             currentScene.world.freezeLogic();
