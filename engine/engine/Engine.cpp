@@ -731,6 +731,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
 
         vkDriver.startFrame(mainRenderContext);
+        assetServer.beginFrame(mainRenderContext);
         resourceAllocator->beginFrame(mainRenderContext);
         renderer.beginFrame(mainRenderContext);
         GetTaskScheduler().executeRendering();
@@ -766,6 +767,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             onFrame(v);
         }
         onFrame(getMainViewport());
+        assetServer.beforeRecord(mainRenderContext);
         renderer.beforeRecord(mainRenderContext);
     }
     {
@@ -1074,6 +1076,7 @@ void Carrot::Engine::tick(double deltaTime) {
         game->tick(deltaTime);
     }
     audioManager.tick(deltaTime);
+    assetServer.tick(deltaTime);
 
     auto prePhysics = [&]() {
         game->prePhysics();
@@ -1345,6 +1348,10 @@ Carrot::Audio::AudioManager& Carrot::Engine::getAudioManager() {
 
 Carrot::SceneManager& Carrot::Engine::getSceneManager() {
     return sceneManager;
+}
+
+Carrot::AssetServer& Carrot::Engine::getAssetServer() {
+    return assetServer;
 }
 
 std::shared_ptr<Carrot::IO::FileWatcher> Carrot::Engine::createFileWatcher(const Carrot::IO::FileWatcher::Action& action, const std::vector<std::filesystem::path>& filesToWatch) {

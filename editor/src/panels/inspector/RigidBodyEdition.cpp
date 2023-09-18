@@ -23,10 +23,10 @@ using namespace Carrot::Physics;
 
 namespace Peeler {
 
-    static const std::string EditColliderIcon = "resources/textures/ui/wrench.png";
-    static const std::string ResetWidgetTexture = "resources/textures/ui/reset.png";
-    static const std::string LockedWidgetTexture = "resources/textures/ui/locked.png";
-    static const std::string UnlockedWidgetTexture = "resources/textures/ui/unlocked.png";
+    static const char* EditColliderIcon = "resources/textures/ui/wrench.png";
+    static const char* ResetWidgetTexture = "resources/textures/ui/reset.png";
+    static const char* LockedWidgetTexture = "resources/textures/ui/locked.png";
+    static const char* UnlockedWidgetTexture = "resources/textures/ui/unlocked.png";
 
     class ColliderEditionLayer: public ISceneViewLayer {
     public:
@@ -225,7 +225,7 @@ namespace Peeler {
     static bool ResetButton(const char* id) {
         ImGui::PushID(id);
         float buttonSize = ImGui::GetTextLineHeight();
-        auto texture = GetRenderer().getOrCreateTextureFullPath(ResetWidgetTexture);
+        auto texture = GetAssetServer().loadTexture(ResetWidgetTexture);
         bool result = ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize));
         ImGui::PopID();
         return result;
@@ -246,7 +246,7 @@ namespace Peeler {
 
         bool editLocalTransform = currentlyEditedCollider == &collider;
         float buttonSize = ImGui::GetTextLineHeight();
-        auto texture = GetRenderer().getOrCreateTextureFullPath(EditColliderIcon);
+        auto texture = GetAssetServer().loadTexture(EditColliderIcon);
         if(ImGui::ImageToggleButton("Edit collider", texture->getImguiID(), &editLocalTransform, ImVec2(buttonSize, buttonSize))) {
             bool hasLayer = edition.editor.hasLayer<ColliderEditionLayer>();
             if(editLocalTransform) {
@@ -438,8 +438,8 @@ namespace Peeler {
                 const ImVec2 buttonSize{ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
                 bool isLocked = glm::abs(axes[axisIndex]) < 0.01f;
 
-                const auto textureRef = isLocked ? GetRenderer().getOrCreateTextureFullPath(LockedWidgetTexture)
-                                                 : GetRenderer().getOrCreateTextureFullPath(UnlockedWidgetTexture);
+                const auto textureRef = isLocked ? GetAssetServer().loadTexture(LockedWidgetTexture)
+                                                 : GetAssetServer().loadTexture(UnlockedWidgetTexture);
                 const ImTextureID textureID = textureRef->getImguiID();
                 const bool changed = ImGui::ImageToggleButton(id, textureID, &isLocked, buttonSize);
                 if (changed) {

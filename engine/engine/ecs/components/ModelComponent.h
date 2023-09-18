@@ -6,6 +6,7 @@
 #include "engine/ecs/components/Component.h"
 #include "engine/render/Model.h"
 #include "engine/render/AsyncResource.hpp"
+#include "engine/assets/AssetServer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include <core/async/Locks.h>
 
@@ -35,7 +36,7 @@ namespace Carrot::ECS {
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<ModelComponent>(newOwner);
             asyncModel.forceWait();
-            result->asyncModel = std::move(AsyncModelResource(GetRenderer().coloadModel(asyncModel->getOriginatingResource().getName())));
+            result->asyncModel = std::move(AsyncModelResource(GetAssetServer().coloadModel(Carrot::IO::VFS::Path { asyncModel->getOriginatingResource().getName() })));
             result->isTransparent = isTransparent;
             result->color = color;
             result->modelRenderer = modelRenderer;

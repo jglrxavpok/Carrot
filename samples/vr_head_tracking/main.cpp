@@ -11,7 +11,7 @@
 class SampleVRHead: public Carrot::CarrotGame {
 public:
     SampleVRHead(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                          staticModel(GetRenderer().getOrCreateModel("resources/models/viking_room.obj")){
+                                          staticModel(GetAssetServer().loadModel("resources/models/viking_room.obj")){
 
         goUpInput.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_SPACE));
         goDownInput.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_SHIFT));

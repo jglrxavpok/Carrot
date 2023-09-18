@@ -14,6 +14,8 @@
 #include "engine/render/MaterialSystem.h"
 
 namespace Carrot::Render {
+    class MaterialHandle;
+
     struct TextMetrics {
         float width = 0.0f;
         float height = 0.0f;

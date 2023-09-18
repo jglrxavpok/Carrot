@@ -196,6 +196,15 @@ namespace Carrot::Async {
             return result;
         }
 
+        void clear() {
+            Async::LockGuard g { storageAccess.write() };
+            for(auto& node : storage) {
+                Async::LockGuard g2 { node.nodeAccess };
+                node.value.reset();
+            }
+            storage.clear();
+        }
+
     private:
         mutable Async::ReadWriteLock storageAccess{};
         std::list<Node> storage{};

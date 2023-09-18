@@ -12,11 +12,12 @@
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
 #include <core/math/Sphere.h>
-#include "engine/Engine.h"
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
 #include "engine/render/InstanceData.h"
 #include "engine/render/MeshAndTransform.h"
+#include "engine/render/GBufferDrawData.h"
+#include "engine/render/resources/Pipeline.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -30,6 +31,7 @@ namespace Carrot {
     class BLASHandle;
 
     namespace Render {
+        class MaterialHandle;
         class ModelRenderer;
         class Packet;
     }

@@ -92,6 +92,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}LoadingScreen.cpp
 
+        ${EngineRoot}assets/AssetServer.cpp
+
         ${EngineRoot}audio/AudioManager.cpp
         ${EngineRoot}audio/AudioThread.cpp
         ${EngineRoot}audio/OpenAL.cpp

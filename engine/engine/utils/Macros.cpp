@@ -58,6 +58,10 @@ Carrot::Audio::AudioManager& GetAudioManager() {
     return GetEngine().getAudioManager();
 }
 
+Carrot::AssetServer& GetAssetServer() {
+    return GetEngine().getAssetServer();
+}
+
 Carrot::Physics::PhysicsSystem& GetPhysics() {
     return Carrot::Physics::PhysicsSystem::getInstance();
 }

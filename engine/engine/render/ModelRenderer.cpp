@@ -4,9 +4,12 @@
 
 #include <utility>
 #include "ModelRenderer.h"
+#include <engine/assets/AssetServer.h>
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/SingleMesh.h>
 #include <engine/render/Model.h>
+#include <engine/render/VulkanRenderer.h>
+#include <engine/utils/Profiling.h>
 #include <core/utils/JSON.h>
 #include <core/data/Hashes.h>
 #include <robin_hood.h>
@@ -122,7 +125,7 @@ namespace Carrot::Render {
     ModelRenderer::ModelRenderer(Model& model, ModelRenderer::NoInitTag): model(model) {}
 
     /* static */std::shared_ptr<ModelRenderer> ModelRenderer::fromJSON(const rapidjson::Value& json) {
-        std::shared_ptr<Carrot::Model> model = GetRenderer().getOrCreateModel(json["model"].GetString());
+        std::shared_ptr<Carrot::Model> model = GetAssetServer().loadModel(json["model"].GetString());
         std::shared_ptr<ModelRenderer> renderer = std::make_unique<ModelRenderer>(*model);
 
         Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
@@ -159,8 +162,7 @@ namespace Carrot::Render {
                 auto loadTexture = [&](const rapidjson::Value& jsonElement) {
                     std::string_view texturePath { jsonElement.GetString(), jsonElement.GetStringLength() };
 
-                    Render::Texture::Ref textureRef = GetRenderer().getOrCreateTextureFullPath(std::string(texturePath));
-                    return materialSystem.createTextureHandle(textureRef);
+                    return materialSystem.createTextureHandle(GetAssetServer().loadTexture(Carrot::IO::VFS::Path { texturePath }));
                 };
                 if(const auto& element = texturesObj.FindMember("albedo_texture"); element != texturesObj.MemberEnd()) {
                     override.materialTextures->albedo = loadTexture(element->value);

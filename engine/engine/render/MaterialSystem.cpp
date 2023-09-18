@@ -15,7 +15,10 @@ namespace Carrot::Render {
     static const std::uint32_t BindingCount = 5;
     static Carrot::RuntimeOption ShowDebug("Engine/Materials Debug", false);
 
-    TextureHandle::TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system): WeakPoolHandle::WeakPoolHandle(index, destructor), materialSystem(system) {
+    TextureHandle::TextureHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, MaterialSystem& system)
+    : WeakPoolHandle::WeakPoolHandle(index, destructor)
+    , materialSystem(system)
+    {
 
     }
 
@@ -157,7 +160,9 @@ namespace Carrot::Render {
         data->metallicRoughness = materialSystem.blackTextureHandle->getSlot();
     }
 
-    MaterialSystem::MaterialSystem() {
+    MaterialSystem::MaterialSystem() {}
+
+    void MaterialSystem::init() {
         reallocateMaterialBuffer(DefaultMaterialBufferSize);
         boundTextures.resize(GetEngine().getSwapchainImageCount());
 
@@ -395,9 +400,9 @@ namespace Carrot::Render {
                                     break;
                             }
 
-                            auto texture = handle
-                                    ? handle->texture
-                                    : GetRenderer().getDefaultImage();
+                            auto& texture = handle
+                                    ? *(handle->texture.get())
+                                    : *GetRenderer().getDefaultImage();
 
                             if(handle) {
                                 textureID = handle->getSlot();
@@ -405,7 +410,7 @@ namespace Carrot::Render {
 
                             ImGui::Text("Slot %d", material->getSlot());
                             ImGui::Text("Texture ID: %lld", textureID);
-                            ImGui::Image(texture->getImguiID(), ImVec2(128, 128));
+                            ImGui::Image(texture.getImguiID(), ImVec2(128, 128));
                         } else {
                             ImGui::Text("Free slot");
                         }

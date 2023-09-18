@@ -3,7 +3,7 @@
 //
 
 #include "SpriteComponent.h"
-#include "engine/Engine.h"
+#include <engine/assets/AssetServer.h>
 #include "core/utils/ImGuiUtils.hpp"
 #include "imgui.h"
 #include "engine/edition/DragDropTypes.h"
@@ -18,8 +18,9 @@ namespace Carrot::ECS {
             auto spriteData = obj["sprite"].GetObject();
 
             if(spriteData.HasMember("texturePath")) {
-                std::string texturePath = spriteData["texturePath"].GetString();
-                auto textureRef = Engine::getInstance().getRenderer().getOrCreateTextureFullPath(texturePath);
+                const auto& texturePathJSON = spriteData["texturePath"];
+                std::string_view texturePath { texturePathJSON.GetString(), texturePathJSON.GetStringLength() };
+                auto textureRef = GetAssetServer().loadTexture(texturePath);
                 auto regionData = spriteData["region"].GetArray();
                 float minX = regionData[0].GetFloat();
                 float minY = regionData[1].GetFloat();

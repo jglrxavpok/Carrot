@@ -35,6 +35,7 @@ namespace Carrot {
 #include "engine/task/TaskScheduler.h"
 #include <engine/scene/SceneManager.h>
 #include <engine/audio/AudioManager.h>
+#include <engine/assets/AssetServer.h>
 #include <core/io/vfs/VirtualFileSystem.h>
 
 namespace sol {
@@ -391,6 +392,7 @@ namespace Carrot {
         Scripting::ScriptingEngine& getCSScriptEngine();
         Scripting::CSharpBindings& getCSBindings();
         Audio::AudioManager& getAudioManager();
+        AssetServer& getAssetServer();
 
         static void registerUsertype(sol::state& destination);
 
@@ -417,6 +419,7 @@ namespace Carrot {
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
+        AssetServer assetServer{ vfs }; // before the renderer: the renderer needs a few default assets for its initialisation
         VulkanRenderer renderer;
         std::uint32_t lastFrameIndex = 0;
         std::uint32_t frames = 0;

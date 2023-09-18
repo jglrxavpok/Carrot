@@ -1550,7 +1550,7 @@ namespace Peeler {
             auto entity = addEntity(parent);
             entity.addComponent<Carrot::ECS::ModelComponent>();
             Carrot::ECS::ModelComponent& modelComp = entity.getComponent<Carrot::ECS::ModelComponent>();
-            modelComp.asyncModel = Carrot::AsyncModelResource(GetRenderer().coloadModel("resources/models/simple_cube.obj"));
+            modelComp.asyncModel = Carrot::AsyncModelResource(GetAssetServer().coloadModel("resources/models/simple_cube.obj"));
         }
 
         if(ImGui::MenuItem("Add Light##add entity menu")) {

@@ -4,10 +4,12 @@
 
 #pragma once
 
-#include "engine/Engine.h"
+#include "engine/render/IDTypes.h"
+#include "engine/render/Model.h"
 #include "engine/render/InstanceData.h"
 
 namespace Carrot {
+    class Engine;
     class BLASHandle;
     class InstanceHandle;
 

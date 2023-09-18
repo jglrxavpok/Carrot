@@ -80,18 +80,6 @@ namespace std {
             return hash;
         }
     };
-
-    template<>
-    struct hash<std::pair<std::string, std::uint64_t>> {
-        std::size_t operator()(const std::pair<std::string, std::uint64_t>& p) const {
-            const std::size_t prime = 31;
-            std::hash<std::string> stringHasher;
-
-            std::size_t hash = stringHasher(p.first);
-            hash = p.second + hash * prime;
-            return hash;
-        }
-    };
 }
 
 namespace Carrot {
@@ -119,6 +107,7 @@ namespace Carrot {
         static constexpr double BlinkDuration = 0.100f;
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
+        ~VulkanRenderer();
 
         /// Init everything that is not immediately needed during construction. Allows to initialise resources during a loading screen
         void lateInit();
@@ -136,15 +125,8 @@ namespace Carrot {
         std::shared_ptr<Pipeline> getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& pass);
 
         std::shared_ptr<Render::Texture> getOrCreateTexture(const std::string& textureName);
-        std::shared_ptr<Render::Texture> getOrCreateTextureFullPath(const std::string& textureName);
-        std::shared_ptr<Render::Texture> getOrCreateTextureFromResource(const Carrot::IO::Resource& from);
 
         std::shared_ptr<Render::Font> getOrCreateFront(const Carrot::IO::Resource& from);
-
-        std::shared_ptr<Model> getOrCreateModel(const std::string& modelPath);
-
-        /// Loads a model on a coroutine
-        Async::Task<std::shared_ptr<Model>> coloadModel(std::string modelPath);
 
     public:
         void beforeFrameCommand(const CommandBufferConsumer& command);
@@ -173,7 +155,7 @@ namespace Carrot {
 
         Engine& getEngine();
 
-        Render::MaterialSystem& getMaterialSystem() { return materialSystem; }
+        Render::MaterialSystem& getMaterialSystem();
 
         const Render::MaterialHandle& getWhiteMaterial() const { return *whiteMaterial; }
 
@@ -324,14 +306,8 @@ namespace Carrot {
 
         std::unique_ptr<ASBuilder> asBuilder = nullptr;
 
-        Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};
-        Async::ParallelMap<std::string, Render::Texture::Ref> textures{};
-        Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
-
         Render::MaterialSystem materialSystem;
         Render::Lighting lighting;
-
-        Async::ParallelMap<std::string, std::shared_ptr<Model>> models{};
 
         vk::UniqueDescriptorPool imguiDescriptorPool{};
 

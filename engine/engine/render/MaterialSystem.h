@@ -96,6 +96,7 @@ namespace Carrot::Render {
         constexpr static std::uint32_t MaxTextures = 1024;
 
         explicit MaterialSystem();
+        void init();
 
         std::shared_ptr<TextureHandle> createTextureHandle(Texture::Ref texture);
         std::shared_ptr<MaterialHandle> createMaterialHandle();

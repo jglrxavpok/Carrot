@@ -8,6 +8,7 @@
 #include <engine/render/resources/Pipeline.h>
 #include <panels/InspectorPanel.h>
 #include <core/io/Logging.hpp>
+#include <engine/assets/AssetServer.h>
 
 // TODO: asset browser
 
@@ -47,7 +48,7 @@ namespace Peeler {
         ImGui::SameLine();
 
         if(hasEntity) {
-            auto texture = GetRenderer().getOrCreateTextureFullPath(ResetWidgetTexture);
+            auto texture = GetAssetServer().loadTexture(ResetWidgetTexture);
             if (ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize))) {
                 destination = {Carrot::UUID::null(), currentScene.world};
                 hasChanged = true;
@@ -77,7 +78,7 @@ namespace Peeler {
         ImGui::SameLine();
 
         {
-            auto texture = GetRenderer().getOrCreateTextureFullPath(PickWidgetTexture);
+            auto texture = GetAssetServer().loadTexture(PickWidgetTexture);
             if (state.lastFrame < GetRenderer().getFrameCount() - 1) {
                 state.tryingToPick = false;
             }
@@ -139,7 +140,7 @@ namespace Peeler {
                 *pOut = nullptr;
                 updated = true;
             } else {
-                auto textureRef = GetRenderer().getOrCreateTextureFullPath(state.textInputContents);
+                auto textureRef = GetAssetServer().loadTexture(Carrot::IO::VFS::Path { state.textInputContents });
                 *pOut = textureRef;
                 updated = true;
             }
@@ -154,7 +155,7 @@ namespace Peeler {
 
                 std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    *pOut = GetRenderer().getOrCreateTextureFullPath(fsPath.string().c_str());
+                    *pOut = GetAssetServer().loadTexture(fsPath.string().c_str());
                     updated = true;
                 }
             }

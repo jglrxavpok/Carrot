@@ -16,6 +16,7 @@ namespace Carrot {
     struct Capabilities;
     class TaskScheduler;
     class SceneManager;
+    class AssetServer;
 
     namespace Audio {
         class AudioManager;
@@ -45,6 +46,7 @@ Carrot::Scripting::ScriptingEngine& GetCSharpScripting();
 Carrot::Scripting::CSharpBindings& GetCSharpBindings();
 Carrot::SceneManager& GetSceneManager();
 Carrot::Audio::AudioManager& GetAudioManager();
+Carrot::AssetServer& GetAssetServer();
 
 #undef GetVFS
 #define GetVFS() GetEngine().getVFS()

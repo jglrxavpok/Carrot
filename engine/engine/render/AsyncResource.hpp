@@ -6,8 +6,9 @@
 
 #include <memory>
 #include <thread>
-#include <core/Macros.h>
-#include <engine/Engine.h>
+#include <engine/utils/Macros.h>
+#include <engine/task/TaskScheduler.h>
+#include <engine/render/Model.h>
 #include <core/async/Coroutines.hpp>
 
 namespace Carrot {

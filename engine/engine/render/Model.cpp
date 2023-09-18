@@ -68,7 +68,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                         Carrot::IO::Resource from;
                         try {
                             from = texturePath;
-                            auto texture = materialSystem.createTextureHandle(GetRenderer().getOrCreateTextureFromResource(from));
+                            auto texture = materialSystem.createTextureHandle(GetAssetServer().loadTexture(Carrot::IO::VFS::Path { texturePath }));
                             toSet = texture;
                             loadedATexture = true;
                         } catch (std::exception& e) {

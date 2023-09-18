@@ -15,6 +15,9 @@
 #include <core/scene/LoadedScene.h>
 #include <engine/render/resources/model_loading/SceneLoader.h>
 #include <engine/render/resources/SingleMesh.h>
+#include <engine/task/TaskScheduler.h>
+#include <engine/render/RenderPacket.h>
+#include <engine/render/VulkanRenderer.h>
 #include <core/io/Logging.hpp>
 
 namespace Carrot::AI {

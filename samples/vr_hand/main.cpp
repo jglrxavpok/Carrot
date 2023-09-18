@@ -13,9 +13,9 @@
 class SampleVRHand: public Carrot::CarrotGame {
 public:
     SampleVRHand(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                          //handModel(engine.getRenderer().getOrCreateModel("resources/models/hand-for-vr2.fbx")),
-                                          handModel(engine.getRenderer().getOrCreateModel("resources/models/MRTK_HandCoach_FBX-Carrot.fbx")),
-                                          //handModel(engine.getRenderer().getOrCreateModel("resources/models/cube_tower.fbx")),
+                                          //handModel(GetAssetServer().loadModel("resources/models/hand-for-vr2.fbx")),
+                                          handModel(GetAssetServer().loadModel("resources/models/MRTK_HandCoach_FBX-Carrot.fbx")),
+                                          //handModel(GetAssetServer().loadModel("resources/models/cube_tower.fbx")),
                                           rightHandRenderer(handModel)
     {
         verify(engine.getVRSession().getHandTracking().isSupported(), "This sample only works with hand-tracking-capable devices.");
