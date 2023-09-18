@@ -98,9 +98,6 @@ namespace Peeler {
             edition.hasModifications = true;
         }
 
-        ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &component->isTransparent);
-        ImGui::Checkbox("Casts shadows##ModelComponent casts shadows inspector", &component->castsShadows);
-
         if(ImGui::BeginDragDropTarget()) {
             if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
                 std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
@@ -122,6 +119,9 @@ namespace Peeler {
 
             ImGui::EndDragDropTarget();
         }
+
+        ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &component->isTransparent);
+        ImGui::Checkbox("Casts shadows##ModelComponent casts shadows inspector", &component->castsShadows);
 
         float colorArr[4] = { component->color.r, component->color.g, component->color.b, component->color.a };
         if(ImGui::ColorPicker4("Model color", colorArr)) {
