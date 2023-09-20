@@ -15,6 +15,9 @@ namespace Peeler::ECS {
     }
 
     void CameraRenderer::onFrame(Carrot::Render::Context renderContext) {
+        if(!cameraModel.isReady()) {
+            return;
+        }
         Carrot::Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
         packet.useMesh(*cameraModel->getStaticMeshes()[0]);
 

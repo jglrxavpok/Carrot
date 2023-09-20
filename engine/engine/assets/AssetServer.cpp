@@ -10,18 +10,36 @@
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <engine/Engine.h>
 #include <core/io/FileSystemOS.h>
+#include <Fertilizer.h>
+
+#pragma optimize("", off)
 
 namespace Carrot {
+    namespace fs = std::filesystem;
+
+    class AssetConversionException: public std::exception {
+    public:
+        std::string fullMessage;
+
+        AssetConversionException(const Carrot::IO::VFS::Path& assetPath, const std::string& message) {
+            fullMessage = Carrot::sprintf("AssetConversion failed: %s (%s)", message.c_str(), assetPath.toString().c_str());
+        }
+
+        const char *what() const override {
+            return fullMessage.c_str();
+        }
+    };
+
     AssetServer::AssetServer(IO::VFS& vfs): vfs(vfs) {
         Console::instance().registerCommand("DumpAssetReferences", [this](Carrot::Engine& engine) {
             dumpAssetReferences();
         });
 
-        auto assetServerPath = Carrot::IO::getExecutablePath() / "asset_server";
-        if(!std::filesystem::exists(assetServerPath)) {
-            std::filesystem::create_directories(assetServerPath);
+        vfsRoot = Carrot::IO::getExecutablePath().parent_path() / "asset_server";
+        if(!std::filesystem::exists(vfsRoot)) {
+            std::filesystem::create_directories(vfsRoot);
         }
-        GetVFS().addRoot("asset_server", assetServerPath);
+        GetVFS().addRoot("asset_server", vfsRoot);
     }
 
     AssetServer::~AssetServer() {}
@@ -57,10 +75,14 @@ namespace Carrot {
         const std::string modelPath = path.toString();
         ZoneText(modelPath.c_str(), modelPath.size());
         return models.getOrCompute(modelPath, [&]() {
-
             Carrot::IO::Resource from;
             try {
-                from = modelPath;
+                fs::path convertedPath = {}; // TODO: make this work properly -> convert(path);
+                if(convertedPath.empty()) {
+                    from = modelPath; // probably won't work, but at least the error message will be readable
+                } else {
+                    from = Carrot::IO::Resource{ path, convertedPath };
+                }
             } catch(std::runtime_error& e) {
                 Carrot::Log::error("Failed to load model %s", modelPath.c_str());
                 // in case file could not be opened
@@ -89,7 +111,12 @@ namespace Carrot {
             CLEANUP(loadingCount--);
             Carrot::IO::Resource from;
             try {
-                from = textureName;
+                fs::path convertedPath = convert(path);
+                if(convertedPath.empty()) {
+                    from = textureName; // probably won't work, but at least the error message will be readable
+                } else {
+                    from = Carrot::IO::Resource{ path, convertedPath };
+                }
             } catch(std::runtime_error& e) {
                 Carrot::Log::error("Could not open texture '%s'", textureName.c_str());
                 // in case file could not be opened
@@ -141,6 +168,37 @@ namespace Carrot {
 
     void AssetServer::dumpAssetReferences() {
         // TODO
+    }
+
+    fs::path AssetServer::getConvertedPath(const Carrot::IO::VFS::Path& path) {
+        Carrot::IO::VFS::Path p = GetVFS().complete(path);
+        if(p.isEmpty()) {
+            return {};
+        }
+        const fs::path root { p.getRoot() };
+        const fs::path relativePath = root / p.getPath().get();
+        // path of asset as if we had copied it to <vfsRoot>/<path.getRoot()>/<path.getPath()>
+        // examples: <vfsRoot>/game/resources/my_texture.jpg
+        //           <vfsRoot>/engine/resources/models/cube.gltf
+        fs::path expectedPath = vfsRoot / relativePath;
+        fs::path convertedPath = Fertilizer::makeOutputPath(expectedPath);
+        return convertedPath;
+    }
+
+    fs::path AssetServer::convert(const Carrot::IO::VFS::Path& path) {
+        fs::path convertedPath = getConvertedPath(path);
+        if(convertedPath.empty()) {
+            return {};
+        }
+
+        const fs::path diskPath = GetVFS().resolve(path);
+        Fertilizer::ConversionResult result = Fertilizer::convert(diskPath, convertedPath, false);
+
+        if(result.errorCode != Fertilizer::ConversionResultError::Success) {
+            throw AssetConversionException(path, result.errorMessage);
+        }
+
+        return convertedPath;
     }
 
 } // Carrot

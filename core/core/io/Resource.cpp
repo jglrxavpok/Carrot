@@ -32,6 +32,15 @@ namespace Carrot::IO {
         data.fileSize = std::filesystem::file_size(fullPath);
     }
 
+    Resource::Resource(const VFS::Path& path, const std::filesystem::path& filepathOverride): data(false) {
+        name(filepathOverride, path.toString());
+
+        if(!std::filesystem::exists(filepathOverride)) {
+            throw std::filesystem::filesystem_error("File does not exist", filepathOverride, std::error_code{ 1, std::system_category() });
+        }
+        data.fileSize = std::filesystem::file_size(filepathOverride);
+    }
+
     Resource::Resource(const std::vector<std::uint8_t>& data): data(true) {
         auto container = std::make_shared<std::vector<std::uint8_t>>(data.size());
         std::memcpy(container->data(), data.data(), data.size());
@@ -169,6 +178,11 @@ namespace Carrot::IO {
 
     const std::string& Resource::getName() const {
         return debugName;
+    }
+
+    const std::filesystem::path& Resource::getFilepath() const {
+        verify(!data.isRawData, "Call this only on file-based Resources!");
+        return filename;
     }
 
     Carrot::IO::Resource Resource::inMemory(const std::string& text) {

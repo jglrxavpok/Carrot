@@ -40,7 +40,6 @@ add_executable(
         core/Counters.cpp
         core/CSharpScripting.cpp
         core/FileWatching.cpp
-        core/Logging.cpp
         core/Lookup.cpp
         core/Paths.cpp
         core/SparseArrays.cpp

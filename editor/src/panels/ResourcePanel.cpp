@@ -186,7 +186,7 @@ namespace Peeler {
                         if(ImGui::BeginCombo("##subdirectory selector", ">", ImGuiComboFlags_NoArrowButton)) {
                             for (const auto& file: std::filesystem::directory_iterator(GetVFS().resolve(reconstructedPath))) {
                                 if(file.is_directory()) {
-                                    std::string filename = file.path().filename().string();
+                                    const std::string filename = Carrot::toString(file.path().filename().u8string());
                                     bool selected = filename == part;
                                     if(ImGui::Selectable(filename.c_str(), selected)) {
                                         updateCurrentFolder(reconstructedPath / filename);

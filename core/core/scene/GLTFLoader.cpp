@@ -27,10 +27,10 @@ namespace Carrot::Render {
                            std::string* err, const std::string& filepath,
                            void* userData) {
         ZoneScoped;
-        IO::Resource resource { IO::VFS::Path { filepath } };
-        std::uint64_t resourceSize = resource.getSize();
+        IO::FileHandle file { filepath, IO::OpenMode::Read };
+        std::uint64_t resourceSize = file.getSize();
         out->resize(resourceSize);
-        resource.read(*out);
+        file.read(out->data(), resourceSize);
         return true;
     }
 
@@ -74,9 +74,10 @@ namespace Carrot::Render {
 
     bool gltfFileExists(const std::string& abs_filename, void* userData) {
         ZoneScoped;
-        const IO::Resource& modelResource = *(static_cast<const IO::Resource*>(userData));
-        IO::VFS::Path p { modelResource.getName() };
-        return GetVFS().exists(p);
+/*        const IO::Resource& modelResource = *(static_cast<const IO::Resource*>(userData));
+        IO::VFS::Path p { abs_filename };
+        return GetVFS().exists(p);*/
+        return std::filesystem::exists(abs_filename);
     }
 
     static glm::vec3 toVec3(std::span<const double> doubles, const glm::vec3& defaultValue) {
@@ -327,7 +328,13 @@ namespace Carrot::Render {
 
         IO::VFS::Path vfsPath { resource.getName() };
 
-        if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, resource.getName())) {
+        std::string gltfContents = resource.readText();
+        const char* gltfStr = gltfContents.c_str();
+        const std::size_t gltfStrSize = gltfContents.size();
+
+        std::string baseDir = Carrot::toString(resource.getFilepath().parent_path().u8string());
+
+        if(!parser.LoadASCIIFromString(&model, &errors, &warnings, gltfStr, gltfStrSize, baseDir)) {
             Carrot::Log::error("Failed to load glTF '%s': %s", resource.getName().c_str(), errors.c_str());
             TODO; // throw exception
         }

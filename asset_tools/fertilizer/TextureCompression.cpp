@@ -6,7 +6,6 @@
 #include <ktx.h>
 #include <vulkan/vulkan_core.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 namespace Fertilizer {

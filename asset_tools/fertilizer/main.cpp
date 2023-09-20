@@ -8,6 +8,10 @@
 #include "core/Macros.h"
 #include "core/utils/stringmanip.h"
 
+// single file implementations
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 int main(int argc, char** argv) {
     auto start = std::chrono::steady_clock::now();
 

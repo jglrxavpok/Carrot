@@ -164,3 +164,10 @@ TEST(Paths, ExtensionReplace) {
 
     ASSERT_EQ(Path(".gitignore").withExtension(".zip"), Path(".gitignore.zip")); // special case: hidden files
 }
+
+TEST(Paths, GetParent) {
+    ASSERT_EQ(Path("a/b").getParent(), Path("a"));
+    ASSERT_EQ(Path("a/b/c/d.txt").getParent(), Path("a/b/c"));
+
+    ASSERT_EQ(Path("abc").getParent(), Path{});
+}

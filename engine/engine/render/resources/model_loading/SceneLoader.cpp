@@ -9,7 +9,7 @@
 namespace Carrot::Render {
     LoadedScene& SceneLoader::load(const Carrot::IO::Resource& file) {
         verify(file.isFile(), "In-memory models are not supported!");
-        const Carrot::IO::Path filePath { file.getName() };
+        const Carrot::IO::Path filePath { Carrot::toString(file.getFilepath().u8string()).c_str() };
 
         if(filePath.getExtension() == ".gltf") {
             Render::GLTFLoader loader;

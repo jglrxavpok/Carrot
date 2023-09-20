@@ -54,11 +54,28 @@ namespace Carrot::IO {
         return it.value();
     }
 
+    VirtualFileSystem::Path VirtualFileSystem::complete(const Path& path) const {
+        if(path.isGeneric()) {
+            auto normalizedVersion = path.getPath();
+            // TODO: might need caching of some kind to avoid querying the OS each time
+            for(const auto& [rootID, rootPath] : roots.snapshot()) {
+                std::filesystem::path p = *rootPath;
+                p.append(normalizedVersion.asString());
+                if(std::filesystem::exists(p)) {
+                    return Path{rootID, path.getPath()};
+                }
+            }
+            return Path{};
+        } else {
+            return path;
+        }
+    }
+
     std::optional<VirtualFileSystem::Path> VirtualFileSystem::represent(const std::filesystem::path& path) const {
         for(const auto& [rootID, rootPath] : roots.snapshot()) {
             std::filesystem::path relativePath = std::filesystem::relative(path, *rootPath);
             if(!relativePath.empty()) {
-                std::string asStr = relativePath.string();
+                std::string asStr = Carrot::toString(relativePath.u8string());
                 if(asStr.size() < 2 || asStr[0] != '.' || asStr[1] != '.') {
                     return VirtualFileSystem::Path(rootID, NormalizedPath(asStr.c_str()));
                 }

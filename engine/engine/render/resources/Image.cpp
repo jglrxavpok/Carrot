@@ -151,7 +151,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
     };
 
     if(resource.isFile()) {
-        auto format = IO::getFileFormat(resource.getName().c_str());
+        auto format = IO::getFileFormat(Carrot::toString(resource.getFilepath().u8string()).c_str());
         if(!IO::isImageFormat(format)) {
             throw std::runtime_error("Unsupported filetype: "+resource.getName());
         }
@@ -163,7 +163,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
 
             Profiling::PrintingScopedTimer _timer("EXR file load");
 
-            std::filesystem::path realPath = GetVFS().resolve(IO::VFS::Path(resource.getName()));
+            std::filesystem::path realPath = resource.getFilepath();
             RgbaInputFile file (Carrot::toString(realPath.u8string()).c_str());
 
             Box2i dw = file.dataWindow();

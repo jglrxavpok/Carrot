@@ -27,6 +27,11 @@ namespace Carrot::IO {
         Resource(const std::string& path);
         Resource(const VFS::Path& path);
 
+        /// Loads a resource with the given path, but read from 'filepathOverride'.
+        /// The intent is to allow for the asset server to serve a Resource with a valid VFS::Path, but with a physical path that is different
+        ///  because the asset server converted the asset before loading it
+        Resource(const VFS::Path& path, const std::filesystem::path& filepathOverride);
+
         /// Copies data inside a shared vector
         explicit Resource(const std::vector<std::uint8_t>& data);
 
@@ -66,6 +71,15 @@ namespace Carrot::IO {
         bool isFile() const;
         uint64_t getSize() const;
         const std::string& getName() const;
+
+        /**
+         * Returns the actual filepath of this resource. This filepath MAY not have the same extension of the name of the resource
+         * For instance, a .png can be converted into a .ktx2 file, but the resource will still be called "texture.png"
+         * Notes:
+         * - Call this only if isFile is true
+         * - Call this only when you *really* need the actual filepath.
+         */
+        const std::filesystem::path& getFilepath() const;
 
     public:
         /**

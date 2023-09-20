@@ -2,7 +2,6 @@
 // Created by jglrxavpok on 01/09/2023.
 //
 
-#include "../engine/test_game_main.cpp"
 #include <core/io/Logging.hpp>
 
 using namespace Carrot;

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <engine/assets/Asset.h>
 #include <core/data/Hashes.h>
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <engine/render/AsyncResource.hpp>
@@ -61,8 +60,12 @@ namespace Carrot {
         void indexAssets();
         void dumpAssetReferences();
 
+        std::filesystem::path getConvertedPath(const Carrot::IO::VFS::Path& path); // find the path inside asset_server folder for the converted asset
+        std::filesystem::path convert(const Carrot::IO::VFS::Path& path); // performs conversion
+
     private:
         IO::VirtualFileSystem& vfs;
+        std::filesystem::path vfsRoot;
         std::atomic_int64_t loadingCount{0};
 
         Async::ParallelMap<std::pair<std::string, std::uint64_t>, std::shared_ptr<Pipeline>> pipelines{};

@@ -186,6 +186,19 @@ namespace Carrot::IO {
         return pathView.substr(lastSeparator+1);
     }
 
+    std::string_view Path::getParentStringView() const {
+        std::size_t lastSeparator = path.find_last_of('/');
+        if(lastSeparator == std::string::npos) {
+            return {};
+        }
+        std::string_view pathView = path;
+        return pathView.substr(0, lastSeparator);
+    }
+
+    Path Path::getParent() const {
+        return Path{ getParentStringView() };
+    }
+
     std::string_view Path::getExtension() const {
         if(path.empty())
             return {};

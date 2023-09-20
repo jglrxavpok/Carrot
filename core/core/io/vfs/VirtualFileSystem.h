@@ -80,6 +80,11 @@ namespace Carrot::IO {
         /// Resolves the input VFS path to a physical absolute path. Throws if the root is not valid
         std::filesystem::path resolve(const Path& path) const;
 
+        /// Completes the path:
+        ///  If 'path' is generic, find the root corresponding to that path, and returns it. If no such root exists, returns an empty path
+        ///  If 'path' is not generic, returns 'path' directly
+        Path complete(const Path& path) const;
+
         /// Resolves the input VFS path to a physical absolute path
         std::optional<std::filesystem::path> safeResolve(const Path& path) const;
 

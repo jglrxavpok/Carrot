@@ -70,6 +70,9 @@ namespace Carrot::IO {
          */
         std::string_view getFilename() const;
 
+        std::string_view getParentStringView() const;
+        Path getParent() const;
+
         /**
          * Returns a string_view representing the extension inside the path (with the dot), extracted from the last dot
          * present after the last separator, to the end of the path.
