@@ -315,7 +315,7 @@ namespace Peeler {
                     if(ImGui::Button("Create")) {
                         GetTaskScheduler().schedule(Carrot::TaskDescription {
                             .name = "Load new project",
-                            .task = Carrot::Async::AsTask<void>([=]() {
+                            .task = [=](Carrot::TaskHandle&) {
                                 deferredLoad();
                                 std::filesystem::path projectFolder = projectPath;
                                 projectFolder /= projectName;
@@ -328,7 +328,7 @@ namespace Peeler {
                                 wantsToLoadProject = false;
                                 GetVFS().addRoot("game", projectFolder);
                                 projectToLoad = std::filesystem::path{};
-                            })
+                            }
                         }, Carrot::TaskScheduler::MainLoop);
                     }
                 }
@@ -1550,7 +1550,7 @@ namespace Peeler {
             auto entity = addEntity(parent);
             entity.addComponent<Carrot::ECS::ModelComponent>();
             Carrot::ECS::ModelComponent& modelComp = entity.getComponent<Carrot::ECS::ModelComponent>();
-            modelComp.asyncModel = Carrot::AsyncModelResource(GetAssetServer().coloadModel("resources/models/simple_cube.obj"));
+            modelComp.asyncModel = Carrot::AsyncModelResource(GetAssetServer().loadModelTask("resources/models/simple_cube.obj"));
         }
 
         if(ImGui::MenuItem("Add Light##add entity menu")) {

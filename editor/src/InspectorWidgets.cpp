@@ -48,7 +48,7 @@ namespace Peeler {
         ImGui::SameLine();
 
         if(hasEntity) {
-            auto texture = GetAssetServer().loadTexture(ResetWidgetTexture);
+            auto texture = GetAssetServer().blockingLoadTexture(ResetWidgetTexture);
             if (ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize))) {
                 destination = {Carrot::UUID::null(), currentScene.world};
                 hasChanged = true;
@@ -78,7 +78,7 @@ namespace Peeler {
         ImGui::SameLine();
 
         {
-            auto texture = GetAssetServer().loadTexture(PickWidgetTexture);
+            auto texture = GetAssetServer().blockingLoadTexture(PickWidgetTexture);
             if (state.lastFrame < GetRenderer().getFrameCount() - 1) {
                 state.tryingToPick = false;
             }
@@ -140,7 +140,7 @@ namespace Peeler {
                 *pOut = nullptr;
                 updated = true;
             } else {
-                auto textureRef = GetAssetServer().loadTexture(Carrot::IO::VFS::Path { state.textInputContents });
+                auto textureRef = GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { state.textInputContents });
                 *pOut = textureRef;
                 updated = true;
             }
@@ -155,7 +155,7 @@ namespace Peeler {
 
                 std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    *pOut = GetAssetServer().loadTexture(fsPath.string().c_str());
+                    *pOut = GetAssetServer().blockingLoadTexture(fsPath.string().c_str());
                     updated = true;
                 }
             }

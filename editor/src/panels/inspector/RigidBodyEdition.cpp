@@ -225,7 +225,7 @@ namespace Peeler {
     static bool ResetButton(const char* id) {
         ImGui::PushID(id);
         float buttonSize = ImGui::GetTextLineHeight();
-        auto texture = GetAssetServer().loadTexture(ResetWidgetTexture);
+        auto texture = GetAssetServer().blockingLoadTexture(ResetWidgetTexture);
         bool result = ImGui::ImageButton(texture->getImguiID(), ImVec2(buttonSize, buttonSize));
         ImGui::PopID();
         return result;
@@ -246,7 +246,7 @@ namespace Peeler {
 
         bool editLocalTransform = currentlyEditedCollider == &collider;
         float buttonSize = ImGui::GetTextLineHeight();
-        auto texture = GetAssetServer().loadTexture(EditColliderIcon);
+        auto texture = GetAssetServer().blockingLoadTexture(EditColliderIcon);
         if(ImGui::ImageToggleButton("Edit collider", texture->getImguiID(), &editLocalTransform, ImVec2(buttonSize, buttonSize))) {
             bool hasLayer = edition.editor.hasLayer<ColliderEditionLayer>();
             if(editLocalTransform) {
@@ -438,8 +438,8 @@ namespace Peeler {
                 const ImVec2 buttonSize{ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
                 bool isLocked = glm::abs(axes[axisIndex]) < 0.01f;
 
-                const auto textureRef = isLocked ? GetAssetServer().loadTexture(LockedWidgetTexture)
-                                                 : GetAssetServer().loadTexture(UnlockedWidgetTexture);
+                const auto textureRef = isLocked ? GetAssetServer().blockingLoadTexture(LockedWidgetTexture)
+                                                 : GetAssetServer().blockingLoadTexture(UnlockedWidgetTexture);
                 const ImTextureID textureID = textureRef->getImguiID();
                 const bool changed = ImGui::ImageToggleButton(id, textureID, &isLocked, buttonSize);
                 if (changed) {

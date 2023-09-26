@@ -15,7 +15,7 @@ namespace Carrot {
     template<typename T, bool WaitOnAccess>
     class AsyncResource {
     public:
-        using TaskType = Carrot::Async::Task<std::shared_ptr<T>>;
+        using TaskType = std::function<std::shared_ptr<T>(TaskHandle& taskHandle)>;
 
     public:
         AsyncResource() {
@@ -113,20 +113,17 @@ namespace Carrot {
         }
 
         /// Creates a coroutine compatible with the TaskScheduler
-        Async::Task<> asTask(std::shared_ptr<AsyncResource::Storage> targetStorage) {
+        TaskProc asTask(std::shared_ptr<AsyncResource::Storage> targetStorage) {
             verify(targetStorage->initializer, "Needs an initializer");
             verify(!targetStorage->initialized, "Resource must not already be initialized");
             verify(!targetStorage->value, "Resource must not already be initialized");
-            targetStorage->running = true;
-            try {
-                targetStorage->value = co_await targetStorage->initializer;
-            } catch (...) {
-                std::rethrow_exception(std::current_exception());
-            }
-            targetStorage->initializer = {};
-            targetStorage->running = false;
-            targetStorage->initialized = true;
-            co_return;
+            return [targetStorage](TaskHandle& taskHandle) {
+                targetStorage->running = true;
+                targetStorage->value = targetStorage->initializer(taskHandle);
+                targetStorage->initializer = {};
+                targetStorage->running = false;
+                targetStorage->initialized = true;
+            };
         }
 
     private:

@@ -37,6 +37,7 @@ namespace Carrot::Async {
             if(toContinue) {
                 toContinue();
             }
+            fibersWaiting.notifyAll();
         }
     }
 
@@ -75,6 +76,10 @@ namespace Carrot::Async {
         sleepCondition.wait(lk, [&] {
             return isIdle();
         });
+    }
+
+    void Counter::wait(Cider::FiberHandle& task) {
+        fibersWaiting.suspendAndWait(task);
     }
 
     void Counter::onCoroutineSuspend(std::coroutine_handle<> h) {

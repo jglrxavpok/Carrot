@@ -8,6 +8,7 @@
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <engine/render/AsyncResource.hpp>
 #include <engine/ecs/EntityTypes.h>
+#include <engine/task/TaskScheduler.h>
 
 namespace Carrot {
     struct Model;
@@ -38,20 +39,26 @@ namespace Carrot {
         bool TMLhasReloadedShaders();
 
     public:
+        template<typename T>
+        using LoadTaskProc = std::function<std::shared_ptr<T>(TaskHandle&)>;
+
         // TODO: request sound effect
         // TODO: request music
         // TODO: request animated model
         // TODO: request font
         // TODO: request rendering pipeline
         // TODO: move asset loading from VulkanRenderer to here
-        std::shared_ptr<Model> loadModel(const Carrot::IO::VFS::Path& path);
-        Async::Task<std::shared_ptr<Model>> coloadModel(Carrot::IO::VFS::Path path);
+        std::shared_ptr<Model> blockingLoadModel(const Carrot::IO::VFS::Path& path);
+        LoadTaskProc<Model> loadModelTask(const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<Model> loadModel(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
-        std::shared_ptr<Render::Texture> loadTexture(const Carrot::IO::VFS::Path& path);
-        Async::Task<std::shared_ptr<Render::Texture>> coloadTexture(Carrot::IO::VFS::Path path);
+        std::shared_ptr<Render::Texture> blockingLoadTexture(const Carrot::IO::VFS::Path& path);
+        LoadTaskProc<Render::Texture> loadTextureTask(const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<Render::Texture> loadTexture(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
-        std::shared_ptr<Pipeline> loadPipeline(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
-        Async::Task<std::shared_ptr<Pipeline>> coloadPipeline(Carrot::IO::VFS::Path path, std::uint64_t instanceOffset = 0);
+        std::shared_ptr<Pipeline> blockingLoadPipeline(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
+        LoadTaskProc<Pipeline> loadPipelineTask(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
+        std::shared_ptr<Pipeline> loadPipeline(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
 
     public:
         std::int64_t getCurrentlyLoadingCount() const;

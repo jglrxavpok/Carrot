@@ -9,6 +9,7 @@
 #include <engine/render/Model.h>
 #include <core/async/Counter.h>
 #include <core/async/Coroutines.hpp>
+#include <engine/task/TaskScheduler.h>
 #include <glm/gtx/hash.hpp>
 
 namespace Carrot::AI {
@@ -123,7 +124,7 @@ namespace Carrot::AI {
 
         using OpenHeightField = SparseArray<HeightFieldColumn>;
 
-        Carrot::Async::Task<void> build();
+        void build(Carrot::TaskHandle&);
 
         bool doSpansConnect(const HeightFieldSpan& spanA, const HeightFieldSpan& spanB);
         bool doContourPointsConnect(const OpenHeightField& field, const ContourPoint& pointA, const ContourPoint& pointB);

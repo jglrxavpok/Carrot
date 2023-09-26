@@ -20,11 +20,11 @@ namespace Peeler {
     {
         using namespace Carrot::IO;
         using namespace Carrot::Render;
-        filetypeIcons[FileFormat::LUA] = GetAssetServer().loadTexture("resources/textures/ui/filetypes/lua.png");
-        filetypeIcons[FileFormat::OBJ] = GetAssetServer().loadTexture("resources/textures/ui/filetypes/obj.png");
-        filetypeIcons[FileFormat::FBX] = GetAssetServer().loadTexture("resources/textures/ui/filetypes/fbx.png");
-        filetypeIcons[FileFormat::TXT] = GetAssetServer().loadTexture("resources/textures/ui/filetypes/txt.png");
-        filetypeIcons[FileFormat::JSON] = GetAssetServer().loadTexture("resources/textures/ui/filetypes/json.png");
+        filetypeIcons[FileFormat::LUA] = GetAssetServer().blockingLoadTexture("resources/textures/ui/filetypes/lua.png");
+        filetypeIcons[FileFormat::OBJ] = GetAssetServer().blockingLoadTexture("resources/textures/ui/filetypes/obj.png");
+        filetypeIcons[FileFormat::FBX] = GetAssetServer().blockingLoadTexture("resources/textures/ui/filetypes/fbx.png");
+        filetypeIcons[FileFormat::TXT] = GetAssetServer().blockingLoadTexture("resources/textures/ui/filetypes/txt.png");
+        filetypeIcons[FileFormat::JSON] = GetAssetServer().blockingLoadTexture("resources/textures/ui/filetypes/json.png");
 
         updateCurrentFolder(Carrot::IO::VFS::Path("engine://"));
     }

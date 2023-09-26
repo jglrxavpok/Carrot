@@ -534,18 +534,22 @@ namespace Carrot::Scripting {
     }
 
     void CSharpBindings::BeginProfilingZone(MonoString* zoneName) {
+#ifdef TRACY_ENABLE
         TracyCZoneN(newZone, "C# zone", true);
         char* str = mono_string_to_utf8(zoneName);
         TracyCZoneName(newZone, str, strlen(str));
         mono_free(str);
         ProfilingZones_TLS.push(newZone);
+#endif
     }
 
     void CSharpBindings::EndProfilingZone(MonoString* zoneName) {
+#ifdef TRACY_ENABLE
         verify(!ProfilingZones_TLS.empty(), "Cannot end profiling zone if none is active!");
         TracyCZoneCtx currentZone = ProfilingZones_TLS.top();
         ProfilingZones_TLS.pop();
         TracyCZoneEnd(currentZone);
+#endif
     }
 
     ComponentID CSharpBindings::GetComponentID(MonoString* namespaceStr, MonoString* classStr) {

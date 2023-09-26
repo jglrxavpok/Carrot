@@ -9,7 +9,7 @@
 
 namespace Peeler::ECS {
     CameraRenderer::CameraRenderer(Carrot::ECS::World& world): Carrot::ECS::RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::CameraComponent>(world) {
-        cameraModel = Carrot::AsyncModelResource(GetAssetServer().coloadModel("resources/models/camera.obj"));
+        cameraModel = Carrot::AsyncModelResource(GetAssetServer().loadModelTask("resources/models/camera.obj"));
         primaryCameraPipeline = GetRenderer().getOrCreatePipeline("gBuffer");
         secondaryCameraPipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
     }

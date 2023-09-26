@@ -88,16 +88,16 @@ Carrot::VulkanRenderer::~VulkanRenderer() {
 
 void Carrot::VulkanRenderer::lateInit() {
     ZoneScoped;
-    unitSphereModel = GetAssetServer().loadModel("resources/models/simple_sphere.obj");
-    unitCubeModel = GetAssetServer().loadModel("resources/models/simple_cube.obj");
-    unitCapsuleModel = GetAssetServer().loadModel("resources/models/simple_capsule.obj");
+    unitSphereModel = GetAssetServer().blockingLoadModel("resources/models/simple_sphere.obj");
+    unitCubeModel = GetAssetServer().blockingLoadModel("resources/models/simple_cube.obj");
+    unitCapsuleModel = GetAssetServer().blockingLoadModel("resources/models/simple_capsule.obj");
     wireframeGBufferPipeline = getOrCreatePipeline("gBufferWireframe");
     gBufferPipeline = getOrCreatePipeline("gBuffer");
     whiteMaterial = getMaterialSystem().createMaterialHandle();
     whiteMaterial->albedo = getMaterialSystem().getWhiteTexture();
 
     // requires whiteMaterial
-    debugArrowModel = GetAssetServer().loadModel("resources/models/simple_arrow.gltf");
+    debugArrowModel = GetAssetServer().blockingLoadModel("resources/models/simple_arrow.gltf");
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassSpecificPipeline(const std::string& name, const vk::RenderPass& renderPass) {
@@ -109,11 +109,11 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(co
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipelineFullPath(const std::string& name, std::uint64_t instanceOffset) {
-    return GetAssetServer().loadPipeline(Carrot::IO::VFS::Path { name }, instanceOffset);
+    return GetAssetServer().blockingLoadPipeline(Carrot::IO::VFS::Path { name }, instanceOffset);
 }
 
 std::shared_ptr<Carrot::Render::Texture> Carrot::VulkanRenderer::getOrCreateTexture(const std::string& textureName) {
-    return GetAssetServer().loadTexture(Carrot::IO::VFS::Path { "resources/textures/" + textureName });
+    return GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { "resources/textures/" + textureName });
 }
 
 std::shared_ptr<Carrot::Render::Font> Carrot::VulkanRenderer::getOrCreateFront(const Carrot::IO::Resource& from) {
@@ -780,9 +780,9 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     for (auto& pair : perThreadPacketStorage.snapshot()) {
         TaskDescription task {
             .name = "Reset thread local render packet storage",
-            .task = Async::AsTask<void>([pair]() {
+            .task = [pair](TaskHandle&) {
                 (*pair.second)->beginFrame();
-            }),
+            },
             .joiner = &prepareThreadRenderPackets,
         };
         GetTaskScheduler().schedule(std::move(task), TaskScheduler::FrameParallelWork);
@@ -896,7 +896,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
 
         TaskDescription task {
                 .name = "Cleanup thread local render packets",
-                .task = Carrot::Async::AsTask<void>([pPackets = packets]() {
+                .task = [pPackets = packets](TaskHandle&) {
                     std::size_t previousCapacity = pPackets->unsorted.capacity();
                     {
                         ZoneScopedN("thread local packets.clear()");
@@ -906,7 +906,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
                         ZoneScopedN("thread local packets.reserve(previousCapacity)");
                         pPackets->unsorted.reserve(previousCapacity);
                     }
-                }),
+                },
                 .joiner = &mustBeDoneByNextFrameCounter,
         };
         GetTaskScheduler().schedule(std::move(task), TaskScheduler::FrameParallelWork);

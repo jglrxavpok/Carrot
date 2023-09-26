@@ -11,6 +11,8 @@
 #include <mutex>
 #include <source_location>
 #include <core/Macros.h>
+#include <cider/WaitQueue.h>
+#include <cider/Fiber.h>
 #include "Locks.h"
 
 namespace Carrot::Async {
@@ -45,6 +47,11 @@ namespace Carrot::Async {
         /// Waits for the counter, but puts the thread to sleep
         void sleepWait();
 
+        /// Yields the given fiber until the counter reaches 0.
+        /// Does nothing if the counter is already at 0.
+        /// The given task WILL be awakened as soon as the counter reaches 0, which ever thread that happens on.
+        void wait(Cider::FiberHandle& fiber);
+
     public:
         /// Increments this counter
         void increment();
@@ -74,6 +81,7 @@ namespace Carrot::Async {
 
         mutable ReadWriteLock counterLock;
         std::source_location source; // helps debug
+        Cider::WaitQueue fibersWaiting;
 
         template<typename T>
         friend class CoroutinePromiseType;

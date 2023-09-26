@@ -67,3 +67,6 @@
 [submodule "thirdparty/VulkanMemoryAllocator"]
 	path = thirdparty/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "thirdparty/cider"]
+	path = thirdparty/cider
+	url = https://github.com/jglrxavpok/cider

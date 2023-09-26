@@ -125,7 +125,7 @@ namespace Carrot::Render {
     ModelRenderer::ModelRenderer(Model& model, ModelRenderer::NoInitTag): model(model) {}
 
     /* static */std::shared_ptr<ModelRenderer> ModelRenderer::fromJSON(const rapidjson::Value& json) {
-        std::shared_ptr<Carrot::Model> model = GetAssetServer().loadModel(json["model"].GetString());
+        std::shared_ptr<Carrot::Model> model = GetAssetServer().blockingLoadModel(json["model"].GetString());
         std::shared_ptr<ModelRenderer> renderer = std::make_unique<ModelRenderer>(*model);
 
         Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
@@ -162,7 +162,7 @@ namespace Carrot::Render {
                 auto loadTexture = [&](const rapidjson::Value& jsonElement) {
                     std::string_view texturePath { jsonElement.GetString(), jsonElement.GetStringLength() };
 
-                    return materialSystem.createTextureHandle(GetAssetServer().loadTexture(Carrot::IO::VFS::Path { texturePath }));
+                    return materialSystem.createTextureHandle(GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { texturePath }));
                 };
                 if(const auto& element = texturesObj.FindMember("albedo_texture"); element != texturesObj.MemberEnd()) {
                     override.materialTextures->albedo = loadTexture(element->value);

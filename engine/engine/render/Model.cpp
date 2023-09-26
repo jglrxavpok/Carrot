@@ -58,9 +58,9 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
 
         GetTaskScheduler().schedule(Carrot::TaskDescription {
             .name = Carrot::sprintf("Load textures for material %s", material.name.c_str()),
-            .task = Carrot::Async::AsTask<void>([material, handle, &file, &waitMaterialLoads]() -> void {
+            .task = [material, handle, file](TaskHandle& task) -> void {
                 auto& materialSystem = GetRenderer().getMaterialSystem();
-                auto setMaterialTexture = [&file, material](std::shared_ptr<Render::TextureHandle>& toSet, const Carrot::IO::VFS::Path& texturePath, std::shared_ptr<Render::TextureHandle> defaultHandle) {
+                auto setMaterialTexture = [&task, &file, material](std::shared_ptr<Render::TextureHandle>& toSet, const Carrot::IO::VFS::Path& texturePath, std::shared_ptr<Render::TextureHandle> defaultHandle) {
                     Profiling::PrintingScopedTimer _t(Carrot::sprintf("setMaterialTexture(%s)", texturePath.toString().c_str()));
                     auto& materialSystem = GetRenderer().getMaterialSystem();
                     bool loadedATexture = false;
@@ -68,7 +68,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                         Carrot::IO::Resource from;
                         try {
                             from = texturePath;
-                            auto texture = materialSystem.createTextureHandle(GetAssetServer().loadTexture(Carrot::IO::VFS::Path { texturePath }));
+                            auto texture = materialSystem.createTextureHandle(GetAssetServer().loadTexture(task, Carrot::IO::VFS::Path { texturePath }));
                             toSet = texture;
                             loadedATexture = true;
                         } catch (std::exception& e) {
@@ -91,7 +91,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
                 handle->emissiveColor = material.emissiveFactor;
                 handle->roughnessFactor = material.roughnessFactor;
                 handle->metallicFactor = material.metallicFactor;
-            }),
+            },
             .joiner = &waitMaterialLoads,
         }, TaskScheduler::AssetLoading);
         materials.push_back(handle);

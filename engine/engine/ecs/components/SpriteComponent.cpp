@@ -20,7 +20,7 @@ namespace Carrot::ECS {
             if(spriteData.HasMember("texturePath")) {
                 const auto& texturePathJSON = spriteData["texturePath"];
                 std::string_view texturePath { texturePathJSON.GetString(), texturePathJSON.GetStringLength() };
-                auto textureRef = GetAssetServer().loadTexture(texturePath);
+                auto textureRef = GetAssetServer().blockingLoadTexture(texturePath);
                 auto regionData = spriteData["region"].GetArray();
                 float minX = regionData[0].GetFloat();
                 float minY = regionData[1].GetFloat();

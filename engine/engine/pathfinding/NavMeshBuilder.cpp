@@ -97,7 +97,7 @@ namespace Carrot::AI {
         entries = std::move(_entries);
         GetTaskScheduler().schedule(TaskDescription {
             .name = "Build NavMesh",
-            .task = build(),
+            .task = [this](TaskHandle& task) { build(task); },
             .joiner = &taskRunning
         }, TaskScheduler::AssetLoading);
     }
@@ -212,7 +212,7 @@ namespace Carrot::AI {
         }
     }
 
-    Carrot::Async::Task<void> NavMeshBuilder::build() {
+    void NavMeshBuilder::build(TaskHandle&) {
         const float voxelSize = params.voxelSize;
         const float maxSlope = params.maxSlope;
         debugStep = "Compute bounds";
@@ -370,7 +370,6 @@ namespace Carrot::AI {
         makeNavMesh(workingData.rawMesh, navMesh);
 
         debugStep = "Finished!";
-        co_return;
     }
 
     bool NavMeshBuilder::doSpansConnect(const HeightFieldSpan& spanA, const HeightFieldSpan& spanB) {

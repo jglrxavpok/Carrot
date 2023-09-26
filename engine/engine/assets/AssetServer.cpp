@@ -70,7 +70,7 @@ namespace Carrot {
         return hasReloadedShadersThisFrame;
     }
 
-    std::shared_ptr<Model> AssetServer::loadModel(const Carrot::IO::VFS::Path& path) {
+    std::shared_ptr<Model> AssetServer::blockingLoadModel(const Carrot::IO::VFS::Path& path) {
         ZoneScopedN("Loading model");
         const std::string modelPath = path.toString();
         ZoneText(modelPath.c_str(), modelPath.size());
@@ -92,17 +92,19 @@ namespace Carrot {
         });
     }
 
-    Carrot::Async::Task<std::shared_ptr<Model>> AssetServer::coloadModel(
-            /* not a ref because we need the string to be alive inside the coroutine*/ Carrot::IO::VFS::Path path) {
-        try {
-            auto result = loadModel(path);
-            co_return result;
-        } catch (...) {
-            throw;
-        }
+    std::shared_ptr<Model> AssetServer::loadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path) {
+        // TODO
+        return blockingLoadModel(path);
     }
 
-    std::shared_ptr<Render::Texture> AssetServer::loadTexture(const Carrot::IO::VFS::Path& path) {
+    AssetServer::LoadTaskProc<Model> AssetServer::loadModelTask(const Carrot::IO::VFS::Path& path) {
+        // TODO
+        return [this, path](TaskHandle& task) {
+            return loadModel(task, path);
+        };
+    }
+
+    std::shared_ptr<Render::Texture> AssetServer::blockingLoadTexture(const Carrot::IO::VFS::Path& path) {
         ZoneScopedN("Loading texture");
         const std::string textureName = path.toString();
         ZoneText(textureName.c_str(), textureName.size());
@@ -127,17 +129,17 @@ namespace Carrot {
         });
     }
 
-    Carrot::Async::Task<Render::Texture::Ref> AssetServer::coloadTexture(
-            /* not a ref because we need the string to be alive inside the coroutine*/ Carrot::IO::VFS::Path path) {
-        try {
-            auto result = loadTexture(path);
-            co_return result;
-        } catch (...) {
-            throw;
-        }
+    AssetServer::LoadTaskProc<Render::Texture> AssetServer::loadTextureTask(const Carrot::IO::VFS::Path& path) {
+        return [this, path](TaskHandle& task) {
+            return loadTexture(task, path);
+        };
     }
 
-    std::shared_ptr<Pipeline> AssetServer::loadPipeline(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset) {
+    std::shared_ptr<Render::Texture> AssetServer::loadTexture(TaskHandle& currentTask, const Carrot::IO::VFS::Path& path) {
+        return blockingLoadTexture(path);
+    }
+
+    std::shared_ptr<Pipeline> AssetServer::blockingLoadPipeline(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset) {
         ZoneScopedN("Loading pipeline");
         const std::string name = path.toString();
         ZoneText(name.c_str(), name.size());
@@ -149,17 +151,14 @@ namespace Carrot {
         });
     }
 
-    Carrot::Async::Task<std::shared_ptr<Pipeline>> AssetServer::coloadPipeline(Carrot::IO::VFS::Path path, std::uint64_t instanceOffset) {
-        try {
-            auto result = loadPipeline(path);
-            co_return result;
-        } catch (...) {
-            throw;
-        }
+    AssetServer::LoadTaskProc<Pipeline> AssetServer::loadPipelineTask(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset) {
+        return [this, path, instanceOffset](TaskHandle& task) {
+            return loadPipeline(task, path, instanceOffset);
+        };
     }
 
-    std::int64_t AssetServer::getCurrentlyLoadingCount() const {
-        return loadingCount.load();
+    std::shared_ptr<Pipeline> AssetServer::loadPipeline(TaskHandle& currentTask, const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset) {
+        return blockingLoadPipeline(path, instanceOffset);
     }
 
     void AssetServer::indexAssets() {

@@ -36,7 +36,7 @@ namespace Carrot::ECS {
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override {
             auto result = std::make_unique<ModelComponent>(newOwner);
             asyncModel.forceWait();
-            result->asyncModel = std::move(AsyncModelResource(GetAssetServer().coloadModel(Carrot::IO::VFS::Path { asyncModel->getOriginatingResource().getName() })));
+            result->asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(Carrot::IO::VFS::Path { asyncModel->getOriginatingResource().getName() })));
             result->isTransparent = isTransparent;
             result->color = color;
             result->modelRenderer = modelRenderer;

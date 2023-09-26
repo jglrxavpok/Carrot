@@ -90,7 +90,7 @@ static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
-#ifdef USE_LIVEPP
+#if USE_LIVEPP
 #include "LPP_API_x64_CPP.h"
 static lpp::LppSynchronizedAgent lppAgent;
 #endif
@@ -125,7 +125,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     instance = this;
     changeTickRate(config.tickRate);
 
-#ifdef USE_LIVEPP
+#if USE_LIVEPP
     std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
     lppAgent = lpp::LppCreateSynchronizedAgent(livePPPath.wstring().c_str());
 
@@ -353,7 +353,7 @@ void Carrot::Engine::run() {
     auto lag = std::chrono::duration<float>(0.0f);
     bool ticked = false;
     while(running) {
-#ifdef USE_LIVEPP
+#if USE_LIVEPP
         if (lppAgent.WantsReload()) {
             lppAgent.CompileAndReloadChanges(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
         }
@@ -601,7 +601,7 @@ Carrot::Engine::~Engine() {
     }
     tracyCtx.clear();
 
-#ifdef USE_LIVEPP
+#if USE_LIVEPP
     lpp::LppDestroySynchronizedAgent(&lppAgent);
 #endif
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {

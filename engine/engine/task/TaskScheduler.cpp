@@ -10,11 +10,53 @@
 #include "engine/render/VulkanRenderer.h"
 #include "core/io/Logging.hpp"
 
+#pragma optimize("", off)
+
 namespace Carrot {
     Async::TaskLane TaskScheduler::FrameParallelWork;
     Async::TaskLane TaskScheduler::AssetLoading;
     Async::TaskLane TaskScheduler::MainLoop;
     Async::TaskLane TaskScheduler::Rendering;
+
+    TaskData::~TaskData() {
+        printf("deleting task %s\n", name.c_str());
+    }
+
+    void TaskHandle::changeLane(const Async::TaskLane& resumeOn) {
+        taskData.wantedLane = resumeOn;
+        fiberHandle.yieldOnTop([this]() {
+            auto task = this->taskData.shared_from_this();
+            GetTaskScheduler().taskQueues[taskData.wantedLane].push(std::move(task));
+        });
+    }
+
+    void TaskHandle::yield() {
+        fiberHandle.yieldOnTop([this]() {
+            auto task = this->taskData.shared_from_this();
+            GetTaskScheduler().taskQueues[taskData.currentLane].push(std::move(task));
+        });
+    }
+
+    void TaskHandle::wait(Async::Counter& counter) {
+        counter.wait(*this);
+    }
+
+    Cider::FiberHandle& TaskHandle::getFiberHandle() {
+        return fiberHandle;
+    }
+
+    TaskHandle::operator Cider::FiberHandle&() {
+        return getFiberHandle();
+    }
+
+    const Async::TaskLane& TaskHandle::getCurrentLane() {
+        return taskData.currentLane;
+    }
+
+    TaskHandle::TaskHandle(Cider::FiberHandle& fiberHandle, TaskData& selfData)
+    : fiberHandle(fiberHandle)
+    , taskData(selfData) {
+    }
 
     std::size_t TaskScheduler::frameParallelWorkParallelismAmount() {
         // reduce CPU load by using less threads
@@ -38,9 +80,6 @@ namespace Carrot {
             });
             Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sParallelTask #%d", isInFrame ? "Frame" : "AssetLoading", i+1));
         }
-
-        mainLoopScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::MainLoop], TaskScheduler::MainLoop, false);
-        renderingScheduling = coscheduleSingleTask(taskQueues[TaskScheduler::Rendering], TaskScheduler::Rendering, false);
     }
 
     TaskScheduler::~TaskScheduler() {
@@ -53,70 +92,52 @@ namespace Carrot {
         }
     }
 
-    [[nodiscard]] Async::Task<bool> TaskScheduler::coscheduleSingleTask(ThreadSafeQueue<TaskDescription>& taskQueue, Async::TaskLane localLane, bool allowBlocking) {
-        TaskDescription toRun;
-        while(true) {
-            bool foundSomethingToExecute = allowBlocking
-                    ? taskQueue.blockingPopSafe(toRun)
-                    : taskQueue.popSafe(toRun);
-            if(foundSomethingToExecute) {
-                bool canRun = true;
+    void TaskScheduler::runSingleTask(Async::TaskLane localLane, bool allowBlocking) {
+        std::shared_ptr<TaskData> toRun = nullptr;
+        auto& taskQueue = taskQueues[localLane];
+        bool foundSomethingToExecute = allowBlocking
+                ? taskQueue.blockingPopSafe(toRun)
+                : taskQueue.popSafe(toRun);
+        if(foundSomethingToExecute) {
+            ZoneScopedN("Run task");
+            ZoneText(toRun->name.c_str(), toRun->name.size());
+            try {
+                toRun->currentLane = localLane;
+                toRun->fiber->switchTo();
 
-                const Async::TaskLane wantedLane = toRun.task.wantedLane();
-                if (wantedLane != Async::TaskLane::Undefined && wantedLane != localLane) {
-                    canRun = false;
-                    schedule(std::move(toRun), wantedLane);
+                // handle task lane changes
+                if(toRun->wantedLane != localLane) {
+                    taskQueues[toRun->wantedLane].push(std::move(toRun));
                 }
-
-                if (canRun && toRun.dependency) {
-                    if (!toRun.dependency->isIdle()) {
-                        taskQueue.push(std::move(toRun));
-                        canRun = false;
-                    }
-                }
-
-                if (canRun) {
-                    {
-                        ZoneScopedN("Run task");
-                        ZoneText(toRun.name.c_str(), toRun.name.size());
-                        try {
-                            toRun.task();
-                        } catch (const std::exception& e) {
-                            // don't crash thread if a task fails
-                            Carrot::Log::error("Error while executing scheduled task '%s': %s", toRun.name.c_str(), e.what());
-                        }
-                    }
-
-                    if (toRun.task.done()) {
-                        if (toRun.joiner) {
-                            toRun.joiner->decrement();
-                        }
-                    } else {
-                        taskQueue.push(std::move(toRun));
-                    }
-                }
-
-                co_yield true;
+            } catch (const std::exception& e) {
+                // don't crash thread if a task fails
+                Carrot::Log::error("Error while executing scheduled task '%s': %s", toRun->name.c_str(), e.what());
             }
-            co_yield false;
         }
-        co_return false;
     }
 
     void TaskScheduler::threadProc(const Async::TaskLane& lane) {
-        auto scheduleTask = coscheduleSingleTask(taskQueues[lane], lane, true);
         while(running) {
-            scheduleTask();
+            runSingleTask(lane, true);
             std::this_thread::yield();
         }
     }
 
     void TaskScheduler::executeMainLoop() {
-        mainLoopScheduling();
+        runSingleTask(TaskScheduler::MainLoop, false);
     }
 
     void TaskScheduler::executeRendering() {
-        renderingScheduling();
+        runSingleTask(TaskScheduler::Rendering, false);
+    }
+
+    struct FiberLocalStorage {
+        TaskData* taskData;
+    };
+
+    static TaskData& getTaskData(Cider::FiberHandle& fiberHandle) {
+        auto* fls = (FiberLocalStorage*) &fiberHandle.localStorage[0];
+        return *fls->taskData;
     }
 
     void TaskScheduler::schedule(TaskDescription&& description, const Async::TaskLane& lane) {
@@ -126,13 +147,67 @@ namespace Carrot {
                || lane == TaskScheduler::Rendering
                , "No other lanes supported at the moment");
         verify(description.task, "No valid task");
-        verify(!description.task.done(), "Task is already done");
         if(description.joiner) {
             description.joiner->increment();
         }
+
+        auto pNewTask = std::make_shared<TaskData>();
+        //auto pNewTask = new TaskData;
+        pNewTask->wantedLane = lane;
+        pNewTask->currentLane = lane;
+        pNewTask->name = description.name;
+        pNewTask->dependency = description.dependency;
+        pNewTask->joiner = description.joiner;
+        pNewTask->task = description.task;
+
         {
-            ZoneScopedN("Push task description to queue");
-            taskQueues[lane].push(std::move(description));
+            auto fiberProc = [pTaskKeepAlive = pNewTask](Cider::FiberHandle& fiber) mutable {
+                auto pTask = pTaskKeepAlive;
+                pTaskKeepAlive = nullptr;
+
+                // fiber prolog
+                TaskHandle taskHandle { fiber, *pTask };
+
+                auto* fls = (FiberLocalStorage*) &fiber.localStorage[0];
+                fls->taskData = pTask.get();
+                //fls->taskData = pTask;
+
+                if(pTask->dependency) {
+                    taskHandle.wait(*pTask->dependency);
+                } else {
+                    fiber.yield();
+                }
+
+                // execute task
+                pTask->task(taskHandle);
+                if(pTask->joiner) {
+                    pTask->joiner->decrement();
+                }
+            };
+            // TODO: reuse fibers
+            pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), std::span(pNewTask->stack), fiberScheduler);
+            pNewTask->fiber->switchTo(); // execute prolog
+
+            // if task is not waiting on something, start it
+            if(!pNewTask->dependency) {
+                ZoneScopedN("Push task description to queue");
+                taskQueues[lane].push(std::move(pNewTask));
+            }
         }
+    }
+
+    void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule) {
+        auto& taskData = getTaskData(toSchedule);
+        taskScheduler.taskQueues[taskData.wantedLane].push(taskData.shared_from_this());
+    }
+
+    void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, Cider::Proc proc, void *userData) {
+        schedule(toSchedule);
+        proc(userData);
+    }
+
+    void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, const Cider::StdFunctionProc& proc) {
+        schedule(toSchedule);
+        proc();
     }
 }

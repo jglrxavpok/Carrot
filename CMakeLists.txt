@@ -7,6 +7,7 @@ list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+add_compile_options(-fsanitize=address)
 set(Arch "x64")
 set(Platform "win64") # TODO: auto-detect
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
@@ -131,6 +132,8 @@ FetchContent_Declare(openal-soft
         GIT_TAG             1.21.1)
 FetchContent_MakeAvailable(openal-soft)
 
+add_subdirectory(thirdparty/cider)
+
 function(add_includes Target)
     add_core_includes(${Target})
     target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)
@@ -150,8 +153,10 @@ function(add_includes Target)
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         target_link_options(${Target} PRIVATE "/FUNCTIONPADMIN" "/SAFESEH:NO" "/OPT:NOREF" "/OPT:NOICF" "/DEBUG:FULL")
         if(HAS_LIVEPP)
-            target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=1)
+            #target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=1)
             target_include_directories(${Target} PUBLIC ${ProjectRoot}LivePP/API/)
+        else()
+            target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=0)
         endif()
         target_compile_options(${Target} PRIVATE "/Z7")
 
@@ -253,8 +258,9 @@ function(make_asan_target Target)
         #
         set(ASSIMP_ASAN ON)
         target_compile_options("${Target}" PRIVATE -fsanitize=address) # /MD will be used implicitly
-        target_link_libraries("${Target}" PRIVATE clang_rt.asan_dynamic-x86_64 clang_rt.asan_dynamic_runtime_thunk-x86_64)
-        target_link_options("${Target}" PRIVATE /wholearchive:clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+        #target_link_libraries("${Target}" PRIVATE clang_rt.asan_dynamic-x86_64 clang_rt.asan_dynamic_runtime_thunk-x86_64)
+        #target_link_options("${Target}" PRIVATE /wholearchive:clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+        target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=0)
     endif()
 endfunction()
 

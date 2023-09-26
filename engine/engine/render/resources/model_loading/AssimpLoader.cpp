@@ -205,11 +205,11 @@ namespace Carrot::Render {
             for(std::size_t start = 0; start < vertexCount; start += stepSize) {
                 GetTaskScheduler().schedule(Carrot::TaskDescription {
                         .name = Carrot::sprintf("Normalize bone weights %s", currentScene.debugName.c_str()),
-                        .task = Carrot::Async::AsTask<void>([&, startIndex = start]() {
+                        .task = [&, startIndex = start](TaskHandle& task) {
                             for(std::size_t vertexIndex = startIndex; vertexIndex < startIndex + stepSize && vertexIndex < vertexCount; vertexIndex++) {
                                 skinnedVertices[vertexIndex].normalizeWeights();
                             }
-                        }),
+                        },
                         .joiner = &normalizeAllWeights,
                 }, TaskScheduler::AssetLoading);
             }

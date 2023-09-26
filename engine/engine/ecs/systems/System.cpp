@@ -83,7 +83,9 @@ namespace Carrot::ECS {
     void System::parallelSubmit(const std::function<void()>& action, Async::Counter& counter) {
         TaskDescription description {
             .name = "parallelSubmit",
-            .task = Async::AsTask(action),
+            .task = [action](TaskHandle&) {
+                action();
+            },
             .joiner = &counter,
         };
         GetTaskScheduler().schedule(std::move(description), TaskScheduler::FrameParallelWork);
