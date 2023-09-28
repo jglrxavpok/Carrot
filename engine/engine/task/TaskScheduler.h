@@ -12,6 +12,7 @@
 #include <core/data/Hashes.h>
 #include <core/tasks/Tasks.h>
 #include <cider/Fiber.h>
+#include <cider/GrowingStack.h>
 #include <cider/scheduling/Scheduler.h>
 
 namespace Carrot {
@@ -81,7 +82,8 @@ namespace Carrot {
     };
 
     struct TaskData : public TaskDescription, public std::enable_shared_from_this<TaskData> {
-        char stack[4096*16] { 0 };
+        //char stack[4096*16] { 0 };
+        Cider::GrowingStack stack { 64 * 1024 * 1024 };
         Async::TaskLane currentLane = Async::TaskLane::Undefined;
         Async::TaskLane wantedLane = Async::TaskLane::Undefined;
         std::unique_ptr<Cider::Fiber> fiber = nullptr;

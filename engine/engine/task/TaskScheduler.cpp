@@ -19,7 +19,7 @@ namespace Carrot {
     Async::TaskLane TaskScheduler::Rendering;
 
     TaskData::~TaskData() {
-        printf("deleting task %s\n", name.c_str());
+        //printf("deleting task %s\n", name.c_str());
     }
 
     void TaskHandle::changeLane(const Async::TaskLane& resumeOn) {
@@ -119,7 +119,6 @@ namespace Carrot {
     void TaskScheduler::threadProc(const Async::TaskLane& lane) {
         while(running) {
             runSingleTask(lane, true);
-            std::this_thread::yield();
         }
     }
 
@@ -141,6 +140,7 @@ namespace Carrot {
     }
 
     void TaskScheduler::schedule(TaskDescription&& description, const Async::TaskLane& lane) {
+        ZoneScoped;
         verify(lane == TaskScheduler::FrameParallelWork
                || lane == TaskScheduler::AssetLoading
                || lane == TaskScheduler::MainLoop
@@ -185,7 +185,8 @@ namespace Carrot {
                 }
             };
             // TODO: reuse fibers
-            pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), std::span(pNewTask->stack), fiberScheduler);
+            pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), pNewTask->stack.asSpan(), fiberScheduler);
+       //     pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), std::span(pNewTask->stack), fiberScheduler);
             pNewTask->fiber->switchTo(); // execute prolog
 
             // if task is not waiting on something, start it

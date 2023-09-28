@@ -7,7 +7,6 @@ list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-add_compile_options(-fsanitize=address)
 set(Arch "x64")
 set(Platform "win64") # TODO: auto-detect
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
@@ -153,7 +152,7 @@ function(add_includes Target)
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         target_link_options(${Target} PRIVATE "/FUNCTIONPADMIN" "/SAFESEH:NO" "/OPT:NOREF" "/OPT:NOICF" "/DEBUG:FULL")
         if(HAS_LIVEPP)
-            #target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=1)
+            target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=1)
             target_include_directories(${Target} PUBLIC ${ProjectRoot}LivePP/API/)
         else()
             target_compile_definitions("${Target}" PRIVATE USE_LIVEPP=0)

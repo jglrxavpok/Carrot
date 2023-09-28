@@ -91,7 +91,7 @@ target_link_libraries(Peeler-ASAN-Lib PUBLIC Engine-ASAN)
 add_executable(Peeler ${EditorRoot}main.cpp)
 add_includes(Peeler)
 add_editor_defines(Peeler)
-target_link_libraries(Peeler PUBLIC Peeler-ASAN-Lib)
+target_link_libraries(Peeler PUBLIC Peeler-Lib)
 
 add_engine_precompiled_headers(Peeler-Lib)
 add_engine_precompiled_headers(Peeler-Renderdoc-Lib)
