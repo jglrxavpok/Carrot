@@ -88,6 +88,7 @@ namespace Carrot {
         Async::TaskLane wantedLane = Async::TaskLane::Undefined;
         std::unique_ptr<Cider::Fiber> fiber = nullptr;
 
+        TaskData();
         ~TaskData();
     };
 
@@ -126,6 +127,7 @@ namespace Carrot {
         TaskScheduler();
         ~TaskScheduler();
 
+        std::shared_ptr<TaskData> getOrReuseTaskData();
         void runSingleTask(Async::TaskLane lane, bool allowBlocking);
         void threadProc(const Async::TaskLane& lane);
 
@@ -146,6 +148,7 @@ namespace Carrot {
         FiberScheduler fiberScheduler { *this };
 
         std::unordered_map<Async::TaskLane, ThreadSafeQueue<std::shared_ptr<TaskData>>> taskQueues;
+        ThreadSafeQueue<std::shared_ptr<TaskData>> reusableTaskData;
         std::atomic<bool> running = true;
         std::vector<std::thread> parallelThreads;
 

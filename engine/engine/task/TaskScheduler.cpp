@@ -10,7 +10,10 @@
 #include "engine/render/VulkanRenderer.h"
 #include "core/io/Logging.hpp"
 
-#pragma optimize("", off)
+//#pragma optimize("", off)
+static std::atomic<std::int64_t> TaskDataCreatedThisFrameCount{0};
+static std::atomic<std::int64_t> TaskDataCreatedCount{0};
+static std::atomic<std::int64_t> AliveTaskDataCount{0};
 
 namespace Carrot {
     Async::TaskLane TaskScheduler::FrameParallelWork;
@@ -18,8 +21,13 @@ namespace Carrot {
     Async::TaskLane TaskScheduler::MainLoop;
     Async::TaskLane TaskScheduler::Rendering;
 
+    TaskData::TaskData() {
+        TaskDataCreatedCount++;
+        TaskDataCreatedThisFrameCount++;
+    }
+
     TaskData::~TaskData() {
-        //printf("deleting task %s\n", name.c_str());
+        AliveTaskDataCount--;
     }
 
     void TaskHandle::changeLane(const Async::TaskLane& resumeOn) {
@@ -92,6 +100,20 @@ namespace Carrot {
         }
     }
 
+    std::shared_ptr<TaskData> TaskScheduler::getOrReuseTaskData() {
+        std::shared_ptr<TaskData> taskData;
+        if(reusableTaskData.popSafe(taskData)) {
+            return taskData;
+        }
+
+        taskData = std::make_shared<TaskData>();
+        auto fiberProc = [](Cider::FiberHandle& fiber) {
+            verify(false, "Reached bottom of fiber used for tasks, should not happen!");
+        };
+        taskData->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), taskData->stack.asSpan(), fiberScheduler);
+        return taskData;
+    }
+
     void TaskScheduler::runSingleTask(Async::TaskLane localLane, bool allowBlocking) {
         std::shared_ptr<TaskData> toRun = nullptr;
         auto& taskQueue = taskQueues[localLane];
@@ -128,6 +150,14 @@ namespace Carrot {
 
     void TaskScheduler::executeRendering() {
         runSingleTask(TaskScheduler::Rendering, false);
+
+        const std::int64_t taskDataCreatedThisFrame = TaskDataCreatedThisFrameCount.exchange(0);
+        if(ImGui::Begin("Task Scheduler")) {
+            ImGui::Text("Alive TaskData: %llu", AliveTaskDataCount.load());
+            ImGui::Text("Total TaskData created: %llu", TaskDataCreatedCount.load());
+            ImGui::Text("TaskData created this frame: %llu", taskDataCreatedThisFrame);
+        }
+        ImGui::End();
     }
 
     struct FiberLocalStorage {
@@ -151,8 +181,7 @@ namespace Carrot {
             description.joiner->increment();
         }
 
-        auto pNewTask = std::make_shared<TaskData>();
-        //auto pNewTask = new TaskData;
+        auto pNewTask = getOrReuseTaskData();
         pNewTask->wantedLane = lane;
         pNewTask->currentLane = lane;
         pNewTask->name = description.name;
@@ -161,7 +190,7 @@ namespace Carrot {
         pNewTask->task = description.task;
 
         {
-            auto fiberProc = [pTaskKeepAlive = pNewTask](Cider::FiberHandle& fiber) mutable {
+            auto fiberProc = [pTaskKeepAlive = pNewTask, pTaskScheduler = this](Cider::FiberHandle& fiber) mutable {
                 auto pTask = pTaskKeepAlive;
                 pTaskKeepAlive = nullptr;
 
@@ -170,7 +199,6 @@ namespace Carrot {
 
                 auto* fls = (FiberLocalStorage*) &fiber.localStorage[0];
                 fls->taskData = pTask.get();
-                //fls->taskData = pTask;
 
                 if(pTask->dependency) {
                     taskHandle.wait(*pTask->dependency);
@@ -183,11 +211,15 @@ namespace Carrot {
                 if(pTask->joiner) {
                     pTask->joiner->decrement();
                 }
+
+                // yield this fiber, and sets up task data for reuse
+                fiber.yieldOnTop([pTaskKeepAlive = pTask, pTaskScheduler]() mutable {
+                    auto pTask = pTaskKeepAlive;
+                    pTaskKeepAlive = nullptr;
+                    pTaskScheduler->reusableTaskData.push(std::move(pTask));
+                });
             };
-            // TODO: reuse fibers
-            pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), pNewTask->stack.asSpan(), fiberScheduler);
-       //     pNewTask->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), std::span(pNewTask->stack), fiberScheduler);
-            pNewTask->fiber->switchTo(); // execute prolog
+            pNewTask->fiber->switchToWithOnTop(fiberProc); // execute prolog
 
             // if task is not waiting on something, start it
             if(!pNewTask->dependency) {
