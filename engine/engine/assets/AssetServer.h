@@ -67,6 +67,7 @@ namespace Carrot {
         void indexAssets();
         void dumpAssetReferences();
 
+        std::shared_ptr<Model> asyncLoadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path);
         std::filesystem::path getConvertedPath(const Carrot::IO::VFS::Path& path); // find the path inside asset_server folder for the converted asset
         std::filesystem::path convert(const Carrot::IO::VFS::Path& path); // performs conversion
 

@@ -310,7 +310,7 @@ namespace Fertilizer {
         // buffers are regenerated inside 'generateMissingAttributes' method too, so we don't copy the .bin file
         generateMissingAttributes(model);
 
-        convertTexturePaths(model, inputFile, outputFile);
+        //convertTexturePaths(model, inputFile, outputFile);
 
         // ----------
 

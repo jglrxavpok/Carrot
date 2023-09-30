@@ -11,9 +11,11 @@
 #include "core/io/Logging.hpp"
 
 //#pragma optimize("", off)
+static std::atomic<std::int64_t> TaskScheduledThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedCount{0};
 static std::atomic<std::int64_t> AliveTaskDataCount{0};
+static std::atomic<std::int64_t> ActiveTaskCount{0};
 
 namespace Carrot {
     Async::TaskLane TaskScheduler::FrameParallelWork;
@@ -152,7 +154,10 @@ namespace Carrot {
         runSingleTask(TaskScheduler::Rendering, false);
 
         const std::int64_t taskDataCreatedThisFrame = TaskDataCreatedThisFrameCount.exchange(0);
+        const std::int64_t tasksScheduledThisFrame = TaskScheduledThisFrameCount.exchange(0);
         if(ImGui::Begin("Task Scheduler")) {
+            ImGui::Text("Active tasks: %llu", ActiveTaskCount.load());
+            ImGui::Text("Task count scheduled this frame: %llu", tasksScheduledThisFrame);
             ImGui::Text("Alive TaskData: %llu", AliveTaskDataCount.load());
             ImGui::Text("Total TaskData created: %llu", TaskDataCreatedCount.load());
             ImGui::Text("TaskData created this frame: %llu", taskDataCreatedThisFrame);
@@ -177,6 +182,7 @@ namespace Carrot {
                || lane == TaskScheduler::Rendering
                , "No other lanes supported at the moment");
         verify(description.task, "No valid task");
+        TaskScheduledThisFrameCount++;
         if(description.joiner) {
             description.joiner->increment();
         }
@@ -200,6 +206,8 @@ namespace Carrot {
                 auto* fls = (FiberLocalStorage*) &fiber.localStorage[0];
                 fls->taskData = pTask.get();
 
+                ActiveTaskCount++;
+
                 if(pTask->dependency) {
                     taskHandle.wait(*pTask->dependency);
                 } else {
@@ -211,6 +219,8 @@ namespace Carrot {
                 if(pTask->joiner) {
                     pTask->joiner->decrement();
                 }
+
+                ActiveTaskCount--;
 
                 // yield this fiber, and sets up task data for reuse
                 fiber.yieldOnTop([pTaskKeepAlive = pTask, pTaskScheduler]() mutable {

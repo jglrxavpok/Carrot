@@ -70,11 +70,11 @@ namespace Carrot {
         return hasReloadedShadersThisFrame;
     }
 
-    static std::shared_ptr<Model> asyncLoadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path) {
+    std::shared_ptr<Model> AssetServer::asyncLoadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path) {
         Carrot::IO::Resource from;
         const std::string modelPath = path.toString();
         try {
-            fs::path convertedPath = {}; // TODO: make this work properly -> convert(path);
+            fs::path convertedPath = convert(path);
             if(convertedPath.empty()) {
                 from = modelPath; // probably won't work, but at least the error message will be readable
             } else {
