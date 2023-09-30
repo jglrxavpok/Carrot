@@ -21,8 +21,17 @@
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/LightMesh.h>
 #include <engine/render/ModelRenderer.h>
+#include <engine/task/TaskScheduler.h>
 
-Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {
+Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {}
+
+std::shared_ptr<Carrot::Model> Carrot::Model::load(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& file) {
+    std::shared_ptr<Carrot::Model> pNewModel = std::shared_ptr<Carrot::Model>(new Carrot::Model(engine, file));
+    pNewModel->loadInner(task, engine, file);
+    return pNewModel;
+}
+
+void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& file) {
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
     debugName = file.getName();
@@ -277,7 +286,7 @@ Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): 
             staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms, staticMeshMaterials);
         }
     }
-    waitMaterialLoads.busyWait(); // hide latency
+    task.wait(waitMaterialLoads); // hide latency
 }
 
 Carrot::Model::~Model() {

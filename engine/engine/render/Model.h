@@ -29,6 +29,7 @@ namespace Carrot {
     class AnimatedInstances;
 
     class BLASHandle;
+    class TaskHandle;
 
     namespace Render {
         class MaterialHandle;
@@ -50,7 +51,7 @@ namespace Carrot {
             std::size_t indexCount = 0;
         };
 
-        explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+        static std::shared_ptr<Model> load(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
         ~Model();
 
         [[nodiscard]] std::vector<std::shared_ptr<Carrot::Mesh>> getStaticMeshes() const;
@@ -95,6 +96,9 @@ namespace Carrot {
         std::span<const std::shared_ptr<Render::MaterialHandle>> getMaterials() const { return materials; }
 
     private:
+        explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+        void loadInner(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+
         Carrot::Engine& engine;
         std::string debugName;
         std::shared_ptr<Carrot::Pipeline> opaqueMeshesPipeline;

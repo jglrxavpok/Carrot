@@ -343,6 +343,7 @@ namespace Carrot {
         std::shared_ptr<Carrot::Render::MaterialHandle> whiteMaterial;
         std::shared_ptr<Carrot::Pipeline> wireframeGBufferPipeline;
         std::shared_ptr<Carrot::Pipeline> gBufferPipeline;
+        std::shared_ptr<Carrot::Render::Texture> defaultTexture;
         std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
 
         std::list<DeferredCarrotBufferDestruction> deferredCarrotBufferDestructions;

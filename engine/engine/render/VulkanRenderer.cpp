@@ -1263,6 +1263,8 @@ void Carrot::VulkanRenderer::createDefaultResources() {
             vk::ImageType::e2D,
             6);
 
+    defaultTexture = getOrCreateTexture("default.png");
+
     std::array<std::uint8_t, 4> blackPixel = {0,0,0,0};
     cubeMap->stageUpload(blackPixel, 0);
     cubeMap->stageUpload(blackPixel, 1);
@@ -1415,7 +1417,7 @@ void Carrot::VulkanRenderer::fullscreenBlit(const vk::RenderPass& pass, const Ca
 }
 
 Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getDefaultImage() {
-    return getOrCreateTexture("default.png");
+    return defaultTexture;
 }
 
 Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {

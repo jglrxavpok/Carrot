@@ -70,31 +70,50 @@ namespace Carrot {
         return hasReloadedShadersThisFrame;
     }
 
+    static std::shared_ptr<Model> asyncLoadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path) {
+        Carrot::IO::Resource from;
+        const std::string modelPath = path.toString();
+        try {
+            fs::path convertedPath = {}; // TODO: make this work properly -> convert(path);
+            if(convertedPath.empty()) {
+                from = modelPath; // probably won't work, but at least the error message will be readable
+            } else {
+                from = Carrot::IO::Resource{ path, convertedPath };
+            }
+        } catch(std::runtime_error& e) {
+            Carrot::Log::error("Failed to load model %s", modelPath.c_str());
+            // in case file could not be opened
+            from = "resources/models/simple_cube.obj";
+        }
+        return Carrot::Model::load(task, GetEngine(), std::move(from));
+    }
+
     std::shared_ptr<Model> AssetServer::blockingLoadModel(const Carrot::IO::VFS::Path& path) {
+        Async::Counter sync;
         ZoneScopedN("Loading model");
         const std::string modelPath = path.toString();
         ZoneText(modelPath.c_str(), modelPath.size());
         return models.getOrCompute(modelPath, [&]() {
-            Carrot::IO::Resource from;
-            try {
-                fs::path convertedPath = {}; // TODO: make this work properly -> convert(path);
-                if(convertedPath.empty()) {
-                    from = modelPath; // probably won't work, but at least the error message will be readable
-                } else {
-                    from = Carrot::IO::Resource{ path, convertedPath };
-                }
-            } catch(std::runtime_error& e) {
-                Carrot::Log::error("Failed to load model %s", modelPath.c_str());
-                // in case file could not be opened
-                from = "resources/models/simple_cube.obj";
-            }
-            return std::make_shared<Carrot::Model>(GetEngine(), std::move(from));
+            std::shared_ptr<Model> result;
+            GetTaskScheduler().schedule(TaskDescription {
+                    .name = "Load model " + path.toString(),
+                    .task = [&](TaskHandle& task) {
+                        result = asyncLoadModel(task, path);
+                    },
+                    .joiner = &sync,
+            }, TaskScheduler::AssetLoading);
+            sync.busyWait();
+            return result;
         });
     }
 
     std::shared_ptr<Model> AssetServer::loadModel(TaskHandle& task, const Carrot::IO::VFS::Path& path) {
-        // TODO
-        return blockingLoadModel(path);
+        ZoneScopedN("Loading model");
+        const std::string modelPath = path.toString();
+        ZoneText(modelPath.c_str(), modelPath.size());
+        return models.getOrCompute(modelPath, [&]() {
+            return asyncLoadModel(task, path);
+        });
     }
 
     AssetServer::LoadTaskProc<Model> AssetServer::loadModelTask(const Carrot::IO::VFS::Path& path) {

@@ -79,6 +79,9 @@ namespace Carrot::Async {
     }
 
     void Counter::wait(Cider::FiberHandle& task) {
+        if(isIdle()) {
+            return;
+        }
         fibersWaiting.suspendAndWait(task);
     }
 
