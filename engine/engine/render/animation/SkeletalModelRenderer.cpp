@@ -91,10 +91,6 @@ namespace Carrot::Render {
             packet.pipeline = renderingPipeline;
             packet.transparentGBuffer.zOrder = 0.0f;
 
-            Render::Packet::PushConstant& pushConstant = packet.addPushConstant();
-            pushConstant.id = "drawDataPush";
-            pushConstant.stages = vk::ShaderStageFlagBits::eFragment;
-
             {
                 ZoneScopedN("instance use");
                 packet.useInstance(instanceData);
@@ -105,9 +101,12 @@ namespace Carrot::Render {
                 data.materialIndex = materialSlot;
                 packet.useMesh(*renderingMeshes[renderContext.swapchainIndex][meshIndex]);
 
-                pushConstant.setData(data);
+                GBufferDrawData drawData;
+                drawData.materialIndex = materialSlot;
+                packet.addPerDrawData(std::span(&drawData, 1));
 
                 renderContext.renderer.render(packet);
+                packet.clearPerDrawData();
             });
         }
     }

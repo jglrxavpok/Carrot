@@ -16,8 +16,8 @@ constexpr const std::size_t InstanceCount = 10;
 class SampleAnimation: public Carrot::CarrotGame {
 public:
     explicit SampleAnimation(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                                      skinnedModel(GetAssetServer().loadModel("resources/models/unit.fbx")),
-                                                      staticModel(GetAssetServer().loadModel("resources/models/viking_room.obj")),
+                                                      skinnedModel(GetAssetServer().blockingLoadModel("resources/models/unit.fbx")),
+                                                      staticModel(GetAssetServer().blockingLoadModel("resources/models/viking_room.obj")),
                                                       skinnedModelRenderer(engine, skinnedModel, InstanceCount)
     {
         {

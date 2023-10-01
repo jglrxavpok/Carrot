@@ -35,6 +35,7 @@ struct Instance {
     vec4 inInstanceColor;
     uvec4 inUUID;
     mat4 inInstanceTransform;
+    mat4 inLastFrameInstanceTransform;
     uint animationIndex;
     double animationTime;
 };
@@ -45,7 +46,7 @@ struct Keyframe {
 };
 
 struct Animation {
-    uint keyframeCount;
+    int keyframeCount;
     float duration;
     Keyframe keyframes[MAX_KEYFRAMES];
 };
@@ -73,7 +74,7 @@ mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
         return mat4(1.0);
     float timestamp = float(mod(instance.animationTime, animations[instance.animationIndex].duration));
     uint keyframeIndex = 0;
-    for(uint i = 0; i < animations[instance.animationIndex].keyframeCount-1; i++) {
+    for(int i = 0; i < animations[instance.animationIndex].keyframeCount-1; i++) {
         if(timestamp <= animations[instance.animationIndex].keyframes[i+1].timestamp) {
             keyframeIndex = i;
             break;

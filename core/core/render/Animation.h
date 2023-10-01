@@ -23,7 +23,7 @@ namespace Carrot {
     };
 
     struct Animation {
-        alignas(4) uint32_t keyframeCount = 0;
+        alignas(4) std::int32_t keyframeCount = 0;
         alignas(4) float duration = 1.0f;
         alignas(16) Keyframe keyframes[MAX_KEYFRAMES_PER_ANIMATION];
         explicit Animation() = default;

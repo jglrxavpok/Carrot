@@ -5,6 +5,7 @@ set(GameSources
         )
 
 add_executable(BasicSprites ${GameSources})
+add_includes(BasicSprites)
 target_link_libraries(BasicSprites PUBLIC Engine-Base)
 
 add_executable(BasicSprites-Renderdoc ${GameSources})

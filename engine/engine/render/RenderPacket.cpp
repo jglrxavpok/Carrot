@@ -47,6 +47,11 @@ namespace Carrot::Render {
         perDrawData = newPerDrawData;
     }
 
+    void Packet::clearPerDrawData() {
+        container.deallocateGeneric(std::move(perDrawData));
+        perDrawData = {};
+    }
+
     Packet::PushConstant& Packet::addPushConstant(const std::string& id, vk::ShaderStageFlags stages) {
         verify(pushConstantCount < MAX_PUSH_CONSTANTS, "Too many push constants. Lower your usage, or update the engine");
         std::size_t pushConstantIndex = pushConstantCount++;
