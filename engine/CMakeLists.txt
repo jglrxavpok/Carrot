@@ -41,6 +41,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/InstanceData.cpp
         ${EngineRoot}render/RenderPacket.cpp
 
+        ${EngineRoot}render/animation/AnimatedInstances.cpp
+        ${EngineRoot}render/animation/AnimatedModel.cpp
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
         ${EngineRoot}utils/conversions.cpp
@@ -84,7 +86,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/WorldData.cpp
 
         ${EngineRoot}render/GBuffer.cpp
-        ${EngineRoot}render/animation/AnimatedInstances.cpp
         ${EngineRoot}render/raytracing/RayTracer.cpp
         ${EngineRoot}render/raytracing/ASBuilder.cpp
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp

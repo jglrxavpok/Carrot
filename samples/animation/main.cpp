@@ -9,6 +9,7 @@
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
 #include <engine/edition/FreeCameraController.h>
+#include <engine/render/animation/AnimatedModel.h>
 #include "engine/render/animation/AnimatedInstances.h"
 
 constexpr const std::size_t InstanceCount = 10;
@@ -18,7 +19,8 @@ public:
     explicit SampleAnimation(Carrot::Engine& engine): Carrot::CarrotGame(engine),
                                                       skinnedModel(GetAssetServer().blockingLoadModel("resources/models/unit.fbx")),
                                                       staticModel(GetAssetServer().blockingLoadModel("resources/models/viking_room.obj")),
-                                                      skinnedModelRenderer(engine, skinnedModel, InstanceCount)
+                                                      skinnedModelRenderer(engine, skinnedModel, InstanceCount),
+                                                      animatedModel(skinnedModel)
     {
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -75,6 +77,26 @@ public:
 
         Carrot::InstanceData staticInstanceData;
         staticModel->renderStatic(renderContext, staticInstanceData, Carrot::Render::PassEnum::OpaqueGBuffer);
+
+        // create and destroy instances rapidly over time, showing that instances can be added and removed easily
+        int sizeAtThisTime = (int)((sin(time) / 2.0f + 0.5f) * 30);
+        if(sizeAtThisTime >= 0 && animatedModelHandles.size() != sizeAtThisTime) {
+            animatedModelHandles.resize(sizeAtThisTime);
+
+            for (int i = 0; i < animatedModelHandles.size(); ++i) {
+                auto& pHandle = animatedModelHandles[i];
+                if(pHandle == nullptr) { // need more instances compared to previous frame
+                    pHandle = animatedModel.requestHandle();
+                }
+
+                Carrot::AnimatedInstanceData& instanceData = pHandle->getData();
+                instanceData.animationTime = time;
+                instanceData.animationIndex = (i+1) % 2;
+                instanceData.transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 5, 0));
+            }
+        }
+
+        animatedModel.onFrame(renderContext);
 
         if(moveFlashlight.isPressed()) {
             glm::mat4 invViewMatrix = GetEngine().getCamera().computeViewMatrix();
@@ -136,6 +158,10 @@ private:
     std::shared_ptr<Carrot::Model> skinnedModel;
     Carrot::AnimatedInstances skinnedModelRenderer;
 
+    // simpler interface, intended for ECS
+    Carrot::Render::AnimatedModel animatedModel;
+    std::vector<std::shared_ptr<Carrot::Render::AnimatedModel::Handle>> animatedModelHandles;
+
     std::shared_ptr<Carrot::Render::LightHandle> flashlight;
 };
 
@@ -148,7 +174,7 @@ int main() {
 
     Carrot::Configuration config;
     config.applicationName = "Animation Sample";
-    config.raytracingSupport = Carrot::RaytracingSupport::Supported;
+    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
     Carrot::Engine engine{config};
     engine.run();
 

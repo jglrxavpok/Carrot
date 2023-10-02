@@ -27,7 +27,7 @@ namespace Carrot {
         AnimatedInstanceData& getInstance(std::size_t index) {
             assert(index < maxInstanceCount);
             return animatedInstances[index];
-        };
+        }
 
         inline vk::DeviceSize getVertexOffset(std::size_t instanceIndex, MeshID meshID) {
             return static_cast<std::int32_t>(instanceIndex * vertexCountPerInstance + meshOffsets[meshID]);

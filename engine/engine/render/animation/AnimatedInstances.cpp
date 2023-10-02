@@ -405,7 +405,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
             auto& mesh = meshInfo.mesh;
             auto& meshTransform = meshInfo.transform;
             auto& sphere = meshInfo.boundingSphere;
-            for(size_t index = 0; index < maxInstanceCount; index++) {
+            for(size_t index = 0; index < instanceCount; index++) {
                 Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
                 meshInstanceData.transform = meshInstanceData.transform * meshTransform;
 
