@@ -174,7 +174,7 @@ int main() {
 
     Carrot::Configuration config;
     config.applicationName = "Animation Sample";
-    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
+    config.raytracingSupport = Carrot::RaytracingSupport::Supported;
     Carrot::Engine engine{config};
     engine.run();
 

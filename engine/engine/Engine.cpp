@@ -1058,6 +1058,8 @@ void Carrot::Engine::createTracyContexts() {
         } else {
             tracyCtx[i] = TracyVkContext(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), mainCommandBuffers[i]);
         }
+        const std::string name = Carrot::sprintf("Main swapchainIndex %d", i);
+        TracyVkContextName(tracyCtx[i], name.c_str(), name.size());
     }
 }
 

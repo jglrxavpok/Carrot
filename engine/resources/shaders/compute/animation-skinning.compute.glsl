@@ -17,7 +17,7 @@ struct VertexWithBones {
     vec4 pos;
     vec3 color;
     vec3 normal;
-    vec3 tangent;
+    vec4 tangent;
     vec2 uv;
     ivec4 boneIDs;
     vec4 boneWeights;
@@ -27,7 +27,7 @@ struct Vertex {
     vec4 pos;
     vec3 color;
     vec3 normal;
-    vec3 tangent;
+    vec4 tangent;
     vec2 uv;
 };
 
@@ -116,7 +116,7 @@ void main() {
     outputVertices[finalVertexIndex].pos = vec4(skinningResult.xyz / skinningResult.w, 1.0);
 
     vec3 transformedNormal = normalize((skinning * vec4(originalVertices[vertexIndex].normal, 0.0)).xyz);
-    vec3 transformedTangent = normalize((skinning * vec4(originalVertices[vertexIndex].tangent, 0.0)).xyz);
+    vec4 transformedTangent = vec4(normalize((skinning * vec4(originalVertices[vertexIndex].tangent.xyz, 0.0)).xyz), originalVertices[vertexIndex].tangent.w);
     outputVertices[finalVertexIndex].normal = transformedNormal;
     outputVertices[finalVertexIndex].tangent = transformedTangent;
 }

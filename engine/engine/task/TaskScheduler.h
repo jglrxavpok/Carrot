@@ -94,6 +94,17 @@ namespace Carrot {
 
     class TaskScheduler {
     public:
+        /**
+         * Executes 'count' tasks in parallel, executing 'forEach' for each task.
+         * The calling thread will also participate.
+         * Waits until all tasks are done before returning
+         * @param count how many tasks to execute
+         * @param forEach what to execute for each task
+         * @param granularity how many tasks at once per thread
+         */
+        void parallelFor(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity);
+
+    public: // scheduling
         /// Schedule a task for execution. The task will be executed as soon as possible on the given lane.
         void schedule(TaskDescription&& description, const Async::TaskLane& lane);
 

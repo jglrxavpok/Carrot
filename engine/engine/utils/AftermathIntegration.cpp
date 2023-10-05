@@ -198,7 +198,7 @@ static void WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gp
         rapidjson::Value resource{rapidjson::kObjectType};
         resource.AddMember("Type", "AS", jsonDocument.GetAllocator());
         resource.AddMember("Start Address", address, jsonDocument.GetAllocator());
-        resource.AddMember("Buffer", (*as)->getBuffer().getDeviceAddress(), jsonDocument.GetAllocator());
+        resource.AddMember("Buffer", (*as)->getDeviceAddress(), jsonDocument.GetAllocator());
         resourcesArray.PushBack(resource, jsonDocument.GetAllocator());
     }
 

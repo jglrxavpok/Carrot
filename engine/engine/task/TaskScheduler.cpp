@@ -174,6 +174,40 @@ namespace Carrot {
         return *fls->taskData;
     }
 
+    void TaskScheduler::parallelFor(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) {
+        if(count == 0) {
+            return;
+        }
+
+        verify(granularity > 0, "Cannot have a granularity of 0");
+
+        auto run = [&](std::size_t startIndex) {
+            for(std::size_t i = startIndex; i < startIndex + granularity && i < count; i++) {
+                forEach(i);
+            }
+        };
+
+        std::size_t parallelJobs = count / granularity; // truncate on purpose, the calling thread will participate
+        if(parallelJobs > 0) {
+            Async::Counter sync;
+            for(std::size_t jobIndex = 0; jobIndex < parallelJobs; jobIndex++) {
+                schedule(TaskDescription {
+                        .name = "Parallel ForEach",
+                        .task = [&, jobIndex](Carrot::TaskHandle&) {
+                            std::size_t startIndex = jobIndex * granularity;
+                            run(startIndex);
+                        },
+                        .joiner = &sync,
+                }, FrameParallelWork);
+            }
+
+            run(parallelJobs * granularity);
+            sync.busyWait();
+        } else {
+            run(0);
+        }
+    }
+
     void TaskScheduler::schedule(TaskDescription&& description, const Async::TaskLane& lane) {
         ZoneScoped;
         verify(lane == TaskScheduler::FrameParallelWork
@@ -222,6 +256,7 @@ namespace Carrot {
 
                 ActiveTaskCount--;
 
+                // TODO: leaks memory
                 // yield this fiber, and sets up task data for reuse
                 fiber.yieldOnTop([pTaskKeepAlive = pTask, pTaskScheduler]() mutable {
                     auto pTask = pTaskKeepAlive;

@@ -7,33 +7,49 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
-static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1Gib, no particular reason for this exact value
+static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1GiB, no particular reason for this exact value
 
 namespace Carrot {
     ResourceAllocator::ResourceAllocator(VulkanDriver& device): device(device) {
-        heap = std::make_unique<Buffer>(device, HeapSize,
+        stagingHeap = std::make_unique<Buffer>(device, HeapSize,
                                         vk::BufferUsageFlagBits::eTransferSrc,
                                         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                         std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()});
-        heap->setDebugNames("ResourceAllocator heap");
-        VmaVirtualBlock block;
+        stagingHeap->setDebugNames("ResourceAllocator heap for staging buffers");
+
+        deviceHeap = std::make_unique<Buffer>(device, HeapSize,
+                                        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eUniformBuffer,
+                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
+        deviceHeap->setDebugNames("ResourceAllocator heap for device buffers");
+
+        VmaVirtualBlock stagingBlock;
         VmaVirtualBlockCreateInfo blockInfo = {};
         blockInfo.size = HeapSize;
-        VkResult r = vmaCreateVirtualBlock(&blockInfo, &block);
+        VkResult r = vmaCreateVirtualBlock(&blockInfo, &stagingBlock);
 
         verify(r == VK_SUCCESS, Carrot::sprintf("Failed to create virtual block (%s)", string_VkResult(r)));
-        verify(block != nullptr, "Failed to create virtual block");
-        virtualBlock = block;
+        verify(stagingBlock != nullptr, "Failed to create virtual block");
+        stagingVirtualBlock = stagingBlock;
+
+        VmaVirtualBlock deviceBlock;
+        blockInfo = {};
+        blockInfo.size = HeapSize;
+        r = vmaCreateVirtualBlock(&blockInfo, &deviceBlock);
+
+        verify(r == VK_SUCCESS, Carrot::sprintf("Failed to create virtual block (%s)", string_VkResult(r)));
+        verify(deviceBlock != nullptr, "Failed to create virtual block");
+        deviceVirtualBlock = deviceBlock;
     }
 
     ResourceAllocator::~ResourceAllocator() {
-        vmaDestroyVirtualBlock((VmaVirtualBlock)virtualBlock);
+        vmaDestroyVirtualBlock((VmaVirtualBlock)stagingVirtualBlock);
+        vmaDestroyVirtualBlock((VmaVirtualBlock)deviceVirtualBlock);
     }
 
-    StagingBuffer ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size) {
+    BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size) {
         auto makeDedicated = [&]() {
-            Carrot::Async::LockGuard g { dedicatedBuffersAccess };
-            StagingBuffer result { this };
+            Carrot::Async::LockGuard g { dedicatedStagingBuffersAccess };
+            BufferAllocation result { this };
             dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
             result.allocation = pBuffer.get();
@@ -41,31 +57,59 @@ namespace Carrot {
             result.view = pBuffer->getWholeView();
             return result;
         };
+        VmaVirtualAllocationCreateInfo allocInfo = {0};
+        allocInfo.size = size;
+        BufferAllocation alloc = allocateInHeap(allocInfo, stagingVirtualBlock, *stagingHeap, makeDedicated);
+        alloc.staging = true;
+        return std::move(alloc);
+    }
 
-        if(size > HeapSize) {
-            return makeDedicated();
-        }
-
-        VmaVirtualBlock block = reinterpret_cast<VmaVirtualBlock>(virtualBlock);
-        VmaVirtualAllocationCreateInfo allocInfo = {};
+    BufferAllocation ResourceAllocator::allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags) {
+        auto makeDedicated = [&]() {
+            Carrot::Async::LockGuard g { dedicatedDeviceBuffersAccess };
+            BufferAllocation result { this };
+            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal));
+            auto& pBuffer = dedicatedDeviceBuffers.back();
+            result.allocation = pBuffer.get();
+            result.dedicated = true;
+            result.view = pBuffer->getWholeView();
+            return result;
+        };
+        VmaVirtualAllocationCreateInfo allocInfo = {0};
         allocInfo.size = size;
 
-        VmaVirtualAllocation alloc;
-        VkDeviceSize offset;
-        VkResult result = vmaVirtualAllocate(block, &allocInfo, &alloc, &offset);
-        if(result == VK_SUCCESS) {
-            StagingBuffer resultBuffer { this };
-            resultBuffer.allocation = alloc;
-            resultBuffer.dedicated = false;
-            resultBuffer.view = heap->getWholeView().subView(offset, size);
-            return resultBuffer;
-        } else {
-            // if we reach here, no block has space available, create a dedicated buffer
-            return makeDedicated();
+        if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
+            allocInfo.alignment = 256;
+        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
+            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
         }
+
+        return allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
     }
 
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
+        if(ImGui::Begin("Resource Allocator")) {
+            if(ImGui::CollapsingHeader("Staging buffers")) {
+                if(ImGui::BeginChild("##staging buffers")) {
+
+                }
+                ImGui::EndChild();
+            }
+
+            if(ImGui::CollapsingHeader("Device buffers")) {
+                if(ImGui::BeginChild("##device buffers", ImVec2(0,0), true)) {
+                    VmaVirtualBlock block = reinterpret_cast<VmaVirtualBlock>(deviceVirtualBlock);
+                    VmaStatistics stats;
+                    vmaGetVirtualBlockStatistics(block, &stats);
+
+                    ImGui::Text("Physical heap size: %llu bytes", HeapSize);
+                    ImGui::Text("Virtual heap usage: %llu bytes", stats.allocationBytes);
+                    ImGui::Text("Virtual allocation count: %u", stats.allocationCount);
+                }
+                ImGui::EndChild();
+            }
+        }
+        ImGui::End();
     }
 
     BufferView ResourceAllocator::allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
@@ -89,14 +133,49 @@ namespace Carrot {
         std::erase_if(allocatedBuffers, [&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); });
     }
 
-    void ResourceAllocator::freeStagingBuffer(StagingBuffer* buffer) {
+    void ResourceAllocator::freeStagingBuffer(BufferAllocation* buffer) {
         if(buffer->dedicated) {
-            Carrot::Async::LockGuard g { dedicatedBuffersAccess };
-            std::erase_if(dedicatedStagingBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
-                return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
-            });
+            if(buffer->staging) {
+                Carrot::Async::LockGuard g { dedicatedStagingBuffersAccess };
+                std::erase_if(dedicatedStagingBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
+                    return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
+                });
+            } else {
+                Carrot::Async::LockGuard g { dedicatedDeviceBuffersAccess };
+                std::erase_if(dedicatedDeviceBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
+                    return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
+                });
+            }
         } else {
-            vmaVirtualFree((VmaVirtualBlock)virtualBlock, (VmaVirtualAllocation)buffer->allocation);
+            if(buffer->staging) {
+                vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
+            } else {
+                vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
+            }
+        }
+    }
+
+    BufferAllocation ResourceAllocator::allocateInHeap(const VmaVirtualAllocationCreateInfo& allocInfo,
+                                                       void* virtualBlock,
+                                                       Carrot::Buffer& heapStorage,
+                                                       std::function<BufferAllocation()> makeDedicated) {
+        if(allocInfo.size > HeapSize) {
+            return makeDedicated();
+        }
+
+        VmaVirtualBlock block = reinterpret_cast<VmaVirtualBlock>(virtualBlock);
+        VmaVirtualAllocation alloc;
+        VkDeviceSize offset;
+        VkResult result = vmaVirtualAllocate(block, &allocInfo, &alloc, &offset);
+        if(result == VK_SUCCESS) {
+            BufferAllocation resultBuffer {this };
+            resultBuffer.allocation = alloc;
+            resultBuffer.dedicated = false;
+            resultBuffer.view = heapStorage.getWholeView().subView(offset, allocInfo.size);
+            return resultBuffer;
+        } else {
+            // if we reach here, no block has space available, create a dedicated buffer
+            return makeDedicated();
         }
     }
 }

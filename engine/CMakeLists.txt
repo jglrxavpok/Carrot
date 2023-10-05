@@ -13,6 +13,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/ModelRenderer.cpp
 
         ${EngineRoot}render/resources/Buffer.cpp
+        ${EngineRoot}render/resources/BufferAllocation.cpp
         ${EngineRoot}render/resources/BufferView.cpp
         ${EngineRoot}render/resources/DeviceMemory.cpp
         ${EngineRoot}render/resources/Image.cpp
@@ -22,7 +23,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/ResourceAllocator.cpp
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
         ${EngineRoot}render/resources/SingleMesh.cpp
-        ${EngineRoot}render/resources/StagingBuffer.cpp
         ${EngineRoot}render/resources/Texture.cpp
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp

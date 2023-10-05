@@ -36,6 +36,8 @@ namespace Carrot {
 
     class BLASHandle: public WeakPoolHandle {
     public:
+        bool dynamicGeometry = false;
+
         BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
                    const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<glm::mat4>& transforms,
@@ -141,7 +143,7 @@ namespace Carrot {
 
     private:
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
-        void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild, bool dynamicGeometry);
+        void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild);
 
     private:
         VulkanRenderer& renderer;
@@ -152,6 +154,7 @@ namespace Carrot {
         std::vector<vk::UniqueCommandBuffer> tlasBuildCommands{};
         std::vector<vk::UniqueQueryPool> queryPools{};
         std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
+        std::vector<std::vector<TracyVkCtx>> blasBuildTracyCtx; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
         std::unique_ptr<Carrot::Buffer> rtInstancesBuffer = nullptr;

@@ -54,6 +54,7 @@ namespace Carrot {
 
     private:
         std::size_t maxInstanceCount = 0;
+        std::size_t currentInstanceCount = 0;
         Carrot::Engine& engine;
         std::shared_ptr<Model> model = nullptr;
         std::unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;

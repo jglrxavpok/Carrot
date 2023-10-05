@@ -8,7 +8,9 @@
 #include "BufferView.h"
 #include "Buffer.h"
 #include "SingleFrameStackGPUAllocator.h"
-#include "StagingBuffer.h"
+#include "BufferAllocation.h"
+
+struct VmaVirtualAllocationCreateInfo;
 
 namespace Carrot {
     class ResourceAllocator {
@@ -19,7 +21,12 @@ namespace Carrot {
         /**
          * Buffer used for staging uploads
          */
-        StagingBuffer allocateStagingBuffer(vk::DeviceSize size);
+        BufferAllocation allocateStagingBuffer(vk::DeviceSize size);
+
+        /**
+         * Buffer used for device-local storage
+         */
+        BufferAllocation allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags);
 
 
         BufferView allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
@@ -32,23 +39,32 @@ namespace Carrot {
         void beginFrame(const Carrot::Render::Context& renderContext);
 
     private:
-        void freeStagingBuffer(StagingBuffer* buffer);
+        void freeStagingBuffer(BufferAllocation* buffer);
+
+        BufferAllocation allocateInHeap(const VmaVirtualAllocationCreateInfo& allocInfo,
+                                        void* virtualBlock,
+                                        Carrot::Buffer& heapStorage,
+                                        std::function<BufferAllocation()> makeDedicated);
 
         VulkanDriver& device;
 
         // TODO: smarter allocation algorithm, just making it work now
         std::vector<std::unique_ptr<Buffer>> allocatedBuffers;
 
-        Carrot::Async::SpinLock dedicatedBuffersAccess;
+        Carrot::Async::SpinLock dedicatedStagingBuffersAccess;
+        Carrot::Async::SpinLock dedicatedDeviceBuffersAccess;
         std::vector<std::unique_ptr<Buffer>> dedicatedStagingBuffers;
+        std::vector<std::unique_ptr<Buffer>> dedicatedDeviceBuffers;
 
-        std::unique_ptr<Carrot::Buffer> heap;
+        std::unique_ptr<Carrot::Buffer> stagingHeap;
+        std::unique_ptr<Carrot::Buffer> deviceHeap;
         // VmaVirtualBlock
-        void* virtualBlock = nullptr;
+        void* stagingVirtualBlock = nullptr;
+        void* deviceVirtualBlock = nullptr;
 
         void freeBufferView(BufferView& view);
 
         friend class BufferView;
-        friend class StagingBuffer;
+        friend class BufferAllocation;
     };
 }
