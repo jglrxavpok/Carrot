@@ -24,6 +24,9 @@ namespace Carrot::Render {
             std::size_t primitiveCount = 0;
         };
 
-        void loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, const glm::mat4& parentTransform);
+        using NodeMapping = std::unordered_map<SkeletonTreeNode*, int>;
+
+        void loadAnimations(LoadedScene& result, const tinygltf::Model& model, const NodeMapping& nodeMapping);
+        void loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, NodeMapping& nodeMapping, const glm::mat4& parentTransform);
     };
 }

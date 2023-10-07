@@ -6,10 +6,13 @@
 #include "core/io/Logging.hpp"
 #include <core/utils/Profiling.h>
 #include <glm/gtx/quaternion.hpp>
+#include <set>
 
 #include "core/io/vfs/VirtualFileSystem.h"
 
 namespace Carrot::Render {
+
+    static glm::mat4 glTFSpaceToCarrotSpace = glm::rotate(glm::mat4{1.0f}, glm::pi<float>()/2.0f, glm::vec3(1,0,0));
 
     constexpr const char* const KHR_TEXTURE_BASISU_EXTENSION_NAME = "KHR_texture_basisu";
 
@@ -192,6 +195,7 @@ namespace Carrot::Render {
     static void loadVertices(LoadedPrimitive& loadedPrimitive, const tinygltf::Model& model, const tinygltf::Primitive& primitive, PrimitiveInformation& info) {
         ZoneScoped;
         std::vector<Vertex>& vertices = loadedPrimitive.vertices;
+        std::vector<SkinnedVertex>& skinnedVertices = loadedPrimitive.skinnedVertices;
         const tinygltf::Accessor& positionsAccessor = model.accessors[primitive.attributes.at("POSITION")];
 
         int normalsAccessorIndex = -1;
@@ -221,14 +225,28 @@ namespace Carrot::Render {
             info.hasTangents = true;
         }
 
+        int jointsAccessorIndex = -1;
+        auto jointsAttributeIt = primitive.attributes.find("JOINTS_0");
+        if(jointsAttributeIt != primitive.attributes.end()) {
+            jointsAccessorIndex = jointsAttributeIt->second;
+        }
+
+        int jointWeightsAccessorIndex = -1;
+        auto jointWeightsAttributeIt = primitive.attributes.find("WEIGHTS_0");
+        if(jointsAttributeIt != primitive.attributes.end()) {
+            jointWeightsAccessorIndex = jointWeightsAttributeIt->second;
+        }
+
         const tinygltf::Accessor* normalsAccessor = normalsAccessorIndex != -1 ? &model.accessors[normalsAccessorIndex] : nullptr;
         const tinygltf::Accessor* vertexColorAccessor = colorAccessorIndex != -1 ? &model.accessors[colorAccessorIndex] : nullptr;
         const tinygltf::Accessor* texCoordsAccessor = texCoordsAccessorIndex != -1 ? &model.accessors[texCoordsAccessorIndex] : nullptr;
         const tinygltf::Accessor* tangentsAccessor = tangentAccessorIndex != -1 ? &model.accessors[tangentAccessorIndex] : nullptr;
+        const tinygltf::Accessor* jointsAccessor = jointsAccessorIndex != -1 ? &model.accessors[jointsAccessorIndex] : nullptr;
+        const tinygltf::Accessor* jointWeightsAccessor = jointWeightsAccessorIndex != -1 ? &model.accessors[jointWeightsAccessorIndex] : nullptr;
+
+        const bool usesSkinning = jointsAccessor != nullptr && jointWeightsAccessor != nullptr;
+        loadedPrimitive.isSkinned = usesSkinning;
         // TODO: UV2
-        // TODO: Joints
-        // TODO: Weights
-        // TODO: support skinned meshes
         // TODO: support compressed meshes
 
         if(normalsAccessor != nullptr) {
@@ -243,11 +261,24 @@ namespace Carrot::Render {
             verify(positionsAccessor.count == tangentsAccessor->count, "Mismatched position/tangents count");
         }
 
+        if(jointsAccessor != nullptr) {
+            verify(positionsAccessor.count == jointsAccessor->count, "Mismatched position/joints count");
+        }
+
+        if(jointWeightsAccessor != nullptr) {
+            verify(positionsAccessor.count == jointWeightsAccessor->count, "Mismatched position/jointWeights count");
+        }
+
         loadedPrimitive.minPos = toVec3(positionsAccessor.minValues, glm::vec3{INFINITY});
         loadedPrimitive.maxPos = toVec3(positionsAccessor.maxValues, glm::vec3{-INFINITY});
-        vertices.resize(positionsAccessor.count);
+
+        if(usesSkinning) {
+            skinnedVertices.resize(positionsAccessor.count);
+        } else {
+            vertices.resize(positionsAccessor.count);
+        }
         for (std::size_t i = 0; i < positionsAccessor.count; ++i) {
-            Carrot::Vertex& vertex = vertices[i];
+            Carrot::Vertex& vertex = usesSkinning ? skinnedVertices[i] : vertices[i];
             const glm::vec3 pos = readFromAccessor<glm::vec3>(i, positionsAccessor, model);
             vertex.pos = glm::vec4 { pos, 1.0f };
             loadedPrimitive.minPos = glm::min(loadedPrimitive.minPos, pos);
@@ -275,6 +306,12 @@ namespace Carrot::Render {
                 vertex.color = readFromAccessor<glm::vec4>(i, *vertexColorAccessor, model);
             } else {
                 vertex.color = glm::vec4 { 1.0f };
+            }
+
+            if(usesSkinning) {
+                SkinnedVertex& skinnedVertex = (SkinnedVertex&)vertex;
+                skinnedVertex.boneIDs = readFromAccessor<glm::u8vec4>(i, *jointsAccessor, model);
+                skinnedVertex.boneWeights = readFromAccessor<glm::vec4>(i, *jointWeightsAccessor, model);
             }
         }
     }
@@ -413,6 +450,7 @@ namespace Carrot::Render {
             }
         }
 
+        bool hasAnySkin = false;
         std::vector<GLTFMesh> meshes;
         meshes.reserve(model.meshes.size());
         for(const auto& mesh : model.meshes) {
@@ -427,6 +465,7 @@ namespace Carrot::Render {
                 PrimitiveInformation info;
                 loadVertices(loadedPrimitive, model, primitive, info);
                 loadIndices(loadedPrimitive.indices, model, primitive);
+                hasAnySkin |= loadedPrimitive.isSkinned;
 
                 loadedPrimitive.hadNormals = info.hasNormals;
                 loadedPrimitive.hadTexCoords = info.hasTexCoords;
@@ -436,18 +475,202 @@ namespace Carrot::Render {
             }
         }
 
-        result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glm::mat4{1.0f});
+        NodeMapping nodeMapping;
+        result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glTFSpaceToCarrotSpace);
         for(const auto& scene : model.scenes) {
             auto& sceneRoot = result.nodeHierarchy->hierarchy.newChild();
+            sceneRoot.bone.name = "glTF Scene root " + result.debugName;
+            sceneRoot.bone.transform = sceneRoot.bone.originalTransform = glTFSpaceToCarrotSpace;
             for(const auto& nodeIndex : scene.nodes) {
-                loadNodesRecursively(result, model, nodeIndex, meshes, sceneRoot, glm::mat4{1.0f});
+                loadNodesRecursively(result, model, nodeIndex, meshes, sceneRoot, nodeMapping, glTFSpaceToCarrotSpace);
             }
+        }
+
+        if(hasAnySkin) {
+           loadAnimations(result, model, nodeMapping);
         }
 
         return std::move(result);
     }
 
-    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, const glm::mat4& parentTransform) {
+    void GLTFLoader::loadAnimations(LoadedScene& result, const tinygltf::Model& model, const NodeMapping& nodeMapping) {
+        for(const auto& animation : model.animations) {
+            const std::size_t animationIndex = result.animationData.size();
+            Animation& carrotAnimation = result.animationData.emplace_back();
+            result.animationMapping[animation.name] = animationIndex;
+
+            // mimic what is done in AssimpLoader: load all timestamps and fill translation/rotation/scale of each bone for each timestamp
+            //  not great for memory, but dumb enough for fast runtime usage
+
+            std::set<float> timestampsSet; // we want them sorted
+            float duration = 0.0f;
+            for(const auto& channel : animation.channels) {
+                const auto& sampler = animation.samplers[channel.sampler];
+                const auto& timestampAccessor = model.accessors[sampler.input];
+                for(std::size_t timestampIndex = 0; timestampIndex < timestampAccessor.count; timestampIndex++) {
+                    const float timestamp = readFromAccessor<float>(timestampIndex, timestampAccessor, model);
+                    timestampsSet.emplace(timestamp);
+                    carrotAnimation.duration = std::max(timestamp, carrotAnimation.duration);
+                }
+            }
+
+            std::vector<float> allTimestamps;
+            allTimestamps.reserve(timestampsSet.size());
+            for(const float& timestamp : timestampsSet) {
+                allTimestamps.emplace_back(timestamp);
+            }
+
+            carrotAnimation.keyframeCount = allTimestamps.size();
+            verify(carrotAnimation.keyframeCount < sizeof(Animation::keyframes) / sizeof(Keyframe), "Too many keyframes!");
+
+            // read the TRS of each node over time for this animation
+            struct GLTFKeyframe {
+                std::optional<glm::vec3> position{0.0f};
+                std::optional<glm::quat> rotation;
+                std::optional<glm::vec3> scale{1.0f};
+
+                bool worldSpace = false;
+                glm::mat4 worldSpaceTransform = glm::identity<glm::mat4>();
+            };
+
+            std::unordered_map<std::uint32_t, std::vector<GLTFKeyframe>> keyframesForAllNodes;
+            std::size_t keyframeIndex = 0;
+            for(const float& timestamp : allTimestamps) {
+                Keyframe& carrotKeyframe = carrotAnimation.keyframes[keyframeIndex];
+                carrotKeyframe.timestamp = timestamp;
+                for(const auto& channel : animation.channels) {
+                    const auto& sampler = animation.samplers[channel.sampler];
+                    const auto& timestampAccessor = model.accessors[sampler.input];
+                    const auto& keyframeValueAccessor = model.accessors[sampler.output];
+
+                    std::vector<GLTFKeyframe>& keyframes = keyframesForAllNodes[channel.target_node];
+                    if(keyframes.empty()) {
+                        keyframes.resize(allTimestamps.size());
+                    }
+
+                    // find which keyframe corresponds to the given timestamp
+                    std::size_t timestampIndex = 0;
+                    for(; timestampIndex < timestampAccessor.count; timestampIndex++) {
+                        const float keyframeTimestamp = readFromAccessor<float>(timestampIndex, timestampAccessor, model);
+                        if(keyframeTimestamp >= timestamp) {
+                            break;
+                        }
+                    }
+
+                    GLTFKeyframe& keyframe = keyframes[timestampIndex];
+
+                    const std::string& target = channel.target_path;
+                    if(target == "translation") {
+                        keyframe.position = readFromAccessor<glm::vec3>(timestampIndex, keyframeValueAccessor, model);
+                    } else if(target == "rotation") {
+                        glm::vec4 keyframeRotationXYZW = readFromAccessor<glm::vec4>(timestampIndex, keyframeValueAccessor, model);
+                        keyframe.rotation = { keyframeRotationXYZW.w, keyframeRotationXYZW.x, keyframeRotationXYZW.y, keyframeRotationXYZW.z };
+                    } else if(target == "scale") {
+                        keyframe.scale = readFromAccessor<glm::vec3>(timestampIndex, keyframeValueAccessor, model);
+                    } else {
+                        verify(false, "Unknown target_path in glTF: " + target);
+                    }
+                }
+
+                keyframeIndex++;
+            }
+
+            // interpolate keyframe values when none exist
+            for(auto& [nodeID, keyframes] : keyframesForAllNodes) {
+                // used if there are no more keyframes with a value at this timestamp (keep same keyframe value until end of animation)
+                GLTFKeyframe latestKeyframe {
+                        .position = glm::vec3{0.0f},
+                        .rotation = glm::identity<glm::quat>(),
+                        .scale = glm::vec3{1.0f}
+                };
+                auto interpolate = [&](auto pMemberPtr, std::size_t index) {
+                    if(index == 0) {
+                        return (latestKeyframe.*pMemberPtr).value();
+                    }
+
+                    // find next keyframe with a value
+                    std::size_t nextIndex = index;
+                    for(std::size_t i = index+1; i < allTimestamps.size(); i++) {
+                        if((keyframes[i].*pMemberPtr).has_value()) {
+                            nextIndex = i;
+                            break;
+                        }
+                    }
+
+                    if(nextIndex <= index) { // there is no keyframe after this one which contains a value
+                        return (latestKeyframe.*pMemberPtr).value();
+                    } else {
+                        std::size_t previousIndex = index-1;
+                        const GLTFKeyframe& previousKeyframe = keyframes[previousIndex];
+                        const GLTFKeyframe& nextKeyframe = keyframes[nextIndex];
+
+                        float previousTime = allTimestamps[previousIndex];
+                        float nextTime = allTimestamps[nextIndex];
+
+                        float currentTime = allTimestamps[index];
+                        float t = (currentTime - previousTime) / (nextTime - previousTime);
+                        return (previousKeyframe.*pMemberPtr).value() * (1-t) + (nextKeyframe.*pMemberPtr).value() * t;
+                    }
+                };
+                for(std::size_t i = 0; i < allTimestamps.size(); i++) {
+                    GLTFKeyframe& currentKeyframe = keyframes[i];
+                    if(!currentKeyframe.position.has_value()) {
+                        currentKeyframe.position = interpolate(&GLTFKeyframe::position, i);
+                    }
+                    if(!currentKeyframe.rotation.has_value()) {
+                        currentKeyframe.rotation = interpolate(&GLTFKeyframe::rotation, i);
+                    }
+                    if(!currentKeyframe.scale.has_value()) {
+                        currentKeyframe.scale = interpolate(&GLTFKeyframe::scale, i);
+                    }
+                    latestKeyframe = currentKeyframe;
+                }
+
+                const int meshIndex = 0; // TODO: like AssimpLoader, only a single mesh can be animated at once per glTF file when loaded into Carrot
+                // at this point, all keyframes have values
+                // now compute global transform for each keyframe
+                for(std::size_t timestampIndex = 0; timestampIndex < allTimestamps.size(); timestampIndex++) {
+                    Keyframe& finalKeyframe = carrotAnimation.keyframes[timestampIndex];
+
+                    std::function<glm::mat4(SkeletonTreeNode&, GLTFKeyframe&)> computeTransformRecursively =
+                            [&](SkeletonTreeNode& treeNode, GLTFKeyframe& keyframe) -> glm::mat4 {
+                                if(keyframe.worldSpace) {
+                                    return keyframe.worldSpaceTransform;
+                                }
+
+                                glm::mat4 translationMat = glm::translate(glm::mat4{1.0f}, keyframe.position.value());
+                                glm::mat4 rotationMat = glm::toMat4(glm::normalize(keyframe.rotation.value()));
+                                glm::mat4 scalingMat = glm::scale(glm::mat4{1.0f}, keyframe.scale.value());
+                                glm::mat4 localTransform = translationMat * rotationMat * scalingMat;
+
+                                glm::mat4 parentMatrix = glm::identity<glm::mat4>();
+                                if(treeNode.pParent) {
+                                    int parentNodeIndex = nodeMapping.at(treeNode.pParent);
+                                    auto iter = keyframesForAllNodes.find(parentNodeIndex);
+                                    if(iter != keyframesForAllNodes.end()) {
+                                        parentMatrix = computeTransformRecursively(*treeNode.pParent, iter->second[timestampIndex]);
+                                    }
+                                }
+
+                                glm::mat4 globalTransform = parentMatrix * localTransform;
+                                keyframe.worldSpaceTransform = globalTransform;
+                                keyframe.worldSpace = true;
+                                return keyframe.worldSpaceTransform;
+                            };
+
+                    GLTFKeyframe& currentKeyframe = keyframes[timestampIndex];
+                    const std::string& nodeName = model.nodes[nodeID].name;
+                    std::uint32_t boneIndex = result.boneMapping[meshIndex].at(nodeName);
+                    SkeletonTreeNode* pTreeNode = result.nodeHierarchy->findNode(nodeName);
+                    verify(pTreeNode, "Could not find matching node in tree");
+                    const glm::mat4& boneOffset = result.offsetMatrices[meshIndex].at(nodeName);
+                    finalKeyframe.boneTransforms[boneIndex] = glTFSpaceToCarrotSpace * computeTransformRecursively(*pTreeNode, currentKeyframe) * boneOffset;
+                }
+            }
+        }
+    }
+
+    void GLTFLoader::loadNodesRecursively(LoadedScene& scene, const tinygltf::Model& model, int nodeIndex, const std::span<const GLTFMesh>& meshes, SkeletonTreeNode& parentNode, NodeMapping& nodeMapping, const glm::mat4& parentTransform) {
         ZoneScoped;
 
         SkeletonTreeNode& newNode = parentNode.newChild();
@@ -472,17 +695,43 @@ namespace Carrot::Render {
         newNode.bone.name = node.name;
         newNode.bone.originalTransform = transform;
         newNode.bone.transform = transform;
+        nodeMapping[&newNode] = nodeIndex;
 
         if(node.mesh != -1) {
             newNode.meshIndices = std::vector<std::size_t>{};
             const GLTFMesh& mesh = meshes[node.mesh];
+
+            std::unordered_map<std::string, std::uint32_t> skinBoneMapping;
+            std::unordered_map<std::string, glm::mat4> skinInverseBinds;
+
+            if(node.skin != -1) {
+                auto& glTFSkin = model.skins[node.skin];
+                for(std::size_t jointIndex = 0; jointIndex < glTFSkin.joints.size(); jointIndex++) {
+                    int jointNodeID = glTFSkin.joints[jointIndex];
+                    const auto& jointNode = model.nodes[jointNodeID];
+                    skinBoneMapping[jointNode.name] = jointIndex;
+
+                    if(glTFSkin.inverseBindMatrices != -1) {
+                        skinInverseBinds[jointNode.name] = readFromAccessor<glm::mat4>(jointIndex, model.accessors[glTFSkin.inverseBindMatrices], model);
+                    } else {
+                        skinInverseBinds[jointNode.name] = glm::identity<glm::mat4>();
+                    }
+                }
+            }
+
             for (std::size_t i = 0; i < mesh.primitiveCount; ++i) {
-                newNode.meshIndices.value().push_back(i + mesh.firstPrimitive);
+                const std::size_t meshIndex = i + mesh.firstPrimitive;
+                newNode.meshIndices.value().push_back(meshIndex);
+
+                if(node.skin != -1) {
+                    scene.boneMapping[meshIndex] = skinBoneMapping;
+                    scene.offsetMatrices[meshIndex] = skinInverseBinds;
+                }
             }
         }
 
         for(const auto& childIndex : node.children) {
-            loadNodesRecursively(scene, model, childIndex, meshes, newNode, transform);
+            loadNodesRecursively(scene, model, childIndex, meshes, newNode, nodeMapping, transform);
         }
     }
 }

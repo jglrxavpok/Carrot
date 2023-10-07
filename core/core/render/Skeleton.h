@@ -31,8 +31,9 @@ namespace Carrot::Render {
     public:
         Bone bone{};
         std::optional<std::vector<std::size_t>> meshIndices;
+        SkeletonTreeNode* pParent = nullptr;
 
-        SkeletonTreeNode() = default;
+        explicit SkeletonTreeNode(SkeletonTreeNode* pParent): pParent(pParent) {};
 
     public: //! Hierarchy manipulation
 
@@ -56,18 +57,20 @@ namespace Carrot::Render {
     //! If you want to read animations from a model file, use Carrot::AnimatedInstances
     class Skeleton {
     public:
-        SkeletonTreeNode hierarchy;
+        SkeletonTreeNode hierarchy { nullptr };
 
-        Skeleton(const glm::mat4& globalInverseTransform);
+        explicit Skeleton(const glm::mat4& globalInverseTransform);
 
     public:
         //! Finds the bone which has the same name as the input. If none could be found, returns nullptr
         //! If you need to use this bone frequently, it is recommended to cache it, as this method searches the entire hierarchy each time
         Bone* findBone(const BoneName& boneName);
+        SkeletonTreeNode* findNode(const BoneName& boneName);
 
         //! Finds the bone which has the same name as the input. If none could be found, returns nullptr
         //! If you need to use this bone frequently, it is recommended to cache it, as this method searches the entire hierarchy each time
         const Bone* findBone(const BoneName& boneName) const;
+        const SkeletonTreeNode* findNode(const BoneName& boneName) const;
 
     public:
         const glm::mat4& getGlobalTransform() const;

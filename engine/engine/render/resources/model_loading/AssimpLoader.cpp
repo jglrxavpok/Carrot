@@ -282,7 +282,7 @@ namespace Carrot::Render {
                 nodeTransform = translationMat * rotationMat * scalingMat;
             }
 
-            glm::mat4 boneOffset = (currentScene.offsetMatrices[meshIndex].find(boneName)->second);
+            const glm::mat4& boneOffset = (currentScene.offsetMatrices[meshIndex].at(boneName));
             globalTransform = parentMatrix * nodeTransform;
             keyframe.boneTransforms[boneID] = globalInverseTransform * globalTransform * boneOffset;
         } else {

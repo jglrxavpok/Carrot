@@ -14,8 +14,8 @@
 #include <core/data/Hashes.h>
 #include <robin_hood.h>
 
-static Carrot::RuntimeOption DrawBoundingSpheres("Debug/Draw bounding spheres", false);
-static Carrot::RuntimeOption DisableFrustumCheck("Debug/Disable frustum culling", false);
+Carrot::RuntimeOption DrawBoundingSpheres("Debug/Draw bounding spheres", false);
+Carrot::RuntimeOption DisableFrustumCheck("Debug/Disable frustum culling", false);
 
 namespace Carrot::Render {
     bool MaterialOverride::operator==(const MaterialOverride& other) const {

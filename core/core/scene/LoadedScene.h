@@ -121,6 +121,7 @@ namespace Carrot::Render {
         std::vector<LoadedPrimitive> primitives;
         std::unique_ptr<Carrot::Render::Skeleton> nodeHierarchy;
 
+        // [primitiveIndex][bone name] -> boneIndex
         std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;
         std::unordered_map<int, std::unordered_map<std::string, glm::mat4>> offsetMatrices;
 

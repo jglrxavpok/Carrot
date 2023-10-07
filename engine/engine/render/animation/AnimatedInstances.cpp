@@ -5,6 +5,7 @@
 #include "AnimatedInstances.h"
 
 #include <utility>
+#include <engine/console/RuntimeOption.hpp>
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/Model.h"
 #include "engine/render/resources/Mesh.h"
@@ -12,9 +13,12 @@
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/resources/LightMesh.h"
 
+extern Carrot::RuntimeOption DrawBoundingSpheres;
+
 Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared_ptr<Model> animatedModel, size_t maxInstanceCount):
     engine(engine), model(std::move(animatedModel)), maxInstanceCount(maxInstanceCount) {
 
+    // TODO: don't crash if there are no skinned meshes inside model
     instanceBuffer = std::make_unique<Buffer>(engine.getVulkanDriver(),
                                               maxInstanceCount*sizeof(AnimatedInstanceData),
                                               vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
@@ -411,12 +415,19 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
             auto& sphere = meshInfo.boundingSphere;
             for(size_t index = 0; index < currentInstanceCount; index++) {
                 Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
-                meshInstanceData.transform = meshInstanceData.transform * meshTransform;
+                meshInstanceData.transform = meshInstanceData.transform;
 
                 Math::Sphere s = sphere;
                 s.transform(meshInstanceData.transform);
                 if(!renderContext.getCamera().isInFrustum(s)) {
                     continue;
+                }
+
+                if(DrawBoundingSpheres) {
+                    if(model.get() != renderContext.renderer.getUnitSphere().get()) {
+                        glm::mat4 sphereTransform = glm::translate(glm::mat4{1.0f}, s.center) * glm::scale(glm::mat4{1.0f}, glm::vec3{s.radius*2 /*unit sphere model has a radius of 0.5*/});
+                        renderContext.renderer.renderWireframeSphere(renderContext, sphereTransform, 1.0f, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), meshInstanceData.uuid);
+                    }
                 }
 
                 packet.useInstance(meshInstanceData);

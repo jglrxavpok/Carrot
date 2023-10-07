@@ -45,22 +45,7 @@ namespace Carrot {
         alignas(16) glm::vec2 uv;
     };
 
-    struct SkinnedVertex {
-        /// World position of the vertex
-        alignas(16) glm::vec4 pos;
-
-        /// RGB color
-        alignas(16) glm::vec3 color;
-
-        /// Vertex normal
-        alignas(16) glm::vec3 normal;
-
-        /// Vertex tangent, W is the sign of the bitangent (B = tangent.w * cross(N, T) with N,T orthonormalized)
-        alignas(16) glm::vec4 tangent;
-
-        /// UV coordinates
-        alignas(16) glm::vec2 uv;
-
+    struct SkinnedVertex: public Vertex {
         /// Skinning information
         alignas(16) glm::ivec4 boneIDs{-1,-1,-1,-1};
         alignas(16) glm::vec4 boneWeights{0,0,0,0};

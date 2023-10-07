@@ -8,7 +8,7 @@
 
 namespace Carrot::Render {
     SkeletonTreeNode& SkeletonTreeNode::newChild() {
-        return children.emplace_back();
+        return children.emplace_back(this);
     }
 
     std::list<SkeletonTreeNode>& SkeletonTreeNode::getChildren() {
@@ -26,12 +26,17 @@ namespace Carrot::Render {
     }
 
     Bone* Skeleton::findBone(const BoneName& boneName) {
-        std::function<Bone* (SkeletonTreeNode&)> recurse = [&](SkeletonTreeNode& node) -> Bone* {
+        SkeletonTreeNode* node = findNode(boneName);
+        return node ? &node->bone : nullptr;
+    }
+
+    SkeletonTreeNode* Skeleton::findNode(const BoneName& boneName) {
+        std::function<SkeletonTreeNode* (SkeletonTreeNode&)> recurse = [&](SkeletonTreeNode& node) -> SkeletonTreeNode* {
             if(node.bone.name == boneName) {
-                return &node.bone;
+                return &node;
             }
             for(auto& child : node.getChildren()) {
-                Bone* found = recurse(child);
+                SkeletonTreeNode* found = recurse(child);
                 if(found) {
                     return found;
                 }
@@ -43,6 +48,11 @@ namespace Carrot::Render {
 
     const Bone* Skeleton::findBone(const BoneName& boneName) const {
         return const_cast<Skeleton*>(this)->findBone(boneName);
+    }
+
+
+    const SkeletonTreeNode* Skeleton::findNode(const BoneName& boneName) const {
+        return const_cast<Skeleton*>(this)->findNode(boneName);
     }
 
     const glm::mat4& Skeleton::getGlobalTransform() const {
