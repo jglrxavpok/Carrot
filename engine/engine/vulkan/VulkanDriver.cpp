@@ -997,26 +997,32 @@ const vk::PhysicalDeviceLimits& Carrot::VulkanDriver::getPhysicalDeviceLimits() 
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueImage&& resource) {
+    Async::LockGuard g { deferredDestroysLock };
     deferredImageDestructions.push_back(std::move(DeferredImageDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueImageView&& resource) {
+    Async::LockGuard g { deferredDestroysLock };
     deferredImageViewDestructions.push_back(std::move(DeferredImageViewDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueBuffer&& resource) {
+    Async::LockGuard g { deferredDestroysLock };
     deferredBufferDestructions.push_back(std::move(DeferredBufferDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, Carrot::DeviceMemory&& resource) {
+    Async::LockGuard g { deferredDestroysLock };
     deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource) {
+    Async::LockGuard g { deferredDestroysLock };
     deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(name, std::move(resource))));
 }
 
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {
+    Async::LockGuard g { deferredDestroysLock };
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
     deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
 }

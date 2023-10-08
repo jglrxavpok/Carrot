@@ -180,6 +180,40 @@ namespace Carrot {
         return blockingLoadPipeline(path, instanceOffset);
     }
 
+    std::shared_ptr<Carrot::Render::AnimatedModel::Handle> AssetServer::blockingLoadAnimatedModelInstance(const Carrot::IO::VFS::Path& path) {
+        Async::Counter sync;
+        ZoneScopedN("Loading animated model instance");
+        const std::string modelPath = path.toString();
+        ZoneText(modelPath.c_str(), modelPath.size());
+        std::shared_ptr<Carrot::Render::AnimatedModel::Handle> result;
+        GetTaskScheduler().schedule(TaskDescription {
+                .name = "Load animated model instance " + path.toString(),
+                .task = [&](TaskHandle& task) {
+                    result = loadAnimatedModelInstance(task, path);
+                },
+                .joiner = &sync,
+        }, TaskScheduler::AssetLoading);
+        sync.busyWait();
+        return result;
+    }
+
+    AssetServer::LoadTaskProc<Carrot::Render::AnimatedModel::Handle> AssetServer::loadAnimatedModelInstanceTask(const Carrot::IO::VFS::Path& path) {
+        return [this, path](TaskHandle& task) {
+            return loadAnimatedModelInstance(task, path);
+        };
+    }
+
+    std::shared_ptr<Carrot::Render::AnimatedModel::Handle> AssetServer::loadAnimatedModelInstance(TaskHandle& currentTask, const Carrot::IO::VFS::Path& path) {
+        auto pAnimatedModel = animatedModels.getOrCompute(path.toString(), [&]() {
+            // load the corresponding model data
+            std::shared_ptr<Carrot::Model> pModel = loadModel(currentTask, path);
+
+            // create the Animated Model object
+            return std::make_shared<Render::AnimatedModel>(pModel);
+        });
+        return pAnimatedModel->requestHandle();
+    }
+
     void AssetServer::indexAssets() {
         // TODO
     }

@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <iostream>
+#include <core/io/Logging.hpp>
 #include "RayTracer.h"
 #include "engine/render/resources/ResourceAllocator.h"
 
@@ -318,6 +319,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     };
 
     // allocate memory for each entry
+    std::vector<bool> firstBuild;
+    firstBuild.resize(blasCount);
     for(size_t index = 0; index < blasCount; index++) {
         ZoneScopedN("Create BLAS");
         ZoneValue(index);
@@ -332,15 +335,15 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         info.flags = flags;
         info.pGeometries = blas.geometries.data();
 
-        bool firstBuild = dirtyBlases || blas.firstGeometryIndex == (std::uint32_t)-1;
-        if(firstBuild) {
+        firstBuild[index] = dirtyBlases || blas.firstGeometryIndex == (std::uint32_t) -1;
+        if (firstBuild[index]) {
             std::size_t geometryIndexStart = allGeometries.size();
             blas.firstGeometryIndex = geometryIndexStart;
-            if(allGeometries.capacity() < allGeometries.size() + blas.geometries.size()) {
+            if (allGeometries.capacity() < allGeometries.size() + blas.geometries.size()) {
                 allGeometries.reserve(allGeometries.size() + blas.geometries.size());
             }
             for (std::size_t j = 0; j < blas.geometries.size(); ++j) {
-                allGeometries.emplace_back(SceneDescription::Geometry {
+                allGeometries.emplace_back(SceneDescription::Geometry{
                         .vertexBufferAddress = blas.geometries[j].geometry.triangles.vertexData.deviceAddress,
                         .indexBufferAddress = blas.geometries[j].geometry.triangles.indexData.deviceAddress,
                         .materialIndex = blas.materialSlots[j],
@@ -348,9 +351,26 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             }
         }
 
-        info.mode = firstBuild ? vk::BuildAccelerationStructureModeKHR::eBuild : vk::BuildAccelerationStructureModeKHR::eUpdate;
+        info.mode = firstBuild[index] ? vk::BuildAccelerationStructureModeKHR::eBuild : vk::BuildAccelerationStructureModeKHR::eUpdate;
         info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
-        info.srcAccelerationStructure = firstBuild ? nullptr : blas.as->getVulkanAS();
+        info.srcAccelerationStructure = firstBuild[index] ? nullptr : blas.as->getVulkanAS();
+    }
+
+    Async::SpinLock scratchSizeAccess;
+    // There is some weird GPU crashes happening when processing this loop out-of-order
+    // TODO: understand why
+    for(size_t index = 0; index < blasCount; index++) {
+    //GetTaskScheduler().parallelFor(blasCount, [&](std::size_t index) {
+
+        ZoneScopedN("Create BLAS");
+        ZoneValue(index);
+
+        // TODO: can probably be cached
+        auto& info = buildInfo[index];
+        auto& blas = *toBuild[index];
+
+        Carrot::Log::info("index: %llu [%x]", index, &blas);
+        Carrot::Log::flush();
 
         std::vector<uint32_t> primitiveCounts(blas.buildRanges.size());
         // copy primitive counts to flat vector
@@ -366,17 +386,23 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
         };
 
-        if(blas.as) {
-            blas.as->update(createInfo);
-        } else {
-            blas.as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
+        {
+            if(blas.as) {
+                blas.as->update(createInfo);
+            } else {
+                blas.as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
+            }
         }
         info.dstAccelerationStructure = blas.as->getVulkanAS();
 
-        scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
+        {
+            Async::LockGuard scratchSizeGuard { scratchSizeAccess };
+            originalSizes[index] = sizeInfo.accelerationStructureSize;
+            scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
+        }
 
-        originalSizes[index] = sizeInfo.accelerationStructureSize;
-    }
+        }
+    //}, 32);
 
     /*if(!geometriesBuffer || geometriesBuffer->getSize() < sizeof(SceneDescription::Geometry) * allGeometries.size())*/ {
         geometriesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Geometry) * allGeometries.size(),

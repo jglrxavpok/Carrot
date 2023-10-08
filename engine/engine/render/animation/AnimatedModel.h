@@ -18,19 +18,20 @@ namespace Carrot::Render {
      * Represents a user-friendly interface to models with animations.
      * Supports instancing, via requestHandle
      */
-    class AnimatedModel {
+    class AnimatedModel: public std::enable_shared_from_this<AnimatedModel> {
     public:
         constexpr static std::size_t MaxInstances = 128;
 
         class Handle {
         public:
-            Handle(AnimatedModel& parent);
+            Handle(const std::shared_ptr<AnimatedModel>& parent);
             ~Handle();
 
             AnimatedInstanceData& getData();
+            AnimatedModel& getParent();
 
         private:
-            AnimatedModel& parent;
+            std::shared_ptr<AnimatedModel> parent;
             AnimatedInstanceData data; //< will be copied to GPU buffer each frame
         };
 

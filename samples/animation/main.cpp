@@ -17,10 +17,10 @@ constexpr const std::size_t InstanceCount = 10;
 class SampleAnimation: public Carrot::CarrotGame {
 public:
     explicit SampleAnimation(Carrot::Engine& engine): Carrot::CarrotGame(engine),
-                                                      skinnedModel(GetAssetServer().blockingLoadModel("resources/models/unit.gltf")),
+                                                      skinnedModel(GetAssetServer().blockingLoadModel(animatedModelPath)),
                                                       staticModel(GetAssetServer().blockingLoadModel("resources/models/viking_room.obj")),
                                                       skinnedModelRenderer(engine, skinnedModel, InstanceCount),
-                                                      animatedModel(skinnedModel)
+                                                      pAnimatedModel(std::make_shared<Carrot::Render::AnimatedModel>(skinnedModel))
     {
         {
             moveCamera.suggestBinding(Carrot::IO::GLFWGamepadVec2Binding(0, Carrot::IO::GameInputVectorType::LeftStick));
@@ -82,11 +82,12 @@ public:
         int sizeAtThisTime = (int)((sin(time) / 2.0f + 0.5f) * 30);
         if(sizeAtThisTime >= 0 && animatedModelHandles.size() != sizeAtThisTime) {
             animatedModelHandles.resize(sizeAtThisTime);
+            animatedModelHandlesFromAssetServer.resize(sizeAtThisTime);
 
             for (int i = 0; i < animatedModelHandles.size(); ++i) {
                 auto& pHandle = animatedModelHandles[i];
                 if(pHandle == nullptr) { // need more instances compared to previous frame
-                    pHandle = animatedModel.requestHandle();
+                    pHandle = pAnimatedModel->requestHandle();
                 }
 
                 Carrot::AnimatedInstanceData& instanceData = pHandle->getData();
@@ -94,9 +95,26 @@ public:
                 instanceData.animationIndex = (i+1) % 2;
                 instanceData.transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 5, 0));
             }
+
+            for (int i = 0; i < animatedModelHandlesFromAssetServer.size(); ++i) {
+                auto& pHandle = animatedModelHandlesFromAssetServer[i];
+                if(pHandle == nullptr) { // need more instances compared to previous frame
+
+                    // in practice, you should not request the instance via blocking, nor that often, but this is only for the example
+                    pHandle = GetAssetServer().blockingLoadAnimatedModelInstance(animatedModelPath);
+                }
+
+                Carrot::AnimatedInstanceData& instanceData = pHandle->getData();
+                instanceData.animationTime = time;
+                instanceData.animationIndex = (i+1) % 2;
+                instanceData.transform = glm::translate(glm::identity<glm::mat4>(), glm::vec3(i, 7, 0));
+            }
         }
 
-        animatedModel.onFrame(renderContext);
+        pAnimatedModel->onFrame(renderContext);
+        if(!animatedModelHandlesFromAssetServer.empty()) {
+            animatedModelHandlesFromAssetServer[0]->getParent().onFrame(renderContext);
+        }
 
         if(moveFlashlight.isPressed()) {
             glm::mat4 invViewMatrix = GetEngine().getCamera().computeViewMatrix();
@@ -140,6 +158,8 @@ public:
     }
 
 private:
+    Carrot::IO::VFS::Path animatedModelPath = "resources/models/unit.gltf";
+
     double time = 0.0;
     Carrot::IO::ActionSet editorActions { "Editor actions" };
     Carrot::IO::Vec2InputAction moveCamera { "Move camera (strafe & forward) " };
@@ -159,8 +179,9 @@ private:
     Carrot::AnimatedInstances skinnedModelRenderer;
 
     // simpler interface, intended for ECS
-    Carrot::Render::AnimatedModel animatedModel;
+    std::shared_ptr<Carrot::Render::AnimatedModel> pAnimatedModel;
     std::vector<std::shared_ptr<Carrot::Render::AnimatedModel::Handle>> animatedModelHandles;
+    std::vector<std::shared_ptr<Carrot::Render::AnimatedModel::Handle>> animatedModelHandlesFromAssetServer;
 
     std::shared_ptr<Carrot::Render::LightHandle> flashlight;
 };

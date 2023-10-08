@@ -291,6 +291,7 @@ namespace Carrot {
 
         std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
 
+        Async::SpinLock deferredDestroysLock;
         std::unordered_map<std::uint32_t, std::vector<DeferredCommandBufferDestruction>> deferredCommandBufferDestructions;
 
         /// Create Vulkan instance

@@ -51,8 +51,8 @@ namespace Carrot {
         // TODO: smarter allocation algorithm, just making it work now
         std::vector<std::unique_ptr<Buffer>> allocatedBuffers;
 
-        Carrot::Async::SpinLock dedicatedStagingBuffersAccess;
-        Carrot::Async::SpinLock dedicatedDeviceBuffersAccess;
+        Carrot::Async::SpinLock stagingAccess;
+        Carrot::Async::SpinLock deviceAccess;
         std::vector<std::unique_ptr<Buffer>> dedicatedStagingBuffers;
         std::vector<std::unique_ptr<Buffer>> dedicatedDeviceBuffers;
 

@@ -48,7 +48,6 @@ namespace Carrot {
 
     BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size) {
         auto makeDedicated = [&]() {
-            Carrot::Async::LockGuard g { dedicatedStagingBuffersAccess };
             BufferAllocation result { this };
             dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
@@ -59,14 +58,16 @@ namespace Carrot {
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
         allocInfo.size = size;
-        BufferAllocation alloc = allocateInHeap(allocInfo, stagingVirtualBlock, *stagingHeap, makeDedicated);
-        alloc.staging = true;
-        return std::move(alloc);
+        {
+            Carrot::Async::LockGuard g{stagingAccess};
+            BufferAllocation alloc = allocateInHeap(allocInfo, stagingVirtualBlock, *stagingHeap, makeDedicated);
+            alloc.staging = true;
+            return std::move(alloc);
+        }
     }
 
     BufferAllocation ResourceAllocator::allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags) {
         auto makeDedicated = [&]() {
-            Carrot::Async::LockGuard g { dedicatedDeviceBuffersAccess };
             BufferAllocation result { this };
             dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal));
             auto& pBuffer = dedicatedDeviceBuffers.back();
@@ -84,7 +85,10 @@ namespace Carrot {
             allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
         }
 
-        return allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
+        {
+            Carrot::Async::LockGuard g{deviceAccess};
+            return allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
+        }
     }
 
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
@@ -136,20 +140,22 @@ namespace Carrot {
     void ResourceAllocator::freeStagingBuffer(BufferAllocation* buffer) {
         if(buffer->dedicated) {
             if(buffer->staging) {
-                Carrot::Async::LockGuard g { dedicatedStagingBuffersAccess };
+                Carrot::Async::LockGuard g { stagingAccess };
                 std::erase_if(dedicatedStagingBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
                     return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
                 });
             } else {
-                Carrot::Async::LockGuard g { dedicatedDeviceBuffersAccess };
+                Carrot::Async::LockGuard g { deviceAccess };
                 std::erase_if(dedicatedDeviceBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
                     return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
                 });
             }
         } else {
             if(buffer->staging) {
+                Carrot::Async::LockGuard g { stagingAccess };
                 vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
             } else {
+                Carrot::Async::LockGuard g { deviceAccess };
                 vmaVirtualFree((VmaVirtualBlock) deviceVirtualBlock, (VmaVirtualAllocation) buffer->allocation);
             }
         }

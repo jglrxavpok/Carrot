@@ -5,12 +5,16 @@
 #include "AnimatedModel.h"
 
 namespace Carrot::Render {
-    AnimatedModel::Handle::Handle(AnimatedModel& parent): parent(parent) {
+    AnimatedModel::Handle::Handle(const std::shared_ptr<AnimatedModel>& parent): parent(parent) {
 
     }
 
     AnimatedModel::Handle::~Handle() {
 
+    }
+
+    AnimatedModel& AnimatedModel::Handle::getParent() {
+        return *parent;
     }
 
     AnimatedInstanceData& AnimatedModel::Handle::getData() {
@@ -20,7 +24,7 @@ namespace Carrot::Render {
     AnimatedModel::AnimatedModel(const std::shared_ptr<Model>& model): model(model), animatedInstances(GetEngine(), model, MaxInstances) {}
 
     std::shared_ptr<AnimatedModel::Handle> AnimatedModel::requestHandle() {
-        handles.push_back(std::make_shared<AnimatedModel::Handle>(*this));
+        handles.push_back(std::make_shared<AnimatedModel::Handle>(this->shared_from_this()));
         return handles.back();
     }
 

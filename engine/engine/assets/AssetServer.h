@@ -9,6 +9,7 @@
 #include <engine/render/AsyncResource.hpp>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/task/TaskScheduler.h>
+#include <engine/render/animation/AnimatedModel.h>
 
 namespace Carrot {
     struct Model;
@@ -60,6 +61,10 @@ namespace Carrot {
         LoadTaskProc<Pipeline> loadPipelineTask(const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
         std::shared_ptr<Pipeline> loadPipeline(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path, std::uint64_t instanceOffset = 0);
 
+        std::shared_ptr<Carrot::Render::AnimatedModel::Handle> blockingLoadAnimatedModelInstance(const Carrot::IO::VFS::Path& path);
+        LoadTaskProc<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstanceTask(const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstance(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
+
     public:
         std::int64_t getCurrentlyLoadingCount() const;
 
@@ -82,6 +87,7 @@ namespace Carrot {
         Async::ParallelMap<std::string, std::shared_ptr<Model>> models{}; // models reference materials, so needs to be after material system
 
         Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
+        Async::ParallelMap<std::string, std::shared_ptr<Render::AnimatedModel>> animatedModels{};
 
     private: // migration stuff
         bool hasReloadedShadersThisFrame = false;

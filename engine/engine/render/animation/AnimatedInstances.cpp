@@ -417,8 +417,9 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
                 Carrot::AnimatedInstanceData meshInstanceData = getInstance(index);
                 meshInstanceData.transform = meshInstanceData.transform;
 
+                // TODO: bounding sphere should follow animation
                 Math::Sphere s = sphere;
-                s.transform(meshInstanceData.transform);
+                s.transform(meshInstanceData.transform * meshTransform);
                 if(!renderContext.getCamera().isInFrustum(s)) {
                     continue;
                 }
