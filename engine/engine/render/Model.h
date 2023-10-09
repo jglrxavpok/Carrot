@@ -83,6 +83,13 @@ namespace Carrot {
         //! MeshIndex -> Name -> Bone Offset matrix
         const std::unordered_map<int, std::unordered_map<std::string, glm::mat4>>& getBoneOffsetMatrices() const;
 
+        /**
+         * Gets the corresponding animation data. Or nullptr if none match the given name.
+         * Pointer is valid for entire lifetime of this Model instance
+         */
+        const AnimationMetadata* getAnimationMetadata(const std::string& animationName) const;
+        const std::map<std::string, AnimationMetadata>& getAnimationMetadata() const;
+
     public:
         void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
         void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
@@ -129,8 +136,7 @@ namespace Carrot {
         std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;
         std::unordered_map<int, std::unordered_map<std::string, glm::mat4>> offsetMatrices;
 
-        std::map<std::string, Animation*> animations{};
-        std::map<std::string, std::uint32_t> animationMapping{};
+        std::map<std::string, AnimationMetadata> animationMapping{};
         std::unique_ptr<Buffer> animationData = nullptr;
         vk::UniqueDescriptorSetLayout animationSetLayout{};
         vk::UniqueDescriptorPool animationSetPool{};

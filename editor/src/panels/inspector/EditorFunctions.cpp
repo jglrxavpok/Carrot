@@ -6,12 +6,14 @@
 #include <engine/edition/DragDropTypes.h>
 #include <engine/Engine.h>
 #include <engine/render/VulkanRenderer.h>
+#include <engine/ecs/components/AnimatedModelComponent.h>
 #include <engine/ecs/components/CameraComponent.h>
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/Kinematics.h>
 #include <engine/ecs/components/LuaScriptComponent.h>
 #include <engine/ecs/components/LightComponent.h>
+#include <engine/ecs/components/ModelComponent.h>
 #include <engine/ecs/components/NavMeshComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
 #include <engine/ecs/components/PhysicsCharacterComponent.h>
@@ -21,13 +23,7 @@
 #include <engine/ecs/components/TransformComponent.h>
 #include <core/io/Logging.hpp>
 #include <engine/render/ModelRenderer.h>
-#include <engine/ecs/components/ModelComponent.h>
 #include <IconsFontAwesome5.h>
-
-namespace Carrot::ECS {
-    struct ModelComponent;
-    struct RigidBodyComponent;
-}
 
 namespace Peeler {
     template<typename ComponentType>
@@ -175,6 +171,7 @@ namespace Peeler {
     }
 
     void editModelComponent(EditContext& edition, Carrot::ECS::ModelComponent* component);
+    void editAnimatedModelComponent(EditContext& edition, Carrot::ECS::AnimatedModelComponent* component);
 
     void editKinematicsComponent(EditContext& edition, Carrot::ECS::Kinematics* component) {
         float arr[] = { component->velocity.x, component->velocity.y, component->velocity.z };
@@ -346,6 +343,7 @@ namespace Peeler {
         registerFunction(inspector, editLightComponent);
         registerFunction(inspector, editLuaScriptComponent);
         registerFunction(inspector, editModelComponent);
+        registerFunction(inspector, editAnimatedModelComponent);
         registerFunction(inspector, editRigidBodyComponent);
         registerFunction(inspector, editSpriteComponent);
         registerFunction(inspector, editTextComponent);
@@ -358,6 +356,7 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::TransformComponent::getID(), ICON_FA_ARROWS_ALT "  Transform");
         inspector.registerComponentDisplayName(Carrot::ECS::LightComponent::getID(), ICON_FA_LIGHTBULB "  Light");
         inspector.registerComponentDisplayName(Carrot::ECS::ModelComponent::getID(), ICON_FA_CUBE "  Model");
+        inspector.registerComponentDisplayName(Carrot::ECS::AnimatedModelComponent::getID(), ICON_FA_CUBE "  AnimatedModel");
         inspector.registerComponentDisplayName(Carrot::ECS::CameraComponent::getID(), ICON_FA_CAMERA_RETRO "  Camera");
         inspector.registerComponentDisplayName(Carrot::ECS::RigidBodyComponent::getID(), ICON_FA_CUBES "  Rigidbody");
         inspector.registerComponentDisplayName(Carrot::ECS::PhysicsCharacterComponent::getID(), ICON_FA_CHILD "  Physics Character");

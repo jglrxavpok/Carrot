@@ -221,6 +221,11 @@ namespace Carrot {
         //! Change tick rate, parameter is in Hertzs
         void changeTickRate(std::uint32_t frequency);
 
+        /**
+         * Time (since start of engine) at the beginning of current tick
+         */
+        double getCurrentFrameTime() const;
+
         bool hasPreviousFrame() const {
             return frames > 0;
         }
@@ -407,6 +412,7 @@ namespace Carrot {
         Configuration config;
         Capabilities capabilities;
         Window window;
+        double currentTime = 0.0;
         double mouseX = 0.0;
         double mouseY = 0.0;
         float currentFPS = 0.0f;

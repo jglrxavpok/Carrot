@@ -8,6 +8,7 @@ set(EditorSources
         ${EditorRoot}layers/GizmosLayer.cpp
         ${EditorRoot}layers/ISceneViewLayer.cpp
 
+        ${EditorRoot}panels/inspector/AnimatedModelEdition.cpp
         ${EditorRoot}panels/inspector/CSharpEdition.cpp
         ${EditorRoot}panels/inspector/EditorFunctions.cpp
         ${EditorRoot}panels/inspector/ModelEdition.cpp

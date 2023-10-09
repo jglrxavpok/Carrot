@@ -48,6 +48,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}utils/conversions.cpp
         ${EngineRoot}utils/Macros.cpp
 
+        ${EngineRoot}ecs/components/AnimatedModelComponent.cpp
         ${EngineRoot}ecs/components/BillboardComponent.cpp
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
@@ -63,6 +64,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/TextComponent.cpp
         ${EngineRoot}ecs/components/TransformComponent.cpp
 
+        ${EngineRoot}ecs/systems/AnimatedModelRenderSystem.cpp
         ${EngineRoot}ecs/systems/BillboardSystem.cpp
         ${EngineRoot}ecs/systems/CameraSystem.cpp
         ${EngineRoot}ecs/systems/CSharpLogicSystem.cpp
@@ -76,7 +78,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp
         ${EngineRoot}ecs/systems/SystemTransformSwapBuffers.cpp
-        ${EngineRoot}ecs/systems/SystemUpdateAnimatedModelInstance.cpp
         ${EngineRoot}ecs/systems/TextRenderSystem.cpp
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 

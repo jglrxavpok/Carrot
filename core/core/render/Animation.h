@@ -22,10 +22,21 @@ namespace Carrot {
         }
     };
 
+    /**
+     * Sent as-is to GPU
+     */
     struct Animation {
         alignas(4) std::int32_t keyframeCount = 0;
         alignas(4) float duration = 1.0f;
         alignas(16) Keyframe keyframes[MAX_KEYFRAMES_PER_ANIMATION];
         explicit Animation() = default;
+    };
+
+    /**
+     * CPU-visible metadata, kept after loading animation
+     */
+    struct AnimationMetadata {
+        float duration = 1.0f;
+        std::size_t index = 0; //< index in animation list of a given model
     };
 }

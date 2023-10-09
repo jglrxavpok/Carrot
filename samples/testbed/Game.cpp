@@ -19,7 +19,7 @@
 
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/components/TransformComponent.h>
-#include <engine/ecs/components/AnimatedModelInstance.h>
+#include <engine/ecs/components/AnimatedModelComponent.h>
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/systems/SystemUpdateAnimatedModelInstance.h>
@@ -103,7 +103,7 @@ Game::Game::Game(Carrot::Engine& engine): CarrotGame(engine) {
         auto entity = world.newEntity()
                 .addComponent<Carrot::ECS::Transform>()
                 .addComponent<UnitColor>(color)
-                .addComponent<Carrot::ECS::AnimatedModelInstance>(modelInstance);
+                .addComponent<Carrot::ECS::AnimatedModelComponent>(modelInstance);
         Transform& transform = entity.getComponent<Transform>();
         transform.position = position;
         transform.scale = glm::vec3(1.0+i/60.0, 1.0+i/60.0, 1.0+i/60.0);

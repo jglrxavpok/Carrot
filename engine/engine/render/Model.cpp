@@ -209,7 +209,14 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
         animationData->stageUploadWithOffsets(make_pair(0ull, std::span(allAnimations)));
     }
 
-    animationMapping = std::move(scene.animationMapping);
+    verify(scene.animationMapping.size() == allAnimations.size(), "There must be as many entries in animation mapping as there are animations");
+    for(const auto& [animationName, animationIndex] : scene.animationMapping) {
+        auto& animation = allAnimations[animationIndex];
+        auto& metadata = animationMapping[animationName];
+        metadata.index = animationIndex;
+        metadata.duration = animation.duration;
+    }
+
     boneMapping = std::move(scene.boneMapping);
     offsetMatrices = std::move(scene.offsetMatrices);
     skeleton = std::move(scene.nodeHierarchy);
@@ -399,4 +406,16 @@ const std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>>& C
 
 const std::unordered_map<int, std::unordered_map<std::string, glm::mat4>>& Carrot::Model::getBoneOffsetMatrices() const {
     return offsetMatrices;
+}
+
+const Carrot::AnimationMetadata* Carrot::Model::getAnimationMetadata(const std::string& animationName) const {
+    auto iter = animationMapping.find(animationName);
+    if(iter != animationMapping.end()) {
+        return &iter->second;
+    }
+    return nullptr;
+}
+
+const std::map<std::string, Carrot::AnimationMetadata>& Carrot::Model::getAnimationMetadata() const {
+    return animationMapping;
 }

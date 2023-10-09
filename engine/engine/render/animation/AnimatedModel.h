@@ -29,6 +29,7 @@ namespace Carrot::Render {
 
             AnimatedInstanceData& getData();
             AnimatedModel& getParent();
+            const AnimatedModel& getParent() const;
 
         private:
             std::shared_ptr<AnimatedModel> parent;
@@ -36,6 +37,9 @@ namespace Carrot::Render {
         };
 
         explicit AnimatedModel(const std::shared_ptr<Model>& model);
+
+        Carrot::Model& getModel();
+        const Carrot::Model& getModel() const;
 
         /**
          * Creates and register a new handle.

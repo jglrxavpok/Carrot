@@ -369,9 +369,6 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         auto& info = buildInfo[index];
         auto& blas = *toBuild[index];
 
-        Carrot::Log::info("index: %llu [%x]", index, &blas);
-        Carrot::Log::flush();
-
         std::vector<uint32_t> primitiveCounts(blas.buildRanges.size());
         // copy primitive counts to flat vector
         for(size_t geomIndex = 0; geomIndex < primitiveCounts.size(); geomIndex++) {

@@ -53,6 +53,7 @@
 #include "engine/ecs/systems/System.h"
 #include "engine/ecs/systems/BillboardSystem.h"
 #include "engine/ecs/systems/ModelRenderSystem.h"
+#include "engine/ecs/systems/AnimatedModelRenderSystem.h"
 #include "engine/ecs/systems/PhysicsCharacterSystem.h"
 #include "engine/ecs/systems/RigidBodySystem.h"
 #include "engine/ecs/systems/SpriteRenderSystem.h"
@@ -60,7 +61,6 @@
 #include "engine/ecs/systems/SystemKinematics.h"
 #include "engine/ecs/systems/SystemSinPosition.h"
 #include "engine/ecs/systems/SystemTransformSwapBuffers.h"
-#include "engine/ecs/systems/SystemUpdateAnimatedModelInstance.h"
 #include "engine/ecs/systems/CameraSystem.h"
 #include "engine/ecs/systems/TextRenderSystem.h"
 
@@ -558,7 +558,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::Kinematics>();
         components.add<Carrot::ECS::SpriteComponent>();
         components.add<Carrot::ECS::ModelComponent>();
-        //lib.addUniquePtrBased<Carrot::ECS::AnimatedModelInstance>(); // TODO: reintroduce once animated models are reintroduced
+        components.add<Carrot::ECS::AnimatedModelComponent>();
         components.add<Carrot::ECS::ForceSinPosition>();
         components.add<Carrot::ECS::LightComponent>();
         components.add<Carrot::ECS::RigidBodyComponent>();
@@ -573,12 +573,12 @@ void Carrot::Engine::initECS() {
 
     {
         systems.addUniquePtrBased<Carrot::ECS::ModelRenderSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::AnimatedModelRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::RigidBodySystem>();
         systems.addUniquePtrBased<Carrot::ECS::SpriteRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemHandleLights>();
         systems.addUniquePtrBased<Carrot::ECS::SystemKinematics>();
         systems.addUniquePtrBased<Carrot::ECS::SystemSinPosition>();
-        systems.addUniquePtrBased<Carrot::ECS::SystemUpdateAnimatedModelInstance>();
         systems.addUniquePtrBased<Carrot::ECS::CameraSystem>();
         systems.addUniquePtrBased<Carrot::ECS::TextRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SystemTransformSwapBuffers>();
@@ -1073,6 +1073,7 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
+    currentTime += deltaTime;
     {
         ZoneScopedN("Game tick");
         game->tick(deltaTime);
@@ -1386,6 +1387,10 @@ void Carrot::Engine::ungrabCursor() {
 
 void Carrot::Engine::changeTickRate(std::uint32_t tickRate) {
     timeBetweenUpdates = std::chrono::duration<float>(1.0f / tickRate);
+}
+
+double Carrot::Engine::getCurrentFrameTime() const {
+    return currentTime;
 }
 
 Carrot::Scripting::ScriptingEngine& Carrot::Engine::getCSScriptEngine() {

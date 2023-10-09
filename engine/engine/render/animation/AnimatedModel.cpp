@@ -17,11 +17,23 @@ namespace Carrot::Render {
         return *parent;
     }
 
+    const AnimatedModel& AnimatedModel::Handle::getParent() const {
+        return *parent;
+    }
+
     AnimatedInstanceData& AnimatedModel::Handle::getData() {
         return data;
     }
 
     AnimatedModel::AnimatedModel(const std::shared_ptr<Model>& model): model(model), animatedInstances(GetEngine(), model, MaxInstances) {}
+
+    Carrot::Model& AnimatedModel::getModel() {
+        return *model;
+    }
+
+    const Carrot::Model& AnimatedModel::getModel() const {
+        return *model;
+    }
 
     std::shared_ptr<AnimatedModel::Handle> AnimatedModel::requestHandle() {
         handles.push_back(std::make_shared<AnimatedModel::Handle>(this->shared_from_this()));
