@@ -36,11 +36,13 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<AnimatedModel::Handle> AnimatedModel::requestHandle() {
+        Async::LockGuard g { handlesAccess };
         handles.push_back(std::make_shared<AnimatedModel::Handle>(this->shared_from_this()));
         return handles.back();
     }
 
     void AnimatedModel::onFrame(const Context& renderContext) {
+        Async::LockGuard g { handlesAccess };
         // remove stale references, and reindex (index of handle inside 'handles' array is its index inside 'animatedInstances')
         std::erase_if(handles, [](const std::shared_ptr<Handle>& handle) {
             return handle.use_count() <= 1;

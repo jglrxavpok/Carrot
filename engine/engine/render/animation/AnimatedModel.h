@@ -53,6 +53,7 @@ namespace Carrot::Render {
         void onFrame(const Carrot::Render::Context& renderContext);
 
     private:
+        Async::SpinLock handlesAccess;
         std::shared_ptr<Model> model;
         AnimatedInstances animatedInstances;
 

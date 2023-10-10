@@ -20,7 +20,6 @@ namespace Peeler {
 
     struct WidgetState {
         std::string selectedAnimation;
-        float animationTime = 0.0f;
         PreviewState state = PreviewState::Stopped;
         PreviewState previousState = PreviewState::Stopped;
 
@@ -36,6 +35,8 @@ namespace Peeler {
         }
         if(state.state == PreviewState::Playing) {
             instance.animationTime += deltaTime;
+        } else if(state.state == PreviewState::Stopped) {
+            instance.animationTime = 0.0f;
         }
 
         state.lastUpdateTime = currentTime;
@@ -80,6 +81,10 @@ namespace Peeler {
             ImGui::EndDragDropTarget();
         }
 
+        if(asyncModel.isEmpty() || !asyncModel.isReady()) {
+            return;
+        }
+
         auto& handle = *asyncModel.get();
         auto& animatedModel = handle.getParent().getModel();
 
@@ -121,7 +126,6 @@ namespace Peeler {
                     return;
                 }
                 state.state = PreviewState::Playing;
-                state.animationTime = 0.0f;
             };
 
             auto pausePlaying = [&]() {
@@ -130,7 +134,6 @@ namespace Peeler {
 
             auto stopPlaying = [&]() {
                 state.state = PreviewState::Stopped;
-                state.animationTime = 0.0f;
             };
 
             auto icon = [&](const char* texturePaths[2], bool active) {
