@@ -327,10 +327,12 @@ namespace Carrot::Render {
 
             allAnimations.emplace_back();
             auto& animation = allAnimations[animationIndex];
-            if(timestampSet.size() > Carrot::MAX_KEYFRAMES_PER_ANIMATION) {
-                throw std::runtime_error("Too many keyframes: "+std::to_string(timestampSet.size()));
-            }
             animation.keyframeCount = timestampSet.size();
+            animation.keyframes.resize(animation.keyframeCount);
+            for(auto& keyframe : animation.keyframes) {
+                keyframe.boneTransforms.resize(anim->mNumChannels, glm::mat4{1.0f});
+            }
+
             animation.duration = anim->mDuration / anim->mTicksPerSecond;
 
             std::vector<float> timestamps = {timestampSet.begin(), timestampSet.end()};

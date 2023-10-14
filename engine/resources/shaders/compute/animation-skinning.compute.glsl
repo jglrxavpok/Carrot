@@ -1,6 +1,7 @@
 //! Applies animations to a batch of models (all models are expected to use the same original vertex buffer)
 
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 // vertex
 layout (local_size_x = 128) in;
@@ -40,15 +41,9 @@ struct Instance {
     double animationTime;
 };
 
-struct Keyframe {
-    mat4 boneTransforms[MAX_BONES];
-    float timestamp;
-};
-
 struct Animation {
     int keyframeCount;
     float duration;
-    Keyframe keyframes[MAX_KEYFRAMES];
 };
 
 layout(set = 0, binding = 0) buffer VertexBuffer {
@@ -67,35 +62,60 @@ layout(set = 1, binding = 0) buffer Animations {
     Animation animations[];
 };
 
+// indexed by animation index
+// X is keyframe index, Y/3 is bone index
+layout(set = 1, binding = 1, rgba32f) uniform readonly image2D animationDataBoneTextures[];
+
+float loadKeyframeTimestamp(uint animationIndex, uint keyframeIndex) {
+    return keyframeIndex * animations[animationIndex].duration / animations[animationIndex].keyframeCount;
+}
+
+mat4 loadBoneTransform(uint animationIndex, uint keyframeIndex, uint boneIndex) {
+    vec4 row0 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 0));
+    vec4 row1 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 1));
+    vec4 row2 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 2));
+    vec4 row3 = vec4(0, 0, 0, 1);
+
+    // GLSL is per-column
+    return transpose(mat4(row0, row1, row2, row3));
+}
+
 mat4 computeSkinning(uint instanceIndex, uint vertexIndex) {
     #define vertex originalVertices[vertexIndex]
     #define instance instances[instanceIndex]
     if(vertex.boneIDs.x < 0)
         return mat4(1.0);
+
+    // TODO: perf - need some help from CPU to avoid recomputing it for each vertex!
     float timestamp = float(mod(instance.animationTime, animations[instance.animationIndex].duration));
     uint keyframeIndex = 0;
+
     for(int i = 0; i < animations[instance.animationIndex].keyframeCount-1; i++) {
-        if(timestamp <= animations[instance.animationIndex].keyframes[i+1].timestamp) {
-            keyframeIndex = i;
+        if(timestamp <= loadKeyframeTimestamp(instance.animationIndex, i+1)) {
             break;
         }
+        keyframeIndex++;
     }
+    timestamp = loadKeyframeTimestamp(instance.animationIndex, keyframeIndex);
     uint nextKeyframeIndex = (keyframeIndex + 1) % animations[instance.animationIndex].keyframeCount;
-    #define keyframe animations[instance.animationIndex].keyframes[keyframeIndex]
-    #define nextKeyframe animations[instance.animationIndex].keyframes[nextKeyframeIndex]
-    float timeBetweenKeyFrames = nextKeyframe.timestamp - keyframe.timestamp;
-    float invAlpha = (timestamp - keyframe.timestamp) / timeBetweenKeyFrames;
-    float alpha = 1 - invAlpha;
-    mat4 boneTransform =
-                        + keyframe.boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x * alpha
-                        + keyframe.boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y * alpha
-                        + keyframe.boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z * alpha
-                        + keyframe.boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w * alpha
+    const uint animationIndex = instance.animationIndex;
+    #define keyframe animations[animationIndex].keyframes[keyframeIndex]
+    #define nextKeyframe animations[animationIndex].keyframes[nextKeyframeIndex]
+    const float currentKeyframeTimestamp = loadKeyframeTimestamp(animationIndex, keyframeIndex);
+    const float timeBetweenKeyFrames = loadKeyframeTimestamp(animationIndex, nextKeyframeIndex) - currentKeyframeTimestamp;
+    const float invAlpha = (timestamp - currentKeyframeTimestamp) / timeBetweenKeyFrames;
+    const float alpha = 1.0f - invAlpha;
 
-                        + nextKeyframe.boneTransforms[vertex.boneIDs.x] * vertex.boneWeights.x * invAlpha
-                        + nextKeyframe.boneTransforms[vertex.boneIDs.y] * vertex.boneWeights.y * invAlpha
-                        + nextKeyframe.boneTransforms[vertex.boneIDs.z] * vertex.boneWeights.z * invAlpha
-                        + nextKeyframe.boneTransforms[vertex.boneIDs.w] * vertex.boneWeights.w * invAlpha
+    mat4 boneTransform =
+                        + loadBoneTransform(animationIndex, keyframeIndex, vertex.boneIDs.x) * vertex.boneWeights.x * alpha
+                        + loadBoneTransform(animationIndex, keyframeIndex, vertex.boneIDs.y) * vertex.boneWeights.y * alpha
+                        + loadBoneTransform(animationIndex, keyframeIndex, vertex.boneIDs.z) * vertex.boneWeights.z * alpha
+                        + loadBoneTransform(animationIndex, keyframeIndex, vertex.boneIDs.w) * vertex.boneWeights.w * alpha
+
+                        + loadBoneTransform(animationIndex, nextKeyframeIndex, vertex.boneIDs.x) * vertex.boneWeights.x * invAlpha
+                        + loadBoneTransform(animationIndex, nextKeyframeIndex, vertex.boneIDs.y) * vertex.boneWeights.y * invAlpha
+                        + loadBoneTransform(animationIndex, nextKeyframeIndex, vertex.boneIDs.z) * vertex.boneWeights.z * invAlpha
+                        + loadBoneTransform(animationIndex, nextKeyframeIndex, vertex.boneIDs.w) * vertex.boneWeights.w * invAlpha
     ;
     return boneTransform;
 }

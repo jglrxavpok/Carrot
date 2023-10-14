@@ -162,7 +162,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     // Describe descriptors used by compute shader
 
     constexpr std::size_t set0Size = 3;
-    constexpr std::size_t set1Size = 1;
+    constexpr std::size_t set1Size = 2;
     vk::DescriptorSetLayoutBinding bindings[set0Size] = {
             // original vertices
             {
@@ -189,11 +189,20 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             },
     };
 
-    vk::DescriptorSetLayoutBinding animationBinding {
-            .binding = 0,
-            .descriptorType = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = engine.getSwapchainImageCount(),
-            .stageFlags = vk::ShaderStageFlagBits::eCompute,
+    // TODO: share with Model.cpp
+    std::array animationBindings = {
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
+            },
+            vk::DescriptorSetLayoutBinding {
+                    .binding = 1,
+                    .descriptorType = vk::DescriptorType::eStorageImage,
+                    .descriptorCount = static_cast<uint32_t>(model->getAnimationMetadata().size()),
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
+            }
     };
 
     computeSetLayout0 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -202,8 +211,8 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     });
 
     computeSetLayout1 = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
-            .bindingCount = set1Size,
-            .pBindings = &animationBinding,
+            .bindingCount = animationBindings.size(),
+            .pBindings = animationBindings.data(),
     });
 
     std::vector<vk::DescriptorPoolSize> poolSizes{};
@@ -211,11 +220,6 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     poolSizes.push_back(vk::DescriptorPoolSize {
             .type = vk::DescriptorType::eStorageBuffer,
             .descriptorCount = static_cast<uint32_t>(set0Size * engine.getSwapchainImageCount()),
-    });
-    // set1
-    poolSizes.push_back(vk::DescriptorPoolSize {
-            .type = vk::DescriptorType::eStorageBuffer,
-            .descriptorCount = engine.getSwapchainImageCount(),
     });
 
     for(size_t i = 0; i < engine.getSwapchainImageCount(); i++) {
@@ -229,12 +233,6 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
                 .descriptorPool = *pool,
                 .descriptorSetCount = 1,
                 .pSetLayouts = &(*computeSetLayout0)
-        })[0]);
-
-        computeDescriptorSet1.push_back(engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
-                .descriptorPool = *pool,
-                .descriptorSetCount = 1,
-                .pSetLayouts = &(*computeSetLayout1)
         })[0]);
 
         computeDescriptorPools.emplace_back(std::move(pool));
@@ -257,12 +255,6 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
             .buffer = fullySkinnedUnitVertices->getVulkanBuffer(),
             .offset = 0,
             .range = fullySkinnedUnitVertices->getSize(),
-    };
-
-    vk::DescriptorBufferInfo animationBufferInfo {
-            .buffer = model->getAnimationDataBuffer().getVulkanBuffer(),
-            .offset = 0,
-            .range = model->getAnimationDataBuffer().getSize(),
     };
 
     // TODO: fix validation error with arrays
@@ -295,18 +287,9 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
                         .descriptorType = DT::eStorageBuffer,
                         .pBufferInfo = &outputBufferInfo,
                 },
-
-                // set1, binding0, animation buffer
-                vk::WriteDescriptorSet {
-                        .dstSet = computeDescriptorSet1[i],
-                        .dstBinding = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = DT::eStorageBuffer,
-                        .pBufferInfo = &animationBufferInfo,
-                },
         };
 
-        assert(writes.size() == set0Size+set1Size);
+        assert(writes.size() == set0Size);
 
         engine.getLogicalDevice().updateDescriptorSets(writes, {});
     }
@@ -338,7 +321,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         {
             // TODO: tracy zone
             commands.bindPipeline(vk::PipelineBindPoint::eCompute, *computePipeline);
-            commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0[i], computeDescriptorSet1[i]}, {});
+            commands.bindDescriptorSets(vk::PipelineBindPoint::eCompute, *computePipelineLayout, 0, {computeDescriptorSet0[i], model->getAnimationDataDescriptorSet()}, {});
             commands.dispatch(vertexGroups, instanceGroups, 1);
         }
         commands.end();

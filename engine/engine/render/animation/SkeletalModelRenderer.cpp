@@ -51,7 +51,6 @@ namespace Carrot::Render {
                     continue;
                 }
                 std::uint32_t boneIndex = mappingIt->second;
-                verify(boneIndex < Carrot::MAX_BONES_PER_MESH, "Too many bones");
                 processedSkeletons[meshIndex].boneTransforms[boneIndex] = boneTransform * model->getBoneOffsetMatrices().at(meshIndex).at(boneName);
             }
 

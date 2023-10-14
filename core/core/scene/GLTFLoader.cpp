@@ -26,6 +26,14 @@ namespace Carrot::Render {
         bool hasNormals = false;
     };
 
+    static std::string getNodeName(const tinygltf::Model& model, int nodeIndex) {
+        auto& node = model.nodes[nodeIndex];
+        if(node.name.empty()) {
+            return Carrot::sprintf("Unnamed node %d", nodeIndex);
+        }
+        return node.name;
+    }
+
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
                            std::string* err, const std::string& filepath,
                            void* userData) {
@@ -497,7 +505,12 @@ namespace Carrot::Render {
         for(const auto& animation : model.animations) {
             const std::size_t animationIndex = result.animationData.size();
             Animation& carrotAnimation = result.animationData.emplace_back();
-            result.animationMapping[animation.name] = animationIndex;
+
+            std::string animationName = animation.name;
+            if(animationName.empty()) {
+                animationName = Carrot::sprintf("animation %d", animationIndex);
+            }
+            result.animationMapping[animationName] = animationIndex;
 
             // mimic what is done in AssimpLoader: load all timestamps and fill translation/rotation/scale of each bone for each timestamp
             //  not great for memory, but dumb enough for fast runtime usage
@@ -521,7 +534,10 @@ namespace Carrot::Render {
             }
 
             carrotAnimation.keyframeCount = allTimestamps.size();
-            verify(carrotAnimation.keyframeCount < sizeof(Animation::keyframes) / sizeof(Keyframe), "Too many keyframes!");
+            carrotAnimation.keyframes.resize(carrotAnimation.keyframeCount);
+            for(auto& keyframe : carrotAnimation.keyframes) {
+                keyframe.boneTransforms.resize(nodeMapping.size(), glm::mat4{1.0f});
+            }
 
             // read the TRS of each node over time for this animation
             struct GLTFKeyframe {
@@ -645,10 +661,13 @@ namespace Carrot::Render {
 
                                 glm::mat4 parentMatrix = glm::identity<glm::mat4>();
                                 if(treeNode.pParent) {
-                                    int parentNodeIndex = nodeMapping.at(treeNode.pParent);
-                                    auto iter = keyframesForAllNodes.find(parentNodeIndex);
-                                    if(iter != keyframesForAllNodes.end()) {
-                                        parentMatrix = computeTransformRecursively(*treeNode.pParent, iter->second[timestampIndex]);
+                                    auto parentIter = nodeMapping.find(treeNode.pParent);
+                                    if(parentIter != nodeMapping.end()) { // == end if the root is the scene root, which is not a node inside glTF
+                                        int parentNodeIndex = parentIter->second;
+                                        auto iter = keyframesForAllNodes.find(parentNodeIndex);
+                                        if(iter != keyframesForAllNodes.end()) {
+                                            parentMatrix = computeTransformRecursively(*treeNode.pParent, iter->second[timestampIndex]);
+                                        }
                                     }
                                 }
 
@@ -659,8 +678,12 @@ namespace Carrot::Render {
                             };
 
                     GLTFKeyframe& currentKeyframe = keyframes[timestampIndex];
-                    const std::string& nodeName = model.nodes[nodeID].name;
-                    std::uint32_t boneIndex = result.boneMapping[meshIndex].at(nodeName);
+                    const std::string& nodeName = getNodeName(model, nodeID);
+                    auto boneMappingIter = result.boneMapping[meshIndex].find(nodeName);
+                    if(boneMappingIter == result.boneMapping[meshIndex].end()) {
+                        continue;
+                    }
+                    std::uint32_t boneIndex = boneMappingIter->second;
                     SkeletonTreeNode* pTreeNode = result.nodeHierarchy->findNode(nodeName);
                     verify(pTreeNode, "Could not find matching node in tree");
                     const glm::mat4& boneOffset = result.offsetMatrices[meshIndex].at(nodeName);
@@ -692,7 +715,7 @@ namespace Carrot::Render {
         }
 
         const glm::mat4 transform = localTransform;
-        newNode.bone.name = node.name;
+        newNode.bone.name = getNodeName(model, nodeIndex);
         newNode.bone.originalTransform = transform;
         newNode.bone.transform = transform;
         nodeMapping[&newNode] = nodeIndex;
@@ -709,23 +732,29 @@ namespace Carrot::Render {
                 for(std::size_t jointIndex = 0; jointIndex < glTFSkin.joints.size(); jointIndex++) {
                     int jointNodeID = glTFSkin.joints[jointIndex];
                     const auto& jointNode = model.nodes[jointNodeID];
-                    skinBoneMapping[jointNode.name] = jointIndex;
+                    const std::string jointName = getNodeName(model, jointNodeID);
+                    skinBoneMapping[jointName] = jointIndex;
 
                     if(glTFSkin.inverseBindMatrices != -1) {
-                        skinInverseBinds[jointNode.name] = readFromAccessor<glm::mat4>(jointIndex, model.accessors[glTFSkin.inverseBindMatrices], model);
+                        skinInverseBinds[jointName] = readFromAccessor<glm::mat4>(jointIndex, model.accessors[glTFSkin.inverseBindMatrices], model);
                     } else {
-                        skinInverseBinds[jointNode.name] = glm::identity<glm::mat4>();
+                        skinInverseBinds[jointName] = glm::identity<glm::mat4>();
                     }
                 }
             }
 
+            const std::size_t skinMeshIndex = 0; // TODO: like AssimpLoader, only a single mesh can be animated at once per glTF file when loaded into Carrot
             for (std::size_t i = 0; i < mesh.primitiveCount; ++i) {
                 const std::size_t meshIndex = i + mesh.firstPrimitive;
                 newNode.meshIndices.value().push_back(meshIndex);
 
                 if(node.skin != -1) {
-                    scene.boneMapping[meshIndex] = skinBoneMapping;
-                    scene.offsetMatrices[meshIndex] = skinInverseBinds;
+                    for(auto& [k, v] : skinBoneMapping) {
+                        scene.boneMapping[skinMeshIndex][k] = v;
+                    }
+                    for(auto& [k, v] : skinInverseBinds) {
+                        scene.offsetMatrices[skinMeshIndex][k] = v;
+                    }
                 }
             }
         }

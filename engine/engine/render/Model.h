@@ -89,6 +89,7 @@ namespace Carrot {
          */
         const AnimationMetadata* getAnimationMetadata(const std::string& animationName) const;
         const std::map<std::string, AnimationMetadata>& getAnimationMetadata() const;
+        vk::DescriptorSet getAnimationDataDescriptorSet() const;
 
     public:
         void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
@@ -105,6 +106,12 @@ namespace Carrot {
     private:
         explicit Model(Carrot::Engine& engine, const Carrot::IO::Resource& filename);
         void loadInner(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
+
+        /**
+         * Generate an image with the bone transforms of the given animation.
+         * See "engine/resources/shaders/compute/animation-skinning.compute.glsl" for more details
+         */
+        std::unique_ptr<Carrot::Render::Texture> generateBoneTransformsStorageImage(const Animation& animation);
 
         Carrot::Engine& engine;
         std::string debugName;
@@ -137,6 +144,7 @@ namespace Carrot {
         std::unordered_map<int, std::unordered_map<std::string, glm::mat4>> offsetMatrices;
 
         std::map<std::string, AnimationMetadata> animationMapping{};
+        std::vector<std::unique_ptr<Carrot::Render::Texture>> animationBoneTransformData;
         std::unique_ptr<Buffer> animationData = nullptr;
         vk::UniqueDescriptorSetLayout animationSetLayout{};
         vk::UniqueDescriptorPool animationSetPool{};

@@ -47,8 +47,10 @@ namespace Carrot::Render {
         void forEachMesh(const std::function<void(std::uint32_t meshIndex, std::uint32_t materialSlot, Mesh::Ref& mesh)>& action);
 
     private:
+        // TODO: upgrade to texture like Model uses?
+        constexpr static std::size_t MAX_BONES_PER_MESH = 40;
         struct GPUSkeleton {
-            glm::mat4 boneTransforms[Carrot::MAX_BONES_PER_MESH]{};
+            glm::mat4 boneTransforms[MAX_BONES_PER_MESH]{};
         };
 
         Carrot::Model::Ref model;

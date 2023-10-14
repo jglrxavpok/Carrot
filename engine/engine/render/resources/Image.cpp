@@ -434,6 +434,7 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
 void Carrot::Image::setDebugNames(const std::string& name) {
     nameSingle(name, getVulkanImage());
     if(imageData.ownsImage) {
+        imageData.asOwned.memory.name(name);
         nameSingle(name + " Memory", getMemory());
     }
 }

@@ -198,56 +198,80 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     }
 
     // upload staging buffer to GPU buffer
-    auto& allAnimations = scene.animationData;
-
-    if(!allAnimations.empty()) {
-        animationData = std::make_unique<Carrot::Buffer>(GetVulkanDriver(),
-                                                         sizeof(Carrot::Animation) * allAnimations.size(),
-                                                         vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
-                                                         vk::MemoryPropertyFlagBits::eDeviceLocal);
-        animationData->setDebugNames("Animations");
-        animationData->stageUploadWithOffsets(make_pair(0ull, std::span(allAnimations)));
-    }
-
-    verify(scene.animationMapping.size() == allAnimations.size(), "There must be as many entries in animation mapping as there are animations");
-    for(const auto& [animationName, animationIndex] : scene.animationMapping) {
-        auto& animation = allAnimations[animationIndex];
-        auto& metadata = animationMapping[animationName];
-        metadata.index = animationIndex;
-        metadata.duration = animation.duration;
-    }
 
     boneMapping = std::move(scene.boneMapping);
     offsetMatrices = std::move(scene.offsetMatrices);
     skeleton = std::move(scene.nodeHierarchy);
 
-    if(animationData != nullptr) {
-        // create descriptor set for animation buffer
-        vk::DescriptorSetLayoutBinding binding {
-                .binding = 0,
-                .descriptorType = vk::DescriptorType::eStorageBuffer,
-                .descriptorCount = 1,
-                .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eRaygenKHR,
+    auto& allAnimations = scene.animationData;
+    if(!allAnimations.empty()) {
+        verify(scene.animationMapping.size() == allAnimations.size(), "There must be as many entries in animation mapping as there are animations");
+        std::vector<Carrot::GPUAnimation> gpuAnimationData{ allAnimations.size() };
+        for(const auto& [animationName, animationIndex] : scene.animationMapping) {
+            auto& animation = allAnimations[animationIndex];
+            auto& metadata = animationMapping[animationName];
+            metadata.index = animationIndex;
+            metadata.duration = animation.duration;
+
+            gpuAnimationData[animationIndex].keyframeCount = animation.keyframeCount;
+            gpuAnimationData[animationIndex].duration = metadata.duration;
+        }
+
+
+        animationData = std::make_unique<Carrot::Buffer>(GetVulkanDriver(),
+                                                         sizeof(Carrot::GPUAnimation) * gpuAnimationData.size(),
+                                                         vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+                                                         vk::MemoryPropertyFlagBits::eDeviceLocal);
+        animationData->setDebugNames(Carrot::sprintf("Carrot::Animation %s", debugName.c_str()));
+        animationData->stageUploadWithOffsets(make_pair(0ull, std::span(gpuAnimationData)));
+
+        animationBoneTransformData.resize(allAnimations.size());
+        for (std::size_t i = 0; i < allAnimations.size(); ++i) {
+            const Animation& animation = allAnimations[i];
+            animationBoneTransformData[i] = std::move(generateBoneTransformsStorageImage(animation));
+        }
+
+        std::uint32_t animationCount = scene.animationData.size();
+        // create descriptor set for animation buffer, and bone transform data
+        std::array bindings = {
+                vk::DescriptorSetLayoutBinding {
+                    .binding = 0,
+                    .descriptorType = vk::DescriptorType::eStorageBuffer,
+                    .descriptorCount = 1,
+                    .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute,
+                },
+                vk::DescriptorSetLayoutBinding {
+                    .binding = 1,
+                    .descriptorType = vk::DescriptorType::eStorageImage,
+                    .descriptorCount = animationCount,
+                    .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute,
+                }
         };
         animationSetLayout = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
-                .bindingCount = 1,
-                .pBindings = &binding,
+                .bindingCount = bindings.size(),
+                .pBindings = bindings.data(),
         }, engine.getAllocator());
 
-        vk::DescriptorPoolSize size {
-                .type = vk::DescriptorType::eStorageBuffer,
-                .descriptorCount = engine.getSwapchainImageCount(),
+        std::array sizes = {
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageBuffer,
+                        .descriptorCount = animationCount,
+                },
+                vk::DescriptorPoolSize {
+                        .type = vk::DescriptorType::eStorageImage,
+                        .descriptorCount = animationCount,
+                }
         };
         animationSetPool = engine.getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
-                .maxSets = engine.getSwapchainImageCount(),
-                .poolSizeCount = 1,
-                .pPoolSizes = &size,
+                .maxSets = 1,
+                .poolSizeCount = sizes.size(),
+                .pPoolSizes = sizes.data(),
         }, engine.getAllocator());
 
         std::vector<vk::DescriptorSetLayout> layouts = {engine.getSwapchainImageCount(), *animationSetLayout};
         animationDescriptorSets = engine.getLogicalDevice().allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
                 .descriptorPool = *animationSetPool,
-                .descriptorSetCount = engine.getSwapchainImageCount(),
+                .descriptorSetCount = 1,
                 .pSetLayouts = layouts.data(),
         });
 
@@ -256,14 +280,28 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                 .offset = 0,
                 .range = animationData->getSize(),
         };
-        std::vector<vk::WriteDescriptorSet> writes{engine.getSwapchainImageCount()};
-        for(size_t writeIndex = 0; writeIndex < writes.size(); writeIndex++) {
-            auto& write = writes[writeIndex];
+        std::vector<vk::DescriptorImageInfo> imageInfoList {animationCount};
+        std::vector<vk::WriteDescriptorSet> writes{1 + animationCount};
+
+        auto& animationBufferWrite = writes[0];
+        animationBufferWrite.descriptorCount = 1;
+        animationBufferWrite.descriptorType = vk::DescriptorType::eStorageBuffer;
+        animationBufferWrite.dstSet = animationDescriptorSets[0];
+        animationBufferWrite.dstBinding = 0;
+        animationBufferWrite.pBufferInfo = &bufferInfo;
+
+        for(std::size_t imageIndex = 0; imageIndex < animationCount; imageIndex++) {
+            auto& imageInfo = imageInfoList[imageIndex];
+            imageInfo.imageView = animationBoneTransformData[imageIndex]->getView();
+            imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+            auto& write = writes[1 + imageIndex];
             write.descriptorCount = 1;
-            write.descriptorType = vk::DescriptorType::eStorageBuffer;
-            write.dstSet = animationDescriptorSets[writeIndex];
-            write.dstBinding = 0;
-            write.pBufferInfo = &bufferInfo;
+            write.descriptorType = vk::DescriptorType::eStorageImage;
+            write.dstSet = animationDescriptorSets[0];
+            write.dstBinding = 1;
+            write.dstArrayElement = imageIndex;
+            write.pImageInfo = &imageInfo;
         }
 
         engine.getLogicalDevice().updateDescriptorSets(writes, {});
@@ -294,6 +332,36 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
         }
     }
     task.wait(waitMaterialLoads); // hide latency
+}
+
+std::unique_ptr<Carrot::Render::Texture> Carrot::Model::generateBoneTransformsStorageImage(const Animation& animation) {
+    verify(animation.keyframeCount > 0, "Cannot create bone transform storage with 0 keyframes!");
+
+    const std::uint32_t boneCount = static_cast<std::uint32_t>(animation.keyframes[0].boneTransforms.size());
+    vk::Extent3D extent {
+        .width = static_cast<std::uint32_t>(animation.keyframeCount),
+        .height = boneCount * 3,
+        .depth = 1,
+    };
+    std::unique_ptr<Carrot::Image> storageImage = std::make_unique<Carrot::Image>(GetVulkanDriver(),
+                                                                                  extent,
+                                                                                  vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst,
+                                                                                  vk::Format::eR32G32B32A32Sfloat);
+    std::vector<glm::vec4> pixels;
+    pixels.resize(extent.width * extent.height);
+    for (int keyframeIndex = 0; keyframeIndex < animation.keyframeCount; ++keyframeIndex) {
+        for(int boneIndex = 0; boneIndex < boneCount; boneIndex++) {
+            glm::vec4& row0 = pixels[keyframeIndex + (boneIndex * 3 + 0) * extent.width];
+            glm::vec4& row1 = pixels[keyframeIndex + (boneIndex * 3 + 1) * extent.width];
+            glm::vec4& row2 = pixels[keyframeIndex + (boneIndex * 3 + 2) * extent.width];
+            const glm::mat4& transform = animation.keyframes[keyframeIndex].boneTransforms[boneIndex];
+            row0 = { transform[0][0], transform[1][0], transform[2][0], transform[3][0] };
+            row1 = { transform[0][1], transform[1][1], transform[2][1], transform[3][1] };
+            row2 = { transform[0][2], transform[1][2], transform[2][2], transform[3][2] };
+        }
+    }
+    storageImage->stageUpload(std::span { (std::uint8_t*)pixels.data(), pixels.size() * sizeof(glm::vec4) });
+    return std::make_unique<Carrot::Render::Texture>(std::move(storageImage));
 }
 
 Carrot::Model::~Model() {
@@ -418,4 +486,9 @@ const Carrot::AnimationMetadata* Carrot::Model::getAnimationMetadata(const std::
 
 const std::map<std::string, Carrot::AnimationMetadata>& Carrot::Model::getAnimationMetadata() const {
     return animationMapping;
+}
+
+vk::DescriptorSet Carrot::Model::getAnimationDataDescriptorSet() const {
+    verify(animationDescriptorSets.size() > 0, "This model is not animated!");
+    return animationDescriptorSets[0];
 }
