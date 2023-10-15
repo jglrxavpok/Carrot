@@ -64,12 +64,13 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
         });
     });
 
+    auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
     fullySkinnedUnitVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
                                                         sizeof(Vertex) * vertexCountPerInstance * maxInstanceCount,
                                                         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                         vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                                        engine.createGraphicsAndTransferFamiliesSet());
-    fullySkinnedUnitVertices->name("full skinned unit vertices");
+                                                        std::set { driverQueueFamilies.computeFamily.value(), driverQueueFamilies.graphicsFamily.value() });
+    fullySkinnedUnitVertices->name(Carrot::sprintf("full skinned vertices %s", model->debugName.c_str()));
 
     raytracingBLASes.reserve(maxInstanceCount);
     raytracingInstances.reserve(maxInstanceCount);

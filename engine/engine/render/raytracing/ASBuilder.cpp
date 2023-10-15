@@ -413,7 +413,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
 
     // TODO: reuse
-    Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
+    Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{queueFamilies.computeFamily.value()});
     scratchBuffer.name("BLAS build scratch buffer");
 
     bool hasASToCompact = false;
@@ -480,15 +481,6 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         });
         builtBLASThisFrame = true;
     }
-
-#ifdef AFTERMATH_ENABLE
-    // FIXME: why?
-    /*try {
-        renderer.getVulkanDriver().getGraphicsQueue().waitIdle();
-    } catch (vk::DeviceLostError& e) {
-        GetVulkanDriver().onDeviceLost();
-    }*/
-#endif
 
     if(false) {
         ZoneScopedN("Compress built Acceleration Structures");

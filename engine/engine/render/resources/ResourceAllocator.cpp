@@ -17,9 +17,11 @@ namespace Carrot {
                                         std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()});
         stagingHeap->setDebugNames("ResourceAllocator heap for staging buffers");
 
+        auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
         deviceHeap = std::make_unique<Buffer>(device, HeapSize,
-                                        vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eUniformBuffer,
-                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
+                                              vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eUniformBuffer,
+                                              vk::MemoryPropertyFlagBits::eDeviceLocal,
+                                              std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()});
         deviceHeap->setDebugNames("ResourceAllocator heap for device buffers");
 
         VmaVirtualBlock stagingBlock;
@@ -69,7 +71,8 @@ namespace Carrot {
     BufferAllocation ResourceAllocator::allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags) {
         auto makeDedicated = [&]() {
             BufferAllocation result { this };
-            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal));
+            auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
+            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
             result.allocation = pBuffer.get();
             result.dedicated = true;

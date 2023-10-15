@@ -7,7 +7,7 @@ Carrot::SingleMesh::SingleMesh(const std::vector<VertexType>& vertices, const st
     const auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
     // create and allocate underlying buffer
     std::set<std::uint32_t> families = {
-            queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value()
+            queueFamilies.transferFamily.value(), queueFamilies.graphicsFamily.value(), queueFamilies.computeFamily.value()/* when creating raytracing AS */
     };
 
     // TODO: change default of 0x10 (used because of storage buffer alignments on my RTX 3070)

@@ -15,6 +15,7 @@ namespace Carrot::ECS {
     }
 
     void AnimatedModelRenderSystem::onFrame(Carrot::Render::Context renderContext) {
+        Async::SpinLock renderedModelsLock;
         renderedModels.clear();
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelComponent& modelComp) {
             ZoneScopedN("Per entity");
@@ -32,7 +33,11 @@ namespace Carrot::ECS {
 
                 // TODO: update TLAS properties
 
-                renderedModels.insert(&modelComp.asyncAnimatedModelHandle->getParent());
+                Carrot::Render::AnimatedModel* pAnimatedModel = &modelComp.asyncAnimatedModelHandle->getParent();
+                {
+                    Async::LockGuard g { renderedModelsLock };
+                    renderedModels.insert(pAnimatedModel);
+                }
             }
         });
 

@@ -238,13 +238,13 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute,
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
                 },
                 vk::DescriptorSetLayoutBinding {
                     .binding = 1,
                     .descriptorType = vk::DescriptorType::eStorageImage,
                     .descriptorCount = animationCount,
-                    .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute,
+                    .stageFlags = vk::ShaderStageFlagBits::eCompute,
                 }
         };
         animationSetLayout = engine.getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo{
@@ -293,7 +293,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
         for(std::size_t imageIndex = 0; imageIndex < animationCount; imageIndex++) {
             auto& imageInfo = imageInfoList[imageIndex];
             imageInfo.imageView = animationBoneTransformData[imageIndex]->getView();
-            imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            imageInfo.imageLayout = vk::ImageLayout::eGeneral;
 
             auto& write = writes[1 + imageIndex];
             write.descriptorCount = 1;
@@ -361,7 +361,9 @@ std::unique_ptr<Carrot::Render::Texture> Carrot::Model::generateBoneTransformsSt
         }
     }
     storageImage->stageUpload(std::span { (std::uint8_t*)pixels.data(), pixels.size() * sizeof(glm::vec4) });
-    return std::make_unique<Carrot::Render::Texture>(std::move(storageImage));
+    auto tex = std::make_unique<Carrot::Render::Texture>(std::move(storageImage));
+    tex->transitionNow(vk::ImageLayout::eGeneral);
+    return tex;
 }
 
 Carrot::Model::~Model() {

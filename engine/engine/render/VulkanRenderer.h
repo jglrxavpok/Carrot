@@ -301,6 +301,10 @@ namespace Carrot {
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawOffsetBuffers;
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawBuffers;
         Render::PerFrame<vk::DescriptorSet> perDrawDescriptorSets;
+
+        // Counts of the vectors below once they will be filled. Used to preallocate per-draw buffers before recording RenderPackets
+        std::atomic<std::uint32_t> perDrawElementCount{0};
+        std::atomic<std::uint32_t> perDrawOffsetCount{0};
         std::vector<GBufferDrawData> perDrawData;
         std::vector<std::uint32_t> perDrawOffsets;
 
@@ -359,6 +363,7 @@ namespace Carrot {
         void createViewportSetResources();
 
         void createPerDrawSetResources();
+        void preallocatePerDrawBuffers(const Carrot::Render::Context& renderContext);
         void updatePerDrawBuffers(const Carrot::Render::Context& renderContext);
 
         void createDebugSetResources();

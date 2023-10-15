@@ -790,7 +790,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
     prepareThreadRenderPackets.busyWait();
-    if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F5) == GLFW_PRESS) {
+    if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F9) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
 }
@@ -850,6 +850,7 @@ void Carrot::VulkanRenderer::beforeRecord(const Carrot::Render::Context& renderC
 
     materialSystem.beginFrame(renderContext); // called here because new material may have been created during the frame
     lighting.beginFrame(renderContext);
+    preallocatePerDrawBuffers(renderContext);
 
     Async::LockGuard lk { threadRegistrationLock };
 
@@ -1130,10 +1131,9 @@ void Carrot::VulkanRenderer::createPerDrawSetResources() {
     }
 }
 
-void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context& renderContext) {
-    ZoneScoped;
+void Carrot::VulkanRenderer::preallocatePerDrawBuffers(const Carrot::Render::Context& renderContext) {
     const std::size_t elementSize = sizeof(GBufferDrawData);
-    const std::size_t requiredStorage = perDrawData.size() * elementSize;
+    const std::size_t requiredStorage = perDrawElementCount.load() * elementSize;
     if(requiredStorage == 0)
         return;
 
@@ -1147,36 +1147,54 @@ void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context&
 
         vk::DescriptorBufferInfo buffer = perDrawBuffers[frameIndex]->asBufferInfo();
         auto write = vk::WriteDescriptorSet {
-            .dstSet = perDrawDescriptorSets[frameIndex],
-            .dstBinding = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eStorageBuffer,
-            .pBufferInfo = &buffer,
+                .dstSet = perDrawDescriptorSets[frameIndex],
+                .dstBinding = 0,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eStorageBuffer,
+                .pBufferInfo = &buffer,
         };
 
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
     }
 
     const std::size_t alignedElementSize = Carrot::Math::alignUp(sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment);
-    const std::size_t offsetRequiredStorage = perDrawOffsets.size() * alignedElementSize;
+    const std::size_t offsetRequiredStorage = perDrawOffsetCount.load() * alignedElementSize;
 
     if(perDrawOffsetBuffers[frameIndex] == nullptr || perDrawOffsetBuffers[frameIndex]->getSize() < offsetRequiredStorage) {
         perDrawOffsetBuffers[frameIndex] = getEngine().getResourceAllocator().allocateDedicatedBuffer(offsetRequiredStorage,
-                                                                                                vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                                                                                vk::MemoryPropertyFlagBits::eDeviceLocal);
+                                                                                                      vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                                                                                      vk::MemoryPropertyFlagBits::eDeviceLocal);
         perDrawOffsetBuffers[frameIndex]->setDebugNames(Carrot::sprintf("Per-draw offsets frame %llu", frameIndex));
         vk::DescriptorBufferInfo buffer = perDrawOffsetBuffers[frameIndex]->asBufferInfo();
         buffer.range = alignedElementSize;
         auto write = vk::WriteDescriptorSet {
-            .dstSet = perDrawDescriptorSets[frameIndex],
-            .dstBinding = 1,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
-            .pBufferInfo = &buffer,
+                .dstSet = perDrawDescriptorSets[frameIndex],
+                .dstBinding = 1,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
+                .pBufferInfo = &buffer,
         };
 
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
     }
+}
+
+void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context& renderContext) {
+    ZoneScoped;
+    const std::size_t elementSize = sizeof(GBufferDrawData);
+    const std::size_t requiredStorage = perDrawData.size() * elementSize;
+
+    // perDrawElementCount should accurately predict how many elements perDrawData has (same for perDrawOffsetCount)
+    verify(perDrawData.size() == perDrawElementCount.load(), "perDrawData.size() != perDrawElementCount.load(), this is a programming error!");
+    verify(perDrawOffsets.size() == perDrawOffsetCount.load(), "perDrawData.size() != perDrawElementCount.load(), this is a programming error!");
+    perDrawElementCount = 0;
+    perDrawOffsetCount = 0;
+    if(requiredStorage == 0)
+        return;
+
+    const std::size_t frameIndex = renderContext.swapchainIndex;
+
+    const std::size_t alignedElementSize = Carrot::Math::alignUp(sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment);
 
     std::size_t index = 0;
     std::vector<std::pair<std::size_t, std::span<const std::uint32_t>>> copyTargets;
@@ -1712,6 +1730,11 @@ void Carrot::VulkanRenderer::render(const Render::Packet& packet) {
     packet.validate();
     verify(threadLocalRenderPackets != nullptr, "Current thread must have been registered via VulkanRenderer::makeCurrentThreadRenderCapable()");
     threadLocalRenderPackets->unsorted.emplace_back(packet);
+
+    if(!packet.perDrawData.empty()) {
+        perDrawElementCount += packet.perDrawData.size() / sizeof(GBufferDrawData);
+        perDrawOffsetCount++;
+    }
 }
 
 void Carrot::VulkanRenderer::blink() {
