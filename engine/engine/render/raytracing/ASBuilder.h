@@ -157,10 +157,10 @@ namespace Carrot {
         std::vector<std::vector<TracyVkCtx>> blasBuildTracyCtx; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
-        std::unique_ptr<Carrot::Buffer> rtInstancesBuffer = nullptr;
+        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> rtInstancesBuffers;
 
         std::unique_ptr<Carrot::Buffer> geometriesBuffer;
-        std::unique_ptr<Carrot::Buffer> instancesBuffer;
+        Carrot::Render::PerFrame<std::unique_ptr<Carrot::Buffer>> instancesBuffers;
         Carrot::Render::PerFrame<Carrot::BufferView> geometriesBufferPerFrame;
         Carrot::Render::PerFrame<Carrot::BufferView> instancesBufferPerFrame;
 
@@ -189,6 +189,8 @@ namespace Carrot {
         std::atomic_bool dirtyInstances = false;
 
         std::vector<SceneDescription::Geometry> allGeometries;
+
+        std::size_t lastFrameIndexForTLAS = 0;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;

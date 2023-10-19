@@ -161,7 +161,7 @@ void Carrot::ASBuilder::createGraveyard() {
 
 void Carrot::ASBuilder::createDescriptors() {
     geometriesBuffer = nullptr;
-    instancesBuffer = nullptr;
+    instancesBuffers.clear();
 }
 
 std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
@@ -258,8 +258,8 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     if(geometriesBuffer)
         geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer->getWholeView();
 
-    if(instancesBuffer)
-        instancesBufferPerFrame[renderContext.swapchainIndex] = instancesBuffer->getWholeView();
+    if(instancesBuffers[lastFrameIndexForTLAS])
+        instancesBufferPerFrame[renderContext.swapchainIndex] = instancesBuffers[lastFrameIndexForTLAS]->getWholeView();
 }
 
 void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild) {
@@ -320,7 +320,9 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     // allocate memory for each entry
     std::vector<bool> firstBuild;
+    std::vector<vk::DeviceSize> scratchOffset;
     firstBuild.resize(blasCount);
+    scratchOffset.resize(blasCount);
     for(size_t index = 0; index < blasCount; index++) {
         ZoneScopedN("Create BLAS");
         ZoneValue(index);
@@ -395,7 +397,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         {
             Async::LockGuard scratchSizeGuard { scratchSizeAccess };
             originalSizes[index] = sizeInfo.accelerationStructureSize;
-            scratchSize = std::max(sizeInfo.buildScratchSize, scratchSize);
+            scratchOffset[index] = scratchSize;
+            scratchSize += firstBuild[index] ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize;
         }
 
         }
@@ -408,12 +411,13 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         geometriesBuffer->setDebugNames("RT Geometries");
     }
 
-    //geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
-    geometriesBuffer->stageUploadWithOffset(0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
-    //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
+    geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+    //geometriesBuffer->stageUploadWithOffset(0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
+    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
 
-    // TODO: reuse
     auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
+    // TODO: reuse
+    // TODO: VkPhysicalDeviceAccelerationStructurePropertiesKHR::minAccelerationStructureScratchOffsetAlignment
     Buffer scratchBuffer = Buffer(renderer.getVulkanDriver(), scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{queueFamilies.computeFamily.value()});
     scratchBuffer.name("BLAS build scratch buffer");
 
@@ -433,12 +437,13 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         cmds->begin(vk::CommandBufferBeginInfo {
                 .pInheritanceInfo = nullptr,
         });
+        GetVulkanDriver().setMarker(*cmds, "Begin AS build");
 
         //TracyVkZone(tracyCtxList[index], *cmds, "Build BLAS");
 
         cmds->resetQueryPool(*queryPool, index, 1);
 
-        buildInfo[index].scratchData.deviceAddress = scratchAddress;
+        buildInfo[index].scratchData.deviceAddress = scratchAddress + scratchOffset[index];
 
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> pBuildRanges{toBuild[index]->buildRanges.size()};
         for(size_t i = 0; i < toBuild[index]->buildRanges.size(); i++) {
@@ -480,6 +485,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 .pSignalSemaphores = hasASToCompact ? &(*preCompactBLASSemaphore[renderContext.swapchainIndex]) : &(*blasBuildSemaphore[renderContext.swapchainIndex]),
         });
         builtBLASThisFrame = true;
+        GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eTopOfPipe, *blasBuildSemaphore[renderContext.swapchainIndex]);
     }
 
     if(false) {
@@ -578,7 +584,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     if(vkInstances.empty()) {
         tlas = nullptr;
-        instancesBuffer = nullptr;
+        instancesBuffers[lastFrameIndexForTLAS] = nullptr;
         return;
     }
 
@@ -589,50 +595,39 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     GetVulkanDriver().setFormattedMarker(buildCommand, "Start of command buffer for TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
     // upload instances to the device
 
-    // FIXME: Culprit of gpu crash?
+    lastFrameIndexForTLAS = renderContext.swapchainIndex;
     /*if(!rtInstancesBuffer || lastInstanceCount < vkInstances.size()) */{
         ZoneScopedN("Create RT instances buffer");
-        rtInstancesBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
+        rtInstancesBuffers[lastFrameIndexForTLAS] = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                    vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
                                                    vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
                                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
                                                    //vk::MemoryPropertyFlagBits::eDeviceLocal
         );
 
-        rtInstancesBuffer->setDebugNames("TLAS Instances");
+        rtInstancesBuffers[lastFrameIndexForTLAS]->setDebugNames("TLAS Instances");
         lastInstanceCount = vkInstances.size();
 
-        instanceBufferAddress = rtInstancesBuffer->getDeviceAddress();
+        instanceBufferAddress = rtInstancesBuffers[lastFrameIndexForTLAS]->getDeviceAddress();
     }
 
     /*if(!instancesBuffer || instancesBuffer->getSize() < sizeof(SceneDescription::Instance) * logicalInstances.size()) */{
         ZoneScopedN("Create logical instances buffer");
-        instancesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
+        instancesBuffers[lastFrameIndexForTLAS] = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
                                                                                                         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                                                         vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
-        instancesBuffer->setDebugNames(Carrot::sprintf("RT Instances frame %lu", GetRenderer().getFrameCount()));
+        instancesBuffers[lastFrameIndexForTLAS]->setDebugNames(Carrot::sprintf("RT Instances frame %lu", GetRenderer().getFrameCount()));
     }
 
     {
         {
             ZoneScopedN("Logical instances upload");
-            instancesBuffer->directUpload(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+            instancesBuffers[lastFrameIndexForTLAS]->directUpload(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
         }
         {
             ZoneScopedN("RT Instances upload");
-            //rtInstancesBuffer->stageUploadWithOffset(0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
-            rtInstancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
-
-            GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
+            rtInstancesBuffers[lastFrameIndexForTLAS]->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
         }
-
-        //instancesBuffer->stageAsyncUploadWithOffset(*instanceUploadSemaphore[renderContext.swapchainIndex], 0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
-
-        // FIXME wait for transfer queue might not be safe!! (if separate from Graphics, has no impact on graphics synchronisation)
-        //instancesBuffer->stageUploadWithOffset(0, logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
-        //GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *instanceUploadSemaphore[renderContext.swapchainIndex]);
-
-        //rtInstancesBuffer->directUpload(vkInstances.data(), vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
     }
 
     vk::AccelerationStructureGeometryInstancesDataKHR instancesVk {
@@ -649,7 +644,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
             .flags = flags,
             .mode = update ? vk::BuildAccelerationStructureModeKHR::eUpdate : vk::BuildAccelerationStructureModeKHR::eBuild,
-            .srcAccelerationStructure = nullptr,
+            .srcAccelerationStructure = update ? tlas->getVulkanAS() : nullptr,
             .geometryCount = 1,
             .pGeometries = &topASGeometry,
     };
@@ -671,18 +666,17 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     // Allocate scratch memory
     /*if(!scratchBuffer || lastScratchSize < sizeInfo.buildScratchSize) */{
         scratchBuffer = std::make_unique<Buffer>(renderer.getVulkanDriver(),
-                                                 sizeInfo.buildScratchSize,
+                                                 update ? sizeInfo.updateScratchSize : sizeInfo.buildScratchSize,
                                                  vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer,
                                                  vk::MemoryPropertyFlagBits::eDeviceLocal
         );
         scratchBuffer->name("RT instances build scratch buffer");
-        lastScratchSize = sizeInfo.buildScratchSize;
+        lastScratchSize = scratchBuffer->getSize();
         scratchBufferAddress = renderer.getLogicalDevice().getBufferAddress({
             .buffer = scratchBuffer->getVulkanBuffer(),
         });
     }
 
-    buildInfo.srcAccelerationStructure = update ? tlas->getVulkanAS() : nullptr;
     buildInfo.dstAccelerationStructure = tlas->getVulkanAS();
     buildInfo.scratchData.deviceAddress = scratchBufferAddress;
 
@@ -691,27 +685,6 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .primitiveCount = static_cast<uint32_t>(vkInstances.size())
     };
 
-    bottomLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-            .srcStageMask = vk::PipelineStageFlagBits2KHR::eTransfer,
-            .srcAccessMask = vk::AccessFlagBits2KHR::eTransferWrite,
-            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuildKHR,
-            .dstAccessMask = vk::AccessFlagBits2KHR::eMemoryRead,
-
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-
-            // TODO: will need to change with non-dedicated buffers
-            .buffer = rtInstancesBuffer->getVulkanBuffer(),
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-    });
-    vk::DependencyInfoKHR dependency {
-            .bufferMemoryBarrierCount = static_cast<uint32_t>(bottomLevelBarriers.size()),
-            .pBufferMemoryBarriers = bottomLevelBarriers.data(),
-    };
-    GetVulkanDriver().setFormattedMarker(buildCommand, "Pre-barrier TLAS build, update = %d, framesBeforeRebuildingTLAS = %d", update, framesBeforeRebuildingTLAS);
-    buildCommand.pipelineBarrier2KHR(dependency);
-
     GetVulkanDriver().setFormattedMarker(buildCommand, "Before TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
     buildCommand.buildAccelerationStructuresKHR(buildInfo, &buildOffsetInfo);
     GetVulkanDriver().setFormattedMarker(buildCommand, "After TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
@@ -719,6 +692,9 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     std::vector<vk::Semaphore> waitSemaphores;
     std::vector<vk::PipelineStageFlags> waitStages;
+
+    waitStages.push_back(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR);
+    waitSemaphores.push_back(*instanceUploadSemaphore[renderContext.swapchainIndex]);
     if(builtBLASThisFrame) {
         waitStages.emplace_back(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR);
         waitSemaphores.push_back(*blasBuildSemaphore[renderContext.swapchainIndex]);
@@ -785,6 +761,12 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
     createGraveyard();
     createDescriptors();
 
+    rtInstancesBuffers.clear();
+    rtInstancesBuffers.resize(newCount);
+
+    instancesBuffers.clear();
+    instancesBuffers.resize(newCount);
+
     instancesBufferPerFrame.clear();
     instancesBufferPerFrame.resize(newCount);
 
@@ -804,8 +786,5 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
 }
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
-    if(!instancesBuffer) {
-        return Carrot::BufferView{};
-    }
     return instancesBufferPerFrame[renderContext.swapchainIndex];
 }

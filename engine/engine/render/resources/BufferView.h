@@ -40,6 +40,7 @@ namespace Carrot {
 
         void copyToAndWait(Carrot::BufferView destination) const;
         void copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const;
+        void cmdCopyTo(vk::CommandBuffer& cmds, Carrot::BufferView destination) const;
 
         template<typename T>
         void directUpload(const std::span<const T>& data) {

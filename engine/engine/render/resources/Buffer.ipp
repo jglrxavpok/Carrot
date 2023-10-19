@@ -66,14 +66,27 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBufferAlloc = internalStagingBuffer(size);
-    auto stagingBuffer = stagingBufferAlloc.view;
+    heldStagingBuffer = internalStagingBuffer(size);
+    auto stagingBuffer = heldStagingBuffer.view;
 
     // upload data to staging buffer
     stagingBuffer.directUpload(data, totalLength);
 
     // copy staging buffer to this buffer
     stagingBuffer.copyTo(semaphore, getWholeView().subView(offset, totalLength));
+}
+
+template<typename T>
+void Carrot::Buffer::cmdStageCopy(vk::CommandBuffer& cmds, uint64_t offset, const T* data, std::size_t totalLength) {
+    // allocate staging buffer used for transfer
+    heldStagingBuffer = internalStagingBuffer(size);
+    auto stagingBuffer = heldStagingBuffer.view;
+
+    // upload data to staging buffer
+    stagingBuffer.directUpload(data, totalLength);
+
+    // copy staging buffer to this buffer
+    stagingBuffer.cmdCopyTo(cmds, getWholeView().subView(offset, totalLength));
 }
 
 template<typename T>

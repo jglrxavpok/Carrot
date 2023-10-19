@@ -85,13 +85,17 @@ void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {
 void Carrot::BufferView::copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const {
     verify(destination.size >= size, "copying too much data");
     GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
-        vk::BufferCopy copyRegion = {
-                .srcOffset = start,
-                .dstOffset = destination.start,
-                .size = size,
-        };
-        stagingCommands.copyBuffer(getVulkanBuffer(), destination.getVulkanBuffer(), {copyRegion});
+        cmdCopyTo(stagingCommands, destination);
     }, false, {}, static_cast<vk::PipelineStageFlagBits>(0), signalSemaphore);
+}
+
+void Carrot::BufferView::cmdCopyTo(vk::CommandBuffer& cmds, Carrot::BufferView destination) const {
+    vk::BufferCopy copyRegion = {
+            .srcOffset = start,
+            .dstOffset = destination.start,
+            .size = size,
+    };
+    cmds.copyBuffer(getVulkanBuffer(), destination.getVulkanBuffer(), {copyRegion});
 }
 
 

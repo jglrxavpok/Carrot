@@ -106,7 +106,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
            {
                 pass.prerecordable = false; //TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
                 // TODO (or it should be re-recorded when changes happen)
-                resolveData.gBuffer.readFrom(graph, opaqueData);
+                resolveData.gBuffer.readFrom(graph, opaqueData, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 resolveData.globalIllumination = graph.createRenderTarget("Global Illumination",
                                                                 vk::Format::eR32G32B32A32Sfloat,
@@ -151,7 +151,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 // GBuffer inputs
-                data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0);
+                data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 if(useRaytracingVersion) {
                     auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
@@ -175,14 +175,14 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     );
 }
 
-void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other) {
-    albedo = graph.read(other.albedo, vk::ImageLayout::eShaderReadOnlyOptimal);
-    positions = graph.read(other.positions, vk::ImageLayout::eShaderReadOnlyOptimal);
-    viewSpaceNormalTangents = graph.read(other.viewSpaceNormalTangents, vk::ImageLayout::eShaderReadOnlyOptimal);
-    flags = graph.read(other.flags, vk::ImageLayout::eShaderReadOnlyOptimal);
-    entityID = graph.read(other.entityID, vk::ImageLayout::eShaderReadOnlyOptimal);
-    metallicRoughnessVelocityXY = graph.read(other.metallicRoughnessVelocityXY, vk::ImageLayout::eShaderReadOnlyOptimal);
-    emissiveVelocityZ = graph.read(other.emissiveVelocityZ, vk::ImageLayout::eShaderReadOnlyOptimal);
+void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout) {
+    albedo = graph.read(other.albedo, wantedLayout);
+    positions = graph.read(other.positions, wantedLayout);
+    viewSpaceNormalTangents = graph.read(other.viewSpaceNormalTangents, wantedLayout);
+    flags = graph.read(other.flags, wantedLayout);
+    entityID = graph.read(other.entityID, wantedLayout);
+    metallicRoughnessVelocityXY = graph.read(other.metallicRoughnessVelocityXY, wantedLayout);
+    emissiveVelocityZ = graph.read(other.emissiveVelocityZ, wantedLayout);
     depthStencil = graph.read(other.depthStencil, vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
 
     // TODO: fix (double read in two != passes result in no 'previousLayout' change
@@ -190,15 +190,15 @@ void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, co
     albedo.previousLayout = albedo.layout;
 }
 
-void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID) const {
+void Carrot::Render::PassData::GBuffer::bindInputs(Carrot::Pipeline& pipeline, const Render::Context& frame, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const {
     auto& renderer = GetRenderer();
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.swapchainIndex), setID, 0, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.swapchainIndex), setID, 1, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frame.swapchainIndex), setID, 2, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.swapchainIndex), setID, 3, renderer.getVulkanDriver().getNearestSampler());
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.swapchainIndex), setID, 4, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frame.swapchainIndex), setID, 5, nullptr);
-    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frame.swapchainIndex), setID, 6, nullptr);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(albedo, frame.swapchainIndex), setID, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(positions, frame.swapchainIndex), setID, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(viewSpaceNormalTangents, frame.swapchainIndex), setID, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(flags, frame.swapchainIndex), setID, 3, renderer.getVulkanDriver().getNearestSampler(), vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(entityID, frame.swapchainIndex), setID, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(metallicRoughnessVelocityXY, frame.swapchainIndex), setID, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
+    renderer.bindTexture(pipeline, frame, renderGraph.getTexture(emissiveVelocityZ, frame.swapchainIndex), setID, 6, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, expectedLayout);
     // 7 unused
     renderer.bindTexture(pipeline, frame, renderGraph.getTexture(depthStencil, frame.swapchainIndex), setID, 8, nullptr, vk::ImageAspectFlagBits::eDepth, vk::ImageViewType::e2D, 0, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 

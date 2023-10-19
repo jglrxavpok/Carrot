@@ -66,6 +66,9 @@ namespace Carrot {
         template<typename T>
         void stageAsyncUploadWithOffset(vk::Semaphore& semaphore, uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
 
+        template<typename T>
+        void cmdStageCopy(vk::CommandBuffer& cmds, uint64_t offset, const T* data, std::size_t totalLength = sizeof(T));
+
         /// returns a vk::DescriptorBufferInfo that references this buffer
         [[nodiscard]] vk::DescriptorBufferInfo asBufferInfo() const;
 
@@ -106,6 +109,7 @@ namespace Carrot {
         DeviceMemory memory{};
         vk::DeviceAddress deviceAddress;
         std::string debugName;
+        Carrot::BufferAllocation heldStagingBuffer; //< for async copies
 
         /// Creates and allocates a buffer with the given parameters
         //explicit Buffer(Engine& engine, vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, std::set<uint32_t> families = {});

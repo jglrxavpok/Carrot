@@ -126,8 +126,8 @@ namespace Carrot::Render {
             FrameResource emissiveVelocityZ;
             FrameResource depthStencil;
 
-            void readFrom(Render::GraphBuilder& graph, const GBuffer& other);
-            void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID) const;
+            void readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout);
+            void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
         };
 
         struct Lighting {
