@@ -10,7 +10,6 @@
 #include "engine/render/VulkanRenderer.h"
 #include "core/io/Logging.hpp"
 
-//#pragma optimize("", off)
 static std::atomic<std::int64_t> TaskScheduledThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedCount{0};
@@ -109,7 +108,25 @@ namespace Carrot {
         }
 
         taskData = std::make_shared<TaskData>();
-        auto fiberProc = [](Cider::FiberHandle& fiber) {
+        auto fiberProc = [pTaskKeepAlive = taskData, pTaskScheduler = this](Cider::FiberHandle& fiber) {
+            {
+                struct Data {
+                    std::shared_ptr<TaskData> pTask;
+                    TaskScheduler* pTaskScheduler = nullptr;
+                };
+                Data data {
+                        .pTask = pTaskKeepAlive,
+                        .pTaskScheduler = pTaskScheduler
+                };
+                while(true) {
+                    // yield this fiber, and sets up task data for reuse
+                    fiber.yieldOnTop([](void* pUserData) {
+                        Data* pData = (Data*)pUserData;
+                        auto pTask = pData->pTask;
+                        pData->pTaskScheduler->reusableTaskData.push(std::move(pTask));
+                    }, &data);
+                }
+            }
             verify(false, "Reached bottom of fiber used for tasks, should not happen!");
         };
         taskData->fiber = std::make_unique<Cider::Fiber>(std::move(fiberProc), taskData->stack.asSpan(), fiberScheduler);
@@ -255,14 +272,6 @@ namespace Carrot {
                 }
 
                 ActiveTaskCount--;
-
-                // TODO: leaks memory
-                // yield this fiber, and sets up task data for reuse
-                fiber.yieldOnTop([pTaskKeepAlive = pTask, pTaskScheduler]() mutable {
-                    auto pTask = pTaskKeepAlive;
-                    pTaskKeepAlive = nullptr;
-                    pTaskScheduler->reusableTaskData.push(std::move(pTask));
-                });
             };
             pNewTask->fiber->switchToWithOnTop(fiberProc); // execute prolog
 
