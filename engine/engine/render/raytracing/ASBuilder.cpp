@@ -601,8 +601,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         rtInstancesBuffers[lastFrameIndexForTLAS] = std::make_unique<Buffer>(renderer.getVulkanDriver(),
                                                    vkInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR),
                                                    vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
-                                                   vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
-                                                   //vk::MemoryPropertyFlagBits::eDeviceLocal
+                                                   vk::MemoryPropertyFlagBits::eDeviceLocal
         );
 
         rtInstancesBuffers[lastFrameIndexForTLAS]->setDebugNames("TLAS Instances");
