@@ -8,5 +8,5 @@
 #include <core/scene/LoadedScene.h>
 
 namespace Fertilizer {
-    tinygltf::Model writeAsGLTF(const Carrot::Render::LoadedScene& scene);
+    tinygltf::Model writeAsGLTF(const std::string& modelName, const Carrot::Render::LoadedScene& scene);
 }

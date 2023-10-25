@@ -12,7 +12,7 @@ namespace Fertilizer {
         std::uint32_t originalIndex = 0;
 
         std::optional<std::uint32_t> newIndex;
-        Carrot::Vertex vertex{};
+        Carrot::SkinnedVertex vertex{};
     };
 
     struct ExpandedMesh {
