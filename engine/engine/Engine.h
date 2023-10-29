@@ -13,6 +13,7 @@ namespace Carrot {
     class Engine;
 }
 
+#include <core/containers/CircleBuffer.h>
 #include <core/io/FileWatcher.h>
 #include <engine/Window.h>
 #include <engine/vulkan/SwapchainAware.h>
@@ -463,6 +464,7 @@ namespace Carrot {
             Render::Texture* intProperties = nullptr;
         };
 
+        CircleBuffer<float, 600> frameTimeHistory; //< Latest frame delta times
         std::vector<ImGuiTextures> imguiTextures;
 
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
