@@ -8,6 +8,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
+#include <engine/console/RuntimeOption.hpp>
 #include "core/io/Logging.hpp"
 
 static std::atomic<std::int64_t> TaskScheduledThisFrameCount{0};
@@ -15,6 +16,7 @@ static std::atomic<std::int64_t> TaskDataCreatedThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedCount{0};
 static std::atomic<std::int64_t> AliveTaskDataCount{0};
 static std::atomic<std::int64_t> ActiveTaskCount{0};
+static Carrot::RuntimeOption ShowDebug("Debug/Task Scheduler", false);
 
 namespace Carrot {
     Async::TaskLane TaskScheduler::FrameParallelWork;
@@ -170,16 +172,18 @@ namespace Carrot {
     void TaskScheduler::executeRendering() {
         runSingleTask(TaskScheduler::Rendering, false);
 
-        const std::int64_t taskDataCreatedThisFrame = TaskDataCreatedThisFrameCount.exchange(0);
-        const std::int64_t tasksScheduledThisFrame = TaskScheduledThisFrameCount.exchange(0);
-        if(ImGui::Begin("Task Scheduler")) {
-            ImGui::Text("Active tasks: %llu", ActiveTaskCount.load());
-            ImGui::Text("Task count scheduled this frame: %llu", tasksScheduledThisFrame);
-            ImGui::Text("Alive TaskData: %llu", AliveTaskDataCount.load());
-            ImGui::Text("Total TaskData created: %llu", TaskDataCreatedCount.load());
-            ImGui::Text("TaskData created this frame: %llu", taskDataCreatedThisFrame);
+        if(ShowDebug) {
+            const std::int64_t taskDataCreatedThisFrame = TaskDataCreatedThisFrameCount.exchange(0);
+            const std::int64_t tasksScheduledThisFrame = TaskScheduledThisFrameCount.exchange(0);
+            if(ImGui::Begin("Task Scheduler")) {
+                ImGui::Text("Active tasks: %llu", ActiveTaskCount.load());
+                ImGui::Text("Task count scheduled this frame: %llu", tasksScheduledThisFrame);
+                ImGui::Text("Alive TaskData: %llu", AliveTaskDataCount.load());
+                ImGui::Text("Total TaskData created: %llu", TaskDataCreatedCount.load());
+                ImGui::Text("TaskData created this frame: %llu", taskDataCreatedThisFrame);
+            }
+            ImGui::End();
         }
-        ImGui::End();
     }
 
     struct FiberLocalStorage {

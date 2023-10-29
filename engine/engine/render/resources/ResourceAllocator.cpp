@@ -4,10 +4,12 @@
 
 #include "ResourceAllocator.h"
 #include <engine/Engine.h>
+#include <engine/console/RuntimeOption.hpp>
 #include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1GiB, no particular reason for this exact value
+static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", false);
 
 namespace Carrot {
     ResourceAllocator::ResourceAllocator(VulkanDriver& device): device(device) {
@@ -95,6 +97,9 @@ namespace Carrot {
     }
 
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
+        if(!ShowAllocatorDebug) {
+            return;
+        }
         if(ImGui::Begin("Resource Allocator")) {
             if(ImGui::CollapsingHeader("Staging buffers")) {
                 if(ImGui::BeginChild("##staging buffers")) {
