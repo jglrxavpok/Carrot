@@ -75,6 +75,7 @@ namespace Carrot {
 
         bool isBuilt() const { return built; }
         bool hasBeenModified() const { return modified; }
+        bool isUsable() { return enabled && !geometry.expired(); }
         void update();
 
         virtual ~InstanceHandle() noexcept override;

@@ -25,6 +25,26 @@ namespace Carrot::Render {
         invGlobalInverseTransform = glm::inverse(globalInverseTransform);
     }
 
+    Skeleton& Skeleton::operator=(const Skeleton& other) {
+        globalInverseTransform = other.globalInverseTransform;
+        invGlobalInverseTransform = other.invGlobalInverseTransform;
+
+        // clear root
+        hierarchy.getChildren().clear();
+
+        std::function<void(SkeletonTreeNode&, const SkeletonTreeNode&)> clone = [&](SkeletonTreeNode& destination, const SkeletonTreeNode& source) {
+            destination.bone = source.bone;
+            destination.meshIndices = source.meshIndices;
+            for(const SkeletonTreeNode& sourceChild : source.getChildren()) {
+                SkeletonTreeNode& destinationChild = destination.newChild();
+                clone(destinationChild, sourceChild);
+            }
+        };
+        clone(hierarchy, other.hierarchy);
+
+        return *this;
+    }
+
     Bone* Skeleton::findBone(const BoneName& boneName) {
         SkeletonTreeNode* node = findNode(boneName);
         return node ? &node->bone : nullptr;

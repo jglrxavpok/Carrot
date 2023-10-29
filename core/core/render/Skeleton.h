@@ -35,6 +35,9 @@ namespace Carrot::Render {
 
         explicit SkeletonTreeNode(SkeletonTreeNode* pParent): pParent(pParent) {};
 
+    public:
+        SkeletonTreeNode& operator=(const SkeletonTreeNode& other) = delete;
+
     public: //! Hierarchy manipulation
 
         //! Adds a new child to this node
@@ -62,6 +65,9 @@ namespace Carrot::Render {
         explicit Skeleton(const glm::mat4& globalInverseTransform);
 
     public:
+        // deep copy
+        Skeleton& operator=(const Skeleton& other);
+
         //! Finds the bone which has the same name as the input. If none could be found, returns nullptr
         //! If you need to use this bone frequently, it is recommended to cache it, as this method searches the entire hierarchy each time
         Bone* findBone(const BoneName& boneName);

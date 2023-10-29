@@ -74,7 +74,7 @@ namespace Carrot {
         Carrot::IO::Resource from;
         const std::string modelPath = path.toString();
         try {
-            fs::path convertedPath;// TODO: redo = convert(path);
+            fs::path convertedPath = convert(path);
             if(convertedPath.empty()) {
                 from = modelPath; // probably won't work, but at least the error message will be readable
             } else {

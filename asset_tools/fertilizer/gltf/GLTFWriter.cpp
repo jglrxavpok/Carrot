@@ -382,24 +382,22 @@ namespace Fertilizer {
         };
 
         fission(newHierarchy.hierarchy);
+        newHierarchy.hierarchy.bone.transform = carrotSpaceToGLTFSpace * newHierarchy.hierarchy.bone.transform;
+        newHierarchy.hierarchy.bone.originalTransform = carrotSpaceToGLTFSpace * newHierarchy.hierarchy.bone.originalTransform;
 
         // actually export new hierarchy
         std::size_t nodeIndex = 0;
         tinygltf::Model& model = payload.glTFModel;
         std::function<void(const Carrot::Render::SkeletonTreeNode&)> exportNode = [&](const Carrot::Render::SkeletonTreeNode& node) {
             std::size_t currentNodeIndex = nodeIndex++;
-
-            glm::mat4 nodeTransform = node.bone.transform;
-            if(node.pParent == nullptr) {
-                nodeTransform = carrotSpaceToGLTFSpace * nodeTransform;
-            }
+            const glm::mat4& nodeTransform = node.bone.transform;
             payload.nodeMap[&node] = currentNodeIndex;
             model.nodes.emplace_back(); // cannot keep a reference, will be invalidated by recursive exportNode calls
 
 #define currentNode (model.nodes[currentNodeIndex])
             currentNode.name = node.bone.name;
 
-            if(!isDefaultTransform(node.bone.transform)) {
+            if(!isDefaultTransform(nodeTransform)) {
                 glm::vec3 translation;
                 glm::quat rotation;
                 glm::vec3 scale;
@@ -519,6 +517,10 @@ namespace Fertilizer {
     static void writeAnimations(const std::string& modelName, Payload& payload, const Carrot::Render::LoadedScene& scene) {
         auto& model = payload.glTFModel;
 
+        if(scene.boneMapping.empty()) {
+            return;
+        }
+
         // Because Carrot supports a single hierarchy per model, there can only be a single skin per produced glTF file
         const auto& [meshIndex, boneMapping] = *scene.boneMapping.begin();
         const auto& inverseBindMatrices = scene.offsetMatrices.at(meshIndex);
@@ -612,7 +614,7 @@ namespace Fertilizer {
                         auto pParentIter = completeBoneMapping.find(pCurrentBone->pParent->bone.name);
                         if(pParentIter != completeBoneMapping.end()) {
                             std::size_t parentID = pParentIter->second;
-                            // TODO: convert from parent node index to bone index
+
                             auto parentBoneIDIter = payload.boneRemap.find(parentID);
                             if(parentBoneIDIter != payload.boneRemap.end()) {
                                 const int parentBoneID = parentBoneIDIter->second;
@@ -637,8 +639,7 @@ namespace Fertilizer {
                 }
 
                 // translation
-                if(hasTranslation)
-                {
+                if(hasTranslation) {
                     std::size_t dataOffset = animationData.size();
 
                     // copy data
@@ -671,12 +672,11 @@ namespace Fertilizer {
                 }
 
                 // rotation
-                if(hasRotation)
-                {
+                if(hasRotation) {
                     std::size_t dataOffset = animationData.size();
 
                     // copy data
-                    animationData.resize(dataOffset + animation.keyframeCount * sizeof(glm::vec4));
+                    animationData.resize(dataOffset + animation.keyframeCount * sizeof(glm::quat));
                     glm::quat* pRotations = reinterpret_cast<glm::quat*>(&animationData[dataOffset]);
                     for(std::size_t keyframeIndex = 0; keyframeIndex < animation.keyframeCount; keyframeIndex++) {
                         const auto& rot = trsKeyframesForThisBone[keyframeIndex].rotation;
@@ -706,8 +706,7 @@ namespace Fertilizer {
                 }
 
                 // scale
-                if(hasScale)
-                {
+                if(hasScale) {
                     std::size_t dataOffset = animationData.size();
 
                     // copy data

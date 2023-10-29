@@ -229,7 +229,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
 
     for(auto& [slot, valuePtr] : instances) {
         if(auto value = valuePtr.lock()) {
-            if(value->enabled) {
+            if(value->isUsable()) {
                 value->update();
                 activeInstances++;
             }
@@ -567,7 +567,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         ZoneScopedN("Convert to vulkan instances");
         for(const auto& [slot, v] : instances) {
             if(auto instance = v.lock()) {
-                if(instance->enabled) {
+                if(instance->isUsable()) {
                     if(auto pGeometry = instance->geometry.lock()) {
                         vkInstances.push_back(instance->instance);
 

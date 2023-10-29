@@ -484,11 +484,12 @@ namespace Carrot::Render {
         }
 
         NodeMapping nodeMapping;
-        result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glTFSpaceToCarrotSpace);
+        result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glm::mat4{1.0f});
+        result.nodeHierarchy->hierarchy.bone.transform = result.nodeHierarchy->hierarchy.bone.originalTransform = glTFSpaceToCarrotSpace;
+        result.nodeHierarchy->hierarchy.bone.name = "Model root " + modelFilepath.toString();
         for(const auto& scene : model.scenes) {
             auto& sceneRoot = result.nodeHierarchy->hierarchy.newChild();
             sceneRoot.bone.name = "glTF Scene root " + result.debugName;
-            sceneRoot.bone.transform = sceneRoot.bone.originalTransform = glTFSpaceToCarrotSpace;
             for(const auto& nodeIndex : scene.nodes) {
                 loadNodesRecursively(result, model, nodeIndex, meshes, sceneRoot, nodeMapping, glTFSpaceToCarrotSpace);
             }
@@ -541,9 +542,9 @@ namespace Carrot::Render {
 
             // read the TRS of each node over time for this animation
             struct GLTFKeyframe {
-                std::optional<glm::vec3> position{0.0f};
+                std::optional<glm::vec3> position;
                 std::optional<glm::quat> rotation;
-                std::optional<glm::vec3> scale{1.0f};
+                std::optional<glm::vec3> scale;
 
                 bool worldSpace = false;
                 glm::mat4 worldSpaceTransform = glm::identity<glm::mat4>();
@@ -594,29 +595,29 @@ namespace Carrot::Render {
             // interpolate keyframe values when none exist
             for(auto& [nodeID, keyframes] : keyframesForAllNodes) {
                 // used if there are no more keyframes with a value at this timestamp (keep same keyframe value until end of animation)
-                GLTFKeyframe latestKeyframe {
+                GLTFKeyframe latestKeyframe{
                         .position = glm::vec3{0.0f},
                         .rotation = glm::identity<glm::quat>(),
                         .scale = glm::vec3{1.0f}
                 };
                 auto interpolate = [&](auto pMemberPtr, std::size_t index) {
-                    if(index == 0) {
+                    if (index == 0) {
                         return (latestKeyframe.*pMemberPtr).value();
                     }
 
                     // find next keyframe with a value
                     std::size_t nextIndex = index;
-                    for(std::size_t i = index+1; i < allTimestamps.size(); i++) {
-                        if((keyframes[i].*pMemberPtr).has_value()) {
+                    for (std::size_t i = index + 1; i < allTimestamps.size(); i++) {
+                        if ((keyframes[i].*pMemberPtr).has_value()) {
                             nextIndex = i;
                             break;
                         }
                     }
 
-                    if(nextIndex <= index) { // there is no keyframe after this one which contains a value
+                    if (nextIndex <= index) { // there is no keyframe after this one which contains a value
                         return (latestKeyframe.*pMemberPtr).value();
                     } else {
-                        std::size_t previousIndex = index-1;
+                        std::size_t previousIndex = index - 1;
                         const GLTFKeyframe& previousKeyframe = keyframes[previousIndex];
                         const GLTFKeyframe& nextKeyframe = keyframes[nextIndex];
 
@@ -625,23 +626,26 @@ namespace Carrot::Render {
 
                         float currentTime = allTimestamps[index];
                         float t = (currentTime - previousTime) / (nextTime - previousTime);
-                        return (previousKeyframe.*pMemberPtr).value() * (1-t) + (nextKeyframe.*pMemberPtr).value() * t;
+                        return (previousKeyframe.*pMemberPtr).value() * (1 - t) +
+                               (nextKeyframe.*pMemberPtr).value() * t;
                     }
                 };
-                for(std::size_t i = 0; i < allTimestamps.size(); i++) {
+                for (std::size_t i = 0; i < allTimestamps.size(); i++) {
                     GLTFKeyframe& currentKeyframe = keyframes[i];
-                    if(!currentKeyframe.position.has_value()) {
+                    if (!currentKeyframe.position.has_value()) {
                         currentKeyframe.position = interpolate(&GLTFKeyframe::position, i);
                     }
-                    if(!currentKeyframe.rotation.has_value()) {
+                    if (!currentKeyframe.rotation.has_value()) {
                         currentKeyframe.rotation = interpolate(&GLTFKeyframe::rotation, i);
                     }
-                    if(!currentKeyframe.scale.has_value()) {
+                    if (!currentKeyframe.scale.has_value()) {
                         currentKeyframe.scale = interpolate(&GLTFKeyframe::scale, i);
                     }
                     latestKeyframe = currentKeyframe;
                 }
+            }
 
+            for(auto& [nodeID, keyframes] : keyframesForAllNodes) {
                 const int meshIndex = 0; // TODO: like AssimpLoader, only a single mesh can be animated at once per glTF file when loaded into Carrot
                 // at this point, all keyframes have values
                 // now compute global transform for each keyframe
