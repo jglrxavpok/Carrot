@@ -156,10 +156,9 @@ namespace Carrot::Render {
     }
 
     static std::uint32_t uniqueID = 1;
+    static std::unordered_map<std::uint32_t, ed::NodeId> nodes;
 
-    static std::uint32_t getNodeID(std::uint32_t passIndex) {
-        static std::unordered_map<std::uint32_t, std::uint32_t> nodes;
-
+    static ed::NodeId getNodeID(std::uint32_t passIndex) {
         if(nodes.find(passIndex) == nodes.end()) {
             nodes[passIndex] = uniqueID++;
         }
@@ -185,36 +184,34 @@ struct std::hash<InputKey> {
 };
 
 namespace Carrot::Render {
-    static std::unordered_map<Carrot::UUID, std::uint32_t> inputPinIDs;
-    static std::unordered_map<Carrot::UUID, std::uint32_t> outputPinIDs;
-    static std::unordered_map<std::uint32_t, std::unordered_map<std::uint32_t, std::uint32_t>> linkIDs;
+    static std::unordered_map<Carrot::UUID, ed::PinId> inputPinIDs;
+    static std::unordered_map<Carrot::UUID, ed::PinId> outputPinIDs;
+    static std::unordered_map<Carrot::UUID, std::unordered_map<Carrot::UUID, ed::LinkId>> linkIDs;
 
-    static std::uint32_t getInputPinID(const Carrot::UUID& uuid) {
+    static ed::PinId getInputPinID(const Carrot::UUID& uuid) {
         if(inputPinIDs.find(uuid) == inputPinIDs.end()) {
             inputPinIDs[uuid] = uniqueID++;
         }
         return inputPinIDs[uuid];
     }
 
-    static std::uint32_t getOutputPinID(const Carrot::UUID& uuid) {
+    static ed::PinId getOutputPinID(const Carrot::UUID& uuid) {
         if(outputPinIDs.find(uuid) == outputPinIDs.end()) {
             outputPinIDs[uuid] = uniqueID++;
         }
         return outputPinIDs[uuid];
     }
 
-    static std::uint32_t getLinkID(const Carrot::UUID& in, const Carrot::UUID& out) {
-        auto& inLinks = linkIDs[getInputPinID(in)];
-        const auto outID = getOutputPinID(out);
-        if(inLinks.find(outID) == inLinks.end()) {
-            inLinks[outID] = uniqueID++;
+    static ed::LinkId getLinkID(const Carrot::UUID& in, const Carrot::UUID& out) {
+        auto& inLinks = linkIDs[in];
+        if(inLinks.find(out) == inLinks.end()) {
+            inLinks[out] = uniqueID++;
         }
-        return inLinks[outID];
+        return inLinks[out];
     }
 
     void Graph::drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex) {
-        std::uint32_t nodeID = getNodeID(passIndex);
-        ed::BeginNode(passIndex+1);
+        ed::BeginNode(getNodeID(passIndex));
 
         ImGui::PushID(passIndex);
 
@@ -322,6 +319,14 @@ namespace Carrot::Render {
                 }
 
                 if(graphToDebug == this) {
+                    /*nodes.clear();
+                    inputPinIDs.clear();
+                    outputPinIDs.clear();
+                    for(auto& [id, map] : linkIDs) {
+                        map.clear();
+                    }
+                    uniqueID = 1;*/
+
                     ed::SetCurrentEditor((ed::EditorContext*)nodesContext);
                     ed::EnableShortcuts(true);
 
