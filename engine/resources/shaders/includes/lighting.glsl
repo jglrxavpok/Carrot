@@ -315,7 +315,7 @@ bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
     }
 
     // Ray Query for shadow
-    float tMin      = 0.001f;
+    float tMin      = 0.1f;
 
     // Initializes a ray query object but does not start traversal
     rayQueryEXT rayQuery;
