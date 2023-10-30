@@ -515,7 +515,7 @@ void Carrot::Engine::run() {
                     drawList->AddRectFilled(ImVec2(rightmostX - frameWidth, cursorPos.y - frameHeight + availableSpace.y),
                                             ImVec2(rightmostX, cursorPos.y + availableSpace.y),
                                             frameColor);
-                    rightmostX -= value;
+                    rightmostX -= frameWidth;
                     rightmostX = floor(rightmostX);
                 };
 
