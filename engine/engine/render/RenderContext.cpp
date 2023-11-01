@@ -41,4 +41,8 @@ namespace Carrot::Render {
     void Context::renderWireframeCapsule(const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID) {
         renderer.renderWireframeCapsule(*this, transform, radius, height, color, objectID);
     }
+
+    void Context::render(const Render::Packet& packet) {
+        renderer.render(packet);
+    }
 }

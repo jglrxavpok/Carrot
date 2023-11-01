@@ -168,7 +168,7 @@ namespace Carrot {
 
         void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
-        void beforeRecord(const Carrot::Render::Context& renderContext);
+        void startRecord(const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
@@ -264,8 +264,8 @@ namespace Carrot {
 
     public:
         struct ThreadPackets {
-            std::vector<Carrot::Render::Packet> unsorted;
-            std::vector<Carrot::Render::Packet> sorted;
+            std::array<std::vector<Carrot::Render::Packet>, 2> unsorted;
+            std::array<std::vector<Carrot::Render::Packet>, 2> sorted;
         };
 
         /// Must be called before any call to VulkanRenderer::render in a given thread. Allows for fast rendering submission
@@ -277,6 +277,9 @@ namespace Carrot {
     private:
         VulkanDriver& driver;
         Configuration config;
+
+        /// Swapped between 0 and 1 each frame. Used to avoid modifying structures in render thread & main thread at the same time
+        std::int8_t bufferPointer = 0;
 
         Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
 
@@ -302,11 +305,19 @@ namespace Carrot {
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawBuffers;
         Render::PerFrame<vk::DescriptorSet> perDrawDescriptorSets;
 
-        // Counts of the vectors below once they will be filled. Used to preallocate per-draw buffers before recording RenderPackets
-        std::atomic<std::uint32_t> perDrawElementCount{0};
-        std::atomic<std::uint32_t> perDrawOffsetCount{0};
-        std::vector<GBufferDrawData> perDrawData;
-        std::vector<std::uint32_t> perDrawOffsets;
+        struct {
+            std::atomic<std::uint32_t> perDrawElementCount{0};
+            std::atomic<std::uint32_t> perDrawOffsetCount{0};
+        } mainData;
+
+        struct {
+            // Counts of the vectors below once they will be filled. Used to preallocate per-draw buffers before recording RenderPackets
+            std::uint32_t perDrawElementCount = 0;
+            std::uint32_t perDrawOffsetCount = 0;
+
+            std::vector<GBufferDrawData> perDrawData;
+            std::vector<std::uint32_t> perDrawOffsets;
+        } renderData;
 
         std::unique_ptr<ASBuilder> asBuilder = nullptr;
 
@@ -336,8 +347,9 @@ namespace Carrot {
         Async::SpinLock threadRegistrationLock;
 
         Async::ParallelMap<std::thread::id, ThreadPackets> threadRenderPackets{};
-        Async::ParallelMap<std::thread::id, std::unique_ptr<Render::PacketContainer>> perThreadPacketStorage{};
-        std::vector<Render::Packet> renderPackets;
+        Async::ParallelMap<std::thread::id, std::unique_ptr<std::array<Render::PacketContainer, 2>>> perThreadPacketStorage{};
+
+        // render thread only
         std::vector<Render::Packet> preparedRenderPackets;
 
         std::shared_ptr<Carrot::Model> unitSphereModel;
@@ -381,9 +393,7 @@ namespace Carrot {
 
     private:
         std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const;
-        void collectRenderPackets();
         void sortRenderPackets(std::vector<Carrot::Render::Packet>& packets);
-        void mergeRenderPackets(const std::vector<Carrot::Render::Packet>& inputPackets, std::vector<Carrot::Render::Packet>& outputPackets);
 
         // debug
         void renderModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
@@ -395,6 +405,11 @@ namespace Carrot {
          * @return
          */
         std::uint32_t uploadPerDrawData(const std::span<GBufferDrawData>& drawData);
+
+    private:
+        std::int8_t getCurrentBufferPointerForMain();
+        std::int8_t getCurrentBufferPointerForRender();
+        void renderThreadProc();
 
         friend class Render::Packet;
     };
