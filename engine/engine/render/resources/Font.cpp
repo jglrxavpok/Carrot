@@ -122,7 +122,7 @@ namespace Carrot::Render {
     void RenderableText::render(Carrot::Render::Context renderContext) {
         if(!mesh)
             return;
-        auto& renderPacket = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+        auto& renderPacket = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext);
 
         renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering");
         renderPacket.useMesh(*mesh);

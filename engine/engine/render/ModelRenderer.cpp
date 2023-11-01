@@ -275,7 +275,7 @@ namespace Carrot::Render {
         // TODO: support for skinned meshes
         for(const auto& bucket : buckets) {
             ZoneScopedN("per bucket");
-            Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+            Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, renderContext);
             renderPacket.pipeline = bucket.pipeline;
 
             renderPacket.drawCommands = bucket.drawCommands;

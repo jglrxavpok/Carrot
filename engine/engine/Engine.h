@@ -488,8 +488,10 @@ namespace Carrot {
         /// Init ingame console
         void initConsole();
 
+    public: // TODO move to renderer
         /// Create the primary command buffers for rendering
-        void recordMainCommandBuffer(std::size_t frameIndex);
+        void recordMainCommandBufferAndPresent(std::uint8_t frameIndex, const Render::Context& mainRenderContext);
+    private:
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
         void drawFrame(std::size_t currentFrame);

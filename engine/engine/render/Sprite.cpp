@@ -37,9 +37,8 @@ namespace Carrot::Render {
             instanceData.color = color;
         }
 
-        Render::Packet packet = renderContext.renderer.makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+        Render::Packet packet = renderContext.renderer.makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext);
         packet.useMesh(getSpriteMesh(GetEngine()));
-        packet.viewport = &renderContext.viewport;
         packet.pipeline = renderingPipeline;
 
         packet.useInstance(instanceData);

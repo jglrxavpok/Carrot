@@ -72,6 +72,9 @@ namespace Carrot::Async {
     }
 
     void Counter::sleepWait() {
+        if(isIdle()) {
+            return;
+        }
         std::unique_lock<Async::BasicLock> lk{ counterLock.read() };
         sleepCondition.wait(lk, [&] {
             return isIdle();

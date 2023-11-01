@@ -168,7 +168,7 @@ namespace Carrot {
 
         void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
-        void startRecord(const Carrot::Render::Context& renderContext);
+        void startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
@@ -225,6 +225,7 @@ namespace Carrot {
 
     public:
         /// Reference is valid only for the current frame
+        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::Context& renderContext, std::source_location location = std::source_location::current());
         Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
         void renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
@@ -279,7 +280,12 @@ namespace Carrot {
         Configuration config;
 
         /// Swapped between 0 and 1 each frame. Used to avoid modifying structures in render thread & main thread at the same time
+        std::jthread renderThread;
+        Render::Context recordingRenderContext; //< render context object use for the frame being recorded
+        std::uint8_t recordingFrameIndex = 0;
         std::int8_t bufferPointer = 0;
+        Async::Counter renderThreadReady; //< non-0 if render thread is rendering a frame, 0 if it is available for the next frame
+        Async::Counter renderThreadKickoff; //< non-0 if render thread is waiting to start, 0 if still rendering
 
         Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
 

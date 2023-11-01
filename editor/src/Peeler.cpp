@@ -56,7 +56,7 @@ namespace Peeler {
     Application* Instance = nullptr;
 
     void Application::setupCamera(Carrot::Render::Context renderContext) {
-        if(&renderContext.viewport == &gameViewport) {
+        if(renderContext.pViewport == &gameViewport) {
             auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
             cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
 
@@ -71,7 +71,7 @@ namespace Peeler {
 
     void Application::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
-        if(&renderContext.viewport == &engine.getMainViewport()) {
+        if(&renderContext.pViewport == &engine.getMainViewport()) {
             ZoneScopedN("Main viewport");
             UIEditor(renderContext);
             Tools::ProjectMenuHolder::onFrame(renderContext);
@@ -83,7 +83,7 @@ namespace Peeler {
                 }
             }
         }
-        if(&renderContext.viewport == &gameViewport) {
+        if(&renderContext.pViewport == &gameViewport) {
             ZoneScopedN("Game viewport");
 
             if(stopSimulationRequested) {

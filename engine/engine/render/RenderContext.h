@@ -21,11 +21,13 @@ namespace Carrot::Render {
 
     struct Context {
         VulkanRenderer& renderer;
-        Viewport& viewport;
+        Viewport* pViewport = nullptr;
         Eye eye = Eye::NoVR;
         size_t frameCount = -1;
         size_t swapchainIndex = -1;
         size_t lastSwapchainIndex = -1;
+
+        void copyFrom(const Context& other);
 
         //! Camera currently used for rendering. It is valid to modify it during rendering
         Carrot::Camera& getCamera();

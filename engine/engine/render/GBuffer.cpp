@@ -139,8 +139,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                 block.frameCount = renderer.getFrameCount();
                 if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
-                    block.frameWidth = framebufferSize.width * frame.viewport.getWidth();
-                    block.frameHeight = framebufferSize.height * frame.viewport.getHeight();
+                    block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
+                    block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
                 } else {
                     block.frameWidth = framebufferSize.width;
                     block.frameHeight = framebufferSize.height;

@@ -85,7 +85,7 @@ namespace Carrot::Render {
     }
 
     void Viewport::onFrame(const Context& context) {
-        verify(&context.viewport == this, "Viewports must match!");
+        verify(context.pViewport == this, "Viewports must match!");
         if(context.renderer.getConfiguration().runInVR && vrCompatible) {
             CameraBufferObject objLeftEye{};
             CameraBufferObject objRightEye{};

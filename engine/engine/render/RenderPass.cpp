@@ -419,7 +419,7 @@ void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& r
     });
 
     for (int i = 0; i < commandBuffers.size(); i++) {
-        recordCommands(GetEngine().newRenderContext(i, renderContext.viewport, renderContext.eye));
+        recordCommands(GetEngine().newRenderContext(i, *renderContext.pViewport, renderContext.eye));
     }
 }
 

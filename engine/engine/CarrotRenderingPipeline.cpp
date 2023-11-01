@@ -114,8 +114,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 7);
 
-                    renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame), 1, 0);
-                    renderer.bindUniformBuffer(*pipeline, frame, frame.viewport.getCameraUniformBuffer(frame.lastFrame()), 1, 1);
+                    renderer.bindUniformBuffer(*pipeline, frame, frame.pViewport->getCameraUniformBuffer(frame), 1, 0);
+                    renderer.bindUniformBuffer(*pipeline, frame, frame.pViewport->getCameraUniformBuffer(frame.lastFrame()), 1, 1);
 
                     data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
 
@@ -314,10 +314,10 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     const auto& extent = denoisedResultTexture0.getSize();
 
                     std::shared_ptr<Pipeline> pipelinePingPong[4] = {
-                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 0u + ((std::uint64_t)&frame.viewport) + (std::uint64_t)&input),
-                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 1u + ((std::uint64_t)&frame.viewport) + (std::uint64_t)&input),
-                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 2u + ((std::uint64_t)&frame.viewport) + (std::uint64_t)&input),
-                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 3u + ((std::uint64_t)&frame.viewport) + (std::uint64_t)&input),
+                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 0u + ((std::uint64_t)frame.pViewport) + (std::uint64_t)&input),
+                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 1u + ((std::uint64_t)frame.pViewport) + (std::uint64_t)&input),
+                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 2u + ((std::uint64_t)frame.pViewport) + (std::uint64_t)&input),
+                            frame.renderer.getOrCreatePipeline("compute/spatial-denoise", 3u + ((std::uint64_t)frame.pViewport) + (std::uint64_t)&input),
                     };
 
                     // first pass

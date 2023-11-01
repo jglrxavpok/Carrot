@@ -385,7 +385,7 @@ void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, 
 
     const bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
 
-    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.pViewport);
     packet.pipeline = inTransparentPass ? transparentMeshesPipeline : opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 

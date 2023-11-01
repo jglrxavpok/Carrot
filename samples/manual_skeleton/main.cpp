@@ -69,7 +69,7 @@ public:
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {
-        cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.viewport.getCamera());
+        cameraController.applyTo(renderContext.pViewport->getSizef(), renderContext.pViewport->getCamera());
 
         { // sample code
             const float angle = glm::sin(static_cast<float>(time) * 2.5f) * 1.0f;

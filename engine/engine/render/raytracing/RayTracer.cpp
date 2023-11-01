@@ -28,7 +28,7 @@ Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(rendere
 void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
     if(!available)
         return;
-    if(&renderContext.viewport != &renderer.getEngine().getMainViewport())
+    if(renderContext.pViewport != &renderer.getEngine().getMainViewport())
         return;
     ZoneScoped;
     renderer.getASBuilder().startFrame();

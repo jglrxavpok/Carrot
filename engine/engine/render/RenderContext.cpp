@@ -7,22 +7,29 @@
 #include "VulkanRenderer.h"
 
 namespace Carrot::Render {
+    void Context::copyFrom(const Context& other) {
+        eye = other.eye;
+        frameCount = other.frameCount;
+        swapchainIndex = other.swapchainIndex;
+        lastSwapchainIndex = other.lastSwapchainIndex;
+    }
+
     Carrot::Camera& Context::getCamera() {
-        return viewport.getCamera(eye);
+        return pViewport->getCamera(eye);
     }
 
     const Carrot::Camera& Context::getCamera() const {
-        return viewport.getCamera(eye);
+        return pViewport->getCamera(eye);
     }
 
     vk::DescriptorSet Context::getCameraDescriptorSet() const {
-        return viewport.getCameraDescriptorSet(*this);
+        return pViewport->getCameraDescriptorSet(*this);
     }
 
     Context Context::lastFrame() const {
         return Context {
             .renderer = renderer,
-            .viewport = viewport,
+            .pViewport = pViewport,
             .eye = eye,
             .frameCount = frameCount,
             .swapchainIndex = lastSwapchainIndex, // <-- only change

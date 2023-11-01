@@ -380,7 +380,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     Carrot::GBufferDrawData data;
 
     bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
-    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext.viewport);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext);
     packet.pipeline = inTransparentPass ? model->transparentMeshesPipeline : model->opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 

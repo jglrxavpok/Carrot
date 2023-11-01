@@ -192,7 +192,7 @@ void Carrot::ASBuilder::createSemaphores() {
 void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     if(!enabled)
         return;
-    if(&renderContext.viewport != &GetEngine().getMainViewport()) {
+    if(renderContext.pViewport != &GetEngine().getMainViewport()) {
         return;
     }
     ZoneScoped;

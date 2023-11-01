@@ -55,7 +55,7 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
                 return;
             pullDataFromGPU();
 
-            auto& camera = renderContext.viewport.getCamera();
+            auto& camera = renderContext.pViewport->getCamera();
 
             ZoneScopedN("Sort particles");
             // sort by distance to camera

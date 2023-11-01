@@ -247,7 +247,7 @@ void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& fi
 }
 
 void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
-    if(&renderContext.viewport == &previewViewport) {
+    if(&renderContext.pViewport == &previewViewport) {
         if(previewSystem) {
             previewSystem->onFrame(renderContext);
 

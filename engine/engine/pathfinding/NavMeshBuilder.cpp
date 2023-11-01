@@ -176,7 +176,7 @@ namespace Carrot::AI {
         } else if(drawType == DebugDrawType::RegionMeshes) {
             for(const auto& region : workingData.regions) {
                 if(region.triangulatedRegionMesh) {
-                    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext.viewport);
+                    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext);
                     Carrot::GBufferDrawData data;
                     data.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
 
@@ -194,7 +194,7 @@ namespace Carrot::AI {
             }
         } else if(drawType == DebugDrawType::Mesh) {
             if(workingData.debugRawMesh) {
-                Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext.viewport);
+                Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, renderContext);
                 Carrot::GBufferDrawData data;
                 data.materialIndex = GetRenderer().getWhiteMaterial().getSlot();
 

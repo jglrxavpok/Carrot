@@ -29,7 +29,7 @@ namespace Carrot::Render {
         pushConstant.textureID = texture.getSlot();
         pushConstant.color = color;
 
-        Render::Packet& packet = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+        Render::Packet& packet = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, renderContext);
         packet.pipeline = pipeline;
         packet.useMesh(GetRenderer().getFullscreenQuad());
 

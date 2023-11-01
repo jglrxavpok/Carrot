@@ -8,6 +8,7 @@
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/console/RuntimeOption.hpp"
 #include "core/utils/Assert.h"
+#include "core/async/OSThreads.h"
 #include "imgui.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/MaterialSystem.h"
@@ -52,10 +53,16 @@ struct ForwardFrameInfo {
 };
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
-
+                                                                                    recordingRenderContext(*this, nullptr),
                                                                                     singleFrameAllocator(SingleFrameAllocatorSize)
 {
     ZoneScoped;
+    renderThreadKickoff.increment();
+    renderThreadReady.increment();
+    renderThread = std::jthread([&]() {
+        renderThreadProc();
+    });
+    Carrot::Threads::setName(renderThread, "Carrot Render Thread");
 
     nullBuffer = std::make_unique<Buffer>(driver,
                                           1,
@@ -727,11 +734,6 @@ void Carrot::VulkanRenderer::newFrame() {
 
     frameCount++;
 
-    {
-        ZoneScopedN("ImGui_Impl new frame");
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-    }
 
     if(blinkTime > 0.0 && hasBlinked) {
         static auto lastTime = std::chrono::steady_clock::now();
@@ -849,15 +851,16 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
     };
 }
 
-void Carrot::VulkanRenderer::startRecord(const Carrot::Render::Context& renderContext) {
+void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext) {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
-
-    // TODO: wait for previous frame
-    // TODO: kickoff new render pass
+    // wait for previous frame
+    renderThreadReady.sleepWait();
+    recordingFrameIndex = frameIndex;
 
     // swap double-buffered data
     {
+        recordingRenderContext.copyFrom(renderContext);
         bufferPointer = 1 - bufferPointer;
         renderData.perDrawData.clear();
         renderData.perDrawOffsets.clear();
@@ -867,11 +870,6 @@ void Carrot::VulkanRenderer::startRecord(const Carrot::Render::Context& renderCo
         renderData.perDrawElementCount = mainData.perDrawElementCount.load();
         mainData.perDrawElementCount = 0;
     }
-
-    // TODO: move to beginning of render thread pass
-    materialSystem.beginFrame(renderContext); // called here because new material may have been created during the frame
-    lighting.beginFrame(renderContext);
-    preallocatePerDrawBuffers(renderContext);
 
     Async::LockGuard lk { threadRegistrationLock };
 
@@ -966,6 +964,7 @@ void Carrot::VulkanRenderer::startRecord(const Carrot::Render::Context& renderCo
     }
 
     hasBlinked = true;
+    renderThreadKickoff.decrement(); // tell render thread to start working
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -977,7 +976,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
 
         static std::uint32_t gBufferDebugType = DEBUG_GBUFFER_DISABLED;
 
-        if(ShowGBuffer && &renderContext.viewport == &GetEngine().getMainViewport()) {
+        if(ShowGBuffer && renderContext.pViewport == &GetEngine().getMainViewport()) {
             bool open = true;
             if(ImGui::Begin("GBuffer debug", &open)) {
                 static int gIndex = DEBUG_GBUFFER_DISABLED;
@@ -1465,7 +1464,7 @@ void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassEnum packetPa
         return;
     }
 
-    Carrot::Render::Viewport* viewport = &renderContext.viewport;
+    Carrot::Render::Viewport* viewport = renderContext.pViewport;
     verify(viewport, "Viewport cannot be null");
 
     auto packets = getRenderPackets(viewport, packetPass);
@@ -1600,7 +1599,7 @@ void Carrot::VulkanRenderer::render3DArrow(const Carrot::Render::Context& render
 }
 
 void Carrot::VulkanRenderer::renderModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext);
     Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
@@ -1618,7 +1617,7 @@ void Carrot::VulkanRenderer::renderModel(const Carrot::Model& model, const Carro
 }
 
 void Carrot::VulkanRenderer::renderWireframeModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext);
     Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
@@ -1658,6 +1657,10 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCapsule() {
 
 std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCube() {
     return unitCubeModel;
+}
+
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::Context& renderContext, std::source_location location) {
+    return makeRenderPacket(pass, *renderContext.pViewport, location);
 }
 
 Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location) {
@@ -1716,5 +1719,26 @@ std::int8_t Carrot::VulkanRenderer::getCurrentBufferPointerForRender() {
 }
 
 void Carrot::VulkanRenderer::renderThreadProc() {
-    TODO;
+    renderThreadReady.decrement();
+
+    while(true /* TODO: have a way to stop the render thread */) {
+        renderThreadKickoff.sleepWait();
+
+        ImGui::NewFrame();
+        {
+            ZoneScopedN("ImGui_Impl new frame");
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+        }
+
+        renderThreadReady.increment(); // render thread has started working
+        materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame
+        lighting.beginFrame(recordingRenderContext);
+        preallocatePerDrawBuffers(recordingRenderContext);
+
+        GetEngine().recordMainCommandBufferAndPresent(recordingFrameIndex, recordingRenderContext);
+
+        renderThreadKickoff.increment(); // render thread is waiting for something to do
+        renderThreadReady.decrement(); // render thread has finished working
+    }
 }

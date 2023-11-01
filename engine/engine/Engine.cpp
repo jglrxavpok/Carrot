@@ -349,7 +349,6 @@ void Carrot::Engine::pollKeysVec2() {
 void Carrot::Engine::run() {
     size_t currentFrame = 0;
 
-
     auto previous = std::chrono::steady_clock::now();
     auto lag = std::chrono::duration<float>(0.0f);
     bool ticked = false;
@@ -412,11 +411,6 @@ void Carrot::Engine::run() {
         {
             ZoneScopedN("Setup frame");
             renderer.newFrame();
-
-            {
-                ZoneScopedN("ImGui::NewFrame()");
-                ImGui::NewFrame();
-            }
 
             {
                 ZoneScopedN("nextFrameAwaiter.resume_all()");
@@ -537,9 +531,9 @@ void Carrot::Engine::run() {
             ImGui::End();
         }
 
-        drawFrame(currentFrame);
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
+        drawFrame(currentFrame);
 
         Carrot::Log::flush();
 
@@ -697,7 +691,10 @@ std::unique_ptr<Carrot::CarrotGame>& Carrot::Engine::getGame() {
     return game;
 }
 
-void Carrot::Engine::recordMainCommandBuffer(size_t i) {
+void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex, const Render::Context& mainRenderContext) {
+    ZoneScopedN("Record main command buffer");
+    const std::uint32_t frameIndex = _frameIndex; // index of image in frames in flight, 0 or 1 currently (MAX_FRAMES_IN_FLIGHT)
+    const std::uint32_t swapchainIndex = mainRenderContext.swapchainIndex; // index of image in swapchain, on my machine, 0 to 2 (inclusive)
     // main command buffer
     vk::CommandBufferBeginInfo beginInfo{
             .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -712,48 +709,123 @@ void Carrot::Engine::recordMainCommandBuffer(size_t i) {
         }
 
         {
-            ZoneScopedN("mainCommandBuffers[i].begin(beginInfo)");
-            mainCommandBuffers[i].begin(beginInfo);
+            ZoneScopedN("mainCommandBuffers[frameIndex].begin(beginInfo)");
+            mainCommandBuffers[frameIndex].begin(beginInfo);
 
-            DebugNameable::nameSingle(Carrot::sprintf("Main command buffer, frame %lu", renderer.getFrameCount()), mainCommandBuffers[i]);
-            GetVulkanDriver().setMarker(mainCommandBuffers[i], "begin command buffer");
+            DebugNameable::nameSingle(Carrot::sprintf("Main command buffer, frame %lu", renderer.getFrameCount()), mainCommandBuffers[frameIndex]);
+            GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "begin command buffer");
         }
 
-        TracyVkZone(tracyCtx[i], mainCommandBuffers[i], "Main command buffer");
+        TracyVkZone(tracyCtx[frameIndex], mainCommandBuffers[frameIndex], "Main command buffer");
 
         if(config.runInVR) {
             {
                 ZoneScopedN("VR Left eye render");
-                GetVulkanDriver().setMarker(mainCommandBuffers[i], "VR Left eye render");
-                leftEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[i]);
+                GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "VR Left eye render");
+                leftEyeGlobalFrameGraph->execute(newRenderContext(swapchainIndex, getMainViewport(), Render::Eye::LeftEye), mainCommandBuffers[frameIndex]);
             }
             {
                 ZoneScopedN("VR Right eye render");
-                GetVulkanDriver().setMarker(mainCommandBuffers[i], "VR Right eye render");
-                rightEyeGlobalFrameGraph->execute(newRenderContext(i, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[i]);
+                GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "VR Right eye render");
+                rightEyeGlobalFrameGraph->execute(newRenderContext(swapchainIndex, getMainViewport(), Render::Eye::RightEye), mainCommandBuffers[frameIndex]);
             }
         }
 
         {
-            GetVulkanDriver().setMarker(mainCommandBuffers[i], "render viewports");
+            GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "render viewports");
             ZoneScopedN("Render viewports");
             for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
                 ZoneScopedN("Render single viewport");
                 auto& viewport = *it;
-                GetVulkanDriver().setFormattedMarker(mainCommandBuffers[i], "render viewport %x", &viewport);
+                GetVulkanDriver().setFormattedMarker(mainCommandBuffers[frameIndex], "render viewport %x", &viewport);
                 if(config.runInVR) {
                     // each eye is done in separate render passes above this code
-                    viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
+                    viewport.render(newRenderContext(swapchainIndex, viewport, Render::Eye::NoVR), mainCommandBuffers[frameIndex]);
                 } else {
-                    viewport.render(newRenderContext(i, viewport, Render::Eye::NoVR), mainCommandBuffers[i]);
+                    viewport.render(newRenderContext(swapchainIndex, viewport, Render::Eye::NoVR), mainCommandBuffers[frameIndex]);
                 }
             }
         }
 
-        TracyVkCollect(tracyCtx[i], mainCommandBuffers[i]);
+        TracyVkCollect(tracyCtx[frameIndex], mainCommandBuffers[frameIndex]);
     }
 
-    mainCommandBuffers[i].end();
+    mainCommandBuffers[frameIndex].end();
+
+    {
+        ZoneScopedN("Present");
+
+        std::vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[frameIndex]};
+        std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[frameIndex]};
+
+        game->changeGraphicsWaitSemaphores(frameIndex, waitSemaphores, waitStages);
+
+        for(auto [stage, semaphore] : additionalWaitSemaphores) {
+            waitSemaphores.push_back(semaphore);
+            waitStages.push_back(stage);
+        }
+        additionalWaitSemaphores.clear();
+
+        vk::SubmitInfo submitInfo{
+                .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+                .pWaitSemaphores = waitSemaphores.data(),
+
+                .pWaitDstStageMask = waitStages.data(),
+
+                .commandBufferCount = 1,
+                .pCommandBuffers = &mainCommandBuffers[frameIndex],
+
+                .signalSemaphoreCount = 1,
+                .pSignalSemaphores = signalSemaphores,
+        };
+
+        {
+            ZoneScopedN("Renderer Pre-Frame actions");
+            renderer.preFrame(mainRenderContext);
+        }
+
+        {
+            ZoneScopedN("Reset in flight fences");
+            getLogicalDevice().resetFences(*inFlightFences[frameIndex]);
+        }
+        {
+            ZoneScopedN("Submit to graphics queue");
+            //presentThread.present(currentFrame, signalSemaphores[0], submitInfo, *inFlightFences[currentFrame]);
+
+            waitForFrameTasks();
+
+            GetVulkanDriver().submitGraphics(submitInfo, *inFlightFences[frameIndex]);
+            vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
+
+            vk::PresentInfoKHR presentInfo{
+                    .waitSemaphoreCount = 1,
+                    .pWaitSemaphores = signalSemaphores,
+
+                    .swapchainCount = 1,
+                    .pSwapchains = swapchains,
+                    .pImageIndices = &frameIndex,
+                    .pResults = nullptr,
+            };
+
+            {
+                ZoneScopedN("PresentKHR");
+                vkDriver.getPresentQueue().presentKHR(presentInfo);
+            }
+        }
+
+        if(config.runInVR) {
+            {
+                ZoneScopedN("VR render");
+                vrSession->present(mainRenderContext);
+            }
+        }
+
+        {
+            ZoneScopedN("Renderer Post-Frame actions");
+            renderer.postFrame();
+        }
+    }
 }
 
 void Carrot::Engine::allocateGraphicsCommandBuffers() {
@@ -768,6 +840,13 @@ void Carrot::Engine::allocateGraphicsCommandBuffers() {
 
 void Carrot::Engine::drawFrame(size_t currentFrame) {
     ZoneScoped;
+
+    lastFrameIndex = swapchainImageIndexRightNow;
+
+    if(framebufferResized) {
+        recreateSwapchain();
+    }
+    frames++;
 
     vk::Result result;
     uint32_t imageIndex;
@@ -852,94 +931,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         }
         onFrame(getMainViewport());
         assetServer.beforeRecord(mainRenderContext);
-        renderer.startRecord(mainRenderContext);
+        renderer.startRecord(currentFrame, mainRenderContext);
     }
-    {
-        ZoneScopedN("Record main command buffer");
-        recordMainCommandBuffer(imageIndex);
-    }
-
-    {
-        ZoneScopedN("Present");
-
-        std::vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[currentFrame]};
-        std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-        vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[currentFrame]};
-
-        game->changeGraphicsWaitSemaphores(imageIndex, waitSemaphores, waitStages);
-
-        for(auto [stage, semaphore] : additionalWaitSemaphores) {
-            waitSemaphores.push_back(semaphore);
-            waitStages.push_back(stage);
-        }
-        additionalWaitSemaphores.clear();
-
-        vk::SubmitInfo submitInfo{
-                .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
-                .pWaitSemaphores = waitSemaphores.data(),
-
-                .pWaitDstStageMask = waitStages.data(),
-
-                .commandBufferCount = 1,
-                .pCommandBuffers = &mainCommandBuffers[imageIndex],
-
-                .signalSemaphoreCount = 1,
-                .pSignalSemaphores = signalSemaphores,
-        };
-
-        {
-            ZoneScopedN("Renderer Pre-Frame actions");
-            renderer.preFrame(mainRenderContext);
-        }
-
-        {
-            ZoneScopedN("Reset in flight fences");
-            getLogicalDevice().resetFences(*inFlightFences[currentFrame]);
-        }
-        {
-            ZoneScopedN("Submit to graphics queue");
-            //presentThread.present(currentFrame, signalSemaphores[0], submitInfo, *inFlightFences[currentFrame]);
-
-            waitForFrameTasks();
-
-            GetVulkanDriver().submitGraphics(submitInfo, *inFlightFences[currentFrame]);
-            vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
-
-            vk::PresentInfoKHR presentInfo{
-                    .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = signalSemaphores,
-
-                    .swapchainCount = 1,
-                    .pSwapchains = swapchains,
-                    .pImageIndices = &imageIndex,
-                    .pResults = nullptr,
-            };
-
-            {
-                ZoneScopedN("PresentKHR");
-                vkDriver.getPresentQueue().presentKHR(presentInfo);
-            }
-        }
-
-        if(config.runInVR) {
-            {
-                ZoneScopedN("VR render");
-                vrSession->present(newRenderContext(imageIndex, getMainViewport()));
-            }
-        }
-
-        {
-            ZoneScopedN("Renderer Post-Frame actions");
-            renderer.postFrame();
-        }
-    }
-
-    lastFrameIndex = imageIndex;
-
-    if(framebufferResized) {
-        recreateSwapchain();
-    }
-    frames++;
 }
 
 void Carrot::Engine::createSynchronizationObjects() {
@@ -1390,7 +1383,7 @@ void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
 Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex, Carrot::Render::Viewport& viewport, Carrot::Render::Eye eye) {
     return Carrot::Render::Context {
             .renderer = renderer,
-            .viewport = viewport,
+            .pViewport = &viewport,
             .eye = eye,
             .frameCount = frames,
             .swapchainIndex = swapchainFrameIndex,

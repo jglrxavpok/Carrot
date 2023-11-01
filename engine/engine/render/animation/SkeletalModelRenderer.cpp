@@ -86,7 +86,7 @@ namespace Carrot::Render {
             ZoneScopedN("SkeletalModelRenderer Push mesh rendering");
             Carrot::GBufferDrawData data;
 
-            Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext.viewport);
+            Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext);
             packet.pipeline = renderingPipeline;
             packet.transparentGBuffer.zOrder = 0.0f;
 

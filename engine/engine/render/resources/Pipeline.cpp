@@ -592,7 +592,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
 
         case PipelineDescription::DescriptorSet::Type::Camera:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.viewport.getCameraDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.pViewport->getCameraDescriptorSet(renderContext) };
             return sets;
         }
 
@@ -610,7 +610,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
 
         case PipelineDescription::DescriptorSet::Type::Viewport:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.viewport.getViewportDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), renderContext.pViewport->getViewportDescriptorSet(renderContext) };
             return sets;
         }
 

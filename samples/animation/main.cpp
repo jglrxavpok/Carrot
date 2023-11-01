@@ -64,7 +64,7 @@ public:
     }
 
     void setupCamera(Carrot::Render::Context renderContext) override {
-        cameraController.applyTo(renderContext.viewport.getSizef(), renderContext.getCamera());
+        cameraController.applyTo(renderContext.pViewport->getSizef(), renderContext.getCamera());
     }
 
     void onFrame(Carrot::Render::Context renderContext) override {

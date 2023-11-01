@@ -352,7 +352,7 @@ namespace Carrot::ECS {
 
         {
             ZoneScopedN("Debug");
-            if(showWorldHierarchy && &renderContext.viewport == &GetEngine().getMainViewport()) {
+            if(showWorldHierarchy && renderContext.pViewport == &GetEngine().getMainViewport()) {
                 if(ImGui::Begin("World hierarchy", &showWorldHierarchy.getValueRef())) {
                     std::function<void(Entity&)> showEntityTree = [&](Entity& entity) {
                         if(!entity)
