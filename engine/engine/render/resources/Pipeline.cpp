@@ -598,7 +598,7 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::getDescriptorSets(const Render:
 
         case PipelineDescription::DescriptorSet::Type::Lights:
         {
-            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getLighting().getCameraDescriptorSet(renderContext) };
+            std::vector<vk::DescriptorSet> sets { GetEngine().getSwapchainImageCount(), GetRenderer().getLighting().getDescriptorSet(renderContext) };
             return sets;
         }
 
