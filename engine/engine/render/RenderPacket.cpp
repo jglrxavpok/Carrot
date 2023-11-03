@@ -151,6 +151,24 @@ namespace Carrot::Render {
             }
         }
 
+        {
+            ZoneScopedN("Change viewport");
+            if(previousPacket == nullptr || previousPacket->viewportExtents != viewportExtents) {
+                if(viewportExtents.has_value()) {
+                    cmds.setViewport(0, viewportExtents.value());
+                } else {
+                    cmds.setViewport(0, vk::Viewport {
+                        .x = 0,
+                        .y = 0,
+                        .width = static_cast<float>(viewport->getWidth()),
+                        .height = static_cast<float>(viewport->getHeight()),
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f,
+                    });
+                }
+            }
+        }
+
         if(!instancingDataBuffer.empty()) {
             ZoneScopedN("Upload instance buffer");
             Carrot::BufferView instanceBuffer = renderer.getInstanceBuffer(instancingDataBuffer.size());
@@ -192,6 +210,7 @@ namespace Carrot::Render {
         pipeline = std::move(toMove.pipeline);
         pass = std::move(toMove.pass);
         viewport = std::move(toMove.viewport);
+        viewportExtents = std::move(toMove.viewportExtents);
 
         vertexBuffer = std::move(toMove.vertexBuffer);
         indexBuffer = std::move(toMove.indexBuffer);
@@ -218,6 +237,7 @@ namespace Carrot::Render {
         pipeline = toCopy.pipeline;
         pass = toCopy.pass;
         viewport = toCopy.viewport;
+        viewportExtents = toCopy.viewportExtents;
 
         vertexBuffer = toCopy.vertexBuffer;
         indexBuffer = toCopy.indexBuffer;

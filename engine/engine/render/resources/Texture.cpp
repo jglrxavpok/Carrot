@@ -95,11 +95,7 @@ namespace Carrot::Render {
     }
 
     ImTextureID Texture::getImguiID(vk::Format format, vk::ImageAspectFlags aspect) const {
-        if(imguiID == nullptr) {
-            imguiID = ImGui_ImplVulkan_AddTexture(driver.getLinearSampler(), getView(format, aspect),
-                                                  static_cast<VkImageLayout>(vk::ImageLayout::eShaderReadOnlyOptimal));
-        }
-        return imguiID;
+        return (ImTextureID)this;
     }
 
     vk::ImageView Texture::getView(vk::ImageAspectFlags aspect) const {

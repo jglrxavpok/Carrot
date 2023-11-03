@@ -88,6 +88,12 @@ namespace Carrot {
             allocInfo.alignment = 256;
         } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
             allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
+
+            // From SingleMesh.cpp: TODO: change default of 0x10 (used because of storage buffer alignments on my RTX 3070)
+        } else if(usageFlags & vk::BufferUsageFlagBits::eVertexBuffer) {
+            allocInfo.alignment = 0x10;
+        } else if(usageFlags & vk::BufferUsageFlagBits::eIndexBuffer) {
+            allocInfo.alignment = 0x10;
         }
 
         {

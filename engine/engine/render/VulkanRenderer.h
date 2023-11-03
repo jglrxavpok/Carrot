@@ -9,6 +9,7 @@
 #include <source_location>
 #include <functional>
 #include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/ImGuiBackend.h"
 #include "engine/render/resources/PerFrame.h"
 #include "engine/render/resources/Pipeline.h"
 #include "engine/render/resources/Texture.h"
@@ -169,10 +170,10 @@ namespace Carrot {
         void beginFrame(const Carrot::Render::Context& renderContext);
         void onFrame(const Carrot::Render::Context& renderContext);
         void startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext);
+        void recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
-        Render::Pass<Carrot::Render::PassData::ImGui>& addImGuiPass(Render::GraphBuilder& graph);
 
     public:
         // Camera => Camera matrices
@@ -278,6 +279,8 @@ namespace Carrot {
     private:
         VulkanDriver& driver;
         Configuration config;
+
+        Render::ImGuiBackend imGuiBackend;
 
         /// Swapped between 0 and 1 each frame. Used to avoid modifying structures in render thread & main thread at the same time
         std::jthread renderThread;

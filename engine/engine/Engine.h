@@ -426,6 +426,7 @@ namespace Carrot {
 
         VulkanDriver vkDriver;
         std::unique_ptr<ResourceAllocator> resourceAllocator;
+        std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers; //< renderer depends on it (because it loads a few default pipelines)
         AssetServer assetServer{ vfs }; // before the renderer: the renderer needs a few default assets for its initialisation
         VulkanRenderer renderer;
         std::uint32_t lastFrameIndex = 0;
@@ -580,7 +581,6 @@ namespace Carrot {
     private:
         Audio::AudioManager audioManager;
         SceneManager sceneManager;
-        std::vector<std::weak_ptr<IO::FileWatcher>> fileWatchers;
 
     private: // game-specific members
         std::unique_ptr<Carrot::CarrotGame> game = nullptr;

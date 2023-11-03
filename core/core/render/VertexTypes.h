@@ -69,6 +69,12 @@ namespace Carrot {
         alignas(16) glm::vec3 pos;
     };
 
+    struct ImGuiVertex {
+        glm::vec2 pos {0.0f};
+        glm::vec2 uv {0.0f};
+        std::uint32_t color {0};
+    };
+
 }
 
 

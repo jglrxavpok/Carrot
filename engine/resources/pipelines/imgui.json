@@ -1,0 +1,17 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "ImGuiVertex",
+  "depthWrite": false,
+  "depthTest": false,
+  "cull": false,
+  "alphaBlending": true,
+  "vertexShader": "resources/shaders/imgui.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/imgui.fragment.glsl.spv",
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ]
+}

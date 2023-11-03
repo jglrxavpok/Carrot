@@ -400,3 +400,41 @@ std::vector<vk::VertexInputAttributeDescription> Carrot::getParticleAttributeDes
 std::vector<vk::VertexInputBindingDescription> Carrot::getParticleBindingDescription() {
     return {};
 }
+
+
+std::vector<vk::VertexInputAttributeDescription> Carrot::getImGuiVertexAttributeDescriptions() {
+    std::vector<vk::VertexInputAttributeDescription> descriptions{3};
+
+    descriptions[0] = {
+            .location = 0,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ImGuiVertex, pos)),
+    };
+
+    descriptions[1] = {
+            .location = 1,
+            .binding = 0,
+            .format = vk::Format::eR32G32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(ImGuiVertex, uv)),
+    };
+
+    descriptions[2] = {
+            .location = 2,
+            .binding = 0,
+            .format = vk::Format::eR32Uint,
+            .offset = static_cast<uint32_t>(offsetof(ImGuiVertex, color)),
+    };
+
+    return descriptions;
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::getImGuiVertexBindingDescription() {
+    return {
+            vk::VertexInputBindingDescription {
+                    .binding = 0,
+                    .stride = sizeof(ImGuiVertex),
+                    .inputRate = vk::VertexInputRate::eVertex,
+            },
+    };
+}

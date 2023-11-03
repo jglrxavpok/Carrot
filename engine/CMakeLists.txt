@@ -91,7 +91,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/raytracing/ASBuilder.cpp
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp
         ${EngineRoot}single_file_header_impls.cpp
-        ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}LoadingScreen.cpp
 
         ${EngineRoot}assets/AssetServer.cpp
@@ -122,11 +121,13 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}render/AnimatedSprite.cpp
         ${EngineRoot}render/BillboardRenderer.cpp
+        ${EngineRoot}render/ImGuiBackend.cpp
         ${EngineRoot}render/MaterialSystem.cpp
         ${EngineRoot}render/RenderContext.cpp
         ${EngineRoot}render/RenderPacketContainer.cpp
         ${EngineRoot}render/Sprite.cpp
         ${EngineRoot}render/TextureAtlas.cpp
+        ${EngineRoot}render/VulkanRenderer.cpp
         ${EngineRoot}render/Viewport.cpp
         ${EngineRoot}render/ViewportBufferObject.cpp
         ${EngineRoot}render/lighting/Lights.cpp
@@ -215,6 +216,8 @@ set(VERTEX_SHADERS
         gBufferWireframe.vertex.glsl
         gBufferWithBoneInfo.vertex.glsl
 
+        imgui.vertex.glsl
+
         #PARENT_SCOPE
         )
 
@@ -238,6 +241,8 @@ set(FRAGMENT_SHADERS
 
         forward-raytracing.fragment.glsl
         forward-noraytracing.fragment.glsl
+
+        imgui.fragment.glsl
 
         post-process/temporal-denoise.fragment.glsl
         post-process/merge-lighting.fragment.glsl

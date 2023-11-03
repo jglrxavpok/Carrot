@@ -71,7 +71,7 @@ namespace Peeler {
 
     void Application::onFrame(Carrot::Render::Context renderContext) {
         ZoneScoped;
-        if(&renderContext.pViewport == &engine.getMainViewport()) {
+        if(renderContext.pViewport == &engine.getMainViewport()) {
             ZoneScopedN("Main viewport");
             UIEditor(renderContext);
             Tools::ProjectMenuHolder::onFrame(renderContext);
@@ -83,7 +83,7 @@ namespace Peeler {
                 }
             }
         }
-        if(&renderContext.pViewport == &gameViewport) {
+        if(renderContext.pViewport == &gameViewport) {
             ZoneScopedN("Game viewport");
 
             if(stopSimulationRequested) {

@@ -53,7 +53,7 @@ void Carrot::Buffer::stageUploadWithOffsets(const std::span<std::pair<uint64_t, 
 template<typename T>
 void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    auto stagingBufferAlloc = internalStagingBuffer(size);
+    auto stagingBufferAlloc = internalStagingBuffer(totalLength);
     auto stagingBuffer = stagingBufferAlloc.view;
 
     // upload data to staging buffer
@@ -66,7 +66,7 @@ void Carrot::Buffer::stageUploadWithOffset(std::uint64_t offset, const T* data, 
 template<typename T>
 void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::uint64_t offset, const T* data, const std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    heldStagingBuffer = internalStagingBuffer(size);
+    heldStagingBuffer = internalStagingBuffer(totalLength);
     auto stagingBuffer = heldStagingBuffer.view;
 
     // upload data to staging buffer
@@ -79,7 +79,7 @@ void Carrot::Buffer::stageAsyncUploadWithOffset(vk::Semaphore& semaphore, std::u
 template<typename T>
 void Carrot::Buffer::cmdStageCopy(vk::CommandBuffer& cmds, uint64_t offset, const T* data, std::size_t totalLength) {
     // allocate staging buffer used for transfer
-    heldStagingBuffer = internalStagingBuffer(size);
+    heldStagingBuffer = internalStagingBuffer(totalLength);
     auto stagingBuffer = heldStagingBuffer.view;
 
     // upload data to staging buffer

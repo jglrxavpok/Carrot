@@ -86,7 +86,7 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 Carrot::Engine* Carrot::Engine::instance = nullptr;
-static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
+static Carrot::RuntimeOption showFPS("Engine/Show FPS", true);
 static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
 
 static std::unordered_set<int> activeJoysticks{};
@@ -186,7 +186,7 @@ void Carrot::Engine::init() {
 
                                                                  {
                                                                      std::lock_guard l { getGraphicsQueue().getMutexUnsafe() };
-                                                                     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
+                                                                     renderer.recordImGuiPass(cmds, pass.getRenderPass(), frame);
                                                                  }
 
                                                                  //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
@@ -702,12 +702,6 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
     };
 
     {
-        {
-            ZoneScopedN("ImGui Render");
-            Console::instance().renderToImGui(*this);
-            ImGui::Render();
-        }
-
         {
             ZoneScopedN("mainCommandBuffers[frameIndex].begin(beginInfo)");
             mainCommandBuffers[frameIndex].begin(beginInfo);

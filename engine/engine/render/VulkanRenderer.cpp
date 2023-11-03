@@ -26,6 +26,7 @@
 #include <robin_hood.h>
 #include <core/math/BasicFunctions.h>
 #include <IconsFontAwesome5.h>
+#include <engine/console/Console.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -54,7 +55,8 @@ struct ForwardFrameInfo {
 
 Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration config): driver(driver), config(config),
                                                                                     recordingRenderContext(*this, nullptr),
-                                                                                    singleFrameAllocator(SingleFrameAllocatorSize)
+                                                                                    singleFrameAllocator(SingleFrameAllocatorSize),
+                                                                                    imGuiBackend(*this)
 {
     ZoneScoped;
     renderThreadKickoff.increment();
@@ -216,17 +218,6 @@ void Carrot::VulkanRenderer::initImGui() {
     }
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForVulkan(driver.getWindow().getGLFWPointer(), true);
-    imguiInitInfo = {};
-    imguiInitInfo.Instance = driver.getInstance();
-    imguiInitInfo.PhysicalDevice = driver.getPhysicalDevice();
-    imguiInitInfo.Device = driver.getLogicalDevice();
-    imguiInitInfo.QueueFamily = driver.getQueueFamilies().graphicsFamily.value();
-    imguiInitInfo.Queue = driver.getGraphicsQueue().getQueueUnsafe();
-    imguiInitInfo.PipelineCache = nullptr;
-    imguiInitInfo.DescriptorPool = *imguiDescriptorPool;
-    imguiInitInfo.Allocator = nullptr;
-
     // TODO: move to dedicated style file
     float baseFontSize = 14.0f; // 13.0f is the size of the default font. Change to the font size you use.
     auto font = io.Fonts->AddFontFromFileTTF(Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Roboto-Medium.ttf")).u8string()).c_str(), baseFontSize);
@@ -244,34 +235,16 @@ void Carrot::VulkanRenderer::initImGui() {
                                   iconFontSize, &icons_config, icons_ranges );
 
     io.Fonts->Build();
+
+    imGuiBackend.initResources();
 }
 
 void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
-    if(imguiIsInitialized) {
-       ImGui_ImplVulkan_Shutdown();
-    }
-
-    SwapChainSupportDetails swapChainSupport = driver.querySwapChainSupport(driver.getPhysicalDevice());
-
-    std::uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
-    // maxImageCount == 0 means we can request any number of image
-    if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-        // ensure we don't ask for more images than the device will be able to provide
-        imageCount = swapChainSupport.capabilities.maxImageCount;
-    }
-
-    imguiInitInfo.MinImageCount = swapChainSupport.capabilities.minImageCount;
-    imguiInitInfo.ImageCount = imageCount;
-    imguiInitInfo.CheckVkResultFn = imguiCheckVkResult;
-    ImGui_ImplVulkan_Init(&imguiInitInfo, renderPass);
-
-    // Upload fonts
-    driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& buffer) {
-        ImGui_ImplVulkan_CreateFontsTexture(buffer);
-    });
+    // TODO: remove
 }
 
 void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
+    imGuiBackend.onSwapchainImageCountChange(newCount);
     boundTextures.clear();
     raytracer->onSwapchainImageCountChange(newCount);
     gBuffer->onSwapchainImageCountChange(newCount);
@@ -696,27 +669,15 @@ void Carrot::VulkanRenderer::unbindUniformBuffer(Pipeline& pipeline, const Rende
     }
 }
 
-
-Carrot::Render::Pass<Carrot::Render::PassData::ImGui>& Carrot::VulkanRenderer::addImGuiPass(Carrot::Render::GraphBuilder& graph) {
-    return graph.addPass<Carrot::Render::PassData::ImGui>("imgui",
-    [this](Render::GraphBuilder& graph, Render::Pass<Carrot::Render::PassData::ImGui>& pass, Carrot::Render::PassData::ImGui& data) {
-        vk::ClearValue uiClear = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-        auto& windowSize = getVulkanDriver().getWindowFramebufferExtent();
-        data.output = graph.createRenderTarget("ImGui output", vk::Format::eR8G8B8A8Unorm, windowSize, vk::AttachmentLoadOp::eClear, uiClear);
-    },
-    [this](const Render::CompiledPass& pass, const Render::Context& frame, Carrot::Render::PassData::ImGui& data, vk::CommandBuffer& cmds) {
-        ZoneScopedN("CPU RenderGraph ImGui");
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmds);
-    },
-    [this](Render::CompiledPass& pass, Carrot::Render::PassData::ImGui& data)
-    {
-        initImGuiPass(pass.getRenderPass());
-    });
-}
-
 void Carrot::VulkanRenderer::newFrame() {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
+
+    ImGui::NewFrame();
+    {
+        ZoneScopedN("ImGui backend new frame");
+        imGuiBackend.newFrame();
+    }
 
     for(auto& resource : deferredCarrotBufferDestructions) {
         resource.tickDown();
@@ -858,6 +819,14 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     renderThreadReady.sleepWait();
     recordingFrameIndex = frameIndex;
 
+    {
+        ZoneScopedN("ImGui Render");
+        Console::instance().renderToImGui(getEngine());
+        ImGui::Render();
+
+        imGuiBackend.render(renderContext, ImGui::GetDrawData());
+    }
+
     // swap double-buffered data
     {
         recordingRenderContext.copyFrom(renderContext);
@@ -965,6 +934,10 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
 
     hasBlinked = true;
     renderThreadKickoff.decrement(); // tell render thread to start working
+}
+
+void Carrot::VulkanRenderer::recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext) {
+    imGuiBackend.record(cmds, renderPass, renderContext);
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -1723,13 +1696,6 @@ void Carrot::VulkanRenderer::renderThreadProc() {
 
     while(true /* TODO: have a way to stop the render thread */) {
         renderThreadKickoff.sleepWait();
-
-        ImGui::NewFrame();
-        {
-            ZoneScopedN("ImGui_Impl new frame");
-            ImGui_ImplVulkan_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
-        }
 
         renderThreadReady.increment(); // render thread has started working
         materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame
