@@ -21,7 +21,13 @@ namespace Carrot {
 
         auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
         deviceHeap = std::make_unique<Buffer>(device, HeapSize,
-                                              vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eUniformBuffer,
+                                              vk::BufferUsageFlagBits::eStorageBuffer
+                                              | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR
+                                              | vk::BufferUsageFlagBits::eUniformBuffer
+                                              | vk::BufferUsageFlagBits::eVertexBuffer
+                                              | vk::BufferUsageFlagBits::eIndexBuffer
+                                              | vk::BufferUsageFlagBits::eTransferDst
+                                              ,
                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
                                               std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()});
         deviceHeap->setDebugNames("ResourceAllocator heap for device buffers");

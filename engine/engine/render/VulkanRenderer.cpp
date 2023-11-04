@@ -673,7 +673,6 @@ void Carrot::VulkanRenderer::newFrame() {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
 
-    ImGui::NewFrame();
     {
         ZoneScopedN("ImGui backend new frame");
         imGuiBackend.newFrame();
@@ -823,6 +822,9 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
         ZoneScopedN("ImGui Render");
         Console::instance().renderToImGui(getEngine());
         ImGui::Render();
+
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
 
         imGuiBackend.render(renderContext, ImGui::GetDrawData());
     }

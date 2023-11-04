@@ -108,7 +108,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(pCallbackData->messageIdNumber == 2188733524u) {
         debug_break();
     } else if(pCallbackData->messageIdNumber == (std::int32_t)2281691928630u) { /* VUID-vkCmdDrawIndexed-None-08114 */
-        debug_break();
+    //    debug_break();
     } else if(pCallbackData->messageIdNumber == (std::int32_t)2863155226467u) { /* VUID-vkCmdBindDescriptorSets-pDescriptorSets-01979 */
         debug_break();
     } else if(pCallbackData->messageIdNumber == 3830750225u) /* VUID-vkDestroyBuffer-buffer-00922 */ {

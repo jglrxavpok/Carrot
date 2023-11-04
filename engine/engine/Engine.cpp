@@ -531,8 +531,6 @@ void Carrot::Engine::run() {
             ImGui::End();
         }
 
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
         drawFrame(currentFrame);
 
         Carrot::Log::flush();

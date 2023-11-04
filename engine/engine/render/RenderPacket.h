@@ -80,6 +80,7 @@ namespace Carrot::Render {
         /// Setting this value will change the viewport property of the packet.
         /// ie similar to calling vkCmdSetViewport
         std::optional<vk::Viewport> viewportExtents;
+        std::optional<vk::Rect2D> scissor;
 
     public:
         explicit Packet(PacketContainer& container, PassEnum pass, std::source_location location = std::source_location::current());

@@ -168,6 +168,25 @@ namespace Carrot::Render {
                 }
             }
         }
+        {
+            ZoneScopedN("Change scissor");
+            if(previousPacket == nullptr || previousPacket->scissor != scissor) {
+                if(scissor.has_value()) {
+                    cmds.setScissor(0, scissor.value());
+                } else {
+                    vk::Rect2D scissorRect;
+                    scissorRect.offset = vk::Offset2D {
+                        .x = 0,
+                        .y = 0,
+                    };
+                    scissorRect.extent = vk::Extent2D {
+                        .width = viewport->getWidth(),
+                        .height = viewport->getHeight(),
+                    };
+                    cmds.setScissor(0, scissorRect);
+                }
+            }
+        }
 
         if(!instancingDataBuffer.empty()) {
             ZoneScopedN("Upload instance buffer");
@@ -211,6 +230,7 @@ namespace Carrot::Render {
         pass = std::move(toMove.pass);
         viewport = std::move(toMove.viewport);
         viewportExtents = std::move(toMove.viewportExtents);
+        scissor = std::move(toMove.scissor);
 
         vertexBuffer = std::move(toMove.vertexBuffer);
         indexBuffer = std::move(toMove.indexBuffer);
@@ -238,6 +258,7 @@ namespace Carrot::Render {
         pass = toCopy.pass;
         viewport = toCopy.viewport;
         viewportExtents = toCopy.viewportExtents;
+        scissor = toCopy.scissor;
 
         vertexBuffer = toCopy.vertexBuffer;
         indexBuffer = toCopy.indexBuffer;

@@ -61,6 +61,7 @@ namespace Carrot::Render {
         // TODO: update keys
         // TODO: update gamepad?
         //TODO;
+        ImGui::NewFrame();
         ImGui_ImplGlfw_NewFrame();
     }
 
@@ -110,7 +111,7 @@ namespace Carrot::Render {
         }
 
         pImpl->vertexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
-        pImpl->indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eVertexBuffer);
+        pImpl->indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
         vertexBuffer = pImpl->vertexBuffers[renderContext.swapchainIndex].view;
         indexBuffer = pImpl->indexBuffers[renderContext.swapchainIndex].view;
 
@@ -150,6 +151,7 @@ namespace Carrot::Render {
             .maxDepth = 1.0f,
         };
 
+        int zOrder = 0;
         auto& drawCommand = packet.drawCommands.emplace_back();
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
@@ -176,6 +178,21 @@ namespace Carrot::Render {
                     ImVec2 pos = pDrawData->DisplayPos;
                     // TODO: MyEngineScissor((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
 
+                    vk::Rect2D scissorRect;
+                    int scissorX = (int) (pcmd->ClipRect.x - pos.x);
+                    int scissorY = (int) (pcmd->ClipRect.y - pos.y);
+                    scissorRect.offset = vk::Offset2D {
+                            .x = static_cast<std::int32_t>(std::max(0, scissorX)),
+                            .y = static_cast<std::int32_t>(std::max(0, scissorY)),
+                    };
+                    scissorRect.extent = vk::Extent2D {
+                            .width = static_cast<std::uint32_t>(std::min(viewportWidth, pcmd->ClipRect.z - pos.x)),
+                            .height = static_cast<std::uint32_t>(std::min(viewportHeight, pcmd->ClipRect.w - pos.y)),
+                    };
+                    packet.scissor = scissorRect;
+
+                    // force packets to be ordered. this is because the sort used before recording is not stable: similar packets are not guaranteed to stay in the same order
+                    packet.transparentGBuffer.zOrder = zOrder++;
                     // Render 'pcmd->ElemCount/3' indexed triangles.
                     // By default the indices ImDrawIdx are 16-bit, you can change them to 32-bit in imconfig.h if your engine doesn't support 16-bit indices.
                     drawCommand.instanceCount = 1;
