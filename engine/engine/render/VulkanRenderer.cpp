@@ -935,6 +935,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     }
 
     hasBlinked = true;
+    renderThreadReady.increment(); // render thread has started working
     renderThreadKickoff.decrement(); // tell render thread to start working
 }
 
@@ -1699,7 +1700,6 @@ void Carrot::VulkanRenderer::renderThreadProc() {
     while(true /* TODO: have a way to stop the render thread */) {
         renderThreadKickoff.sleepWait();
 
-        renderThreadReady.increment(); // render thread has started working
         materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame
         lighting.beginFrame(recordingRenderContext);
         preallocatePerDrawBuffers(recordingRenderContext);

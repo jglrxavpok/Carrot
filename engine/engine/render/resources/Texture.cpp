@@ -95,14 +95,14 @@ namespace Carrot::Render {
     }
 
     ImTextureID Texture::getImguiID(vk::Format format, vk::ImageAspectFlags aspect) const {
-        return (ImTextureID)this;
+        return (ImTextureID) this;
     }
 
-    vk::ImageView Texture::getView(vk::ImageAspectFlags aspect) const {
+    const vk::ImageView& Texture::getView(vk::ImageAspectFlags aspect) const {
         return getView(imageFormat, aspect);
     }
 
-    vk::ImageView Texture::getView(vk::Format format, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) const {
+    const vk::ImageView& Texture::getView(vk::Format format, vk::ImageAspectFlags aspect, vk::ImageViewType viewType) const {
         auto& view = views[{format, aspect}];
 
         if(!view) {

@@ -289,6 +289,10 @@ namespace Carrot::Render {
         return container.allocateGeneric(size);
     }
 
+    void Packet::PushConstant::freeGeneric(std::span<std::uint8_t> data) {
+        return container.deallocateGeneric(std::move(data));
+    }
+
     Packet::PushConstant& Packet::PushConstant::operator=(const Packet::PushConstant& other) {
         id = other.id;
         stages = other.stages;

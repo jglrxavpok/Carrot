@@ -72,8 +72,8 @@ namespace Carrot::Render {
 
     public:
         /// Gets or create the view with the given aspect
-        vk::ImageView getView(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
-        vk::ImageView getView(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D) const;
+        const vk::ImageView& getView(vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor) const;
+        const vk::ImageView& getView(vk::Format format, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor, vk::ImageViewType viewType = vk::ImageViewType::e2D) const;
 
     public:
         void transitionNow(vk::ImageLayout newLayout, vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);

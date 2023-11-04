@@ -21,6 +21,8 @@ namespace Carrot::Render {
 
         std::vector<Carrot::ImGuiVertex> vertexStorage; // temporary storage to store vertices before copy to GPU-visible memory
         std::vector<std::uint32_t> indexStorage; // temporary storage to store indices before copy to GPU-visible memory
+
+        std::unordered_map<ImTextureID, std::size_t> textureIndices;
     };
 
     ImGuiBackend::ImGuiBackend(VulkanRenderer& renderer): renderer(renderer) {
@@ -45,6 +47,7 @@ namespace Carrot::Render {
                                                                     vk::Format::eR8G8B8A8Unorm);
         fontsImage->stageUpload(std::span{ pixels, static_cast<std::size_t>(width * height * 4) });
         pImpl->fontsTexture = std::make_unique<Texture>(std::move(fontsImage));
+        io.Fonts->SetTexID(pImpl->fontsTexture->getImguiID());
         pImpl->pipeline = renderer.getOrCreatePipelineFullPath(PipelinePath);
 
         // TODO: install renderer_renderwindow imgui hook
@@ -61,8 +64,8 @@ namespace Carrot::Render {
         // TODO: update keys
         // TODO: update gamepad?
         //TODO;
-        ImGui::NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
     }
 
     void ImGuiBackend::cleanup() {
@@ -127,6 +130,7 @@ namespace Carrot::Render {
         struct {
             glm::vec2 translation;
             glm::vec2 scale;
+            std::uint32_t textureIndex;
         } displayConstantData;
         // map from 0,0 - w,h to -1,-1 - 1,1
         displayConstantData.scale.x = 2.0f / pDrawData->DisplaySize.x;
@@ -134,7 +138,7 @@ namespace Carrot::Render {
         displayConstantData.translation.x = -pDrawData->DisplayPos.x * displayConstantData.scale.x - 1.0f;
         displayConstantData.translation.y = -pDrawData->DisplayPos.y * displayConstantData.scale.y - 1.0f;
 
-        Packet::PushConstant& displayConstant = packet.addPushConstant("Display", vk::ShaderStageFlagBits::eVertex);
+        Packet::PushConstant& displayConstant = packet.addPushConstant("Display", vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
         displayConstant.setData(displayConstantData);
 
         float viewportWidth = pDrawData->DisplaySize.x * pDrawData->FramebufferScale.x;
@@ -151,7 +155,10 @@ namespace Carrot::Render {
             .maxDepth = 1.0f,
         };
 
-        int zOrder = 0;
+        auto& textureIndexMap = pImpl->textureIndices;
+        textureIndexMap.clear();
+
+        int drawIndex = 0;
         auto& drawCommand = packet.drawCommands.emplace_back();
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
@@ -164,7 +171,16 @@ namespace Carrot::Render {
                 } else {
                     // The texture for the draw call is specified by pcmd->GetTexID().
                     // The vast majority of draw calls will use the Dear ImGui texture atlas, which value you have set yourself during initialization.
-                    // TODO: MyEngineBindTexture((MyTexture*)pcmd->GetTexID());
+                    auto [iter, bInserted] = textureIndexMap.try_emplace(pcmd->GetTexID(), 0);
+
+                    if(bInserted) {
+                        iter->second = textureIndexMap.size() - 1;
+                        Carrot::Render::Texture& texture = *((Carrot::Render::Texture*)pcmd->GetTexID());
+                        renderer.bindTexture(*pImpl->pipeline, renderContext, texture, 0, 0,
+                                             vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
+                                             iter->second);
+                    }
+                    displayConstantData.textureIndex = iter->second;
 
                     // We are using scissoring to clip some objects. All low-level graphics API should support it.
                     // - If your engine doesn't support scissoring yet, you may ignore this at first. You will get some small glitches
@@ -176,7 +192,6 @@ namespace Carrot::Render {
                     //     always subtract draw_data->DisplayPos from clipping bounds to convert them to your viewport space.
                     // - Note that pcmd->ClipRect contains Min+Max bounds. Some graphics API may use Min+Max, other may use Min+Size (size being Max-Min)
                     ImVec2 pos = pDrawData->DisplayPos;
-                    // TODO: MyEngineScissor((int)(pcmd->ClipRect.x - pos.x), (int)(pcmd->ClipRect.y - pos.y), (int)(pcmd->ClipRect.z - pos.x), (int)(pcmd->ClipRect.w - pos.y));
 
                     vk::Rect2D scissorRect;
                     int scissorX = (int) (pcmd->ClipRect.x - pos.x);
@@ -192,7 +207,7 @@ namespace Carrot::Render {
                     packet.scissor = scissorRect;
 
                     // force packets to be ordered. this is because the sort used before recording is not stable: similar packets are not guaranteed to stay in the same order
-                    packet.transparentGBuffer.zOrder = zOrder++;
+                    packet.transparentGBuffer.zOrder = drawIndex++;
                     // Render 'pcmd->ElemCount/3' indexed triangles.
                     // By default the indices ImDrawIdx are 16-bit, you can change them to 32-bit in imconfig.h if your engine doesn't support 16-bit indices.
                     drawCommand.instanceCount = 1;
@@ -200,6 +215,7 @@ namespace Carrot::Render {
                     drawCommand.firstIndex = pcmd->IdxOffset + commandListIndexOffset;
                     drawCommand.vertexOffset = pcmd->VtxOffset + commandListVertexOffset;
 
+                    displayConstant.setData(displayConstantData);
                     renderer.render(packet);
                 }
             }

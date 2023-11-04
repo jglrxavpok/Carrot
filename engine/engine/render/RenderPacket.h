@@ -52,12 +52,14 @@ namespace Carrot::Render {
         public:
             template<typename T>
             void setData(T&& data) {
+                freeGeneric(pushData);
                 pushData = allocateGeneric(sizeof(data));
                 std::memcpy(pushData.data(), &data, sizeof(data));
             }
 
         private:
             std::span<std::uint8_t> allocateGeneric(std::size_t size);
+            void freeGeneric(std::span<std::uint8_t> size);
 
         private:
             PacketContainer& container;

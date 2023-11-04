@@ -14,6 +14,7 @@ layout(location = 2) out vec4 outColor;
 layout(push_constant) uniform DisplayRect {
     vec2 Translation;
     vec2 Size;
+    uint TextureIndex;
 } Display;
 
 void main() {
