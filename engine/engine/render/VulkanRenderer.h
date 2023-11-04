@@ -172,6 +172,11 @@ namespace Carrot {
         void startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext);
         void recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
 
+        /**
+         * Time taken to perform the latest command buffer record
+         */
+        float getLastRecordDuration() const;
+
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
 
@@ -378,6 +383,7 @@ namespace Carrot {
         double blinkTime = -1.0;
 
         std::uint32_t frameCount = 0;
+        float latestRecordTime = 0.0f;
 
     private:
         void createCameraSetResources();

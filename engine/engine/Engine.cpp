@@ -422,6 +422,7 @@ void Carrot::Engine::run() {
             Carrot::IO::debugDrawActions();
         }
 
+        auto tickStartTime = std::chrono::steady_clock::now();
         {
             ZoneScopedN("Tick");
             TracyPlot("Tick lag", lag.count());
@@ -440,96 +441,11 @@ void Carrot::Engine::run() {
                 Carrot::IO::ActionSet::resetAllDeltas();
             }
         }
+        auto tickTimeElapsed = std::chrono::steady_clock::now() - tickStartTime;
 
         // record frame info even if debug option is not active
         frameTimeHistory.push(timeElapsed.count());
-
-        if(showFPS) {
-            if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
-                ImGui::Text("%f FPS", currentFPS);
-
-                // based on blog https://asawicki.info/news?x=view&year=2022&month=5
-                const ImVec2 availableSpace = ImGui::GetContentRegionAvail();
-                const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-                ImDrawList* drawList = ImGui::GetWindowDrawList();
-                drawList->AddRectFilled(cursorPos, cursorPos + availableSpace, 0x020202FF);
-
-                const float expectedDelta = 1.0f / (float)config.tickRate;
-                const float goodDelta = 1.0f / (2.0f * config.tickRate);
-                const float mehDelta = 1.0f / config.tickRate * 2.0f;
-                const float badDelta = 1.0f / config.tickRate * 4.0f;
-
-                auto timeToColor = [&](float time) {
-                    const std::vector<float> timestamps {
-                        0.0f,
-                        goodDelta,
-                        expectedDelta,
-                        mehDelta,
-                        badDelta,
-                    };
-
-                    const std::vector<glm::vec3> colors {
-                        glm::vec3{0, 0, 1}, // woah
-                        glm::vec3{0, 0.2, 1}, // good
-                        glm::vec3{0, 1, 0}, // expected
-                        glm::vec3{1, 1, 0}, // meh
-                        glm::vec3{1, 0, 0}, // bad
-                    };
-
-                    auto toU32 = [](const glm::vec3& color) {
-                        return 0xFF000000
-                                | ((int)(color.b * 255) & 0xFF) << 16
-                                | ((int)(color.g * 255) & 0xFF) <<  8
-                                | ((int)(color.r * 255) & 0xFF) <<  0
-                                ;
-                    };
-
-                    for(int i = 1; i < timestamps.size(); i++) {
-                        if(time < timestamps[i]) {
-                            float t = (time - timestamps[i-1]) / (timestamps[i] - timestamps[i-1]);
-                            return toU32((1-t) * colors[i-1] + t * colors[i]);
-                        }
-                    }
-                    return toU32(colors.back());
-                };
-
-                float rightmostX = cursorPos.x + availableSpace.x;
-                auto drawBar = [&](float value) {
-                    const float frameWidthScale = goodDelta;
-                    const float frameWidth = value / frameWidthScale;
-                    const float frameHeightScale = availableSpace.y / (std::log2f(badDelta) - std::log2f(goodDelta));
-                    float frameHeight = (std::log2f(value) - std::log2f(goodDelta)) * frameHeightScale;
-                    if(frameHeight < 5.0f) {
-                        frameHeight = 5.0f;
-                    } else if(frameHeight >= availableSpace.y) {
-                        frameHeight = availableSpace.y;
-                    }
-                    const std::uint32_t frameColor = timeToColor(value);
-
-                    drawList->AddRectFilled(ImVec2(rightmostX - frameWidth, cursorPos.y - frameHeight + availableSpace.y),
-                                            ImVec2(rightmostX, cursorPos.y + availableSpace.y),
-                                            frameColor);
-                    rightmostX -= frameWidth;
-                    rightmostX = floor(rightmostX);
-                };
-
-                if(frameTimeHistory.getCount() < frameTimeHistory.MaxCount) {
-                    for(int i = frameTimeHistory.getCount() - 1; i >= 0; i--) {
-                        drawBar(frameTimeHistory[i]);
-                    }
-                } else {
-                    for(int i = frameTimeHistory.getCurrentPosition() - 1; i >= frameTimeHistory.getCurrentPosition() - frameTimeHistory.MaxCount; i--) {
-                        int index = i;
-                        if(index < 0) {
-                            index += frameTimeHistory.MaxCount;
-                        }
-                        drawBar(frameTimeHistory[index]);
-                    }
-                }
-                ImGui::Dummy(availableSpace);
-            }
-            ImGui::End();
-        }
+        tickTimeHistory.push(std::chrono::duration<float>(tickTimeElapsed).count());
 
         drawFrame(currentFrame);
 
@@ -879,6 +795,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     {
         ZoneScopedN("Prepare frame");
+        auto onFrameTimeStart = std::chrono::steady_clock::now();
 
         if(config.runInVR) {
             ZoneScopedN("VR start frame");
@@ -922,8 +839,117 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             onFrame(v);
         }
         onFrame(getMainViewport());
+
+        if(showFPS) {
+            if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
+                ImGui::Text("Estimated FPS: %.3f", currentFPS);
+
+                const float expectedDelta = 1.0f / (float)config.tickRate;
+                const float goodDelta = 1.0f / (2.0f * config.tickRate);
+                const float mehDelta = 1.0f / config.tickRate * 2.0f;
+                const float badDelta = 1.0f / config.tickRate * 4.0f;
+                const std::vector<float> timestamps {
+                        0.0f,
+                        goodDelta,
+                        expectedDelta,
+                        mehDelta,
+                        badDelta,
+                };
+
+                const std::vector<glm::vec3> colors {
+                        glm::vec3{0, 0, 1}, // woah
+                        glm::vec3{0, 0.2, 1}, // good
+                        glm::vec3{0, 1, 0}, // expected
+                        glm::vec3{1, 1, 0}, // meh
+                        glm::vec3{1, 0, 0}, // bad
+                };
+
+                auto timeToColor = [&](float time) {
+                    auto toU32 = [](const glm::vec3& color) {
+                        return 0xFF000000
+                               | ((int)(color.b * 255) & 0xFF) << 16
+                               | ((int)(color.g * 255) & 0xFF) <<  8
+                               | ((int)(color.r * 255) & 0xFF) <<  0
+                                ;
+                    };
+
+                    for(int i = 1; i < timestamps.size(); i++) {
+                        if(time < timestamps[i]) {
+                            float t = (time - timestamps[i-1]) / (timestamps[i] - timestamps[i-1]);
+                            return toU32((1-t) * colors[i-1] + t * colors[i]);
+                        }
+                    }
+                    return toU32(colors.back());
+                };
+
+                auto drawHistory = [&](CircleBuffer<float, 600>& history, float maxHeight) {
+                    if(history.getCount() > 0) {
+                        ImGui::Text("%.3f ms", history[history.getCurrentPosition()-1]*1000.0f);
+                    }
+
+                    // based on blog https://asawicki.info/news?x=view&year=2022&month=5
+                    ImVec2 availableSpace = ImGui::GetContentRegionAvail();
+                    availableSpace.y = maxHeight;
+                    const ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+                    drawList->AddRectFilled(cursorPos, cursorPos + availableSpace, 0x020202FF);
+
+                    float rightmostX = cursorPos.x + availableSpace.x;
+                    auto drawBar = [&](float value) {
+                        const float frameWidthScale = goodDelta;
+                        const float frameWidth = value / frameWidthScale;
+                        const float frameHeightScale = availableSpace.y / (std::log2f(badDelta) - std::log2f(goodDelta));
+                        float frameHeight = (std::log2f(value) - std::log2f(goodDelta)) * frameHeightScale;
+                        if(frameHeight < 5.0f) {
+                            frameHeight = 5.0f;
+                        } else if(frameHeight >= availableSpace.y) {
+                            frameHeight = availableSpace.y;
+                        }
+                        const std::uint32_t frameColor = timeToColor(value);
+
+                        drawList->AddRectFilled(ImVec2(rightmostX - frameWidth, cursorPos.y - frameHeight + availableSpace.y),
+                                                ImVec2(rightmostX, cursorPos.y + availableSpace.y),
+                                                frameColor);
+                        rightmostX -= frameWidth;
+                        rightmostX = floor(rightmostX);
+                    };
+
+                    if(history.getCount() < history.MaxCount) {
+                        for(int i = history.getCount() - 1; i >= 0; i--) {
+                            drawBar(history[i]);
+                        }
+                    } else {
+                        for(int i = history.getCurrentPosition() - 1; i >= history.getCurrentPosition() - history.MaxCount; i--) {
+                            int index = i;
+                            if(index < 0) {
+                                index += history.MaxCount;
+                            }
+                            drawBar(history[index]);
+                        }
+                    }
+                    ImGui::Dummy(availableSpace);
+                };
+                ImGui::Text("Total frame time");
+                drawHistory(frameTimeHistory, 50);
+
+                ImGui::Text("Tick time");
+                drawHistory(tickTimeHistory, 50);
+
+                ImGui::Text("OnFrame time");
+                drawHistory(onFrameTimeHistory, 50);
+
+                ImGui::Text("Record time");
+                drawHistory(recordTimeHistory, 50);
+            }
+            ImGui::End();
+        }
+
         assetServer.beforeRecord(mainRenderContext);
         renderer.startRecord(currentFrame, mainRenderContext);
+
+        auto onFrameTimeElapsed = std::chrono::steady_clock::now() - onFrameTimeStart;
+        onFrameTimeHistory.push(std::chrono::duration<float>(onFrameTimeElapsed).count());
+        recordTimeHistory.push(renderer.getLastRecordDuration());
     }
 }
 

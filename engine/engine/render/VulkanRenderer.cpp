@@ -1700,13 +1700,20 @@ void Carrot::VulkanRenderer::renderThreadProc() {
     while(true /* TODO: have a way to stop the render thread */) {
         renderThreadKickoff.sleepWait();
 
+        auto timeStart = std::chrono::steady_clock::now();
         materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame
         lighting.beginFrame(recordingRenderContext);
         preallocatePerDrawBuffers(recordingRenderContext);
 
         GetEngine().recordMainCommandBufferAndPresent(recordingFrameIndex, recordingRenderContext);
 
+        auto timeElapsed = std::chrono::steady_clock::now() - timeStart;
+        latestRecordTime = std::chrono::duration<float>(timeElapsed).count();
         renderThreadKickoff.increment(); // render thread is waiting for something to do
         renderThreadReady.decrement(); // render thread has finished working
     }
+}
+
+float Carrot::VulkanRenderer::getLastRecordDuration() const {
+    return latestRecordTime;
 }

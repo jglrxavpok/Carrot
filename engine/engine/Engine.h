@@ -466,6 +466,9 @@ namespace Carrot {
         };
 
         CircleBuffer<float, 600> frameTimeHistory; //< Latest frame delta times
+        CircleBuffer<float, 600> tickTimeHistory; //< Latest tick times
+        CircleBuffer<float, 600> onFrameTimeHistory; //< Latest onFrame times
+        CircleBuffer<float, 600> recordTimeHistory; //< Latest record times
         std::vector<ImGuiTextures> imguiTextures;
 
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
