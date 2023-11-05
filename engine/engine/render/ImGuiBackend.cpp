@@ -5,6 +5,7 @@
 #include "ImGuiBackend.h"
 #include <core/Macros.h>
 #include <engine/render/resources/Texture.h>
+#include <engine/Engine.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <core/render/VertexTypes.h>
@@ -18,6 +19,8 @@ namespace Carrot::Render {
         std::shared_ptr<Pipeline> pipeline;
         Render::PerFrame<Carrot::BufferAllocation> vertexBuffers; // vertex buffer per frame
         Render::PerFrame<Carrot::BufferAllocation> indexBuffers; // index buffer per frame
+        Render::PerFrame<Carrot::BufferAllocation> stagingBuffers;
+        Render::PerFrame<vk::UniqueSemaphore> bufferCopySync;
 
         std::vector<Carrot::ImGuiVertex> vertexStorage; // temporary storage to store vertices before copy to GPU-visible memory
         std::vector<std::uint32_t> indexStorage; // temporary storage to store indices before copy to GPU-visible memory
@@ -82,9 +85,6 @@ namespace Carrot::Render {
         std::vector<std::size_t> vertexStarts;
         std::vector<std::size_t> indexStarts;
 
-        Carrot::BufferView vertexBuffer;
-        Carrot::BufferView indexBuffer;
-
         vertices.clear();
         indices.clear();
 
@@ -115,12 +115,23 @@ namespace Carrot::Render {
 
         pImpl->vertexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
         pImpl->indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
-        vertexBuffer = pImpl->vertexBuffers[renderContext.swapchainIndex].view;
-        indexBuffer = pImpl->indexBuffers[renderContext.swapchainIndex].view;
+        Carrot::BufferView& vertexBuffer = pImpl->vertexBuffers[renderContext.swapchainIndex].view;
+        Carrot::BufferView& indexBuffer = pImpl->indexBuffers[renderContext.swapchainIndex].view;
 
-        // TODO: async upload
-        vertexBuffer.stageUpload(vertices.data(), vertexBuffer.getSize());
-        indexBuffer.stageUpload(indices.data(), indexBuffer.getSize());
+        std::size_t totalStagingSize = vertexBuffer.getSize() + indexBuffer.getSize();
+        auto& stagingBufferAlloc = pImpl->stagingBuffers[renderContext.swapchainIndex];
+        stagingBufferAlloc = GetResourceAllocator().allocateStagingBuffer(totalStagingSize);
+        auto& stagingBuffer = stagingBufferAlloc.view;
+
+        // upload data to staging buffer
+        stagingBuffer.directUpload(vertices.data(), vertexBuffer.getSize());
+        stagingBuffer.directUpload(indices.data(), indexBuffer.getSize(), vertexBuffer.getSize()/*offset*/);
+        auto& copySyncSemaphore = pImpl->bufferCopySync[renderContext.swapchainIndex];
+        renderer.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& cmds) {
+            stagingBuffer.subView(0, vertexBuffer.getSize()).cmdCopyTo(cmds, vertexBuffer);
+            stagingBuffer.subView(vertexBuffer.getSize(), indexBuffer.getSize()).cmdCopyTo(cmds, indexBuffer);
+        }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags>(0), *copySyncSemaphore);
+        renderer.getEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
         Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, renderContext);
         packet.pipeline = pImpl->pipeline;
@@ -229,6 +240,12 @@ namespace Carrot::Render {
     void ImGuiBackend::onSwapchainImageCountChange(std::size_t newCount) {
         pImpl->vertexBuffers.resize(newCount);
         pImpl->indexBuffers.resize(newCount);
-        //TODO;
+        pImpl->stagingBuffers.resize(newCount);
+        pImpl->bufferCopySync.resize(newCount);
+
+        vk::SemaphoreCreateInfo semaphoreInfo{};
+        for(std::size_t i = 0; i < newCount; i++) {
+            pImpl->bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+        }
     }
 } // Carrot::Render
