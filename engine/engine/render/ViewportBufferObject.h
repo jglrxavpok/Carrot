@@ -9,7 +9,7 @@
 namespace Carrot {
 
     namespace Render {
-        class Viewport;
+        struct Context;
     }
 
     /// UBO used by the engine to send viewport information to shaders
@@ -19,6 +19,6 @@ namespace Carrot {
         std::uint32_t frameHeight = 1;
         bool hasTLAS = false;
 
-        void update(Render::Viewport& viewport);
+        void update(const Render::Context& renderContext);
     };
 }

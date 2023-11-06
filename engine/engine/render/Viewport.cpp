@@ -116,7 +116,7 @@ namespace Carrot::Render {
         }
 
         ViewportBufferObject viewportBufferObject{};
-        viewportBufferObject.update(*this);
+        viewportBufferObject.update(context);
         auto& buffer = viewportUniformBuffers[context.swapchainIndex];
         buffer.getBuffer().directUpload(&viewportBufferObject, sizeof(viewportBufferObject), buffer.getStart());
 

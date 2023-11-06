@@ -145,8 +145,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     block.frameWidth = framebufferSize.width;
                     block.frameHeight = framebufferSize.height;
                 }
+                Carrot::AccelerationStructure* pTLAS = nullptr;
                 if(useRaytracingVersion) {
-                    block.hasTLAS = frame.renderer.getASBuilder().getTopLevelAS() != nullptr;
+                    pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                    block.hasTLAS = pTLAS != nullptr;
                 }
                 renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
@@ -154,10 +156,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 if(useRaytracingVersion) {
-                    auto& tlas = frame.renderer.getASBuilder().getTopLevelAS();
                     renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 1, nullptr);
-                    if(tlas) {
-                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *tlas, 5, 0);
+                    if(pTLAS) {
+                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *pTLAS, 5, 0);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 5, 2);
                         renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 5, 3);
                     } else {

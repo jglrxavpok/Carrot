@@ -115,7 +115,7 @@ namespace Carrot {
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
 
-        std::unique_ptr<AccelerationStructure>& getTopLevelAS();
+        AccelerationStructure* getTopLevelAS(const Carrot::Render::Context& renderContext);
 
         void onFrame(const Carrot::Render::Context& renderContext);
 
@@ -175,7 +175,8 @@ namespace Carrot {
         WeakPool<BLASHandle> staticGeometries;
         WeakPool<InstanceHandle> instances;
 
-        std::unique_ptr<AccelerationStructure> tlas;
+        Render::PerFrame<std::shared_ptr<AccelerationStructure>> tlasPerFrame;
+        std::shared_ptr<AccelerationStructure> currentTLAS;
 
         bool builtBLASThisFrame = false;
         std::vector<vk::UniqueSemaphore> instanceUploadSemaphore;

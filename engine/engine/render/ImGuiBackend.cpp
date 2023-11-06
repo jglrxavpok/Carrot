@@ -29,14 +29,14 @@ namespace Carrot::Render {
     };
 
     ImGuiBackend::ImGuiBackend(VulkanRenderer& renderer): renderer(renderer) {
-        pImpl = new PImpl;
     }
 
     ImGuiBackend::~ImGuiBackend() {
-        delete pImpl;
+        cleanup();
     }
 
     void ImGuiBackend::initResources() {
+        pImpl = new PImpl;
         ImGuiIO& io = ImGui::GetIO();
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
@@ -72,7 +72,11 @@ namespace Carrot::Render {
     }
 
     void ImGuiBackend::cleanup() {
-        //TODO;
+        if(!pImpl) {
+            return;
+        }
+        delete pImpl;
+        pImpl = nullptr;
     }
 
     void ImGuiBackend::render(const Carrot::Render::Context& renderContext, ImDrawData* pDrawData) {

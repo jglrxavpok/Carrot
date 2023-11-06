@@ -585,7 +585,7 @@ void Carrot::Engine::initECS() {
 
 Carrot::Engine::~Engine() {
     Carrot::Render::Sprite::cleanup();
-    ImGui_ImplVulkan_Shutdown();
+    renderer.shutdownImGui();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     for(auto& ctx : tracyCtx) {
@@ -753,6 +753,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     if(framebufferResized) {
         recreateSwapchain();
+        return;
     }
     frames++;
 
@@ -882,7 +883,7 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                     return toU32(colors.back());
                 };
 
-                auto drawHistory = [&](CircleBuffer<float, 600>& history, float maxHeight) {
+                auto drawHistory = [&](CircleBuffer<float, 600>& history, float maxHeight, float minimumTime) {
                     if(history.getCount() > 0) {
                         ImGui::Text("%.3f ms", history[history.getCurrentPosition()-1]*1000.0f);
                     }
@@ -898,8 +899,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                     auto drawBar = [&](float value) {
                         const float frameWidthScale = goodDelta;
                         const float frameWidth = value / frameWidthScale;
-                        const float frameHeightScale = availableSpace.y / (std::log2f(badDelta) - std::log2f(goodDelta));
-                        float frameHeight = (std::log2f(value) - std::log2f(goodDelta)) * frameHeightScale;
+                        const float frameHeightScale = availableSpace.y / (std::log2f(badDelta) - std::log2f(minimumTime));
+                        float frameHeight = (std::log2f(value) - std::log2f(minimumTime)) * frameHeightScale;
                         if(frameHeight < 5.0f) {
                             frameHeight = 5.0f;
                         } else if(frameHeight >= availableSpace.y) {
@@ -930,16 +931,16 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                     ImGui::Dummy(availableSpace);
                 };
                 ImGui::Text("Total frame time");
-                drawHistory(frameTimeHistory, 50);
+                drawHistory(frameTimeHistory, 50, goodDelta);
 
                 ImGui::Text("Tick time");
-                drawHistory(tickTimeHistory, 50);
+                drawHistory(tickTimeHistory, 50, expectedDelta);
 
                 ImGui::Text("OnFrame time");
-                drawHistory(onFrameTimeHistory, 50);
+                drawHistory(onFrameTimeHistory, 50, expectedDelta);
 
                 ImGui::Text("Record time");
-                drawHistory(recordTimeHistory, 50);
+                drawHistory(recordTimeHistory, 50, goodDelta);
             }
             ImGui::End();
         }
@@ -975,6 +976,8 @@ void Carrot::Engine::createSynchronizationObjects() {
 void Carrot::Engine::recreateSwapchain() {
     Carrot::Log::info("recreateSwapchain");
     vkDriver.fetchNewFramebufferSize();
+
+    renderer.waitForRenderToComplete();
 
     framebufferResized = false;
 

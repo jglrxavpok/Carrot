@@ -9,13 +9,13 @@
 #include <engine/render/raytracing/ASBuilder.h>
 
 namespace Carrot {
-    void ViewportBufferObject::update(Render::Viewport& viewport) {
-        frameWidth = viewport.getWidth();
-        frameHeight = viewport.getHeight();
+    void ViewportBufferObject::update(const Render::Context& renderContext) {
+        frameWidth = renderContext.pViewport->getWidth();
+        frameHeight = renderContext.pViewport->getHeight();
         frameCount = GetRenderer().getFrameCount();
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
-            hasTLAS = GetRenderer().getASBuilder().getTopLevelAS() != nullptr;
+            hasTLAS = GetRenderer().getASBuilder().getTopLevelAS(renderContext) != nullptr;
         }
     }
 }

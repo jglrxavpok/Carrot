@@ -101,6 +101,11 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
 }
 
 Carrot::VulkanRenderer::~VulkanRenderer() {
+    waitForRenderToComplete(); // wait for last render job
+    running = false; // ask render thread to stop
+    renderThreadKickoff.decrement(); // tell render thread to wake up
+    renderThread.join(); // wait for render thread to stop
+
     GetAssetServer().freeupResources();
 }
 
@@ -241,6 +246,10 @@ void Carrot::VulkanRenderer::initImGui() {
 
 void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
     // TODO: remove
+}
+
+void Carrot::VulkanRenderer::shutdownImGui() {
+    imGuiBackend.cleanup();
 }
 
 void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
@@ -815,7 +824,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
     // wait for previous frame
-    renderThreadReady.sleepWait();
+    waitForRenderToComplete();
     recordingFrameIndex = frameIndex;
 
     {
@@ -941,6 +950,10 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
 
 void Carrot::VulkanRenderer::recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext) {
     imGuiBackend.record(cmds, renderPass, renderContext);
+}
+
+void Carrot::VulkanRenderer::waitForRenderToComplete() {
+    renderThreadReady.sleepWait();
 }
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
@@ -1483,15 +1496,15 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
             .frameWidth = GetVulkanDriver().getWindowFramebufferExtent().width,
             .frameHeight = GetVulkanDriver().getWindowFramebufferExtent().height,
 
-            .hasTLAS = getASBuilder().getTopLevelAS() != nullptr
+            .hasTLAS = useRaytracingVersion ? getASBuilder().getTopLevelAS(renderContext) != nullptr : false
     };
 
     forwardRenderingFrameInfoBuffer->directUpload(&frameInfo, sizeof(frameInfo));
     bindUniformBuffer(*forwardPipeline, renderContext, forwardRenderingFrameInfoBuffer->getWholeView(), 5, 1);
     if(useRaytracingVersion) {
-        auto& tlas = getASBuilder().getTopLevelAS();
-        if(tlas) {
-            bindAccelerationStructure(*forwardPipeline, renderContext, *tlas, 5, 2);
+        auto* pTLAS = getASBuilder().getTopLevelAS(renderContext);
+        if(pTLAS) {
+            bindAccelerationStructure(*forwardPipeline, renderContext, *pTLAS, 5, 2);
             bindTexture(*forwardPipeline, renderContext, *getMaterialSystem().getBlueNoiseTextures()[renderContext.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 3, nullptr);
             bindBuffer(*forwardPipeline, renderContext, getASBuilder().getGeometriesBuffer(renderContext), 5, 4);
             bindBuffer(*forwardPipeline, renderContext, getASBuilder().getInstancesBuffer(renderContext), 5, 5);
@@ -1697,8 +1710,11 @@ std::int8_t Carrot::VulkanRenderer::getCurrentBufferPointerForRender() {
 void Carrot::VulkanRenderer::renderThreadProc() {
     renderThreadReady.decrement();
 
-    while(true /* TODO: have a way to stop the render thread */) {
+    while(true) {
         renderThreadKickoff.sleepWait();
+        if(!running) {
+            break;
+        }
 
         auto timeStart = std::chrono::steady_clock::now();
         materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame

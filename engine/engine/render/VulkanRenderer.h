@@ -172,6 +172,8 @@ namespace Carrot {
         void startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext);
         void recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
 
+        void waitForRenderToComplete();
+
         /**
          * Time taken to perform the latest command buffer record
          */
@@ -179,6 +181,7 @@ namespace Carrot {
 
     public:
         void initImGuiPass(const vk::RenderPass& renderPass);
+        void shutdownImGui();
 
     public:
         // Camera => Camera matrices
@@ -292,6 +295,7 @@ namespace Carrot {
         Render::Context recordingRenderContext; //< render context object use for the frame being recorded
         std::uint8_t recordingFrameIndex = 0;
         std::int8_t bufferPointer = 0;
+        bool running = true; //< should the render thread continue running?
         Async::Counter renderThreadReady; //< non-0 if render thread is rendering a frame, 0 if it is available for the next frame
         Async::Counter renderThreadKickoff; //< non-0 if render thread is waiting to start, 0 if still rendering
 

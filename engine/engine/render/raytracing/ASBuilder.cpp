@@ -244,7 +244,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         framesBeforeRebuildingTLAS = 11;
     } else {
         // TODO merge with requireTLASRebuildNow
-        if(framesBeforeRebuildingTLAS == 0 || !tlas) {
+        if(framesBeforeRebuildingTLAS == 0 || !currentTLAS) {
             buildTopLevelAS(renderContext, false);
             framesBeforeRebuildingTLAS = 20;
         } else {
@@ -255,11 +255,15 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         }
     }
 
-    if(geometriesBuffer)
+    if(geometriesBuffer) {
         geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer->getWholeView();
+    }
 
-    if(instancesBuffers[lastFrameIndexForTLAS])
+    if(instancesBuffers[lastFrameIndexForTLAS]) {
         instancesBufferPerFrame[renderContext.swapchainIndex] = instancesBuffers[lastFrameIndexForTLAS]->getWholeView();
+    }
+
+    tlasPerFrame[renderContext.swapchainIndex] = currentTLAS;
 }
 
 void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild) {
@@ -583,7 +587,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     }
 
     if(vkInstances.empty()) {
-        tlas = nullptr;
+        currentTLAS = nullptr;
         instancesBuffers[lastFrameIndexForTLAS] = nullptr;
         return;
     }
@@ -643,7 +647,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
             .flags = flags,
             .mode = update ? vk::BuildAccelerationStructureModeKHR::eUpdate : vk::BuildAccelerationStructureModeKHR::eBuild,
-            .srcAccelerationStructure = update ? tlas->getVulkanAS() : nullptr,
+            .srcAccelerationStructure = update ? currentTLAS->getVulkanAS() : nullptr,
             .geometryCount = 1,
             .pGeometries = &topASGeometry,
     };
@@ -655,10 +659,10 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
                 .size = sizeInfo.accelerationStructureSize,
                 .type = vk::AccelerationStructureTypeKHR::eTopLevel,
         };
-        if(tlas) {
-            tlas->update(createInfo);
+        if(currentTLAS) {
+            currentTLAS->update(createInfo);
         } else {
-            tlas = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
+            currentTLAS = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
         }
     }
 
@@ -676,7 +680,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         });
     }
 
-    buildInfo.dstAccelerationStructure = tlas->getVulkanAS();
+    buildInfo.dstAccelerationStructure = currentTLAS->getVulkanAS();
     buildInfo.scratchData.deviceAddress = scratchBufferAddress;
 
     // one build offset per instance
@@ -714,7 +718,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *tlasBuildSemaphore[renderContext.swapchainIndex]);
 
     bottomLevelBarriers.clear();
-    const BufferView& tlasBufferView = tlas->getBuffer().view;
+    const BufferView& tlasBufferView = currentTLAS->getBuffer().view;
     topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
             .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuildKHR,
             .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWriteKHR,
@@ -748,9 +752,9 @@ void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
     cmds.pipelineBarrier2KHR(dependency);
 }
 
-std::unique_ptr<Carrot::AccelerationStructure>& Carrot::ASBuilder::getTopLevelAS() {
+Carrot::AccelerationStructure* Carrot::ASBuilder::getTopLevelAS(const Carrot::Render::Context& renderContext) {
     verify(GetCapabilities().supportsRaytracing, "Raytracing is not supported");
-    return tlas;
+    return tlasPerFrame[renderContext.swapchainIndex].get();
 }
 
 void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
@@ -771,6 +775,9 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
 
     geometriesBufferPerFrame.clear();
     geometriesBufferPerFrame.resize(newCount);
+
+    tlasPerFrame.clear();
+    tlasPerFrame.resize(newCount);
 }
 
 void Carrot::ASBuilder::onSwapchainSizeChange(int newWidth, int newHeight) {
