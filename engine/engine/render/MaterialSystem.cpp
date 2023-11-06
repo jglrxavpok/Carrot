@@ -427,7 +427,6 @@ namespace Carrot::Render {
         }
 
         if(materialHandles.getRequiredStorageCount() >= materialBufferSize) {
-            WaitDeviceIdle();
             reallocateMaterialBuffer(Carrot::Math::nextPowerOf2(materialHandles.getRequiredStorageCount()));
         }
 

@@ -109,7 +109,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
                     bindLastFrameTexture(data.gBufferInput.positions, 3);
 
-                    bindLastFrameTexture(data.momentsHistoryHistoryLength, 5);
+                    bindLastFrameTexture(data.momentsHistoryHistoryLength, 5, vk::ImageLayout::eGeneral);
 
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 7);
@@ -405,10 +405,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Render::FrameResource noisyLighting; // for debug
         Render::FrameResource lighting;
         Render::FrameResource reflections;
-        Render::FrameResource momentsHistoryHistoryLength;
-        Render::FrameResource temporalDenoiseResult;
-        Render::FrameResource varianceCopyOutputDebug;
-        Render::FrameResource fireflyRejectionResult;
         Render::FrameResource mergeResult;
     };
 
@@ -420,16 +416,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.lighting = builder.read(denoisedGI.denoiseResult, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.reflections = builder.read(denoisedReflections.denoiseResult, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                /*
-                data.lighting = builder.read(spatialDenoise.getData().denoisedPingPong[(spatialDenoise.getData().iterationCount) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.momentsHistoryHistoryLength = builder.read(temporalAccumulationPass.getData().momentsHistoryHistoryLength, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.temporalDenoiseResult = builder.read(temporalAccumulationPass.getData().denoisedResult, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.fireflyRejectionResult = builder.read(fireflyRejectionPass.getData().output, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-
-                data.varianceCopyOutputDebug = builder.read(spatialDenoise.getData().variancePingPong[(spatialDenoise.getData().iterationCount) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
-                //data.varianceCopyOutputDebug = builder.read(varianceCopyPass.getData().varianceOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
-                 */
                 data.mergeResult = builder.createRenderTarget("Merged",
                                                               vk::Format::eR32G32B32A32Sfloat,
                                                               framebufferSize,
@@ -462,11 +448,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.reflections, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                //renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.momentsHistoryHistoryLength, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                //renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.noisyLighting, frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                //renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.temporalDenoiseResult, frame.swapchainIndex), 1, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                //renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.varianceCopyOutputDebug, frame.swapchainIndex), 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                //renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.fireflyRejectionResult, frame.swapchainIndex), 1, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

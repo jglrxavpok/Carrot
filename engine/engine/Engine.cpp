@@ -712,7 +712,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
                     .swapchainCount = 1,
                     .pSwapchains = swapchains,
-                    .pImageIndices = &frameIndex,
+                    .pImageIndices = &swapchainIndex,
                     .pResults = nullptr,
             };
 

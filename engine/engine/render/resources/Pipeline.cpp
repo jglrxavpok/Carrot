@@ -275,7 +275,13 @@ void Carrot::Pipeline::createGraphicsTemplate() {
                     .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
             });
         } else if(description.type == PipelineType::Denoising) {
-            // R32G32B32 moments
+            // R32G32B32A32 moments+history length
+            graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
+                    .blendEnable = false,
+
+                    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            });
+            // R32G32B32A32 first spatially denoised image
             graphicsPipelineTemplate.colorBlendAttachments.push_back(vk::PipelineColorBlendAttachmentState {
                     .blendEnable = false,
 
@@ -523,6 +529,10 @@ std::vector<vk::DescriptorSet> Carrot::Pipeline::allocateAutofillDescriptorSets(
         .pSetLayouts = layouts.data(),
     };
     std::vector<vk::DescriptorSet> sets = driver.getLogicalDevice().allocateDescriptorSets(allocateInfo);
+
+    for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+        DebugNameable::nameSingle<vk::DescriptorSet>(Carrot::sprintf("Autofill descriptor pipeline %s, set %d, frame %llu", description.originatingResource.getName().c_str(), setID, i), sets[i]);
+    }
 
     std::vector<NamedBinding> bindings{};
     for(const auto& [stage, module] : stages->getModuleMap()) {

@@ -1237,7 +1237,7 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
     };
     debugDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()) * MaxCameras,
+            .maxSets = static_cast<uint32_t>(getSwapchainImageCount()),
             .poolSizeCount = 1,
             .pPoolSizes = &poolSize,
     });

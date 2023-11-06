@@ -13,6 +13,7 @@
 namespace Carrot::Render {
     // TODO: multi-window support
     constexpr const char* PipelinePath = "resources/pipelines/imgui.json";
+    constexpr int MaxTextures = 1024;
 
     struct PImpl {
         std::unique_ptr<Texture> fontsTexture;
@@ -21,6 +22,7 @@ namespace Carrot::Render {
         Render::PerFrame<Carrot::BufferAllocation> indexBuffers; // index buffer per frame
         Render::PerFrame<Carrot::BufferAllocation> stagingBuffers;
         Render::PerFrame<vk::UniqueSemaphore> bufferCopySync;
+        Render::PerFrame<bool> rebindTextures; // rebind entire texture array (with a white texture)
 
         std::vector<Carrot::ImGuiVertex> vertexStorage; // temporary storage to store vertices before copy to GPU-visible memory
         std::vector<std::uint32_t> indexStorage; // temporary storage to store indices before copy to GPU-visible memory
@@ -173,6 +175,15 @@ namespace Carrot::Render {
         auto& textureIndexMap = pImpl->textureIndices;
         textureIndexMap.clear();
 
+        if(pImpl->rebindTextures[renderContext.swapchainIndex]) {
+            for (int i = 0; i < MaxTextures; ++i) {
+                renderer.bindTexture(*pImpl->pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
+                                     vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
+                                     i);
+            }
+            pImpl->rebindTextures[renderContext.swapchainIndex] = false;
+        }
+
         int drawIndex = 0;
         auto& drawCommand = packet.drawCommands.emplace_back();
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
@@ -246,10 +257,13 @@ namespace Carrot::Render {
         pImpl->indexBuffers.resize(newCount);
         pImpl->stagingBuffers.resize(newCount);
         pImpl->bufferCopySync.resize(newCount);
+        pImpl->rebindTextures.resize(newCount);
 
         vk::SemaphoreCreateInfo semaphoreInfo{};
         for(std::size_t i = 0; i < newCount; i++) {
             pImpl->bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+
+            pImpl->rebindTextures[i] = true;
         }
     }
 } // Carrot::Render
