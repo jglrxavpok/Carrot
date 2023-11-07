@@ -16,6 +16,7 @@ static std::atomic<std::int64_t> TaskDataCreatedThisFrameCount{0};
 static std::atomic<std::int64_t> TaskDataCreatedCount{0};
 static std::atomic<std::int64_t> AliveTaskDataCount{0};
 static std::atomic<std::int64_t> ActiveTaskCount{0};
+static std::atomic<std::int64_t> FiberCreatedCount{0};
 static Carrot::RuntimeOption ShowDebug("Debug/Task Scheduler", false);
 
 namespace Carrot {
@@ -23,6 +24,20 @@ namespace Carrot {
     Async::TaskLane TaskScheduler::AssetLoading;
     Async::TaskLane TaskScheduler::MainLoop;
     Async::TaskLane TaskScheduler::Rendering;
+
+    struct FiberLocalStorage {
+        TaskData* taskData = nullptr;
+        std::string* fiberTracyID = nullptr; //< unique ID for Tracy. Allocated once and never deleted, because it may need to survive past 'main' !
+        bool isFullyInit = false;
+        bool tracyEnteredFiber = false;
+    };
+
+    static_assert(sizeof(FiberLocalStorage) <= sizeof(Cider::FiberHandle::localStorage));
+
+    static TaskData& getTaskData(Cider::FiberHandle& fiberHandle) {
+        auto* fls = (FiberLocalStorage*) &fiberHandle.localStorage[0];
+        return *fls->taskData;
+    }
 
     TaskData::TaskData() {
         TaskDataCreatedCount++;
@@ -80,6 +95,20 @@ namespace Carrot {
     }
 
     TaskScheduler::TaskScheduler() {
+        Cider::Fiber::OnFiberEnter = [](Cider::Fiber* fiber) {
+            auto* fls = (FiberLocalStorage*) &fiber->getHandlePtr()->localStorage[0];
+            if(fls && fls->isFullyInit) {
+                fls->tracyEnteredFiber = true;
+                TracyFiberEnter(fls->fiberTracyID->c_str());
+            }
+        };
+        Cider::Fiber::OnFiberExit = [](Cider::Fiber* fiber) {
+            auto* fls = (FiberLocalStorage*) &fiber->getHandlePtr()->localStorage[0];
+            if(fls && fls->tracyEnteredFiber) {
+                TracyFiberLeave;
+            }
+        };
+
         const std::size_t inFrameCount = frameParallelWorkParallelismAmount();
         std::size_t availableThreads = inFrameCount + assetLoadingParallelismAmount();
         parallelThreads.resize(availableThreads);
@@ -110,7 +139,8 @@ namespace Carrot {
         }
 
         taskData = std::make_shared<TaskData>();
-        auto fiberProc = [pTaskKeepAlive = taskData, pTaskScheduler = this](Cider::FiberHandle& fiber) {
+        std::string* pTracyID = new std::string{Carrot::sprintf("Fiber %ll", FiberCreatedCount++)};
+        auto fiberProc = [pTracyID, pTaskKeepAlive = taskData, pTaskScheduler = this](Cider::FiberHandle& fiber) {
             {
                 struct Data {
                     std::shared_ptr<TaskData> pTask;
@@ -120,6 +150,11 @@ namespace Carrot {
                         .pTask = pTaskKeepAlive,
                         .pTaskScheduler = pTaskScheduler
                 };
+
+                auto* fls = (FiberLocalStorage*) &fiber.localStorage[0];
+                fls->fiberTracyID = pTracyID;
+                fls->isFullyInit = true;
+
                 while(true) {
                     // yield this fiber, and sets up task data for reuse
                     fiber.yieldOnTop([](void* pUserData) {
@@ -184,15 +219,6 @@ namespace Carrot {
             }
             ImGui::End();
         }
-    }
-
-    struct FiberLocalStorage {
-        TaskData* taskData;
-    };
-
-    static TaskData& getTaskData(Cider::FiberHandle& fiberHandle) {
-        auto* fls = (FiberLocalStorage*) &fiberHandle.localStorage[0];
-        return *fls->taskData;
     }
 
     void TaskScheduler::parallelFor(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) {
