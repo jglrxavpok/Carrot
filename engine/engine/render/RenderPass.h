@@ -56,6 +56,7 @@ namespace Carrot::Render {
         explicit CompiledPass(
                 Graph& graph,
                 std::string name,
+                const vk::Extent2D& viewportSize,
                 vk::UniqueRenderPass&& renderPass,
                 const std::vector<vk::ClearValue>& clearValues,
                 const CompiledPassCallback& renderingCode,
@@ -70,6 +71,7 @@ namespace Carrot::Render {
         explicit CompiledPass(
                 Graph& graph,
                 std::string name,
+                const vk::Extent2D& viewportSize,
                 const CompiledPassCallback& renderingCode,
                 std::vector<ImageTransition>&& prePassTransitions,
                 InitCallback initCallback,
@@ -103,7 +105,7 @@ namespace Carrot::Render {
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     public:
         void setInputsOutputsForDebug(const std::list<Input>& inputs, const std::list<Output>& outputs);
@@ -163,7 +165,14 @@ namespace Carrot::Render {
         void present(FrameResource& toPresent);
 
     public:
-        std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Graph& graph);
+        /**
+         * Compile this pass into 'graph', preparing framebuffers and render passes
+         * @param driver
+         * @param window window for which this pass will be used. Mostly used to know the size of the framebuffer
+         * @param graph
+         * @return
+         */
+        std::unique_ptr<CompiledPass> compile(Carrot::VulkanDriver& driver, Window& window, Graph& graph);
 
     protected:
         Carrot::VulkanDriver& driver;

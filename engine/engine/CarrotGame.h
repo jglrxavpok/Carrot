@@ -32,7 +32,7 @@ namespace Carrot {
 
         virtual void changeGraphicsWaitSemaphores(std::uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {};
 
-        virtual void onSwapchainSizeChange(int newWidth, int newHeight) override {};
+        virtual void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override {};
 
         virtual void onSwapchainImageCountChange(std::size_t newCount) override {};
 

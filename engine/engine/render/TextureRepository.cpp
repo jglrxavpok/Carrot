@@ -20,7 +20,8 @@ namespace Carrot::Render {
 
     Texture::Ref TextureRepository::getRef(const FrameResource& texture, size_t swapchainIndex) {
         if(texture.imageOrigin == Render::ImageOrigin::SurfaceSwapchain) {
-            return driver.getSwapchainTextures()[swapchainIndex];
+            verify(texture.pOriginWindow != nullptr, "Cannot get the swapchain texture if there is no origin window!");
+            return texture.pOriginWindow->getSwapchainTexture(swapchainIndex);
         }
         return getRef(texture.rootID, swapchainIndex);
     }
@@ -49,7 +50,8 @@ namespace Carrot::Render {
         }
 
         if(resource.imageOrigin == Render::ImageOrigin::SurfaceSwapchain) {
-            return *driver.getSwapchainTextures()[frameIndex];
+            verify(resource.pOriginWindow != nullptr, "Cannot get the swapchain texture if there is no origin window!");
+            return *(resource.pOriginWindow->getSwapchainTexture(frameIndex));
         }
 
         auto it = textures[frameIndex].find(resource.rootID);

@@ -531,7 +531,7 @@ namespace Carrot::Render {
         boundTextures.resize(newCount);
     }
 
-    void MaterialSystem::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void MaterialSystem::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
         // no-op
     }
 }

@@ -338,8 +338,8 @@ void Carrot::Pipeline::createGraphicsTemplate() {
     graphicsPipelineTemplate.viewport = vk::Viewport {
             .x = 0.0f,
             .y = 0.0f,
-            .width = static_cast<float>(driver.getFinalRenderSize().width),
-            .height = static_cast<float>(driver.getFinalRenderSize().height),
+            .width = static_cast<float>(driver.getFinalRenderSize(GetEngine().getMainWindow()).width),
+            .height = static_cast<float>(driver.getFinalRenderSize(GetEngine().getMainWindow()).height),
 
             .minDepth = -1.0f,
             .maxDepth = 1.0f,
@@ -348,8 +348,8 @@ void Carrot::Pipeline::createGraphicsTemplate() {
     graphicsPipelineTemplate.scissor = vk::Rect2D {
             .offset = {0,0},
             .extent = {
-                    .width = driver.getFinalRenderSize().width,
-                    .height = driver.getFinalRenderSize().height,
+                    .width = driver.getFinalRenderSize(GetEngine().getMainWindow()).width,
+                    .height = driver.getFinalRenderSize(GetEngine().getMainWindow()).height,
             }
     };
 
@@ -668,7 +668,7 @@ void Carrot::Pipeline::onSwapchainImageCountChange(std::size_t newCount) {
     allocateDescriptorSets();
 }
 
-void Carrot::Pipeline::onSwapchainSizeChange(int newWidth, int newHeight) {
+void Carrot::Pipeline::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
 
 }
 

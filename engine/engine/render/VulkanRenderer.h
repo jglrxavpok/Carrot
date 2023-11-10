@@ -163,7 +163,7 @@ namespace Carrot {
         Render::Lighting& getLighting() { return lighting; }
 
     public:
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 

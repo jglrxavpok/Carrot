@@ -37,7 +37,7 @@ namespace Carrot::Render {
     public: // SwapchainAware
         void onSwapchainImageCountChange(size_t newCount) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
         void createGPUSkeletonBuffers();

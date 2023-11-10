@@ -51,7 +51,7 @@ namespace Carrot {
 
     public: // SwapchainAware
         virtual void onSwapchainImageCountChange(size_t newCount) override;
-        virtual void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        virtual void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
         std::size_t currentFrame = 0;

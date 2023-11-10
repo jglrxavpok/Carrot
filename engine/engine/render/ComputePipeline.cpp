@@ -229,7 +229,7 @@ void Carrot::ComputePipeline::onSwapchainImageCountChange(size_t newCount) {
     SwapchainAware::onSwapchainImageCountChange(newCount);
 }
 
-void Carrot::ComputePipeline::onSwapchainSizeChange(int newWidth, int newHeight) {}
+void Carrot::ComputePipeline::onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) {}
 
 void Carrot::ComputePipeline::dispatchInline(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ, vk::CommandBuffer& commandBuffer) const {
     dispatchSizes->x = groupCountX;

@@ -30,7 +30,8 @@ namespace Peeler {
             float size = 1.0f; // in units
         } gridData;
         gridData.color = color;
-        gridData.screenSize = renderContext.renderer.getVulkanDriver().getFinalRenderSize();
+        gridData.screenSize.width = renderContext.pViewport->getWidth();
+        gridData.screenSize.height = renderContext.pViewport->getHeight();
         gridData.lineWidth = lineWidth;
         gridData.cellSize = cellSize;
         gridData.size = size;

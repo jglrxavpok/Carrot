@@ -223,7 +223,7 @@ namespace Carrot::Render {
         createSkinningPipelines();
     }
 
-    void SkeletalModelRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void SkeletalModelRenderer::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
         // no-op
     }
 

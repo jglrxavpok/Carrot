@@ -85,5 +85,5 @@ namespace Carrot {
         buffers.resize(newCount);
     }
 
-    void SingleFrameStackGPUAllocator::onSwapchainSizeChange(int newWidth, int newHeight) { /* no-op */ }
+    void SingleFrameStackGPUAllocator::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) { /* no-op */ }
 }

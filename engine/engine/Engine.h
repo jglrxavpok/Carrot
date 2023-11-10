@@ -118,15 +118,15 @@ namespace Carrot {
     public: // GLFW event handling
 
         /// Called by GLFW when the window is resized
-        void onWindowResize();
+        void onWindowResize(Window& which);
 
-        void onMouseMove(double xpos, double ypos, bool updateOnlyDelta);
+        void onMouseMove(Window& which, double xpos, double ypos, bool updateOnlyDelta);
 
-        void onKeyEvent(int key, int scancode, int action, int mods);
+        void onKeyEvent(Window& which, int key, int scancode, int action, int mods);
 
-        void onMouseButton(int button, int action, int mods);
+        void onMouseButton(Window& which, int button, int action, int mods);
 
-        void onScroll(double xScroll, double yScroll);
+        void onScroll(Window& which, double xScroll, double yScroll);
 
     public:
 
@@ -203,7 +203,7 @@ namespace Carrot {
         void setSkybox(Skybox::Type type);
         std::shared_ptr<Render::Texture> getSkyboxCubeMap() const;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
 
@@ -248,9 +248,13 @@ namespace Carrot {
 
     public: // viewports
         Render::Viewport& getMainViewport();
-        Render::Viewport& createViewport();
+        Render::Viewport& createViewport(Window& window);
 
         SceneManager& getSceneManager();
+
+    public: // windows
+        Window& getMainWindow();
+        Window& getWindow(WindowID id);
 
     public: // inputs
 
@@ -412,7 +416,7 @@ namespace Carrot {
 
         Configuration config;
         Capabilities capabilities;
-        Window window;
+        Window mainWindow;
         double currentTime = 0.0;
         double mouseX = 0.0;
         double mouseY = 0.0;
@@ -441,7 +445,6 @@ namespace Carrot {
         std::vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};
-        std::vector<vk::UniqueFence> imagesInFlight{};
         std::vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>> additionalWaitSemaphores{};
 
         std::list<Carrot::Render::Viewport> viewports;
@@ -520,8 +523,6 @@ namespace Carrot {
         void createTracyContexts();
 
         void allocateGraphicsCommandBuffers();
-
-        void updateImGuiTextures(std::size_t swapchainLength);
 
         Capabilities& getModifiableCapabilities() { return capabilities; }
 

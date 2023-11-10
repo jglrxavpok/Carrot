@@ -29,7 +29,7 @@ namespace Carrot {
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
         VulkanRenderer& renderer;

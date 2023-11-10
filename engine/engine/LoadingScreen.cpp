@@ -53,10 +53,10 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     });
 
-    auto imageIndex = device.acquireNextImageKHR(engine.getVulkanDriver().getSwapchain(), UINT64_MAX, *imageAvailable, nullptr).value;
+    auto imageIndex = device.acquireNextImageKHR(engine.getMainWindow().getSwapchain(), UINT64_MAX, *imageAvailable, nullptr).value;
 
-    auto& swapchainExtent = driver.getWindowFramebufferExtent(); // TODO: will need to be changed for VR compatible loading screens
-    auto swapchainView = engine.getVulkanDriver().getSwapchainTextures()[imageIndex]->getView();
+    auto& swapchainExtent = engine.getMainWindow().getFramebufferExtent(); // TODO: will need to be changed for VR compatible loading screens
+    auto swapchainView = engine.getMainWindow().getSwapchainTexture(imageIndex)->getView();
     vk::UniqueFramebuffer framebuffer = device.createFramebufferUnique(vk::FramebufferCreateInfo {
         .renderPass = *blitRenderPass,
         .attachmentCount = 1,
@@ -160,7 +160,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     GetVulkanDriver().submitGraphics(submitInfo, nullptr);
     engine.getGraphicsQueue().waitIdle();
 
-    vk::SwapchainKHR swapchains[] = { engine.getVulkanDriver().getSwapchain() };
+    vk::SwapchainKHR swapchains[] = { engine.getMainWindow().getSwapchain() };
 
     vk::PresentInfoKHR presentInfo{
             .waitSemaphoreCount = 1,

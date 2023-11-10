@@ -60,7 +60,7 @@ namespace Carrot::Render {
         // resize buffers for frame-by-frame storage
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
 
-        ImGui_ImplGlfw_InitForVulkan(renderer.getVulkanDriver().getWindow().getGLFWPointer(), true);
+        ImGui_ImplGlfw_InitForVulkan(renderer.getEngine().getMainWindow().getGLFWPointer(), true);
     }
 
     void ImGuiBackend::newFrame() {

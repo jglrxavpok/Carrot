@@ -57,14 +57,13 @@ namespace Peeler {
 
     void Application::setupCamera(Carrot::Render::Context renderContext) {
         if(renderContext.pViewport == &gameViewport) {
-            auto viewportSize = engine.getVulkanDriver().getFinalRenderSize();
-            cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+            cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
 
             currentScene.setupCamera(renderContext);
 
             if(!isPlaying) {
                 // override any primary camera the game might have
-                cameraController.applyTo(glm::vec2{ gameViewport.getWidth(), gameViewport.getHeight() }, gameViewport.getCamera());
+                cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
             }
         }
     }
@@ -77,7 +76,7 @@ namespace Peeler {
             Tools::ProjectMenuHolder::onFrame(renderContext);
 
             // TODO: do it more cleanly with shortcuts for multiple actions
-            if(glfwGetKey(GetVulkanDriver().getWindow().getGLFWPointer(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(GetVulkanDriver().getWindow().getGLFWPointer(), GLFW_KEY_S) == GLFW_PRESS) {
+            if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS && glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_S) == GLFW_PRESS) {
                 if(canSave()) {
                     this->triggerSave();
                 }
@@ -649,7 +648,7 @@ namespace Peeler {
         float startY = ImGui::GetCursorScreenPos().y;
 
         std::int32_t windowX, windowY;
-        engine.getVulkanDriver().getWindow().getPosition(windowX, windowY);
+        engine.getMainWindow().getPosition(windowX, windowY);
         glm::vec2 offset = glm::mod(glm::vec2{ startX - windowX, startY - windowY }, glm::vec2 { ImGui::GetMainViewport()->Size.x, ImGui::GetMainViewport()->Size.y });
         gameViewport.setOffset(offset);
 
@@ -1096,7 +1095,7 @@ namespace Peeler {
     Application::Application(Carrot::Engine& engine): Carrot::CarrotGame(engine), Tools::ProjectMenuHolder(),
         currentScene(engine.getSceneManager().getMainScene()),
         settings("peeler"),
-        gameViewport(engine.createViewport()),
+        gameViewport(engine.createViewport(GetEngine().getMainWindow())),
         playButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button.png"),
         playActiveButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/play_button_playing.png"),
         pauseButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/pause_button.png"),
@@ -1141,7 +1140,7 @@ namespace Peeler {
         currentScene.world.freezeLogic();
         currentScene.bindToViewport(gameViewport);
 
-        Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver());
+        Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver(), engine.getMainWindow());
 
         auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
                                      [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
@@ -1409,7 +1408,7 @@ namespace Peeler {
 
             bool maximised = windowObj["maximised"].GetBool();
 
-            auto& window = engine.getVulkanDriver().getWindow();
+            auto& window = engine.getMainWindow();
             window.setPosition(x, y);
             window.setWindowSize(width, height);
             if(maximised) {
@@ -1470,7 +1469,7 @@ namespace Peeler {
         {
             rapidjson::Value windowObj(rapidjson::kObjectType);
 
-            const auto& window = engine.getVulkanDriver().getWindow();
+            const auto& window = engine.getMainWindow();
 
             std::int32_t x, y;
             std::int32_t w, h;
@@ -1537,7 +1536,7 @@ namespace Peeler {
         return !isPlaying;
     }
 
-    void Application::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void Application::onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) {
 
     }
 
@@ -1639,7 +1638,7 @@ namespace Peeler {
         if(settings.currentProject) {
             projectName = settings.currentProject.value().stem().string();
         }
-        engine.getVulkanDriver().getWindow().setTitle(Carrot::sprintf("Peeler - %s%s", projectName.c_str(), hasUnsavedChanges ? "*" : ""));
+        engine.getMainWindow().setTitle(Carrot::sprintf("Peeler - %s%s", projectName.c_str(), hasUnsavedChanges ? "*" : ""));
     }
 
     static std::shared_ptr<Carrot::Render::LightHandle> lightHandle = nullptr;

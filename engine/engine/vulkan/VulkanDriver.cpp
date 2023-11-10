@@ -175,7 +175,7 @@ static Carrot::RuntimeOption showGPUMemoryUsage("GPU/Show GPU Memory", false);
 
 Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config, Carrot::Engine* engine, Carrot::VR::Interface* vrInterface):
     vrInterface(vrInterface),
-    window(window),
+    mainWindow(window),
     graphicsCommandPool([&]() { return createGraphicsCommandPool(); }),
     computeCommandPool([&]() { return createComputeCommandPool(); }),
     transferCommandPool([&]() { return createTransferCommandPool(); }),
@@ -185,15 +185,13 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
 {
     ZoneScoped;
 
-    window.getFramebufferSize(framebufferWidth, framebufferHeight);
-
     vk::DynamicLoader dl;
     auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
 
     createInstance();
     setupDebugMessenger();
-    createSurface();
+    mainWindow.createSurface(); // required to pick a physical device (needs a present queue)
     pickPhysicalDevice();
     fillRenderingCapabilities();
     createLogicalDevice();
@@ -228,7 +226,8 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
                                                                          .unnormalizedCoordinates = false,
                                                                  }, getAllocationCallbacks());
 
-    createSwapChain();
+    depthFormat = findDepthFormat();
+    mainWindow.createSwapChain();
     createUniformBuffers();
 
     emptyDescriptorSetLayout = device->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -429,7 +428,7 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
             families.computeFamily = index;
         }
 
-        bool presentSupport = device.getSurfaceSupportKHR(index, surface);
+        bool presentSupport = device.getSurfaceSupportKHR(index, mainWindow.getSurface());
         if(presentSupport) {
             families.presentFamily = index;
         }
@@ -646,21 +645,8 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
     return required.empty();
 }
 
-void Carrot::VulkanDriver::createSurface() {
-    auto cAllocator = (const VkAllocationCallbacks*) allocator;
-    VkSurfaceKHR cSurface;
-    if(glfwCreateWindowSurface(static_cast<VkInstance>(*instance), window.getGLFWPointer(), cAllocator, &cSurface) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create window surface.");
-    }
-    surface = cSurface;
-}
-
 Carrot::SwapChainSupportDetails Carrot::VulkanDriver::querySwapChainSupport(const vk::PhysicalDevice& device) {
-    return {
-            .capabilities = device.getSurfaceCapabilitiesKHR(surface),
-            .formats = device.getSurfaceFormatsKHR(surface),
-            .presentModes = device.getSurfacePresentModesKHR(surface),
-    };
+    return mainWindow.getSwapChainSupport(device);
 }
 
 std::uint32_t Carrot::VulkanDriver::findMemoryType(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
@@ -739,118 +725,6 @@ Carrot::Render::Texture& Carrot::VulkanDriver::getDefaultTexture() {
     return *defaultTexture;
 }
 
-vk::SurfaceFormatKHR Carrot::VulkanDriver::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats) {
-    for(const auto& available : formats) {
-        if(available.format == vk::Format::eA8B8G8R8SrgbPack32 && available.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-            return available;
-        }
-    }
-
-    // TODO: rank based on format and color space
-
-    return formats[0];
-}
-
-vk::PresentModeKHR Carrot::VulkanDriver::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes) {
-    // TODO: don't use Mailbox for VSync
-    for(const auto& mode : presentModes) {
-        if(mode == vk::PresentModeKHR::eMailbox) {
-            return mode;
-        }
-    }
-
-    // only one guaranteed
-    return vk::PresentModeKHR::eFifo;
-}
-
-vk::Extent2D Carrot::VulkanDriver::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) {
-    if(capabilities.currentExtent.width != UINT32_MAX) {
-        return capabilities.currentExtent; // no choice
-    } else {
-        int width, height;
-        glfwGetFramebufferSize(window.getGLFWPointer(), &width, &height);
-
-        vk::Extent2D actualExtent = {
-                static_cast<uint32_t>(width),
-                static_cast<uint32_t>(height),
-        };
-
-        actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-        actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
-        return actualExtent;
-    }
-}
-
-void Carrot::VulkanDriver::createSwapChain() {
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(getPhysicalDevice());
-
-    vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-    vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-    vk::Extent2D swapchainExtent = chooseSwapExtent(swapChainSupport.capabilities);
-
-    uint32_t imageCount = swapChainSupport.capabilities.minImageCount +1;
-    // maxImageCount == 0 means we can request any number of image
-    if(swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-        // ensure we don't ask for more images than the device will be able to provide
-        imageCount = swapChainSupport.capabilities.maxImageCount;
-    }
-
-    vk::SwapchainCreateInfoKHR createInfo{
-            .surface = getSurface(),
-            .minImageCount = imageCount,
-            .imageFormat = surfaceFormat.format,
-            .imageColorSpace = surfaceFormat.colorSpace,
-            .imageExtent = swapchainExtent,
-            .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst, // used for rendering or blit
-
-            .preTransform = swapChainSupport.capabilities.currentTransform,
-
-            // don't try to blend with background of other windows
-            .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-
-            .presentMode = presentMode,
-            .clipped = VK_TRUE,
-
-            .oldSwapchain = *swapchain,
-    };
-
-    // image info
-
-    uint32_t indices[] = { getQueueFamilies().graphicsFamily.value(), getQueueFamilies().presentFamily.value() };
-
-    if(getQueueFamilies().presentFamily != getQueueFamilies().graphicsFamily) {
-        // image will be shared between the 2 queues, without explicit transfers
-        createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-        createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = indices;
-    } else {
-        // always on same queue, no need to share
-
-        createInfo.imageSharingMode = vk::SharingMode::eExclusive;
-        createInfo.queueFamilyIndexCount = 0;
-        createInfo.pQueueFamilyIndices = nullptr;
-    }
-
-    swapchain = getLogicalDevice().createSwapchainKHRUnique(createInfo, getAllocationCallbacks());
-
-    this->swapchainImageFormat = surfaceFormat.format;
-    this->windowFramebufferExtent = swapchainExtent;
-
-    const auto& swapchainDeviceImages = getLogicalDevice().getSwapchainImagesKHR(*swapchain);
-    swapchainTextures.clear();
-    for(const auto& image : swapchainDeviceImages) {
-        swapchainTextures.emplace_back(std::make_shared<Carrot::Render::Texture>(*this, image, vk::Extent3D {
-            .width = swapchainExtent.width,
-            .height = swapchainExtent.height,
-            .depth = 1,
-        }, swapchainImageFormat));
-    }
-
-    depthFormat = findDepthFormat();
-}
-
 vk::Format Carrot::VulkanDriver::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
     for(auto& format : candidates) {
         vk::FormatProperties properties = getPhysicalDevice().getFormatProperties(format);
@@ -884,17 +758,21 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 
 Carrot::VulkanDriver::~VulkanDriver() {
     shutdownAftermath();
-    swapchain.reset();
-    instance->destroySurfaceKHR(getSurface(), getAllocationCallbacks());
-    // TODO: don't destroy device if in VR
-}
-
-void Carrot::VulkanDriver::cleanupSwapchain() {
-    swapchainTextures.clear();
-    swapchain.reset();
 }
 
 void Carrot::VulkanDriver::createUniformBuffers() {
+}
+
+size_t Carrot::VulkanDriver::getSwapchainImageCount() const {
+    return mainWindow.getSwapchainImageCount(); // assumed that all windows share the same format
+}
+
+vk::Format Carrot::VulkanDriver::getSwapchainImageFormat() const {
+    return mainWindow.getSwapchainImageFormat(); // assumed that all windows share the same format
+}
+
+Carrot::Window& Carrot::VulkanDriver::getMainWindow() {
+    return mainWindow;
 }
 
 void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size) {
@@ -913,14 +791,6 @@ void Carrot::VulkanDriver::updateViewportAndScissor(vk::CommandBuffer& commands,
     });
 }
 
-void Carrot::VulkanDriver::fetchNewFramebufferSize() {
-    window.getFramebufferSize(framebufferWidth, framebufferHeight);
-    while(framebufferWidth == 0 || framebufferHeight == 0) {
-        window.getFramebufferSize(framebufferWidth, framebufferHeight);
-        glfwWaitEvents();
-    }
-}
-
 bool Carrot::QueueFamilies::isComplete() const {
     return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 }
@@ -929,16 +799,16 @@ void Carrot::VulkanDriver::onSwapchainImageCountChange(size_t newCount) {
     /*re-*/ createUniformBuffers();
 }
 
-void Carrot::VulkanDriver::onSwapchainSizeChange(int newWidth, int newHeight) {
-
+void Carrot::VulkanDriver::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
+    // no-op
 }
 
-const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize() const {
-    if(config.runInVR) {
+const vk::Extent2D& Carrot::VulkanDriver::getFinalRenderSize(Window& window) const {
+    if(config.runInVR && window.isMainWindow()) {
         auto& vrSession = GetEngine().getVRSession();
         return vrSession.getEyeRenderSize();
     } else {
-        return getWindowFramebufferExtent();
+        return window.getFramebufferExtent();
     }
 }
 

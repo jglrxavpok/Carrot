@@ -104,10 +104,10 @@ Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
     std::filesystem::current_path(exePath.parent_path());
 }
 
-Carrot::Engine::Engine(Configuration config): window(WINDOW_WIDTH, WINDOW_HEIGHT, config),
+Carrot::Engine::Engine(Configuration config): mainWindow(*this, WINDOW_WIDTH, WINDOW_HEIGHT, config),
 instanceSetterHack(this),
 vrInterface(config.runInVR ? std::make_unique<VR::Interface>(*this) : nullptr),
-vkDriver(window, config, this, vrInterface.get()),
+vkDriver(mainWindow, config, this, vrInterface.get()),
 resourceAllocator(std::move(std::make_unique<ResourceAllocator>(vkDriver))),
 renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
                                                               std::vector<ScreenSpaceVertex> {
@@ -124,6 +124,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     {
     ZoneScoped;
     instance = this;
+    mainWindow.setMainWindow();
     changeTickRate(config.tickRate);
 
 #if USE_LIVEPP
@@ -161,7 +162,7 @@ void Carrot::Engine::init() {
     allocateGraphicsCommandBuffers();
     createTracyContexts();
 
-    createViewport(); // main viewport
+    createViewport(mainWindow); // main viewport
     getMainViewport().vrCompatible = true;
 
     // quickly render something on screen
@@ -200,8 +201,8 @@ void Carrot::Engine::init() {
     };
 
     if(config.runInVR) {
-        Render::GraphBuilder leftEyeGraph(vkDriver);
-        Render::GraphBuilder mainGraph(vkDriver);
+        Render::GraphBuilder leftEyeGraph(vkDriver, mainWindow);
+        Render::GraphBuilder mainGraph(vkDriver, mainWindow);
         Render::Composer companionComposer(vkDriver);
 
         auto leftEyeFinalPass = fillGraphBuilder(leftEyeGraph, Render::Eye::LeftEye);
@@ -231,7 +232,7 @@ void Carrot::Engine::init() {
 
         getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     } else {
-        Render::GraphBuilder mainGraph(vkDriver);
+        Render::GraphBuilder mainGraph(vkDriver, mainWindow);
 
         auto lastPass = fillGraphBuilder(mainGraph);
 
@@ -241,7 +242,6 @@ void Carrot::Engine::init() {
 
         getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     }
-    updateImGuiTextures(getSwapchainImageCount());
 
     initConsole();
     initInputStructures();
@@ -380,11 +380,11 @@ void Carrot::Engine::run() {
             }
         }
 
-        if(glfwWindowShouldClose(window.getGLFWPointer())) {
+        if(glfwWindowShouldClose(mainWindow.getGLFWPointer())) {
             if(game->onCloseButtonPressed()) {
                 game->requestShutdown();
             } else {
-                glfwSetWindowShouldClose(window.getGLFWPointer(), false);
+                glfwSetWindowShouldClose(mainWindow.getGLFWPointer(), false);
             }
         }
 
@@ -405,7 +405,8 @@ void Carrot::Engine::run() {
                 IO::ActionSet::syncXRActions();
             }
 
-            onMouseMove(mouseX, mouseY, true); // Reset input actions based mouse dx/dy
+
+            onMouseMove(mainWindow, mouseX, mouseY, true); // Reset input actions based mouse dx/dy
         }
 
         {
@@ -460,7 +461,7 @@ void Carrot::Engine::run() {
         Carrot::Threads::reduceCPULoad();
     }
 
-    glfwHideWindow(window.getGLFWPointer());
+    glfwHideWindow(mainWindow.getGLFWPointer());
 
     WaitDeviceIdle();
 }
@@ -470,25 +471,25 @@ void Carrot::Engine::stop() {
 }
 
 static void windowResize(GLFWwindow* window, int width, int height) {
-    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onWindowResize();
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    GetEngine().onWindowResize(*pWindow);
 }
 
 static void mouseMove(GLFWwindow* window, double xpos, double ypos) {
-    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onMouseMove(xpos, ypos, false);
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    GetEngine().onMouseMove(*pWindow, xpos, ypos, false);
 }
 
 static void mouseButton(GLFWwindow* window, int button, int action, int mods) {
-    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onMouseButton(button, action, mods);
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    GetEngine().onMouseButton(*pWindow, button, action, mods);
 }
 
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onKeyEvent(key, scancode, action, mods);
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    GetEngine().onKeyEvent(*pWindow, key, scancode, action, mods);
 
-    if(!app->isGrabbingCursor()) {
+    if(!GetEngine().isGrabbingCursor()) {
         ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     }
 }
@@ -502,15 +503,18 @@ static void joystickCallback(int joystickID, int event) {
 }
 
 static void scrollCallback(GLFWwindow* window, double xScroll, double yScroll) {
-    auto app = reinterpret_cast<Carrot::Engine*>(glfwGetWindowUserPointer(window));
-    app->onScroll(xScroll, yScroll);
+    auto pWindow = reinterpret_cast<Carrot::Window*>(glfwGetWindowUserPointer(window));
+    GetEngine().onScroll(*pWindow, xScroll, yScroll);
 
-    if(!app->isGrabbingCursor()) {
+    if(!GetEngine().isGrabbingCursor()) {
         ImGui_ImplGlfw_ScrollCallback(window, xScroll, yScroll);
     }
 }
 
 void Carrot::Engine::initWindow() {
+    glfwSetJoystickCallback(joystickCallback);
+
+    auto& window = mainWindow; // TODO: reuse for different windows
     glfwSetWindowUserPointer(window.getGLFWPointer(), this);
     glfwSetFramebufferSizeCallback(window.getGLFWPointer(), windowResize);
 
@@ -518,7 +522,6 @@ void Carrot::Engine::initWindow() {
     glfwSetMouseButtonCallback(window.getGLFWPointer(), mouseButton);
     glfwSetKeyCallback(window.getGLFWPointer(), keyCallback);
     glfwSetScrollCallback(window.getGLFWPointer(), scrollCallback);
-    glfwSetJoystickCallback(joystickCallback);
 }
 
 void Carrot::Engine::initVulkan() {
@@ -624,7 +627,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "begin command buffer");
         }
 
-        TracyVkZone(tracyCtx[frameIndex], mainCommandBuffers[frameIndex], "Main command buffer");
+        TracyVkZone(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex], "Main command buffer");
 
         if(config.runInVR) {
             {
@@ -655,7 +658,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             }
         }
 
-        TracyVkCollect(tracyCtx[frameIndex], mainCommandBuffers[frameIndex]);
+        TracyVkCollect(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex]);
     }
 
     mainCommandBuffers[frameIndex].end();
@@ -704,7 +707,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             waitForFrameTasks();
 
             GetVulkanDriver().submitGraphics(submitInfo, *inFlightFences[frameIndex]);
-            vk::SwapchainKHR swapchains[] = { vkDriver.getSwapchain() };
+            vk::SwapchainKHR swapchains[] = { mainWindow.getSwapchain() };
 
             vk::PresentInfoKHR presentInfo{
                     .waitSemaphoreCount = 1,
@@ -772,11 +775,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
         }
 
-        //TracyVulkanCollect(tracyCtx[lastFrameIndex]);
-
         {
             ZoneScopedN("acquireNextImageKHR");
-            auto nextImage = getLogicalDevice().acquireNextImageKHR(vkDriver.getSwapchain(), UINT64_MAX,
+            auto nextImage = getLogicalDevice().acquireNextImageKHR(mainWindow.getSwapchain(), UINT64_MAX,
                                                                     *imageAvailableSemaphore[currentFrame], nullptr);
             result = nextImage.result;
 
@@ -958,7 +959,6 @@ void Carrot::Engine::createSynchronizationObjects() {
     imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-    imagesInFlight.resize(getSwapchainImageCount());
 
     vk::SemaphoreCreateInfo semaphoreInfo{};
 
@@ -974,8 +974,9 @@ void Carrot::Engine::createSynchronizationObjects() {
 }
 
 void Carrot::Engine::recreateSwapchain() {
+    auto& window = mainWindow; // TODO: share code between windows
     Carrot::Log::info("recreateSwapchain");
-    vkDriver.fetchNewFramebufferSize();
+    window.fetchNewFramebufferSize(); // TODO: how to handle minimized windows?
 
     renderer.waitForRenderToComplete();
 
@@ -984,17 +985,18 @@ void Carrot::Engine::recreateSwapchain() {
     WaitDeviceIdle();
 
     std::size_t previousImageCount = getSwapchainImageCount();
-    vkDriver.cleanupSwapchain();
-    vkDriver.createSwapChain();
+    window.cleanupSwapChain();
+    window.createSwapChain();
 
     // TODO: only recreate if necessary
     if(previousImageCount != vkDriver.getSwapchainImageCount()) {
         onSwapchainImageCountChange(vkDriver.getSwapchainImageCount());
     }
-    onSwapchainSizeChange(vkDriver.getFinalRenderSize().width, vkDriver.getFinalRenderSize().height);
+    vk::Extent2D swapchainImageSize = vkDriver.getFinalRenderSize(window);
+    onSwapchainSizeChange(window, swapchainImageSize.width, swapchainImageSize.height);
 }
 
-void Carrot::Engine::onWindowResize() {
+void Carrot::Engine::onWindowResize(Window& which) {
     framebufferResized = true;
 }
 
@@ -1049,14 +1051,17 @@ void Carrot::Engine::createCameras() {
         getMainViewport().getCamera(Render::Eye::LeftEye) = Camera(glm::mat4{1.0f}, glm::mat4{1.0f});
         getMainViewport().getCamera(Render::Eye::RightEye) = Camera(glm::mat4{1.0f}, glm::mat4{1.0f});
     } else {
-        auto camera = Camera(45.0f, vkDriver.getWindowFramebufferExtent().width / (float) vkDriver.getWindowFramebufferExtent().height, 0.1f, 1000.0f);
+        auto camera = Camera(45.0f, mainWindow.getFramebufferExtent().width / (float) mainWindow.getFramebufferExtent().height, 0.1f, 1000.0f);
         camera.getPositionRef() = glm::vec3(center.x, center.y + 1, 5.0f);
         camera.getTargetRef() = center;
         getMainViewport().getCamera(Render::Eye::NoVR) = std::move(camera);
     }
 }
 
-void Carrot::Engine::onMouseMove(double xpos, double ypos, bool updateOnlyDelta) {
+void Carrot::Engine::onMouseMove(Window& which, double xpos, double ypos, bool updateOnlyDelta) {
+    if(which != mainWindow) {
+        return;
+    }
     double dx = xpos-mouseX;
     double dy = ypos-mouseY;
     for(auto& [id, callback] : mouseDeltaCallbacks) {
@@ -1087,19 +1092,26 @@ Carrot::Camera& Carrot::Engine::getMainViewportCamera(Carrot::Render::Eye eye) {
     return getMainViewport().getCamera(eye);
 }
 
-void Carrot::Engine::onMouseButton(int button, int action, int mods) {
+void Carrot::Engine::onMouseButton(Window& which, int button, int action, int mods) {
+    if(which != mainWindow) {
+        return;
+    }
     for(auto& [id, callback] : mouseButtonCallbacks) {
         callback(button, action == GLFW_PRESS || action == GLFW_REPEAT, mods);
     }
 }
 
-void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
+void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action, int mods) {
     if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
         Console::instance().toggleVisibility();
     }
 
     if(key == GLFW_KEY_F2 && action == GLFW_PRESS) {
         takeScreenshot();
+    }
+
+    if(which != mainWindow) {
+        return;
     }
 
     for(auto& [id, callback] : keyCallbacks) {
@@ -1124,19 +1136,12 @@ void Carrot::Engine::onKeyEvent(int key, int scancode, int action, int mods) {
                 state.down = pressed;
         }
     }
-
-            /*
-            if(key == GLFW_KEY_G && action == GLFW_PRESS) {
-                grabCursor = !grabCursor;
-                glfwSetInputMode(window.get(), GLFW_CURSOR, grabCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-            }*/
-
-
-
-    // TODO: pass input to game
 }
 
-void Carrot::Engine::onScroll(double xScroll, double yScroll) {
+void Carrot::Engine::onScroll(Window& which, double xScroll, double yScroll) {
+    if(which != mainWindow) {
+        return;
+    }
     // TODO: transfer xScroll?
     for(auto& [id, callback] : mouseWheelCallbacks) {
         callback(yScroll);
@@ -1200,9 +1205,9 @@ void Carrot::Engine::takeScreenshot() {
     }
     auto screenshotPath = screenshotFolder / (std::to_string(currentTime) + ".png");
 
-    auto& lastImage = vkDriver.getSwapchainTextures()[lastFrameIndex];
+    std::shared_ptr<Render::Texture> lastImage = mainWindow.getSwapchainTexture(lastFrameIndex);
 
-    auto& swapchainExtent = vkDriver.getFinalRenderSize();
+    auto& swapchainExtent = vkDriver.getFinalRenderSize(mainWindow);
     auto screenshotImage = Image(vkDriver,
                                  {swapchainExtent.width, swapchainExtent.height, 1},
                                  vk::ImageUsageFlagBits::eTransferDst,
@@ -1353,52 +1358,22 @@ void Carrot::Engine::onSwapchainImageCountChange(size_t newCount) {
     createSynchronizationObjects();
 
     game->onSwapchainImageCountChange(newCount);
-
-    updateImGuiTextures(newCount);
 }
 
-void Carrot::Engine::onSwapchainSizeChange(int newWidth, int newHeight) {
-    vkDriver.onSwapchainSizeChange(newWidth, newHeight);
-
-    renderer.onSwapchainSizeChange(newWidth, newHeight);
-
-    if(config.runInVR) {
-        leftEyeGlobalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
-        rightEyeGlobalFrameGraph->onSwapchainSizeChange(newWidth, newHeight);
+void Carrot::Engine::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
+    if(config.runInVR && window.isMainWindow()) {
+        leftEyeGlobalFrameGraph->onSwapchainSizeChange(window, newWidth, newHeight);
+        rightEyeGlobalFrameGraph->onSwapchainSizeChange(window, newWidth, newHeight);
     }
-    getMainViewport().onSwapchainSizeChange(newWidth, newHeight);
+    getMainViewport().onSwapchainSizeChange(window, newWidth, newHeight);
     for(auto& v : viewports) {
         if(&v == &getMainViewport()) {
             continue;
         }
-        v.onSwapchainSizeChange(newWidth, newHeight);
+        v.onSwapchainSizeChange(window, newWidth, newHeight);
     }
 
-    game->onSwapchainSizeChange(newWidth, newHeight);
-
-    updateImGuiTextures(getSwapchainImageCount());
-}
-
-void Carrot::Engine::updateImGuiTextures(std::size_t swapchainLength) {
-    imguiTextures.resize(swapchainLength);
-    verify(getMainViewport().getRenderGraph() != nullptr, "No render graph associated to main viewport");
-    /* TODO: Do I still want GBuffer debugging? -> or at least redo it
-    for (int i = 0; i < swapchainLength; ++i) {
-        auto& textures = imguiTextures[i];
-        textures.allChannels = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.resolved, i);
-
-        textures.albedo = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.albedo, i);
-
-        textures.position = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.positions, i);
-
-        textures.normal = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.normals, i);
-
-        textures.depth = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.depthStencil, i);
-
-        textures.intProperties = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.flags, i);
-
-        textures.transparent = &getMainViewport().getRenderGraph()->getTexture(gResolvePassData.transparent, i);
-    }*/
+    game->onSwapchainSizeChange(window, newWidth, newHeight);
 }
 
 Carrot::Render::Context Carrot::Engine::newRenderContext(std::size_t swapchainFrameIndex, Carrot::Render::Viewport& viewport, Carrot::Render::Eye eye) {
@@ -1437,10 +1412,19 @@ Carrot::Render::Viewport& Carrot::Engine::getMainViewport() {
     return viewports.front();
 }
 
-Carrot::Render::Viewport& Carrot::Engine::createViewport() {
+Carrot::Render::Viewport& Carrot::Engine::createViewport(Window& window) {
     verify(viewports.size() < VulkanRenderer::MaxViewports, "Too many viewports!");
-    viewports.emplace_back(renderer);
+    viewports.emplace_back(renderer, window.getWindowID());
     return viewports.back();
+}
+
+Carrot::Window& Carrot::Engine::getMainWindow() {
+    return mainWindow;
+}
+
+Carrot::Window& Carrot::Engine::getWindow(WindowID id) {
+    // TODO
+    return mainWindow;
 }
 
 Carrot::Audio::AudioManager& Carrot::Engine::getAudioManager() {
@@ -1471,14 +1455,14 @@ void Carrot::Engine::addWaitSemaphoreBeforeRendering(const vk::PipelineStageFlag
 
 void Carrot::Engine::grabCursor() {
     grabbingCursor = true;
-    glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(mainWindow.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
 }
 
 void Carrot::Engine::ungrabCursor() {
     grabbingCursor = false;
-    glfwSetInputMode(window.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(mainWindow.getGLFWPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 }

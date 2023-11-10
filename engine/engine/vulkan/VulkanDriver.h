@@ -50,12 +50,6 @@ namespace Carrot {
         bool isComplete() const;
     };
 
-    struct SwapChainSupportDetails {
-        vk::SurfaceCapabilitiesKHR capabilities;
-        std::vector<vk::SurfaceFormatKHR> formats;
-        std::vector<vk::PresentModeKHR> presentModes;
-    };
-
     template<typename TResource>
     class DeferredDestruction {
     public:
@@ -115,8 +109,6 @@ namespace Carrot {
         std::uint32_t getGraphicsQueueIndex() { return graphicsQueueIndex; };
         Vulkan::SynchronizedQueue& getComputeQueue() { return computeQueue; };
 
-        vk::SurfaceKHR getSurface() { return surface; };
-
         /// Queries the format and present modes from a given physical device
         Carrot::SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device);
 
@@ -157,25 +149,15 @@ namespace Carrot {
         vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling,
                                        vk::FormatFeatureFlags features);
 
-        const vk::Extent2D& getWindowFramebufferExtent() const { return windowFramebufferExtent; };
-        const vk::Extent2D& getFinalRenderSize() const;
+        const vk::Extent2D& getFinalRenderSize(Window& window) const;
 
-        std::vector<std::shared_ptr<Render::Texture>>& getSwapchainTextures() { return swapchainTextures; };
+        size_t getSwapchainImageCount() const;
 
-        size_t getSwapchainImageCount() const { return swapchainTextures.size(); };
-
-        vk::Format getSwapchainImageFormat() const { return swapchainImageFormat; };
-
-        /// Create the swapchain
-        void createSwapChain();
-
-        void cleanupSwapchain();
-
-        vk::SwapchainKHR& getSwapchain() { return *swapchain; };
+        vk::Format getSwapchainImageFormat() const;
 
         void createUniformBuffers();
 
-        Window& getWindow() { return window; };
+        Window& getMainWindow();
 
         vk::Format getDepthFormat() { return depthFormat; };
 
@@ -219,11 +201,9 @@ namespace Carrot {
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);
 
-        void fetchNewFramebufferSize();
-
         void onSwapchainImageCountChange(size_t newCount) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     public:
         void deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer);
@@ -239,14 +219,12 @@ namespace Carrot {
             explicit DeferredCommandBufferDestruction(vk::CommandPool pool, vk::CommandBuffer buffer): pool(pool), buffer(buffer) {}
         };
 
-        Window& window;
+        Window& mainWindow;
         Configuration config;
 
         std::mutex deviceMutex;
 
         const vk::AllocationCallbacks* allocator = nullptr;
-        std::int32_t framebufferWidth;
-        std::int32_t framebufferHeight;
         Engine* engine = nullptr;
 
         VR::Interface* vrInterface = nullptr;
@@ -262,7 +240,6 @@ namespace Carrot {
         Vulkan::SynchronizedQueue presentQueue;
         Vulkan::SynchronizedQueue transferQueue;
         Vulkan::SynchronizedQueue computeQueue;
-        vk::SurfaceKHR surface{};
 
         std::list<DeferredImageDestruction> deferredImageDestructions;
         std::list<DeferredImageViewDestruction> deferredImageViewDestructions;
@@ -279,13 +256,9 @@ namespace Carrot {
         vk::UniqueSampler linearRepeatSampler{};
         vk::UniqueSampler nearestRepeatSampler{};
 
-        vk::UniqueSwapchainKHR swapchain{};
         vk::PhysicalDeviceLimits physicalDeviceLimits{};
         vk::PhysicalDeviceFeatures physicalDeviceFeatures{};
-        vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Format depthFormat = vk::Format::eUndefined;
-        vk::Extent2D windowFramebufferExtent{};
-        std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
 
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
 
@@ -324,9 +297,6 @@ namespace Carrot {
         /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
         bool checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice);
 
-        /// Create the rendering surface for Vulkan
-        void createSurface();
-
         /// Create the command pool for transfer operations
         vk::UniqueCommandPool createTransferCommandPool();
 
@@ -337,19 +307,6 @@ namespace Carrot {
         vk::UniqueCommandPool createComputeCommandPool();
 
         void createDefaultTexture();
-
-        /// Choose best surface format from the list of given formats
-        /// \param formats
-        /// \return
-        vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& formats);
-
-        /// Choose best present mode from the list of given modes
-        /// \param presentModes
-        /// \return
-        vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
-
-        /// Choose resolution of swap chain images
-        vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
     public:
         void startFrame(const Render::Context& renderContext);
