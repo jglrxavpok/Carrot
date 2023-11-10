@@ -758,6 +758,8 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 
 Carrot::VulkanDriver::~VulkanDriver() {
     shutdownAftermath();
+
+    mainWindow.destroySwapchainAndSurface();
 }
 
 void Carrot::VulkanDriver::createUniformBuffers() {

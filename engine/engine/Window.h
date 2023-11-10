@@ -68,6 +68,7 @@ namespace Carrot {
         void createSurface();
         void createSwapChain();
         void cleanupSwapChain();
+        void destroySwapchainAndSurface();
         SwapChainSupportDetails getSwapChainSupport(const vk::PhysicalDevice& device);
 
         size_t getSwapchainImageCount() const;

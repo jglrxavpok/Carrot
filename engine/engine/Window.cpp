@@ -131,15 +131,16 @@ namespace Carrot {
         swapchain.reset();
     }
 
+    void Window::destroySwapchainAndSurface() {
+        swapchain.reset();
+        engine.getVulkanDriver().getInstance().destroySurfaceKHR(getSurface(), engine.getVulkanDriver().getAllocationCallbacks());
+        // TODO: don't destroy device if in VR
+    }
+
     Window::~Window() {
         if(!glfwWindow || !ownsWindow) {
             return;
         }
-
-        // TODO: move back to VulkanDriver: crashes on exit
-        swapchain.reset();
-        engine.getVulkanDriver().getInstance().destroySurfaceKHR(getSurface(), engine.getVulkanDriver().getAllocationCallbacks());
-        // TODO: don't destroy device if in VR
 
         glfwDestroyWindow(glfwWindow);
         glfwWindow = nullptr;
