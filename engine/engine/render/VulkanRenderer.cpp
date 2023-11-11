@@ -281,17 +281,17 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
     }
 }
 
-void Carrot::VulkanRenderer::onSwapchainSizeChange(int newWidth, int newHeight) {
+void Carrot::VulkanRenderer::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
     boundTextures.clear();
-    raytracer->onSwapchainSizeChange(newWidth, newHeight);
-    gBuffer->onSwapchainSizeChange(newWidth, newHeight);
-    materialSystem.onSwapchainSizeChange(newWidth, newHeight);
-    lighting.onSwapchainSizeChange(newWidth, newHeight);
+    raytracer->onSwapchainSizeChange(window, newWidth, newHeight);
+    gBuffer->onSwapchainSizeChange(window, newWidth, newHeight);
+    materialSystem.onSwapchainSizeChange(window, newWidth, newHeight);
+    lighting.onSwapchainSizeChange(window, newWidth, newHeight);
     if(asBuilder) {
-        asBuilder->onSwapchainSizeChange(newWidth, newHeight);
+        asBuilder->onSwapchainSizeChange(window, newWidth, newHeight);
     }
     for(const auto& [name, pipePtrPtr]: GetAssetServer().pipelines.snapshot()) {
-        (*pipePtrPtr)->onSwapchainSizeChange(newWidth, newHeight);
+        (*pipePtrPtr)->onSwapchainSizeChange(window, newWidth, newHeight);
     }
 }
 
@@ -765,7 +765,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     singleFrameAllocator.newFrame(renderContext.swapchainIndex);
 
     prepareThreadRenderPackets.busyWait();
-    if(glfwGetKey(driver.getWindow().getGLFWPointer(), GLFW_KEY_F9) == GLFW_PRESS) {
+    if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F9) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
 }
@@ -823,20 +823,20 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
 void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext) {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
-    // wait for previous frame
-    waitForRenderToComplete();
-    recordingFrameIndex = frameIndex;
 
     {
         ZoneScopedN("ImGui Render");
         Console::instance().renderToImGui(getEngine());
         ImGui::Render();
+        imGuiBackend.render(renderContext, GetEngine().getMainWindow().getWindowID(), ImGui::GetDrawData());
 
         ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-
-        imGuiBackend.render(renderContext, ImGui::GetDrawData());
+        ImGui::RenderPlatformWindowsDefault(nullptr, (void*)&renderContext.swapchainIndex);
     }
+
+    // wait for previous frame
+    waitForRenderToComplete();
+    recordingFrameIndex = frameIndex;
 
     // swap double-buffered data
     {
@@ -1004,6 +1004,10 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
     return driver.getEngine();
+}
+
+Carrot::Render::ImGuiBackend& Carrot::VulkanRenderer::getImGuiBackend() {
+    return imGuiBackend;
 }
 
 Carrot::Render::MaterialSystem& Carrot::VulkanRenderer::getMaterialSystem() {
@@ -1493,8 +1497,8 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
 
     ForwardFrameInfo frameInfo {
             .frameCount = getFrameCount(),
-            .frameWidth = GetVulkanDriver().getWindowFramebufferExtent().width,
-            .frameHeight = GetVulkanDriver().getWindowFramebufferExtent().height,
+            .frameWidth = renderContext.pViewport->getWidth(),
+            .frameHeight = renderContext.pViewport->getHeight(),
 
             .hasTLAS = useRaytracingVersion ? getASBuilder().getTopLevelAS(renderContext) != nullptr : false
     };

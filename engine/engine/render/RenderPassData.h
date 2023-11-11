@@ -71,6 +71,7 @@ namespace Carrot::Render {
             size = toCopy.size;
             format = toCopy.format;
             imageOrigin = toCopy.imageOrigin;
+            pOriginWindow = toCopy.pOriginWindow;
             owner = toCopy.owner;
             previousLayout = toCopy.previousLayout;
             layout = toCopy.layout;
@@ -83,6 +84,7 @@ namespace Carrot::Render {
             size = parent->size;
             format = parent->format;
             imageOrigin = parent->imageOrigin;
+            pOriginWindow = parent->pOriginWindow;
             owner = parent->owner;
             previousLayout = parent->previousLayout;
             layout = parent->layout;
@@ -94,6 +96,7 @@ namespace Carrot::Render {
         TextureSize size;
         vk::Format format = vk::Format::eUndefined;
         ImageOrigin imageOrigin = ImageOrigin::Created;
+        Window* pOriginWindow = nullptr; //< if image origin is SurfaceSwapchain, points to the window the swapchain is from
         Carrot::UUID id;
         Carrot::UUID rootID;
         Carrot::UUID parentID;

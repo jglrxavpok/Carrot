@@ -10,6 +10,10 @@
 #include "core/utils/UUID.h"
 #include "RenderPassData.h"
 
+namespace Carrot {
+    class Window;
+}
+
 namespace Carrot::Render {
     class Graph: public SwapchainAware {
     public:
@@ -48,7 +52,7 @@ namespace Carrot::Render {
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
         void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
@@ -70,7 +74,7 @@ namespace Carrot::Render {
         using SetupPassCallback = std::function<void(GraphBuilder&, Pass<Data>&, Data&)>;
 
     public:
-        explicit GraphBuilder(Carrot::VulkanDriver& driver);
+        explicit GraphBuilder(Carrot::VulkanDriver& driver, Window& window);
         GraphBuilder(const GraphBuilder& toCopy) = default;
         GraphBuilder& operator=(const GraphBuilder& toCopy) = default;
 
@@ -116,6 +120,7 @@ namespace Carrot::Render {
         }
 
     private:
+        Window& window;
         FrameResource swapchainImage;
         std::list<FrameResource> resources;
         std::set<Carrot::UUID> toPresent;

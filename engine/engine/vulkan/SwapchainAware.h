@@ -5,6 +5,10 @@
 #pragma once
 #include <cstdint>
 
+namespace Carrot {
+    class Window;
+}
+
 class SwapchainAware {
 public:
     /**
@@ -18,7 +22,7 @@ public:
      * @param newWidth
      * @param newHeight
      */
-    virtual void onSwapchainSizeChange(int newWidth, int newHeight) {}
+    virtual void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) {}
 };
 
 

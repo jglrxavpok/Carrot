@@ -22,9 +22,10 @@ namespace ed = ax::NodeEditor;
 namespace Carrot::Render {
     static RuntimeOption DebugRenderGraphs("Debug/Render Graphs", false);
 
-    GraphBuilder::GraphBuilder(VulkanDriver& driver) {
+    GraphBuilder::GraphBuilder(VulkanDriver& driver, Window& window): window(window) {
         swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
         swapchainImage.imageOrigin = ImageOrigin::SurfaceSwapchain;
+        swapchainImage.pOriginWindow = &window;
         swapchainImage.owner = this;
         resources.emplace_back(&swapchainImage);
     }
@@ -138,7 +139,7 @@ namespace Carrot::Render {
         auto result = std::make_unique<Graph>(GetVulkanDriver());
 
         for(const auto& [name, pass] : passes) {
-            result->passes.emplace_back(name, std::move(pass->compile(GetVulkanDriver(), *result)));
+            result->passes.emplace_back(name, std::move(pass->compile(GetVulkanDriver(), window, *result)));
         }
 
         // TODO: actually sort
@@ -413,9 +414,9 @@ namespace Carrot::Render {
         }
     }
 
-    void Graph::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void Graph::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
         for(auto& [n, pass] : passes) {
-            pass->onSwapchainSizeChange(newWidth, newHeight);
+            pass->onSwapchainSizeChange(window, newWidth, newHeight);
         }
     }
 

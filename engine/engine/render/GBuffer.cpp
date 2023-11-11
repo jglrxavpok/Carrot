@@ -14,7 +14,7 @@ void Carrot::GBuffer::onSwapchainImageCountChange(size_t newCount) {
 
 }
 
-void Carrot::GBuffer::onSwapchainSizeChange(int newWidth, int newHeight) {
+void Carrot::GBuffer::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
     // TODO
 }
 

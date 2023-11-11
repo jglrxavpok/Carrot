@@ -183,7 +183,7 @@ namespace Carrot::Render {
         reallocateDescriptorSets();
     }
 
-    void Lighting::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void Lighting::onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) {
         // no-op
     }
 

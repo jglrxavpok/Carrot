@@ -16,6 +16,7 @@
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
         std::string name,
+        const vk::Extent2D& viewportSize,
         vk::UniqueRenderPass&& renderPass,
         const std::vector<vk::ClearValue>& clearValues,
         const CompiledPassCallback& renderingCode,
@@ -38,7 +39,7 @@ Carrot::Render::CompiledPass::CompiledPass(
         passID(passID)
         {
             rasterized = true;
-            viewportSize = GetEngine().getVulkanDriver().getFinalRenderSize();
+            this->viewportSize = viewportSize;
             createFramebuffers();
             if(prerecordable) {
                 createCommandPool();
@@ -49,6 +50,7 @@ Carrot::Render::CompiledPass::CompiledPass(
 Carrot::Render::CompiledPass::CompiledPass(
         Carrot::Render::Graph& graph,
         std::string name,
+        const vk::Extent2D& viewportSize,
         const CompiledPassCallback& renderingCode,
         std::vector<ImageTransition>&& prePassTransitions,
         InitCallback initCallback,
@@ -68,7 +70,7 @@ Carrot::Render::CompiledPass::CompiledPass(
         passID(passID)
         {
             rasterized = false;
-            viewportSize = GetEngine().getVulkanDriver().getFinalRenderSize();
+            this->viewportSize = viewportSize;
             createFramebuffers();
             if(prerecordable) {
                 createCommandPool();
@@ -162,7 +164,7 @@ void Carrot::Render::PassBase::present(FrameResource& toPresent) {
     output->resource.layout = vk::ImageLayout::ePresentSrcKHR;
 }
 
-std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, Carrot::Render::Graph& graph) {
+std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(Carrot::VulkanDriver& driver, Carrot::Window& window, Carrot::Render::Graph& graph) {
     // TODO: input and output can be the same attachment (subpasses)
     std::vector<vk::AttachmentDescription> attachments;
     std::vector<vk::AttachmentReference> inputAttachments;
@@ -235,6 +237,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         }
     }
 
+    vk::Extent2D viewportSize = window.getFramebufferExtent();
     std::unique_ptr<CompiledPass> result = nullptr;
     if(rasterized) {
         vk::SubpassDescription mainSubpass{
@@ -314,7 +317,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             renderSize.height = maxHeight;
             return framebuffers;
         };
-        result = std::make_unique<CompiledPass>(graph, name, std::move(renderPass), clearValues,
+        result = std::make_unique<CompiledPass>(graph, name, viewportSize, std::move(renderPass), clearValues,
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     } else {
         auto init = [outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
@@ -329,7 +332,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             renderSize.height = 0;
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
-        result = make_unique<CompiledPass>(graph, name, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
+        result = make_unique<CompiledPass>(graph, name, viewportSize, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     }
     result->setInputsOutputsForDebug(inputs, outputs);
     postCompile(*result);
@@ -365,7 +368,7 @@ void Carrot::Render::CompiledPass::onSwapchainImageCountChange(size_t newCount) 
 
 }
 
-void Carrot::Render::CompiledPass::onSwapchainSizeChange(int newWidth, int newHeight) {
+void Carrot::Render::CompiledPass::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
     viewportSize = vk::Extent2D {
             .width = static_cast<std::uint32_t>(newWidth),
             .height = static_cast<std::uint32_t>(newHeight),

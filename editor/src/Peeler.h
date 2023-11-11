@@ -41,7 +41,7 @@ namespace Peeler {
         void recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
                                           vk::CommandBuffer& commands) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 

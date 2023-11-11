@@ -780,7 +780,7 @@ void Carrot::ASBuilder::onSwapchainImageCountChange(size_t newCount) {
     tlasPerFrame.resize(newCount);
 }
 
-void Carrot::ASBuilder::onSwapchainSizeChange(int newWidth, int newHeight) {
+void Carrot::ASBuilder::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
 
 }
 

@@ -4,7 +4,10 @@
 
 #pragma once
 
+#include <engine/Window.h>
+
 struct ImDrawData;
+struct ImGuiViewport;
 
 namespace Carrot {
     class VulkanRenderer;
@@ -12,6 +15,7 @@ namespace Carrot {
     namespace Render {
         struct Context;
         struct PImpl;
+        struct ImGuiRendererData;
 
         /**
          * Implementation of an custom ImGui backend for Carrot.
@@ -29,12 +33,16 @@ namespace Carrot {
             void newFrame();
 
             /// Queues render packets to render the current ImGui windows, called from main thread
-            void render(const Carrot::Render::Context& renderContext, ImDrawData* pDrawData);
+            void render(const Carrot::Render::Context& renderContext, WindowID windowID, ImDrawData* pDrawData);
 
             /// Record commands based on last call to 'render', called from render thread
             void record(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext);
 
             void onSwapchainImageCountChange(std::size_t newCount);
+
+        public: // called by ImGui
+            void createWindowImGui(ImGuiViewport* pViewport);
+            void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, std::size_t swapchainIndex);
 
         private:
             VulkanRenderer& renderer;

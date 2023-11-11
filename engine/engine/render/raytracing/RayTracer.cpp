@@ -48,8 +48,5 @@ std::vector<const char*> Carrot::RayTracer::getRequiredDeviceExtensions() {
 
 void Carrot::RayTracer::onSwapchainImageCountChange(std::size_t newCount) {}
 
-void Carrot::RayTracer::onSwapchainSizeChange(int newWidth, int newHeight) {
-    if(!available)
-        return;
-    // TODO: re-do descriptors
+void Carrot::RayTracer::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
 }

@@ -14,7 +14,7 @@
 #include "ViewportBufferObject.h"
 
 namespace Carrot::Render {
-    Viewport::Viewport(VulkanRenderer& renderer): renderer(renderer) {
+    Viewport::Viewport(VulkanRenderer& renderer, WindowID windowID): renderer(renderer), windowID(windowID) {
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
     }
 
@@ -65,7 +65,10 @@ namespace Carrot::Render {
         }
     }
 
-    void Viewport::onSwapchainSizeChange(int newWidth, int newHeight) {
+    void Viewport::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
+        if(window != windowID) {
+            return;
+        }
         if(followSwapchainSize) {
             resize(newWidth, newHeight);
             followSwapchainSize = true;
@@ -167,14 +170,14 @@ namespace Carrot::Render {
         this->width = w;
         this->height = h;
         if(renderGraph) {
-            renderGraph->onSwapchainSizeChange(w, h);
+            renderGraph->onSwapchainSizeChange(GetEngine().getWindow(windowID), w, h);
         }
         followSwapchainSize = false;
     }
 
     std::uint32_t Viewport::getWidth() const {
         if(followSwapchainSize) {
-            return GetVulkanDriver().getFinalRenderSize().width;
+            return GetEngine().getWindow(windowID).getFramebufferExtent().width;
         } else {
             return width;
         }
@@ -182,7 +185,7 @@ namespace Carrot::Render {
 
     std::uint32_t Viewport::getHeight() const {
         if(followSwapchainSize) {
-            return GetVulkanDriver().getFinalRenderSize().height;
+            return GetEngine().getWindow(windowID).getFramebufferExtent().width;
         } else {
             return height;
         }

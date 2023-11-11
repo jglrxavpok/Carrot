@@ -11,23 +11,53 @@
 #include <core/render/VertexTypes.h>
 
 namespace Carrot::Render {
-    // TODO: multi-window support
     constexpr const char* PipelinePath = "resources/pipelines/imgui.json";
     constexpr int MaxTextures = 1024;
 
     struct PImpl {
         std::unique_ptr<Texture> fontsTexture;
-        std::shared_ptr<Pipeline> pipeline;
-        Render::PerFrame<Carrot::BufferAllocation> vertexBuffers; // vertex buffer per frame
-        Render::PerFrame<Carrot::BufferAllocation> indexBuffers; // index buffer per frame
-        Render::PerFrame<Carrot::BufferAllocation> stagingBuffers;
-        Render::PerFrame<vk::UniqueSemaphore> bufferCopySync;
-        Render::PerFrame<bool> rebindTextures; // rebind entire texture array (with a white texture)
 
-        std::vector<Carrot::ImGuiVertex> vertexStorage; // temporary storage to store vertices before copy to GPU-visible memory
-        std::vector<std::uint32_t> indexStorage; // temporary storage to store indices before copy to GPU-visible memory
+        struct PerFrameData {
+            std::shared_ptr<Pipeline> pipeline;
+            Render::PerFrame<Carrot::BufferAllocation> vertexBuffers; // vertex buffer per frame
+            Render::PerFrame<Carrot::BufferAllocation> indexBuffers; // index buffer per frame
+            Render::PerFrame<Carrot::BufferAllocation> stagingBuffers;
+            Render::PerFrame<vk::UniqueSemaphore> bufferCopySync;
+            Render::PerFrame<bool> rebindTextures; // rebind entire texture array (with a white texture)
 
-        std::unordered_map<ImTextureID, std::size_t> textureIndices;
+            std::vector<Carrot::ImGuiVertex> vertexStorage; // temporary storage to store vertices before copy to GPU-visible memory
+            std::vector<std::uint32_t> indexStorage; // temporary storage to store indices before copy to GPU-visible memory
+
+            std::unordered_map<ImTextureID, std::size_t> textureIndices;
+            Viewport* pViewport = nullptr;
+        };
+
+        std::unordered_map<WindowID, PerFrameData> perWindow;
+
+        void initPerFrameData(VulkanRenderer& renderer, WindowID w, Viewport* pViewport) {
+            PerFrameData& v = perWindow[w];
+            v.pipeline = renderer.getOrCreatePipelineFullPath(PipelinePath, (std::uint64_t)w); // one per window to avoid texture binding conflicts
+            v.pViewport = pViewport;
+
+            std::size_t imageCount = GetEngine().getSwapchainImageCount();
+            v.vertexBuffers.resize(imageCount);
+            v.indexBuffers.resize(imageCount);
+            v.stagingBuffers.resize(imageCount);
+            v.bufferCopySync.resize(imageCount);
+            v.rebindTextures.resize(imageCount);
+
+            vk::SemaphoreCreateInfo semaphoreInfo{};
+            for(std::size_t i = 0; i < imageCount; i++) {
+                v.bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+
+                v.rebindTextures[i] = true;
+            }
+        }
+    };
+
+    struct ImGuiRendererData {
+        Window* pWindow = nullptr;
+        Viewport* pViewport = nullptr;
     };
 
     ImGuiBackend::ImGuiBackend(VulkanRenderer& renderer): renderer(renderer) {
@@ -37,10 +67,55 @@ namespace Carrot::Render {
         cleanup();
     }
 
+    static void createWindowImGuiCallback(ImGuiViewport* pViewport) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiBackend* pThis = (ImGuiBackend*)io.BackendRendererUserData;
+        pThis->createWindowImGui(pViewport);
+    }
+
+    static void setWindowSizeImGuiCallback(ImGuiViewport* vp, ImVec2 size) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiBackend* pThis = (ImGuiBackend*)io.BackendRendererUserData;
+        ImGuiRendererData* pRendererData = static_cast<ImGuiRendererData*>(vp->RendererUserData);
+        if(pRendererData == nullptr) { // not external window
+            return;
+        }
+
+        GetRenderer().waitForRenderToComplete();
+        WaitDeviceIdle();
+        pRendererData->pWindow->setWindowSize(size.x, size.y);
+        GetEngine().recreateSwapchain(*pRendererData->pWindow);
+    }
+
+    static void renderWindowImGuiCallback(ImGuiViewport* vp, void* render_arg) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiBackend* pThis = (ImGuiBackend*)io.BackendRendererUserData;
+        ImGuiRendererData* pRendererData = static_cast<ImGuiRendererData*>(vp->RendererUserData);
+        if(pRendererData == nullptr) { // not external window
+            return;
+        }
+        pThis->renderExternalWindowImGui(vp->DrawData, *pRendererData, *((std::size_t*)render_arg));
+    }
+
+    static void destroyWindowImGui(ImGuiViewport* vp) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuiBackend* pThis = (ImGuiBackend*)io.BackendRendererUserData;
+        ImGuiRendererData* pRendererData = static_cast<ImGuiRendererData*>(vp->RendererUserData);
+        if(pRendererData == nullptr) { // not external window
+            return;
+        }
+        GetEngine().destroyViewport(*pRendererData->pViewport);
+        vp->RendererUserData = nullptr;
+        GetEngine().destroyWindow(*pRendererData->pWindow);
+    }
+
     void ImGuiBackend::initResources() {
         pImpl = new PImpl;
         ImGuiIO& io = ImGui::GetIO();
+        io.BackendRendererName = "Carrot ImGui Backend";
+        io.BackendRendererUserData = this;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
         unsigned char* pixels;
         int width, height;
@@ -53,22 +128,25 @@ namespace Carrot::Render {
         fontsImage->stageUpload(std::span{ pixels, static_cast<std::size_t>(width * height * 4) });
         pImpl->fontsTexture = std::make_unique<Texture>(std::move(fontsImage));
         io.Fonts->SetTexID(pImpl->fontsTexture->getImguiID());
-        pImpl->pipeline = renderer.getOrCreatePipelineFullPath(PipelinePath);
 
-        // TODO: install renderer_renderwindow imgui hook
+        pImpl->initPerFrameData(renderer, renderer.getEngine().getMainWindow().getWindowID(), nullptr /* directly rendered on top of main viewport */);
 
         // resize buffers for frame-by-frame storage
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
 
-        ImGui_ImplGlfw_InitForVulkan(renderer.getVulkanDriver().getWindow().getGLFWPointer(), true);
+        ImGui_ImplGlfw_InitForVulkan(renderer.getEngine().getMainWindow().getGLFWPointer(), true);
+
+        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            IM_ASSERT(platform_io.Platform_CreateVkSurface != NULL && "Platform needs to setup the CreateVkSurface handler.");
+        platform_io.Renderer_CreateWindow = createWindowImGuiCallback;
+        platform_io.Renderer_SetWindowSize = setWindowSizeImGuiCallback;
+        platform_io.Renderer_RenderWindow = renderWindowImGuiCallback;
+        platform_io.Renderer_DestroyWindow = destroyWindowImGui;
+        platform_io.Renderer_SwapBuffers = nullptr; // swapping is handled by engine with Window and the main loop
     }
 
     void ImGuiBackend::newFrame() {
-        // TODO: update mouse pos
-        // TODO: update mouse buttons
-        // TODO: update keys
-        // TODO: update gamepad?
-        //TODO;
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
     }
@@ -81,11 +159,11 @@ namespace Carrot::Render {
         pImpl = nullptr;
     }
 
-    void ImGuiBackend::render(const Carrot::Render::Context& renderContext, ImDrawData* pDrawData) {
+    void ImGuiBackend::render(const Carrot::Render::Context& renderContext, WindowID windowID, ImDrawData* pDrawData) {
         static_assert(sizeof(ImDrawVert) == sizeof(Carrot::ImGuiVertex));
 
-        std::vector<Carrot::ImGuiVertex>& vertices = pImpl->vertexStorage;
-        std::vector<std::uint32_t>& indices = pImpl->indexStorage;
+        std::vector<Carrot::ImGuiVertex>& vertices = pImpl->perWindow[windowID].vertexStorage;
+        std::vector<std::uint32_t>& indices = pImpl->perWindow[windowID].indexStorage;
 
         // start offsets per command list
         std::vector<std::size_t> vertexStarts;
@@ -119,20 +197,20 @@ namespace Carrot::Render {
             return;// nothing to render
         }
 
-        pImpl->vertexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
-        pImpl->indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
-        Carrot::BufferView& vertexBuffer = pImpl->vertexBuffers[renderContext.swapchainIndex].view;
-        Carrot::BufferView& indexBuffer = pImpl->indexBuffers[renderContext.swapchainIndex].view;
+        pImpl->perWindow[windowID].vertexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(vertices.size()*sizeof(Carrot::ImGuiVertex), vk::BufferUsageFlagBits::eVertexBuffer);
+        pImpl->perWindow[windowID].indexBuffers[renderContext.swapchainIndex] = GetResourceAllocator().allocateDeviceBuffer(indices.size()*sizeof(std::uint32_t), vk::BufferUsageFlagBits::eIndexBuffer);
+        Carrot::BufferView& vertexBuffer = pImpl->perWindow[windowID].vertexBuffers[renderContext.swapchainIndex].view;
+        Carrot::BufferView& indexBuffer = pImpl->perWindow[windowID].indexBuffers[renderContext.swapchainIndex].view;
 
         std::size_t totalStagingSize = vertexBuffer.getSize() + indexBuffer.getSize();
-        auto& stagingBufferAlloc = pImpl->stagingBuffers[renderContext.swapchainIndex];
+        auto& stagingBufferAlloc = pImpl->perWindow[windowID].stagingBuffers[renderContext.swapchainIndex];
         stagingBufferAlloc = GetResourceAllocator().allocateStagingBuffer(totalStagingSize);
         auto& stagingBuffer = stagingBufferAlloc.view;
 
         // upload data to staging buffer
         stagingBuffer.directUpload(vertices.data(), vertexBuffer.getSize());
         stagingBuffer.directUpload(indices.data(), indexBuffer.getSize(), vertexBuffer.getSize()/*offset*/);
-        auto& copySyncSemaphore = pImpl->bufferCopySync[renderContext.swapchainIndex];
+        auto& copySyncSemaphore = pImpl->perWindow[windowID].bufferCopySync[renderContext.swapchainIndex];
         renderer.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& cmds) {
             stagingBuffer.subView(0, vertexBuffer.getSize()).cmdCopyTo(cmds, vertexBuffer);
             stagingBuffer.subView(vertexBuffer.getSize(), indexBuffer.getSize()).cmdCopyTo(cmds, indexBuffer);
@@ -140,7 +218,7 @@ namespace Carrot::Render {
         renderer.getEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
         Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, renderContext);
-        packet.pipeline = pImpl->pipeline;
+        packet.pipeline = pImpl->perWindow[windowID].pipeline;
         packet.vertexBuffer = vertexBuffer;
         packet.indexBuffer = indexBuffer;
 
@@ -172,16 +250,16 @@ namespace Carrot::Render {
             .maxDepth = 1.0f,
         };
 
-        auto& textureIndexMap = pImpl->textureIndices;
+        auto& textureIndexMap = pImpl->perWindow[windowID].textureIndices;
         textureIndexMap.clear();
 
-        if(pImpl->rebindTextures[renderContext.swapchainIndex]) {
+        if(pImpl->perWindow[windowID].rebindTextures[renderContext.swapchainIndex]) {
             for (int i = 0; i < MaxTextures; ++i) {
-                renderer.bindTexture(*pImpl->pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
+                renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, *pImpl->fontsTexture, 0, 0,
                                      vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
                                      i);
             }
-            pImpl->rebindTextures[renderContext.swapchainIndex] = false;
+            pImpl->perWindow[windowID].rebindTextures[renderContext.swapchainIndex] = false;
         }
 
         int drawIndex = 0;
@@ -202,7 +280,7 @@ namespace Carrot::Render {
                     if(bInserted) {
                         iter->second = textureIndexMap.size() - 1;
                         Carrot::Render::Texture& texture = *((Carrot::Render::Texture*)pcmd->GetTexID());
-                        renderer.bindTexture(*pImpl->pipeline, renderContext, texture, 0, 0,
+                        renderer.bindTexture(*pImpl->perWindow[windowID].pipeline, renderContext, texture, 0, 0,
                                              vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D,
                                              iter->second);
                     }
@@ -227,8 +305,8 @@ namespace Carrot::Render {
                             .y = static_cast<std::int32_t>(std::max(0, scissorY)),
                     };
                     scissorRect.extent = vk::Extent2D {
-                            .width = static_cast<std::uint32_t>(std::min(viewportWidth, pcmd->ClipRect.z - pos.x)),
-                            .height = static_cast<std::uint32_t>(std::min(viewportHeight, pcmd->ClipRect.w - pos.y)),
+                            .width = static_cast<std::uint32_t>(std::min(viewportWidth, pcmd->ClipRect.z - pcmd->ClipRect.x)),
+                            .height = static_cast<std::uint32_t>(std::min(viewportHeight, pcmd->ClipRect.w - pcmd->ClipRect.y)),
                     };
                     packet.scissor = scissorRect;
 
@@ -253,17 +331,57 @@ namespace Carrot::Render {
     }
 
     void ImGuiBackend::onSwapchainImageCountChange(std::size_t newCount) {
-        pImpl->vertexBuffers.resize(newCount);
-        pImpl->indexBuffers.resize(newCount);
-        pImpl->stagingBuffers.resize(newCount);
-        pImpl->bufferCopySync.resize(newCount);
-        pImpl->rebindTextures.resize(newCount);
+        for(auto& [_, v] : pImpl->perWindow) {
+            v.vertexBuffers.resize(newCount);
+            v.indexBuffers.resize(newCount);
+            v.stagingBuffers.resize(newCount);
+            v.bufferCopySync.resize(newCount);
+            v.rebindTextures.resize(newCount);
 
-        vk::SemaphoreCreateInfo semaphoreInfo{};
-        for(std::size_t i = 0; i < newCount; i++) {
-            pImpl->bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+            vk::SemaphoreCreateInfo semaphoreInfo{};
+            for(std::size_t i = 0; i < newCount; i++) {
+                v.bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
 
-            pImpl->rebindTextures[i] = true;
+                v.rebindTextures[i] = true;
+            }
         }
+    }
+
+    void ImGuiBackend::createWindowImGui(ImGuiViewport* pViewport) {
+        ImU64 createdSurface;
+        VkResult err = (VkResult)ImGui::GetPlatformIO().Platform_CreateVkSurface(pViewport,
+                                                                                 (ImU64)(VkInstance)renderer.getVulkanDriver().getInstance(),
+                                                                                 renderer.getVulkanDriver().getAllocationCallbacks(),
+                                                                                 &createdSurface);
+        vk::SurfaceKHR surface = (vk::SurfaceKHR)(VkSurfaceKHR)createdSurface;
+        Window& externalWindow = renderer.getEngine().createAdoptedWindow(surface);
+        ImGuiRendererData* pRendererUserData = new ImGuiRendererData;
+        pViewport->RendererUserData = pRendererUserData;
+        externalWindow.createSwapChain();
+
+        pRendererUserData->pWindow = &externalWindow;
+
+        Render::Viewport& viewport = renderer.getEngine().createViewport(externalWindow);
+        Render::GraphBuilder renderGraphBuilder { renderer.getVulkanDriver(), externalWindow };
+        struct ImGuiRenderPassData {
+            Render::FrameResource targetTexture;
+        };
+        renderGraphBuilder.addPass<ImGuiRenderPassData>("ImGui external window",
+                                                        [this](GraphBuilder& graph, Pass<ImGuiRenderPassData>& pass, ImGuiRenderPassData& data) {
+                                                            vk::ClearColorValue clearColor { 0.0, 0.0, 0.0, 1.0f };
+                                                            data.targetTexture = graph.write(graph.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, clearColor);
+                                                            graph.present(data.targetTexture);
+        },
+                                                        [this](const CompiledPass& pass, const Render::Context& renderContext, ImGuiRenderPassData& data, vk::CommandBuffer& cmds) {
+                                                            record(cmds, pass.getRenderPass(), renderContext);
+        });
+        pRendererUserData->pViewport = &viewport;
+        viewport.setRenderGraph(std::move(renderGraphBuilder.compile()));
+        pImpl->initPerFrameData(renderer, externalWindow.getWindowID(), &viewport);
+    }
+
+    void ImGuiBackend::renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& rendererData, std::size_t swapchainIndex) {
+        Carrot::Render::Context renderContext = renderer.getEngine().newRenderContext(swapchainIndex, *rendererData.pViewport);
+        render(renderContext, rendererData.pWindow->getWindowID(), pDrawData);
     }
 } // Carrot::Render

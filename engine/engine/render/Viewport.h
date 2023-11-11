@@ -10,6 +10,7 @@
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/resources/BufferView.h"
 #include "engine/render/resources/PerFrame.h"
+#include "engine/Window.h"
 
 namespace Carrot {
     class VulkanRenderer;
@@ -22,7 +23,7 @@ namespace Carrot::Render {
 
     class Viewport: public SwapchainAware {
     public:
-        explicit Viewport(VulkanRenderer& renderer);
+        explicit Viewport(VulkanRenderer& renderer, WindowID windowID);
         Viewport(const Viewport&) = delete;
         ~Viewport();
 
@@ -67,7 +68,7 @@ namespace Carrot::Render {
 
     public:
         void onSwapchainImageCountChange(size_t newCount) override;
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     public:
         /// Render graph associated to this viewport, may be nullptr
@@ -76,6 +77,7 @@ namespace Carrot::Render {
 
     private:
         VulkanRenderer& renderer;
+        WindowID windowID;
         std::unique_ptr<Graph> renderGraph;
         std::vector<Carrot::Scene*> scenes; // scenes to render inside this viewport, not owning. Assuming the Scene instances remove themselves from the vector on destruction
         bool followSwapchainSize = true;

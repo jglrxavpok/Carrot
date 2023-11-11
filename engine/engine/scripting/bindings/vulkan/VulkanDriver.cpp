@@ -11,8 +11,7 @@ namespace Carrot {
         auto carrotNamespace = destination["Carrot"].get_or_create<sol::table>();
         carrotNamespace.new_usertype<VulkanDriver>("VulkanDriver", sol::no_constructor,
                                                    "getFinalRenderSize", &VulkanDriver::getFinalRenderSize,
-                                                   "getEngine", &VulkanDriver::getEngine,
-                                                   "getWindowFramebufferExtent", &VulkanDriver::getWindowFramebufferExtent
+                                                   "getEngine", &VulkanDriver::getEngine
                 // TODO
                                                    );
     }
