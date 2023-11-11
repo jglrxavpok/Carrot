@@ -823,20 +823,20 @@ PacketKey makeKey(const Carrot::Render::Packet& p) {
 void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::Render::Context& renderContext) {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
-    // wait for previous frame
-    waitForRenderToComplete();
-    recordingFrameIndex = frameIndex;
 
     {
         ZoneScopedN("ImGui Render");
         Console::instance().renderToImGui(getEngine());
         ImGui::Render();
+        imGuiBackend.render(renderContext, GetEngine().getMainWindow().getWindowID(), ImGui::GetDrawData());
 
         ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-
-        imGuiBackend.render(renderContext, ImGui::GetDrawData());
+        ImGui::RenderPlatformWindowsDefault(nullptr, (void*)&renderContext.swapchainIndex);
     }
+
+    // wait for previous frame
+    waitForRenderToComplete();
+    recordingFrameIndex = frameIndex;
 
     // swap double-buffered data
     {
@@ -1004,6 +1004,10 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {
     return driver.getEngine();
+}
+
+Carrot::Render::ImGuiBackend& Carrot::VulkanRenderer::getImGuiBackend() {
+    return imGuiBackend;
 }
 
 Carrot::Render::MaterialSystem& Carrot::VulkanRenderer::getMaterialSystem() {

@@ -124,7 +124,6 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     {
     ZoneScoped;
     instance = this;
-    mainWindow.setMainWindow();
     changeTickRate(config.tickRate);
 
 #if USE_LIVEPP
@@ -185,10 +184,7 @@ void Carrot::Engine::init() {
                                                                  auto& swapchainTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
                                                                  frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
 
-                                                                 {
-                                                                     std::lock_guard l { getGraphicsQueue().getMutexUnsafe() };
-                                                                     renderer.recordImGuiPass(cmds, pass.getRenderPass(), frame);
-                                                                 }
+                                                                 renderer.recordImGuiPass(cmds, pass.getRenderPass(), frame);
 
                                                                  //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
                                                                  //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
@@ -608,6 +604,7 @@ std::unique_ptr<Carrot::CarrotGame>& Carrot::Engine::getGame() {
     return game;
 }
 
+// TODO: move to renderer
 void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex, const Render::Context& mainRenderContext) {
     ZoneScopedN("Record main command buffer");
     const std::uint32_t frameIndex = _frameIndex; // index of image in frames in flight, 0 or 1 currently (MAX_FRAMES_IN_FLIGHT)
@@ -666,8 +663,25 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
     {
         ZoneScopedN("Present");
 
-        std::vector<vk::Semaphore> waitSemaphores = {*imageAvailableSemaphore[frameIndex]};
-        std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        std::vector<vk::Semaphore> waitSemaphores;
+        std::vector<vk::PipelineStageFlags> waitStages;
+        waitSemaphores.reserve(1 + externalWindows.size());
+        waitStages.reserve(1 + externalWindows.size());
+        waitSemaphores.emplace_back(mainWindow.getImageAvailableSemaphore(frameIndex));
+        waitStages.emplace_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+
+        for(auto& window : externalWindows) {
+            if(!window.hasAcquiredAtLeastOneImage()) {
+                continue;
+            }
+            if(window.isFirstPresent()) {
+                continue;
+            }
+
+            waitSemaphores.emplace_back(window.getImageAvailableSemaphore(frameIndex));
+            waitStages.emplace_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        }
+
         vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[frameIndex]};
 
         game->changeGraphicsWaitSemaphores(frameIndex, waitSemaphores, waitStages);
@@ -707,15 +721,37 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             waitForFrameTasks();
 
             GetVulkanDriver().submitGraphics(submitInfo, *inFlightFences[frameIndex]);
-            vk::SwapchainKHR swapchains[] = { mainWindow.getSwapchain() };
+
+            std::vector<vk::SwapchainKHR> swapchains;
+            std::vector<std::uint32_t> swapchainIndices;
+            swapchains.reserve(externalWindows.size() + 1);
+            swapchainIndices.reserve(externalWindows.size() + 1);
+            swapchains.emplace_back(mainWindow.getSwapchain());
+            swapchainIndices.emplace_back(swapchainIndex);
+
+            std::size_t windowIndex = 1;
+            for(auto& window : externalWindows) {
+                if(!window.hasAcquiredAtLeastOneImage()) {
+                    continue;
+                }
+                if(window.isFirstPresent()) {
+                    // because we are recording the previous frame (compared to the one being updated/ticked/drawn),
+                    //  there is a frame where we create a new window, but its swapchain image was not acquired.
+                    // In that case, don't attempt to present that swapchain image
+                    window.clearFirstPresent();
+                    continue;
+                }
+                swapchains.emplace_back(window.getSwapchain());
+                swapchainIndices.emplace_back((std::uint32_t)((swapchainIndex + window.getSwapchainIndexOffset()) % getSwapchainImageCount()));
+            }
 
             vk::PresentInfoKHR presentInfo{
                     .waitSemaphoreCount = 1,
                     .pWaitSemaphores = signalSemaphores,
 
-                    .swapchainCount = 1,
-                    .pSwapchains = swapchains,
-                    .pImageIndices = &swapchainIndex,
+                    .swapchainCount = static_cast<std::uint32_t>(swapchains.size()),
+                    .pSwapchains = swapchains.data(),
+                    .pImageIndices = swapchainIndices.data(),
                     .pResults = nullptr,
             };
 
@@ -754,8 +790,13 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 
     lastFrameIndex = swapchainImageIndexRightNow;
 
+    auto cancelFrame = []() {
+        ImGui::EndFrame();
+        ImGui::UpdatePlatformWindows();
+    };
     if(framebufferResized) {
-        recreateSwapchain();
+        recreateSwapchain(mainWindow);
+        cancelFrame();
         return;
     }
     frames++;
@@ -775,20 +816,40 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
             getLogicalDevice().resetFences((*inFlightFences[currentFrame]));
         }
 
-        {
+        auto acquire = [&](Window& window) -> std::int32_t {
             ZoneScopedN("acquireNextImageKHR");
-            auto nextImage = getLogicalDevice().acquireNextImageKHR(mainWindow.getSwapchain(), UINT64_MAX,
-                                                                    *imageAvailableSemaphore[currentFrame], nullptr);
+            auto nextImage = getLogicalDevice().acquireNextImageKHR(window.getSwapchain(), UINT64_MAX,
+                                                                    window.getImageAvailableSemaphore(currentFrame), nullptr);
             result = nextImage.result;
 
-            if (result == vk::Result::eErrorOutOfDateKHR) {
-                recreateSwapchain();
-                return;
+            if(result == vk::Result::eNotReady) {
+
+            } else if (result == vk::Result::eErrorOutOfDateKHR) {
+                recreateSwapchain(window);
+                return -1;
             } else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
                 throw std::runtime_error("Failed to acquire swap chain image");
             }
-            imageIndex = nextImage.value;
-            swapchainImageIndexRightNow = imageIndex;
+            return nextImage.value;
+        };
+
+        std::int32_t acquireResult = acquire(mainWindow);
+
+        if(acquireResult == -1) {
+            cancelFrame();
+            return;
+        }
+
+        imageIndex = acquireResult;
+        swapchainImageIndexRightNow = imageIndex;
+
+        for(auto& window : externalWindows) {
+            acquireResult = acquire(window);
+            if(acquireResult == -1) {
+                cancelFrame();
+                return;
+            }
+            window.setCurrentSwapchainIndex(swapchainImageIndexRightNow, acquireResult);
         }
     }
 
@@ -956,7 +1017,6 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
 }
 
 void Carrot::Engine::createSynchronizationObjects() {
-    imageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -967,14 +1027,12 @@ void Carrot::Engine::createSynchronizationObjects() {
     };
 
     for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        imageAvailableSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
         renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
 }
 
-void Carrot::Engine::recreateSwapchain() {
-    auto& window = mainWindow; // TODO: share code between windows
+void Carrot::Engine::recreateSwapchain(Window& window) {
     Carrot::Log::info("recreateSwapchain");
     window.fetchNewFramebufferSize(); // TODO: how to handle minimized windows?
 
@@ -994,6 +1052,10 @@ void Carrot::Engine::recreateSwapchain() {
     }
     vk::Extent2D swapchainImageSize = vkDriver.getFinalRenderSize(window);
     onSwapchainSizeChange(window, swapchainImageSize.width, swapchainImageSize.height);
+
+    if(!window.isMainWindow()) {
+        window.computeSwapchainOffset(); // reset swapchain index
+    }
 }
 
 void Carrot::Engine::onWindowResize(Window& which) {
@@ -1418,13 +1480,53 @@ Carrot::Render::Viewport& Carrot::Engine::createViewport(Window& window) {
     return viewports.back();
 }
 
+void Carrot::Engine::destroyViewport(Carrot::Render::Viewport& viewport) {
+    // ensure viewport is not used while we delete it
+    renderer.waitForRenderToComplete();
+    WaitDeviceIdle();
+    viewports.remove_if([&](const Carrot::Render::Viewport& v) {
+        return &v == &viewport;
+    });
+}
+
 Carrot::Window& Carrot::Engine::getMainWindow() {
     return mainWindow;
 }
 
 Carrot::Window& Carrot::Engine::getWindow(WindowID id) {
-    // TODO
-    return mainWindow;
+    if(mainWindow == id) {
+        return mainWindow;
+    }
+
+    for(auto& window : externalWindows) {
+        if(window == id) {
+            return window;
+        }
+    }
+
+    verify(false, Carrot::sprintf("No matching window with ID %ll !", id));
+    return *((Carrot::Window*)nullptr);
+}
+
+Carrot::Window& Carrot::Engine::createWindow(const std::string& title, std::uint32_t w, std::uint32_t h) {
+    externalWindows.emplace_back(*this, w, h, config);
+    auto& window = externalWindows.back();
+    window.setTitle(title);
+    window.computeSwapchainOffset();
+    return window;
+}
+
+Carrot::Window& Carrot::Engine::createAdoptedWindow(vk::SurfaceKHR surface) {
+    externalWindows.emplace_back(*this, surface);
+    auto& window = externalWindows.back();
+    window.computeSwapchainOffset();
+    return window;
+}
+
+void Carrot::Engine::destroyWindow(Carrot::Window& window) {
+    externalWindows.remove_if([&](const Carrot::Window& windowInList) {
+        return windowInList == window;
+    });
 }
 
 Carrot::Audio::AudioManager& Carrot::Engine::getAudioManager() {

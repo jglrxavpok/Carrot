@@ -48,7 +48,20 @@ namespace Carrot {
         ownsWindow = false;
     }
 
+    Window::Window(Engine& engine, vk::SurfaceKHR surface): Window(engine) {
+        glfwWindow = nullptr;
+        ownsWindow = false;
+        this->surface = surface;
+    }
+
+    void Window::computeSwapchainOffset() {
+        // ensure we know the proper offset for the next acquire: the renderer assumes all windows have the same swapchain index,
+        //  we just fix up the index in Window with this offset
+        swapchainIndexOffset = (2-engine.getSwapchainImageIndexRightNow()) % engine.getSwapchainImageCount();
+    }
+
     void Window::createSurface() {
+        ownsSurface = true;
         // create surface
         VkSurfaceKHR cSurface;
         if (glfwCreateWindowSurface(static_cast<VkInstance>(GetVulkanDriver().getInstance()), glfwWindow, nullptr,
@@ -59,6 +72,14 @@ namespace Carrot {
     }
 
     void Window::createSwapChain() {
+        if(imageAvailableSemaphores.empty()) {
+            vk::SemaphoreCreateInfo semaphoreInfo{};
+            imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+            for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                imageAvailableSemaphores[i] = engine.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, engine.getVulkanDriver().getAllocationCallbacks());
+            }
+        }
+
         SwapChainSupportDetails swapChainSupportDetails = getSwapChainSupport(GetVulkanDriver().getPhysicalDevice());
 
         vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupportDetails.formats);
@@ -70,6 +91,10 @@ namespace Carrot {
         if(swapChainSupportDetails.capabilities.maxImageCount > 0 && imageCount > swapChainSupportDetails.capabilities.maxImageCount) {
             // ensure we don't ask for more images than the device will be able to provide
             imageCount = swapChainSupportDetails.capabilities.maxImageCount;
+        }
+
+        if(!isMainWindow()) {
+            verify(imageCount == GetEngine().getSwapchainImageCount(), "All windows are expected to have the same number of swapchain images. This engine does not support other cases in its current state");
         }
 
         vk::SwapchainCreateInfoKHR createInfo{
@@ -133,8 +158,10 @@ namespace Carrot {
 
     void Window::destroySwapchainAndSurface() {
         swapchain.reset();
-        engine.getVulkanDriver().getInstance().destroySurfaceKHR(getSurface(), engine.getVulkanDriver().getAllocationCallbacks());
-        // TODO: don't destroy device if in VR
+        if(ownsSurface) {
+            engine.getVulkanDriver().getInstance().destroySurfaceKHR(getSurface(), engine.getVulkanDriver().getAllocationCallbacks());
+            // TODO: don't destroy device if in VR
+        }
     }
 
     Window::~Window() {
@@ -145,6 +172,42 @@ namespace Carrot {
         glfwDestroyWindow(glfwWindow);
         glfwWindow = nullptr;
         glfwTerminate();
+    }
+
+    void Window::setCurrentSwapchainIndex(std::int32_t mainWindowSwapchainIndex, std::int32_t thisWindowSwapchainIndex) {
+        std::int32_t swapchainOffset = thisWindowSwapchainIndex - mainWindowSwapchainIndex;
+        while(swapchainOffset < 0) {
+            swapchainOffset += GetEngine().getSwapchainImageCount();
+        }
+
+        if(!acquiredAtLeastOneImage) {
+            verify(swapchainIndexOffset == swapchainOffset, "Swapchain index offset is not the value that was expected. It does not match with offset computed on construction of this window.");
+        }
+        swapchainIndexOffset = swapchainOffset;
+        swapchainIndex = thisWindowSwapchainIndex;
+
+        acquiredAtLeastOneImage = true;
+    }
+
+    std::size_t Window::getSwapchainIndexOffset() const {
+        return swapchainIndexOffset;
+    }
+
+    bool Window::hasAcquiredAtLeastOneImage() const {
+        return acquiredAtLeastOneImage;
+    }
+
+    bool Window::isFirstPresent() const {
+        return firstPresent;
+    }
+
+    void Window::clearFirstPresent() {
+        firstPresent = false;
+    }
+
+    vk::Semaphore Window::getImageAvailableSemaphore(std::size_t frameInFlightIndex) {
+        verify(!imageAvailableSemaphores.empty(), "Called too early!");
+        return *imageAvailableSemaphores[frameInFlightIndex];
     }
 
     Carrot::SwapChainSupportDetails Window::getSwapChainSupport(const vk::PhysicalDevice& device) {
@@ -172,10 +235,13 @@ namespace Carrot {
     }
 
     std::shared_ptr<Render::Texture> Window::getSwapchainTexture(std::size_t swapchainIndex) {
-        return swapchainTextures[swapchainIndex];
+        return swapchainTextures[(swapchainIndex + swapchainIndexOffset) % GetEngine().getSwapchainImageCount()];
     }
 
     void Window::fetchNewFramebufferSize() {
+        if(!glfwWindow) {
+            return;
+        }
         std::int32_t w, h;
         getFramebufferSize(w, h);
         while(w == 0 || h == 0) {
@@ -284,10 +350,20 @@ namespace Carrot {
     }
 
     void Window::setWindowSize(std::int32_t w, std::int32_t h) {
-        glfwSetWindowSize(glfwWindow, w, h);
+        if(glfwWindow != nullptr) {
+            glfwSetWindowSize(glfwWindow, w, h);
+        } else {
+            // adopted windows (eg ImGui)
+            framebufferExtent.width = w;
+            framebufferExtent.height = h;
+
+            acquiredAtLeastOneImage = false;
+            firstPresent = true;
+        }
     }
 
     void Window::setMainWindow() {
+        swapchainIndexOffset = 0;
         mainWindow = true;
     }
 

@@ -249,11 +249,24 @@ namespace Carrot {
     public: // viewports
         Render::Viewport& getMainViewport();
         Render::Viewport& createViewport(Window& window);
+        void destroyViewport(Render::Viewport& viewport);
 
         SceneManager& getSceneManager();
 
     public: // windows
         Window& getMainWindow();
+
+        /**
+         * Creates a new window
+         */
+        Window& createWindow(const std::string& title, std::uint32_t w, std::uint32_t h);
+
+        /**
+         * Adds an existing Vulkan surface as a new window.
+         * Used for externally-managed windows (for instance, the GLFW backend of ImGui)
+         */
+        Window& createAdoptedWindow(vk::SurfaceKHR surface);
+        void destroyWindow(Window& window);
         Window& getWindow(WindowID id);
 
     public: // inputs
@@ -442,12 +455,12 @@ namespace Carrot {
         std::vector<vk::CommandBuffer> tracyCommandBuffers{};
 
         std::vector<vk::CommandBuffer> mainCommandBuffers{};
-        std::vector<vk::UniqueSemaphore> imageAvailableSemaphore{};
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};
         std::vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>> additionalWaitSemaphores{};
 
         std::list<Carrot::Render::Viewport> viewports;
+        std::list<Carrot::Window> externalWindows;
 
         bool framebufferResized = false;
 
@@ -498,6 +511,9 @@ namespace Carrot {
     public: // TODO move to renderer
         /// Create the primary command buffers for rendering
         void recordMainCommandBufferAndPresent(std::uint8_t frameIndex, const Render::Context& mainRenderContext);
+
+        void recreateSwapchain(Window& window);
+
     private:
 
         /// Acquires a swapchain image, prepares UBOs, submit command buffer, and present to screen
@@ -511,7 +527,6 @@ namespace Carrot {
         /// Create fences and semaphores used for rendering
         void createSynchronizationObjects();
 
-        void recreateSwapchain();
 
         void initGame();
 

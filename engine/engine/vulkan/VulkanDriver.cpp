@@ -108,10 +108,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(pCallbackData->messageIdNumber == 2188733524u) {
         debug_break();
     } else if(pCallbackData->messageIdNumber == (std::int32_t)2281691928630u) { /* VUID-vkCmdDrawIndexed-None-08114 */
-        debug_break();
+       // debug_break();
     } else if(pCallbackData->messageIdNumber == (std::int32_t)2863155226467u) { /* VUID-vkCmdBindDescriptorSets-pDescriptorSets-01979 */
         debug_break();
     } else if(pCallbackData->messageIdNumber == (std::int32_t)2711343670470u) { /* VUID-VkPresentInfoKHR-pImageIndices-01430 */
+       // debug_break();
+    } else if(pCallbackData->messageIdNumber == (std::int32_t)2162657188360u) { /* VUID-VkImageCreateInfo-extent-00944 */
         debug_break();
     } else if(pCallbackData->messageIdNumber == 3830750225u) /* VUID-vkDestroyBuffer-buffer-00922 */ {
          /* TODO: debug with error, might be cause of device removed: */debug_break();
@@ -191,6 +193,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
 
     createInstance();
     setupDebugMessenger();
+    mainWindow.setMainWindow(); // set it early. It needs to be done before createSwapchain, because createSwapchain ensures all external windows have the same swapchain image count that the main window
     mainWindow.createSurface(); // required to pick a physical device (needs a present queue)
     pickPhysicalDevice();
     fillRenderingCapabilities();

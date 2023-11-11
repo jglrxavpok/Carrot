@@ -65,11 +65,25 @@ namespace Carrot {
         ~Window();
 
     public:
+        void computeSwapchainOffset(); /// we compute an offset between the main window and this windows's swapchain indices because the renderer believes all swapchains use the same index
         void createSurface();
         void createSwapChain();
         void cleanupSwapChain();
         void destroySwapchainAndSurface();
         SwapChainSupportDetails getSwapChainSupport(const vk::PhysicalDevice& device);
+
+        void setCurrentSwapchainIndex(std::int32_t mainWindowSwapchainIndex, std::int32_t thisWindowSwapchainIndex);
+        std::size_t getSwapchainIndexOffset() const; // offset of 'real' swapchain index compared to global swapchain index (which is swapchain index of main window)
+
+        /**
+         * True iif at least one call to acquireNextImageKHR was done for this frame.
+         * Can be used to avoid presenting to a window & swapchain image that was initialized between acquireNextImage and present.
+         */
+        bool hasAcquiredAtLeastOneImage() const;
+        bool isFirstPresent() const;
+        void clearFirstPresent();
+
+        vk::Semaphore getImageAvailableSemaphore(std::size_t frameInFlightIndex);
 
         size_t getSwapchainImageCount() const;
         const vk::Format& getSwapchainImageFormat() const;
@@ -78,6 +92,11 @@ namespace Carrot {
         std::shared_ptr<Render::Texture> getSwapchainTexture(std::size_t swapchainIndex);
 
         void fetchNewFramebufferSize();
+
+    public: // public for usage by STL, do not use! Use Engine::createWindow instead
+        explicit Window(Engine& engine, std::uint32_t width, std::uint32_t height, Configuration configuration);
+        explicit Window(Engine& engine, GLFWwindow* pWindow); //< adopt an externally-managed window
+        explicit Window(Engine& engine, vk::SurfaceKHR surface); //< adopt an externally-managed surface (eg ImGui GLFW backend for instance)
 
     private:
         vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
@@ -99,8 +118,6 @@ namespace Carrot {
         };
 
         explicit Window(Engine& engine); //< base constructor, should only be called by other constructors
-        explicit Window(Engine& engine, std::uint32_t width, std::uint32_t height, Configuration configuration);
-        explicit Window(Engine& engine, GLFWwindow* pWindow); //< adopt an externally-managed window (eg ImGui GLFW backend for instance)
 
         void setIcon(std::uint32_t size, const Carrot::IO::Resource& icon);
         void updateIcons();
@@ -108,17 +125,21 @@ namespace Carrot {
     private:
         Carrot::Engine& engine;
         WindowID windowID = 0;
+        std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
         std::list<Icon> icons; // not a vector to avoid unnecessary copies. Is it really that big of a deal here? Probably not.
         vk::SurfaceKHR surface;
         bool mainWindow = false;
         bool ownsWindow = false;
+        bool ownsSurface = false;
+        bool acquiredAtLeastOneImage = false;
+        bool firstPresent = true;
+        std::int32_t swapchainIndexOffset = -1;
+        std::int32_t swapchainIndex = -1;
         GLFWwindow* glfwWindow = nullptr;
         SwapChainSupportDetails swapChainSupportDetails;
         vk::UniqueSwapchainKHR swapchain{};
         vk::Format swapchainImageFormat = vk::Format::eUndefined;
         vk::Extent2D framebufferExtent{};
         std::vector<std::shared_ptr<Render::Texture>> swapchainTextures{}; // will not own data because deleted with swapchain
-
-        friend class Carrot::Engine;
     };
 }

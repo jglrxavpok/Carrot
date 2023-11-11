@@ -156,6 +156,8 @@ namespace Carrot {
 
         Engine& getEngine();
 
+        Render::ImGuiBackend& getImGuiBackend();
+
         Render::MaterialSystem& getMaterialSystem();
 
         const Render::MaterialHandle& getWhiteMaterial() const { return *whiteMaterial; }

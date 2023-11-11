@@ -237,6 +237,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         }
     }
 
+    vk::Extent2D viewportSize = window.getFramebufferExtent();
     std::unique_ptr<CompiledPass> result = nullptr;
     if(rasterized) {
         vk::SubpassDescription mainSubpass{
@@ -316,7 +317,6 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             renderSize.height = maxHeight;
             return framebuffers;
         };
-        vk::Extent2D viewportSize = window.getFramebufferExtent();
         result = std::make_unique<CompiledPass>(graph, name, viewportSize, std::move(renderPass), clearValues,
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     } else {
@@ -332,7 +332,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             renderSize.height = 0;
             return std::vector<vk::UniqueFramebuffer>{}; // no framebuffers for non-rasterized passes
         };
-        result = make_unique<CompiledPass>(graph, name, vk::Extent2D{0,0}, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
+        result = make_unique<CompiledPass>(graph, name, viewportSize, generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     }
     result->setInputsOutputsForDebug(inputs, outputs);
     postCompile(*result);
