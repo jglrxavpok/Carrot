@@ -28,6 +28,9 @@ namespace Carrot {
          * For convenience, index is modulo-ed with MaxCount to ensure index always lands inside circle buffer
          */
         ElementType& operator[](std::int64_t index) {
+            while(index < 0) {
+                index += MaxSize;
+            }
             return elements[index % MaxSize];
         }
 
@@ -36,6 +39,9 @@ namespace Carrot {
          * For convenience, index is modulo-ed with MaxCount to ensure index always lands inside circle buffer
          */
         const ElementType& operator[](std::int64_t index) const {
+            while(index < 0) {
+                index += MaxSize;
+            }
             return elements[index % MaxSize];
         }
 
