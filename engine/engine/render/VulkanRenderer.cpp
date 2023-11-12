@@ -4,6 +4,7 @@
 
 #include "VulkanRenderer.h"
 #include "GBuffer.h"
+#include "VisibilityBuffer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/console/RuntimeOption.hpp"
@@ -184,6 +185,7 @@ void Carrot::VulkanRenderer::createUIResources() {
 
 void Carrot::VulkanRenderer::createGBuffer() {
     gBuffer = std::make_unique<GBuffer>(*this, *raytracer);
+    visibilityBuffer = std::make_unique<Render::VisibilityBuffer>(*this);
 }
 
 void Carrot::VulkanRenderer::createRayTracer() {

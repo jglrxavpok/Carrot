@@ -87,6 +87,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/WorldData.cpp
 
         ${EngineRoot}render/GBuffer.cpp
+        ${EngineRoot}render/VisibilityBuffer.cpp
         ${EngineRoot}render/raytracing/RayTracer.cpp
         ${EngineRoot}render/raytracing/ASBuilder.cpp
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp

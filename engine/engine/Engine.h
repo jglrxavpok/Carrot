@@ -198,6 +198,7 @@ namespace Carrot {
         VulkanRenderer& getRenderer() { return renderer; };
 
         GBuffer& getGBuffer() { return renderer.getGBuffer(); };
+        Render::VisibilityBuffer& getVisibilityBuffer() { return renderer.getVisibilityBuffer(); };
 
         Skybox::Type getSkybox() const;
         void setSkybox(Skybox::Type type);

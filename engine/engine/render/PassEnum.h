@@ -7,6 +7,7 @@
 namespace Carrot::Render {
     enum class PassEnum {
         Undefined = 0,
+        VisibilityBuffer,
         OpaqueGBuffer,
         TransparentGBuffer,
         Lighting,

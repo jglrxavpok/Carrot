@@ -14,6 +14,7 @@
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/GBuffer.h"
+#include "engine/render/VisibilityBuffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/CarrotGame.h"
@@ -37,13 +38,15 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         opaqueCallback(pass, frame, cmds);
     }, framebufferSize);
 
+    auto& visibilityPasses = getVisibilityBuffer().addVisibilityBufferPasses(mainGraph, opaqueGBufferPass.getData(), framebufferSize);
+
     const float scaleFactor = 0.5f;
     Render::TextureSize lightingFramebufferSize;
     lightingFramebufferSize.type = framebufferSize.type;
     lightingFramebufferSize.width = scaleFactor * framebufferSize.width;
     lightingFramebufferSize.height = scaleFactor * framebufferSize.height;
 
-    auto& lightingPass = getGBuffer().addLightingPass(opaqueGBufferPass.getData(), mainGraph, lightingFramebufferSize);
+    auto& lightingPass = getGBuffer().addLightingPass(visibilityPasses.gbuffer, mainGraph, lightingFramebufferSize);
 
     struct DenoisingResult {
         Render::FrameResource input;
