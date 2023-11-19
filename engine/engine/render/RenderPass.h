@@ -35,6 +35,7 @@ namespace Carrot::Render {
         vk::ClearValue clearValue;
         vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor;
         bool isCreatedInThisPass = false;
+        bool isStorageOnly = false;
 
         Output(const FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect): resource(resource), loadOp(loadOp), clearValue(clearValue), aspect(aspect) {}
     };
@@ -161,7 +162,7 @@ namespace Carrot::Render {
 
     public:
         void addInput(FrameResource& resource, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect);
-        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass);
+        void addOutput(FrameResource& resource, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool isStorageOnly);
         void present(FrameResource& toPresent);
 
     public:

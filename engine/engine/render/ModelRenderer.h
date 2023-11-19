@@ -22,6 +22,8 @@ namespace Carrot::Render {
     struct MaterialOverride {
         std::size_t meshIndex = 0;
 
+        bool virtualizedGeometry = false;
+
         std::shared_ptr<Carrot::Pipeline> pipeline; // can be null if only textures are changed
         std::shared_ptr<Carrot::Render::MaterialHandle> materialTextures; // can be null if only pipeline is changed
         // cannot be both null
@@ -74,6 +76,7 @@ namespace Carrot::Render {
     };
 
     struct PipelineBucket {
+        bool virtualizedGeometry = false;
         std::shared_ptr<Carrot::Pipeline> pipeline;
 
         std::vector<vk::DrawIndexedIndirectCommand> drawCommands;

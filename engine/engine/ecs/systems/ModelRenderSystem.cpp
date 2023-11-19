@@ -38,8 +38,10 @@ namespace Carrot::ECS {
 
                 if(modelComp.modelRenderer) {
                     modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                    modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::VisibilityBuffer);
                 } else {
                     modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                    modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::VisibilityBuffer);
                 }
                 //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 

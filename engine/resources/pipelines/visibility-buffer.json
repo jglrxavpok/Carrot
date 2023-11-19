@@ -1,0 +1,29 @@
+{
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "Vertex",
+  "cull": false,
+  "alphaBlending": false,
+  "descriptorSets": [
+    {
+      "type": "camera",
+      "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "materials",
+      "setID": 2
+    },
+    {
+      "type": "per_draw",
+      "setID": 3
+    }
+  ],
+  "depthWrite": true,
+  "depthTest": true,
+  "vertexShader": "resources/shaders/visibility-buffer.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/visibility-buffer.fragment.glsl.spv"
+}

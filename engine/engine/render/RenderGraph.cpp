@@ -82,7 +82,7 @@ namespace Carrot::Render {
                 break;
         }
         resources.emplace_back(&toWrite);
-        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false);
+        currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false, false);
         return resources.back();
     }
 
@@ -92,6 +92,15 @@ namespace Carrot::Render {
     }
 
     FrameResource& GraphBuilder::createRenderTarget(std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
+                                              vk::ClearValue clearValue, vk::ImageLayout layout) {
+        return createTarget(false, name, format, size, loadOp, clearValue, layout);
+    }
+
+    FrameResource& GraphBuilder::createStorageTarget(std::string name, vk::Format format, TextureSize size, vk::ImageLayout layout) {
+        return createTarget(true, name, format, size, vk::AttachmentLoadOp::eDontCare, {}, layout);
+    }
+
+    FrameResource& GraphBuilder::createTarget(bool isStorageImage, std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
                                                     vk::ClearValue clearValue, vk::ImageLayout layout) {
         auto& r = resources.emplace_back();
         r.name = std::move(name);
@@ -131,7 +140,7 @@ namespace Carrot::Render {
                 break;
         }
 
-        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true);
+        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true, isStorageImage);
         return r;
     }
 

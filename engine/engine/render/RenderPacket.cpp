@@ -199,7 +199,6 @@ namespace Carrot::Render {
         }
         cmds.bindIndexBuffer(indexBuffer.getVulkanBuffer(), indexBuffer.getStart(), vk::IndexType::eUint32);
 
-        // TODO: vkCmdDrawIndexedIndirect
         Carrot::BufferView drawCommandBuffer = renderer.getSingleFrameBuffer(drawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
         drawCommandBuffer.directUpload(std::span { drawCommands });
 

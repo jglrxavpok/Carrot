@@ -18,6 +18,7 @@ namespace Carrot::Render {
         struct VisibilityPassData {
             PassData::GBuffer gbuffer;
             Render::FrameResource visibilityBuffer;
+            Render::FrameResource debugView;
         };
 
         explicit VisibilityBuffer(VulkanRenderer& renderer);

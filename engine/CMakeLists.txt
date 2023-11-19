@@ -207,6 +207,7 @@ set(ENGINE-SOURCES
 
 set(VERTEX_SHADERS
         gBuffer.vertex.glsl
+        visibility-buffer.vertex.glsl
         screenQuad.vertex.glsl
         skybox.vertex.glsl
         particles.vertex.glsl
@@ -226,6 +227,7 @@ set(FRAGMENT_SHADERS
         gBuffer.fragment.glsl
         gBuffer-transparent.fragment.glsl
         gBufferBlockout.fragment.glsl
+        visibility-buffer.fragment.glsl
         unlitGBuffer.fragment.glsl
 
         blit.fragment.glsl
@@ -248,12 +250,14 @@ set(FRAGMENT_SHADERS
         post-process/temporal-denoise.fragment.glsl
         post-process/merge-lighting.fragment.glsl
         post-process/tone-mapping.fragment.glsl
+        post-process/visibility-buffer-debug-view.fragment.glsl
 
         #PARENT_SCOPE
         )
 
 set(COMPUTE_SHADERS
         compute/animation-skinning.compute.glsl
+        compute/clear-visibility-buffer.compute.glsl
         compute/copy-variance.compute.glsl
         compute/firefly-rejection.compute.glsl
         compute/particles.compute.glsl

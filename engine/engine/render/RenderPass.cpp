@@ -147,10 +147,11 @@ void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource,
 }
 
 void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
-                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass) {
+                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool isStorageOnly) {
     outputs.emplace_back(resource, loadOp, clearValue, aspect);
     outputs.back().resource.updateLayout(layout);
     outputs.back().isCreatedInThisPass = isCreatedInThisPass;
+    outputs.back().isStorageOnly = isStorageOnly;
     resource.updateLayout(layout);
     finalLayouts[resource.id] = layout;
 }
@@ -185,7 +186,9 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
     std::vector<vk::ClearValue> clearValues;
     for(const auto& output : outputs) {
-
+        if(output.isStorageOnly) {
+            continue;
+        }
         auto initialLayout = vk::ImageLayout::eUndefined;
         auto finalLayout = output.resource.layout;//finalLayouts[output.resource.id];
         assert(finalLayout != vk::ImageLayout::eUndefined);
@@ -292,7 +295,10 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 // TODO: inputs
                 for (const auto& output : outputs) {
                     auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
-                    frameImageViews.push_back(texture.getView(output.aspect));
+
+                    if(!output.isStorageOnly) {
+                        frameImageViews.push_back(texture.getView(output.aspect));
+                    }
 
                     maxWidth = std::max(texture.getSize().width, maxWidth);
                     maxHeight = std::max(texture.getSize().height, maxHeight);

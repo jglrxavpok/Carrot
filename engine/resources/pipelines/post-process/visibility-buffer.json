@@ -1,0 +1,4 @@
+{
+  "_import": "_post-process.json",
+  "fragmentShader": "resources/shaders/post-process/visibility-buffer-debug-view.fragment.glsl.spv"
+}

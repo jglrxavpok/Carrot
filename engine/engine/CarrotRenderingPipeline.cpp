@@ -408,16 +408,18 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Render::FrameResource noisyLighting; // for debug
         Render::FrameResource lighting;
         Render::FrameResource reflections;
+        Render::FrameResource visibilityBufferDebug;
         Render::FrameResource mergeResult;
     };
 
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, lightingPass, denoisedGI, denoisedReflections, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+            [this, lightingPass, denoisedGI, visibilityPasses, denoisedReflections, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.lighting = builder.read(denoisedGI.denoiseResult, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.reflections = builder.read(denoisedReflections.denoiseResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.visibilityBufferDebug = builder.read(visibilityPasses.debugView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 data.mergeResult = builder.createRenderTarget("Merged",
                                                               vk::Format::eR32G32B32A32Sfloat,
@@ -451,6 +453,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.reflections, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.visibilityBufferDebug, frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);
                 auto& screenQuadMesh = frame.renderer.getFullscreenQuad();

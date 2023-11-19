@@ -988,6 +988,7 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
                 ImGui::RadioButton("Temporal denoise result", &gIndex, DEBUG_POST_TEMPORAL_DENOISE);
                 ImGui::RadioButton("Temporal denoise result (with firefly rejection)", &gIndex, DEBUG_POST_FIREFLY_REJECTION);
                 ImGui::RadioButton("Variance", &gIndex, DEBUG_VARIANCE);
+                ImGui::RadioButton("Visibility buffer", &gIndex, DEBUG_VISIBILITY_BUFFER);
 
                 obj.gBufferType = gIndex;
             }
@@ -1201,8 +1202,9 @@ void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context&
     const std::size_t requiredStorage = renderData.perDrawData.size() * elementSize;
 
     // perDrawElementCount should accurately predict how many elements perDrawData has (same for perDrawOffsetCount)
-    verify(renderData.perDrawData.size() == renderData.perDrawElementCount, "perDrawData.size() != perDrawElementCount.load(), this is a programming error!");
-    verify(renderData.perDrawOffsets.size() == renderData.perDrawOffsetCount, "perDrawData.size() != perDrawElementCount.load(), this is a programming error!");
+    //  we allow more render packets being fed to the renderer than what will be recorded, for debug and iteration purposes (don't crash if we don't record packets of a certain type yet)
+    verify(renderData.perDrawData.size() <= renderData.perDrawElementCount, "perDrawData.size() > perDrawElementCount.load(), this is a programming error!");
+    verify(renderData.perDrawOffsets.size() <= renderData.perDrawOffsetCount, "perDrawData.size() > perDrawElementCount.load(), this is a programming error!");
     if(requiredStorage == 0)
         return;
 

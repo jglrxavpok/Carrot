@@ -1,0 +1,17 @@
+{
+  "type": "blit",
+  "subpassIndex": 0,
+  "vertexFormat": "ScreenSpace",
+  "cull": false,
+  "alphaBlending": true,
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ],
+  "depthWrite": false,
+  "depthTest": false,
+  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/post-process/visibility-buffer-debug-view.fragment.glsl.spv"
+}

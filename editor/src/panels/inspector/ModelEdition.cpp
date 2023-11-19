@@ -83,6 +83,14 @@ namespace Peeler {
             edition.hasModifications = true;
         }
 
+        bool isVirtualizedGeometry = override.virtualizedGeometry;
+        if(ImGui::Checkbox("Virtualized Geometry##editModelComponent", &isVirtualizedGeometry)) {
+            auto renderer = cloneIfNeeded();
+            Carrot::Render::MaterialOverride* pNewOverride = renderer->getOverrides().findForMesh(override.meshIndex);
+            pNewOverride->virtualizedGeometry = isVirtualizedGeometry;
+            edition.hasModifications = true;
+        }
+
         return false;
     }
 
@@ -160,7 +168,7 @@ namespace Peeler {
                 std::size_t toRemove = ~0ull;
 
                 for(const auto& override : component->modelRenderer->getOverrides()) {
-                    ImGui::BeginChild(Carrot::sprintf("Material overrides##%llu", index).c_str(), ImVec2(0, lineHeight * 8 + spacing*2), true);
+                    ImGui::BeginChild(Carrot::sprintf("Material overrides##%llu", index).c_str(), ImVec2(0, lineHeight * 9 + spacing*2), true);
 
                     bool removed = editSingleOverride(edition, override, *component->modelRenderer, cloneIfNeeded);
                     if(removed) {

@@ -21,6 +21,7 @@ namespace Carrot::Render {
     bool MaterialOverride::operator==(const MaterialOverride& other) const {
         return meshIndex == other.meshIndex
         && pipeline == other.pipeline
+        && virtualizedGeometry == other.virtualizedGeometry
         && (materialTextures == nullptr) == (other.materialTextures == nullptr)
         && (materialTextures == nullptr || *materialTextures == *other.materialTextures);
     }
@@ -31,6 +32,7 @@ namespace Carrot::Render {
         if(materialTextures) {
             hash_combine(hash, materialTextures->hash());
         }
+        hash_combine(hash, robin_hood::hash_int(virtualizedGeometry ? 1 : 0));
 
         return hash;
     }
@@ -177,6 +179,9 @@ namespace Carrot::Render {
                     override.materialTextures->metallicRoughness = loadTexture(element->value);
                 }
             }
+            if(overrideObj.HasMember("virtualized_geometry")) {
+                override.virtualizedGeometry = overrideObj["virtualized_geometry"].GetBool();
+            }
 
             renderer->overrides.add(override);
         }
@@ -235,6 +240,7 @@ namespace Carrot::Render {
 
                 overrideObj.AddMember("material", materialObj, allocator);
             }
+            overrideObj.AddMember("virtualized_geometry", override.virtualizedGeometry, allocator);
 
             overridesObj.PushBack(overrideObj, allocator);
         }
@@ -255,6 +261,7 @@ namespace Carrot::Render {
 
             clonedOverride.meshIndex = override.meshIndex;
             clonedOverride.pipeline = override.pipeline;
+            clonedOverride.virtualizedGeometry = override.virtualizedGeometry;
 
             if(override.materialTextures) {
                 clonedOverride.materialTextures = materialSystem.createMaterialHandle();
@@ -274,6 +281,9 @@ namespace Carrot::Render {
 
         // TODO: support for skinned meshes
         for(const auto& bucket : buckets) {
+            if(bucket.virtualizedGeometry != (renderPass == PassEnum::VisibilityBuffer)) {
+                continue;
+            }
             ZoneScopedN("per bucket");
             Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, renderContext);
             renderPacket.pipeline = bucket.pipeline;
@@ -355,7 +365,25 @@ namespace Carrot::Render {
     }
 
     void ModelRenderer::recreateStructures() {
-        std::unordered_map<std::shared_ptr<Carrot::Pipeline>, PipelineBucket> perPipelineBuckets;
+        struct BucketKey {
+            std::shared_ptr<Carrot::Pipeline> pipeline;
+            bool virtualizedGeometry = false;
+
+            bool operator==(const BucketKey& other) const {
+                return pipeline == other.pipeline
+                    && virtualizedGeometry == other.virtualizedGeometry;
+            }
+
+            struct Hasher {
+                std::size_t operator()(const BucketKey& k) const {
+                    std::size_t hash = robin_hood::hash_int((std::uint64_t)k.pipeline.get());
+                    hash_combine(hash, k.virtualizedGeometry ? 1ull : 0ull);
+                    return hash;
+                }
+            };
+        };
+
+        std::unordered_map<BucketKey, PipelineBucket, BucketKey::Hasher> perPipelineBuckets;
         auto& materialSystem = GetRenderer().getMaterialSystem();
         for(auto& [materialSlot, meshList] : model.getStaticMeshesPerMaterial()) {
             for(auto& meshAndTransform : meshList) {
@@ -383,7 +411,8 @@ namespace Carrot::Render {
                 }
 
                 if(pMat) {
-                    auto& bucket = perPipelineBuckets[pipeline];
+                    BucketKey key { pipeline, pOverride ? pOverride->virtualizedGeometry : false };
+                    auto& bucket = perPipelineBuckets[key];
 
                     const Model::StaticMeshInfo& meshInfo = model.getStaticMeshInfo(meshAndTransform.staticMeshIndex);
 
@@ -415,10 +444,12 @@ namespace Carrot::Render {
         // flatten list
         buckets.clear();
         buckets.reserve(perPipelineBuckets.size());
-        for(auto& [pipeline, bucket] : perPipelineBuckets) {
+        for(auto& [key, bucket] : perPipelineBuckets) {
+            auto& [pipeline, virtualizedGeometry] = key;
             PipelineBucket& newBucket = buckets.emplace_back();
             newBucket = std::move(bucket);
             newBucket.pipeline = pipeline;
+            newBucket.virtualizedGeometry = virtualizedGeometry;
         }
     }
 } // Carrot::Render
