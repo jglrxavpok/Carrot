@@ -8,12 +8,14 @@
 #include <core/Macros.h>
 #include <core/scene/GLTFLoader.h>
 #include <gltf/GLTFWriter.h>
-#include <core/io/vfs/VirtualFileSystem.h>
 #include <unordered_set>
 #include "core/io/Logging.hpp"
 #include "glm/gtx/component_wise.hpp"
+#include "core/tasks/Tasks.h"
 
 #include <gltf/MikkTSpaceInterface.h>
+
+#include <meshoptimizer.h>
 
 namespace Fertilizer {
 
@@ -231,6 +233,58 @@ namespace Fertilizer {
         }
     }
 
+    /**
+     * From this primitive's vertex & index buffer, generate meshlets/clusters
+     */
+    static void generateMeshlets(LoadedPrimitive& primitive) {
+        constexpr std::size_t maxVertices = 64;
+        constexpr std::size_t maxTriangles = 128;
+        const float coneWeight = 0.0f; // for occlusion culling, currently unused
+
+        // tell meshoptimizer to generate meshlets
+        auto& indexBuffer = primitive.indices;
+        const std::size_t maxMeshlets = meshopt_buildMeshletsBound(indexBuffer.size(), maxVertices, maxTriangles);
+        std::vector<meshopt_Meshlet> meshoptMeshlets;
+        primitive.meshlets.resize(maxMeshlets);
+        meshoptMeshlets.resize(maxMeshlets);
+
+        std::vector<unsigned int> meshletVertexIndices;
+        std::vector<unsigned char> meshletTriangles;
+        meshletVertexIndices.resize(maxMeshlets * maxVertices);
+        meshletTriangles.resize(maxMeshlets * maxVertices * 3);
+
+        const std::size_t meshletCount = meshopt_buildMeshlets(meshoptMeshlets.data(), meshletVertexIndices.data(), meshletTriangles.data(), // meshlet outputs
+                                                               indexBuffer.data(), indexBuffer.size(), // original index buffer
+                                                               (const float*)(primitive.vertices.data()) + offsetof(Carrot::Vertex, pos)/sizeof(float), // pointer to position data
+                                                               primitive.vertices.size(), // vertex count of original mesh
+                                                               sizeof(Carrot::Vertex), // stride
+                                                               maxVertices, maxTriangles, coneWeight);
+        const meshopt_Meshlet& last = meshoptMeshlets[meshletCount - 1];
+        primitive.meshletVertexIndices.resize(last.vertex_offset + last.vertex_count);
+        primitive.meshletIndices.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+        primitive.meshlets.resize(meshletCount); // remove over-allocated meshlets
+
+        Carrot::Async::parallelFor(primitive.meshletVertexIndices.size(), [&](std::size_t index) {
+            primitive.meshletVertexIndices[index] = meshletVertexIndices[index];
+        }, 1024);
+        Carrot::Async::parallelFor(primitive.meshletIndices.size(), [&](std::size_t index) {
+            primitive.meshletIndices[index] = meshletTriangles[index];
+        }, 1024);
+
+
+        // meshlets are ready, process them in the format used by Carrot:
+        Carrot::Async::parallelFor(meshletCount, [&](std::size_t index) {
+            auto& meshoptMeshlet = meshoptMeshlets[index];
+            auto& carrotMeshlet = primitive.meshlets[index];
+
+            carrotMeshlet.vertexOffset = meshoptMeshlet.vertex_offset;
+            carrotMeshlet.vertexCount = meshoptMeshlet.vertex_count;
+
+            carrotMeshlet.indexOffset = meshoptMeshlet.triangle_offset;
+            carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
+        }, 32);
+    }
+
     static void processModel(const std::string& modelName, tinygltf::Model& model) {
         GLTFLoader loader{};
         LoadedScene scene = loader.load(model, {});
@@ -257,6 +311,7 @@ namespace Fertilizer {
             cleanupTangents(expandedMesh);
 
             collapseMesh(primitive, expandedMesh);
+            generateMeshlets(primitive);
         }
 
         // re-export model

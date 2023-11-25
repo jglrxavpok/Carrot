@@ -34,4 +34,13 @@ namespace Carrot::Async {
         friend class ::std::hash<Carrot::Async::TaskLane>;
     };
 
+    /**
+     * Executes 'count' tasks in parallel, executing 'forEach' for each task.
+     * The calling thread will also participate.
+     * Waits until all tasks are done before returning
+     * @param count how many tasks to execute
+     * @param forEach what to execute for each task
+     * @param granularity how many tasks at once per thread
+     */
+    inline void (*parallelFor)(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) = nullptr;
 }

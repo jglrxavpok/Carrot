@@ -357,7 +357,7 @@ namespace Carrot::Render {
         }
     }
 
-    void MaterialSystem::beginFrame(const Context& renderContext) {
+    void MaterialSystem::endFrame(const Context& renderContext) {
         Async::LockGuard g { accessLock };
 
         if(ShowDebug) {

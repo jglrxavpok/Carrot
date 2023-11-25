@@ -12,6 +12,10 @@
 
 namespace Carrot {
     class InstanceHandle; // Raytracing Top Level Acceleration Structure
+
+    namespace Render {
+        struct MeshletsInstance;
+    }
 }
 
 namespace Carrot::ECS {
@@ -21,6 +25,7 @@ namespace Carrot::ECS {
         glm::vec4 color = glm::vec4{1.0f};
         bool isTransparent = false;
         std::shared_ptr<InstanceHandle> tlas = nullptr;
+        std::unordered_map<Render::Viewport*, std::shared_ptr<Render::MeshletsInstance>> meshletsInstance;
         bool castsShadows = true;
 
         explicit ModelComponent(Entity entity): IdentifiableComponent<ModelComponent>(std::move(entity)) {}
@@ -47,12 +52,14 @@ namespace Carrot::ECS {
         void setFile(const IO::VFS::Path& path);
 
     private:
+        std::shared_ptr<Render::MeshletsInstance> loadMeshletsInstance(const Carrot::Render::Context& currentContext);
         void loadTLASIfPossible();
         void enableTLAS();
         void disableTLAS();
 
     private:
         Async::SpinLock tlasAccess;
+        Async::SpinLock meshletsAccess;
         bool tlasIsWaitingForModel = true;
 
         friend class ModelRenderSystem;

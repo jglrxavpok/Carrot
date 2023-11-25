@@ -75,7 +75,8 @@ namespace Carrot::Render {
 
         std::uint32_t instanceCount = 1; // Total number of instances for this packet, used to offset firstInstance when merging packets
 
-        std::vector<vk::DrawIndexedIndirectCommand> drawCommands;
+        std::vector<vk::DrawIndirectCommand> unindexedDrawCommands;
+        std::vector<vk::DrawIndexedIndirectCommand> indexedDrawCommands;
 
         TransparentPassData transparentGBuffer;
 

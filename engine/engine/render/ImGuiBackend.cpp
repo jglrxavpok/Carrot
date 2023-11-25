@@ -263,7 +263,7 @@ namespace Carrot::Render {
         }
 
         int drawIndex = 0;
-        auto& drawCommand = packet.drawCommands.emplace_back();
+        auto& drawCommand = packet.indexedDrawCommands.emplace_back();
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
             std::size_t commandListVertexOffset = vertexStarts[n];

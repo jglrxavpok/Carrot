@@ -95,6 +95,7 @@ namespace Carrot {
 
     namespace Render {
         class Font;
+        class MeshletManager;
         class VisibilityBuffer;
     }
 
@@ -149,6 +150,7 @@ namespace Carrot {
 
         GBuffer& getGBuffer() { return *gBuffer; };
         Render::VisibilityBuffer& getVisibilityBuffer() { return *visibilityBuffer; };
+        Render::MeshletManager& getMeshletManager() { return *meshletManager; };
 
         vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
 
@@ -351,6 +353,7 @@ namespace Carrot {
         std::unique_ptr<RayTracer> raytracer = nullptr;
         std::unique_ptr<GBuffer> gBuffer = nullptr;
         std::unique_ptr<Render::VisibilityBuffer> visibilityBuffer = nullptr;
+        std::unique_ptr<Render::MeshletManager> meshletManager = nullptr;
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> forwardRenderingFrameInfo;
 
         std::list<CommandBufferConsumer> beforeFrameCommands;

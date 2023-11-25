@@ -438,3 +438,50 @@ std::vector<vk::VertexInputBindingDescription> Carrot::getImGuiVertexBindingDesc
             },
     };
 }
+
+std::vector<vk::VertexInputAttributeDescription> Carrot::getInstanceDataOnlyAttributeDescriptions() {
+    std::vector<vk::VertexInputAttributeDescription> descriptions{10};
+    descriptions[0] = {
+            .location = 0,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, color)),
+    };
+
+    descriptions[1] = {
+            .location = 1,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32A32Uint,
+            .offset = static_cast<uint32_t>(offsetof(InstanceData, uuid)),
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[2+i] = {
+                .location = static_cast<uint32_t>(2+i),
+                .binding = 0,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, transform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        descriptions[6+i] = {
+                .location = static_cast<uint32_t>(6+i),
+                .binding = 0,
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .offset = static_cast<uint32_t>(offsetof(InstanceData, lastFrameTransform)+sizeof(glm::vec4)*i),
+        };
+    }
+
+    return descriptions;
+}
+
+std::vector<vk::VertexInputBindingDescription> Carrot::getInstanceDataOnlyBindingDescription() {
+    return {
+            vk::VertexInputBindingDescription {
+                    .binding = 0,
+                    .stride = sizeof(InstanceData),
+                    .inputRate = vk::VertexInputRate::eInstance,
+            },
+    };
+}

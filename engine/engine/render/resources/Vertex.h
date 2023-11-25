@@ -30,4 +30,7 @@ namespace Carrot {
 
     std::vector<vk::VertexInputAttributeDescription> getImGuiVertexAttributeDescriptions();
     std::vector<vk::VertexInputBindingDescription> getImGuiVertexBindingDescription();
+
+    std::vector<vk::VertexInputAttributeDescription> getInstanceDataOnlyAttributeDescriptions();
+    std::vector<vk::VertexInputBindingDescription> getInstanceDataOnlyBindingDescription();
 }

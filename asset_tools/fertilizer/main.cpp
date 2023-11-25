@@ -7,6 +7,7 @@
 #include <thread>
 #include "core/Macros.h"
 #include "core/utils/stringmanip.h"
+#include "core/tasks/Tasks.h"
 
 // single file implementations
 #define STB_IMAGE_IMPLEMENTATION
@@ -84,6 +85,13 @@ int main(int argc, char** argv) {
     int errorCode = 0;
     const unsigned int maxThreads = std::thread::hardware_concurrency();
     const unsigned int stepSize = ceil(allInputs.size() / (float)maxThreads);
+
+    Carrot::Async::parallelFor = [](std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) {
+        // TODO: make it actually parallel
+        for(std::size_t i = 0; i < count; i++) {
+            forEach(i);
+        }
+    };
 
     std::vector<std::thread> threads;
     threads.reserve(maxThreads);

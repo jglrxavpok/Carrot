@@ -7,6 +7,7 @@
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/detail/type_quat.hpp"
 #include "glm/gtx/matrix_decompose.hpp"
+#include "core/scene/GLTFLoader.h" // for extension names
 
 namespace Fertilizer {
     static glm::mat4 carrotSpaceToGLTFSpace = glm::rotate(glm::mat4{1.0f}, -glm::pi<float>()/2.0f, glm::vec3(1,0,0));
@@ -147,6 +148,15 @@ namespace Fertilizer {
         int staticVertexBufferViewIndex = -1;
         int skinnedVertexBufferIndex = -1;
         int skinnedVertexBufferViewIndex = -1;
+
+        // meshlets buffer
+        int meshletBufferIndex = (int)model.buffers.size();
+        int meshletBufferViewIndex = (int)model.bufferViews.size();
+        {
+            auto& meshletBuffer = model.buffers.emplace_back();
+            meshletBuffer.uri = modelName + "-meshlets.bin";
+            model.bufferViews.emplace_back();
+        }
 
         // index buffer
         int indexBufferIndex = (int)model.buffers.size();
@@ -319,6 +329,79 @@ namespace Fertilizer {
                                                     TINYGLTF_TYPE_VEC4, TINYGLTF_COMPONENT_TYPE_FLOAT,
                                                     offsetof(Carrot::SkinnedVertex, boneWeights)+geometryStartOffset);
             }
+
+            // write meshlets
+            {
+                auto& meshletsExtensionJSON = glTFPrimitive.extensions[Carrot::Render::GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME];
+                tinygltf::Value::Object meshletsExtension;
+
+                auto& meshletBuffer = model.buffers[meshletBufferIndex];
+
+                int meshletsAccessorIndex = accessorIndex;
+                accessorIndex++;
+
+                int meshletVertexIndicesAccessorIndex = accessorIndex;
+                accessorIndex++;
+
+                int meshletIndicesAccessorIndex = accessorIndex;
+                accessorIndex++;
+
+                // meshlet data
+                {
+                    const std::size_t meshletCount = primitive.meshlets.size();
+                    const std::size_t meshletStartIndex = meshletBuffer.data.size();
+                    const std::size_t bufferSize = meshletCount * sizeof(Carrot::Render::Meshlet);
+                    meshletBuffer.data.resize(meshletStartIndex + bufferSize);
+                    memcpy(meshletBuffer.data.data() + meshletStartIndex, primitive.meshlets.data(), bufferSize);
+
+                    tinygltf::Accessor& accessor = model.accessors.emplace_back();
+                    accessor.bufferView = meshletBufferViewIndex;
+                    accessor.byteOffset = meshletStartIndex;
+                    accessor.count = meshletCount;
+                    accessor.name = Carrot::sprintf("%s-meshlets", primitive.name.c_str());
+                    accessor.type = TINYGLTF_TYPE_VEC4;
+                    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                }
+
+                // vertex indices
+                {
+                    const std::size_t count = primitive.meshletVertexIndices.size();
+                    const std::size_t startIndex = meshletBuffer.data.size();
+                    const std::size_t bufferSize = count * sizeof(std::uint32_t);
+                    meshletBuffer.data.resize(startIndex + bufferSize);
+                    memcpy(meshletBuffer.data.data() + startIndex, primitive.meshletVertexIndices.data(), bufferSize);
+
+                    tinygltf::Accessor& accessor = model.accessors.emplace_back();
+                    accessor.bufferView = meshletBufferViewIndex;
+                    accessor.byteOffset = startIndex;
+                    accessor.count = count;
+                    accessor.name = Carrot::sprintf("%s-meshlets-vertex-indices", primitive.name.c_str());
+                    accessor.type = TINYGLTF_TYPE_SCALAR;
+                    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                }
+
+                // indices
+                {
+                    const std::size_t count = primitive.meshletIndices.size();
+                    const std::size_t startIndex = meshletBuffer.data.size();
+                    const std::size_t bufferSize = count * sizeof(std::uint32_t);
+                    meshletBuffer.data.resize(startIndex + bufferSize);
+                    memcpy(meshletBuffer.data.data() + startIndex, primitive.meshletIndices.data(), bufferSize);
+
+                    tinygltf::Accessor& accessor = model.accessors.emplace_back();
+                    accessor.bufferView = meshletBufferViewIndex;
+                    accessor.byteOffset = startIndex;
+                    accessor.count = count;
+                    accessor.name = Carrot::sprintf("%s-meshlets-indices", primitive.name.c_str());
+                    accessor.type = TINYGLTF_TYPE_SCALAR;
+                    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                }
+
+                meshletsExtension["meshlets"] = tinygltf::Value { meshletsAccessorIndex };
+                meshletsExtension["meshlets_vertex_indices"] = tinygltf::Value { meshletVertexIndicesAccessorIndex };
+                meshletsExtension["meshlets_indices"] = tinygltf::Value { meshletIndicesAccessorIndex };
+                meshletsExtensionJSON = tinygltf::Value{ std::move(meshletsExtension) };
+            }
         }
 
         {
@@ -327,6 +410,14 @@ namespace Fertilizer {
             indicesBufferView.byteLength = indicesBuffer.data.size();
             indicesBufferView.byteOffset = 0;
             indicesBufferView.buffer = indexBufferIndex;
+        }
+        {
+            auto& meshletBuffer = model.buffers[meshletBufferIndex];
+            auto& meshletsBufferView = model.bufferViews[meshletBufferViewIndex];
+            meshletsBufferView.name = "Meshlets";
+            meshletsBufferView.byteLength = meshletBuffer.data.size();
+            meshletsBufferView.byteOffset = 0;
+            meshletsBufferView.buffer = meshletBufferIndex;
         }
         if(pStaticGeometryBuffer != nullptr)
         {
@@ -748,6 +839,7 @@ namespace Fertilizer {
 
         model.asset.generator = "Fertilizer v1";
         model.asset.version = "2.0";
+        model.extensionsUsed.emplace_back(Carrot::Render::GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME);
 
         Payload payload {
                 .glTFModel = model,

@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include "core/io/vfs/VirtualFileSystem.h"
+#include <core/render/Meshlet.h>
 #include <core/render/VertexTypes.h>
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
@@ -108,6 +109,10 @@ namespace Carrot::Render {
          * Index of material to use inside the 'materials' member of LoadedScene
          */
         std::int64_t materialIndex = -1;
+
+        std::vector<std::uint32_t> meshletVertexIndices; // all vertices of all meshlets (indices of vertices inside original vertex buffer, ie 'vertices' in this struct)
+        std::vector<std::uint32_t> meshletIndices; // all triangles of all meshlets (indices of vertices inside meshletVertexIndices)
+        std::vector<Meshlet> meshlets;
     };
 
     /**

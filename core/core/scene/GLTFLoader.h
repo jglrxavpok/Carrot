@@ -14,6 +14,8 @@
 namespace Carrot::Render {
     class GLTFLoader {
     public:
+        static constexpr const char* const CARROT_MESHLETS_EXTENSION_NAME = "CARROT_meshlets";
+
         LoadedScene load(const Carrot::IO::Resource& resource);
         LoadedScene load(const tinygltf::Model& model, const IO::VFS::Path& modelFilepath);
 

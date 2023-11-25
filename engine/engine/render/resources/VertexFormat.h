@@ -16,6 +16,7 @@ namespace Carrot {
         SimpleVertexWithInstanceData,
         Particle,
         ImGuiVertex,
+        InstanceDataOnly,
         Invalid
     };
 

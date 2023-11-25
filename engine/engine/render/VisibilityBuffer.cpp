@@ -56,8 +56,10 @@ namespace Carrot::Render {
                 cmds.pipelineBarrier2KHR(dependencyInfo);
 
                 // Record all render packets (~= draw commands) with the tag "VisibilityBuffer"
-                auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json");
-                renderer.bindStorageImage(*pipeline, frame, texture, 1, 0,
+
+                // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
+                auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)frame.pViewport);
+                renderer.bindStorageImage(*pipeline, frame, texture, 0, 1,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
             }

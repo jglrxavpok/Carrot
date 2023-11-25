@@ -4,7 +4,8 @@
 
 #include "VulkanRenderer.h"
 #include "GBuffer.h"
-#include "VisibilityBuffer.h"
+#include "engine/render/VisibilityBuffer.h"
+#include "engine/render/MeshletManager.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/console/RuntimeOption.hpp"
@@ -186,6 +187,7 @@ void Carrot::VulkanRenderer::createUIResources() {
 void Carrot::VulkanRenderer::createGBuffer() {
     gBuffer = std::make_unique<GBuffer>(*this, *raytracer);
     visibilityBuffer = std::make_unique<Render::VisibilityBuffer>(*this);
+    meshletManager = std::make_unique<Render::MeshletManager>(*this);
 }
 
 void Carrot::VulkanRenderer::createRayTracer() {
@@ -739,6 +741,8 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         mustBeDoneByNextFrameCounter.busyWait();
     }
 
+    meshletManager->beginFrame(renderContext);
+
     // TODO: implement via asset reload system
     // reloaded shaders -> pipeline recreation -> need to rebind descriptor
     if(GetAssetServer().TMLhasReloadedShaders()) {
@@ -799,12 +803,16 @@ struct std::hash<PacketKey> {
         hash_r(key.pipeline);
         hash_s(key.pass);
         hash_r(key.viewport);
-        hash_r((VkBuffer)key.vertexBuffer.getVulkanBuffer());
-        hash_r((VkBuffer)key.vertexBuffer.getStart());
-        hash_r((VkBuffer)key.vertexBuffer.getSize());
-        hash_r((VkBuffer)key.indexBuffer.getVulkanBuffer());
-        hash_r((VkBuffer)key.indexBuffer.getStart());
-        hash_r((VkBuffer)key.indexBuffer.getSize());
+        if(key.vertexBuffer) {
+            hash_r((VkBuffer)key.vertexBuffer.getVulkanBuffer());
+            hash_r((VkBuffer)key.vertexBuffer.getStart());
+            hash_r((VkBuffer)key.vertexBuffer.getSize());
+        }
+        if(key.indexBuffer) {
+            hash_r((VkBuffer)key.indexBuffer.getVulkanBuffer());
+            hash_r((VkBuffer)key.indexBuffer.getStart());
+            hash_r((VkBuffer)key.indexBuffer.getSize());
+        }
         hash_s(key.indexCount);
         return h;
     }
@@ -960,6 +968,8 @@ void Carrot::VulkanRenderer::waitForRenderToComplete() {
 
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
+
+    meshletManager->render(renderContext);
 
     {
         static DebugBufferObject obj{};
@@ -1563,7 +1573,14 @@ void Carrot::VulkanRenderer::sortRenderPackets(std::vector<Carrot::Render::Packe
             return a.pipeline < b.pipeline;
         }
 
-        return a.vertexBuffer.getVulkanBuffer() < b.vertexBuffer.getVulkanBuffer();
+        if(a.vertexBuffer && b.vertexBuffer) {
+            return a.vertexBuffer.getVulkanBuffer() < b.vertexBuffer.getVulkanBuffer();
+        } else if(a.vertexBuffer) {
+            return true;
+        } else if(b.vertexBuffer) {
+            return false;
+        }
+        return false;
     });
 }
 
@@ -1725,7 +1742,7 @@ void Carrot::VulkanRenderer::renderThreadProc() {
         }
 
         auto timeStart = std::chrono::steady_clock::now();
-        materialSystem.beginFrame(recordingRenderContext); // called here because new material may have been created during the frame
+        materialSystem.endFrame(recordingRenderContext); // called here because new material may have been created during the frame
         lighting.beginFrame(recordingRenderContext);
         preallocatePerDrawBuffers(recordingRenderContext);
 

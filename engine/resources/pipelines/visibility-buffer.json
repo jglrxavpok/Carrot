@@ -1,25 +1,21 @@
 {
   "type": "gbuffer",
   "subpassIndex": 0,
-  "vertexFormat": "Vertex",
+  "vertexFormat": "InstanceDataOnly",
   "cull": false,
   "alphaBlending": false,
   "descriptorSets": [
     {
-      "type": "camera",
+      "type": "autofill",
       "setID": 0
     },
     {
-      "type": "autofill",
+      "type": "camera",
       "setID": 1
     },
     {
-      "type": "materials",
-      "setID": 2
-    },
-    {
       "type": "per_draw",
-      "setID": 3
+      "setID": 2
     }
   ],
   "depthWrite": true,

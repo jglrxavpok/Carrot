@@ -18,6 +18,7 @@
 #include "engine/render/MeshAndTransform.h"
 #include "engine/render/GBufferDrawData.h"
 #include "engine/render/resources/Pipeline.h"
+#include "core/render/Meshlet.h"
 #include "IDTypes.h"
 
 namespace Carrot {
@@ -33,6 +34,7 @@ namespace Carrot {
 
     namespace Render {
         class MaterialHandle;
+        struct MeshletsTemplate;
         class ModelRenderer;
         class Packet;
     }
@@ -45,6 +47,9 @@ namespace Carrot {
         using Ref = std::shared_ptr<Model>;
 
         struct StaticMeshInfo {
+            std::vector<Render::Meshlet> meshlets;
+            std::vector<std::uint32_t> meshletVertexIndices;
+            std::vector<std::uint32_t> meshletIndices;
             std::size_t startVertex = 0;
             std::size_t vertexCount = 0;
             std::size_t startIndex = 0;
@@ -67,6 +72,7 @@ namespace Carrot {
 
         std::shared_ptr<BLASHandle> getStaticBLAS();
         std::shared_ptr<BLASHandle> getSkinnedBLAS();
+        std::shared_ptr<Render::MeshletsTemplate> getMeshletTemplate(std::size_t staticMeshIndex);
 
     public:
         bool hasSkeleton() const;
@@ -137,6 +143,9 @@ namespace Carrot {
 
         std::shared_ptr<BLASHandle> staticBLAS;
         std::shared_ptr<BLASHandle> skinnedBLAS;
+
+        // indexed by mesh's static mesh index
+        std::unordered_map<std::size_t, std::shared_ptr<Render::MeshletsTemplate>> meshletsPerStaticMesh;
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;

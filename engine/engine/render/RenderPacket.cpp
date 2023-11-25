@@ -32,7 +32,7 @@ namespace Carrot::Render {
         vertexBuffer = mesh.getVertexBuffer();
         indexBuffer = mesh.getIndexBuffer();
 
-        auto& cmd = drawCommands.empty() ? drawCommands.emplace_back() : drawCommands[0];
+        auto& cmd = indexedDrawCommands.empty() ? indexedDrawCommands.emplace_back() : indexedDrawCommands[0];
         cmd.indexCount = mesh.getIndexCount();
         cmd.instanceCount = 1;
     }
@@ -102,11 +102,11 @@ namespace Carrot::Render {
 
         // everything verified, merge packets
         // TODO: merge with another drawcommand if possible
-        std::size_t newCommandsOffset = drawCommands.size();
-        drawCommands.resize(newCommandsOffset + other.drawCommands.size());
-        for (std::size_t j = 0; j < other.drawCommands.size(); ++j) {
-            auto& newCommand = drawCommands.emplace_back();
-            newCommand = other.drawCommands[j];
+        std::size_t newCommandsOffset = indexedDrawCommands.size();
+        indexedDrawCommands.resize(newCommandsOffset + other.indexedDrawCommands.size());
+        for (std::size_t j = 0; j < other.indexedDrawCommands.size(); ++j) {
+            auto& newCommand = indexedDrawCommands.emplace_back();
+            newCommand = other.indexedDrawCommands[j];
             newCommand.firstInstance += instanceCount;
         }
         instanceCount += other.instanceCount;
@@ -126,7 +126,7 @@ namespace Carrot::Render {
         {
             ZoneScopedN("Aftermath markers");
             GetVulkanDriver().setFormattedMarker(cmds, "Record RenderPacket %s %s %llu", source.file_name(), source.function_name(), (std::uint64_t)source.line());
-            GetVulkanDriver().setFormattedMarker(cmds, "command count: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)drawCommands.size(), (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
+            GetVulkanDriver().setFormattedMarker(cmds, "command count: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)indexedDrawCommands.size(), (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
         }
 
         auto& renderer = renderContext.renderer;
@@ -188,21 +188,38 @@ namespace Carrot::Render {
             }
         }
 
+        Carrot::BufferView instanceBuffer;
         if(!instancingDataBuffer.empty()) {
             ZoneScopedN("Upload instance buffer");
-            Carrot::BufferView instanceBuffer = renderer.getInstanceBuffer(instancingDataBuffer.size());
+            instanceBuffer = renderer.getInstanceBuffer(instancingDataBuffer.size());
             instanceBuffer.directUpload(instancingDataBuffer.data(), instancingDataBuffer.size());
-
-            cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer(), instanceBuffer.getVulkanBuffer() }, { vertexBuffer.getStart(), instanceBuffer.getStart() });
-        } else {
-            cmds.bindVertexBuffers(0, vertexBuffer.getVulkanBuffer(), vertexBuffer.getStart());
         }
-        cmds.bindIndexBuffer(indexBuffer.getVulkanBuffer(), indexBuffer.getStart(), vk::IndexType::eUint32);
 
-        Carrot::BufferView drawCommandBuffer = renderer.getSingleFrameBuffer(drawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
-        drawCommandBuffer.directUpload(std::span { drawCommands });
+        if(vertexBuffer) {
+            if(instanceBuffer) {
+                cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer(), instanceBuffer.getVulkanBuffer() }, { vertexBuffer.getStart(), instanceBuffer.getStart() });
+            } else {
+                cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer() }, { vertexBuffer.getStart() });
+            }
+        } else {
+            if(instanceBuffer) {
+                cmds.bindVertexBuffers(0, instanceBuffer.getVulkanBuffer(), instanceBuffer.getStart());
+            }
+        }
 
-        cmds.drawIndexedIndirect(drawCommandBuffer.getVulkanBuffer(), drawCommandBuffer.getStart(), drawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
+        if(indexBuffer) {
+            cmds.bindIndexBuffer(indexBuffer.getVulkanBuffer(), indexBuffer.getStart(), vk::IndexType::eUint32);
+
+            Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
+            indexedDrawCommandBuffer.directUpload(std::span{ indexedDrawCommands });
+
+            cmds.drawIndexedIndirect(indexedDrawCommandBuffer.getVulkanBuffer(), indexedDrawCommandBuffer.getStart(), indexedDrawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
+        } else {
+            Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
+            unindexedDrawCommandBuffer.directUpload(std::span{ unindexedDrawCommands });
+
+            cmds.drawIndirect(unindexedDrawCommandBuffer.getVulkanBuffer(), unindexedDrawCommandBuffer.getStart(), unindexedDrawCommands.size(), sizeof(vk::DrawIndirectCommand));
+        }
     }
 
     std::span<std::uint8_t> Packet::allocateGeneric(std::size_t size) {
@@ -212,14 +229,15 @@ namespace Carrot::Render {
     void Packet::validate() const {
         verify(pipeline, "Pipeline must not be null");
         verify(pass != Render::PassEnum::Undefined, "Render pass must be defined");
-        verify(vertexBuffer, "Vertex buffer must not be null");
-        verify(((VkBuffer)vertexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Vertex buffer must not be null");
-        verify(indexBuffer, "Index buffer must not be null");
-        verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null");
+
+        if(!indexedDrawCommands.empty()) {
+            verify(indexBuffer, "Index buffer must not be null if there are indexed draw commands");
+            verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null if there are indexed draw commands");
+        }
         verify(viewport, "Viewport must not be null");
 
         if(!perDrawData.empty()) {
-            verify(drawCommands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many drawCommands than per draw data!");
+            verify(unindexedDrawCommands.size() + indexedDrawCommands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many drawCommands than per draw data!");
         }
     }
 
@@ -233,7 +251,8 @@ namespace Carrot::Render {
 
         vertexBuffer = std::move(toMove.vertexBuffer);
         indexBuffer = std::move(toMove.indexBuffer);
-        drawCommands = std::move(toMove.drawCommands);
+        indexedDrawCommands = std::move(toMove.indexedDrawCommands);
+        unindexedDrawCommands = std::move(toMove.unindexedDrawCommands);
         perDrawData = std::move(toMove.perDrawData);
         instanceCount = std::move(toMove.instanceCount);
 
@@ -261,7 +280,8 @@ namespace Carrot::Render {
 
         vertexBuffer = toCopy.vertexBuffer;
         indexBuffer = toCopy.indexBuffer;
-        drawCommands = toCopy.drawCommands;
+        indexedDrawCommands = toCopy.indexedDrawCommands;
+        unindexedDrawCommands = toCopy.unindexedDrawCommands;
         perDrawData = toCopy.perDrawData;
         instanceCount = toCopy.instanceCount;
 

@@ -8,6 +8,7 @@
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/InstanceData.h>
 #include <engine/render/RenderPacket.h>
+#include <engine/render/MeshletManager.h>
 
 namespace Carrot::ECS {
     ModelRenderSystem::ModelRenderSystem(const rapidjson::Value& json, World& world): RenderSystem<TransformComponent, ModelComponent>(world) {
@@ -26,6 +27,10 @@ namespace Carrot::ECS {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if(!entity.isVisible()) {
+                auto pMeshlets = modelComp.meshletsInstance[renderContext.pViewport];
+                if(pMeshlets) {
+                    pMeshlets->enabled = false;
+                }
                 return;
             }
 
@@ -38,10 +43,8 @@ namespace Carrot::ECS {
 
                 if(modelComp.modelRenderer) {
                     modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
-                    modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::VisibilityBuffer);
                 } else {
                     modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
-                    modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::VisibilityBuffer);
                 }
                 //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
@@ -58,6 +61,11 @@ namespace Carrot::ECS {
                             modelComp.disableTLAS();
                         }
                     }
+                }
+                std::shared_ptr<Render::MeshletsInstance> pMeshlets = modelComp.loadMeshletsInstance(renderContext);
+                if(pMeshlets) {
+                    pMeshlets->instanceData = instanceData;
+                    pMeshlets->enabled = true;
                 }
             }
         });

@@ -132,6 +132,7 @@ FetchContent_Declare(openal-soft
 FetchContent_MakeAvailable(openal-soft)
 
 add_subdirectory(thirdparty/cider)
+add_subdirectory(thirdparty/meshoptimizer)
 
 function(add_includes Target)
     add_core_includes(${Target})

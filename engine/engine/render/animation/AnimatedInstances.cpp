@@ -385,7 +385,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     packet.transparentGBuffer.zOrder = 0.0f;
 
     packet.instanceCount = 1;
-    packet.drawCommands.resize(1);
+    packet.indexedDrawCommands.resize(1);
 
     for (const auto&[mat, meshList]: model->skinnedMeshes) {
         data.materialIndex = mat;
@@ -421,7 +421,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
 
                 packet.vertexBuffer = Carrot::BufferView(nullptr, *fullySkinnedUnitVertices, sizeof(Carrot::Vertex) * vertexOffset, sizeof(Carrot::Vertex) * mesh->getVertexCount());
                 packet.indexBuffer = mesh->getIndexBuffer();
-                auto& cmd = packet.drawCommands[0];
+                auto& cmd = packet.indexedDrawCommands[0];
                 cmd.instanceCount = 1;
                 cmd.indexCount = mesh->getIndexCount();
 

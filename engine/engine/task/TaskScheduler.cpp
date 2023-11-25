@@ -109,6 +109,10 @@ namespace Carrot {
             }
         };
 
+        Carrot::Async::parallelFor = [](std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) {
+            GetTaskScheduler().parallelFor(count, forEach, granularity);
+        };
+
         const std::size_t inFrameCount = frameParallelWorkParallelismAmount();
         std::size_t availableThreads = inFrameCount + assetLoadingParallelismAmount();
         parallelThreads.resize(availableThreads);

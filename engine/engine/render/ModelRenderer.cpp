@@ -281,14 +281,14 @@ namespace Carrot::Render {
 
         // TODO: support for skinned meshes
         for(const auto& bucket : buckets) {
-            if(bucket.virtualizedGeometry != (renderPass == PassEnum::VisibilityBuffer)) {
+            if(bucket.virtualizedGeometry) {
                 continue;
             }
             ZoneScopedN("per bucket");
             Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, renderContext);
             renderPacket.pipeline = bucket.pipeline;
 
-            renderPacket.drawCommands = bucket.drawCommands;
+            renderPacket.indexedDrawCommands = bucket.drawCommands;
 
             renderPacket.vertexBuffer = model.getStaticMeshData().getVertexBuffer();
             renderPacket.indexBuffer = model.getStaticMeshData().getIndexBuffer();
@@ -304,7 +304,7 @@ namespace Carrot::Render {
                 ZoneScopedN("mesh use");
 
                 InstanceData* pInstanceData = &instancesData[meshIndex];
-                vk::DrawIndexedIndirectCommand* pDrawCommand = &renderPacket.drawCommands[meshIndex];
+                vk::DrawIndexedIndirectCommand* pDrawCommand = &renderPacket.indexedDrawCommands[meshIndex];
                 *pInstanceData = instanceData;
 
                 pInstanceData->transform = instanceData.transform * transform;

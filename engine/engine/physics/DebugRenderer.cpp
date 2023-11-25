@@ -43,7 +43,7 @@ namespace Carrot::Physics {
         renderPacket.vertexBuffer = vertexBuffer;
         renderPacket.indexBuffer = indexBuffer;
 
-        auto& cmd = renderPacket.drawCommands.emplace_back();
+        auto& cmd = renderPacket.indexedDrawCommands.emplace_back();
         cmd.indexCount = indices.size();
         cmd.instanceCount = 1;
 

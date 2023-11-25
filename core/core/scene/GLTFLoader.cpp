@@ -9,6 +9,7 @@
 #include <set>
 
 #include "core/io/vfs/VirtualFileSystem.h"
+#include "core/tasks/Tasks.h"
 
 namespace Carrot::Render {
 
@@ -18,6 +19,7 @@ namespace Carrot::Render {
 
     constexpr const char* const SUPPORTED_EXTENSIONS[] = {
             KHR_TEXTURE_BASISU_EXTENSION_NAME,
+            GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME
     };
 
     struct PrimitiveInformation {
@@ -353,6 +355,40 @@ namespace Carrot::Render {
         }
     }
 
+    static void loadMeshlets(LoadedPrimitive& loadedPrimitive, const tinygltf::Model& model, const tinygltf::Primitive& primitive) {
+        auto iter = primitive.extensions.find(GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME);
+        if(iter == primitive.extensions.end()) {
+            return;
+        }
+
+        const tinygltf::Value& value = iter->second;
+        const int meshletsAccessorIndex = value.Get("meshlets").GetNumberAsInt();
+        const int meshletsVertexIndicesAccessorIndex = value.Get("meshlets_vertex_indices").GetNumberAsInt();
+        const int meshletsIndicesAccessorIndex = value.Get("meshlets_indices").GetNumberAsInt();
+
+        {
+            const tinygltf::Accessor& accessor = model.accessors[meshletsAccessorIndex];
+            loadedPrimitive.meshlets.resize(accessor.count);
+            Carrot::Async::parallelFor(loadedPrimitive.meshlets.size(), [&](std::size_t i) {
+                loadedPrimitive.meshlets[i] = readFromAccessor<Carrot::Render::Meshlet>(i, accessor, model);
+            }, 16);
+        }
+        {
+            const tinygltf::Accessor& accessor = model.accessors[meshletsVertexIndicesAccessorIndex];
+            loadedPrimitive.meshletVertexIndices.resize(accessor.count);
+            Carrot::Async::parallelFor(loadedPrimitive.meshletVertexIndices.size(), [&](std::size_t i) {
+                loadedPrimitive.meshletVertexIndices[i] = readFromAccessor<std::uint32_t>(i, accessor, model);
+            }, 16);
+        }
+        {
+            const tinygltf::Accessor& accessor = model.accessors[meshletsIndicesAccessorIndex];
+            loadedPrimitive.meshletIndices.resize(accessor.count);
+            Carrot::Async::parallelFor(loadedPrimitive.meshletIndices.size(), [&](std::size_t i) {
+                loadedPrimitive.meshletIndices[i] = readFromAccessor<std::uint32_t>(i, accessor, model);
+            }, 16);
+        }
+    }
+
     LoadedScene GLTFLoader::load(const IO::Resource& resource) {
         ZoneScoped;
 
@@ -473,6 +509,7 @@ namespace Carrot::Render {
                 PrimitiveInformation info;
                 loadVertices(loadedPrimitive, model, primitive, info);
                 loadIndices(loadedPrimitive.indices, model, primitive);
+                loadMeshlets(loadedPrimitive, model, primitive);
                 hasAnySkin |= loadedPrimitive.isSkinned;
 
                 loadedPrimitive.hadNormals = info.hasNormals;
