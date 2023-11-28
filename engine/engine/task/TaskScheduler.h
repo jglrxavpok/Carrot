@@ -22,6 +22,11 @@ namespace Carrot {
 
     using TaskProc = std::function<void(TaskHandle&)>;
 
+    /**
+     * If this is an argument of a function, it most often means that the function is expected to be called from a task,
+     * executing on a fiber, scheduled via the TaskScheduler.
+     * It also means that the function very probably yields the current fiber.
+     */
     class TaskHandle {
     public:
         /**

@@ -40,6 +40,13 @@ namespace Carrot::Render {
 
     }
 
+    std::shared_ptr<MeshletsInstance> MeshletsInstance::clone() {
+        MeshletsInstanceDescription cloneDesc;
+        cloneDesc.pViewport = pViewport;
+        cloneDesc.templates = templates;
+        return manager.addInstance(cloneDesc);
+    }
+
     MeshletManager::MeshletManager(VulkanRenderer& renderer): renderer(renderer) {
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
     }

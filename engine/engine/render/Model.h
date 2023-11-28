@@ -36,6 +36,7 @@ namespace Carrot {
         class MaterialHandle;
         struct MeshletsTemplate;
         class ModelRenderer;
+        struct ModelRendererStorage;
         class Packet;
     }
 
@@ -72,7 +73,8 @@ namespace Carrot {
 
         std::shared_ptr<BLASHandle> getStaticBLAS();
         std::shared_ptr<BLASHandle> getSkinnedBLAS();
-        std::shared_ptr<Render::MeshletsTemplate> getMeshletTemplate(std::size_t staticMeshIndex);
+
+        std::shared_ptr<Render::MeshletsTemplate> lazyLoadMeshletTemplate(std::size_t staticMeshIndex);
 
     public:
         bool hasSkeleton() const;
@@ -98,7 +100,7 @@ namespace Carrot {
         vk::DescriptorSet getAnimationDataDescriptorSet() const;
 
     public:
-        void renderStatic(const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
+        void renderStatic(Render::ModelRendererStorage& rendererStorage, const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
         void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
 
     public:
@@ -127,6 +129,9 @@ namespace Carrot {
         std::unordered_map<std::uint32_t, std::vector<MeshAndTransform>> skinnedMeshes{};
         std::vector<std::shared_ptr<Render::MaterialHandle>> materials{};
 
+        std::vector<Carrot::Vertex> staticVertices;
+        std::vector<std::uint32_t> staticIndices;
+
         std::vector<StaticMeshInfo> staticMeshInfo;
         std::unique_ptr<Carrot::SingleMesh> staticMeshData;
 
@@ -137,15 +142,12 @@ namespace Carrot {
         std::vector<Carrot::GBufferDrawData> staticOpaqueDrawData;
         std::vector<Carrot::GBufferDrawData> staticTransparentDrawData;
 
-        std::size_t staticVertexCount = 0; // Count of all static vertices inside this model
-        std::size_t staticVertexStart = 0; // Start of vertices inside staticMeshData
-        std::size_t staticIndexCount = 0; // Count of all static indices inside this model
-
         std::shared_ptr<BLASHandle> staticBLAS;
         std::shared_ptr<BLASHandle> skinnedBLAS;
 
         // indexed by mesh's static mesh index
-        std::unordered_map<std::size_t, std::shared_ptr<Render::MeshletsTemplate>> meshletsPerStaticMesh;
+        Async::SpinLock meshletsLoading;
+        Async::ParallelMap<std::size_t, std::shared_ptr<Render::MeshletsTemplate>> meshletsPerStaticMesh;
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;

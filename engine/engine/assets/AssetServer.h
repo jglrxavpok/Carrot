@@ -45,7 +45,6 @@ namespace Carrot {
 
         // TODO: request sound effect
         // TODO: request music
-        // TODO: request animated model
         // TODO: request font
         // TODO: request rendering pipeline
         // TODO: move asset loading from VulkanRenderer to here

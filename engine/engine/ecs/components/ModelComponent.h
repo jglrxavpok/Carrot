@@ -27,6 +27,7 @@ namespace Carrot::ECS {
         std::shared_ptr<InstanceHandle> tlas = nullptr;
         std::unordered_map<Render::Viewport*, std::shared_ptr<Render::MeshletsInstance>> meshletsInstance;
         bool castsShadows = true;
+        Render::ModelRendererStorage rendererStorage;
 
         explicit ModelComponent(Entity entity): IdentifiableComponent<ModelComponent>(std::move(entity)) {}
 
@@ -46,13 +47,13 @@ namespace Carrot::ECS {
             result->color = color;
             result->modelRenderer = modelRenderer;
             result->castsShadows = castsShadows;
+            result->rendererStorage = rendererStorage.clone();
             return result;
         }
 
         void setFile(const IO::VFS::Path& path);
 
     private:
-        std::shared_ptr<Render::MeshletsInstance> loadMeshletsInstance(const Carrot::Render::Context& currentContext);
         void loadTLASIfPossible();
         void enableTLAS();
         void disableTLAS();

@@ -27,7 +27,7 @@ namespace Carrot::ECS {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if(!entity.isVisible()) {
-                auto pMeshlets = modelComp.meshletsInstance[renderContext.pViewport];
+                auto pMeshlets = modelComp.rendererStorage.meshletsInstancePerViewport[renderContext.pViewport];
                 if(pMeshlets) {
                     pMeshlets->enabled = false;
                 }
@@ -42,9 +42,10 @@ namespace Carrot::ECS {
                 instanceData.color = modelComp.color;
 
                 if(modelComp.modelRenderer) {
-                    modelComp.modelRenderer->render(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                    modelComp.modelRenderer->render(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
                 } else {
-                    modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
+                    // TODO: support for virtualized geometry?
+                    modelComp.asyncModel->renderStatic(modelComp.rendererStorage, renderContext, instanceData, Render::PassEnum::OpaqueGBuffer);
                 }
                 //modelComp.asyncModel->renderStatic(renderContext, instanceData, Render::PassEnum::TransparentGBuffer);
 
@@ -61,11 +62,6 @@ namespace Carrot::ECS {
                             modelComp.disableTLAS();
                         }
                     }
-                }
-                std::shared_ptr<Render::MeshletsInstance> pMeshlets = modelComp.loadMeshletsInstance(renderContext);
-                if(pMeshlets) {
-                    pMeshlets->instanceData = instanceData;
-                    pMeshlets->enabled = true;
                 }
             }
         });

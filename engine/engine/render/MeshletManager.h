@@ -70,6 +70,8 @@ namespace Carrot::Render {
                                   std::span<std::shared_ptr<MeshletsTemplate>>,
                                   Viewport* pViewport);
 
+        std::shared_ptr<MeshletsInstance> clone();
+
     private:
         MeshletManager& manager;
     };

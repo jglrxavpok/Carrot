@@ -109,9 +109,6 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
 
     staticMeshInfo.resize(scene.primitives.size());
 
-    std::vector<Carrot::Vertex> staticVertices;
-    std::vector<std::uint32_t> staticIndices;
-
     std::size_t primitiveIndex = 0;
 
     std::size_t opaqueMeshIndex = 0;
@@ -335,29 +332,6 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
             staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms, staticMeshMaterials);
         }
     }
-
-    // meshlet handling
-    {
-        Render::MeshletManager& mgr = GetRenderer().getMeshletManager();
-
-        for(const auto& [materialSlot, meshes] : staticMeshes) {
-            for (const auto& meshInfo: meshes) {
-                StaticMeshInfo& sMeshInfo = staticMeshInfo[meshInfo.meshIndex];
-                if(sMeshInfo.meshlets.empty()) {
-                    continue;
-                }
-
-                Render::MeshletsDescription desc;
-                desc.meshlets = sMeshInfo.meshlets;
-                desc.originalVertices = std::span { staticVertices.data() + sMeshInfo.startVertex, sMeshInfo.vertexCount };
-                desc.meshletVertexIndices = sMeshInfo.meshletVertexIndices;
-                desc.meshletIndices = sMeshInfo.meshletIndices;
-
-                meshletsPerStaticMesh[meshInfo.staticMeshIndex] = mgr.addGeometry(desc);
-            }
-        }
-
-    }
     task.wait(waitMaterialLoads); // hide latency by doing this last
 }
 
@@ -399,11 +373,11 @@ Carrot::Model::~Model() {
     }
 }
 
-void Carrot::Model::renderStatic(const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
+void Carrot::Model::renderStatic(Render::ModelRendererStorage& rendererStorage, const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
     if(defaultRenderer == nullptr) {
         defaultRenderer = new Render::ModelRenderer(*this);
     }
-    defaultRenderer->render(renderContext, instanceData, renderPass);
+    defaultRenderer->render(rendererStorage, renderContext, instanceData, renderPass);
 }
 
 void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
@@ -483,12 +457,22 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
     return skinnedBLAS;
 }
 
-std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::getMeshletTemplate(std::size_t staticMeshIndex) {
-    auto iter = meshletsPerStaticMesh.find(staticMeshIndex);
-    if(iter == meshletsPerStaticMesh.end()) {
-        return nullptr;
-    }
-    return iter->second;
+std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex) {
+    return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [&]() -> std::shared_ptr<Carrot::Render::MeshletsTemplate> {
+        StaticMeshInfo& sMeshInfo = staticMeshInfo[staticMeshIndex];
+        if(sMeshInfo.meshlets.empty()) {
+            return nullptr;
+        }
+
+        Render::MeshletsDescription desc;
+        desc.meshlets = sMeshInfo.meshlets;
+        desc.originalVertices = std::span { staticVertices.data() + sMeshInfo.startVertex, sMeshInfo.vertexCount };
+        desc.meshletVertexIndices = sMeshInfo.meshletVertexIndices;
+        desc.meshletIndices = sMeshInfo.meshletIndices;
+
+        auto& mgr = GetRenderer().getMeshletManager();
+        return mgr.addGeometry(desc);
+    });
 }
 
 bool Carrot::Model::hasSkeleton() const {

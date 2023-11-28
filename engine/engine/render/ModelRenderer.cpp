@@ -8,6 +8,7 @@
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/SingleMesh.h>
 #include <engine/render/Model.h>
+#include <engine/render/MeshletManager.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/utils/Profiling.h>
 #include <core/utils/JSON.h>
@@ -115,6 +116,15 @@ namespace Carrot::Render {
 
             return a.meshIndex < b.meshIndex ? -1 : 1;
         });
+    }
+
+    ModelRendererStorage ModelRendererStorage::clone() const {
+        ModelRendererStorage r;
+        r.pCreator = pCreator;
+        for(auto& [k, v] : meshletsInstancePerViewport) {
+            r.meshletsInstancePerViewport[k] = v ? v->clone() : nullptr;
+        }
+        return r;
     }
 
     ModelRenderer::ModelRenderer(Model& model): model(model) {
@@ -276,8 +286,42 @@ namespace Carrot::Render {
         return cloned;
     }
 
-    void ModelRenderer::render(const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const {
+    void ModelRenderer::render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const {
         ZoneScoped;
+
+        if(storage.pCreator != this) {
+            storage = {};
+            storage.pCreator = this;
+
+            // create clusters instances
+            if(hasVirtualizedGeometry) {
+                MeshletManager& meshletManager = renderContext.renderer.getMeshletManager();
+                MeshletsInstanceDescription instanceDesc;
+                instanceDesc.pViewport = renderContext.pViewport;
+                std::vector<std::shared_ptr<MeshletsTemplate>> templates;
+                for(const auto& bucket : buckets) {
+                    if(!bucket.virtualizedGeometry) {
+                        continue;
+                    }
+
+                    for(const auto& meshInfo : bucket.meshes) {
+                        templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex));
+                    }
+                }
+                instanceDesc.templates = templates;
+                storage.meshletsInstancePerViewport[renderContext.pViewport] = meshletManager.addInstance(instanceDesc);
+            }
+        }
+
+        // activate and set instance data of meshlets
+        auto iter = storage.meshletsInstancePerViewport.find(renderContext.pViewport);
+        if(iter != storage.meshletsInstancePerViewport.end()) {
+            auto& pInstance = iter->second;
+            if(pInstance) {
+                pInstance->enabled = true;
+                pInstance->instanceData = instanceData;
+            }
+        }
 
         // TODO: support for skinned meshes
         for(const auto& bucket : buckets) {
@@ -441,6 +485,7 @@ namespace Carrot::Render {
             }
         }
 
+        hasVirtualizedGeometry = false;
         // flatten list
         buckets.clear();
         buckets.reserve(perPipelineBuckets.size());
@@ -450,6 +495,7 @@ namespace Carrot::Render {
             newBucket = std::move(bucket);
             newBucket.pipeline = pipeline;
             newBucket.virtualizedGeometry = virtualizedGeometry;
+            hasVirtualizedGeometry |= virtualizedGeometry;
         }
     }
 } // Carrot::Render

@@ -75,33 +75,6 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    std::shared_ptr<Render::MeshletsInstance> ModelComponent::loadMeshletsInstance(const Carrot::Render::Context& currentContext) {
-        if(!asyncModel.isReady() || asyncModel.isEmpty()) {
-            return nullptr;
-        }
-        Async::LockGuard g { meshletsAccess };
-        auto& pMeshlets = meshletsInstance[currentContext.pViewport];
-        if(!pMeshlets) {
-            Render::MeshletsInstanceDescription desc;
-            const std::size_t staticMeshCount = asyncModel->getStaticMeshes().size();
-            std::vector<std::shared_ptr<Render::MeshletsTemplate>> templates;
-            templates.reserve(staticMeshCount);
-            for(std::size_t i = 0; i < staticMeshCount; i++) {
-                auto pTemplate = asyncModel->getMeshletTemplate(i);
-                if(pTemplate) {
-                    templates.emplace_back(pTemplate);
-                }
-            }
-            if(templates.empty()) {
-                return nullptr;
-            }
-            desc.pViewport = currentContext.pViewport;
-            desc.templates = templates;
-            pMeshlets = currentContext.renderer.getMeshletManager().addInstance(desc);
-        }
-        return pMeshlets;
-    }
-
     void ModelComponent::loadTLASIfPossible() {
         if(!GetCapabilities().supportsRaytracing) {
             return;

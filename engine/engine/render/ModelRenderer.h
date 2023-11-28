@@ -18,6 +18,7 @@ namespace Carrot {
 }
 
 namespace Carrot::Render {
+    struct MeshletsInstance;
 
     struct MaterialOverride {
         std::size_t meshIndex = 0;
@@ -86,6 +87,13 @@ namespace Carrot::Render {
         std::vector<MeshRenderingInfo> meshes;
     };
 
+    struct ModelRendererStorage {
+        std::unordered_map<Viewport*, std::shared_ptr<MeshletsInstance>> meshletsInstancePerViewport;
+        const ModelRenderer* pCreator = nullptr;
+
+        ModelRendererStorage clone() const;
+    };
+
     /**
      * Used to render a Carrot::Model. Supports overriding materials & serialisation (for use in ECS).
      * Carrot::Model are shared between components and entities, that's why there needs to be an additional layer of indirection
@@ -109,7 +117,7 @@ namespace Carrot::Render {
         std::shared_ptr<ModelRenderer> clone() const;
 
     public:
-        void render(const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const;
+        void render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const;
 
     public:
         void addOverride(const MaterialOverride& override);
@@ -133,6 +141,7 @@ namespace Carrot::Render {
         std::shared_ptr<Carrot::Pipeline> transparentMeshesPipeline;
 
         std::vector<PipelineBucket> buckets;
+        bool hasVirtualizedGeometry = false;
     };
 
 } // Carrot::Render

@@ -26,12 +26,11 @@ void main() {
     vec2 pixelCoordsFloat = (ndc.xy + 1.0) / 2.0 * imageSize;
 
     ivec2 pixelCoords = ivec2(pixelCoordsFloat);
-    //uint depth = ~(floatBitsToUint(ndc.z) & 0x1FFFFu);
     uint depth = 0xFFFFFFFFu - uint(double(ndc.z) * 0xFFFFFFFFu);
     // 32 high bits: depth
     // 32 low bits: 8 high bits instance ID, 24 remaining: triangle index (will change with cluster rendering)
     uint instanceIndex = 0; // TODO
-    uint low = ((instanceIndex & 0xFFu) << 24) | (uint(gl_PrimitiveID) & 0xFFFFFFu);
-    uint64_t value = pack64(u32vec2(/*low*/debugInt, depth));
+    uint low = ((instanceIndex & 0xFFu) << 24) | (uint(gl_PrimitiveID+1) & 0xFFFFFFu);
+    uint64_t value = pack64(u32vec2(low, depth));
     imageAtomicMax(outputImage, pixelCoords, value);
 }
