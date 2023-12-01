@@ -157,6 +157,13 @@ namespace Fertilizer {
             meshletBuffer.uri = modelName + "-meshlets.bin";
             model.bufferViews.emplace_back();
         }
+        int clustersBufferIndex = (int)model.buffers.size();
+        int clustersBufferViewIndex = (int)model.bufferViews.size();
+        {
+            auto& clustersBuffer = model.buffers.emplace_back();
+            clustersBuffer.uri = modelName + "-cluster-data.bin";
+            model.bufferViews.emplace_back();
+        }
 
         // index buffer
         int indexBufferIndex = (int)model.buffers.size();
@@ -336,6 +343,7 @@ namespace Fertilizer {
                 tinygltf::Value::Object meshletsExtension;
 
                 auto& meshletBuffer = model.buffers[meshletBufferIndex];
+                auto& clustersBuffer = model.buffers[clustersBufferIndex];
 
                 int meshletsAccessorIndex = accessorIndex;
                 accessorIndex++;
@@ -357,22 +365,22 @@ namespace Fertilizer {
                     tinygltf::Accessor& accessor = model.accessors.emplace_back();
                     accessor.bufferView = meshletBufferViewIndex;
                     accessor.byteOffset = meshletStartIndex;
-                    accessor.count = meshletCount;
+                    accessor.count = bufferSize;
                     accessor.name = Carrot::sprintf("%s-meshlets", primitive.name.c_str());
-                    accessor.type = TINYGLTF_TYPE_VEC4;
-                    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                    accessor.type = TINYGLTF_TYPE_SCALAR;
+                    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE;
                 }
 
                 // vertex indices
                 {
                     const std::size_t count = primitive.meshletVertexIndices.size();
-                    const std::size_t startIndex = meshletBuffer.data.size();
+                    const std::size_t startIndex = clustersBuffer.data.size();
                     const std::size_t bufferSize = count * sizeof(std::uint32_t);
-                    meshletBuffer.data.resize(startIndex + bufferSize);
-                    memcpy(meshletBuffer.data.data() + startIndex, primitive.meshletVertexIndices.data(), bufferSize);
+                    clustersBuffer.data.resize(startIndex + bufferSize);
+                    memcpy(clustersBuffer.data.data() + startIndex, primitive.meshletVertexIndices.data(), bufferSize);
 
                     tinygltf::Accessor& accessor = model.accessors.emplace_back();
-                    accessor.bufferView = meshletBufferViewIndex;
+                    accessor.bufferView = clustersBufferViewIndex;
                     accessor.byteOffset = startIndex;
                     accessor.count = count;
                     accessor.name = Carrot::sprintf("%s-meshlets-vertex-indices", primitive.name.c_str());
@@ -383,13 +391,13 @@ namespace Fertilizer {
                 // indices
                 {
                     const std::size_t count = primitive.meshletIndices.size();
-                    const std::size_t startIndex = meshletBuffer.data.size();
+                    const std::size_t startIndex = clustersBuffer.data.size();
                     const std::size_t bufferSize = count * sizeof(std::uint32_t);
-                    meshletBuffer.data.resize(startIndex + bufferSize);
-                    memcpy(meshletBuffer.data.data() + startIndex, primitive.meshletIndices.data(), bufferSize);
+                    clustersBuffer.data.resize(startIndex + bufferSize);
+                    memcpy(clustersBuffer.data.data() + startIndex, primitive.meshletIndices.data(), bufferSize);
 
                     tinygltf::Accessor& accessor = model.accessors.emplace_back();
-                    accessor.bufferView = meshletBufferViewIndex;
+                    accessor.bufferView = clustersBufferViewIndex;
                     accessor.byteOffset = startIndex;
                     accessor.count = count;
                     accessor.name = Carrot::sprintf("%s-meshlets-indices", primitive.name.c_str());
@@ -417,7 +425,16 @@ namespace Fertilizer {
             meshletsBufferView.name = "Meshlets";
             meshletsBufferView.byteLength = meshletBuffer.data.size();
             meshletsBufferView.byteOffset = 0;
+            meshletsBufferView.byteStride = sizeof(Carrot::Render::Meshlet);
             meshletsBufferView.buffer = meshletBufferIndex;
+        }
+        {
+            auto& clustersBuffer = model.buffers[clustersBufferIndex];
+            auto& clustersBufferView = model.bufferViews[clustersBufferViewIndex];
+            clustersBufferView.name = "Cluster-data";
+            clustersBufferView.byteLength = clustersBuffer.data.size();
+            clustersBufferView.byteOffset = 0;
+            clustersBufferView.buffer = clustersBufferIndex;
         }
         if(pStaticGeometryBuffer != nullptr)
         {

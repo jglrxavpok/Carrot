@@ -236,7 +236,8 @@ namespace Fertilizer {
     /**
      * From this primitive's vertex & index buffer, generate meshlets/clusters
      */
-    static void generateMeshlets(LoadedPrimitive& primitive) {
+    static void generateClusterHierarchy(LoadedPrimitive& primitive) {
+        // level 0
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
@@ -283,6 +284,89 @@ namespace Fertilizer {
             carrotMeshlet.indexOffset = meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
         }, 32);
+
+        // level 1
+        struct ClusterGroup {
+            std::int32_t clusters[4];
+        };
+
+        std::vector<Meshlet>& previousLevelMeshlets = primitive.meshlets;
+        std::vector<ClusterGroup> groups;
+
+        // TODO: properly group clusters
+        groups.resize(primitive.meshlets.size());
+        for(std::size_t i = 0; i < groups.size(); i++) {
+            groups[i].clusters[0] = i;
+            groups[i].clusters[1] = -1;
+            groups[i].clusters[2] = -1;
+            groups[i].clusters[3] = -1;
+        }
+
+        for(const auto& group : groups) {
+            std::vector<unsigned int> groupVertexIndices;
+
+            // add cluster vertices to this group
+            for(int i = 0; i < 4; i++) {
+                if(group.clusters[i] < 0) {
+                    continue;
+                }
+
+                Meshlet& meshlet = previousLevelMeshlets[group.clusters[i]];
+                std::size_t start = groupVertexIndices.size();
+                groupVertexIndices.resize(groupVertexIndices.size() + meshlet.indexCount);
+                for(std::size_t j = 0; j < meshlet.indexCount; j++) {
+                    groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
+                }
+            }
+
+            // simplify this group
+            const float threshold = 0.5f;
+            std::size_t targetIndexCount = groupVertexIndices.size() * threshold;
+            float targetError = 1e-2f;
+            unsigned int options = meshopt_SimplifyLockBorder; // we want all group borders to be locked (because they are shared between groups)
+
+            std::vector<unsigned int> simplifiedIndexBuffer;
+            simplifiedIndexBuffer.resize(groupVertexIndices.size());
+            float simplificationError = 0.f;
+
+            std::size_t simplifiedIndexCount = meshopt_simplify(simplifiedIndexBuffer.data(), // output
+                                                                groupVertexIndices.data(), groupVertexIndices.size(), // index buffer
+                                                                &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
+                                                                targetIndexCount, targetError, options, &simplificationError
+                                                                );
+            simplifiedIndexBuffer.resize(simplifiedIndexCount);
+
+            // generate a new meshlet for this group
+            auto& meshlet = primitive.meshlets.emplace_back();
+            meshlet.vertexOffset = primitive.meshletVertexIndices.size();
+            meshlet.indexOffset = primitive.meshletIndices.size();
+
+            // generate micro index&vertex buffers for this meshlet
+            std::unordered_map<std::uint32_t, std::uint32_t> vertexIndices; // index buffer to micro vertex buffer
+            std::vector<std::uint32_t> microVertexBuffer;
+            std::vector<std::uint32_t> microIndexBuffer;
+            microIndexBuffer.reserve(simplifiedIndexBuffer.size());
+            for(auto& index : simplifiedIndexBuffer) {
+                auto iter = vertexIndices.find(index);
+                if(iter == vertexIndices.end()) {
+                    const std::size_t vertexIndex = microVertexBuffer.size();
+                    vertexIndices[index] = vertexIndex;
+                    microIndexBuffer.emplace_back(vertexIndex);
+                    microVertexBuffer.emplace_back(index);
+                } else {
+                    microIndexBuffer.emplace_back(iter->second);
+                }
+            }
+
+            meshlet.vertexCount = microVertexBuffer.size();
+            meshlet.indexCount = microIndexBuffer.size();
+            primitive.meshletVertexIndices.resize(meshlet.vertexOffset + meshlet.vertexCount);
+            primitive.meshletIndices.resize(meshlet.indexOffset + meshlet.indexCount);
+            memcpy(&primitive.meshletVertexIndices[meshlet.vertexOffset], microVertexBuffer.data(), meshlet.vertexCount*sizeof(std::uint32_t));
+            memcpy(&primitive.meshletIndices[meshlet.indexOffset], microIndexBuffer.data(), meshlet.indexCount*sizeof(std::uint32_t));
+
+            meshlet.lod = 1;
+        }
     }
 
     static void processModel(const std::string& modelName, tinygltf::Model& model) {
@@ -311,7 +395,7 @@ namespace Fertilizer {
             cleanupTangents(expandedMesh);
 
             collapseMesh(primitive, expandedMesh);
-            generateMeshlets(primitive);
+            generateClusterHierarchy(primitive);
         }
 
         // re-export model

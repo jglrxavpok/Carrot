@@ -122,6 +122,10 @@ namespace Carrot::Render {
     void Packet::record(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
         ZoneScoped;
 
+        if(unindexedDrawCommands.empty() && indexedDrawCommands.empty()) {
+            return; // nothing to draw
+        }
+
         if(false)
         {
             ZoneScopedN("Aftermath markers");

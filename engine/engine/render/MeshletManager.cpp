@@ -7,6 +7,7 @@
 #include <engine/utils/Macros.h>
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/VulkanRenderer.h>
+#include <engine/Engine.h>
 
 namespace Carrot::Render {
 
@@ -62,13 +63,15 @@ namespace Carrot::Render {
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             Meshlet& meshlet = desc.meshlets[i];
             Cluster& cluster = clusters[i + firstClusterIndex];
-            cluster.indexCount = static_cast<std::uint8_t>(meshlet.indexCount);
+
+            cluster.lod = meshlet.lod;
+            cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
 
             const std::size_t firstVertexIndex = vertices.size();
             vertices.resize(firstVertexIndex + meshlet.vertexCount);
 
             const std::size_t firstIndexIndex = indices.size();
-            indices.resize(firstIndexIndex + cluster.indexCount);
+            indices.resize(firstIndexIndex + meshlet.indexCount);
 
             Carrot::Async::parallelFor(meshlet.vertexCount, [&](std::size_t index) {
                 vertices[index + firstVertexIndex] = desc.originalVertices[desc.meshletVertexIndices[index + meshlet.vertexOffset]];
@@ -121,6 +124,14 @@ namespace Carrot::Render {
             return;
         }
 
+        static int globalLOD = 0;
+        if(renderContext.pViewport == &GetEngine().getMainViewport()) {
+            if(ImGui::Begin("Debug clusters")) {
+                ImGui::SliderInt("LOD", &globalLOD, 0, 1);
+            }
+            ImGui::End();
+        }
+
         // draw all instances that match with the given render context
         auto& packet = renderer.makeRenderPacket(PassEnum::VisibilityBuffer, renderContext);
         packet.pipeline = getPipeline(renderContext);
@@ -153,17 +164,19 @@ namespace Carrot::Render {
                 for(const auto& pTemplate : instance->templates) {
                     std::size_t clusterOffset = 0;
                     for(const auto& cluster : pTemplate->clusters) {
-                        auto& drawCommand = packet.unindexedDrawCommands.emplace_back();
-                        drawCommand.instanceCount = 1;
-                        drawCommand.firstInstance = 0;
-                        drawCommand.firstVertex = 0;
-                        drawCommand.vertexCount = cluster.indexCount;
+                        if(cluster.lod == globalLOD) {
+                            auto& drawCommand = packet.unindexedDrawCommands.emplace_back();
+                            drawCommand.instanceCount = 1;
+                            drawCommand.firstInstance = 0;
+                            drawCommand.firstVertex = 0;
+                            drawCommand.vertexCount = std::uint32_t(cluster.triangleCount)*3;
 
-                        GBufferDrawData drawData;
-                        // TODO: drawData.materialIndex = instance.materialIndex;
-                        drawData.materialIndex = 0;
-                        drawData.uuid0 = clusterOffset + pTemplate->firstCluster;
-                        packet.addPerDrawData(std::span{ &drawData, 1 });
+                            GBufferDrawData drawData;
+                            // TODO: drawData.materialIndex = instance.materialIndex;
+                            drawData.materialIndex = 0;
+                            drawData.uuid0 = clusterOffset + pTemplate->firstCluster;
+                            packet.addPerDrawData(std::span{ &drawData, 1 });
+                        }
 
                         clusterOffset++;
                     }

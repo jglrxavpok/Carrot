@@ -12,5 +12,7 @@ namespace Carrot::Render {
         std::uint32_t vertexCount = 0;
         std::uint32_t indexOffset = 0;
         std::uint32_t indexCount = 0;
+
+        std::uint32_t lod = 0;
     };
 }

@@ -368,7 +368,7 @@ namespace Carrot::Render {
 
         {
             const tinygltf::Accessor& accessor = model.accessors[meshletsAccessorIndex];
-            loadedPrimitive.meshlets.resize(accessor.count);
+            loadedPrimitive.meshlets.resize(accessor.count / sizeof(Carrot::Render::Meshlet));
             Carrot::Async::parallelFor(loadedPrimitive.meshlets.size(), [&](std::size_t i) {
                 loadedPrimitive.meshlets[i] = readFromAccessor<Carrot::Render::Meshlet>(i, accessor, model);
             }, 16);

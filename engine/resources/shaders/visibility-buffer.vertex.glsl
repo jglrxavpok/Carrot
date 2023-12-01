@@ -1,5 +1,6 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : require
@@ -22,7 +23,8 @@ layout(location = 2) out flat int debugInt;
 struct Cluster {
     VertexBuffer vertices;
     IndexBuffer indices;
-    uint8_t indexCount;
+    uint8_t triangleCount;
+    uint32_t lod;
 };
 
 layout(set = 0, binding = 0, scalar) buffer ClusterRef {

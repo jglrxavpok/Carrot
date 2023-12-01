@@ -31,6 +31,8 @@ void main() {
     // 32 low bits: 8 high bits instance ID, 24 remaining: triangle index (will change with cluster rendering)
     uint instanceIndex = 0; // TODO
     uint low = ((instanceIndex & 0xFFu) << 24) | (uint(gl_PrimitiveID+1) & 0xFFFFFFu);
+    //uint low = ((instanceIndex & 0xFFu) << 24) | (uint(debugInt+1) & 0xFFFFFFu);
+
     uint64_t value = pack64(u32vec2(low, depth));
     imageAtomicMax(outputImage, pixelCoords, value);
 }

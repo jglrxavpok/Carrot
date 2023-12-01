@@ -33,7 +33,8 @@ namespace Carrot::Render {
     struct Cluster {
         vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
         vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
-        std::uint8_t indexCount;
+        std::uint8_t triangleCount;
+        std::uint32_t lod;
     };
 
     /**
