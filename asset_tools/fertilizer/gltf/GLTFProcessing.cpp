@@ -9,13 +9,18 @@
 #include <core/scene/GLTFLoader.h>
 #include <gltf/GLTFWriter.h>
 #include <unordered_set>
-#include "core/io/Logging.hpp"
-#include "glm/gtx/component_wise.hpp"
-#include "core/tasks/Tasks.h"
+#include <core/io/Logging.hpp>
+#include <glm/gtx/component_wise.hpp>
+#include <core/tasks/Tasks.h>
+#include <core/data/Hashes.h>
 
 #include <gltf/MikkTSpaceInterface.h>
 
 #include <meshoptimizer.h>
+
+#define IDXTYPEWIDTH 64
+#define REALTYPEWIDTH 64
+#include <metis.h>
 
 namespace Fertilizer {
 
@@ -233,20 +238,155 @@ namespace Fertilizer {
         }
     }
 
-    /**
-     * From this primitive's vertex & index buffer, generate meshlets/clusters
-     */
-    static void generateClusterHierarchy(LoadedPrimitive& primitive) {
-        // level 0
+    struct MeshletGroup {
+        std::vector<std::size_t> meshlets;
+    };
+    static std::vector<MeshletGroup> groupMeshlets(LoadedPrimitive& primitive, std::span<Meshlet> meshlets) {
+        // ===== Build meshlet connections
+        auto groupWithAllMeshlets = [&]() {
+            MeshletGroup group;
+            for (int i = 0; i < meshlets.size(); ++i) {
+                group.meshlets.push_back(i);
+            }
+            return std::vector { group };
+        };
+        if(meshlets.size() < 8) {
+            return groupWithAllMeshlets();
+        }
+
+        /**
+         * Connections betweens meshlets
+         */
+        struct MeshletEdge {
+            explicit MeshletEdge(std::size_t a, std::size_t b): first(std::min(a, b)), second(std::max(a, b)) {}
+
+            bool operator==(const MeshletEdge& other) const = default;
+
+            const std::size_t first;
+            const std::size_t second;
+        };
+
+        struct MeshletEdgeHasher {
+            std::size_t operator()(const MeshletEdge& edge) const {
+                std::size_t h = edge.first;
+                Carrot::hash_combine(h, edge.second);
+                return h;
+            }
+        };
+
+        // meshlets represented by their index into 'previousLevelMeshlets'
+        std::unordered_map<MeshletEdge, std::vector<std::size_t>, MeshletEdgeHasher> edges2Meshlets;
+        std::unordered_map<std::size_t, std::vector<MeshletEdge>> meshlets2Edges;
+
+        // for each meshlet
+        for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
+            const auto& meshlet = meshlets[meshletIndex];
+            auto getVertexIndex = [&](std::size_t index) {
+                return primitive.meshletVertexIndices[primitive.meshletIndices[index + meshlet.indexOffset] + meshlet.vertexOffset];
+            };
+
+            const std::size_t triangleCount = meshlet.indexCount / 3;
+            // for each triangle of the meshlet
+            for(std::size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+                // for each edge of the triangle
+                for(std::size_t i = 0; i < 3; i++) {
+                    MeshletEdge edge { getVertexIndex(i + triangleIndex * 3), getVertexIndex(((i+1) % 3) + triangleIndex * 3) };
+                    edges2Meshlets[edge].push_back(meshletIndex);
+                    meshlets2Edges[meshletIndex].emplace_back(edge);
+                }
+            }
+        }
+
+        // remove edges which are not connected to 2 different meshlets
+        std::erase_if(edges2Meshlets, [&](const auto& pair) {
+            return pair.second.size() <= 1;
+        });
+
+        if(edges2Meshlets.empty()) {
+            return groupWithAllMeshlets();
+        }
+
+        // at this point, we have basically built a graph of meshlets, in which edges represent which meshlets are connected together
+
+        std::vector<MeshletGroup> groups;
+
+        idx_t vertexCount = meshlets.size();
+        idx_t ncon = 1;
+        idx_t nparts = meshlets.size()/4;
+        verify(nparts > 1, "Must have at least 2 parts in partition for METIS");
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+        options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO;
+
+        std::vector<idx_t> partition;
+        partition.resize(vertexCount);
+
+        std::vector<idx_t> xadjacency;
+        xadjacency.reserve(meshlets.size() + 1);
+
+        std::vector<idx_t> edgeAdjacency;
+        std::vector<idx_t> edgeWeights;
+
+        for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
+            std::size_t startIndexInEdgeAdjacency = edgeAdjacency.size();
+            for(const auto& edge : meshlets2Edges[meshletIndex]) {
+                auto connectionsIter = edges2Meshlets.find(edge);
+                if(connectionsIter == edges2Meshlets.end()) {
+                    continue;
+                }
+                const auto& connections = connectionsIter->second;
+                for(const auto& connectedMeshlet : connections) {
+                    if(connectedMeshlet != meshletIndex) {
+                        if(std::find(edgeAdjacency.begin(), edgeAdjacency.end(), connectedMeshlet) == edgeAdjacency.end()) {
+                            edgeAdjacency.emplace_back(connectedMeshlet);
+                            // TODO: edgeweights
+                        }
+                    }
+                }
+            }
+            xadjacency.push_back(startIndexInEdgeAdjacency);
+        }
+        xadjacency.push_back(edgeAdjacency.size());
+        verify(xadjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph?");
+
+        idx_t edgeCut;
+        int result = METIS_PartGraphKway(&vertexCount,
+                                         &ncon,
+                                         xadjacency.data(),
+                                         edgeAdjacency.data(),
+                                         nullptr, /* vertex weights */
+                                         nullptr, /* vertex size */
+                                         nullptr,//edgeWeights.data(),
+                                         &nparts,
+                                         nullptr,
+                                         nullptr,
+                                         options,
+                                         &edgeCut,
+                                         partition.data()
+                            );
+
+        verify(result == METIS_OK, "Graph partitioning failed!");
+
+        // ===== Group meshlets together
+        groups.resize(nparts);
+        for(std::size_t i = 0; i < meshlets.size(); i++) {
+            idx_t partitionNumber = partition[i];
+            groups[partitionNumber].meshlets.push_back(i);
+        }
+        return groups;
+    }
+
+    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer) {
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
 
-        // tell meshoptimizer to generate meshlets
-        auto& indexBuffer = primitive.indices;
+        const std::size_t meshletOffset = primitive.meshlets.size();
+        const std::size_t vertexOffset = primitive.meshletVertexIndices.size();
+        const std::size_t indexOffset = primitive.meshletIndices.size();
         const std::size_t maxMeshlets = meshopt_buildMeshletsBound(indexBuffer.size(), maxVertices, maxTriangles);
         std::vector<meshopt_Meshlet> meshoptMeshlets;
-        primitive.meshlets.resize(maxMeshlets);
         meshoptMeshlets.resize(maxMeshlets);
 
         std::vector<unsigned int> meshletVertexIndices;
@@ -256,116 +396,105 @@ namespace Fertilizer {
 
         const std::size_t meshletCount = meshopt_buildMeshlets(meshoptMeshlets.data(), meshletVertexIndices.data(), meshletTriangles.data(), // meshlet outputs
                                                                indexBuffer.data(), indexBuffer.size(), // original index buffer
-                                                               (const float*)(primitive.vertices.data()) + offsetof(Carrot::Vertex, pos)/sizeof(float), // pointer to position data
+                                                               &primitive.vertices[0].pos.x, // pointer to position data
                                                                primitive.vertices.size(), // vertex count of original mesh
                                                                sizeof(Carrot::Vertex), // stride
                                                                maxVertices, maxTriangles, coneWeight);
         const meshopt_Meshlet& last = meshoptMeshlets[meshletCount - 1];
-        primitive.meshletVertexIndices.resize(last.vertex_offset + last.vertex_count);
-        primitive.meshletIndices.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
-        primitive.meshlets.resize(meshletCount); // remove over-allocated meshlets
+        const std::size_t vertexCount = last.vertex_offset + last.vertex_count;
+        const std::size_t indexCount = last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3);
+        primitive.meshletVertexIndices.resize(vertexOffset + vertexCount);
+        primitive.meshletIndices.resize(indexOffset + indexCount);
+        primitive.meshlets.resize(meshletOffset + meshletCount); // remove over-allocated meshlets
 
-        Carrot::Async::parallelFor(primitive.meshletVertexIndices.size(), [&](std::size_t index) {
-            primitive.meshletVertexIndices[index] = meshletVertexIndices[index];
+        Carrot::Async::parallelFor(vertexCount, [&](std::size_t index) {
+            primitive.meshletVertexIndices[vertexOffset + index] = meshletVertexIndices[index];
         }, 1024);
-        Carrot::Async::parallelFor(primitive.meshletIndices.size(), [&](std::size_t index) {
-            primitive.meshletIndices[index] = meshletTriangles[index];
+        Carrot::Async::parallelFor(indexCount, [&](std::size_t index) {
+            primitive.meshletIndices[indexOffset + index] = meshletTriangles[index];
         }, 1024);
 
 
         // meshlets are ready, process them in the format used by Carrot:
         Carrot::Async::parallelFor(meshletCount, [&](std::size_t index) {
             auto& meshoptMeshlet = meshoptMeshlets[index];
-            auto& carrotMeshlet = primitive.meshlets[index];
+            auto& carrotMeshlet = primitive.meshlets[meshletOffset + index];
 
-            carrotMeshlet.vertexOffset = meshoptMeshlet.vertex_offset;
+            carrotMeshlet.vertexOffset = vertexOffset + meshoptMeshlet.vertex_offset;
             carrotMeshlet.vertexCount = meshoptMeshlet.vertex_count;
 
-            carrotMeshlet.indexOffset = meshoptMeshlet.triangle_offset;
+            carrotMeshlet.indexOffset = indexOffset + meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
         }, 32);
+    }
 
-        // level 1
-        struct ClusterGroup {
-            std::int32_t clusters[4];
-        };
+    /**
+     * From this primitive's vertex & index buffer, generate meshlets/clusters
+     */
+    static void generateClusterHierarchy(LoadedPrimitive& primitive) {
+        // level 0
+        // tell meshoptimizer to generate meshlets
+        auto& indexBuffer = primitive.indices;
+        std::size_t previousMeshletsStart = 0;
+        appendMeshlets(primitive, indexBuffer);
 
-        std::vector<Meshlet>& previousLevelMeshlets = primitive.meshlets;
-        std::vector<ClusterGroup> groups;
-
-        // TODO: properly group clusters
-        groups.resize(primitive.meshlets.size());
-        for(std::size_t i = 0; i < groups.size(); i++) {
-            groups[i].clusters[0] = i;
-            groups[i].clusters[1] = -1;
-            groups[i].clusters[2] = -1;
-            groups[i].clusters[3] = -1;
-        }
-
-        for(const auto& group : groups) {
-            std::vector<unsigned int> groupVertexIndices;
-
-            // add cluster vertices to this group
-            for(int i = 0; i < 4; i++) {
-                if(group.clusters[i] < 0) {
-                    continue;
-                }
-
-                Meshlet& meshlet = previousLevelMeshlets[group.clusters[i]];
-                std::size_t start = groupVertexIndices.size();
-                groupVertexIndices.resize(groupVertexIndices.size() + meshlet.indexCount);
-                for(std::size_t j = 0; j < meshlet.indexCount; j++) {
-                    groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
-                }
+        // level n+1
+        const int maxLOD = 25;
+        for (int lod = 0; lod < maxLOD; ++lod) {
+            float tLod = lod / (float)maxLOD;
+            std::span<Meshlet> previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
+            if(previousLevelMeshlets.size() <= 1) {
+                return; // we have reached the end
             }
 
-            // simplify this group
-            const float threshold = 0.5f;
-            std::size_t targetIndexCount = groupVertexIndices.size() * threshold;
-            float targetError = 1e-2f;
-            unsigned int options = meshopt_SimplifyLockBorder; // we want all group borders to be locked (because they are shared between groups)
+            std::vector<MeshletGroup> groups = groupMeshlets(primitive, previousLevelMeshlets);
 
-            std::vector<unsigned int> simplifiedIndexBuffer;
-            simplifiedIndexBuffer.resize(groupVertexIndices.size());
-            float simplificationError = 0.f;
+            // ===== Simplify groups
+            const std::size_t newMeshletStart = primitive.meshlets.size();
+            for(const auto& group : groups) {
+                // meshlets vector is modified during the loop
+                previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
+                std::vector<unsigned int> groupVertexIndices;
 
-            std::size_t simplifiedIndexCount = meshopt_simplify(simplifiedIndexBuffer.data(), // output
-                                                                groupVertexIndices.data(), groupVertexIndices.size(), // index buffer
-                                                                &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
-                                                                targetIndexCount, targetError, options, &simplificationError
-                                                                );
-            simplifiedIndexBuffer.resize(simplifiedIndexCount);
-
-            // generate a new meshlet for this group
-            auto& meshlet = primitive.meshlets.emplace_back();
-            meshlet.vertexOffset = primitive.meshletVertexIndices.size();
-            meshlet.indexOffset = primitive.meshletIndices.size();
-
-            // generate micro index&vertex buffers for this meshlet
-            std::unordered_map<std::uint32_t, std::uint32_t> vertexIndices; // index buffer to micro vertex buffer
-            std::vector<std::uint32_t> microVertexBuffer;
-            std::vector<std::uint32_t> microIndexBuffer;
-            microIndexBuffer.reserve(simplifiedIndexBuffer.size());
-            for(auto& index : simplifiedIndexBuffer) {
-                auto iter = vertexIndices.find(index);
-                if(iter == vertexIndices.end()) {
-                    const std::size_t vertexIndex = microVertexBuffer.size();
-                    vertexIndices[index] = vertexIndex;
-                    microIndexBuffer.emplace_back(vertexIndex);
-                    microVertexBuffer.emplace_back(index);
-                } else {
-                    microIndexBuffer.emplace_back(iter->second);
+                // add cluster vertices to this group
+                for(const auto& meshletIndex : group.meshlets) {
+                    const auto& meshlet = previousLevelMeshlets[meshletIndex];
+                    std::size_t start = groupVertexIndices.size();
+                    groupVertexIndices.resize(start + meshlet.indexCount);
+                    for(std::size_t j = 0; j < meshlet.indexCount; j++) {
+                        groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
+                    }
                 }
+
+                // simplify this group
+                const float threshold = 0.5f;
+                std::size_t targetIndexCount = groupVertexIndices.size() * threshold;
+                float targetError = 0.9f * tLod + 0.01f * (1-tLod);
+                unsigned int options = meshopt_SimplifyLockBorder; // we want all group borders to be locked (because they are shared between groups)
+
+                std::vector<unsigned int> simplifiedIndexBuffer;
+                simplifiedIndexBuffer.resize(groupVertexIndices.size());
+                float simplificationError = 0.f;
+
+                std::size_t simplifiedIndexCount = meshopt_simplify(simplifiedIndexBuffer.data(), // output
+                                                                    groupVertexIndices.data(), groupVertexIndices.size(), // index buffer
+                                                                    &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
+                                                                    targetIndexCount, targetError, options, &simplificationError
+                );
+                simplifiedIndexBuffer.resize(simplifiedIndexCount);
+
+                if(simplifiedIndexCount == groupVertexIndices.size()) {
+                    continue; // could not simplify this group further
+                }
+
+                // ===== Generate meshlets for this group
+                appendMeshlets(primitive, simplifiedIndexBuffer);
             }
 
-            meshlet.vertexCount = microVertexBuffer.size();
-            meshlet.indexCount = microIndexBuffer.size();
-            primitive.meshletVertexIndices.resize(meshlet.vertexOffset + meshlet.vertexCount);
-            primitive.meshletIndices.resize(meshlet.indexOffset + meshlet.indexCount);
-            memcpy(&primitive.meshletVertexIndices[meshlet.vertexOffset], microVertexBuffer.data(), meshlet.vertexCount*sizeof(std::uint32_t));
-            memcpy(&primitive.meshletIndices[meshlet.indexOffset], microIndexBuffer.data(), meshlet.indexCount*sizeof(std::uint32_t));
-
-            meshlet.lod = 1;
+            for(std::size_t i = newMeshletStart; i < primitive.meshlets.size(); i++) {
+                primitive.meshlets[i].lod = lod + 1;
+            }
+            previousMeshletsStart = newMeshletStart;
         }
     }
 

@@ -119,17 +119,22 @@ namespace Carrot::Render {
         purge(geometries);
     }
 
+    static std::uint64_t triangleCount = 0;
+
     void MeshletManager::render(const Carrot::Render::Context& renderContext) {
         if(clusters.empty()) {
             return;
         }
 
         static int globalLOD = 0;
-        if(renderContext.pViewport == &GetEngine().getMainViewport()) {
+        const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
+        if(isMainViewport) {
             if(ImGui::Begin("Debug clusters")) {
-                ImGui::SliderInt("LOD", &globalLOD, 0, 1);
+                ImGui::SliderInt("LOD", &globalLOD, 0, 10);
+                ImGui::Text("Current triangle count: %llu", triangleCount);
             }
             ImGui::End();
+            triangleCount = 0;
         }
 
         // draw all instances that match with the given render context
@@ -170,6 +175,8 @@ namespace Carrot::Render {
                             drawCommand.firstInstance = 0;
                             drawCommand.firstVertex = 0;
                             drawCommand.vertexCount = std::uint32_t(cluster.triangleCount)*3;
+
+                            triangleCount += cluster.triangleCount;
 
                             GBufferDrawData drawData;
                             // TODO: drawData.materialIndex = instance.materialIndex;

@@ -102,6 +102,11 @@ function(add_core_includes Target)
     target_compile_definitions("${Target}" PUBLIC TRACY_FIBERS=1)
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
 
+    # METIS
+    target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/)
+    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/gklib.lib)
+    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/metis.lib)
+
 endfunction()
 
 set(ALL_CORE_LIBS ktx glm tinygltf nfd cider)
