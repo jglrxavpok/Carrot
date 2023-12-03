@@ -35,6 +35,7 @@ namespace Carrot::Render {
         vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
         std::uint8_t triangleCount;
         std::uint32_t lod;
+        glm::mat4 transform{ 1.0f };
     };
 
     /**
@@ -89,6 +90,8 @@ namespace Carrot::Render {
 
         /// Indices of vertices inside 'meshletVertexIndices', used by meshlets to describe their triangles
         std::span<std::uint32_t> meshletIndices;
+
+        glm::mat4 transform{1.0f};
     };
 
     struct MeshletsInstanceDescription {

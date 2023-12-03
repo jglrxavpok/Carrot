@@ -55,6 +55,7 @@ namespace Carrot {
             std::size_t vertexCount = 0;
             std::size_t startIndex = 0;
             std::size_t indexCount = 0;
+            glm::mat4 transform{1.0f}; // copy of data inside MeshAndTransform
         };
 
         static std::shared_ptr<Model> load(TaskHandle& task, Carrot::Engine& engine, const Carrot::IO::Resource& filename);
@@ -74,7 +75,7 @@ namespace Carrot {
         std::shared_ptr<BLASHandle> getStaticBLAS();
         std::shared_ptr<BLASHandle> getSkinnedBLAS();
 
-        std::shared_ptr<Render::MeshletsTemplate> lazyLoadMeshletTemplate(std::size_t staticMeshIndex);
+        std::shared_ptr<Render::MeshletsTemplate> lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform);
 
     public:
         bool hasSkeleton() const;

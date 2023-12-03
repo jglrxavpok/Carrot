@@ -299,18 +299,19 @@ namespace Carrot::Render {
                 MeshletsInstanceDescription instanceDesc;
                 instanceDesc.pViewport = renderContext.pViewport;
                 std::vector<std::shared_ptr<MeshletsTemplate>> templates;
+
                 for(const auto& bucket : buckets) {
                     if(!bucket.virtualizedGeometry) {
                         continue;
                     }
 
                     for(const auto& meshInfo : bucket.meshes) {
-                        // TODO: missing mesh's transform here!
-                        templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex));
+                        templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex, meshInfo.meshAndTransform.transform));
                     }
                 }
                 instanceDesc.templates = templates;
-                storage.meshletsInstancePerViewport[renderContext.pViewport] = meshletManager.addInstance(instanceDesc);
+                auto clusterInstance = meshletManager.addInstance(instanceDesc);
+                storage.meshletsInstancePerViewport[renderContext.pViewport] = clusterInstance;
             }
         }
 

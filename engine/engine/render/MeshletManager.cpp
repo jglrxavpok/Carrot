@@ -64,6 +64,7 @@ namespace Carrot::Render {
             Meshlet& meshlet = desc.meshlets[i];
             Cluster& cluster = clusters[i + firstClusterIndex];
 
+            cluster.transform = desc.transform;
             cluster.lod = meshlet.lod;
             cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
 

@@ -457,7 +457,7 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
     return skinnedBLAS;
 }
 
-std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex) {
+std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform) {
     return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [&]() -> std::shared_ptr<Carrot::Render::MeshletsTemplate> {
         StaticMeshInfo& sMeshInfo = staticMeshInfo[staticMeshIndex];
         if(sMeshInfo.meshlets.empty()) {
@@ -469,6 +469,7 @@ std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::lazyLoadMeshlet
         desc.originalVertices = std::span { staticVertices.data() + sMeshInfo.startVertex, sMeshInfo.vertexCount };
         desc.meshletVertexIndices = sMeshInfo.meshletVertexIndices;
         desc.meshletIndices = sMeshInfo.meshletIndices;
+        desc.transform = transform;
 
         auto& mgr = GetRenderer().getMeshletManager();
         return mgr.addGeometry(desc);

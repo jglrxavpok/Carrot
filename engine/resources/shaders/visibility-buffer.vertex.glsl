@@ -25,6 +25,7 @@ struct Cluster {
     IndexBuffer indices;
     uint8_t triangleCount;
     uint32_t lod;
+    mat4 transform;
 };
 
 layout(set = 0, binding = 0, scalar) buffer ClusterRef {
@@ -39,7 +40,7 @@ void main() {
     debugInt = int(clusterID);
     Vertex vertex = clusters[clusterID].vertices.v[clusters[clusterID].indices.i[gl_VertexIndex]];
 
-    mat4 modelview = cbo.view * inInstanceTransform;
+    mat4 modelview = cbo.view * inInstanceTransform * clusters[clusterID].transform;
 
 #if 1
     vec4 viewPosition = modelview * vertex.pos;
