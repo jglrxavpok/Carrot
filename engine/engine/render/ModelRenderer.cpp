@@ -305,6 +305,7 @@ namespace Carrot::Render {
                     }
 
                     for(const auto& meshInfo : bucket.meshes) {
+                        // TODO: missing mesh's transform here!
                         templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex));
                     }
                 }

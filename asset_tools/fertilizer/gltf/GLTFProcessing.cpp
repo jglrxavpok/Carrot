@@ -13,6 +13,7 @@
 #include <glm/gtx/component_wise.hpp>
 #include <core/tasks/Tasks.h>
 #include <core/data/Hashes.h>
+#include <glm/gtx/hash.hpp>
 
 #include <gltf/MikkTSpaceInterface.h>
 
@@ -132,38 +133,88 @@ namespace Fertilizer {
         out.indices.clear();
         std::uint32_t nextIndex = 0;
         const bool isSkinned = out.isSkinned;
+
+        struct VertexKey {
+            glm::vec3 pos;
+            glm::vec2 uv;
+            glm::vec3 color;
+            glm::i8vec4 boneIDs;
+            glm::vec4 boneWeights;
+
+            bool operator==(const VertexKey&) const = default;
+        };
+
+        struct VertexKeyHasher {
+            std::size_t operator()(const VertexKey& k) const {
+                std::size_t h = std::hash<glm::vec3>{}(k.pos);
+                Carrot::hash_combine(h, std::hash<glm::vec2>{}(k.uv));
+                Carrot::hash_combine(h, std::hash<glm::vec3>{}(k.color));
+                Carrot::hash_combine(h, std::hash<glm::i8vec4>{}(k.boneIDs));
+                Carrot::hash_combine(h, std::hash<glm::vec4>{}(k.boneWeights));
+                return h;
+            }
+        };
+
+        struct DeduplicatedVertex {
+            std::size_t index = 0; // index this vertex will have inside vertex buffer
+            std::size_t count = 0; // how many vertices have been accumulated in this vertex?
+            Carrot::SkinnedVertex vertex;
+        };
+
+        std::unordered_map<VertexKey, DeduplicatedVertex, VertexKeyHasher> deduplicatedVertices;
+
+        std::size_t maxVertexIndex = 0;
         for(std::size_t vertexIndex = 0; vertexIndex < mesh.vertices.size(); vertexIndex++) {
             auto& duplicatedVertex = mesh.vertices[vertexIndex];
             verify(!duplicatedVertex.newIndex.has_value(), "Programming error: duplicated vertex must not already have an index in the new mesh");
-            const std::vector<std::uint32_t>& siblingIndices = mesh.duplicatedVertices[duplicatedVertex.originalIndex];
 
-            // check if any sibling is still the same as our current vertex, and has already been written to vertex buffer
-            std::optional<std::uint32_t> indexToReuse;
-            for(std::uint32_t siblingIndex : siblingIndices) {
-                const ExpandedVertex& sibling = mesh.vertices[siblingIndex];
-                if(!sibling.newIndex.has_value()) {
-                    continue; // not already in vertex buffer
+            VertexKey key {
+                .pos = duplicatedVertex.vertex.pos.xyz,
+                .uv = duplicatedVertex.vertex.uv,
+                .color = duplicatedVertex.vertex.color,
+                .boneIDs = duplicatedVertex.vertex.boneIDs,
+                .boneWeights = duplicatedVertex.vertex.boneWeights,
+            };
+
+            auto [iter, bWasNew] = deduplicatedVertices.try_emplace(key);
+            DeduplicatedVertex& deduplicatedVertex = iter->second;
+            if(bWasNew) {
+                deduplicatedVertex.vertex = duplicatedVertex.vertex;
+                if(duplicatedVertex.vertex.tangent.w < 0.0f) {
+                    deduplicatedVertex.vertex.tangent *= -1;
+                    deduplicatedVertex.vertex.tangent.w = 1.0f;
                 }
+                deduplicatedVertex.index = maxVertexIndex++;
+            } else {
+                deduplicatedVertex.vertex.normal += duplicatedVertex.vertex.normal;
 
-                if(areSameVertices(sibling.vertex, duplicatedVertex.vertex)) {
-                    indexToReuse = sibling.newIndex.value();
-                    break;
+                // ensure W does not become 0
+                if(duplicatedVertex.vertex.tangent.w < 0.0f) {
+                    duplicatedVertex.vertex.tangent += -duplicatedVertex.vertex.tangent;
+                } else {
+                    deduplicatedVertex.vertex.tangent += duplicatedVertex.vertex.tangent;
                 }
             }
+            deduplicatedVertex.count++;
+            out.indices.emplace_back(iter->second.index);
+        }
 
-            if(indexToReuse.has_value()) {
-                out.indices.push_back(indexToReuse.value());
-            } else {
-                // no index to reuse, create new index and write to vertex buffer
-
-                duplicatedVertex.newIndex = nextIndex;
-                out.indices.push_back(nextIndex);
-                nextIndex++;
-                if(isSkinned) {
-                    out.skinnedVertices.emplace_back(duplicatedVertex.vertex);
-                } else {
-                    out.vertices.emplace_back(duplicatedVertex.vertex);
-                }
+        verify(maxVertexIndex == deduplicatedVertices.size(), "Mismatch between maximum vertex index given to a vertex, and total count of vertices");
+        if(isSkinned) {
+            out.skinnedVertices.resize(maxVertexIndex);
+            for(const auto& [_, deduplicatedVertex] : deduplicatedVertices) {
+                auto v = deduplicatedVertex.vertex;
+                v.normal /= deduplicatedVertex.count;
+                v.tangent /= deduplicatedVertex.count;
+                out.skinnedVertices[deduplicatedVertex.index] = v;
+            }
+        } else {
+            out.vertices.resize(maxVertexIndex);
+            for(const auto& [_, deduplicatedVertex] : deduplicatedVertices) {
+                auto v = deduplicatedVertex.vertex;
+                v.normal /= deduplicatedVertex.count;
+                v.tangent /= deduplicatedVertex.count;
+                out.vertices[deduplicatedVertex.index] = v; // NOLINT(*-slicing): slicing is on purpose
             }
         }
     }
@@ -310,7 +361,7 @@ namespace Fertilizer {
 
         std::vector<MeshletGroup> groups;
 
-        idx_t vertexCount = meshlets.size();
+        idx_t vertexCount = meshlets.size(); // vertex count, from the point of view of METIS, where Meshlet = vertex
         idx_t ncon = 1;
         idx_t nparts = meshlets.size()/4;
         verify(nparts > 1, "Must have at least 2 parts in partition for METIS");
@@ -318,12 +369,13 @@ namespace Fertilizer {
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
         options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO;
+        options[METIS_OPTION_CCORDER] = 1; // identify connected components first
 
         std::vector<idx_t> partition;
         partition.resize(vertexCount);
 
         std::vector<idx_t> xadjacency;
-        xadjacency.reserve(meshlets.size() + 1);
+        xadjacency.reserve(vertexCount + 1);
 
         std::vector<idx_t> edgeAdjacency;
         std::vector<idx_t> edgeWeights;
@@ -338,7 +390,7 @@ namespace Fertilizer {
                 const auto& connections = connectionsIter->second;
                 for(const auto& connectedMeshlet : connections) {
                     if(connectedMeshlet != meshletIndex) {
-                        if(std::find(edgeAdjacency.begin(), edgeAdjacency.end(), connectedMeshlet) == edgeAdjacency.end()) {
+                        if(std::find(edgeAdjacency.begin()+startIndexInEdgeAdjacency, edgeAdjacency.end(), connectedMeshlet) == edgeAdjacency.end()) {
                             edgeAdjacency.emplace_back(connectedMeshlet);
                             // TODO: edgeweights
                         }
