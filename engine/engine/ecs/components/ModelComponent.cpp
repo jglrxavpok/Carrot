@@ -8,7 +8,7 @@
 #include "imgui.h"
 #include "engine/edition/DragDropTypes.h"
 #include "engine/render/ModelRenderer.h"
-#include "engine/render/MeshletManager.h"
+#include "engine/render/ClusterManager.h"
 #include "engine/ecs/World.h"
 #include "engine/ecs/WorldData.h"
 #include "core/utils/JSON.h"

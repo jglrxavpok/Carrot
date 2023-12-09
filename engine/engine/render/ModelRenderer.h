@@ -18,7 +18,7 @@ namespace Carrot {
 }
 
 namespace Carrot::Render {
-    struct MeshletsInstance;
+    struct ClustersInstance;
 
     struct MaterialOverride {
         std::size_t meshIndex = 0;
@@ -88,7 +88,7 @@ namespace Carrot::Render {
     };
 
     struct ModelRendererStorage {
-        std::unordered_map<Viewport*, std::shared_ptr<MeshletsInstance>> meshletsInstancePerViewport;
+        std::unordered_map<Viewport*, std::shared_ptr<ClustersInstance>> clustersInstancePerViewport;
         const ModelRenderer* pCreator = nullptr;
 
         ModelRendererStorage clone() const;

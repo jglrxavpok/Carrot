@@ -42,23 +42,7 @@ void main() {
 
     mat4 modelview = cbo.view * inInstanceTransform * clusters[clusterID].transform;
 
-#if 1
     vec4 viewPosition = modelview * vertex.pos;
-#else
-    vec3 p = vec3(0);
-    switch(gl_VertexIndex % 3) {
-        case 0:
-            p = vec3(0);
-            break;
-        case 1:
-            p = vec3(1,0,0);
-            break;
-        case 2:
-            p = vec3(1,0,1);
-            break;
-    }
-    vec4 viewPosition = modelview * vec4(p, 1);
-#endif
 
     ndcPosition = cbo.jitteredProjection * viewPosition;
     gl_Position = ndcPosition;

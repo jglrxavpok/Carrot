@@ -24,7 +24,7 @@ namespace Carrot {
 }
 
 namespace Carrot::Render {
-    class MeshletManager;
+    class ClusterManager;
     class Viewport;
 
     /**
@@ -41,44 +41,44 @@ namespace Carrot::Render {
     /**
      * Handle to a set of meshlets
      */
-    struct MeshletsTemplate: public WeakPoolHandle {
+    struct ClustersTemplate: public WeakPoolHandle {
         const std::size_t firstCluster;
         const std::vector<Cluster> clusters;
         const Carrot::BufferAllocation vertexData;
         const Carrot::BufferAllocation indexData;
 
-        explicit MeshletsTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
-                                  MeshletManager& manager,
+        explicit ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+                                  ClusterManager& manager,
                                   std::size_t firstCluster, std::span<const Cluster> clusters,
                                   Carrot::BufferAllocation&& vertexData, Carrot::BufferAllocation&& indexData);
 
-        ~MeshletsTemplate();
+        ~ClustersTemplate();
 
     private:
-        MeshletManager& manager;
+        ClusterManager& manager;
     };
 
     /**
      * Handle to an instance rendered via meshlets.
      */
-    struct MeshletsInstance: public WeakPoolHandle {
-        std::vector<std::shared_ptr<MeshletsTemplate>> templates;
+    struct ClustersInstance: public WeakPoolHandle {
+        std::vector<std::shared_ptr<ClustersTemplate>> templates;
         Viewport* pViewport = nullptr; //< which viewport is this instance for?
         Carrot::InstanceData instanceData;
         bool enabled = false;
 
-        explicit MeshletsInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
-                                  MeshletManager& manager,
-                                  std::span<std::shared_ptr<MeshletsTemplate>>,
+        explicit ClustersInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+                                  ClusterManager& manager,
+                                  std::span<std::shared_ptr<ClustersTemplate>>,
                                   Viewport* pViewport);
 
-        std::shared_ptr<MeshletsInstance> clone();
+        std::shared_ptr<ClustersInstance> clone();
 
     private:
-        MeshletManager& manager;
+        ClusterManager& manager;
     };
 
-    struct MeshletsDescription {
+    struct ClustersDescription {
         /// Meshlets of the mesh, must be valid for the entire duration of the 'addGeometry' call
         std::span<Render::Meshlet> meshlets;
 
@@ -94,21 +94,21 @@ namespace Carrot::Render {
         glm::mat4 transform{1.0f};
     };
 
-    struct MeshletsInstanceDescription {
+    struct ClustersInstanceDescription {
         Viewport* pViewport = nullptr;
-        std::span<std::shared_ptr<MeshletsTemplate>> templates;
+        std::span<std::shared_ptr<ClustersTemplate>> templates;
     };
 
     /**
      * Manager of Meshlets, meant to be rendered to the visibility buffer
      */
-    class MeshletManager: public SwapchainAware {
+    class ClusterManager: public SwapchainAware {
     public:
-        explicit MeshletManager(VulkanRenderer& renderer);
+        explicit ClusterManager(VulkanRenderer& renderer);
 
     public:
-        std::shared_ptr<MeshletsTemplate> addGeometry(const MeshletsDescription& desc);
-        std::shared_ptr<MeshletsInstance> addInstance(const MeshletsInstanceDescription& desc);
+        std::shared_ptr<ClustersTemplate> addGeometry(const ClustersDescription& desc);
+        std::shared_ptr<ClustersInstance> addInstance(const ClustersInstanceDescription& desc);
 
     public:
         void beginFrame(const Carrot::Render::Context& mainRenderContext);
@@ -124,8 +124,8 @@ namespace Carrot::Render {
 
         VulkanRenderer& renderer;
         Async::SpinLock accessLock;
-        WeakPool<MeshletsTemplate> geometries;
-        WeakPool<MeshletsInstance> instances;
+        WeakPool<ClustersTemplate> geometries;
+        WeakPool<ClustersInstance> instances;
 
         bool requireClusterUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;

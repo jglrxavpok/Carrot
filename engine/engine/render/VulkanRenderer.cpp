@@ -5,7 +5,7 @@
 #include "VulkanRenderer.h"
 #include "GBuffer.h"
 #include "engine/render/VisibilityBuffer.h"
-#include "engine/render/MeshletManager.h"
+#include "engine/render/ClusterManager.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/console/RuntimeOption.hpp"
@@ -187,7 +187,7 @@ void Carrot::VulkanRenderer::createUIResources() {
 void Carrot::VulkanRenderer::createGBuffer() {
     gBuffer = std::make_unique<GBuffer>(*this, *raytracer);
     visibilityBuffer = std::make_unique<Render::VisibilityBuffer>(*this);
-    meshletManager = std::make_unique<Render::MeshletManager>(*this);
+    clusterManager = std::make_unique<Render::ClusterManager>(*this);
 }
 
 void Carrot::VulkanRenderer::createRayTracer() {
@@ -741,7 +741,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         mustBeDoneByNextFrameCounter.busyWait();
     }
 
-    meshletManager->beginFrame(renderContext);
+    clusterManager->beginFrame(renderContext);
 
     // TODO: implement via asset reload system
     // reloaded shaders -> pipeline recreation -> need to rebind descriptor
@@ -969,7 +969,7 @@ void Carrot::VulkanRenderer::waitForRenderToComplete() {
 void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
 
-    meshletManager->render(renderContext);
+    clusterManager->render(renderContext);
 
     {
         static DebugBufferObject obj{};

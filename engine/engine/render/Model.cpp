@@ -21,7 +21,7 @@
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/LightMesh.h>
 #include <engine/render/ModelRenderer.h>
-#include <engine/render/MeshletManager.h>
+#include <engine/render/ClusterManager.h>
 #include <engine/task/TaskScheduler.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {}
@@ -457,14 +457,14 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
     return skinnedBLAS;
 }
 
-std::shared_ptr<Carrot::Render::MeshletsTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform) {
-    return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [&]() -> std::shared_ptr<Carrot::Render::MeshletsTemplate> {
+std::shared_ptr<Carrot::Render::ClustersTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform) {
+    return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [&]() -> std::shared_ptr<Carrot::Render::ClustersTemplate> {
         StaticMeshInfo& sMeshInfo = staticMeshInfo[staticMeshIndex];
         if(sMeshInfo.meshlets.empty()) {
             return nullptr;
         }
 
-        Render::MeshletsDescription desc;
+        Render::ClustersDescription desc;
         desc.meshlets = sMeshInfo.meshlets;
         desc.originalVertices = std::span { staticVertices.data() + sMeshInfo.startVertex, sMeshInfo.vertexCount };
         desc.meshletVertexIndices = sMeshInfo.meshletVertexIndices;

@@ -8,7 +8,7 @@
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/InstanceData.h>
 #include <engine/render/RenderPacket.h>
-#include <engine/render/MeshletManager.h>
+#include <engine/render/ClusterManager.h>
 
 namespace Carrot::ECS {
     ModelRenderSystem::ModelRenderSystem(const rapidjson::Value& json, World& world): RenderSystem<TransformComponent, ModelComponent>(world) {
@@ -27,7 +27,7 @@ namespace Carrot::ECS {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if(!entity.isVisible()) {
-                auto pMeshlets = modelComp.rendererStorage.meshletsInstancePerViewport[renderContext.pViewport];
+                auto pMeshlets = modelComp.rendererStorage.clustersInstancePerViewport[renderContext.pViewport];
                 if(pMeshlets) {
                     pMeshlets->enabled = false;
                 }

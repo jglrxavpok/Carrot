@@ -2,7 +2,7 @@
 // Created by jglrxavpok on 20/11/2023.
 //
 
-#include "MeshletManager.h"
+#include "ClusterManager.h"
 #include <engine/utils/Profiling.h>
 #include <engine/utils/Macros.h>
 #include <engine/render/resources/ResourceAllocator.h>
@@ -11,8 +11,8 @@
 
 namespace Carrot::Render {
 
-    MeshletsTemplate::MeshletsTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
-                                       MeshletManager& manager,
+    ClustersTemplate::ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+                                       ClusterManager& manager,
                                        std::size_t firstCluster, std::span<const Cluster> clusters,
                                        Carrot::BufferAllocation&& vertexData, Carrot::BufferAllocation&& indexData)
                                        : WeakPoolHandle(index, destructor)
@@ -25,13 +25,13 @@ namespace Carrot::Render {
 
     }
 
-    MeshletsTemplate::~MeshletsTemplate() {
+    ClustersTemplate::~ClustersTemplate() {
 
     }
 
-    MeshletsInstance::MeshletsInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
-                                       MeshletManager& manager,
-                                       std::span<std::shared_ptr<MeshletsTemplate>> _templates,
+    ClustersInstance::ClustersInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+                                       ClusterManager& manager,
+                                       std::span<std::shared_ptr<ClustersTemplate>> _templates,
                                        Viewport* pViewport)
                                        : WeakPoolHandle(index, destructor)
                                        , manager(manager)
@@ -41,18 +41,18 @@ namespace Carrot::Render {
 
     }
 
-    std::shared_ptr<MeshletsInstance> MeshletsInstance::clone() {
-        MeshletsInstanceDescription cloneDesc;
+    std::shared_ptr<ClustersInstance> ClustersInstance::clone() {
+        ClustersInstanceDescription cloneDesc;
         cloneDesc.pViewport = pViewport;
         cloneDesc.templates = templates;
         return manager.addInstance(cloneDesc);
     }
 
-    MeshletManager::MeshletManager(VulkanRenderer& renderer): renderer(renderer) {
+    ClusterManager::ClusterManager(VulkanRenderer& renderer): renderer(renderer) {
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
     }
 
-    std::shared_ptr<MeshletsTemplate> MeshletManager::addGeometry(const MeshletsDescription& desc) {
+    std::shared_ptr<ClustersTemplate> ClusterManager::addGeometry(const ClustersDescription& desc) {
         verify(desc.meshlets.size() > 0, "Cannot add 0 meshlets to this manager!");
         Async::LockGuard l { accessLock };
         const std::size_t firstClusterIndex = clusters.size();
@@ -103,14 +103,14 @@ namespace Carrot::Render {
                                  std::move(vertexData), std::move(indexData));
     }
 
-    std::shared_ptr<MeshletsInstance> MeshletManager::addInstance(const MeshletsInstanceDescription& desc) {
+    std::shared_ptr<ClustersInstance> ClusterManager::addInstance(const ClustersInstanceDescription& desc) {
         Async::LockGuard l { accessLock };
         return instances.create(std::ref(*this),
                                 desc.templates,
                                 desc.pViewport);
     }
 
-    void MeshletManager::beginFrame(const Carrot::Render::Context& mainRenderContext) {
+    void ClusterManager::beginFrame(const Carrot::Render::Context& mainRenderContext) {
         ZoneScoped;
         Async::LockGuard l { accessLock };
         auto purge = [](auto& pool) {
@@ -122,7 +122,7 @@ namespace Carrot::Render {
 
     static std::uint64_t triangleCount = 0;
 
-    void MeshletManager::render(const Carrot::Render::Context& renderContext) {
+    void ClusterManager::render(const Carrot::Render::Context& renderContext) {
         if(clusters.empty()) {
             return;
         }
@@ -195,15 +195,15 @@ namespace Carrot::Render {
         }
     }
 
-    void MeshletManager::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
+    void ClusterManager::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
         // no-op
     }
 
-    void MeshletManager::onSwapchainImageCountChange(size_t newCount) {
+    void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
         clusterDataPerFrame.resize(newCount);
     }
 
-    std::shared_ptr<Carrot::Pipeline> MeshletManager::getPipeline(const Carrot::Render::Context& renderContext) {
+    std::shared_ptr<Carrot::Pipeline> ClusterManager::getPipeline(const Carrot::Render::Context& renderContext) {
         auto& pPipeline = pipelines[renderContext.pViewport];
         if(!pPipeline) {
             pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)renderContext.pViewport);

@@ -8,7 +8,7 @@
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/SingleMesh.h>
 #include <engine/render/Model.h>
-#include <engine/render/MeshletManager.h>
+#include <engine/render/ClusterManager.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/utils/Profiling.h>
 #include <core/utils/JSON.h>
@@ -121,8 +121,8 @@ namespace Carrot::Render {
     ModelRendererStorage ModelRendererStorage::clone() const {
         ModelRendererStorage r;
         r.pCreator = pCreator;
-        for(auto& [k, v] : meshletsInstancePerViewport) {
-            r.meshletsInstancePerViewport[k] = v ? v->clone() : nullptr;
+        for(auto& [k, v] : clustersInstancePerViewport) {
+            r.clustersInstancePerViewport[k] = v ? v->clone() : nullptr;
         }
         return r;
     }
@@ -295,10 +295,10 @@ namespace Carrot::Render {
 
             // create clusters instances
             if(hasVirtualizedGeometry) {
-                MeshletManager& meshletManager = renderContext.renderer.getMeshletManager();
-                MeshletsInstanceDescription instanceDesc;
+                ClusterManager& meshletManager = renderContext.renderer.getMeshletManager();
+                ClustersInstanceDescription instanceDesc;
                 instanceDesc.pViewport = renderContext.pViewport;
-                std::vector<std::shared_ptr<MeshletsTemplate>> templates;
+                std::vector<std::shared_ptr<ClustersTemplate>> templates;
 
                 for(const auto& bucket : buckets) {
                     if(!bucket.virtualizedGeometry) {
@@ -311,13 +311,13 @@ namespace Carrot::Render {
                 }
                 instanceDesc.templates = templates;
                 auto clusterInstance = meshletManager.addInstance(instanceDesc);
-                storage.meshletsInstancePerViewport[renderContext.pViewport] = clusterInstance;
+                storage.clustersInstancePerViewport[renderContext.pViewport] = clusterInstance;
             }
         }
 
         // activate and set instance data of meshlets
-        auto iter = storage.meshletsInstancePerViewport.find(renderContext.pViewport);
-        if(iter != storage.meshletsInstancePerViewport.end()) {
+        auto iter = storage.clustersInstancePerViewport.find(renderContext.pViewport);
+        if(iter != storage.clustersInstancePerViewport.end()) {
             auto& pInstance = iter->second;
             if(pInstance) {
                 pInstance->enabled = true;
