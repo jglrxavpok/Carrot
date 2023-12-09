@@ -14,6 +14,8 @@
 #include <engine/render/RenderContext.h>
 #include <engine/render/resources/Pipeline.h>
 
+#include "MaterialSystem.h"
+
 /**
  * The difference between Meshlets and Clusters is that:
  *  Meshlets reference triangles from an original mesh while Clusters hold their own triangle data
@@ -39,6 +41,14 @@ namespace Carrot::Render {
     };
 
     /**
+     * Sent as-is to the GPU
+     */
+    struct ClusterInstance {
+        std::uint32_t clusterID;
+        std::uint32_t materialIndex;
+    };
+
+    /**
      * Handle to a set of meshlets
      */
     struct ClustersTemplate: public WeakPoolHandle {
@@ -59,20 +69,26 @@ namespace Carrot::Render {
     };
 
     /**
-     * Handle to an instance rendered via meshlets.
+     * Handle to an model rendered via clusters.
      */
-    struct ClustersInstance: public WeakPoolHandle {
-        std::vector<std::shared_ptr<ClustersTemplate>> templates;
+    struct ClusterModel: public WeakPoolHandle {
+        std::vector<std::shared_ptr<ClustersTemplate>> templates; // expected to be one per mesh of the model
+        std::vector<std::shared_ptr<MaterialHandle>> pMaterials; // one per template
+
         Viewport* pViewport = nullptr; //< which viewport is this instance for?
         Carrot::InstanceData instanceData;
         bool enabled = false;
+        std::uint32_t firstInstance; // index of first instance, points to a ClusterInstance (instances are expected to be contiguous)
+        std::uint32_t instanceCount; // count of ClusterInstances related to this model
 
-        explicit ClustersInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+        explicit ClusterModel(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                   ClusterManager& manager,
                                   std::span<std::shared_ptr<ClustersTemplate>>,
-                                  Viewport* pViewport);
+                                  std::span<std::shared_ptr<MaterialHandle>>,
+                                  Viewport* pViewport,
+                                  std::uint32_t firstInstance, std::uint32_t instanceCount);
 
-        std::shared_ptr<ClustersInstance> clone();
+        std::shared_ptr<ClusterModel> clone();
 
     private:
         ClusterManager& manager;
@@ -97,6 +113,7 @@ namespace Carrot::Render {
     struct ClustersInstanceDescription {
         Viewport* pViewport = nullptr;
         std::span<std::shared_ptr<ClustersTemplate>> templates;
+        std::span<std::shared_ptr<MaterialHandle>> pMaterials; // one per template
     };
 
     /**
@@ -108,7 +125,7 @@ namespace Carrot::Render {
 
     public:
         std::shared_ptr<ClustersTemplate> addGeometry(const ClustersDescription& desc);
-        std::shared_ptr<ClustersInstance> addInstance(const ClustersInstanceDescription& desc);
+        std::shared_ptr<ClusterModel> addModel(const ClustersInstanceDescription& desc);
 
     public:
         void beginFrame(const Carrot::Render::Context& mainRenderContext);
@@ -125,13 +142,18 @@ namespace Carrot::Render {
         VulkanRenderer& renderer;
         Async::SpinLock accessLock;
         WeakPool<ClustersTemplate> geometries;
-        WeakPool<ClustersInstance> instances;
+        WeakPool<ClusterModel> models;
+
+        std::vector<Cluster> gpuClusters;
+        std::vector<ClusterInstance> gpuInstances;
 
         bool requireClusterUpdate = true;
+        bool requireInstanceUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
-        std::vector<Cluster> clusters;
+        std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;
         std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
+        Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
     };
 
 } // Carrot::Render

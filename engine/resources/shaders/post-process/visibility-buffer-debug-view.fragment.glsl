@@ -52,8 +52,8 @@ vec4 triangleIndexToFloat(uint64_t index) {
 
 void main() {
     uint64_t bufferValue = imageLoad(inputImage, uvToPixels(uv)).r;
-    uint triangleIndex = uint(bufferValue) & 0xFFFFFFu; // low 24 bits
-    uint instanceIndex = (uint(bufferValue) >> 24) & 0xFFu;
+    uint triangleIndex = uint(bufferValue) & 0x7Fu; // low 7 bits
+    uint instanceIndex = (uint(bufferValue) >> 7) & 0x1FFFFFFu; // high 25 bits: instance index
 
     outColor = triangleIndexToFloat(triangleIndex);
     //outColor = triangleIndexToFloat(instanceIndex);

@@ -121,8 +121,8 @@ namespace Carrot::Render {
     ModelRendererStorage ModelRendererStorage::clone() const {
         ModelRendererStorage r;
         r.pCreator = pCreator;
-        for(auto& [k, v] : clustersInstancePerViewport) {
-            r.clustersInstancePerViewport[k] = v ? v->clone() : nullptr;
+        for(auto& [k, v] : clusterModelsPerViewport) {
+            r.clusterModelsPerViewport[k] = v ? v->clone() : nullptr;
         }
         return r;
     }
@@ -299,6 +299,7 @@ namespace Carrot::Render {
                 ClustersInstanceDescription instanceDesc;
                 instanceDesc.pViewport = renderContext.pViewport;
                 std::vector<std::shared_ptr<ClustersTemplate>> templates;
+                std::vector<std::shared_ptr<MaterialHandle>> materials;
 
                 for(const auto& bucket : buckets) {
                     if(!bucket.virtualizedGeometry) {
@@ -306,18 +307,20 @@ namespace Carrot::Render {
                     }
 
                     for(const auto& meshInfo : bucket.meshes) {
+                        materials.push_back(meshInfo.materialTextures);
                         templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex, meshInfo.meshAndTransform.transform));
                     }
                 }
                 instanceDesc.templates = templates;
-                auto clusterInstance = meshletManager.addInstance(instanceDesc);
-                storage.clustersInstancePerViewport[renderContext.pViewport] = clusterInstance;
+                instanceDesc.pMaterials = materials;
+                auto clusterInstance = meshletManager.addModel(instanceDesc);
+                storage.clusterModelsPerViewport[renderContext.pViewport] = clusterInstance;
             }
         }
 
         // activate and set instance data of meshlets
-        auto iter = storage.clustersInstancePerViewport.find(renderContext.pViewport);
-        if(iter != storage.clustersInstancePerViewport.end()) {
+        auto iter = storage.clusterModelsPerViewport.find(renderContext.pViewport);
+        if(iter != storage.clusterModelsPerViewport.end()) {
             auto& pInstance = iter->second;
             if(pInstance) {
                 pInstance->enabled = true;

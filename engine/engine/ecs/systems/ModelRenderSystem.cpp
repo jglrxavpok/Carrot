@@ -27,7 +27,7 @@ namespace Carrot::ECS {
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, ModelComponent& modelComp) {
             ZoneScopedN("Per entity");
             if(!entity.isVisible()) {
-                auto pMeshlets = modelComp.rendererStorage.clustersInstancePerViewport[renderContext.pViewport];
+                auto pMeshlets = modelComp.rendererStorage.clusterModelsPerViewport[renderContext.pViewport];
                 if(pMeshlets) {
                     pMeshlets->enabled = false;
                 }

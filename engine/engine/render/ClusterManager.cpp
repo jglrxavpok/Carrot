@@ -29,23 +29,30 @@ namespace Carrot::Render {
 
     }
 
-    ClustersInstance::ClustersInstance(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
+    ClusterModel::ClusterModel(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                        ClusterManager& manager,
                                        std::span<std::shared_ptr<ClustersTemplate>> _templates,
-                                       Viewport* pViewport)
+                                       std::span<std::shared_ptr<MaterialHandle>> _materials,
+                                       Viewport* pViewport,
+                                       std::uint32_t firstInstance,
+                                       std::uint32_t instanceCount)
                                        : WeakPoolHandle(index, destructor)
                                        , manager(manager)
                                        , templates{_templates.begin(), _templates.end()}
                                        , pViewport(pViewport)
+                                       , pMaterials{_materials.begin(), _materials.end()}
+                                       , firstInstance(firstInstance)
+                                       , instanceCount(instanceCount)
                                        {
 
     }
 
-    std::shared_ptr<ClustersInstance> ClustersInstance::clone() {
+    std::shared_ptr<ClusterModel> ClusterModel::clone() {
         ClustersInstanceDescription cloneDesc;
         cloneDesc.pViewport = pViewport;
         cloneDesc.templates = templates;
-        return manager.addInstance(cloneDesc);
+        cloneDesc.pMaterials = pMaterials;
+        return manager.addModel(cloneDesc);
     }
 
     ClusterManager::ClusterManager(VulkanRenderer& renderer): renderer(renderer) {
@@ -55,14 +62,14 @@ namespace Carrot::Render {
     std::shared_ptr<ClustersTemplate> ClusterManager::addGeometry(const ClustersDescription& desc) {
         verify(desc.meshlets.size() > 0, "Cannot add 0 meshlets to this manager!");
         Async::LockGuard l { accessLock };
-        const std::size_t firstClusterIndex = clusters.size();
-        clusters.resize(clusters.size() + desc.meshlets.size());
+        const std::size_t firstClusterIndex = gpuClusters.size();
+        gpuClusters.resize(gpuClusters.size() + desc.meshlets.size());
 
         std::vector<Carrot::Vertex> vertices;
         std::vector<std::uint32_t> indices;
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             Meshlet& meshlet = desc.meshlets[i];
-            Cluster& cluster = clusters[i + firstClusterIndex];
+            Cluster& cluster = gpuClusters[i + firstClusterIndex];
 
             cluster.transform = desc.transform;
             cluster.lod = meshlet.lod;
@@ -90,7 +97,7 @@ namespace Carrot::Render {
         std::size_t vertexOffset = 0;
         std::size_t indexOffset = 0;
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
-            auto& cluster = clusters[i + firstClusterIndex];
+            auto& cluster = gpuClusters[i + firstClusterIndex];
             cluster.vertexBufferAddress = vertexData.view.getDeviceAddress() + vertexOffset;
             cluster.indexBufferAddress = indexData.view.getDeviceAddress() + indexOffset;
             vertexOffset += sizeof(Carrot::Vertex) * desc.meshlets[i].vertexCount;
@@ -99,15 +106,41 @@ namespace Carrot::Render {
 
         requireClusterUpdate = true;
         return geometries.create(std::ref(*this),
-                                 firstClusterIndex, std::span{ clusters.data() + firstClusterIndex, desc.meshlets.size() },
+                                 firstClusterIndex, std::span{ gpuClusters.data() + firstClusterIndex, desc.meshlets.size() },
                                  std::move(vertexData), std::move(indexData));
     }
 
-    std::shared_ptr<ClustersInstance> ClusterManager::addInstance(const ClustersInstanceDescription& desc) {
+    std::shared_ptr<ClusterModel> ClusterManager::addModel(const ClustersInstanceDescription& desc) {
+        verify(desc.templates.size() == desc.pMaterials.size(), "There must be as many templates as material handles!");
+
+        std::uint32_t clusterCount = 0;
+
+        for(const auto& pTemplate : desc.templates) {
+            clusterCount += pTemplate->clusters.size();
+        }
+
         Async::LockGuard l { accessLock };
-        return instances.create(std::ref(*this),
+        requireInstanceUpdate = true;
+        const std::uint32_t firstInstanceID = gpuInstances.size();
+        gpuInstances.resize(firstInstanceID + clusterCount);
+
+        std::uint32_t clusterIndex = 0;
+        std::uint32_t templateIndex = 0;
+        for(const auto& pTemplate : desc.templates) {
+            for(std::size_t i = 0; i < pTemplate->clusters.size(); i++) {
+                auto& gpuInstance = gpuInstances[firstInstanceID + clusterIndex];
+                gpuInstance.materialIndex = desc.pMaterials[templateIndex]->getSlot();
+                gpuInstance.clusterID = pTemplate->firstCluster + i;
+                clusterIndex++;
+            }
+            templateIndex++;
+        }
+
+        return models.create(std::ref(*this),
                                 desc.templates,
-                                desc.pViewport);
+                                desc.pMaterials,
+                                desc.pViewport,
+                                firstInstanceID, clusterCount);
     }
 
     void ClusterManager::beginFrame(const Carrot::Render::Context& mainRenderContext) {
@@ -116,14 +149,14 @@ namespace Carrot::Render {
         auto purge = [](auto& pool) {
             pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto a) { return a.second.expired(); }), pool.end());
         };
-        purge(instances);
+        purge(models);
         purge(geometries);
     }
 
     static std::uint64_t triangleCount = 0;
 
     void ClusterManager::render(const Carrot::Render::Context& renderContext) {
-        if(clusters.empty()) {
+        if(gpuClusters.empty()) {
             return;
         }
 
@@ -143,19 +176,30 @@ namespace Carrot::Render {
         packet.pipeline = getPipeline(renderContext);
 
         if(requireClusterUpdate) {
-            clusterGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(Cluster) * clusters.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
-            clusterGPUVisibleArray->view.stageUpload(std::span<const Cluster>{ clusters });
+            clusterGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(Cluster) * gpuClusters.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
+            clusterGPUVisibleArray->view.stageUpload(std::span<const Cluster>{ gpuClusters });
             requireClusterUpdate = false;
         }
-        clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
 
-        Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.swapchainIndex]->view;
-        if(clusterRefs) {
-            renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
+        // TODO: allow material update once instance are already created? => needs something similar to MaterialSystem::getData
+        if(requireInstanceUpdate) {
+            instanceGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterInstance) * gpuInstances.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
+            instanceGPUVisibleArray->view.stageUpload(std::span<const ClusterInstance>{ gpuInstances });
+            requireInstanceUpdate = false;
         }
 
-        for(auto& [index, pInstance] : instances) {
-            if(auto instance = pInstance.lock()) {
+        clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        instanceDataPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+
+        const Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.swapchainIndex]->view;
+        const Carrot::BufferView instanceRefs = instanceDataPerFrame[renderContext.swapchainIndex]->view;
+        if(clusterRefs) {
+            renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
+            renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
+        }
+
+        for(const auto& [index, pInstance] : models) {
+            if(const auto instance = pInstance.lock()) {
                 if(!instance->enabled) {
                     continue;
                 }
@@ -166,6 +210,7 @@ namespace Carrot::Render {
                 packet.clearPerDrawData();
                 packet.unindexedDrawCommands.clear();
                 packet.useInstance(instance->instanceData);
+                std::uint32_t instanceIndex = 0;
 
                 for(const auto& pTemplate : instance->templates) {
                     std::size_t clusterOffset = 0;
@@ -180,15 +225,17 @@ namespace Carrot::Render {
                             triangleCount += cluster.triangleCount;
 
                             GBufferDrawData drawData;
-                            // TODO: drawData.materialIndex = instance.materialIndex;
                             drawData.materialIndex = 0;
-                            drawData.uuid0 = clusterOffset + pTemplate->firstCluster;
+                            drawData.uuid0 = instance->firstInstance + instanceIndex;
                             packet.addPerDrawData(std::span{ &drawData, 1 });
+
                         }
 
+                        instanceIndex++;
                         clusterOffset++;
                     }
                 }
+                verify(instanceIndex == instance->instanceCount, "instanceIndex == instance->instanceCount");
 
                 renderer.render(packet);
             }
@@ -201,6 +248,7 @@ namespace Carrot::Render {
 
     void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
         clusterDataPerFrame.resize(newCount);
+        instanceDataPerFrame.resize(newCount);
     }
 
     std::shared_ptr<Carrot::Pipeline> ClusterManager::getPipeline(const Carrot::Render::Context& renderContext) {
