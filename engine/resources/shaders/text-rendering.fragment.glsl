@@ -1,6 +1,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #include "includes/materials.glsl"
+#include <includes/gbuffer.glsl>
 #include "includes/gbuffer_output.glsl"
 #include "draw_data.glsl"
 

@@ -1,5 +1,3 @@
-#include "gbuffer.glsl"
-
 #define DEFINE_GBUFFER_INPUTS(setID)                                                                                    \
 layout(set = setID, binding = 0) uniform texture2D gAlbedo;                                                             \
 layout(set = setID, binding = 1) uniform texture2D gViewPos;                                                            \

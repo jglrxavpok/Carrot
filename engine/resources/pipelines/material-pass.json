@@ -1,0 +1,27 @@
+{
+  "type": "gbuffer",
+  "subpassIndex": 0,
+  "vertexFormat": "ScreenSpace",
+  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
+  "fragmentShader": "resources/shaders/material-pass.fragment.glsl.spv",
+  "depthWrite": false,
+  "depthTest": false,
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "materials",
+      "setID": 1
+    },
+    {
+      "type": "autofill",
+      "setID": 2
+    },
+    {
+      "type": "camera",
+      "setID": 3
+    }
+  ]
+}

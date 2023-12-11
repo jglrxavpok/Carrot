@@ -30,3 +30,10 @@ struct Instance {
     vec4 instanceColor;
     uint firstGeometryIndex;
 };
+
+struct InstanceData {
+    vec4 color;
+    uvec4 uuid;
+    mat4 transform;
+    mat4 lastFrameTransform;
+};

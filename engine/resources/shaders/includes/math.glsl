@@ -20,3 +20,17 @@ vec2 getNearFar(mat4 perspectiveMatrix) {
     float m32 = perspectiveMatrix[3][2];
     return vec2(getNear(perspectiveMatrix), getFar(perspectiveMatrix));
 }
+
+vec3 barycentrics(vec3 a, vec3 b, vec3 c, vec3 p) {
+    vec3 offsetA = a - p;
+    vec3 offsetB = b - p;
+    vec3 offsetC = c - p;
+
+    float invTriangleArea = 2.0 / length(cross(b-a, c-a));
+    float u = length(cross(p-b, p-c)) / 2.0;
+    float v = length(cross(p-a, p-c)) / 2.0;
+    u *= invTriangleArea;
+    v *= invTriangleArea;
+
+    return vec3(u, v, 1-u-v);
+}

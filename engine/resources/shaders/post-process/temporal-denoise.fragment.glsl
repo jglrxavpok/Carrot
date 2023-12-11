@@ -1,6 +1,7 @@
 #include "includes/camera.glsl"
 #include "includes/lighting_utils.glsl"
 #include "includes/sampling.glsl"
+#include <includes/gbuffer.glsl>
 #include "includes/gbuffer_input.glsl"
 
 layout(set = 0, binding = 0) uniform texture2D currentFrame;

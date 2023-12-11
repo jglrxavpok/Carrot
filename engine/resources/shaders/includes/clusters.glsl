@@ -9,4 +9,5 @@ struct Cluster {
 struct ClusterInstance {
     uint32_t clusterID;
     uint32_t materialIndex;
+    uint32_t instanceDataIndex;
 };

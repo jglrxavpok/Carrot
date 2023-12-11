@@ -1,5 +1,6 @@
 #include "includes/lights.glsl"
 #include "includes/materials.glsl"
+#include <includes/gbuffer.glsl>
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable

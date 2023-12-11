@@ -1,3 +1,4 @@
+#include <includes/gbuffer.glsl>
 #include <includes/lighting_utils.glsl>
 #include <includes/gbuffer_input.glsl>
 

@@ -1,5 +1,6 @@
 #include <includes/camera.glsl>
 #include <includes/sampling.glsl>
+#include <includes/gbuffer.glsl>
 #include <includes/gbuffer_input.glsl>
 #include "includes/debugparams.glsl"
 #include "includes/materials.glsl"

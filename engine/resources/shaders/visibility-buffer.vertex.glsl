@@ -29,15 +29,20 @@ layout(set = 0, binding = 1, scalar) buffer ClusterInstanceRef {
     ClusterInstance instances[];
 };
 
+layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
+    InstanceData modelData[];
+};
+
 void main() {
     uint drawID = gl_DrawID;
 
     DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset + drawID];
     instanceID = instanceDrawData.uuid0;
     uint clusterID = instances[instanceID].clusterID;
+    uint modelDataIndex = instances[instanceID].instanceDataIndex;
     Vertex vertex = clusters[clusterID].vertices.v[clusters[clusterID].indices.i[gl_VertexIndex]];
 
-    mat4 modelview = cbo.view * inInstanceTransform * clusters[clusterID].transform;
+    mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
 
     vec4 viewPosition = modelview * vertex.pos;
 

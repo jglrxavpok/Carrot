@@ -2,6 +2,7 @@
 
 #include <includes/camera.glsl>
 #include "draw_data.glsl"
+#include <includes/gbuffer.glsl>
 #include "includes/gbuffer_output.glsl"
 #include "includes/materials.glsl"
 

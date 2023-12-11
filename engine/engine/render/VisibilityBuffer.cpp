@@ -8,6 +8,8 @@
 #include <engine/utils/Profiling.h>
 #include <engine/Engine.h>
 
+#include "ClusterManager.h"
+
 namespace Carrot::Render {
 
     VisibilityBuffer::VisibilityBuffer(VulkanRenderer& renderer): renderer(renderer) {
@@ -59,7 +61,7 @@ namespace Carrot::Render {
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
                 auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)frame.pViewport);
-                renderer.bindStorageImage(*pipeline, frame, texture, 0, 2,
+                renderer.bindStorageImage(*pipeline, frame, texture, 0, 3,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
             }
@@ -97,11 +99,32 @@ namespace Carrot::Render {
         auto& materialPass = graph.addPass<VisibilityPassData>("visibility buffer materials",
             [this, &gBufferData, &rasterizePass, &debugPass](Render::GraphBuilder& builder, Render::Pass<VisibilityPassData>& pass, VisibilityPassData& data) {
                 data.gbuffer.writeTo(builder, gBufferData);
-                data.visibilityBuffer = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.visibilityBuffer = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eGeneral);
                 data.debugView = debugPass.getData().postProcessed;
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityPassData& data, vk::CommandBuffer& cmds) {
-                // no-op for now
+                Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);
+                Carrot::BufferView clusterInstances = frame.renderer.getMeshletManager().getClusterInstances(frame);
+                Carrot::BufferView clusterInstanceData = frame.renderer.getMeshletManager().getClusterInstanceData(frame);
+                if(!clusters || !clusterInstances || !clusterInstanceData) {
+                    return;
+                }
+
+                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.json");
+                const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
+                frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
+                frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 2, 0,
+                    vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                frame.renderer.bindBuffer(*pipeline, frame, clusters, 2, 1);
+                frame.renderer.bindBuffer(*pipeline, frame, clusterInstances, 2, 2);
+                frame.renderer.bindBuffer(*pipeline, frame, clusterInstanceData, 2, 3);
+
+                pipeline->bind(pass.getRenderPass(), frame, cmds);
+                auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                screenQuadMesh.bind(cmds);
+                screenQuadMesh.draw(cmds);
             }
         );
 

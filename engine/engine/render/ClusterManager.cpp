@@ -136,11 +136,32 @@ namespace Carrot::Render {
             templateIndex++;
         }
 
-        return models.create(std::ref(*this),
+        auto pModel = models.create(std::ref(*this),
                                 desc.templates,
                                 desc.pMaterials,
                                 desc.pViewport,
                                 firstInstanceID, clusterCount);
+        // each instance will point to the instance data of the ClusterModel we just created
+        for(std::size_t i = 0; i < clusterCount; i++) {
+            auto& gpuInstance = gpuInstances[firstInstanceID + i];
+            gpuInstance.instanceDataIndex = pModel->getSlot();
+        }
+        return pModel;
+    }
+
+    Carrot::BufferView ClusterManager::getClusters(const Carrot::Render::Context& renderContext) {
+        auto& pAlloc = clusterDataPerFrame[renderContext.swapchainIndex];
+        return pAlloc ? pAlloc->view : Carrot::BufferView{};
+    }
+
+    Carrot::BufferView ClusterManager::getClusterInstances(const Carrot::Render::Context& renderContext) {
+        auto& pAlloc = instancesPerFrame[renderContext.swapchainIndex];
+        return pAlloc ? pAlloc->view : Carrot::BufferView{};
+    }
+
+    Carrot::BufferView ClusterManager::getClusterInstanceData(const Carrot::Render::Context& renderContext) {
+        auto& pAlloc = instanceDataPerFrame[renderContext.swapchainIndex];
+        return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
 
     void ClusterManager::beginFrame(const Carrot::Render::Context& mainRenderContext) {
@@ -185,17 +206,30 @@ namespace Carrot::Render {
         if(requireInstanceUpdate) {
             instanceGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterInstance) * gpuInstances.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
             instanceGPUVisibleArray->view.stageUpload(std::span<const ClusterInstance>{ gpuInstances });
+
+            instanceDataGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateStagingBuffer(sizeof(Carrot::InstanceData) * models.getRequiredStorageCount(), alignof(InstanceData))));
+            pInstanceData = instanceDataGPUVisibleArray->view.map<Carrot::InstanceData>();
+
             requireInstanceUpdate = false;
         }
 
+        for(auto& [slot, pModel] : models) {
+            if(auto pLockedModel = pModel.lock()) {
+                pInstanceData[slot] = pLockedModel->instanceData;
+            }
+        }
+
         clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
-        instanceDataPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        instancesPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        instanceDataPerFrame[renderContext.swapchainIndex] = instanceDataGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
 
         const Carrot::BufferView clusterRefs = clusterDataPerFrame[renderContext.swapchainIndex]->view;
-        const Carrot::BufferView instanceRefs = instanceDataPerFrame[renderContext.swapchainIndex]->view;
+        const Carrot::BufferView instanceRefs = instancesPerFrame[renderContext.swapchainIndex]->view;
+        const Carrot::BufferView instanceDataRefs = instanceDataPerFrame[renderContext.swapchainIndex]->view;
         if(clusterRefs) {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
+            renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
         }
 
         for(const auto& [index, pInstance] : models) {
@@ -209,7 +243,7 @@ namespace Carrot::Render {
 
                 packet.clearPerDrawData();
                 packet.unindexedDrawCommands.clear();
-                packet.useInstance(instance->instanceData);
+                packet.useInstance(instance->instanceData); // TODO: remove and use only instanceDataRefs
                 std::uint32_t instanceIndex = 0;
 
                 for(const auto& pTemplate : instance->templates) {
@@ -237,7 +271,8 @@ namespace Carrot::Render {
                 }
                 verify(instanceIndex == instance->instanceCount, "instanceIndex == instance->instanceCount");
 
-                renderer.render(packet);
+                if(packet.unindexedDrawCommands.size() > 0)
+                    renderer.render(packet);
             }
         }
     }
@@ -248,6 +283,7 @@ namespace Carrot::Render {
 
     void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
         clusterDataPerFrame.resize(newCount);
+        instancesPerFrame.resize(newCount);
         instanceDataPerFrame.resize(newCount);
     }
 

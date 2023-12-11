@@ -228,6 +228,7 @@ set(FRAGMENT_SHADERS
         gBuffer.fragment.glsl
         gBuffer-transparent.fragment.glsl
         gBufferBlockout.fragment.glsl
+        material-pass.fragment.glsl
         visibility-buffer.fragment.glsl
         unlitGBuffer.fragment.glsl
 

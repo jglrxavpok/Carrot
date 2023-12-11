@@ -14,7 +14,7 @@ static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", fals
 namespace Carrot {
     ResourceAllocator::ResourceAllocator(VulkanDriver& device): device(device) {
         stagingHeap = std::make_unique<Buffer>(device, HeapSize,
-                                        vk::BufferUsageFlagBits::eTransferSrc,
+                                        vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eStorageBuffer,
                                         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                         std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()});
         stagingHeap->setDebugNames("ResourceAllocator heap for staging buffers");
@@ -56,10 +56,10 @@ namespace Carrot {
         vmaDestroyVirtualBlock((VmaVirtualBlock)deviceVirtualBlock);
     }
 
-    BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size) {
+    BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size, vk::DeviceSize alignment) {
         auto makeDedicated = [&]() {
             BufferAllocation result { this };
-            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
+            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
             result.allocation = pBuffer.get();
             result.dedicated = true;
@@ -68,6 +68,7 @@ namespace Carrot {
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
         allocInfo.size = size;
+        allocInfo.alignment = std::lcm(alignment, GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
         {
             Carrot::Async::LockGuard g{stagingAccess};
             BufferAllocation alloc = allocateInHeap(allocInfo, stagingVirtualBlock, *stagingHeap, makeDedicated);

@@ -1,3 +1,4 @@
+#include "../../../engine/resources/shaders/includes/gbuffer.glsl"
 #include "../../../engine/resources/shaders/includes/gbuffer_output.glsl"
 
 #include "../../../engine/resources/shaders/includes/camera.glsl"

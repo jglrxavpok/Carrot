@@ -41,11 +41,16 @@ namespace Carrot::Render {
     };
 
     /**
-     * Sent as-is to the GPU
+     * Sent as-is to the GPU.
+     * Represents a single cluster as rendered on screen: each ClusterInstance is a unique cluster, which references:
+     * - its geometry via clusterID
+     * - its material via materialIndex
+     * - its per-instance data via instanceDataIndex (in this case, instance means a ClusterModel)
      */
     struct ClusterInstance {
         std::uint32_t clusterID;
         std::uint32_t materialIndex;
+        std::uint32_t instanceDataIndex;
     };
 
     /**
@@ -127,6 +132,21 @@ namespace Carrot::Render {
         std::shared_ptr<ClustersTemplate> addGeometry(const ClustersDescription& desc);
         std::shared_ptr<ClusterModel> addModel(const ClustersInstanceDescription& desc);
 
+        /**
+         * Buffer of all Cluster currently used
+         */
+        Carrot::BufferView getClusters(const Carrot::Render::Context& renderContext);
+
+        /**
+         * Buffer of all ClusterInstance currently used
+         */
+        Carrot::BufferView getClusterInstances(const Carrot::Render::Context& renderContext);
+
+        /**
+         * Buffer of all InstanceData currently used
+         */
+        Carrot::BufferView getClusterInstanceData(const Carrot::Render::Context& renderContext);
+
     public:
         void beginFrame(const Carrot::Render::Context& mainRenderContext);
         void render(const Carrot::Render::Context& renderContext);
@@ -151,8 +171,12 @@ namespace Carrot::Render {
         bool requireInstanceUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
         std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;
+        std::shared_ptr<Carrot::BufferAllocation> instanceDataGPUVisibleArray;
+        Carrot::InstanceData* pInstanceData = nullptr; // CPU visible version of instanceDataGPUVisibleArray
+
         std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
+        Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesPerFrame;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
     };
 

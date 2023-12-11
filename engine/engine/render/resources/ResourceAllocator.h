@@ -21,7 +21,7 @@ namespace Carrot {
         /**
          * Buffer used for staging uploads
          */
-        BufferAllocation allocateStagingBuffer(vk::DeviceSize size);
+        BufferAllocation allocateStagingBuffer(vk::DeviceSize size, vk::DeviceSize alignment = 1);
 
         /**
          * Buffer used for device-local storage

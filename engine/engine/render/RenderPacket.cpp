@@ -239,6 +239,9 @@ namespace Carrot::Render {
             verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null if there are indexed draw commands");
         }
         verify(viewport, "Viewport must not be null");
+        verify(indexedDrawCommands.size() > 0 || unindexedDrawCommands.size() > 0, "Must have at least one draw command");
+        const bool bothHaveCommands = indexedDrawCommands.size() > 0 && unindexedDrawCommands.size() > 0;
+        verify(!bothHaveCommands, "Must only have either indexed or unindexed draw commands.");
 
         if(!perDrawData.empty()) {
             verify(unindexedDrawCommands.size() + indexedDrawCommands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many drawCommands than per draw data!");
