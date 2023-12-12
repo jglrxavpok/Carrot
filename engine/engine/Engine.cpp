@@ -511,7 +511,6 @@ void Carrot::Engine::initWindow() {
     glfwSetJoystickCallback(joystickCallback);
 
     auto& window = mainWindow; // TODO: reuse for different windows
-    glfwSetWindowUserPointer(window.getGLFWPointer(), this);
     glfwSetFramebufferSizeCallback(window.getGLFWPointer(), windowResize);
 
     glfwSetCursorPosCallback(window.getGLFWPointer(), mouseMove);

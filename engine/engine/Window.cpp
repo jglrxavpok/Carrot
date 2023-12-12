@@ -28,6 +28,7 @@ namespace Carrot {
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindow = glfwCreateWindow(width, height, config.applicationName.c_str(), nullptr, nullptr);
+        glfwSetWindowUserPointer(glfwWindow, this);
 
         if(config.icon16.has_value()) {
             set16x16Icon(*config.icon16);
@@ -46,6 +47,8 @@ namespace Carrot {
     Window::Window(Engine& engine, GLFWwindow* pWindow): Window(engine) {
         glfwWindow = pWindow;
         ownsWindow = false;
+
+        glfwSetWindowUserPointer(glfwWindow, this);
     }
 
     Window::Window(Engine& engine, vk::SurfaceKHR surface): Window(engine) {
