@@ -147,6 +147,9 @@ namespace Peeler {
                 return std::make_shared<Carrot::Render::ModelRenderer>(*asyncModel);
             };
 
+            std::size_t virtualGeometryCount = 0;
+            std::size_t staticMeshCount = component->modelRenderer ? component->modelRenderer->getModel().getStaticMeshes().size() : component->asyncModel->getStaticMeshes().size();
+
             // handle rendering overrides (replacing pipeline and/or material textures)
             if(component->modelRenderer) {
                 std::shared_ptr<Carrot::Render::ModelRenderer> clonedRenderer = nullptr;
@@ -175,6 +178,10 @@ namespace Peeler {
                         toRemove = index;
                     }
 
+                    if(override.virtualizedGeometry) {
+                        virtualGeometryCount++;
+                    }
+
                     ImGui::EndChild();
                     index++;
                 }
@@ -195,6 +202,40 @@ namespace Peeler {
                 component->modelRenderer->addOverride({});
                 worldData.storeModelRenderer(component->modelRenderer);
                 edition.hasModifications = true;
+            }
+
+            int tristate = -1; // partially selected
+            if(staticMeshCount == virtualGeometryCount) {
+                tristate = 1;
+            } else if(virtualGeometryCount == 0) {
+                tristate = 0;
+            }
+            if(ImGui::CheckBoxTristate("Virtual Geometry for everything", &tristate)) {
+                if(tristate == 0) {
+                    if(component->modelRenderer) {
+                        component->modelRenderer = cloneRenderer();
+                        for(auto& override : component->modelRenderer->getOverrides()) {
+                            override.virtualizedGeometry = false;
+                        }
+                        component->modelRenderer->recreateStructures();
+                        worldData.storeModelRenderer(component->modelRenderer);
+                    }
+                } else if(tristate == 1) {
+                    component->modelRenderer = cloneRenderer();
+                    for(std::size_t i = 0; i < staticMeshCount; i++) {
+                        Carrot::Render::MaterialOverride* pExistingOverride = component->modelRenderer->getOverrides().findForMesh(i);
+                        if(pExistingOverride) {
+                            pExistingOverride->virtualizedGeometry = true;
+                        } else {
+                            Carrot::Render::MaterialOverride override;
+                            override.meshIndex = i;
+                            override.virtualizedGeometry = true;
+                            component->modelRenderer->addOverride(override);
+                        }
+                    }
+                    component->modelRenderer->recreateStructures();
+                    worldData.storeModelRenderer(component->modelRenderer);
+                }
             }
         }
     }

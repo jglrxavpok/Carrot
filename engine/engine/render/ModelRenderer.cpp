@@ -46,6 +46,14 @@ namespace Carrot::Render {
         return sortedOverrides.data() + sortedOverrides.size();
     }
 
+    MaterialOverride* MaterialOverrides::begin() {
+        return sortedOverrides.data();
+    }
+
+    MaterialOverride* MaterialOverrides::end() {
+        return sortedOverrides.data() + sortedOverrides.size();
+    }
+
     std::size_t MaterialOverrides::size() const {
         return sortedOverrides.size();
     }

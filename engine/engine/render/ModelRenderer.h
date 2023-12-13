@@ -39,6 +39,9 @@ namespace Carrot::Render {
 
         const MaterialOverride* begin() const;
         const MaterialOverride* end() const;
+
+        MaterialOverride* begin();
+        MaterialOverride* end();
         std::size_t size() const;
 
         /**

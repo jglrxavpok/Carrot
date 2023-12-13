@@ -75,4 +75,27 @@ namespace ImGui {
      * @return true iif button was clicked
      */
     bool ImageToggleButton(const char* label, ImTextureID textureID, bool* state, const ImVec2& imageSize, ImVec2 buttonSize = ImVec2(0, 0));
+
+    // from https://github.com/ocornut/imgui/issues/2644
+    inline bool CheckBoxTristate(const char* label, int* v_tristate)
+    {
+        bool ret;
+        if (*v_tristate == -1)
+        {
+            ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true);
+            bool b = false;
+            ret = ImGui::Checkbox(label, &b);
+            if (ret)
+                *v_tristate = 1;
+            ImGui::PopItemFlag();
+        }
+        else
+        {
+            bool b = (*v_tristate != 0);
+            ret = ImGui::Checkbox(label, &b);
+            if (ret)
+                *v_tristate = (int)b;
+        }
+        return ret;
+    }
 }
