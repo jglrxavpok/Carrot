@@ -253,7 +253,7 @@ namespace Carrot {
             }
 
             run(parallelJobs * granularity);
-            sync.busyWait();
+            sync.busyWait(); // TODO: potential deadlock if done on thread already running tasks
         } else {
             run(0);
         }

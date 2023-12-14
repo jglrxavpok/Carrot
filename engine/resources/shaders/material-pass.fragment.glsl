@@ -51,13 +51,6 @@ void main() {
     }
 
     double visibilityBufferDepth = uint(0xFFFFFFFFu - (visibilityBufferSample >> 32u)) / double(0xFFFFFFFFu);
-    uvec2 depthBufferImageSize = textureSize(gDepth, 0);
-    ivec2 depthCoords = ivec2(visibilityBufferImageSize * screenUV);
-    double gBufferCurrentDepth = texelFetch(gDepth, depthCoords, 0).r;
-
-    if(gBufferCurrentDepth+0.000001 < visibilityBufferDepth) {
-        discard;
-    }
     gl_FragDepth = float(visibilityBufferDepth);
 
     uint low = uint(visibilityBufferSample);

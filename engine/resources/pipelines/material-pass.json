@@ -4,8 +4,8 @@
   "vertexFormat": "ScreenSpace",
   "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
   "fragmentShader": "resources/shaders/material-pass.fragment.glsl.spv",
-  "depthWrite": false,
-  "depthTest": false,
+  "depthWrite": true,
+  "depthTest": true,
   "descriptorSets": [
     {
       "type": "autofill",

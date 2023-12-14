@@ -18,7 +18,6 @@ namespace Carrot::Render {
 
     struct VisibilityBufferRasterizationData {
         Render::FrameResource visibilityBuffer;
-        Render::FrameResource depthStencil;
     };
 
     const VisibilityBuffer::VisibilityPassData& VisibilityBuffer::addVisibilityBufferPasses(Render::GraphBuilder& graph, const Render::PassData::GBuffer& gBufferData, const Render::TextureSize& framebufferSize) {
@@ -27,7 +26,6 @@ namespace Carrot::Render {
             [this, &gBufferData, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
                 // Declare the visibility buffer texture
                 data.visibilityBuffer = builder.createStorageTarget("visibility buffer", vk::Format::eR64Uint, framebufferSize, vk::ImageLayout::eGeneral);
-                data.depthStencil = builder.write(gBufferData.depthStencil, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                 ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
@@ -112,7 +110,7 @@ namespace Carrot::Render {
 
                 auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.json");
                 const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
-                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
+                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
                 frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 2, 0,
                     vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
