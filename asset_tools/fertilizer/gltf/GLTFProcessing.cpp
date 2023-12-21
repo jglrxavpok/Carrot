@@ -22,6 +22,7 @@
 #define IDXTYPEWIDTH 64
 #define REALTYPEWIDTH 64
 #include <metis.h>
+#include <glm/gtx/norm.hpp>
 
 namespace Fertilizer {
 
@@ -103,26 +104,27 @@ namespace Fertilizer {
         return std::move(expanded);
     }
 
-    static bool areSameVertices(const Carrot::SkinnedVertex& a, const Carrot::SkinnedVertex& b) {
-        auto similar2 = [](const glm::vec2& a, const glm::vec2& b) {
-            return glm::compMax(glm::abs(a-b)) < 10e-6f;
-        };
-        auto similar3 = [](const glm::vec3& a, const glm::vec3& b) {
-            return glm::compMax(glm::abs(a-b)) < 10e-6f;
-        };
-        auto similar4 = [](const glm::vec4& a, const glm::vec4& b) {
-            return glm::compMax(glm::abs(a-b)) < 10e-6f;
-        };
+    // struct used to merge vertices based on similarity
+    struct VertexKey {
+        glm::vec3 pos;
+        glm::vec2 uv;
+        glm::vec3 color;
+        glm::i8vec4 boneIDs;
+        glm::vec4 boneWeights;
 
-        return similar3(a.pos.xyz, b.pos.xyz)
-            && similar3(a.normal, b.normal)
-            && similar4(a.tangent, b.tangent)
-            && similar2(a.uv, b.uv)
-            && similar3(a.color, b.color)
-            && similar3(a.boneWeights, b.boneWeights)
-            && a.boneIDs == b.boneIDs;
-    }
+        bool operator==(const VertexKey&) const = default;
+    };
 
+    struct VertexKeyHasher {
+        std::size_t operator()(const VertexKey& k) const {
+            std::size_t h = std::hash<glm::vec3>{}(k.pos);
+            Carrot::hash_combine(h, std::hash<glm::vec2>{}(k.uv));
+            Carrot::hash_combine(h, std::hash<glm::vec3>{}(k.color));
+            Carrot::hash_combine(h, std::hash<glm::i8vec4>{}(k.boneIDs));
+            Carrot::hash_combine(h, std::hash<glm::vec4>{}(k.boneWeights));
+            return h;
+        }
+    };
 
     /**
      * Generate indexed mesh into 'out' from a non-indexed mesh inside ExpandedMesh
@@ -133,27 +135,6 @@ namespace Fertilizer {
         out.indices.clear();
         std::uint32_t nextIndex = 0;
         const bool isSkinned = out.isSkinned;
-
-        struct VertexKey {
-            glm::vec3 pos;
-            glm::vec2 uv;
-            glm::vec3 color;
-            glm::i8vec4 boneIDs;
-            glm::vec4 boneWeights;
-
-            bool operator==(const VertexKey&) const = default;
-        };
-
-        struct VertexKeyHasher {
-            std::size_t operator()(const VertexKey& k) const {
-                std::size_t h = std::hash<glm::vec3>{}(k.pos);
-                Carrot::hash_combine(h, std::hash<glm::vec2>{}(k.uv));
-                Carrot::hash_combine(h, std::hash<glm::vec3>{}(k.color));
-                Carrot::hash_combine(h, std::hash<glm::i8vec4>{}(k.boneIDs));
-                Carrot::hash_combine(h, std::hash<glm::vec4>{}(k.boneWeights));
-                return h;
-            }
-        };
 
         struct DeduplicatedVertex {
             std::size_t index = 0; // index this vertex will have inside vertex buffer
@@ -292,7 +273,7 @@ namespace Fertilizer {
     struct MeshletGroup {
         std::vector<std::size_t> meshlets;
     };
-    static std::vector<MeshletGroup> groupMeshlets(LoadedPrimitive& primitive, std::span<Meshlet> meshlets) {
+    static std::vector<MeshletGroup> groupMeshlets(LoadedPrimitive& primitive, std::span<Meshlet> meshlets, std::span<const std::int64_t> vertexRemap) {
         // ===== Build meshlet connections
         auto groupWithAllMeshlets = [&]() {
             MeshletGroup group;
@@ -333,7 +314,8 @@ namespace Fertilizer {
         for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
             const auto& meshlet = meshlets[meshletIndex];
             auto getVertexIndex = [&](std::size_t index) {
-                return primitive.meshletVertexIndices[primitive.meshletIndices[index + meshlet.indexOffset] + meshlet.vertexOffset];
+                std::size_t vertexIndex = primitive.meshletVertexIndices[primitive.meshletIndices[index + meshlet.indexOffset] + meshlet.vertexOffset];
+                return static_cast<std::size_t>(vertexRemap[vertexIndex]);
             };
 
             const std::size_t triangleCount = meshlet.indexCount / 3;
@@ -368,7 +350,6 @@ namespace Fertilizer {
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-        options[METIS_OPTION_DBGLVL] = METIS_DBG_INFO;
         options[METIS_OPTION_CCORDER] = 1; // identify connected components first
 
         std::vector<idx_t> partition;
@@ -390,9 +371,15 @@ namespace Fertilizer {
                 const auto& connections = connectionsIter->second;
                 for(const auto& connectedMeshlet : connections) {
                     if(connectedMeshlet != meshletIndex) {
-                        if(std::find(edgeAdjacency.begin()+startIndexInEdgeAdjacency, edgeAdjacency.end(), connectedMeshlet) == edgeAdjacency.end()) {
+                        auto existingEdgeIter = std::find(edgeAdjacency.begin()+startIndexInEdgeAdjacency, edgeAdjacency.end(), connectedMeshlet);
+                        if(existingEdgeIter == edgeAdjacency.end()) {
                             edgeAdjacency.emplace_back(connectedMeshlet);
-                            // TODO: edgeweights
+                            edgeWeights.emplace_back(1);
+                        } else {
+                            std::ptrdiff_t d = std::distance(edgeAdjacency.begin(), existingEdgeIter);
+                            assert(d >= 0);
+                            verify(d < edgeWeights.size(), "edgeWeights and edgeAdjacency do not have the same length?");
+                            edgeWeights[d]++;
                         }
                     }
                 }
@@ -401,6 +388,7 @@ namespace Fertilizer {
         }
         xadjacency.push_back(edgeAdjacency.size());
         verify(xadjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph?");
+        verify(edgeAdjacency.size() == edgeWeights.size(), "edgeWeights and edgeAdjacency must have the same length");
 
         idx_t edgeCut;
         int result = METIS_PartGraphKway(&vertexCount,
@@ -409,7 +397,7 @@ namespace Fertilizer {
                                          edgeAdjacency.data(),
                                          nullptr, /* vertex weights */
                                          nullptr, /* vertex size */
-                                         nullptr,//edgeWeights.data(),
+                                         edgeWeights.data(),
                                          &nparts,
                                          nullptr,
                                          nullptr,
@@ -427,6 +415,119 @@ namespace Fertilizer {
             groups[partitionNumber].meshlets.push_back(i);
         }
         return groups;
+    }
+
+    std::vector<std::int64_t> mergeByDistance(const LoadedPrimitive& primitive, float maxDistance, float maxUVDistance) {
+        // merge vertices which are close enough
+        std::vector<std::int64_t> vertexRemap;
+
+        const std::size_t vertexCount = primitive.vertices.size();
+        vertexRemap.resize(vertexCount);
+        for(auto& v : vertexRemap) {
+            v = -1;
+        }
+
+        for(std::int64_t v = 0; v < vertexCount; v++) {
+            float maxDistanceSq = maxDistance*maxDistance;
+            float maxUVDistanceSq = maxUVDistance*maxUVDistance;
+
+            const Carrot::Vertex& currentVertex = primitive.vertices[v];
+            std::int64_t replacement = -1;
+            // due to the way we iterate, all indices starting from v will not be remapped yet
+            for(std::int64_t potentialReplacement = 0; potentialReplacement < v; potentialReplacement++) {
+                const Carrot::Vertex& otherVertex = primitive.vertices[vertexRemap[potentialReplacement]];
+                const float vertexDistanceSq = glm::distance2(currentVertex.pos, otherVertex.pos);
+                if(vertexDistanceSq <= maxDistanceSq) {
+                    const float uvDistanceSq = glm::distance2(currentVertex.uv, otherVertex.uv);
+                    if(uvDistanceSq <= maxUVDistanceSq) {
+                        replacement = potentialReplacement;
+                        maxDistanceSq = vertexDistanceSq;
+                        maxUVDistanceSq = uvDistanceSq;
+                    }
+                }
+            }
+
+            if(replacement == -1) {
+                vertexRemap[v] = v;
+            } else {
+                vertexRemap[v] = replacement;
+            }
+        }
+        return vertexRemap;
+    }
+
+    /**
+     * Similar to meshoptimizer's generateShadowIndexBuffer, but this version is aware of Carrot's vertex format, can approximate results
+     * and accounts for padding without assuming the padding bytes have the same value between vertices.
+     * Takes 'unsigned int' indices because that's what meshoptimizer expects for simplification
+     */
+    static void mergeCloseVertices(const LoadedPrimitive& primitive, float targetError, std::span<const unsigned int> indices, std::span<unsigned int> mergedIndices) {
+        verify(indices.size() == mergedIndices.size(), "Both storage must have the same size! And 'mergedIndices' must already have the proper size");
+
+        struct MergedVertex {
+            unsigned int index;
+        };
+
+        // close enough position should end up in the same buckets
+        struct VertexKeyApproximateHasher {
+            float targetError = 0.0f;
+
+            std::size_t operator()(const VertexKey& k) const {
+                const float approximationFactor = 1.0f / 10e-6f;
+                std::size_t h = std::hash<glm::uvec3>{}(glm::uvec3{k.pos * approximationFactor});
+                return h;
+            }
+        };
+
+        struct VertexKeyApproximateEquality {
+            float targetError = 0.0f;
+
+            bool operator()(const VertexKey& a, const VertexKey& b) const {
+                auto similar2 = [&](const glm::vec2& a, const glm::vec2& b) {
+                    return glm::compMax(glm::abs(a-b)) < 10e-6f;
+                };
+                auto similar3 = [&](const glm::vec3& a, const glm::vec3& b) {
+                    return glm::compMax(glm::abs(a-b)) < targetError;
+                };
+
+                return similar3(a.pos.xyz, b.pos.xyz)
+                    && similar2(a.uv, b.uv)
+                    && similar3(a.color, b.color)
+                    && similar3(a.boneWeights, b.boneWeights)
+                    && a.boneIDs == b.boneIDs;
+            }
+        };
+
+        std::unordered_map<VertexKey, MergedVertex, VertexKeyApproximateHasher, VertexKeyApproximateEquality> vertices
+        {
+            1,
+            VertexKeyApproximateHasher {
+                .targetError = targetError
+            },
+            VertexKeyApproximateEquality {
+                .targetError = targetError
+            },
+        };
+
+        for(std::size_t i = 0; i < indices.size(); i++) {
+            const std::size_t index = indices[i];
+            const Carrot::Vertex& v = primitive.vertices[index];
+            const VertexKey key {
+                .pos = v.pos.xyz,
+                .uv = v.uv,
+                .color = v.color,
+                .boneIDs = glm::uvec4{0},
+                .boneWeights = glm::vec4{0.0f}
+            };
+
+            auto [iter, bWasNew] = vertices.try_emplace(key);
+            MergedVertex& mergedVertex = iter->second;
+            if(bWasNew) {
+                mergedVertex.index = index;
+            }
+
+            mergedIndices[i] = mergedVertex.index;
+        }
     }
 
     static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer) {
@@ -483,7 +584,7 @@ namespace Fertilizer {
     /**
      * From this primitive's vertex & index buffer, generate meshlets/clusters
      */
-    static void generateClusterHierarchy(LoadedPrimitive& primitive) {
+    static void generateClusterHierarchy(LoadedPrimitive& primitive, float simplifyScale) {
         // level 0
         // tell meshoptimizer to generate meshlets
         auto& indexBuffer = primitive.indices;
@@ -499,7 +600,10 @@ namespace Fertilizer {
                 return; // we have reached the end
             }
 
-            std::vector<MeshletGroup> groups = groupMeshlets(primitive, previousLevelMeshlets);
+            const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.001f) * simplifyScale; // TODO: depend on object size
+            const float maxUVDistance = tLod * 0.5f + (1-tLod) * 1.0f / 256.0f;
+            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, maxDistance, maxUVDistance);
+            const std::vector<MeshletGroup> groups = groupMeshlets(primitive, previousLevelMeshlets, vertexRemap);
 
             // ===== Simplify groups
             const std::size_t newMeshletStart = primitive.meshlets.size();
@@ -511,17 +615,19 @@ namespace Fertilizer {
                 // add cluster vertices to this group
                 for(const auto& meshletIndex : group.meshlets) {
                     const auto& meshlet = previousLevelMeshlets[meshletIndex];
+
                     std::size_t start = groupVertexIndices.size();
                     groupVertexIndices.resize(start + meshlet.indexCount);
                     for(std::size_t j = 0; j < meshlet.indexCount; j++) {
-                        groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
+                        groupVertexIndices[j + start] = vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset]];
                     }
                 }
+
+                float targetError = (0.9f * tLod + 0.01f * (1-tLod)) / simplifyScale;
 
                 // simplify this group
                 const float threshold = 0.5f;
                 std::size_t targetIndexCount = groupVertexIndices.size() * threshold;
-                float targetError = 0.9f * tLod + 0.01f * (1-tLod);
                 unsigned int options = meshopt_SimplifyLockBorder; // we want all group borders to be locked (because they are shared between groups)
 
                 std::vector<unsigned int> simplifiedIndexBuffer;
@@ -533,11 +639,8 @@ namespace Fertilizer {
                                                                     &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
                                                                     targetIndexCount, targetError, options, &simplificationError
                 );
+                simplificationError *= simplifyScale;
                 simplifiedIndexBuffer.resize(simplifiedIndexCount);
-
-                if(simplifiedIndexCount == groupVertexIndices.size()) {
-                    continue; // could not simplify this group further
-                }
 
                 // ===== Generate meshlets for this group
                 appendMeshlets(primitive, simplifiedIndexBuffer);
@@ -576,7 +679,11 @@ namespace Fertilizer {
             cleanupTangents(expandedMesh);
 
             collapseMesh(primitive, expandedMesh);
-            generateClusterHierarchy(primitive);
+            if(!primitive.vertices.empty()) {
+                // TODO: support for skinned meshes
+                const float simplifyScale = meshopt_simplifyScale(&primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex));
+                generateClusterHierarchy(primitive, simplifyScale);
+            }
         }
 
         // re-export model
