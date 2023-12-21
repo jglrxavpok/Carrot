@@ -623,7 +623,7 @@ namespace Fertilizer {
                     }
                 }
 
-                float targetError = (0.9f * tLod + 0.01f * (1-tLod)) / simplifyScale;
+                float targetError = (0.9f * tLod + 0.01f * (1-tLod));
 
                 // simplify this group
                 const float threshold = 0.5f;
@@ -639,7 +639,6 @@ namespace Fertilizer {
                                                                     &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
                                                                     targetIndexCount, targetError, options, &simplificationError
                 );
-                simplificationError *= simplifyScale;
                 simplifiedIndexBuffer.resize(simplifiedIndexCount);
 
                 // ===== Generate meshlets for this group
