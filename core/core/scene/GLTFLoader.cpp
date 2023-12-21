@@ -369,23 +369,29 @@ namespace Carrot::Render {
         {
             const tinygltf::Accessor& accessor = model.accessors[meshletsAccessorIndex];
             loadedPrimitive.meshlets.resize(accessor.count / sizeof(Carrot::Render::Meshlet));
-            Carrot::Async::parallelFor(loadedPrimitive.meshlets.size(), [&](std::size_t i) {
+            for(std::size_t i = 0; i < loadedPrimitive.meshlets.size(); i++) {
                 loadedPrimitive.meshlets[i] = readFromAccessor<Carrot::Render::Meshlet>(i, accessor, model);
-            }, 16);
+            }
+            //Carrot::Async::parallelFor(loadedPrimitive.meshlets.size(), [&](std::size_t i) {
+            //  }, 16);
         }
         {
             const tinygltf::Accessor& accessor = model.accessors[meshletsVertexIndicesAccessorIndex];
             loadedPrimitive.meshletVertexIndices.resize(accessor.count);
-            Carrot::Async::parallelFor(loadedPrimitive.meshletVertexIndices.size(), [&](std::size_t i) {
+            for(std::size_t i = 0; i < loadedPrimitive.meshletVertexIndices.size(); i++) {
+                //Carrot::Async::parallelFor(loadedPrimitive.meshletVertexIndices.size(), [&](std::size_t i) {
                 loadedPrimitive.meshletVertexIndices[i] = readFromAccessor<std::uint32_t>(i, accessor, model);
-            }, 16);
+                //}, 16);
+            }
         }
         {
             const tinygltf::Accessor& accessor = model.accessors[meshletsIndicesAccessorIndex];
             loadedPrimitive.meshletIndices.resize(accessor.count);
-            Carrot::Async::parallelFor(loadedPrimitive.meshletIndices.size(), [&](std::size_t i) {
+            for(std::size_t i = 0; i < loadedPrimitive.meshletIndices.size(); i++) {
+            //Carrot::Async::parallelFor(loadedPrimitive.meshletIndices.size(), [&](std::size_t i) {
                 loadedPrimitive.meshletIndices[i] = readFromAccessor<std::uint32_t>(i, accessor, model);
-            }, 16);
+            //}, 16);
+            }
         }
     }
 
