@@ -1,8 +1,9 @@
 # Building the engine
 ## Requirements
-1. You need to install the Vulkan SDK
+1. You need to install the Vulkan SDK. I currently use the 1.3.268.0 LunarG SDK.
 2. You need to install a Lua distribution. LuaJIT or Vanilla Lua are both supported by sol3 and should work out-of-the-box.
 3. You need a Mono installation. Path is expected to be inside MONO_SDK_PATH environment variable.
+4. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
 
 ## Steps
 

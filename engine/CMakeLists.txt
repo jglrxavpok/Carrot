@@ -331,7 +331,8 @@ set(THIRDPARTY-SOURCES
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
         Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
-        ${OPENXR-LOADER-LIB-LOCATION}
+        OpenXR::headers
+        OpenXR::openxr_loader
         ${ADDITIONAL_LIBS})
 
 message("ENGINE ADDITIONAL LIBS = " ${ALL_BASE_LIBS})
@@ -346,16 +347,19 @@ file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
+add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation
 
 add_library(Engine-Base-Renderdoc ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base-Renderdoc PUBLIC ${ALL_BASE_LIBS})
 target_compile_definitions(Engine-Base-Renderdoc PRIVATE DEBUG_MARKERS=1)
 add_includes(Engine-Base-Renderdoc)
+add_dependencies(Engine-Base-Renderdoc generate_headers) # OpenXR-Hpp header generation
 
 add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)
+add_dependencies(Engine-ASAN generate_headers) # OpenXR-Hpp header generation
 
 # Using this instead of REUSE_FROM, because REUSE_FROM seems to take forever to build/validate
 function(add_engine_precompiled_headers Target)
