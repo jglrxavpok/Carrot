@@ -56,6 +56,7 @@ set(CORE-SOURCES
         ${CoreRoot}utils/ImGuiUtils.cpp
         ${CoreRoot}utils/Profiling.cpp
         ${CoreRoot}utils/stringmanip.cpp
+        ${CoreRoot}utils/UserNotifications.cpp
         ${CoreRoot}utils/UUID.cpp
 
         )

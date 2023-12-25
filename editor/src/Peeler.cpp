@@ -14,6 +14,7 @@
 #include <core/io/IO.h>
 #include <core/io/Files.h>
 #include <core/utils/stringmanip.h>
+#include <core/utils/UserNotifications.h>
 #include <engine/edition/DragDropTypes.h>
 #include <core/io/Logging.hpp>
 #include <engine/physics/PhysicsSystem.h>
@@ -291,6 +292,8 @@ namespace Peeler {
         }
         ImGui::End();
 
+        UIStatusBar(renderContext);
+
         // all UI has had an opportunity to use this
         if(entityIDPickedThisFrame != Carrot::UUID::null()) {
             bool additive = ImGui::GetIO().KeyCtrl;
@@ -458,6 +461,40 @@ namespace Peeler {
                 currentScene.world.addLogicSystem(std::move(ptr));
             },
             [&](Carrot::ECS::System* ptr) { currentScene.world.removeLogicSystem(ptr); });
+    }
+
+    void Application::UIStatusBar(const Carrot::Render::Context& renderContext) {
+        static bool showNotificationList = false;
+        // https://github.com/ocornut/imgui/issues/3518#issuecomment-918186716
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+        const float height = ImGui::GetTextLineHeightWithSpacing();
+        if(ImGui::BeginViewportSideBar("##Status bar", nullptr, ImGuiDir_Down, height, windowFlags)) {
+            if (ImGui::BeginMenuBar()) {
+                static std::vector<Carrot::NotificationState> notifications{};
+                notifications.clear(); // clear without removing memory to reuse allocations next frames
+                Carrot::UserNotifications::getInstance().getNotifications(notifications);
+                const std::string notificationButtonText = Carrot::sprintf("Notifications (%llu)", notifications.size());
+                const char* notificationsPopupID = "NotificationList";
+                if(ImGui::MenuItem(notificationsButtonText.c_str())) {
+                    showNotificationList = !showNotificationList;
+                }
+
+                if(showNotificationList) {
+                    if(ImGui::Begin(notificationsPopupID)) {
+                        for(const auto& notif : notifications) {
+                            ImGui::TextUnformatted(notif.title.c_str());
+                            ImGui::TextUnformatted(notif.body.c_str());
+                            // TODO: handle case if progress < 0
+                            ImGui::ProgressBar(notif.progress);
+                            ImGui::Separator();
+                        }
+                        ImGui::End();
+                    }
+                }
+                ImGui::EndMenuBar();
+            }
+        }
+        ImGui::End();
     }
 
     void Application::UIWorldHierarchy(const Carrot::Render::Context& renderContext) {
