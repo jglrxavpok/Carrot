@@ -8,7 +8,7 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
 
-static vk::DeviceSize HeapSize = 1024 * 1024 * 1024; // 1GiB, no particular reason for this exact value
+static vk::DeviceSize HeapSize = 512 * 1024 * 1024; // 1GiB, no particular reason for this exact value
 static Carrot::RuntimeOption ShowAllocatorDebug("Debug/Resource Allocator", false);
 
 namespace Carrot {

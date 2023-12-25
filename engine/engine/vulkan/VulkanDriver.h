@@ -59,7 +59,7 @@ namespace Carrot {
             {
             resource = std::move(toDestroy);
         };
-        explicit DeferredDestruction(const std::string& name, TResource&& toDestroy): DeferredDestruction(name, std::move(toDestroy), MAX_FRAMES_IN_FLIGHT+10) {};
+        explicit DeferredDestruction(const std::string& name, TResource&& toDestroy): DeferredDestruction(name, std::move(toDestroy), MAX_FRAMES_IN_FLIGHT) {};
 
         bool isReadyForDestruction() const {
             return countdown == 0;

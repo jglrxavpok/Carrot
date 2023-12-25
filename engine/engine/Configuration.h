@@ -30,7 +30,9 @@ namespace Carrot {
         RaytracingSupport raytracingSupport = RaytracingSupport::Supported;
         bool runInVR = false;
 
-        //! Wanted tick rate (in Hz) for your game
+        /**
+         * Wanted tick rate (in Hz) for your game
+         */
         std::uint32_t tickRate = 60;
 
         const char* engineName = "Carrot";
@@ -46,6 +48,12 @@ namespace Carrot {
         std::optional<Carrot::IO::Resource> icon32;
         std::optional<Carrot::IO::Resource> icon64;
         std::optional<Carrot::IO::Resource> icon128;
+
+        /**
+         * Enables hot-reload of shaders and assets, based on often checking file modification date
+         * Can be costly on low-end machines
+         */
+        bool enableFileWatching = true;
 
     };
 }

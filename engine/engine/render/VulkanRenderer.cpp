@@ -28,7 +28,7 @@
 #include <IconsFontAwesome5.h>
 #include <engine/console/Console.h>
 
-static constexpr std::size_t SingleFrameAllocatorSize = 512 * 1024 * 1024; // 512Mb per frame-in-flight
+static constexpr std::size_t SingleFrameAllocatorSize = 1 * 1024 * 1024; // 1MiB per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
 static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 

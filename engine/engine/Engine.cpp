@@ -369,10 +369,21 @@ void Carrot::Engine::run() {
         {
             ZoneScopedN("File watching");
             Carrot::removeIf(fileWatchers, [](auto p) { return p.expired(); });
-            for(const auto& ref : fileWatchers) {
-                if(auto ptr = ref.lock()) {
-                    ptr->tick();
+
+            if(config.enableFileWatching) {
+                Carrot::Async::Counter watchSync;
+                for(const auto& ref : fileWatchers) {
+                    if(auto ptr = ref.lock()) {
+                        taskScheduler.schedule(Carrot::TaskDescription {
+                                .name = "File watching",
+                                .task = [ptr](Carrot::TaskHandle& task) {
+                                    ptr->tick();
+                                },
+                                .joiner = &watchSync,
+                        }, Carrot::TaskScheduler::FrameParallelWork);
+                    }
                 }
+                watchSync.busyWait();
             }
         }
 

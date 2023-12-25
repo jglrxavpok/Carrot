@@ -9,6 +9,7 @@
 #include "ResourceAllocator.h"
 #include "engine/Engine.h"
 #include <engine/utils/Macros.h>
+#include <core/io/Logging.hpp> // for debug
 
 Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::Buffer*> Carrot::Buffer::BufferByStartAddress;
 
@@ -182,4 +183,19 @@ void Carrot::Buffer::destroyNow() {
 
 Carrot::BufferAllocation Carrot::Buffer::internalStagingBuffer(vk::DeviceSize size) {
     return GetResourceAllocator().allocateStagingBuffer(size);
+}
+
+void DebugDumpAllBuffers() {
+    Carrot::Log::info("=== DebugDumpAllBuffers ===");
+    for(const auto& [key, ppBuffer] : Carrot::Buffer::BufferByStartAddress.snapshot()) {
+        if(ppBuffer && *ppBuffer) {
+            const Carrot::Buffer& buffer = *(*ppBuffer);
+            Carrot::Log::info("- Name '%s', device local '%d', size '%llu'",
+                              buffer.getDebugName().c_str(),
+                              buffer.isDeviceLocal(),
+                              (std::uint64_t)buffer.getSize());
+        }
+    }
+    Carrot::Log::info("============================");
+    Carrot::Log::flush();
 }

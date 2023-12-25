@@ -51,7 +51,7 @@ endif()
 if(MonoNETLibraries_FOUND)
     file(COPY "${MonoNETLibraries_PATH}/" DESTINATION "${CMAKE_BINARY_DIR}/monolib")
 else()
-    message(Missing Mono .NET libraries.)
+    message( SEND_ERROR "Missing Mono .NET libraries!")
 endif()
 
 
