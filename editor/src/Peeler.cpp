@@ -474,8 +474,8 @@ namespace Peeler {
                 notifications.clear(); // clear without removing memory to reuse allocations next frames
                 Carrot::UserNotifications::getInstance().getNotifications(notifications);
                 const std::string notificationButtonText = Carrot::sprintf("Notifications (%llu)", notifications.size());
-                const char* notificationsPopupID = "NotificationList";
-                if(ImGui::MenuItem(notificationsButtonText.c_str())) {
+                const char* notificationsPopupID = notificationButtonText.c_str();
+                if(ImGui::MenuItem(notificationButtonText.c_str())) {
                     showNotificationList = !showNotificationList;
                 }
 

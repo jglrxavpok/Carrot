@@ -51,6 +51,14 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     };
 
     auto denoise = [&](const Render::FrameResource& input) -> DenoisingResult {
+        if(!GetCapabilities().supportsRaytracing) {
+            // no-op
+            DenoisingResult result;
+            result.input = input;
+            result.denoiseResult = input;
+            return result;
+        }
+
         struct Denoising {
             Render::FrameResource beauty;
             Render::PassData::GBuffer gBufferInput;
