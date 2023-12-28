@@ -427,8 +427,6 @@ void Carrot::Render::CompiledPass::createCommandBuffers(const Render::Context& r
 }
 
 void Carrot::Render::FrameResource::updateLayout(vk::ImageLayout newLayout) {
-    if(newLayout == layout)
-        return;
     previousLayout = layout;
     layout = newLayout;
 }

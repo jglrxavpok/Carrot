@@ -14,10 +14,10 @@ void initRNG(inout RandomSampler rng, vec2 uv, uint frameWidth, uint frameHeight
 
 // from http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 vec2 r2Sequence(uint n) {
-    const double g = 1.32471795724474602596;
-    double a1 = 1.0 / g;
-    double a2 = 1.0 / (g*g);
-    return fract(vec2((0.5+a1*n), (0.5+a2*n)));
+    const float g = 1.32471795724474602596f;
+    const float a1 = 1.0f / g;
+    const float a2 = 1.0f / (g*g);
+    return fract(vec2((0.5f+a1*n), (0.5f+a2*n)));
 }
 
 float sampleNoise(inout RandomSampler rng) {
