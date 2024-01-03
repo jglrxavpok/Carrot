@@ -40,10 +40,14 @@ add_executable(
         core/Counters.cpp
         core/CSharpScripting.cpp
         core/FileWatching.cpp
+        core/InlineAllocator.cpp
         core/Lookup.cpp
         core/Paths.cpp
         core/SparseArrays.cpp
+        core/StackAllocator.cpp
         core/Strings.cpp
+        core/UniquePtr.cpp
+        core/Vector.cpp
         core/VFS.cpp
 )
 target_link_libraries(

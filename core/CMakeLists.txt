@@ -1,6 +1,9 @@
 set(CoreRoot "core/")
 set(CORE-SOURCES
 
+        ${CoreRoot}allocators/MallocAllocator.cpp
+        ${CoreRoot}allocators/StackAllocator.cpp
+
         ${CoreRoot}async/Coroutines.cpp
         ${CoreRoot}async/Counter.cpp
         ${CoreRoot}async/Executors.cpp
