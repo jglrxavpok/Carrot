@@ -6,6 +6,7 @@
 
 #include <core/Allocator.h>
 #include <core/Macros.h>
+#include <span>
 
 namespace Carrot {
     /**
@@ -91,6 +92,14 @@ namespace Carrot {
 
         Vector& operator=(Vector&& o) noexcept;
 
+        /**
+         * \brief Sort the vector based on a given comparison function
+         * \tparam Compare type of compare parameter
+         * \param compare comparison object, can be an object, a function, a lambda, whatever. Needs `compare(const TElement& a, const TElement& b)` compiling and returning a boolean whether a < b (like std::less)
+         */
+        template<typename Compare>
+        void sort(const Compare& compare);
+
     public:
         bool operator==(const Vector& other) const;
         bool operator!=(const Vector& other) const;
@@ -99,6 +108,9 @@ namespace Carrot {
         template<typename T, bool Reverse>
         class Iterator {
         public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = T;
+
             Iterator() {}
             Iterator(Vector* pVector, std::size_t elementIndex, std::size_t generationIndex)
                 : pVector(pVector)
@@ -106,14 +118,33 @@ namespace Carrot {
                 , generationIndex(generationIndex)
             {}
 
-            T& operator*() {
+            T& operator*() const {
                 verify(pVector, "Cannot derefence end iterator!");
                 return (*pVector)[elementIndex];
             }
 
-            T* operator->() {
+            T* operator->() const {
                 verify(pVector, "Cannot derefence end iterator!");
                 return &(*pVector)[elementIndex];
+            }
+
+            Iterator& prev() {
+                if(pVector) {
+                    verify(pVector->generationIndex == generationIndex, "Vector was modified, cannot use this iterator anymore!");
+                    if constexpr (Reverse) {
+                        if(elementIndex == pVector->size() - 1) {
+                            pVector = nullptr;
+                            return *this;
+                        }
+                        const std::size_t nextIndex = elementIndex + 1;
+                        elementIndex = nextIndex;
+                    } else {
+                        verify(elementIndex > 0, "Cannot get prev element of head!");
+                        const std::size_t nextIndex = elementIndex - 1;
+                        elementIndex = nextIndex;
+                    }
+                }
+                return *this;
             }
 
             Iterator& next() {
@@ -126,7 +157,6 @@ namespace Carrot {
                         }
                         const std::size_t nextIndex = elementIndex - 1;
                         elementIndex = nextIndex;
-                        return *this;
                     } else {
                         const std::size_t nextIndex = elementIndex + 1;
                         if(nextIndex >= pVector->size()) {
@@ -135,15 +165,25 @@ namespace Carrot {
                             return *this;
                         }
                         elementIndex = nextIndex;
-                        return *this;
                     }
-                } else { // end iterator, nothing to do
-                    return *this;
                 }
+                return *this;
             }
 
             Iterator& operator++() {
                 return next();
+            }
+
+            Iterator operator++(int) {
+                return next();
+            }
+
+            Iterator& operator--() {
+                return prev();
+            }
+
+            Iterator operator--(int) {
+                return prev();
             }
 
             bool operator==(const Iterator& o) const {
@@ -155,6 +195,10 @@ namespace Carrot {
                 }
                 verify(generationIndex == o.generationIndex, "Cannot compare iterators after modification of the vector!");
                 return pVector == o.pVector && elementIndex == o.elementIndex;
+            }
+
+            bool operator!=(const Iterator& o) const {
+                return !(*this == o);
             }
 
             std::size_t getIndex() const {
@@ -189,6 +233,14 @@ namespace Carrot {
          */
         TElement const* cdata() const;
 
+        operator std::span<TElement>() {
+            return std::span(data(), size());
+        }
+
+        operator std::span<const TElement>() const {
+            return std::span(cdata(), size());
+        }
+
     public: // queries
         /**
          * How many elements are inside this vector?
@@ -216,12 +268,5 @@ namespace Carrot {
     };
 
 }
-#include <core/containers/Vector.ipp>
 
-// to make it compatible with std::span
-// TODO
-/*
-static_assert(std::ranges::range<Carrot::Vector<int>>);
-static_assert(std::ranges::contiguous_range<Carrot::Vector<int>>);
-static_assert(std::ranges::sized_range<Carrot::Vector<int>>);
-*/
+#include <core/containers/Vector.ipp>

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <algorithm> // for std::sort
+
 namespace Carrot {
 #define VECTOR_TEMPLATE template<typename TElement>
     VECTOR_TEMPLATE
@@ -43,8 +45,8 @@ namespace Carrot {
     VECTOR_TEMPLATE
     void Vector<TElement>::pushBack(const TElement& element) {
         ensureReserve(size()+1);
-        generationIndex++;
-        elementCount++;
+        this->generationIndex++;
+        this->elementCount++;
         TElement* pData = data();
         new (&pData[size()-1]) TElement(element);
     }
@@ -53,8 +55,8 @@ namespace Carrot {
     template<typename... TArg>
     TElement& Vector<TElement>::emplaceBack(TArg&&... arg) {
         ensureReserve(size()+1);
-        generationIndex++;
-        elementCount++;
+        this->generationIndex++;
+        this->elementCount++;
         TElement* pData = data();
         new (&pData[size()-1]) TElement(std::forward<TArg>(arg)...);
         return pData[size()-1];
@@ -63,7 +65,7 @@ namespace Carrot {
     VECTOR_TEMPLATE
     void Vector<TElement>::remove(std::size_t index) {
         verify(index < size(), "Out of bounds!");
-        generationIndex++;
+        this->generationIndex++;
         const std::size_t count = size();
         // move elements to the right of index, one step left
         TElement* pData = data();
@@ -71,36 +73,36 @@ namespace Carrot {
             pData[i] = std::move(pData[i+1]);
         }
         pData[count - 1].~TElement();
-        elementCount--;
+        this->elementCount--;
     }
 
     VECTOR_TEMPLATE
     void Vector<TElement>::resize(std::size_t newSize) {
-        generationIndex++;
+        this->generationIndex++;
         // delete the elements that are over the new capacity (if downsize)
-        for (std::size_t i = newSize; i < elementCount; ++i) {
+        for (std::size_t i = newSize; i < this->elementCount; ++i) {
             (*this)[i].~TElement();
         }
 
         if(newSize > capacity()) {
-            allocation = allocator.reallocate(allocation, newSize * sizeof(TElement), alignof(TElement));
+            this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), alignof(TElement));
         }
 
         // construct the elements that are over the old size (if upsize)
         TElement* pData = data();
-        for (std::size_t i = elementCount; i < newSize; ++i) {
+        for (std::size_t i = this->elementCount; i < newSize; ++i) {
             new (&pData[i]) TElement();
         }
-        elementCount = newSize;
+        this->elementCount = newSize;
     }
 
     VECTOR_TEMPLATE
     void Vector<TElement>::setCapacity(std::size_t newSize) {
         // delete the elements that are over the new capacity
-        for (std::size_t i = newSize; i < elementCount; ++i) {
+        for (std::size_t i = newSize; i < this->elementCount; ++i) {
             (*this)[i].~TElement();
         }
-        allocation = allocator.reallocate(allocation, newSize * sizeof(TElement), alignof(TElement));
+        this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), alignof(TElement));
     }
 
     VECTOR_TEMPLATE
@@ -118,24 +120,24 @@ namespace Carrot {
     VECTOR_TEMPLATE
     void Vector<TElement>::clear() {
         TElement* pData = data();
-        for (std::size_t i = 0; i < elementCount; ++i) {
+        for (std::size_t i = 0; i < this->elementCount; ++i) {
             pData[i].~TElement();
         }
-        elementCount = 0;
+        this->elementCount = 0;
     }
 
     VECTOR_TEMPLATE
     void Vector<TElement>::flush() {
         clear();
-        allocator.deallocate(allocation);
-        allocation = {};
+        this->allocator.deallocate(allocation);
+        this->allocation = {};
     }
 
     VECTOR_TEMPLATE
     Vector<TElement>& Vector<TElement>::operator=(const Vector& o) {
         clear();
         ensureReserve(o.size());
-        elementCount = o.size();
+        this->elementCount = o.size();
         TElement* pData = data();
         for (std::size_t i = 0; i < size(); ++i) {
             new (&pData[i]) TElement(o[i]);
@@ -146,23 +148,29 @@ namespace Carrot {
     VECTOR_TEMPLATE
     Vector<TElement>& Vector<TElement>::operator=(Vector&& o) noexcept {
         clear();
-        elementCount = o.elementCount;
-        if(allocator.isCompatibleWith(o.allocator)) {
-            allocation = o.allocation;
+        this->elementCount = o.elementCount;
+        if(this->allocator.isCompatibleWith(o.allocator)) {
+            this->allocation = o.allocation;
             o.allocation = {};
             o.elementCount = 0;
         } else {
             // allocate required storage
-            allocation = allocator.reallocate(allocation, o.allocation.size, alignof(TElement));
+            this->allocation = this->allocator.reallocate(allocation, o.allocation.size, alignof(TElement));
             TElement* pData = data();
 
             // move elements
-            for (std::size_t i = 0; i < elementCount; ++i) {
+            for (std::size_t i = 0; i < this->elementCount; ++i) {
                 new (&pData[i]) TElement(std::move(o[i]));
             }
             o.flush(); // remove old elements from other vector
         }
         return *this;
+    }
+
+    VECTOR_TEMPLATE
+    template<typename Compare>
+    void Vector<TElement>::sort(const Compare& compare) {
+        std::sort(begin(), end(), compare);
     }
 
     VECTOR_TEMPLATE
@@ -190,7 +198,7 @@ namespace Carrot {
             return end();
         }
         return Iterator<TElement, false>(
-            this, 0, generationIndex
+            this, 0, this->generationIndex
         );
     }
 
@@ -205,7 +213,7 @@ namespace Carrot {
             return end();
         }
         return Iterator<const TElement, false>(
-            (Vector*)this, 0, generationIndex
+            (Vector*)this, 0, this->generationIndex
         );
     }
 
@@ -220,7 +228,7 @@ namespace Carrot {
             return rend();
         }
         return Iterator<TElement, true>(
-            this, size()-1, generationIndex
+            this, size()-1, this->generationIndex
         );
     }
 
@@ -235,7 +243,7 @@ namespace Carrot {
             return rend();
         }
         return Iterator<const TElement, true>(
-            (Vector*)this, size()-1, generationIndex
+            (Vector*)this, size()-1, this->generationIndex
         );
     }
 
@@ -246,31 +254,31 @@ namespace Carrot {
 
     VECTOR_TEMPLATE
     TElement* Vector<TElement>::data() {
-        return (TElement*)allocation.ptr;
+        return (TElement*)this->allocation.ptr;
     }
 
     VECTOR_TEMPLATE
     TElement const* Vector<TElement>::cdata() const {
-        return (TElement const*)allocation.ptr;
+        return (TElement const*)this->allocation.ptr;
     }
 
     VECTOR_TEMPLATE
     std::size_t Vector<TElement>::size() const {
-        return elementCount;
+        return this->elementCount;
     }
 
     VECTOR_TEMPLATE
     std::size_t Vector<TElement>::capacity() const {
-        return allocation.size / sizeof(TElement);
+        return this->allocation.size / sizeof(TElement);
     }
 
     VECTOR_TEMPLATE
     bool Vector<TElement>::empty() const {
-        return elementCount == 0;
+        return this->elementCount == 0;
     }
 
     VECTOR_TEMPLATE
     Allocator& Vector<TElement>::getAllocator() {
-        return allocator;
+        return this->allocator;
     }
 }
