@@ -13,6 +13,7 @@
 #include <glm/gtx/component_wise.hpp>
 #include <core/tasks/Tasks.h>
 #include <core/data/Hashes.h>
+#include <core/containers/KDTree.hpp>
 #include <glm/gtx/hash.hpp>
 
 #include <gltf/MikkTSpaceInterface.h>
@@ -417,7 +418,16 @@ namespace Fertilizer {
         return groups;
     }
 
-    std::vector<std::int64_t> mergeByDistance(const LoadedPrimitive& primitive, float maxDistance, float maxUVDistance) {
+    /// trick to allow getPosition() on Carrot::Vertex for KDTree, without needing to allocate anything
+    struct VertexWrapper {
+        Carrot::Vertex vertex;
+
+        glm::vec3 getPosition() const {
+            return vertex.pos.xyz;
+        }
+    };
+
+    std::vector<std::int64_t> mergeByDistance(const LoadedPrimitive& primitive, float maxDistance, float maxUVDistance, const Carrot::KDTree<VertexWrapper>& kdtree) {
         // merge vertices which are close enough
         std::vector<std::int64_t> vertexRemap;
 
@@ -427,20 +437,28 @@ namespace Fertilizer {
             v = -1;
         }
 
+        Carrot::Vector<std::size_t> neighbors { Carrot::MallocAllocator::instance };
         for(std::int64_t v = 0; v < vertexCount; v++) {
+            neighbors.clear();
+            const Carrot::Vertex& currentVertex = primitive.vertices[v];
+            const VertexWrapper* pWrappedVertex = reinterpret_cast<const VertexWrapper*>(&currentVertex);
+            kdtree.getNeighbors(neighbors, *pWrappedVertex, maxDistance);
+
             float maxDistanceSq = maxDistance*maxDistance;
             float maxUVDistanceSq = maxUVDistance*maxUVDistance;
 
-            const Carrot::Vertex& currentVertex = primitive.vertices[v];
             std::int64_t replacement = -1;
-            // due to the way we iterate, all indices starting from v will not be remapped yet
-            for(std::int64_t potentialReplacement = 0; potentialReplacement < v; potentialReplacement++) {
-                const Carrot::Vertex& otherVertex = primitive.vertices[vertexRemap[potentialReplacement]];
+            for(const std::size_t& neighbor : neighbors) {
+                if(neighbor >= v) {
+                    // due to the way we iterate, all indices starting from v will not be remapped yet
+                    continue;
+                }
+                const Carrot::Vertex& otherVertex = primitive.vertices[vertexRemap[neighbor]];
                 const float vertexDistanceSq = glm::distance2(currentVertex.pos, otherVertex.pos);
                 if(vertexDistanceSq <= maxDistanceSq) {
                     const float uvDistanceSq = glm::distance2(currentVertex.uv, otherVertex.uv);
                     if(uvDistanceSq <= maxUVDistanceSq) {
-                        replacement = potentialReplacement;
+                        replacement = vertexRemap[neighbor];
                         maxDistanceSq = vertexDistanceSq;
                         maxUVDistanceSq = uvDistanceSq;
                     }
@@ -454,80 +472,6 @@ namespace Fertilizer {
             }
         }
         return vertexRemap;
-    }
-
-    /**
-     * Similar to meshoptimizer's generateShadowIndexBuffer, but this version is aware of Carrot's vertex format, can approximate results
-     * and accounts for padding without assuming the padding bytes have the same value between vertices.
-     * Takes 'unsigned int' indices because that's what meshoptimizer expects for simplification
-     */
-    static void mergeCloseVertices(const LoadedPrimitive& primitive, float targetError, std::span<const unsigned int> indices, std::span<unsigned int> mergedIndices) {
-        verify(indices.size() == mergedIndices.size(), "Both storage must have the same size! And 'mergedIndices' must already have the proper size");
-
-        struct MergedVertex {
-            unsigned int index;
-        };
-
-        // close enough position should end up in the same buckets
-        struct VertexKeyApproximateHasher {
-            float targetError = 0.0f;
-
-            std::size_t operator()(const VertexKey& k) const {
-                const float approximationFactor = 1.0f / 10e-6f;
-                std::size_t h = std::hash<glm::uvec3>{}(glm::uvec3{k.pos * approximationFactor});
-                return h;
-            }
-        };
-
-        struct VertexKeyApproximateEquality {
-            float targetError = 0.0f;
-
-            bool operator()(const VertexKey& a, const VertexKey& b) const {
-                auto similar2 = [&](const glm::vec2& a, const glm::vec2& b) {
-                    return glm::compMax(glm::abs(a-b)) < 10e-6f;
-                };
-                auto similar3 = [&](const glm::vec3& a, const glm::vec3& b) {
-                    return glm::compMax(glm::abs(a-b)) < targetError;
-                };
-
-                return similar3(a.pos.xyz, b.pos.xyz)
-                    && similar2(a.uv, b.uv)
-                    && similar3(a.color, b.color)
-                    && similar3(a.boneWeights, b.boneWeights)
-                    && a.boneIDs == b.boneIDs;
-            }
-        };
-
-        std::unordered_map<VertexKey, MergedVertex, VertexKeyApproximateHasher, VertexKeyApproximateEquality> vertices
-        {
-            1,
-            VertexKeyApproximateHasher {
-                .targetError = targetError
-            },
-            VertexKeyApproximateEquality {
-                .targetError = targetError
-            },
-        };
-
-        for(std::size_t i = 0; i < indices.size(); i++) {
-            const std::size_t index = indices[i];
-            const Carrot::Vertex& v = primitive.vertices[index];
-            const VertexKey key {
-                .pos = v.pos.xyz,
-                .uv = v.uv,
-                .color = v.color,
-                .boneIDs = glm::uvec4{0},
-                .boneWeights = glm::vec4{0.0f}
-            };
-
-            auto [iter, bWasNew] = vertices.try_emplace(key);
-            MergedVertex& mergedVertex = iter->second;
-            if(bWasNew) {
-                mergedVertex.index = index;
-            }
-
-            mergedIndices[i] = mergedVertex.index;
-        }
     }
 
     static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer) {
@@ -591,8 +535,18 @@ namespace Fertilizer {
         std::size_t previousMeshletsStart = 0;
         appendMeshlets(primitive, indexBuffer);
 
+        // TODO: move inside loop (KDtree per LOD level)
+        Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
+        static_assert(sizeof(Carrot::Vertex) == sizeof(VertexWrapper));
+        std::span<const VertexWrapper> wrappedVertices {
+            reinterpret_cast<VertexWrapper*>(primitive.vertices.data()),
+            primitive.vertices.size()
+        };
+        kdtree.build(wrappedVertices);
+
         // level n+1
-        const int maxLOD = 25;
+        const int maxLOD = 10;
+        Carrot::Vector<unsigned int> groupVertexIndices;
         for (int lod = 0; lod < maxLOD; ++lod) {
             float tLod = lod / (float)maxLOD;
             std::span<Meshlet> previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
@@ -600,17 +554,17 @@ namespace Fertilizer {
                 return; // we have reached the end
             }
 
-            const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.001f) * simplifyScale; // TODO: depend on object size
-            const float maxUVDistance = tLod * 0.5f + (1-tLod) * 1.0f / 256.0f;
-            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, maxDistance, maxUVDistance);
+            const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.001f) * simplifyScale;
+            const float maxUVDistance = tLod * 0.1f + (1-tLod) * 1.0f / 256.0f;
+            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, maxDistance, maxUVDistance, kdtree);
             const std::vector<MeshletGroup> groups = groupMeshlets(primitive, previousLevelMeshlets, vertexRemap);
 
             // ===== Simplify groups
             const std::size_t newMeshletStart = primitive.meshlets.size();
             for(const auto& group : groups) {
+                groupVertexIndices.clear();
                 // meshlets vector is modified during the loop
                 previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
-                std::vector<unsigned int> groupVertexIndices;
 
                 // add cluster vertices to this group
                 for(const auto& meshletIndex : group.meshlets) {
@@ -620,10 +574,11 @@ namespace Fertilizer {
                     groupVertexIndices.resize(start + meshlet.indexCount);
                     for(std::size_t j = 0; j < meshlet.indexCount; j++) {
                         groupVertexIndices[j + start] = vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset]];
+                        //groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
                     }
                 }
 
-                float targetError = (0.9f * tLod + 0.01f * (1-tLod));
+                float targetError = (0.5f * tLod + 0.01f * (1-tLod));
 
                 // simplify this group
                 const float threshold = 0.5f;
