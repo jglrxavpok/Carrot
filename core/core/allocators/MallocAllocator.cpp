@@ -8,6 +8,17 @@
 namespace Carrot {
     /*static*/ MallocAllocator MallocAllocator::instance{};
 
+
+    /*static*/ Allocator* Allocator::pDefault = &MallocAllocator::instance;
+
+    /*static*/ Allocator& Allocator::getDefault() {
+        return *pDefault;
+    }
+
+    /*static*/ void Allocator::setDefault(Allocator& allocator) {
+        pDefault = &allocator;
+    }
+
     MemoryBlock MallocAllocator::allocate(std::size_t size, std::size_t alignment) {
 #ifdef WIN32
         void* ptr = _aligned_malloc(size, alignment);

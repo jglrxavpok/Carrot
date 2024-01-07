@@ -58,7 +58,7 @@ static void OnDescription(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDesc
     addDescription(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_UserDefined + 1, "Test string, ignore.");
 }
 
-static void ResolveMarker(const void* pMarker, void* pUserData, void** resolvedMarkerData, uint32_t* markerSize) {
+static void ResolveMarker(const void* pMarker, const uint32_t markerDataSize, void* pUserData, void** resolvedMarkerData, uint32_t* markerSize) {
     std::lock_guard lk(markersAccess);
     auto& str = markers[(std::uint64_t)pMarker];
     *resolvedMarkerData = (void*)str.data();

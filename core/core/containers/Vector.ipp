@@ -198,13 +198,15 @@ namespace Carrot {
             return end();
         }
         return Iterator<TElement, false>(
-            this, 0, this->generationIndex
+            this, 0, this->generationIndex, false
         );
     }
 
     VECTOR_TEMPLATE
     typename Vector<TElement>::template Iterator<TElement, false> Vector<TElement>::end() {
-        return Iterator<TElement, false> {};
+        return Iterator<TElement, false>(
+            this, 0, this->generationIndex, true
+        );
     }
 
     VECTOR_TEMPLATE
@@ -213,13 +215,15 @@ namespace Carrot {
             return end();
         }
         return Iterator<const TElement, false>(
-            (Vector*)this, 0, this->generationIndex
+            (Vector*)this, 0, this->generationIndex, false
         );
     }
 
     VECTOR_TEMPLATE
     typename Vector<TElement>::template Iterator<const TElement, false> Vector<TElement>::end() const {
-        return Iterator<const TElement, false>();
+        return Iterator<const TElement, false>(
+            (Vector*)this, 0, this->generationIndex, true
+        );
     }
 
     VECTOR_TEMPLATE
@@ -228,13 +232,15 @@ namespace Carrot {
             return rend();
         }
         return Iterator<TElement, true>(
-            this, size()-1, this->generationIndex
+            this, size()-1, this->generationIndex, false
         );
     }
 
     VECTOR_TEMPLATE
     typename Vector<TElement>::template Iterator<TElement, true> Vector<TElement>::rend() {
-        return Iterator<TElement, true>();
+        return Iterator<TElement, true>(
+            this, 0, this->generationIndex, true
+        );
     }
 
     VECTOR_TEMPLATE
@@ -243,13 +249,15 @@ namespace Carrot {
             return rend();
         }
         return Iterator<const TElement, true>(
-            (Vector*)this, size()-1, this->generationIndex
+            (Vector*)this, size()-1, this->generationIndex, false
         );
     }
 
     VECTOR_TEMPLATE
     typename Vector<TElement>::template Iterator<const TElement, true> Vector<TElement>::rend() const {
-        return Iterator<const TElement, true>();
+        return Iterator<const TElement, true>(
+            (Vector*)this, 0, this->generationIndex, true
+        );
     }
 
     VECTOR_TEMPLATE

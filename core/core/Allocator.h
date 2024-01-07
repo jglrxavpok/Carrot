@@ -66,6 +66,13 @@ namespace Carrot {
         }
 
         virtual ~Allocator() = default;
+
+    public:
+        static Allocator& getDefault();
+        static void setDefault(Allocator&);
+
+    private:
+        static Allocator* pDefault;
     };
 
     class OutOfMemoryException: public std::exception {

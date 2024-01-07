@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="Carrot::Vector&lt;*&gt;">
+        <DisplayString>{{ Size = {elementCount} }}</DisplayString>
+        <Expand>
+            <Item Name="[size]" ExcludeView="simple">elementCount</Item>
+            <Item Name="[capacity]" ExcludeView="simple">capacity()</Item>
+            <ArrayItems>
+                <Size>elementCount</Size>
+                <ValuePointer>($T1*)allocation.ptr</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+</AutoVisualizer>

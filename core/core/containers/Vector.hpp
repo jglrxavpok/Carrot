@@ -20,9 +20,9 @@ namespace Carrot {
 
         /**
          * \brief Creates an empty Vector and sets its corresponding allocator.
-         * \param allocator allocator to use for this vector. MallocAllocator by default
+         * \param allocator allocator to use for this vector. Allocator::getDefault() by default
          */
-        explicit Vector(Allocator& allocator = MallocAllocator::instance);
+        explicit Vector(Allocator& allocator = Allocator::getDefault());
         Vector(const Vector& toCopy);
         Vector(Vector&& toMove) noexcept;
         ~Vector();
@@ -112,10 +112,11 @@ namespace Carrot {
             using value_type = T;
 
             Iterator() {}
-            Iterator(Vector* pVector, std::size_t elementIndex, std::size_t generationIndex)
+            Iterator(Vector* pVector, std::size_t elementIndex, std::size_t generationIndex, bool isEnd)
                 : pVector(pVector)
                 , elementIndex(elementIndex)
                 , generationIndex(generationIndex)
+                , isEnd(isEnd)
             {}
 
             T& operator*() const {
@@ -129,11 +130,11 @@ namespace Carrot {
             }
 
             Iterator& prev() {
-                if(pVector) {
+                if(isValid()) {
                     verify(pVector->generationIndex == generationIndex, "Vector was modified, cannot use this iterator anymore!");
                     if constexpr (Reverse) {
                         if(elementIndex == pVector->size() - 1) {
-                            pVector = nullptr;
+                            isEnd = true;
                             return *this;
                         }
                         const std::size_t nextIndex = elementIndex + 1;
@@ -143,16 +144,23 @@ namespace Carrot {
                         const std::size_t nextIndex = elementIndex - 1;
                         elementIndex = nextIndex;
                     }
+                } else {
+                    isEnd = false;
+                    if constexpr (Reverse) {
+                        elementIndex = 0;
+                    } else {
+                        elementIndex = pVector->size()-1;
+                    }
                 }
                 return *this;
             }
 
             Iterator& next() {
-                if(pVector) {
+                if(isValid()) {
                     verify(pVector->generationIndex == generationIndex, "Vector was modified, cannot use this iterator anymore!");
                     if constexpr (Reverse) {
                         if(elementIndex == 0) {
-                            pVector = nullptr;
+                            isEnd = true;
                             return *this;
                         }
                         const std::size_t nextIndex = elementIndex - 1;
@@ -161,11 +169,13 @@ namespace Carrot {
                         const std::size_t nextIndex = elementIndex + 1;
                         if(nextIndex >= pVector->size()) {
                             // reached the end
-                            pVector = nullptr;
+                            isEnd = true;
                             return *this;
                         }
                         elementIndex = nextIndex;
                     }
+                } else {
+                    verify(false, "Cannot call next on end iterator!");
                 }
                 return *this;
             }
@@ -175,7 +185,8 @@ namespace Carrot {
             }
 
             Iterator operator++(int) {
-                return next();
+                Iterator tmp = *this;
+                return tmp.next();
             }
 
             Iterator& operator--() {
@@ -183,16 +194,100 @@ namespace Carrot {
             }
 
             Iterator operator--(int) {
-                return prev();
+                Iterator tmp = *this;
+                return tmp.prev();
+            }
+
+            difference_type operator-(const Iterator& o) const {
+                difference_type r = 0;
+                if(o.isValid()) {
+                    if(isValid()) {
+                        r = elementIndex;
+                        r -= o.elementIndex;
+                    } else {
+                        r = -o.elementIndex;
+                        if constexpr (!Reverse) {
+                            r += o.pVector->size();
+                        } else {
+                            r--; // account for the fact that the end reverse iterator ends up "logically" at -1
+                        }
+                    }
+                } else if(isValid()) {
+                    if(o.isValid()) {
+                        verify(false, "unreachable");
+                    } else {
+                        r = elementIndex;
+                        if constexpr (!Reverse) {
+                            r -= pVector->size();
+                        } else {
+                            r++; // account for the fact that the end reverse iterator ends up "logically" at -1
+                        }
+                    }
+                }
+                if constexpr (Reverse) {
+                    return -r;
+                }
+                return r;
+            }
+
+            Iterator operator+(std::ptrdiff_t offset) const {
+                if(isEndIterator()) { // end iterator
+                    verify(offset <= 0, "Cannot go past an end iterator!");
+                    verify(offset >= -(static_cast<std::ptrdiff_t>(this->pVector->size())), "Out of bounds access!");
+                    if(offset == 0) {
+                        return *this;
+                    }
+                    if constexpr (Reverse) {
+                        return Iterator(pVector, -offset-1, generationIndex, false);
+                    }
+                    return Iterator(pVector, pVector->size()+offset, generationIndex, false);
+                }
+                std::int64_t newIndex = elementIndex;
+                if constexpr (Reverse) {
+                    newIndex -= offset;
+                    verify(newIndex >= 0 && newIndex <= this->pVector->size(), "Out of bounds access!");
+                    if(newIndex == this->pVector->size()) {
+                        return Iterator(pVector, newIndex, generationIndex, true); // end iterator
+                    }
+                    return Iterator(pVector, newIndex, generationIndex, false);
+                } else {
+                    newIndex += offset;
+                    verify(newIndex >= -1 && newIndex < this->pVector->size(), "Out of bounds access!");
+                    if(newIndex == -1) {
+                        return Iterator(pVector, 0, generationIndex, true); // end iterator
+                    }
+                    return Iterator(pVector, newIndex, generationIndex, false);
+                }
+            }
+
+            Iterator operator-(std::ptrdiff_t offset) const {
+                return *this + (-offset);
+            }
+
+            bool operator<(const Iterator& o) const {
+                return (*this - o) < 0;
+            }
+
+            bool operator>(const Iterator& o) const {
+                return !(*this < o) && *this != o;
+            }
+
+            bool operator<=(const Iterator& o) const {
+                return !(*this > o);
+            }
+
+            bool operator>=(const Iterator& o) const {
+                return !(*this < o);
             }
 
             bool operator==(const Iterator& o) const {
-                if(o.pVector == nullptr) {
-                    return pVector == nullptr;
+                if(o.isValid() != isValid()) {
+                    return false;
                 }
-                if(pVector == nullptr) {
-                    return o.pVector == nullptr;
+                if(!o.isValid()) {
+                    return true;
                 }
+                verify(pVector == o.pVector, "Cannot compare iterators of different vectors!");
                 verify(generationIndex == o.generationIndex, "Cannot compare iterators after modification of the vector!");
                 return pVector == o.pVector && elementIndex == o.elementIndex;
             }
@@ -205,10 +300,19 @@ namespace Carrot {
                 return elementIndex;
             }
 
+            bool isEndIterator() const {
+                return isEnd;
+            }
+
+            bool isValid() const {
+                return !isEndIterator();
+            }
+
         private:
             Vector* pVector = nullptr;
-            std::size_t elementIndex;
-            std::size_t generationIndex;
+            std::size_t elementIndex = 0;
+            std::size_t generationIndex = 0;
+            bool isEnd = true;
         };
 
         Iterator<TElement, false> begin();

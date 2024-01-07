@@ -29,6 +29,10 @@ TEST(UniquePtr, InitMustBeEmpty) {
     UniquePtr<S> p;
     EXPECT_EQ(p, nullptr);
     EXPECT_EQ(p.get(), nullptr);
+
+    UniquePtr<S> p2 = nullptr;
+    EXPECT_EQ(p2, nullptr);
+    EXPECT_EQ(p2.get(), nullptr);
 }
 
 TEST(UniquePtr, MakeUniqueCallsConstructor) {

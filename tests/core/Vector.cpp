@@ -245,3 +245,140 @@ TEST(Vector, Move) {
         EXPECT_EQ(StructCount, 25); // make sure the structs inside v1 were properly deleted
     }
 }
+
+TEST(Vector, Span) {
+    ConstructorCalls = 0;
+    auto createVector = [&](int elementCount)
+    {
+        Vector<S2> v { MallocAllocator::instance };
+        v.resize(elementCount);
+        for (int i = 0; i < elementCount; i++) {
+            v[i].a = i;
+        }
+        return v;
+    };
+
+    Vector<S2> v = createVector(100);
+    std::span<S2> asSpan = v; // Vector must convert to a span easily
+    EXPECT_EQ(v.size(), asSpan.size());
+    EXPECT_EQ(v.data(), asSpan.data());
+
+    const Vector<S2> v2 = createVector(100);
+    std::span<const S2> asSpan2 = v2; // Vector must convert to a span easily
+    EXPECT_EQ(v2.size(), asSpan2.size());
+    EXPECT_EQ(v2.cdata(), asSpan2.data());
+}
+
+TEST(Vector, IteratorOperations) {
+    ConstructorCalls = 0;
+    auto createVector = [&](int elementCount)
+    {
+        Vector<S2> v { MallocAllocator::instance };
+        v.resize(elementCount);
+        for (int i = 0; i < elementCount; i++) {
+            v[i].a = i;
+        }
+        return v;
+    };
+
+    Vector<S2> emptyVector;
+    EXPECT_EQ(emptyVector.begin(), emptyVector.end());
+
+    Vector<S2> v = createVector(100);
+    auto begin = v.begin();
+    auto end = v.end();
+    EXPECT_NE(begin, end);
+    EXPECT_EQ(end-begin, v.size());
+    EXPECT_EQ(begin-end, -(static_cast<std::int64_t>(v.size())));
+    EXPECT_EQ(end-end, 0);
+    EXPECT_EQ(begin-begin, 0);
+    EXPECT_EQ(end - static_cast<std::ptrdiff_t>(v.size()), begin);
+
+    auto next = begin;
+    next = ++next;
+    EXPECT_EQ(next->a, v[1].a);
+    EXPECT_EQ(next-begin, 1);
+    EXPECT_EQ(begin-next, -1);
+    EXPECT_EQ(end-next, v.size()-1);
+    EXPECT_EQ(next-end, -(static_cast<std::int64_t>(v.size()-1)));
+    EXPECT_EQ(begin+1, next);
+
+    auto nextNext = next;
+    ++nextNext;
+    EXPECT_EQ(nextNext->a, v[2].a);
+    EXPECT_EQ(nextNext-begin, 2);
+    EXPECT_EQ(begin-nextNext, -2);
+    EXPECT_EQ(end-nextNext, v.size()-2);
+    EXPECT_EQ(nextNext-end, -(static_cast<std::int64_t>(v.size()-2)));
+    EXPECT_EQ(nextNext-next, 1);
+    EXPECT_EQ(next+1, nextNext);
+    EXPECT_EQ(begin+2, nextNext);
+
+    auto rbegin = v.rbegin();
+    auto rend = v.rend();
+    EXPECT_NE(rbegin, rend);
+    EXPECT_EQ(rend-rbegin, v.size());
+    EXPECT_EQ(rbegin-rend, -(static_cast<std::int64_t>(v.size())));
+    EXPECT_EQ(rend-rend, 0);
+    EXPECT_EQ(rbegin-rbegin, 0);
+
+    auto rnext = rbegin;
+    ++rnext;
+    EXPECT_EQ(rnext->a, v[v.size()-2].a);
+    EXPECT_EQ(rnext-rbegin, 1);
+    EXPECT_EQ(rbegin-rnext, -1);
+    EXPECT_EQ(rend-rnext, v.size()-1);
+    EXPECT_EQ(rnext-rend, -(static_cast<std::int64_t>(v.size()-1)));
+    EXPECT_EQ(rbegin+1, rnext);
+
+    auto rnextNext = rnext;
+    ++rnextNext;
+    EXPECT_EQ(rnextNext->a, v[v.size()-3].a);
+    EXPECT_EQ(rnextNext-rbegin, 2);
+    EXPECT_EQ(rbegin-rnextNext, -2);
+    EXPECT_EQ(rend-rnextNext, v.size()-2);
+    EXPECT_EQ(rnextNext-rend, -(static_cast<std::int64_t>(v.size()-2)));
+    EXPECT_EQ(rnextNext-rnext, 1);
+    EXPECT_EQ(rnext+1, rnextNext);
+    EXPECT_EQ(rbegin+2, rnextNext);
+
+    for (std::size_t i = 0; i < v.size(); i++) {
+        EXPECT_EQ((begin+i)->a, v[i].a);
+        EXPECT_EQ((end-i-1)->a, v[v.size()-i-1].a);
+    }
+
+    for (std::size_t i = 0; i < v.size(); i++) {
+        EXPECT_EQ((rbegin+i)->a, v[v.size()-i-1].a);
+        EXPECT_EQ((rend-i-1)->a, v[i].a);
+    }
+}
+
+TEST(Vector, Sort) {
+    ConstructorCalls = 0;
+    auto createVector = [&](int elementCount)
+    {
+        Vector<S2> v { MallocAllocator::instance };
+        v.resize(elementCount);
+        for (int i = 0; i < elementCount; i++) {
+            v[i].a = elementCount-i;
+        }
+        return v;
+    };
+
+    Vector<S2> v = createVector(10);
+    auto compareOp = [&](const S2& a, const S2& b) {
+        return a.a < b.a;
+    };
+
+    v.sort(compareOp);
+    for (int i = 0; i < v.size(); ++i) {
+        EXPECT_EQ(v[i].a, i+1);
+    }
+
+    // sort in reverse order
+    // to make sure reverse iterators are implemented properly
+    std::sort(v.rbegin(), v.rend(), compareOp);
+    for (int i = 0; i < v.size(); ++i) {
+        EXPECT_EQ(v[i].a, v.size()-i);
+    }
+}

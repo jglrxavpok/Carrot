@@ -15,7 +15,7 @@ namespace Carrot {
     template<typename T>
     class UniquePtr {
     public:
-        UniquePtr(): allocator(MallocAllocator::instance) {}
+        UniquePtr(): allocator(Allocator::getDefault()) {}
         UniquePtr(UniquePtr&& toMove) noexcept : allocator(toMove.allocator) {
             *this = std::move(toMove);
         }
@@ -24,6 +24,8 @@ namespace Carrot {
         : allocator(allocator)
         , allocation(block)
         {}
+
+        UniquePtr(std::nullptr_t): UniquePtr() {}
 
         // disallow copies
         UniquePtr(const UniquePtr&) = delete;
@@ -56,11 +58,11 @@ namespace Carrot {
 
     public: // get value
         T* get() {
-            return static_cast<T*>(allocation.ptr);
+            return reinterpret_cast<T*>(allocation.ptr);
         }
 
         const T* get() const {
-            return static_cast<T*>(allocation.ptr);
+            return reinterpret_cast<T*>(allocation.ptr);
         }
 
         operator T*() {
@@ -80,17 +82,17 @@ namespace Carrot {
         }
 
         T& operator*() {
-            return get();
+            return *get();
         }
 
         const T& operator*() const {
-            return get();
+            return *get();
         }
 
     public: // value changes
         void reset() {
             if(allocation.ptr) {
-                static_cast<T*>(allocation.ptr)->~T();
+                reinterpret_cast<T*>(allocation.ptr)->~T();
                 allocator.deallocate(allocation);
                 allocation = {};
             }
@@ -106,14 +108,14 @@ namespace Carrot {
                 return *this;
             }
             reset();
-            allocation.ptr = toMove.allocation.ptr;
+            allocation = toMove.allocation;
             toMove.allocation = {};
             return *this;
         }
 
     private:
         Allocator& allocator;
-        MemoryBlock allocation;
+        MemoryBlock allocation{};
     };
 
     /**
