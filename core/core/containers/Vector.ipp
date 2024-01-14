@@ -43,6 +43,16 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    TElement& Vector<TElement>::get(std::size_t index) {
+        return (*this)[index];
+    }
+
+    VECTOR_TEMPLATE
+    const TElement& Vector<TElement>::get(std::size_t index) const {
+        return (*this)[index];
+    }
+
+    VECTOR_TEMPLATE
     void Vector<TElement>::pushBack(const TElement& element) {
         ensureReserve(size()+1);
         this->generationIndex++;
@@ -102,6 +112,7 @@ namespace Carrot {
         for (std::size_t i = newSize; i < this->elementCount; ++i) {
             (*this)[i].~TElement();
         }
+        this->elementCount = std::min(this->elementCount, newSize);
         this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), alignof(TElement));
     }
 
@@ -261,6 +272,26 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    typename Vector<TElement>::template Iterator<TElement, false> Vector<TElement>::find(const TElement& element, std::size_t startIndex) {
+        for(std::size_t i = startIndex; i < elementCount; i++) {
+            if((*this)[i] == element) {
+                return Iterator<TElement, false>(this, i, this->generationIndex, false);
+            }
+        }
+        return end();
+    }
+
+    VECTOR_TEMPLATE
+    typename Vector<TElement>::template Iterator<const TElement, false> Vector<TElement>::find(const TElement& element, std::size_t startIndex) const {
+        for(std::size_t i = startIndex; i < elementCount; i++) {
+            if((*this)[i] == element) {
+                return Iterator<TElement, false>((Vector*)this, i, this->generationIndex, false);
+            }
+        }
+        return end();
+    }
+
+    VECTOR_TEMPLATE
     TElement* Vector<TElement>::data() {
         return (TElement*)this->allocation.ptr;
     }
@@ -271,7 +302,7 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
-    std::size_t Vector<TElement>::size() const {
+    std::int64_t Vector<TElement>::size() const {
         return this->elementCount;
     }
 

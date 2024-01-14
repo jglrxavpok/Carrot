@@ -70,6 +70,8 @@ TEST(StackAllocator, FlushAndClear) {
     EXPECT_EQ(rAlloc.deallocCount, 0);
 
     allocator.clear(); // does not free the resources, but the subsequent allocs will reuse the memory
+    EXPECT_EQ(rAlloc.allocCount, 5);
+    EXPECT_EQ(rAlloc.deallocCount, 0);
 
     allocator.allocate(1);
     allocator.allocate(1);
@@ -104,4 +106,14 @@ TEST(StackAllocator, BankSize) {
     EXPECT_EQ(allocator.getCurrentAllocatedSize(), bankSize*2 + block4.size);
 }
 
+TEST(StackAllocator, ReallocateBehaviour) {
+    const std::size_t bankSize = 64;
+    StackAllocator allocator { MallocAllocator::instance, bankSize };
+    EXPECT_EQ(allocator.getCurrentAllocatedSize(), 0);
 
+    MemoryBlock block = allocator.allocate(32);
+    EXPECT_EQ(allocator.getCurrentAllocatedSize(), bankSize); // an entire bank should have been allocated
+
+    MemoryBlock reallocated = allocator.reallocate(block, bankSize);
+    EXPECT_EQ(reallocated.ptr, block.ptr); // reallocating a block just after allocating it: should reuse the bank if possible
+}

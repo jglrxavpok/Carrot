@@ -30,6 +30,8 @@ namespace Carrot {
 
         void deallocate(const MemoryBlock& block) override;
 
+        MemoryBlock reallocate(const MemoryBlock& block, const std::size_t size, std::size_t alignment = 1) override;
+
         /**
          * How many bytes have been allocated (in total) by this allocator. This takes into account the overhead/wasted space due to bank reallocations
          */
@@ -55,6 +57,8 @@ namespace Carrot {
         std::size_t currentBank = 0;
         std::size_t cursor = 0; // cursor inside current bank
         std::size_t allocatedSize = 0;
+
+     std::size_t lastAllocSize = 0;
     };
 
 } // Carrot

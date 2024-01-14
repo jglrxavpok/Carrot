@@ -288,6 +288,7 @@ TEST(Vector, IteratorOperations) {
     auto begin = v.begin();
     auto end = v.end();
     EXPECT_NE(begin, end);
+    EXPECT_EQ(begin+v.size(), end);
     EXPECT_EQ(end-begin, v.size());
     EXPECT_EQ(begin-end, -(static_cast<std::int64_t>(v.size())));
     EXPECT_EQ(end-end, 0);
@@ -317,6 +318,7 @@ TEST(Vector, IteratorOperations) {
     auto rbegin = v.rbegin();
     auto rend = v.rend();
     EXPECT_NE(rbegin, rend);
+    EXPECT_EQ(rbegin+v.size(), rend);
     EXPECT_EQ(rend-rbegin, v.size());
     EXPECT_EQ(rbegin-rend, -(static_cast<std::int64_t>(v.size())));
     EXPECT_EQ(rend-rend, 0);

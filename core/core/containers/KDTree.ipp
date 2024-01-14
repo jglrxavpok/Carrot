@@ -23,6 +23,7 @@ namespace Carrot {
 
     KD_TREE_TEMPLATE
     void KDTree<TElement>::build(std::span<const TElement> elements) {
+        root = {};
         elementCount = elements.size();
         std::unordered_set<std::size_t> allPoints;
         allPoints.reserve(elements.size());

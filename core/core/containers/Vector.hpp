@@ -30,6 +30,8 @@ namespace Carrot {
     public: // access
         TElement& operator[](std::size_t index);
         const TElement& operator[](std::size_t index) const;
+        TElement& get(std::size_t index);
+        const TElement& get(std::size_t index) const;
 
     public: // modifications to the vector
         /**
@@ -245,16 +247,16 @@ namespace Carrot {
                 std::int64_t newIndex = elementIndex;
                 if constexpr (Reverse) {
                     newIndex -= offset;
-                    verify(newIndex >= 0 && newIndex <= this->pVector->size(), "Out of bounds access!");
-                    if(newIndex == this->pVector->size()) {
-                        return Iterator(pVector, newIndex, generationIndex, true); // end iterator
+                    verify(newIndex >= -1 && newIndex < this->pVector->size(), "Out of bounds access!");
+                    if(newIndex == -1) {
+                        return Iterator(pVector, 0, generationIndex, true); // end iterator
                     }
                     return Iterator(pVector, newIndex, generationIndex, false);
                 } else {
                     newIndex += offset;
-                    verify(newIndex >= -1 && newIndex < this->pVector->size(), "Out of bounds access!");
-                    if(newIndex == -1) {
-                        return Iterator(pVector, 0, generationIndex, true); // end iterator
+                    verify(newIndex >= 0 && newIndex <= this->pVector->size(), "Out of bounds access!");
+                    if(newIndex == this->pVector->size()) {
+                        return Iterator(pVector, newIndex, generationIndex, true); // end iterator
                     }
                     return Iterator(pVector, newIndex, generationIndex, false);
                 }
@@ -327,6 +329,9 @@ namespace Carrot {
         Iterator<const TElement, true> rbegin() const;
         Iterator<const TElement, true> rend() const;
 
+        Iterator<TElement, false> find(const TElement& element, std::size_t startIndex = 0);
+        Iterator<const TElement, false> find(const TElement& element, std::size_t startIndex = 0) const;
+
         /**
          * Pointer to first element (all elements are contiguous)
          */
@@ -349,7 +354,7 @@ namespace Carrot {
         /**
          * How many elements are inside this vector?
          */
-        std::size_t size() const;
+        std::int64_t size() const;
 
         /**
          * Is this vector empty? (ie size == 0)
