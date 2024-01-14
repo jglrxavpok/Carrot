@@ -274,14 +274,16 @@ namespace Fertilizer {
     struct MeshletGroup {
         std::vector<std::size_t> meshlets;
     };
-    static std::vector<MeshletGroup> groupMeshlets(LoadedPrimitive& primitive, std::span<Meshlet> meshlets, std::span<const std::int64_t> vertexRemap) {
+    static Carrot::Vector<MeshletGroup> groupMeshlets(Carrot::Allocator& allocator, LoadedPrimitive& primitive, std::span<Meshlet> meshlets, std::span<const std::int64_t> vertexRemap) {
         // ===== Build meshlet connections
         auto groupWithAllMeshlets = [&]() {
             MeshletGroup group;
             for (int i = 0; i < meshlets.size(); ++i) {
                 group.meshlets.push_back(i);
             }
-            return std::vector { group };
+            Carrot::Vector<MeshletGroup> groups { allocator };
+            groups.emplaceBack(group);
+            return groups;
         };
         if(meshlets.size() < 8) {
             return groupWithAllMeshlets();
@@ -342,7 +344,7 @@ namespace Fertilizer {
 
         // at this point, we have basically built a graph of meshlets, in which edges represent which meshlets are connected together
 
-        std::vector<MeshletGroup> groups;
+        Carrot::Vector<MeshletGroup> groups { allocator };
 
         idx_t vertexCount = meshlets.size(); // vertex count, from the point of view of METIS, where Meshlet = vertex
         idx_t ncon = 1;
@@ -353,14 +355,14 @@ namespace Fertilizer {
         options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
         options[METIS_OPTION_CCORDER] = 1; // identify connected components first
 
-        std::vector<idx_t> partition;
+        Carrot::Vector<idx_t> partition { allocator };
         partition.resize(vertexCount);
 
-        std::vector<idx_t> xadjacency;
-        xadjacency.reserve(vertexCount + 1);
+        Carrot::Vector<idx_t> xadjacency { allocator };
+        xadjacency.setCapacity(vertexCount + 1);
 
-        std::vector<idx_t> edgeAdjacency;
-        std::vector<idx_t> edgeWeights;
+        Carrot::Vector<idx_t> edgeAdjacency { allocator };
+        Carrot::Vector<idx_t> edgeWeights { allocator };
 
         for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
             std::size_t startIndexInEdgeAdjacency = edgeAdjacency.size();
@@ -372,12 +374,12 @@ namespace Fertilizer {
                 const auto& connections = connectionsIter->second;
                 for(const auto& connectedMeshlet : connections) {
                     if(connectedMeshlet != meshletIndex) {
-                        auto existingEdgeIter = std::find(edgeAdjacency.begin()+startIndexInEdgeAdjacency, edgeAdjacency.end(), connectedMeshlet);
+                        auto existingEdgeIter = edgeAdjacency.find(connectedMeshlet, startIndexInEdgeAdjacency);
                         if(existingEdgeIter == edgeAdjacency.end()) {
-                            edgeAdjacency.emplace_back(connectedMeshlet);
-                            edgeWeights.emplace_back(1);
+                            edgeAdjacency.emplaceBack(connectedMeshlet);
+                            edgeWeights.emplaceBack(1);
                         } else {
-                            std::ptrdiff_t d = std::distance(edgeAdjacency.begin(), existingEdgeIter);
+                            std::ptrdiff_t d = existingEdgeIter - edgeAdjacency.begin();
                             assert(d >= 0);
                             verify(d < edgeWeights.size(), "edgeWeights and edgeAdjacency do not have the same length?");
                             edgeWeights[d]++;
@@ -385,9 +387,9 @@ namespace Fertilizer {
                     }
                 }
             }
-            xadjacency.push_back(startIndexInEdgeAdjacency);
+            xadjacency.pushBack(startIndexInEdgeAdjacency);
         }
-        xadjacency.push_back(edgeAdjacency.size());
+        xadjacency.pushBack(edgeAdjacency.size());
         verify(xadjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph?");
         verify(edgeAdjacency.size() == edgeWeights.size(), "edgeWeights and edgeAdjacency must have the same length");
 
@@ -420,14 +422,15 @@ namespace Fertilizer {
 
     /// trick to allow getPosition() on Carrot::Vertex for KDTree, without needing to allocate anything
     struct VertexWrapper {
-        Carrot::Vertex vertex;
+        const Carrot::Vertex* vertices = nullptr;
+        std::size_t index = 0;
 
         glm::vec3 getPosition() const {
-            return vertex.pos.xyz;
+            return vertices[index].pos.xyz;
         }
     };
 
-    std::vector<std::int64_t> mergeByDistance(const LoadedPrimitive& primitive, float maxDistance, float maxUVDistance, const Carrot::KDTree<VertexWrapper>& kdtree) {
+    std::vector<std::int64_t> mergeByDistance(const LoadedPrimitive& primitive, std::span<const VertexWrapper> groupVerticesPreWeld, float maxDistance, float maxUVDistance, const Carrot::KDTree<VertexWrapper>& kdtree) {
         // merge vertices which are close enough
         std::vector<std::int64_t> vertexRemap;
 
@@ -438,27 +441,28 @@ namespace Fertilizer {
         }
 
         Carrot::Vector<std::size_t> neighbors { Carrot::MallocAllocator::instance };
-        for(std::int64_t v = 0; v < vertexCount; v++) {
+        for(std::int64_t v = 0; v < groupVerticesPreWeld.size(); v++) {
             neighbors.clear();
-            const Carrot::Vertex& currentVertex = primitive.vertices[v];
-            const VertexWrapper* pWrappedVertex = reinterpret_cast<const VertexWrapper*>(&currentVertex);
-            kdtree.getNeighbors(neighbors, *pWrappedVertex, maxDistance);
+            const VertexWrapper& currentVertexWrapped = groupVerticesPreWeld[v];
+            kdtree.getNeighbors(neighbors, currentVertexWrapped, maxDistance);
+
+            const Carrot::Vertex& currentVertex = primitive.vertices[currentVertexWrapped.index];
 
             float maxDistanceSq = maxDistance*maxDistance;
             float maxUVDistanceSq = maxUVDistance*maxUVDistance;
 
             std::int64_t replacement = -1;
             for(const std::size_t& neighbor : neighbors) {
-                if(neighbor >= v) {
+                if(vertexRemap[groupVerticesPreWeld[neighbor].index] == -1) {
                     // due to the way we iterate, all indices starting from v will not be remapped yet
                     continue;
                 }
-                const Carrot::Vertex& otherVertex = primitive.vertices[vertexRemap[neighbor]];
+                const Carrot::Vertex& otherVertex = primitive.vertices[vertexRemap[groupVerticesPreWeld[neighbor].index]];
                 const float vertexDistanceSq = glm::distance2(currentVertex.pos, otherVertex.pos);
                 if(vertexDistanceSq <= maxDistanceSq) {
                     const float uvDistanceSq = glm::distance2(currentVertex.uv, otherVertex.uv);
                     if(uvDistanceSq <= maxUVDistanceSq) {
-                        replacement = vertexRemap[neighbor];
+                        replacement = vertexRemap[groupVerticesPreWeld[neighbor].index];
                         maxDistanceSq = vertexDistanceSq;
                         maxUVDistanceSq = uvDistanceSq;
                     }
@@ -466,9 +470,9 @@ namespace Fertilizer {
             }
 
             if(replacement == -1) {
-                vertexRemap[v] = v;
+                vertexRemap[currentVertexWrapped.index] = currentVertexWrapped.index;
             } else {
-                vertexRemap[v] = replacement;
+                vertexRemap[currentVertexWrapped.index] = replacement;
             }
         }
         return vertexRemap;
@@ -537,16 +541,15 @@ namespace Fertilizer {
 
         // TODO: move inside loop (KDtree per LOD level)
         Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
-        static_assert(sizeof(Carrot::Vertex) == sizeof(VertexWrapper));
-        std::span<const VertexWrapper> wrappedVertices {
-            reinterpret_cast<VertexWrapper*>(primitive.vertices.data()),
-            primitive.vertices.size()
-        };
-        kdtree.build(wrappedVertices);
 
         // level n+1
         const int maxLOD = 10;
         Carrot::Vector<unsigned int> groupVertexIndices;
+        Carrot::Vector<VertexWrapper> groupVerticesPreWeld;
+
+        // TODO: move higher in call chain
+        // allocator used for meshlet grouping, used to reuse memory between passes
+        Carrot::StackAllocator groupingAllocator { Carrot::MallocAllocator::instance };
         for (int lod = 0; lod < maxLOD; ++lod) {
             float tLod = lod / (float)maxLOD;
             std::span<Meshlet> previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
@@ -554,10 +557,38 @@ namespace Fertilizer {
                 return; // we have reached the end
             }
 
-            const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.001f) * simplifyScale;
-            const float maxUVDistance = tLod * 0.1f + (1-tLod) * 1.0f / 256.0f;
-            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, maxDistance, maxUVDistance, kdtree);
-            const std::vector<MeshletGroup> groups = groupMeshlets(primitive, previousLevelMeshlets, vertexRemap);
+            std::unordered_set<std::size_t> meshletVertexIndices;
+
+            for(const auto& meshlet : previousLevelMeshlets) {
+                auto getVertexIndex = [&](std::size_t index) {
+                    return primitive.meshletVertexIndices[primitive.meshletIndices[index + meshlet.indexOffset] + meshlet.vertexOffset];
+                };
+
+                const std::size_t triangleCount = meshlet.indexCount / 3;
+                // for each triangle of the meshlet
+                for(std::size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+                    // for each point of the triangle
+                    for(std::size_t i = 0; i < 3; i++) {
+                        meshletVertexIndices.insert(getVertexIndex(i + triangleIndex * 3));
+                    }
+                }
+            }
+
+            groupVerticesPreWeld.clear();
+            groupVerticesPreWeld.ensureReserve(meshletVertexIndices.size());
+            for(const std::size_t i : meshletVertexIndices) {
+                groupVerticesPreWeld.emplaceBack(primitive.vertices.data(), i);
+            }
+
+            std::span<const VertexWrapper> wrappedVertices = groupVerticesPreWeld;
+            kdtree.build(wrappedVertices);
+
+            const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.01f) * simplifyScale;
+            const float maxUVDistance = tLod * 0.5f + (1-tLod) * 1.0f / 256.0f;
+            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, groupVerticesPreWeld, maxDistance, maxUVDistance, kdtree);
+
+            groupingAllocator.clear();
+            const Carrot::Vector<MeshletGroup> groups = groupMeshlets(groupingAllocator, primitive, previousLevelMeshlets, vertexRemap);
 
             // ===== Simplify groups
             const std::size_t newMeshletStart = primitive.meshlets.size();
@@ -567,6 +598,7 @@ namespace Fertilizer {
                 previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
 
                 // add cluster vertices to this group
+                // and remove clusters from clusters to merge
                 for(const auto& meshletIndex : group.meshlets) {
                     const auto& meshlet = previousLevelMeshlets[meshletIndex];
 
@@ -578,7 +610,7 @@ namespace Fertilizer {
                     }
                 }
 
-                float targetError = (0.5f * tLod + 0.01f * (1-tLod));
+                float targetError = (0.1f * tLod + 0.01f * (1-tLod));
 
                 // simplify this group
                 const float threshold = 0.5f;
@@ -597,7 +629,10 @@ namespace Fertilizer {
                 simplifiedIndexBuffer.resize(simplifiedIndexCount);
 
                 // ===== Generate meshlets for this group
-                appendMeshlets(primitive, simplifiedIndexBuffer);
+                if(simplifiedIndexCount > 0) {
+                    std::size_t startIndex = primitive.meshlets.size();
+                    appendMeshlets(primitive, simplifiedIndexBuffer);
+                }
             }
 
             for(std::size_t i = newMeshletStart; i < primitive.meshlets.size(); i++) {
