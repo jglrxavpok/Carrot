@@ -6,6 +6,8 @@
 
 #include <core/utils/Assert.h>
 
+#include <ranges>
+
 namespace Carrot {
     StackAllocator::~StackAllocator() {
         flush();
@@ -27,6 +29,11 @@ namespace Carrot {
                 if(checkBank(currentBank, cursor)) {
                     return banks[currentBank];
                 } else {
+                    if(cursor == 0) {
+                        deallocateBank(currentBank);
+                        freeBank--;
+                    }
+
                     cursor = 0; // we necessarily start from the beginning of a bank if the current bank is not enough
                     // search for a bank that can fit the allocation
                     for(; freeBank < banks.size(); freeBank++) {
@@ -38,6 +45,11 @@ namespace Carrot {
                 }
 
                 if(freeBank < banks.size()) {
+                    while(currentBank+1 != freeBank) {
+                        deallocateBank(currentBank+1);
+                        freeBank--;
+                    }
+
                     currentBank = freeBank;
                     return banks[currentBank];
                 }
@@ -88,8 +100,9 @@ namespace Carrot {
     }
 
     MemoryBlock StackAllocator::reallocate(const MemoryBlock& block, const std::size_t size, std::size_t alignment) {
-        if(banks.empty()) {
-            return Allocator::reallocate(block, size, alignment);
+        verify(!banks.empty() || block.ptr == nullptr, "This allocator is empty, the block is not from this allocator or was already freed!");
+        if(banks.empty() || block.ptr == nullptr) {
+            return allocate(size, alignment);
         }
 
         const MemoryBlock& lastBank = banks[currentBank];
@@ -98,10 +111,24 @@ namespace Carrot {
             && reinterpret_cast<std::uint64_t>(block.ptr) + block.size <= reinterpret_cast<std::uint64_t>(lastBank.ptr) + lastBank.size) {
             // is last allocated block
             if(reinterpret_cast<std::uint64_t>(block.ptr)-reinterpret_cast<std::uint64_t>(lastBank.ptr) + block.size == cursor) {
-                std::size_t allocationStart = cursor - block.size;
+                const std::size_t allocationStart = cursor - block.size;
+
+                const bool deallocateCurrentBank = cursor - block.size == 0; // at beginning of current bank
+
+                // todo: does not take alignment into account
                 if(size + allocationStart > lastBank.size) {
-                    return Allocator::reallocate(block, size, alignment); // does not fit in current bank
+                    const std::size_t currentBankBeforeRealloc = currentBank;
+                    MemoryBlock reallocResult = Allocator::reallocate(block, size, alignment); // does not fit in current bank
+                    if(deallocateCurrentBank) {
+                        allocatedSize -= banks[currentBankBeforeRealloc].size;
+                        backingAllocator.deallocate(banks[currentBankBeforeRealloc]);
+                        banks.erase(banks.begin() + currentBankBeforeRealloc);
+                        currentBank--;
+                    }
+                    return reallocResult;
                 }
+                cursor -= block.size;
+                cursor += size;
                 return MemoryBlock {
                     .ptr = block.ptr,
                     .size = size,
@@ -118,8 +145,8 @@ namespace Carrot {
 
     void StackAllocator::flush() {
         clear();
-        for(auto it = banks.cbegin(); it != banks.cend(); ++it) {
-            backingAllocator.deallocate(*it);
+        for(auto& bank : std::ranges::reverse_view(banks)) {
+            backingAllocator.deallocate(bank);
         }
         banks.clear();
         allocatedSize = 0;
@@ -127,6 +154,21 @@ namespace Carrot {
 
     std::size_t StackAllocator::getCurrentAllocatedSize() const {
         return allocatedSize;
+    }
+
+    std::size_t StackAllocator::getBankCount() const {
+        return banks.size();
+    }
+
+    void StackAllocator::deallocateBank(std::size_t bankIndex) {
+        verify(bankIndex >= currentBank, "Cannot deallocate banks before current bank, they still have used data!");
+        if(bankIndex == currentBank) {
+            verify(cursor == 0, "Cannot deallocate current bank while there is still so data in it!");
+        }
+
+        allocatedSize -= banks[bankIndex].size;
+        backingAllocator.deallocate(banks[bankIndex]);
+        banks.erase(banks.begin() + bankIndex);
     }
 
 } // Carrot

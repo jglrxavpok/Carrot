@@ -87,7 +87,7 @@ namespace Carrot {
             Node* pParent = nullptr;
         };
 
-        void buildInner(Node* pDestination, std::span<const TElement> allElements, const std::unordered_set<std::size_t>& subset, std::size_t depth, const glm::vec3& regionMin, const glm::vec3& regionMax);
+        void buildInner(Node* pDestination, Carrot::Allocator& tempAllocator, std::span<const TElement> allElements, const Carrot::Vector<std::size_t>& subset, std::size_t depth, const glm::vec3& regionMin, const glm::vec3& regionMax);
         Node* findClosest(const TElement& element) const;
         void rangeSearchInner(Vector<std::size_t>& out, const Node* pRoot, const glm::vec3& min, const glm::vec3& max) const;
 

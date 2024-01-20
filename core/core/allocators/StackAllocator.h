@@ -37,6 +37,8 @@ namespace Carrot {
          */
         std::size_t getCurrentAllocatedSize() const;
 
+        std::size_t getBankCount() const;
+
         /**
          * \brief Deallocate all memory held by this allocator
          */
@@ -49,6 +51,8 @@ namespace Carrot {
         void clear();
 
     private:
+        void deallocateBank(std::size_t bankIndex);
+
         Allocator& backingAllocator;
         std::size_t bankSize = 0;
 

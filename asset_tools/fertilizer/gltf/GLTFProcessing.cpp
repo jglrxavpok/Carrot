@@ -310,8 +310,8 @@ namespace Fertilizer {
         };
 
         // meshlets represented by their index into 'previousLevelMeshlets'
-        std::unordered_map<MeshletEdge, std::vector<std::size_t>, MeshletEdgeHasher> edges2Meshlets;
-        std::unordered_map<std::size_t, std::vector<MeshletEdge>> meshlets2Edges;
+        std::unordered_map<MeshletEdge, std::unordered_set<std::size_t>, MeshletEdgeHasher> edges2Meshlets;
+        std::unordered_map<std::size_t, std::unordered_set<MeshletEdge, MeshletEdgeHasher>> meshlets2Edges;
 
         // for each meshlet
         for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
@@ -327,8 +327,10 @@ namespace Fertilizer {
                 // for each edge of the triangle
                 for(std::size_t i = 0; i < 3; i++) {
                     MeshletEdge edge { getVertexIndex(i + triangleIndex * 3), getVertexIndex(((i+1) % 3) + triangleIndex * 3) };
-                    edges2Meshlets[edge].push_back(meshletIndex);
-                    meshlets2Edges[meshletIndex].emplace_back(edge);
+                    if(edge.first != edge.second) {
+                        edges2Meshlets[edge].insert(meshletIndex);
+                        meshlets2Edges[meshletIndex].insert(edge);
+                    }
                 }
             }
         }
@@ -354,6 +356,7 @@ namespace Fertilizer {
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
         options[METIS_OPTION_CCORDER] = 1; // identify connected components first
+        options[METIS_OPTION_NUMBERING] = 0;
 
         Carrot::Vector<idx_t> partition { allocator };
         partition.resize(vertexCount);
@@ -363,6 +366,8 @@ namespace Fertilizer {
 
         Carrot::Vector<idx_t> edgeAdjacency { allocator };
         Carrot::Vector<idx_t> edgeWeights { allocator };
+        edgeAdjacency.setGrowthFactor(2);
+        edgeWeights.setGrowthFactor(2);
 
         for(std::size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
             std::size_t startIndexInEdgeAdjacency = edgeAdjacency.size();
@@ -376,6 +381,7 @@ namespace Fertilizer {
                     if(connectedMeshlet != meshletIndex) {
                         auto existingEdgeIter = edgeAdjacency.find(connectedMeshlet, startIndexInEdgeAdjacency);
                         if(existingEdgeIter == edgeAdjacency.end()) {
+                            verify(edgeAdjacency.size() == edgeWeights.size(), "edgeWeights and edgeAdjacency must have the same length");
                             edgeAdjacency.emplaceBack(connectedMeshlet);
                             edgeWeights.emplaceBack(1);
                         } else {
@@ -390,8 +396,17 @@ namespace Fertilizer {
             xadjacency.pushBack(startIndexInEdgeAdjacency);
         }
         xadjacency.pushBack(edgeAdjacency.size());
-        verify(xadjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph?");
-        verify(edgeAdjacency.size() == edgeWeights.size(), "edgeWeights and edgeAdjacency must have the same length");
+        verify(xadjacency.size() == vertexCount + 1, "unexpected count of vertices for METIS graph?");
+
+        // coherency checks
+#if 0
+        for(const std::size_t& edgeAdjIndex : xadjacency) {
+            verify(edgeAdjIndex <= edgeAdjacency.size(), "Out of bounds inside xadjacency");
+        }
+        for(const std::size_t& vertexIndex : edgeAdjacency) {
+            verify(vertexIndex <= vertexCount, "Out of bounds inside edgeAdjacency");
+        }
+#endif
 
         idx_t edgeCut;
         int result = METIS_PartGraphKway(&vertexCount,
@@ -425,7 +440,7 @@ namespace Fertilizer {
         const Carrot::Vertex* vertices = nullptr;
         std::size_t index = 0;
 
-        glm::vec3 getPosition() const {
+        const glm::vec3& getPosition() const {
             return vertices[index].pos.xyz;
         }
     };
@@ -440,18 +455,25 @@ namespace Fertilizer {
             v = -1;
         }
 
-        Carrot::Vector<std::size_t> neighbors { Carrot::MallocAllocator::instance };
-        for(std::int64_t v = 0; v < groupVerticesPreWeld.size(); v++) {
-            neighbors.clear();
+        Carrot::Vector<Carrot::Vector<std::size_t>> neighborsForAllVertices { Carrot::MallocAllocator::instance };
+        neighborsForAllVertices.setCapacity(groupVerticesPreWeld.size());
+        for(std::size_t v = 0; v < groupVerticesPreWeld.size(); v++) {
+            neighborsForAllVertices.emplaceBack(Carrot::MallocAllocator::instance);
+            neighborsForAllVertices[v].setGrowthFactor(1.5f);
+        }
+        Carrot::Async::parallelFor(groupVerticesPreWeld.size(), [&](std::size_t v) {
             const VertexWrapper& currentVertexWrapped = groupVerticesPreWeld[v];
-            kdtree.getNeighbors(neighbors, currentVertexWrapped, maxDistance);
-
+            kdtree.getNeighbors(neighborsForAllVertices[v], currentVertexWrapped, maxDistance);
+        }, (groupVerticesPreWeld.size()+31) / 32);
+        for(std::int64_t v = 0; v < groupVerticesPreWeld.size(); v++) {
+            std::int64_t replacement = -1;
+            const auto& currentVertexWrapped = groupVerticesPreWeld[v];
+            auto& neighbors = neighborsForAllVertices[v];
             const Carrot::Vertex& currentVertex = primitive.vertices[currentVertexWrapped.index];
 
             float maxDistanceSq = maxDistance*maxDistance;
             float maxUVDistanceSq = maxUVDistance*maxUVDistance;
 
-            std::int64_t replacement = -1;
             for(const std::size_t& neighbor : neighbors) {
                 if(vertexRemap[groupVerticesPreWeld[neighbor].index] == -1) {
                     // due to the way we iterate, all indices starting from v will not be remapped yet
@@ -603,10 +625,22 @@ namespace Fertilizer {
                     const auto& meshlet = previousLevelMeshlets[meshletIndex];
 
                     std::size_t start = groupVertexIndices.size();
-                    groupVertexIndices.resize(start + meshlet.indexCount);
-                    for(std::size_t j = 0; j < meshlet.indexCount; j++) {
-                        groupVertexIndices[j + start] = vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset]];
-                        //groupVertexIndices[j + start] = primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j] + meshlet.vertexOffset];
+                    groupVertexIndices.ensureReserve(start + meshlet.indexCount);
+                    for(std::size_t j = 0; j < meshlet.indexCount; j += 3) { // triangle per triangle
+                        std::int64_t triangle[3] = {
+                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 0] + meshlet.vertexOffset]],
+                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 1] + meshlet.vertexOffset]],
+                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 2] + meshlet.vertexOffset]],
+                        };
+
+                        // remove triangles which have collapsed on themselves due to vertex merge
+                        if(triangle[0] == triangle[1] && triangle[0] == triangle[2]) {
+                            continue;
+                        }
+
+                        for(std::size_t vertex = 0; vertex < 3; vertex++) {
+                            groupVertexIndices.pushBack(triangle[vertex]);
+                        }
                     }
                 }
 

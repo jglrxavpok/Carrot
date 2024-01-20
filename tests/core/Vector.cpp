@@ -384,3 +384,65 @@ TEST(Vector, Sort) {
         EXPECT_EQ(v[i].a, v.size()-i);
     }
 }
+
+TEST(Vector, GrowthFactor) {
+    {
+        // on pushBack, if the size == capacity, set capacity to newSize * growthFactor
+        Carrot::Vector<float> v;
+        v.setGrowthFactor(2);
+
+        EXPECT_EQ(v.capacity(), 0);
+
+        v.pushBack(0.0f);
+        EXPECT_EQ(v.size(), 1);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.pushBack(0.0f);
+        EXPECT_EQ(v.size(), 2);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.pushBack(0.0f);
+        EXPECT_EQ(v.size(), 3);
+        EXPECT_EQ(v.capacity(), 6);
+    }
+
+    {
+        // on emplaceBack, if the size == capacity, set capacity to newSize * growthFactor
+        Carrot::Vector<float> v;
+        v.setGrowthFactor(2);
+
+        EXPECT_EQ(v.capacity(), 0);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 1);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 2);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 3);
+        EXPECT_EQ(v.capacity(), 6);
+    }
+
+    {
+        // on emplaceBack, if the size == capacity, set capacity to newSize * growthFactor
+        Carrot::Vector<float> v;
+        v.setGrowthFactor(1.5f); // non-integer factors will use ceil
+
+        EXPECT_EQ(v.capacity(), 0);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 1);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 2);
+        EXPECT_EQ(v.capacity(), 2);
+
+        v.emplaceBack(0.0f);
+        EXPECT_EQ(v.size(), 3);
+        EXPECT_EQ(v.capacity(), 5); // 3 * 1.5 = 4.5, so 5 (ceil)
+    }
+}

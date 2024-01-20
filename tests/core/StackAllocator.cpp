@@ -108,12 +108,28 @@ TEST(StackAllocator, BankSize) {
 
 TEST(StackAllocator, ReallocateBehaviour) {
     const std::size_t bankSize = 64;
-    StackAllocator allocator { MallocAllocator::instance, bankSize };
+    RecordingAllocator rAlloc;
+    StackAllocator allocator { rAlloc, bankSize };
     EXPECT_EQ(allocator.getCurrentAllocatedSize(), 0);
+    EXPECT_EQ(rAlloc.allocCount, 0);
+    EXPECT_EQ(rAlloc.deallocCount, 0);
 
     MemoryBlock block = allocator.allocate(32);
     EXPECT_EQ(allocator.getCurrentAllocatedSize(), bankSize); // an entire bank should have been allocated
+    EXPECT_EQ(rAlloc.allocCount, 1);
+    EXPECT_EQ(rAlloc.deallocCount, 0);
 
     MemoryBlock reallocated = allocator.reallocate(block, bankSize);
     EXPECT_EQ(reallocated.ptr, block.ptr); // reallocating a block just after allocating it: should reuse the bank if possible
+    EXPECT_EQ(rAlloc.allocCount, 1); // nothing to allocate
+    EXPECT_EQ(rAlloc.deallocCount, 0);
+
+    reallocated = allocator.reallocate(reallocated, bankSize*2);
+    // block was at beginning of bank, so entire back should have been deallocated then allocated again with the correct size
+    EXPECT_EQ(rAlloc.allocCount, 2);
+    EXPECT_EQ(rAlloc.deallocCount, 1);
+    EXPECT_EQ(allocator.getCurrentAllocatedSize(), bankSize*2);
+    EXPECT_EQ(allocator.getBankCount(), 1); // block was at beginning of bank, so entire back should have been deallocated then allocated again with the correct size
+
+    EXPECT_NE(reallocated.ptr, block.ptr); // current bank is not enough for this reallocation, will be moved to a new bank
 }

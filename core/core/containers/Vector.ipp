@@ -54,7 +54,9 @@ namespace Carrot {
 
     VECTOR_TEMPLATE
     void Vector<TElement>::pushBack(const TElement& element) {
-        ensureReserve(size()+1);
+        if(this->size() >= this->capacity()) {
+            this->grow(size()+1);
+        }
         this->generationIndex++;
         this->elementCount++;
         TElement* pData = data();
@@ -64,7 +66,9 @@ namespace Carrot {
     VECTOR_TEMPLATE
     template<typename... TArg>
     TElement& Vector<TElement>::emplaceBack(TArg&&... arg) {
-        ensureReserve(size()+1);
+        if(this->size() >= this->capacity()) {
+            this->grow(size()+1);
+        }
         this->generationIndex++;
         this->elementCount++;
         TElement* pData = data();
@@ -126,6 +130,17 @@ namespace Carrot {
     VECTOR_TEMPLATE
     void Vector<TElement>::increaseReserve(std::size_t reserveSize) {
         ensureReserve(size() + reserveSize);
+    }
+
+    VECTOR_TEMPLATE
+    void Vector<TElement>::setGrowthFactor(float factor) {
+        verify(factor >= 1.0f, "Growth factor cannot be < 1 !");
+        this->growthFactor = factor;
+    }
+
+    VECTOR_TEMPLATE
+    float Vector<TElement>::getGrowthFactor() const {
+        return this->growthFactor;
     }
 
     VECTOR_TEMPLATE
@@ -319,5 +334,11 @@ namespace Carrot {
     VECTOR_TEMPLATE
     Allocator& Vector<TElement>::getAllocator() {
         return this->allocator;
+    }
+
+    VECTOR_TEMPLATE
+    void Vector<TElement>::grow(std::size_t minimumCapacity) {
+        std::size_t finalCapacity = static_cast<std::size_t>(std::ceil(minimumCapacity * growthFactor));
+        setCapacity(std::max(finalCapacity, minimumCapacity));
     }
 }

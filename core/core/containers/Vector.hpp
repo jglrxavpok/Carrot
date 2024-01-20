@@ -80,6 +80,15 @@ namespace Carrot {
         void increaseReserve(std::size_t reserveSize);
 
         /**
+         * \brief Sets the growth factor of this vector: used to know how much capacity must be reserved when the vector increases in size past its capacity.
+         * By default, set to 1.0f, and pushBack and emplaceBack will reallocate each time an item is added (if no setCapacity call was done prior).
+         * \param factor factor, starting from 1.0f
+         */
+        void setGrowthFactor(float factor);
+
+        float getGrowthFactor() const;
+
+        /**
          * \brief Removes elements of this vector, without modifying its capacity (no deallocations)
          */
         void clear();
@@ -369,9 +378,12 @@ namespace Carrot {
         Allocator& getAllocator();
 
     private:
+        void grow(std::size_t minimumCapacity);
+
         Allocator& allocator;
         MemoryBlock allocation;
 
+        float growthFactor = 1.0f;
         std::size_t elementCount = 0;
         std::size_t generationIndex = 0; // used to invalidate iterators
     };

@@ -7,6 +7,7 @@
 #include <core/allocators/InlineAllocator.h>
 #include <core/allocators/StackAllocator.h>
 #include <core/containers/Vector.hpp>
+#include <core/utils/RNG.h>
 #include <glm/gtx/norm.hpp>
 
 namespace Carrot {
@@ -25,14 +26,16 @@ namespace Carrot {
     void KDTree<TElement>::build(std::span<const TElement> elements) {
         root = {};
         elementCount = elements.size();
-        std::unordered_set<std::size_t> allPoints;
-        allPoints.reserve(elements.size());
+        Carrot::Vector<std::size_t> allPoints;
+        allPoints.setCapacity(elements.size());
         for(std::size_t i = 0; i < elements.size(); i++) {
-            allPoints.insert(i);
+            allPoints.pushBack(i);
         }
         const glm::vec3 regionMin { -INFINITY,-INFINITY,-INFINITY };
         const glm::vec3 regionMax { +INFINITY,+INFINITY,+INFINITY };
-        buildInner(&root, elements, allPoints, 0, regionMin, regionMax);
+
+        Carrot::StackAllocator stackAllocator { Carrot::Allocator::getDefault() };
+        buildInner(&root, stackAllocator, elements, allPoints, 0, regionMin, regionMax);
     }
 
     KD_TREE_TEMPLATE
@@ -73,7 +76,7 @@ namespace Carrot {
 
 
     KD_TREE_TEMPLATE
-    void KDTree<TElement>::buildInner(Node* pDestination, std::span<const TElement> allElements, const std::unordered_set<std::size_t>& subset, const std::size_t depth, const glm::vec3& regionMin, const glm::vec3& regionMax) {
+    void KDTree<TElement>::buildInner(Node* pDestination, Carrot::Allocator& tempAllocator, std::span<const TElement> allElements, const Carrot::Vector<std::size_t>& subset, const std::size_t depth, const glm::vec3& regionMin, const glm::vec3& regionMax) {
         verify(pDestination != nullptr, "Cannot add to nullptr node");
         pDestination->regionMin = regionMin;
         pDestination->regionMax = regionMax;
@@ -89,14 +92,20 @@ namespace Carrot {
         const std::size_t axisIndex = depth % 3;
 
         // find median
-       // {
-            StackAllocator stackAllocator { MallocAllocator::instance };
-            Vector<std::size_t> points { stackAllocator };
-            points.setCapacity(subset.size());
-            for(std::size_t pointIndex : subset) {
-                points.pushBack(pointIndex);
+        {
+            Vector<std::size_t> points { tempAllocator };
+            if(subset.size() < 512) {
+                points.setCapacity(subset.size());
+                for(std::size_t pointIndex : subset) {
+                    points.pushBack(pointIndex);
+                }
+            } else {
+                points.resize(512);
+                for(std::size_t i = 0; i < 512; i++) {
+                    std::size_t randomIndex = Carrot::RNG::randomFloat(0.0f, subset.size()-1);
+                    points[i] = subset[randomIndex];
+                }
             }
-
             points.sort([&](const std::size_t& a, const std::size_t& b) {
                 const float posA = allElements[a].getPosition()[axisIndex];
                 const float posB = allElements[b].getPosition()[axisIndex];
@@ -105,12 +114,14 @@ namespace Carrot {
 
             pDestination->elementIndex = points[points.size() / 2];
             pDestination->medianPoint = allElements[pDestination->elementIndex].getPosition();
-        //}
+        }
 
         const float split = pDestination->medianPoint[axisIndex];
 
-        std::unordered_set<std::size_t> pointsBefore {};
-        std::unordered_set<std::size_t> pointsAfter {};
+        Carrot::Vector<std::size_t> pointsBefore { tempAllocator };
+        Carrot::Vector<std::size_t> pointsAfter { tempAllocator };
+        pointsBefore.setGrowthFactor(2);
+        pointsAfter.setGrowthFactor(2);
 
         for(std::size_t index : subset) {
             if(index == pDestination->elementIndex) {
@@ -119,9 +130,9 @@ namespace Carrot {
 
             const glm::vec3 position = allElements[index].getPosition();
             if(position[axisIndex] < split) {
-                pointsBefore.insert(index);
+                pointsBefore.pushBack(index);
             } else {
-                pointsAfter.insert(index);
+                pointsAfter.pushBack(index);
             }
         }
 
@@ -130,7 +141,7 @@ namespace Carrot {
             pDestination->pLeft->pParent = pDestination;
             glm::vec3 newMax = regionMax;
             newMax[axisIndex] = split;
-            buildInner(pDestination->pLeft.get(), allElements, pointsBefore, depth+1, regionMin, newMax);
+            buildInner(pDestination->pLeft.get(), tempAllocator, allElements, pointsBefore, depth+1, regionMin, newMax);
         }
         if(!pointsAfter.empty()) {
             auto ptr = makeUnique<Node>(allocator);
@@ -138,7 +149,7 @@ namespace Carrot {
             pDestination->pRight->pParent = pDestination;
             glm::vec3 newMin = regionMin;
             newMin[axisIndex] = split;
-            buildInner(pDestination->pRight.get(), allElements, pointsAfter, depth+1, newMin, regionMax);
+            buildInner(pDestination->pRight.get(), tempAllocator, allElements, pointsAfter, depth+1, newMin, regionMax);
         }
     }
 
