@@ -607,10 +607,10 @@ namespace Fertilizer {
 
             const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.01f) * simplifyScale;
             const float maxUVDistance = tLod * 0.5f + (1-tLod) * 1.0f / 256.0f;
-            const std::vector<std::int64_t> vertexRemap = mergeByDistance(primitive, groupVerticesPreWeld, maxDistance, maxUVDistance, kdtree);
+            const std::vector<std::int64_t> mergeVertexRemap = mergeByDistance(primitive, groupVerticesPreWeld, maxDistance, maxUVDistance, kdtree);
 
             groupingAllocator.clear();
-            const Carrot::Vector<MeshletGroup> groups = groupMeshlets(groupingAllocator, primitive, previousLevelMeshlets, vertexRemap);
+            const Carrot::Vector<MeshletGroup> groups = groupMeshlets(groupingAllocator, primitive, previousLevelMeshlets, mergeVertexRemap);
 
             // ===== Simplify groups
             const std::size_t newMeshletStart = primitive.meshlets.size();
@@ -618,6 +618,11 @@ namespace Fertilizer {
                 groupVertexIndices.clear();
                 // meshlets vector is modified during the loop
                 previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
+
+                Carrot::Vector<Carrot::Vertex> groupVertexBuffer {};
+                groupVertexBuffer.setGrowthFactor(1.5f);
+                Carrot::Vector<std::size_t> group2meshVertexRemap {};
+                std::unordered_map<std::size_t, std::size_t> mesh2groupVertexRemap {};
 
                 // add cluster vertices to this group
                 // and remove clusters from clusters to merge
@@ -628,9 +633,9 @@ namespace Fertilizer {
                     groupVertexIndices.ensureReserve(start + meshlet.indexCount);
                     for(std::size_t j = 0; j < meshlet.indexCount; j += 3) { // triangle per triangle
                         std::int64_t triangle[3] = {
-                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 0] + meshlet.vertexOffset]],
-                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 1] + meshlet.vertexOffset]],
-                            vertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 2] + meshlet.vertexOffset]],
+                            mergeVertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 0] + meshlet.vertexOffset]],
+                            mergeVertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 1] + meshlet.vertexOffset]],
+                            mergeVertexRemap[primitive.meshletVertexIndices[primitive.meshletIndices[meshlet.indexOffset + j + 2] + meshlet.vertexOffset]],
                         };
 
                         // remove triangles which have collapsed on themselves due to vertex merge
@@ -639,9 +644,30 @@ namespace Fertilizer {
                         }
 
                         for(std::size_t vertex = 0; vertex < 3; vertex++) {
-                            groupVertexIndices.pushBack(triangle[vertex]);
+                            const std::size_t vertexIndex = triangle[vertex];
+
+                            // map vertex index valid for entire to a smaller vertex buffer just for this group
+                            auto [iter, bWasNew] = mesh2groupVertexRemap.try_emplace(vertexIndex);
+                            if(bWasNew) {
+                                iter->second = groupVertexBuffer.size();
+                                groupVertexBuffer.emplaceBack(primitive.vertices[iter->second]);
+                            }
+                            groupVertexIndices.pushBack(iter->second);
                         }
                     }
+                }
+
+                if(groupVertexIndices.empty()) {
+                    continue;
+                }
+
+                // create reverse mapping from group to mesh-wide vertex indices
+                group2meshVertexRemap.resize(groupVertexBuffer.size());
+                group2meshVertexRemap.fill(~0ull);
+
+                for(const auto& [meshIndex, groupIndex] : mesh2groupVertexRemap) {
+                    verify(groupIndex < group2meshVertexRemap.size(), "Wrong size!");
+                    group2meshVertexRemap[groupIndex] = meshIndex;
                 }
 
                 float targetError = (0.1f * tLod + 0.01f * (1-tLod));
@@ -657,13 +683,18 @@ namespace Fertilizer {
 
                 std::size_t simplifiedIndexCount = meshopt_simplify(simplifiedIndexBuffer.data(), // output
                                                                     groupVertexIndices.data(), groupVertexIndices.size(), // index buffer
-                                                                    &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex), // vertex buffer
+                                                                    &groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex), // vertex buffer
                                                                     targetIndexCount, targetError, options, &simplificationError
                 );
                 simplifiedIndexBuffer.resize(simplifiedIndexCount);
 
                 // ===== Generate meshlets for this group
                 if(simplifiedIndexCount > 0) {
+                    // remap simplified index buffer to mesh-wide vertex indices
+                    for(auto& index : simplifiedIndexBuffer) {
+                        index = group2meshVertexRemap[index];
+                    }
+
                     std::size_t startIndex = primitive.meshlets.size();
                     appendMeshlets(primitive, simplifiedIndexBuffer);
                 }

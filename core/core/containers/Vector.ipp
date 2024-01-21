@@ -200,6 +200,13 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    void Vector<TElement>::fill(const TElement& toCopy) {
+        for(std::size_t i = 0; i < elementCount; i++) {
+            (*this)[i] = toCopy;
+        }
+    }
+
+    VECTOR_TEMPLATE
     bool Vector<TElement>::operator==(const Vector& other) const {
         if(size() != other.size()) {
             return false;

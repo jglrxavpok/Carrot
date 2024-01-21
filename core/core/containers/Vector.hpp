@@ -111,6 +111,12 @@ namespace Carrot {
         template<typename Compare>
         void sort(const Compare& compare);
 
+        /**
+         * \brief Replaces all elements of this vector with the given value
+         * \param toCopy value to use for all elements of this vector
+         */
+        void fill(const TElement& toCopy);
+
     public:
         bool operator==(const Vector& other) const;
         bool operator!=(const Vector& other) const;
