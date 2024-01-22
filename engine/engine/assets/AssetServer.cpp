@@ -12,8 +12,6 @@
 #include <core/io/FileSystemOS.h>
 #include <Fertilizer.h>
 
-#pragma optimize("", off)
-
 namespace Carrot {
     namespace fs = std::filesystem;
 
@@ -243,6 +241,7 @@ namespace Carrot {
             return {};
         }
 
+        Carrot::Profiling::PrintingScopedTimer convertTimer{ Carrot::sprintf("Converting %s", path.toString().c_str()) };
         const fs::path diskPath = GetVFS().resolve(path);
         Fertilizer::ConversionResult result = Fertilizer::convert(diskPath, convertedPath, false);
 

@@ -37,30 +37,15 @@ namespace Fertilizer {
     bool gltfReadWholeFile(std::vector<unsigned char>* out,
                            std::string* err, const std::string& filepath,
                            void* userData) {
-        FILE* f;
+        try {
+            Carrot::IO::FileHandle f { filepath, OpenMode::Read };
 
-        CLEANUP(fclose(f));
-        if(fopen_s(&f, filepath.c_str(), "rb")) {
-            *err = "Could not open file.";
-            return false;
-        }
+            std::size_t size = f.getSize();
 
-        if(fseek(f, 0, SEEK_END)) {
-            *err = "Could not seek in file.";
-            return false;
-        }
-
-        std::size_t size = ftell(f);
-
-        if(fseek(f, 0, SEEK_SET)) {
-            *err = "Could not seek in file.";
-            return false;
-        }
-
-        out->resize(size);
-        std::size_t readSize = fread_s(out->data(), size, 1, size, f);
-        if(readSize != size) {
-            *err = "Could not read file.";
+            out->resize(size);
+            f.read(out->data(), out->size(), 0);
+        } catch (std::filesystem::filesystem_error& e) {
+            *err = e.what();
             return false;
         }
         return true;
