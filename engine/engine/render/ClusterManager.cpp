@@ -104,8 +104,14 @@ namespace Carrot::Render {
             auto& cluster = gpuClusters[i + firstClusterIndex];
             cluster.vertexBufferAddress = vertexData.view.getDeviceAddress() + vertexOffset;
             cluster.indexBufferAddress = indexData.view.getDeviceAddress() + indexOffset;
-            vertexOffset += sizeof(Carrot::Vertex) * desc.meshlets[i].vertexCount;
-            indexOffset += sizeof(std::uint32_t) * desc.meshlets[i].indexCount;
+
+            const auto& meshlet = desc.meshlets[i];
+            cluster.boundingSphere = glm::vec4 { meshlet.boundingSphereCenter, meshlet.boundingSphereRadius };
+            cluster.parentBoundingSphere = glm::vec4 { meshlet.parentBoundingSphereCenter, meshlet.parentBoundingSphereRadius };
+            cluster.parentError = meshlet.parentError;
+            cluster.error = meshlet.clusterError;
+            vertexOffset += sizeof(Carrot::Vertex) * meshlet.vertexCount;
+            indexOffset += sizeof(std::uint32_t) * meshlet.indexCount;
         }
 
         requireClusterUpdate = true;
@@ -186,15 +192,61 @@ namespace Carrot::Render {
         }
 
         static int globalLOD = 0;
+        static int lodSelectionMode = 0;
+        static float errorThreshold = 0.0f;
         const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
         if(isMainViewport) {
             if(ImGui::Begin("Debug clusters")) {
-                ImGui::SliderInt("LOD", &globalLOD, 0, 25);
+                ImGui::RadioButton("Manual LOD selection", &lodSelectionMode, 0);
+                ImGui::RadioButton("Automatic LOD selection", &lodSelectionMode, 1);
+
+                if(lodSelectionMode == 0) {
+                    ImGui::SliderInt("LOD", &globalLOD, 0, 25);
+                } else if(lodSelectionMode == 1) {
+                    ImGui::SliderFloat("Threshold", &errorThreshold, 0.0f, 10.0f);
+                }
                 ImGui::Text("Current triangle count: %llu", triangleCount);
             }
             ImGui::End();
             triangleCount = 0;
         }
+
+        const Carrot::Camera& camera = renderContext.getCamera();
+        const glm::vec3 cameraPos = (camera.getCurrentFrameViewMatrix() * glm::vec4{ 0,0,0,1 }).xyz;
+
+        auto testLOD = [&](const Cluster& c, const ClusterModel& instance) {
+            if(lodSelectionMode == 0) {
+                return c.lod == globalLOD;
+            } else {
+                // assume a fixed resolution and fov
+                const float testFOV = glm::half_pi<float>();
+                const float cotHalfFov = 1.0f / glm::tan(testFOV / 2.0f);
+                const float testScreenHeight = renderContext.pViewport->getHeight();
+
+                // https://stackoverflow.com/questions/21648630/radius-of-projected-sphere-in-screen-space
+                auto projectErrorToScreen = [&](const Math::Sphere& sphere) {
+                    const float d = glm::distance(sphere.center, cameraPos);
+                    const float r = sphere.radius;
+                    return testScreenHeight / 2.0f * cotHalfFov * r / glm::sqrt(d*d - r*r);
+                };
+
+                Math::Sphere projectedBounds {
+                    c.boundingSphere.xyz,
+                    std::max(c.error, 10e-10f)
+                };
+                const glm::mat4 completeProj = instance.instanceData.transform * c.transform;
+                projectedBounds.transform(completeProj);
+                const float clusterError = projectErrorToScreen(projectedBounds);
+
+                Math::Sphere parentProjectedBounds {
+                    c.parentBoundingSphere.xyz,
+                    std::max(c.parentError, 10e-10f)
+                };
+                parentProjectedBounds.transform(completeProj);
+                const float parentError = projectErrorToScreen(parentProjectedBounds);
+                return clusterError <= errorThreshold && parentError > errorThreshold;
+            }
+        };
 
         // draw all instances that match with the given render context
         auto& packet = renderer.makeRenderPacket(PassEnum::VisibilityBuffer, renderContext);
@@ -253,7 +305,7 @@ namespace Carrot::Render {
                 for(const auto& pTemplate : instance->templates) {
                     std::size_t clusterOffset = 0;
                     for(const auto& cluster : pTemplate->clusters) {
-                        if(cluster.lod == globalLOD) {
+                        if(testLOD(cluster, *instance)) {
                             auto& drawCommand = packet.unindexedDrawCommands.emplace_back();
                             drawCommand.instanceCount = 1;
                             drawCommand.firstInstance = 0;

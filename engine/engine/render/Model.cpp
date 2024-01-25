@@ -458,7 +458,7 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::Model::getSkinnedBLAS() {
 }
 
 std::shared_ptr<Carrot::Render::ClustersTemplate> Carrot::Model::lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform) {
-    return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [&]() -> std::shared_ptr<Carrot::Render::ClustersTemplate> {
+    return meshletsPerStaticMesh.getOrCompute(staticMeshIndex, [this, staticMeshIndex, transform]() -> std::shared_ptr<Carrot::Render::ClustersTemplate> {
         StaticMeshInfo& sMeshInfo = staticMeshInfo[staticMeshIndex];
         if(sMeshInfo.meshlets.empty()) {
             return nullptr;

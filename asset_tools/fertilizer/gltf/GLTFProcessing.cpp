@@ -23,6 +23,7 @@
 #define IDXTYPEWIDTH 64
 #define REALTYPEWIDTH 64
 #include <metis.h>
+#include <core/math/Sphere.h>
 #include <glm/gtx/norm.hpp>
 
 namespace Fertilizer {
@@ -485,7 +486,7 @@ namespace Fertilizer {
         return vertexRemap;
     }
 
-    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer) {
+    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const meshopt_Bounds& clusterBounds, float clusterError) {
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
@@ -533,6 +534,12 @@ namespace Fertilizer {
 
             carrotMeshlet.indexOffset = indexOffset + meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
+
+            carrotMeshlet.boundingSphereCenter = glm::vec3 {
+                clusterBounds.center[0], clusterBounds.center[1], clusterBounds.center[2]
+            };
+            carrotMeshlet.boundingSphereRadius = clusterBounds.radius;
+            carrotMeshlet.clusterError = clusterError;
         }, 32);
     }
 
@@ -544,9 +551,15 @@ namespace Fertilizer {
         // tell meshoptimizer to generate meshlets
         auto& indexBuffer = primitive.indices;
         std::size_t previousMeshletsStart = 0;
-        appendMeshlets(primitive, indexBuffer);
+        {
+            Carrot::Vector<unsigned int> lod0Indices;
+            lod0Indices.resize(indexBuffer.size());
+            meshopt_Bounds lod0Bounds = meshopt_computeClusterBounds(
+                lod0Indices.data(), lod0Indices.size(),
+                &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex));
+            appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f);
+        }
 
-        // TODO: move inside loop (KDtree per LOD level)
         Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
 
         // level n+1
@@ -675,13 +688,36 @@ namespace Fertilizer {
 
                 // ===== Generate meshlets for this group
                 if(simplifiedIndexCount > 0) {
+                    meshopt_Bounds simplifiedClusterBounds = meshopt_computeClusterBounds(
+                        simplifiedIndexBuffer.data(), simplifiedIndexBuffer.size(),
+                        &groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
+
+                    float localScale = meshopt_simplifyScale(&groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
+                    float meshSpaceError = simplificationError * localScale;
+                    float parentError = 0.0f;
+
+                    Carrot::Math::Sphere parentBoundingSphere;
+                    for(const auto& meshletIndex : group.meshlets) {
+                        const auto& previousMeshlet = previousLevelMeshlets[meshletIndex];
+                        // ensure parent(this) error >= child(members of group) error
+                        parentError = std::max(parentError, previousMeshlet.clusterError);
+                    }
+
+                    meshSpaceError += parentError;
+                    for(const auto& meshletIndex : group.meshlets) {
+                        previousLevelMeshlets[meshletIndex].parentError = meshSpaceError;
+                        previousLevelMeshlets[meshletIndex].parentBoundingSphereCenter =
+                            glm::vec3 { simplifiedClusterBounds.center[0], simplifiedClusterBounds.center[1], simplifiedClusterBounds.center[2] };
+                        previousLevelMeshlets[meshletIndex].parentBoundingSphereRadius = simplifiedClusterBounds.radius;
+                    }
+
                     // remap simplified index buffer to mesh-wide vertex indices
                     for(auto& index : simplifiedIndexBuffer) {
                         index = group2meshVertexRemap[index];
                     }
 
                     std::size_t startIndex = primitive.meshlets.size();
-                    appendMeshlets(primitive, simplifiedIndexBuffer);
+                    appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError);
                 }
             }
 

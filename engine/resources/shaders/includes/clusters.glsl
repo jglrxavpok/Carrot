@@ -4,6 +4,10 @@ struct Cluster {
     uint8_t triangleCount;
     uint32_t lod;
     mat4 transform;
+    vec4 boundingSphere;
+    vec4 parentBoundingSphere;
+    float error;
+    float parentError;
 };
 
 struct ClusterInstance {

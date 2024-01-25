@@ -38,6 +38,10 @@ namespace Carrot::Render {
         std::uint8_t triangleCount;
         std::uint32_t lod;
         glm::mat4 transform{ 1.0f };
+        glm::vec4 boundingSphere{0.0f}; // xyz + radius
+        glm::vec4 parentBoundingSphere{0.0f}; // xyz + radius
+        float error = 0.0f;
+        float parentError = std::numeric_limits<float>::infinity();
     };
 
     /**
