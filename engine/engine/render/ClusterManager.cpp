@@ -212,7 +212,6 @@ namespace Carrot::Render {
         }
 
         const Carrot::Camera& camera = renderContext.getCamera();
-        const glm::vec3 cameraPos = (camera.getCurrentFrameViewMatrix() * glm::vec4{ 0,0,0,1 }).xyz;
 
         auto testLOD = [&](const Cluster& c, const ClusterModel& instance) {
             if(lodSelectionMode == 0) {
@@ -225,16 +224,19 @@ namespace Carrot::Render {
 
                 // https://stackoverflow.com/questions/21648630/radius-of-projected-sphere-in-screen-space
                 auto projectErrorToScreen = [&](const Math::Sphere& sphere) {
-                    const float d = glm::distance(sphere.center, cameraPos);
+                    if(!std::isfinite(sphere.radius)) {
+                        return sphere.radius;
+                    }
+                    const float d2 = glm::dot(sphere.center, sphere.center);
                     const float r = sphere.radius;
-                    return testScreenHeight / 2.0f * cotHalfFov * r / glm::sqrt(d*d - r*r);
+                    return testScreenHeight / 2.0f * cotHalfFov * r / glm::sqrt(d2 - r*r);
                 };
 
                 Math::Sphere projectedBounds {
                     c.boundingSphere.xyz,
                     std::max(c.error, 10e-10f)
                 };
-                const glm::mat4 completeProj = instance.instanceData.transform * c.transform;
+                const glm::mat4 completeProj = camera.getCurrentFrameViewMatrix() * instance.instanceData.transform * c.transform;
                 projectedBounds.transform(completeProj);
                 const float clusterError = projectErrorToScreen(projectedBounds);
 
