@@ -4,6 +4,7 @@
 
 #include <gltf/GLTFProcessing.h>
 #include <core/utils/CarrotTinyGLTF.h>
+#include <core/utils/UserNotifications.h>
 #include <core/scene/LoadedScene.h>
 #include <core/Macros.h>
 #include <core/scene/GLTFLoader.h>
@@ -65,7 +66,9 @@ namespace Fertilizer {
      * "Expands" the vertex buffer: this is the exact opposite of indexing, we separate vertex info for each face
      *  otherwise keeping the same index buffer will provide incorrect results after attribute generation
      */
-    static ExpandedMesh expandMesh(const LoadedPrimitive& primitive) {
+    static ExpandedMesh expandMesh(const LoadedPrimitive& primitive, const Carrot::NotificationID& notifID) {
+        Carrot::UserNotifications::getInstance().setBody(notifID, Carrot::sprintf("Expand mesh %s", primitive.name.c_str()));
+
         ExpandedMesh expanded;
         const bool isSkinned = primitive.isSkinned;
         const std::size_t vertexCount = isSkinned ? primitive.skinnedVertices.size() : primitive.vertices.size();
@@ -116,7 +119,9 @@ namespace Fertilizer {
     /**
      * Generate indexed mesh into 'out' from a non-indexed mesh inside ExpandedMesh
      */
-    static void collapseMesh(LoadedPrimitive& out, ExpandedMesh& mesh) {
+    static void collapseMesh(LoadedPrimitive& out, ExpandedMesh& mesh, const Carrot::NotificationID& notifID) {
+        Carrot::UserNotifications::getInstance().setBody(notifID, Carrot::sprintf("Collapse mesh %s", out.name.c_str()));
+
         out.vertices.clear();
         out.skinnedVertices.clear();
         out.indices.clear();
@@ -187,7 +192,9 @@ namespace Fertilizer {
         }
     }
 
-    static void generateFlatNormals(ExpandedMesh& mesh) {
+    static void generateFlatNormals(ExpandedMesh& mesh, const Carrot::NotificationID& notifID) {
+        Carrot::UserNotifications::getInstance().setBody(notifID, "Generate normals");
+
         std::size_t faceCount = mesh.vertices.size() / 3;
         for(std::size_t face = 0; face < faceCount; face++) {
             Carrot::Vertex& a = mesh.vertices[face * 3 + 0].vertex;
@@ -211,7 +218,9 @@ namespace Fertilizer {
         }
     }
 
-    static void generateMikkTSpaceTangents(ExpandedMesh& mesh) {
+    static void generateMikkTSpaceTangents(ExpandedMesh& mesh, const Carrot::NotificationID& notifID) {
+        Carrot::UserNotifications::getInstance().setBody(notifID, "Generate tangents");
+
         bool r = generateTangents(mesh);
         if(!r) {
             Carrot::Log::error("Could not generate tangents for mesh");
@@ -223,7 +232,9 @@ namespace Fertilizer {
      * applying Mikkt-Space with no UV mapping (either inside 'generateMikkTSpaceTangents' or other tools, eg Blender)
      * @param mesh the mesh to clean up
      */
-    static void cleanupTangents(ExpandedMesh& mesh) {
+    static void cleanupTangents(ExpandedMesh& mesh, const Carrot::NotificationID& notifID) {
+        Carrot::UserNotifications::getInstance().setBody(notifID, "Clean tangents");
+
         verify(mesh.vertices.size() % 3 == 0, "Only triangle meshs are supported");
         bool needsRegeneration = false;
         for (std::size_t i = 0; i < mesh.vertices.size(); i += 3) {
@@ -727,11 +738,17 @@ namespace Fertilizer {
     }
 
     static void processModel(const std::string& modelName, tinygltf::Model& model) {
+        Carrot::NotificationID loadNotifID = Carrot::UserNotifications::getInstance().showNotification({.title = Carrot::sprintf("Processing %s", modelName.c_str())});
+        CLEANUP(Carrot::UserNotifications::getInstance().closeNotification(loadNotifID));
+
         GLTFLoader loader{};
         LoadedScene scene = loader.load(model, {});
 
-        for(auto& primitive : scene.primitives) {
-            ExpandedMesh expandedMesh = expandMesh(primitive);
+        for(std::size_t i = 0; i < scene.primitives.size(); i++) {
+            Carrot::UserNotifications::getInstance().setProgress(loadNotifID, float(i) / scene.primitives.size());
+
+            auto& primitive = scene.primitives[i];
+            ExpandedMesh expandedMesh = expandMesh(primitive, loadNotifID);
 
             if(!primitive.hadTexCoords) {
                 //TODO; // not supported yet
@@ -739,19 +756,19 @@ namespace Fertilizer {
 
             if(!primitive.hadNormals) {
                 Carrot::Log::info("Mesh %s has no normals, generating flat normals...", primitive.name.c_str());
-                generateFlatNormals(expandedMesh);
+                generateFlatNormals(expandedMesh, loadNotifID);
                 Carrot::Log::info("Mesh %s, generated flat normals!", primitive.name.c_str());
             }
 
             if(!primitive.hadTangents) {
                 Carrot::Log::info("Mesh %s has no tangents, generating tangents...", primitive.name.c_str());
-                generateMikkTSpaceTangents(expandedMesh);
+                generateMikkTSpaceTangents(expandedMesh, loadNotifID);
                 Carrot::Log::info("Mesh %s, generated tangents!", primitive.name.c_str());
             }
 
-            cleanupTangents(expandedMesh);
+            cleanupTangents(expandedMesh, loadNotifID);
 
-            collapseMesh(primitive, expandedMesh);
+            collapseMesh(primitive, expandedMesh, loadNotifID);
             if(!primitive.vertices.empty()) {
                 // TODO: support for skinned meshes
                 const float simplifyScale = meshopt_simplifyScale(&primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex));

@@ -82,6 +82,7 @@ namespace Peeler {
         void UIPlayBar(const Carrot::Render::Context& renderContext);
         void UIWorldHierarchy(const Carrot::Render::Context& renderContext);
         void UISceneProperties(const Carrot::Render::Context& renderContext);
+        void UIStatusBar(const Carrot::Render::Context& renderContext);
 
         void drawScenesMenu();
         void drawSettingsMenu();

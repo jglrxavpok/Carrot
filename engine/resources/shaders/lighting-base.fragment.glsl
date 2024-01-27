@@ -21,7 +21,9 @@ layout(push_constant) uniform PushConstant {
     uint frameWidth;
     uint frameHeight;
 
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
     bool hasTLAS; // handle special cases where no raytraceable geometry is present in the scene
+#endif
 } push;
 
 #include "includes/gbuffer_input.glsl"

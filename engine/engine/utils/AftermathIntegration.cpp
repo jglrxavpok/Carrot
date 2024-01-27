@@ -39,7 +39,6 @@
 #ifdef AFTERMATH_ENABLE
 #include <GFSDK_Aftermath_GpuCrashDump.h>
 #include "engine/utils/NsightAftermathHelpers.h"
-#endif
 
 static std::mutex mut{};
 static bool enabled = false;
@@ -255,3 +254,5 @@ void initAftermath() {
 void shutdownAftermath() {
     AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_DisableGpuCrashDumps());
 }
+
+#endif

@@ -4,11 +4,13 @@
 
 #include "VulkanDriver.h"
 #include "engine/constants.h"
+#include "engine/console/RuntimeOption.hpp"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/render/CameraBufferObject.h"
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Texture.h"
 #include "core/io/Logging.hpp"
+#include "core/io/Strings.h"
 #include "engine/render/TextureRepository.h"
 #include "engine/utils/Macros.h"
 #include "engine/render/resources/BufferView.h"
@@ -760,7 +762,9 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 }
 
 Carrot::VulkanDriver::~VulkanDriver() {
+#ifdef AFTERMATH_ENABLE
     shutdownAftermath();
+#endif
 
     mainWindow.destroySwapchainAndSurface();
 }

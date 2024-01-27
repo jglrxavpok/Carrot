@@ -129,12 +129,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 const char* shader = useRaytracingVersion ? "lighting-raytracing" : "lighting-noraytracing";
                 auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
 
-                struct PushConstant {
+                struct PushConstantNoRT {
                     std::uint32_t frameCount;
                     std::uint32_t frameWidth;
                     std::uint32_t frameHeight;
-
-                    bool hasTLAS = false;
+                };
+                struct PushConstantRT: PushConstantNoRT {
+                    bool hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
                 } block;
 
                 block.frameCount = renderer.getFrameCount();
@@ -150,7 +151,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;
                 }
-                renderer.pushConstantBlock("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+                if(GetCapabilities().supportsRaytracing) {
+                    renderer.pushConstantBlock<PushConstantRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+                } else {
+                    renderer.pushConstantBlock<PushConstantNoRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+                }
 
                 // GBuffer inputs
                 data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);

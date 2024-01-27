@@ -10,6 +10,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/conversions.h>
 #include <core/io/Logging.hpp>
+#include <core/utils/UserNotifications.h>
 #include <core/scene/LoadedScene.h>
 #include <engine/render/GBufferDrawData.h>
 #include <engine/render/RenderPacket.h>
@@ -36,7 +37,9 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     ZoneScoped;
     ZoneText(file.getName().c_str(), file.getName().size());
     debugName = file.getName();
-   // Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
+    Carrot::NotificationID loadNotifID = Carrot::UserNotifications::getInstance().showNotification({.title = Carrot::sprintf("Loading %s", debugName.c_str())});
+    CLEANUP(Carrot::UserNotifications::getInstance().closeNotification(loadNotifID));
+    // Profiling::PrintingScopedTimer _t(Carrot::sprintf("Model::Model(%s)", file.getName().c_str()));
 
     verify(file.isFile(), "In-memory models are not supported!");
 
@@ -58,19 +61,24 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     Carrot::Async::Counter waitMaterialLoads;
     // TODO: reduce task count
     auto& materialSystem = GetRenderer().getMaterialSystem();
-    for(const auto& material : scene.materials) {
+    Carrot::UserNotifications::getInstance().setBody(loadNotifID, "Loading materials");
+    std::atomic<std::size_t> textureLoadedCount = 0;
+    std::atomic<std::size_t> textureCount = 0;
+    for(std::size_t i = 0; i < scene.materials.size(); i++) {
+        const auto& material = scene.materials[i];
         ZoneScopedN("Loading material");
         ZoneText(material.name.c_str(), material.name.size());
 
         Profiling::PrintingScopedTimer _t(Carrot::sprintf("Loading material %s", material.name.c_str()));
 
         auto handle = materialSystem.createMaterialHandle();
+        textureCount += 4; // albedo, normal map, emissive, metallic roughness
 
         GetTaskScheduler().schedule(Carrot::TaskDescription {
             .name = Carrot::sprintf("Load textures for material %s", material.name.c_str()),
-            .task = [material, handle, file](TaskHandle& task) -> void {
+            .task = [&scene, &loadNotifID, &textureLoadedCount, &textureCount, material, handle, file](TaskHandle& task) -> void {
                 auto& materialSystem = GetRenderer().getMaterialSystem();
-                auto setMaterialTexture = [&task, &file, material](std::shared_ptr<Render::TextureHandle>& toSet, const Carrot::IO::VFS::Path& texturePath, std::shared_ptr<Render::TextureHandle> defaultHandle) {
+                auto setMaterialTexture = [&loadNotifID, &scene, &textureLoadedCount, &textureCount, &task, &file, material](std::shared_ptr<Render::TextureHandle>& toSet, const Carrot::IO::VFS::Path& texturePath, std::shared_ptr<Render::TextureHandle> defaultHandle) {
                     Profiling::PrintingScopedTimer _t(Carrot::sprintf("setMaterialTexture(%s)", texturePath.toString().c_str()));
                     auto& materialSystem = GetRenderer().getMaterialSystem();
                     bool loadedATexture = false;
@@ -88,6 +96,8 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                     } else {
                         toSet = defaultHandle;
                     }
+                    textureLoadedCount++;
+                    Carrot::UserNotifications::getInstance().setProgress(loadNotifID, float(textureLoadedCount) / textureCount);
                     return loadedATexture;
                 };
 

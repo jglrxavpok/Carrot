@@ -19,12 +19,12 @@ Compiled with Visual Studio 2022.
 ## Dependencies
 
 ### What you need to install
-* `Vulkan`: Graphics API. I currently use the 1.3.246.0 LunarG SDK.
+* `Vulkan`: Graphics API
 * `Lua`: LuaJIT and Vanilla Lua are both supported by sol3 (C++ lib for Lua support).
 * `Mono`: Carrot engine uses Mono to run C# code. Using mono-6.12.0.182 at the time of writing
 
 ### Thirdparty libraries
-* `Vulkan`: Graphics API. I currently use the 1.3.246.0 LunarG SDK.
+* `Vulkan`: Graphics API
 * `asio`: Networking lib.
 * `Assimp`: **ass**et **imp**orting lib, used to load models
 * `dr_libs`: Audio codecs

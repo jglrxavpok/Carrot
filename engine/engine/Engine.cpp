@@ -86,7 +86,7 @@
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 Carrot::Engine* Carrot::Engine::instance = nullptr;
-static Carrot::RuntimeOption showFPS("Engine/Show FPS", true);
+static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
 static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
 
 static std::unordered_set<int> activeJoysticks{};
@@ -369,10 +369,21 @@ void Carrot::Engine::run() {
         {
             ZoneScopedN("File watching");
             Carrot::removeIf(fileWatchers, [](auto p) { return p.expired(); });
-            for(const auto& ref : fileWatchers) {
-                if(auto ptr = ref.lock()) {
-                    ptr->tick();
+
+            if(config.enableFileWatching) {
+                Carrot::Async::Counter watchSync;
+                for(const auto& ref : fileWatchers) {
+                    if(auto ptr = ref.lock()) {
+                        taskScheduler.schedule(Carrot::TaskDescription {
+                                .name = "File watching",
+                                .task = [ptr](Carrot::TaskHandle& task) {
+                                    ptr->tick();
+                                },
+                                .joiner = &watchSync,
+                        }, Carrot::TaskScheduler::FrameParallelWork);
+                    }
                 }
+                watchSync.busyWait();
             }
         }
 
@@ -903,7 +914,8 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
         onFrame(getMainViewport());
 
         if(showFPS) {
-            if(ImGui::Begin("FPS Counter", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
+            bool bOpen = true;
+            if(ImGui::Begin("FPS Counter", &bOpen, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse)) {
                 ImGui::Text("Estimated FPS: %.3f", currentFPS);
 
                 const float expectedDelta = 1.0f / (float)config.tickRate;
@@ -1004,6 +1016,10 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 drawHistory(recordTimeHistory, 50, goodDelta);
             }
             ImGui::End();
+
+            if(!bOpen) {
+                showFPS.setValue(false);
+            }
         }
 
         assetServer.beforeRecord(mainRenderContext);

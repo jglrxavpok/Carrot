@@ -65,7 +65,7 @@ namespace Carrot::Physics {
     }
 
     void
-    DebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor) {
+    DebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, ECastShadow inCastShadow /*unused*/) {
         std::size_t index = vertices.size();
         vertices.resize(vertices.size() + 3);
         indices.resize(indices.size() + 3);

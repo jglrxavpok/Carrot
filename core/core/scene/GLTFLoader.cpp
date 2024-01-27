@@ -5,6 +5,7 @@
 #include "GLTFLoader.h"
 #include "core/io/Logging.hpp"
 #include <core/utils/Profiling.h>
+#include <core/utils/UserNotifications.h>
 #include <glm/gtx/quaternion.hpp>
 #include <set>
 
@@ -433,6 +434,9 @@ namespace Carrot::Render {
     }
 
     LoadedScene GLTFLoader::load(const tinygltf::Model& model, const IO::VFS::Path& modelFilepath) {
+        NotificationID loadNotifID = UserNotifications::getInstance().showNotification({.title = Carrot::sprintf("Loading %s", modelFilepath.toString().c_str())});
+        CLEANUP(UserNotifications::getInstance().closeNotification(loadNotifID));
+
         LoadedScene result;
         for(const auto& requiredExtension : model.extensionsRequired) {
             bool supported = false;
@@ -503,7 +507,11 @@ namespace Carrot::Render {
         bool hasAnySkin = false;
         std::vector<GLTFMesh> meshes;
         meshes.reserve(model.meshes.size());
-        for(const auto& mesh : model.meshes) {
+        for(std::size_t i = 0; i < model.meshes.size(); i++) {
+            const auto& mesh = model.meshes[i];
+            UserNotifications::getInstance().setBody(loadNotifID, Carrot::sprintf("Loading mesh (%llu / %llu)", i, model.meshes.size()));
+            UserNotifications::getInstance().setProgress(loadNotifID, float(i) / model.meshes.size());
+
             GLTFMesh& gltfMesh = meshes.emplace_back();
             gltfMesh.firstPrimitive = result.primitives.size();
 
