@@ -563,7 +563,7 @@ namespace Fertilizer {
         Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
 
         // level n+1
-        const int maxLOD = 10;
+        const int maxLOD = 25;
         Carrot::Vector<unsigned int> groupVertexIndices;
         Carrot::Vector<VertexWrapper> groupVerticesPreWeld;
 
@@ -696,7 +696,6 @@ namespace Fertilizer {
                     float meshSpaceError = simplificationError * localScale;
                     float parentError = 0.0f;
 
-                    Carrot::Math::Sphere parentBoundingSphere;
                     for(const auto& meshletIndex : group.meshlets) {
                         const auto& previousMeshlet = previousLevelMeshlets[meshletIndex];
                         // ensure parent(this) error >= child(members of group) error
@@ -716,7 +715,6 @@ namespace Fertilizer {
                         index = group2meshVertexRemap[index];
                     }
 
-                    std::size_t startIndex = primitive.meshlets.size();
                     appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError);
                 }
             }
