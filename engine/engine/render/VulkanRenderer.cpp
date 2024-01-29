@@ -974,33 +974,34 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
     {
         static DebugBufferObject obj{};
         auto& buffer = debugBuffers[renderContext.swapchainIndex];
-
-        static std::uint32_t gBufferDebugType = DEBUG_GBUFFER_DISABLED;
-
+        
         if(ShowGBuffer && renderContext.pViewport == &GetEngine().getMainViewport()) {
             bool open = true;
             if(ImGui::Begin("GBuffer debug", &open)) {
-                static int gIndex = DEBUG_GBUFFER_DISABLED;
-                ImGui::RadioButton("Disable debug", &gIndex, DEBUG_GBUFFER_DISABLED);
-                ImGui::RadioButton("Albedo", &gIndex, DEBUG_GBUFFER_ALBEDO);
-                ImGui::RadioButton("Positions", &gIndex, DEBUG_GBUFFER_POSITION);
-                ImGui::RadioButton("Normals", &gIndex, DEBUG_GBUFFER_NORMAL);
-                ImGui::RadioButton("Tangents", &gIndex, DEBUG_GBUFFER_TANGENT);
-                ImGui::RadioButton("Depth", &gIndex, DEBUG_GBUFFER_DEPTH);
-                ImGui::RadioButton("Metallic Roughness", &gIndex, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
-                ImGui::RadioButton("Emissive", &gIndex, DEBUG_GBUFFER_EMISSIVE);
-                ImGui::RadioButton("Randomness", &gIndex, DEBUG_GBUFFER_RANDOMNESS);
-                ImGui::RadioButton("Motion", &gIndex, DEBUG_GBUFFER_MOTION);
-                ImGui::RadioButton("Moments (RG), Reprojection history length (B)", &gIndex, DEBUG_GBUFFER_MOMENTS);
-                ImGui::RadioButton("EntityID", &gIndex, DEBUG_GBUFFER_ENTITYID);
-                ImGui::RadioButton("Lighting", &gIndex, DEBUG_GBUFFER_LIGHTING);
-                ImGui::RadioButton("Noisy lighting", &gIndex, DEBUG_GBUFFER_NOISY_LIGHTING);
-                ImGui::RadioButton("Temporal denoise result", &gIndex, DEBUG_POST_TEMPORAL_DENOISE);
-                ImGui::RadioButton("Temporal denoise result (with firefly rejection)", &gIndex, DEBUG_POST_FIREFLY_REJECTION);
-                ImGui::RadioButton("Variance", &gIndex, DEBUG_VARIANCE);
-                ImGui::RadioButton("Visibility buffer", &gIndex, DEBUG_VISIBILITY_BUFFER);
+                ImGui::RadioButton("Disable debug", &renderDebugType, DEBUG_GBUFFER_DISABLED);
+                ImGui::RadioButton("Albedo", &renderDebugType, DEBUG_GBUFFER_ALBEDO);
+                ImGui::RadioButton("Positions", &renderDebugType, DEBUG_GBUFFER_POSITION);
+                ImGui::RadioButton("Normals", &renderDebugType, DEBUG_GBUFFER_NORMAL);
+                ImGui::RadioButton("Tangents", &renderDebugType, DEBUG_GBUFFER_TANGENT);
+                ImGui::RadioButton("Depth", &renderDebugType, DEBUG_GBUFFER_DEPTH);
+                ImGui::RadioButton("Metallic Roughness", &renderDebugType, DEBUG_GBUFFER_METALLIC_ROUGHNESS);
+                ImGui::RadioButton("Emissive", &renderDebugType, DEBUG_GBUFFER_EMISSIVE);
+                ImGui::RadioButton("Randomness", &renderDebugType, DEBUG_GBUFFER_RANDOMNESS);
+                ImGui::RadioButton("Motion", &renderDebugType, DEBUG_GBUFFER_MOTION);
+                ImGui::RadioButton("Moments (RG), Reprojection history length (B)", &renderDebugType, DEBUG_GBUFFER_MOMENTS);
+                ImGui::RadioButton("EntityID", &renderDebugType, DEBUG_GBUFFER_ENTITYID);
+                ImGui::RadioButton("Lighting", &renderDebugType, DEBUG_GBUFFER_LIGHTING);
+                ImGui::RadioButton("Noisy lighting", &renderDebugType, DEBUG_GBUFFER_NOISY_LIGHTING);
+                ImGui::RadioButton("Temporal denoise result", &renderDebugType, DEBUG_POST_TEMPORAL_DENOISE);
+                ImGui::RadioButton("Temporal denoise result (with firefly rejection)", &renderDebugType, DEBUG_POST_FIREFLY_REJECTION);
+                ImGui::RadioButton("Variance", &renderDebugType, DEBUG_VARIANCE);
 
-                obj.gBufferType = gIndex;
+                ImGui::RadioButton("Cluster rendering (triangles)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_TRIANGLES);
+                ImGui::RadioButton("Cluster rendering (clusters)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_CLUSTERS);
+                ImGui::RadioButton("Cluster rendering (LOD)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_LODS);
+                ImGui::RadioButton("Cluster rendering (screen space error)", &renderDebugType, DEBUG_VISIBILITY_BUFFER_SCREEN_ERROR);
+
+                obj.gBufferType = renderDebugType;
             }
             ImGui::End();
 

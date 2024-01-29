@@ -287,6 +287,10 @@ namespace Carrot {
         /// Must be called before any call to VulkanRenderer::render in a given thread. Allows for fast rendering submission
         void makeCurrentThreadRenderCapable();
 
+        int getDebugRenderType() {
+            return renderDebugType;
+        }
+
     public:
         static void registerUsertype(sol::state& destination);
 
@@ -396,6 +400,8 @@ namespace Carrot {
 
         std::uint32_t frameCount = 0;
         float latestRecordTime = 0.0f;
+
+        int renderDebugType = 0;
 
     private:
         void createCameraSetResources();

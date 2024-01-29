@@ -7,6 +7,8 @@
 #include <engine/render/RenderGraph.h>
 #include <engine/render/RenderPassData.h>
 
+#include "DebugBufferObject.h"
+
 namespace Carrot {
     class VulkanRenderer;
 }
@@ -18,7 +20,7 @@ namespace Carrot::Render {
         struct VisibilityPassData {
             PassData::GBuffer gbuffer;
             Render::FrameResource visibilityBuffer;
-            Render::FrameResource debugView;
+            Render::FrameResource debugViews[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST +1];
         };
 
         explicit VisibilityBuffer(VulkanRenderer& renderer);

@@ -1,0 +1,17 @@
+{
+  "_import": "../_post-process.json",
+  "descriptorSets": [
+    {
+      "type": "materials",
+      "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "camera",
+      "setID": 2
+    }
+  ]
+}

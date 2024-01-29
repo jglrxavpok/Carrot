@@ -11,7 +11,7 @@ DEFINE_GBUFFER_INPUTS(0)
 
 layout(set = 1, binding = 0) uniform texture2D lighting;
 layout(set = 1, binding = 1) uniform texture2D reflections;
-layout(set = 1, binding = 2) uniform texture2D visibilityBufferDebug;
+layout(set = 1, binding = 2) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -67,8 +67,9 @@ void main() {
             outColor = vec4(lightingColor.rgb, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
             outColor = vec4(g.entityID) / 255.0f;
-        } else if(debug.gBufferType == DEBUG_VISIBILITY_BUFFER) {
-            outColor = texture(sampler2D(visibilityBufferDebug, gLinearSampler), uv);
+        } else if(debug.gBufferType >= DEBUG_VISIBILITY_BUFFER_FIRST && debug.gBufferType <= DEBUG_VISIBILITY_BUFFER_LAST) {
+            uint debugIndex = debug.gBufferType - DEBUG_VISIBILITY_BUFFER_FIRST;
+            outColor = texture(sampler2D(visibilityBufferDebug[debugIndex], gLinearSampler), uv);
         } else {
             outColor = vec4(uv, 0.0, 1.0);
         }

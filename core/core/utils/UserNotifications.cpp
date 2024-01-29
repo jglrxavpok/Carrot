@@ -25,6 +25,7 @@ namespace Carrot {
 
         pNotif->title = std::move(desc.title);
         pNotif->body = std::move(desc.body);
+        pNotif->startTime = std::chrono::duration<float>(std::chrono::steady_clock::now().time_since_epoch()).count();
         return id;
     }
 

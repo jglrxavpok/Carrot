@@ -437,7 +437,7 @@ namespace Fertilizer {
         const Carrot::Vertex* vertices = nullptr;
         std::size_t index = 0;
 
-        const glm::vec3& getPosition() const {
+        glm::vec3 getPosition() const {
             return vertices[index].pos.xyz;
         }
     };
@@ -558,6 +558,10 @@ namespace Fertilizer {
      * From this primitive's vertex & index buffer, generate meshlets/clusters
      */
     static void generateClusterHierarchy(LoadedPrimitive& primitive, float simplifyScale) {
+        Carrot::NotificationID notificationID = Carrot::UserNotifications::getInstance().showNotification(Carrot::NotificationDescription {
+            .title = Carrot::sprintf("Generating LODs of %s", primitive.name.c_str()),
+        });
+        CLEANUP(Carrot::UserNotifications::getInstance().closeNotification(notificationID));
         // level 0
         // tell meshoptimizer to generate meshlets
         auto& indexBuffer = primitive.indices;
@@ -582,6 +586,7 @@ namespace Fertilizer {
         // allocator used for meshlet grouping, used to reuse memory between passes
         Carrot::StackAllocator groupingAllocator { Carrot::MallocAllocator::instance };
         for (int lod = 0; lod < maxLOD; ++lod) {
+            Carrot::UserNotifications::getInstance().setBody(notificationID, Carrot::sprintf("Generating LOD %d", lod+1));
             float tLod = lod / (float)maxLOD;
             std::span<Meshlet> previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
             if(previousLevelMeshlets.size() <= 1) {
@@ -616,14 +621,19 @@ namespace Fertilizer {
 
             const float maxDistance = (tLod * 0.1f + (1-tLod) * 0.01f) * simplifyScale;
             const float maxUVDistance = tLod * 0.5f + (1-tLod) * 1.0f / 256.0f;
+            Carrot::UserNotifications::getInstance().setBody(notificationID, Carrot::sprintf("Generating LOD %d - Merge vertices", lod+1));
             const std::vector<std::int64_t> mergeVertexRemap = mergeByDistance(primitive, groupVerticesPreWeld, maxDistance, maxUVDistance, kdtree);
 
             groupingAllocator.clear();
+            Carrot::UserNotifications::getInstance().setBody(notificationID, Carrot::sprintf("Generating LOD %d - Group clusters", lod+1));
             const Carrot::Vector<MeshletGroup> groups = groupMeshlets(groupingAllocator, primitive, previousLevelMeshlets, mergeVertexRemap);
 
             // ===== Simplify groups
             const std::size_t newMeshletStart = primitive.meshlets.size();
-            for(const auto& group : groups) {
+            Carrot::UserNotifications::getInstance().setBody(notificationID, Carrot::sprintf("Generating LOD %d - Simplify cluster groups", lod+1));
+            for(std::size_t groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+                const auto& group = groups[groupIndex];
+                Carrot::UserNotifications::getInstance().setProgress(notificationID, groupIndex/static_cast<float>(groups.size()));
                 groupVertexIndices.clear();
                 // meshlets vector is modified during the loop
                 previousLevelMeshlets = std::span { primitive.meshlets.data() + previousMeshletsStart, primitive.meshlets.size() - previousMeshletsStart };
@@ -698,12 +708,14 @@ namespace Fertilizer {
                 simplifiedIndexBuffer.resize(simplifiedIndexCount);
 
                 // ===== Generate meshlets for this group
-                if(simplifiedIndexCount > 0) {
+                // TODO: if cluster is not simplified, use it for next LOD
+                if(simplifiedIndexCount > 0 && simplifiedIndexCount != groupVertexIndices.size()) {
                     meshopt_Bounds simplifiedClusterBounds = meshopt_computeClusterBounds(
                         simplifiedIndexBuffer.data(), simplifiedIndexBuffer.size(),
                         &groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
 
                     float localScale = meshopt_simplifyScale(&groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
+                    // TODO: numerical stability
                     float meshSpaceError = simplificationError * localScale;
                     float parentError = 0.0f;
 

@@ -473,19 +473,23 @@ namespace Peeler {
                 static std::vector<Carrot::NotificationState> notifications{};
                 notifications.clear(); // clear without removing memory to reuse allocations next frames
                 Carrot::UserNotifications::getInstance().getNotifications(notifications);
-                const std::string notificationButtonText = Carrot::sprintf("Notifications (%llu)", notifications.size());
-                const char* notificationsPopupID = notificationButtonText.c_str();
+                const std::string notificationButtonText = Carrot::sprintf("Background tasks (%llu)", notifications.size());
+                const char* notificationsPopupID = "Background tasks";
                 if(ImGui::MenuItem(notificationButtonText.c_str())) {
                     showNotificationList = !showNotificationList;
                 }
 
                 if(showNotificationList) {
                     if(ImGui::Begin(notificationsPopupID)) {
+                        const double nowInSeconds = std::chrono::duration<float>(std::chrono::steady_clock::now().time_since_epoch()).count();
                         for(const auto& notif : notifications) {
                             ImGui::TextUnformatted(notif.title.c_str());
                             ImGui::TextUnformatted(notif.body.c_str());
                             // TODO: handle case if progress < 0
                             ImGui::ProgressBar(notif.progress);
+
+                            const std::int32_t timeElapsedInSeconds = static_cast<std::int32_t>(nowInSeconds - notif.startTime);
+                            ImGui::Text("Time elapsed: %d s", timeElapsedInSeconds);
                             ImGui::Separator();
                         }
                         ImGui::End();

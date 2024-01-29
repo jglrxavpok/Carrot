@@ -9,6 +9,7 @@
 #include <engine/Engine.h>
 
 #include "ClusterManager.h"
+#include "DebugBufferObject.h"
 
 namespace Carrot::Render {
 
@@ -65,40 +66,68 @@ namespace Carrot::Render {
             }
         );
 
-        auto& debugPass = graph.addPass<PassData::PostProcessing>("visibility buffer debug",
-           [this, rasterizePass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<PassData::PostProcessing>& pass, PassData::PostProcessing& data) {
-               data.postLighting = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eGeneral);
-               data.postProcessed = builder.createRenderTarget("Debug",
-                                                               vk::Format::eR8G8B8A8Unorm,
-                                                               framebufferSize,
-                                                               vk::AttachmentLoadOp::eClear,
-                                                               vk::ClearColorValue(std::array{0,0,0,1}),
-                                                               vk::ImageLayout::eGeneral
-               );
-               GetEngine().getVulkanDriver().getTextureRepository().getUsages(data.postProcessed.rootID) |= vk::ImageUsageFlagBits::eSampled;
-           },
-           [this](const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
-               ZoneScopedN("CPU RenderGraph visibility buffer debug view");
-               TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
-               auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/visibility-buffer", pass.getRenderPass());
-               auto& texture = pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex);
-               renderer.bindStorageImage(*pipeline, frame, texture, 0, 0,
-                                    vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+        auto addDebugPass = [&](const std::string& shaderNameSuffix, int renderDebugType) {
+            auto& debugPass = graph.addPass<PassData::PostProcessing>("visibility buffer debug",
+               [this, rasterizePass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<PassData::PostProcessing>& pass, PassData::PostProcessing& data) {
+                   data.postLighting = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eGeneral);
+                   data.postProcessed = builder.createRenderTarget("Debug",
+                                                                   vk::Format::eR8G8B8A8Unorm,
+                                                                   framebufferSize,
+                                                                   vk::AttachmentLoadOp::eClear,
+                                                                   vk::ClearColorValue(std::array{0,0,0,1}),
+                                                                   vk::ImageLayout::eGeneral
+                   );
+                   GetEngine().getVulkanDriver().getTextureRepository().getUsages(data.postProcessed.rootID) |= vk::ImageUsageFlagBits::eSampled;
+               },
+               [this, pipelineName = Carrot::sprintf("post-process/visibility-buffer-debug/%s", shaderNameSuffix.c_str())]
+               (const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
+                   ZoneScopedN("CPU RenderGraph visibility buffer debug view");
+                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer debug view");
+                   auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline(pipelineName, pass.getRenderPass());
 
-               pipeline->bind(pass.getRenderPass(), frame, cmds);
-               auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
-               screenQuadMesh.bind(cmds);
-               screenQuadMesh.draw(cmds);
-               //texture.transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
-           }
-        );
+                   Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);
+                   Carrot::BufferView clusterInstances = frame.renderer.getMeshletManager().getClusterInstances(frame);
+                   Carrot::BufferView clusterInstanceData = frame.renderer.getMeshletManager().getClusterInstanceData(frame);
+                   if(!clusters || !clusterInstances || !clusterInstanceData) {
+                       return;
+                   }
+
+                   const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.postLighting, frame.swapchainIndex);
+                   frame.renderer.getMaterialSystem().bind(frame, cmds, 0, pipeline->getPipelineLayout());
+                   frame.renderer.bindStorageImage(*pipeline, frame, visibilityBufferTexture, 1, 0,
+                       vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                   frame.renderer.bindBuffer(*pipeline, frame, clusters, 1, 1);
+                   frame.renderer.bindBuffer(*pipeline, frame, clusterInstances, 1, 2);
+                   frame.renderer.bindBuffer(*pipeline, frame, clusterInstanceData, 1, 3);
+
+                   pipeline->bind(pass.getRenderPass(), frame, cmds);
+                   auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
+                   screenQuadMesh.bind(cmds);
+                   screenQuadMesh.draw(cmds);
+               }
+            );
+            debugPass.setCondition([this, renderDebugType](const CompiledPass&, const Render::Context&, const PassData::PostProcessing&) {
+                return GetRenderer().getDebugRenderType() == renderDebugType;
+            });
+
+            return debugPass.getData().postProcessed;
+        };
+        std::array<Render::FrameResource, DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST +1> debugViews;
+        debugViews[DEBUG_VISIBILITY_BUFFER_TRIANGLES - DEBUG_VISIBILITY_BUFFER_FIRST] = addDebugPass("triangles", DEBUG_VISIBILITY_BUFFER_TRIANGLES);
+        debugViews[DEBUG_VISIBILITY_BUFFER_CLUSTERS - DEBUG_VISIBILITY_BUFFER_FIRST] = addDebugPass("clusters", DEBUG_VISIBILITY_BUFFER_CLUSTERS);
+        debugViews[DEBUG_VISIBILITY_BUFFER_LODS - DEBUG_VISIBILITY_BUFFER_FIRST] = addDebugPass("lods", DEBUG_VISIBILITY_BUFFER_LODS);
+        debugViews[DEBUG_VISIBILITY_BUFFER_SCREEN_ERROR - DEBUG_VISIBILITY_BUFFER_FIRST] = addDebugPass("screen-error", DEBUG_VISIBILITY_BUFFER_SCREEN_ERROR);
 
         // Take visibility buffer as input and render materials to GBuffer
         auto& materialPass = graph.addPass<VisibilityPassData>("visibility buffer materials",
-            [this, &gBufferData, &rasterizePass, &debugPass](Render::GraphBuilder& builder, Render::Pass<VisibilityPassData>& pass, VisibilityPassData& data) {
+            [this, &gBufferData, &rasterizePass, &debugViews](Render::GraphBuilder& builder, Render::Pass<VisibilityPassData>& pass, VisibilityPassData& data) {
                 data.gbuffer.writeTo(builder, gBufferData);
                 data.visibilityBuffer = builder.read(rasterizePass.getData().visibilityBuffer, vk::ImageLayout::eGeneral);
-                data.debugView = debugPass.getData().postProcessed;
+                for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
+                    int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
+                    data.debugViews[debugIndex] = debugViews[debugIndex];
+                }
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityPassData& data, vk::CommandBuffer& cmds) {
                 Carrot::BufferView clusters = frame.renderer.getMeshletManager().getClusters(frame);

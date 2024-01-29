@@ -23,6 +23,7 @@ namespace Carrot {
     struct NotificationState {
         std::string title;
         std::string body;
+        double startTime = startTime;
         float progress = -1.0f;
     };
 

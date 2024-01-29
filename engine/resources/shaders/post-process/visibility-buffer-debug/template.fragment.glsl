@@ -1,10 +1,31 @@
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
-#extension GL_EXT_shader_image_int64 : enable
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_atomic_int64 : require
+#extension GL_EXT_shader_image_int64 : require
 
-#include <includes/lighting_utils.glsl>
+#include "includes/buffers.glsl"
+#include "includes/camera.glsl"
+#include "includes/clusters.glsl"
+#include "includes/materials.glsl"
 
-layout(r64ui, set = 0, binding = 0) uniform u64image2D inputImage;
+MATERIAL_SYSTEM_SET(0)
+layout(r64ui, set = 1, binding = 0) uniform u64image2D inputImage;
+layout(set = 1, binding = 1, scalar) buffer ClusterRef {
+    Cluster clusters[];
+};
+
+layout(set = 1, binding = 2, scalar) buffer ClusterInstanceRef {
+    ClusterInstance instances[];
+};
+
+layout(set = 1, binding = 3, scalar) buffer ModelDataRef {
+    InstanceData modelData[];
+};
+DEFINE_CAMERA_SET(2)
 
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
@@ -50,11 +71,17 @@ vec4 triangleIndexToFloat(uint64_t index) {
     return colors[uint8_t(index % 25ul + 1)];
 }
 
+vec4 debugColor(uint triangleIndex, uint instanceIndex, uint clusterID);
+
 void main() {
     uint64_t bufferValue = imageLoad(inputImage, uvToPixels(uv)).r;
+    if(bufferValue == 0) {
+        outColor = vec4(0,0,0,1);
+        return;
+    }
     uint triangleIndex = uint(bufferValue) & 0x7Fu; // low 7 bits
     uint instanceIndex = (uint(bufferValue) >> 7) & 0x1FFFFFFu; // high 25 bits: instance index
+    uint clusterID = instances[instanceIndex].clusterID;
 
-    outColor = triangleIndexToFloat(triangleIndex);
-    //outColor = triangleIndexToFloat(instanceIndex);
+    outColor = debugColor(triangleIndex, instanceIndex, clusterID);
 }

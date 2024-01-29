@@ -229,7 +229,7 @@ namespace Carrot::Render {
                     }
                     const float d2 = glm::dot(sphere.center, sphere.center);
                     const float r = sphere.radius;
-                    return testScreenHeight / 2.0f * cotHalfFov * r / glm::sqrt(d2 - r*r);
+                    return testScreenHeight * cotHalfFov * r / glm::sqrt(d2 - r*r);
                 };
 
                 Math::Sphere projectedBounds {

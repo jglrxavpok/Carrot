@@ -15,14 +15,15 @@ namespace Carrot::Math {
         center.y = hCenter.y / hCenter.w;
         center.z = hCenter.z / hCenter.w;
 
-        glm::vec3 squaredScale {
+        radius = glm::length(glm::vec3 { (transform * glm::vec4{ radius, 0, 0, 0 }).xyz });
+        /*glm::vec3 squaredScale {
             glm::length2(glm::vec3(transform[0])),
             glm::length2(glm::vec3(transform[1])),
             glm::length2(glm::vec3(transform[2])),
         };
 
         float scaleFactor = std::sqrt(glm::compMax(squaredScale));
-        radius *= scaleFactor;
+        radius *= scaleFactor;*/
 
         return *this;
     }
