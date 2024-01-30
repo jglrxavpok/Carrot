@@ -252,7 +252,11 @@ set(FRAGMENT_SHADERS
         post-process/temporal-denoise.fragment.glsl
         post-process/merge-lighting.fragment.glsl
         post-process/tone-mapping.fragment.glsl
-        post-process/visibility-buffer-debug-view.fragment.glsl
+
+        post-process/visibility-buffer-debug/triangles.glsl
+        post-process/visibility-buffer-debug/clusters.glsl
+        post-process/visibility-buffer-debug/lods.glsl
+        post-process/visibility-buffer-debug/screen-error.glsl
 
         #PARENT_SCOPE
         )
