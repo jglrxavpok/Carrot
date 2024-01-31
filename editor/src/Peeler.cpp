@@ -743,6 +743,7 @@ namespace Peeler {
         bool requireResize = entireRegion.x != gameViewport.getWidth() || entireRegion.y != gameViewport.getHeight();
         if(requireResize) {
             WaitDeviceIdle();
+            GetRenderer().waitForRenderToComplete();
             gameViewport.resize(static_cast<std::uint32_t>(entireRegion.x), static_cast<std::uint32_t>(entireRegion.y));
         }
     }
