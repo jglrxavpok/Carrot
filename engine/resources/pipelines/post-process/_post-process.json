@@ -12,6 +12,5 @@
   ],
   "depthWrite": false,
   "depthTest": false,
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/post-process/visibility-buffer-debug-view.fragment.glsl.spv"
+  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv"
 }
