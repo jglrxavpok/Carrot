@@ -6,8 +6,6 @@
 #include <engine/Engine.h>
 #include <core/io/Logging.hpp>
 
-#include "../../../../editor/src/Peeler.h" // TODO: this is quite ugly, find a cleaner way
-
 namespace Carrot::ECS {
 
     CSharpComponent::CSharpComponent(Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(

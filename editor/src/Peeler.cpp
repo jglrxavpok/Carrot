@@ -1181,42 +1181,7 @@ namespace Peeler {
         addDefaultSystems(currentScene);
         currentScene.world.freezeLogic();
         currentScene.bindToViewport(gameViewport);
-
-        Carrot::Render::GraphBuilder graphBuilder(engine.getVulkanDriver(), engine.getMainWindow());
-
-        auto& resolvePassResult = engine.fillInDefaultPipeline(graphBuilder, Carrot::Render::Eye::NoVR,
-                                     [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         GetRenderer().recordOpaqueGBufferPass(pass.getRenderPass(), frame, cmds);
-                                     },
-                                     [&](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& frame, vk::CommandBuffer& cmds) {
-                                         currentScene.world.recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                         GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
-                                     });
-        gameTexture = resolvePassResult;
-
-        engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
-        const auto gbufferPass = graphBuilder.getPassData<Carrot::Render::PassData::GBuffer>("gbuffer").value();
-        engine.getVulkanDriver().getTextureRepository().getUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
-
-        struct TransitionData {
-            Carrot::Render::FrameResource textureToTransition;
-        };
-        graphBuilder.addPass<TransitionData>("transition for ImGui",
-            [&](Carrot::Render::GraphBuilder& graph, Carrot::Render::Pass<TransitionData>& pass, TransitionData& data) {
-                data.textureToTransition = graph.read(gameTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
-                pass.rasterized = false;
-            },
-            [this](const Carrot::Render::CompiledPass& pass, const Carrot::Render::Context& renderContext, const TransitionData& data, vk::CommandBuffer& cmds) {
-                auto& texture = pass.getGraph().getTexture(data.textureToTransition, renderContext.swapchainIndex);
-                texture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
-                texture.transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
-            }
-        );
-
-        gameViewport.setRenderGraph(std::move(graphBuilder.compile()));
-
-        gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));
+        setupGameViewport();
 
         // register components & systems for serialisation
         {

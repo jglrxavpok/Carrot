@@ -172,6 +172,10 @@ namespace Peeler {
         void performSimulationStart();
         void performSimulationStop();
 
+    private: // inside PeelerRendering.cpp
+        void setupGameViewport();
+        Carrot::Render::FrameResource addOutlinePass(Carrot::Render::GraphBuilder&, const Carrot::Render::FrameResource& finalRenderedImage);
+
     private:
         ImGuiID mainDockspace;
 

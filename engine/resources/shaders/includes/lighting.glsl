@@ -585,6 +585,13 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 worldPos, vec3 emissive,
     if (!raytracing)
     {
     #endif
+        if(metallicRoughness.x > 0.0f) {
+            vec3 incomingRay = normalize(worldPos - cameraPos);
+            vec3 reflectedRay = reflect(incomingRay, normal);
+            vec3 uv = vec3(reflectedRay.x, reflectedRay.z, -reflectedRay.y);
+
+            return texture(gSkybox3D, uv).rgb * metallicRoughness.x * (1-metallicRoughness.y);
+        }
         return vec3(0.0);
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     }

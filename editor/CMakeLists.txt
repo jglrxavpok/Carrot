@@ -2,6 +2,7 @@ set(EditorRoot "src/")
 
 set(EditorSources
         ${EditorRoot}Peeler.cpp
+        ${EditorRoot}PeelerRendering.cpp
         ${EditorRoot}GridRenderer.cpp
         ${EditorRoot}InspectorWidgets.cpp
 
@@ -38,6 +39,7 @@ set(ImGuizmoSources
 
 set(EditorFragmentShaders
         grid.fragment.glsl
+        outlines.fragment.glsl
         )
 
 set(EditorVertexShaders

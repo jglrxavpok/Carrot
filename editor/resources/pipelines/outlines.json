@@ -1,0 +1,4 @@
+{
+  "_import": "/resources/pipelines/post-process/_post-process.json",
+  "fragmentShader": "resources/shaders/outlines.fragment.glsl.spv"
+}

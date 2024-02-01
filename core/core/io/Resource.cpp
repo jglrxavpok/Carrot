@@ -204,8 +204,16 @@ namespace Carrot::IO {
     }
 
     Carrot::IO::Resource Resource::relative(const std::filesystem::path& path) const {
-        if(!isFile() || path.is_absolute()) {
+        // TODO: use IO::Path instead of fs::path
+        if(!isFile()) {
             return Resource{ VFS::Path(path.string()) };
+        }
+        if(path.is_absolute()) {
+            return Resource{ VFS::Path(&path.string().c_str()[0]) };
+        }
+        if(!path.empty() && path.c_str()[0] == L'/') {
+            const std::string pathStr = path.string();
+            return Resource{ VFS::Path(&pathStr.c_str()[1]) };
         }
         std::filesystem::path vfsPath = debugName;
         vfsPath = vfsPath.parent_path();
