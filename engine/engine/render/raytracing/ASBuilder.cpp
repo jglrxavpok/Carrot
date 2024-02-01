@@ -389,13 +389,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
         };
 
-        {
-            if(blas.as) {
-                blas.as->update(createInfo);
-            } else {
-                blas.as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
-            }
-        }
+        blas.as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
         info.dstAccelerationStructure = blas.as->getVulkanAS();
 
         {
@@ -659,11 +653,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
                 .size = sizeInfo.accelerationStructureSize,
                 .type = vk::AccelerationStructureTypeKHR::eTopLevel,
         };
-        if(currentTLAS) {
-            currentTLAS->update(createInfo);
-        } else {
-            currentTLAS = std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
-        }
+        currentTLAS = std::make_shared<AccelerationStructure>(renderer.getVulkanDriver(), createInfo);
     }
 
     // Allocate scratch memory

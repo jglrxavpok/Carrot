@@ -150,8 +150,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 if(useRaytracingVersion) {
                     pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;
-                }
-                if(GetCapabilities().supportsRaytracing) {
                     renderer.pushConstantBlock<PushConstantRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
                 } else {
                     renderer.pushConstantBlock<PushConstantNoRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);

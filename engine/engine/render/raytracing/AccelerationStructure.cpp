@@ -10,12 +10,6 @@ Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructur
 
 Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
                                                      vk::AccelerationStructureCreateInfoKHR& createInfo) {
-    update(createInfo);
-}
-
-void Carrot::AccelerationStructure::update(vk::AccelerationStructureCreateInfoKHR& createInfo) {
-    GetVulkanDriver().deferDestroy(buffer.getDebugName()+"-as", std::move(as));
-
     // allocate buffer to store AS
     buffer = GetResourceAllocator().allocateDeviceBuffer(createInfo.size,
                                                          vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress);
