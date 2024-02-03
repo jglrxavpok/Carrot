@@ -131,8 +131,14 @@ void main() {
     o.roughness = metallicRoughness.y;
     o.emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
 
-    // TODO:
-    o.motionVector = vec3(0.);
+    mat4 previousFrameModelTransform = modelData[modelDataIndex].lastFrameTransform;
+    mat4 previousFrameModelview = previousFrameCBO.view * previousFrameModelTransform * clusterTransform;
+    vec4 previousFrameClipPos = previousFrameModelview * vec4(position, 1.0);
+    vec3 previousFrameViewPosition = previousFrameClipPos.xyz / previousFrameClipPos.w;
+    vec4 clipPos = cbo.nonJitteredProjection * vec4(o.viewPosition, 1.0);
+    vec4 previousClipPos = previousFrameCBO.nonJitteredProjection * vec4(previousFrameViewPosition, 1.0);
+    o.motionVector = previousClipPos.xyz/previousClipPos.w - clipPos.xyz/clipPos.w;
+
 
     outputGBuffer(o, mat4(1.0));
 }
