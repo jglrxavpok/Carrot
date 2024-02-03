@@ -304,7 +304,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                     maxHeight = std::max(texture.getSize().height, maxHeight);
                 }
 
-                Carrot::Log::info("Creating framebuffer of size %lux%lu", maxWidth, maxHeight);
+                Carrot::Log::info("Creating framebuffer of size %lux%lu (pass %s)", maxWidth, maxHeight, pass.getName().data());
 
 
                 vk::FramebufferCreateInfo framebufferInfo{

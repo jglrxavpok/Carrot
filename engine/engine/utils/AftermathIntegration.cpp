@@ -201,6 +201,14 @@ static void WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gp
         resourcesArray.PushBack(resource, jsonDocument.GetAllocator());
     }
 
+    for(const auto& pImage : Carrot::Image::AliveImages) {
+        rapidjson::Value resource{rapidjson::kObjectType};
+        resource.AddMember("Type", "Image", jsonDocument.GetAllocator());
+        resource.AddMember("Name", pImage->getDebugName(), jsonDocument.GetAllocator());
+        resource.AddMember("Ptr", (std::uint64_t)(VkImage)pImage->getVulkanImage(), jsonDocument.GetAllocator());
+        resourcesArray.PushBack(resource, jsonDocument.GetAllocator());
+    }
+
     resourcesObject.AddMember("Resources", resourcesArray, jsonDocument.GetAllocator());
     baseArray.PushBack(resourcesObject, jsonDocument.GetAllocator());
 

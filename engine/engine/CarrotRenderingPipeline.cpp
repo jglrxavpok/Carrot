@@ -188,7 +188,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     }
 
                     auto pipeline = frame.renderer.getOrCreatePipeline("compute/firefly-rejection", (std::uint64_t)&pass);
-                    pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                     auto& outputTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
 
@@ -200,6 +199,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipeline, frame, inputTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
+                    pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(dispatchX, dispatchY, 1);
 
                     vk::MemoryBarrier2KHR memoryBarrier {
@@ -238,8 +238,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     pass.prerecordable = false;
                 },
                 [](const Render::CompiledPass& pass, const Render::Context& frame, const VarianceCompute& data, vk::CommandBuffer& cmds) {
-                    auto copyPipeline = frame.renderer.getOrCreatePipeline("compute/copy-variance", (std::uint64_t)&pass);
-                    copyPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    auto copyPipeline = frame.renderer.getOrCreatePipeline("compute/copy-variance", (std::uint64_t)frame.pViewport + (std::uint64_t)&pass);
 
                     auto& inputTexture = pass.getGraph().getTexture(data.input, frame.swapchainIndex);
                     auto& inputMomentsTexture = pass.getGraph().getTexture(data.momentsHistory, frame.swapchainIndex);
@@ -254,6 +253,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*copyPipeline, frame, inputMomentsTexture, 0, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*copyPipeline, frame, outputTexture, 0, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
+                    copyPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                     cmds.dispatch(dispatchX, dispatchY, 1);
 
                     vk::MemoryBarrier2KHR memoryBarrier {

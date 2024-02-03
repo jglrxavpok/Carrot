@@ -18,6 +18,8 @@
 #include "engine/Engine.h"
 #include "engine/render/resources/ResourceAllocator.h"
 
+/*static*/ Carrot::Async::SpinLock Carrot::Image::AliveImagesAccess{};
+/*static*/ std::unordered_set<const Carrot::Image*> Carrot::Image::AliveImages{};
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
                      std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount):
@@ -61,6 +63,9 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
 
     // bind memory to image
     driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getMemory(), 0);
+
+    Async::LockGuard g { AliveImagesAccess };
+    AliveImages.insert(this);
 }
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount)
@@ -72,6 +77,9 @@ Carrot::Image::~Image() noexcept {
     if(imageData.ownsImage) {
         GetVulkanDriver().deferDestroy("-memory", std::move(imageData.asOwned.memory));
         GetVulkanDriver().deferDestroy("-image", std::move(imageData.asOwned.vkImage));
+
+        Async::LockGuard g { AliveImagesAccess };
+        AliveImages.erase(this);
     }
 }
 

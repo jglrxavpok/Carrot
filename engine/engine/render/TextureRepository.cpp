@@ -78,6 +78,7 @@ namespace Carrot::Render {
                                                 textureUsages,
                                                 format
             );
+            texture->name(resource.name);
             textures[frameIndex][resource.rootID] = std::move(texture);
         } else {
             throw std::runtime_error("Texture already exists");

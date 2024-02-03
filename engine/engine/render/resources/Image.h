@@ -4,14 +4,16 @@
 
 #pragma once
 
-#include "engine/vulkan/DebugNameable.h"
-#include "engine/vulkan/VulkanDriver.h"
-#include "engine/render/resources/DeviceMemory.h"
+#include <engine/vulkan/DebugNameable.h>
+#include <engine/vulkan/VulkanDriver.h>
+#include <engine/render/resources/DeviceMemory.h>
 #include <memory>
 #include <set>
 #include <functional>
+#include <unordered_set>
 #include <engine/render/Skybox.hpp>
-#include "core/io/Resource.h"
+#include <core/io/Resource.h>
+#include <core/async/Locks.h>
 
 namespace Carrot {
     /// Abstraction over Vulkan images. Manages lifetime and memory
@@ -56,6 +58,10 @@ namespace Carrot {
         vk::ImageUsageFlags usage = static_cast<vk::ImageUsageFlags>(0);
 
     public:
+        static Carrot::Async::SpinLock AliveImagesAccess;
+        //! How many images are alive, and where?
+        static std::unordered_set<const Image*> AliveImages;
+
         /// Creates a new empty image with the given parameters. Will also allocate the corresponding memory
         explicit Image(Carrot::VulkanDriver& driver,
                        vk::Extent3D extent,
