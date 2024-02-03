@@ -87,7 +87,7 @@ void main() {
     uint metallicRoughnessTexture = nonuniformEXT(material.metallicRoughness);
     vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
     texColor *= material.baseColor;
-    // TODO: texColor *= instanceColor;
+    texColor *= modelData[modelDataIndex].color;
 
     texColor.a = 1.0;
     if(texColor.a < 0.01) {

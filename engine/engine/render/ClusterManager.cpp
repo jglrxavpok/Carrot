@@ -193,17 +193,17 @@ namespace Carrot::Render {
 
         static int globalLOD = 0;
         static int lodSelectionMode = 0;
-        static float errorThreshold = 0.0f;
+        static float errorThreshold = 1.0f;
         const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
         if(isMainViewport) {
             if(ImGui::Begin("Debug clusters")) {
-                ImGui::RadioButton("Manual LOD selection", &lodSelectionMode, 0);
-                ImGui::RadioButton("Automatic LOD selection", &lodSelectionMode, 1);
+                ImGui::RadioButton("Automatic LOD selection", &lodSelectionMode, 0);
+                ImGui::RadioButton("Manual LOD selection", &lodSelectionMode, 1);
 
                 if(lodSelectionMode == 0) {
-                    ImGui::SliderInt("LOD", &globalLOD, 0, 25);
-                } else if(lodSelectionMode == 1) {
                     ImGui::SliderFloat("Threshold", &errorThreshold, 0.0f, 10.0f);
+                } else if(lodSelectionMode == 1) {
+                    ImGui::SliderInt("LOD", &globalLOD, 0, 25);
                 }
                 ImGui::Text("Current triangle count: %llu", triangleCount);
             }
@@ -214,7 +214,7 @@ namespace Carrot::Render {
         const Carrot::Camera& camera = renderContext.getCamera();
 
         auto testLOD = [&](const Cluster& c, const ClusterModel& instance) {
-            if(lodSelectionMode == 0) {
+            if(lodSelectionMode == 1) {
                 return c.lod == globalLOD;
             } else {
                 // assume a fixed resolution and fov
