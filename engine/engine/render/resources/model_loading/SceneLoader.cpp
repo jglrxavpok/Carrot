@@ -3,8 +3,12 @@
 //
 
 #include "SceneLoader.h"
-#include <engine/render/resources/model_loading/AssimpLoader.h>
+#include <core/scene/AssimpLoader.h>
 #include <core/scene/GLTFLoader.h>
+#include <core/utils/stringmanip.h>
+#include <engine/io/AssimpCompatibilityLayer.h>
+
+#include <assimp/Importer.hpp>
 
 namespace Carrot::Render {
     LoadedScene& SceneLoader::load(const Carrot::IO::Resource& file) {
@@ -16,7 +20,11 @@ namespace Carrot::Render {
             scene = std::move(loader.load(file));
         } else {
             Render::AssimpLoader loader;
-            scene = std::move(loader.load(file));
+            Assimp::Importer importer{};
+
+            importer.SetIOHandler(new Carrot::IO::CarrotIOSystem(file));
+            scene = std::move(loader.load(file.getName(), importer));
+            scene.debugName = file.getName();
         }
         return scene;
     }

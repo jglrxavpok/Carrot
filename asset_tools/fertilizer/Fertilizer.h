@@ -13,7 +13,7 @@ namespace Fertilizer {
         UnsupportedInputType,
         UnsupportedOutputType,
         TextureCompressionError,
-        GLTFCompressionError,
+        ModelCompressionError,
     };
 
     struct ConversionResult {

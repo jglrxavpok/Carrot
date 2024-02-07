@@ -3,38 +3,34 @@
 //
 
 #include "AssimpLoader.h"
-#include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <core/utils/stringmanip.h>
-#include <engine/utils/Profiling.h>
+#include <core/utils/Profiling.h>
 #include <core/io/Logging.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/Importer.hpp>
 #include <assimp/IOSystem.hpp>
 #include <assimp/IOStream.hpp>
-#include "engine/io/AssimpCompatibilityLayer.h"
-#include "engine/utils/conversions.h"
+#include <core/async/Counter.h>
+#include <set>
 
 namespace Carrot::Render {
-    LoadedScene&& AssimpLoader::load(const IO::Resource& file) {
-        currentScene.debugName = file.getName();
+    static glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix) {
+        return glm::transpose(glm::make_mat4(&assimpMatrix.a1));
+    }
 
-        Assimp::Importer importer{};
-
-        importer.SetIOHandler(new Carrot::IO::CarrotIOSystem(file));
-
+    LoadedScene&& AssimpLoader::load(const std::string& filepath, Assimp::Importer& importer) {
         const aiScene* scene = nullptr;
         {
             ZoneScopedN("Read file - Assimp");
-            scene = importer.ReadFile(file.getName(), aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
+            scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs);
         }
 
         if(!scene) {
-            throw std::runtime_error(Carrot::sprintf("Failed to load model "+file.getName()+". Error is: %s", importer.GetErrorString()).c_str());
+            throw std::runtime_error(Carrot::sprintf("Failed to load model "+filepath+". Error is: %s", importer.GetErrorString()).c_str());
         }
-
-        std::unordered_map<std::uint32_t, std::shared_ptr<Render::MaterialHandle>> materialMap;
 
         for(std::size_t materialIndex = 0; materialIndex < scene->mNumMaterials; materialIndex++) {
             const aiMaterial* mat = scene->mMaterials[materialIndex];
@@ -50,7 +46,7 @@ namespace Carrot::Render {
 
                     aiString texturePath;
                     if(mat->GetTexture(textureType, 0, &texturePath) == AI_SUCCESS) {
-                        Carrot::IO::VFS::Path path = Carrot::IO::VFS::Path { file.getName() };
+                        Carrot::IO::VFS::Path path = Carrot::IO::VFS::Path { filepath };
                         toSet = path.relative(std::string_view(texturePath.data, texturePath.length));
                     }
 
@@ -87,9 +83,8 @@ namespace Carrot::Render {
 
             auto& primitive = currentScene.primitives.emplace_back();
             loadMesh(primitive, meshIndex, mesh);
-            auto& material = materialMap[mesh->mMaterialIndex];
             bool hasBones = mesh->HasBones();
-            primitive.name = file.getName()+" ("+std::string(mesh->mName.C_Str(), mesh->mName.length)+")";
+            primitive.name = filepath+" ("+std::string(mesh->mName.C_Str(), mesh->mName.length)+")";
 
             primitive.materialIndex = mesh->mMaterialIndex;
             primitive.isSkinned = hasBones;
@@ -199,21 +194,10 @@ namespace Carrot::Render {
                 currentScene.offsetMatrices[meshIndex][bone->mName.data] = glmMat4FromAssimp(bone->mOffsetMatrix);
             }
 
-            Async::Counter normalizeAllWeights;
             const std::size_t vertexCount = skinnedVertices.size();
-            const std::size_t stepSize = static_cast<std::size_t>(ceil((double)vertexCount / Carrot::TaskScheduler::assetLoadingParallelismAmount()));
-            for(std::size_t start = 0; start < vertexCount; start += stepSize) {
-                GetTaskScheduler().schedule(Carrot::TaskDescription {
-                        .name = Carrot::sprintf("Normalize bone weights %s", currentScene.debugName.c_str()),
-                        .task = [&, startIndex = start](TaskHandle& task) {
-                            for(std::size_t vertexIndex = startIndex; vertexIndex < startIndex + stepSize && vertexIndex < vertexCount; vertexIndex++) {
-                                skinnedVertices[vertexIndex].normalizeWeights();
-                            }
-                        },
-                        .joiner = &normalizeAllWeights,
-                }, TaskScheduler::AssetLoading);
+            for(std::size_t vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++) {
+                skinnedVertices[vertexIndex].normalizeWeights();
             }
-            normalizeAllWeights.busyWait();
         }
 
         for(std::size_t faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++) {
@@ -348,7 +332,7 @@ namespace Carrot::Render {
 
     void AssimpLoader::loadSubSkeleton(aiNode* subSkeleton, Render::SkeletonTreeNode& parent) {
         parent.bone.name = std::string(subSkeleton->mName.data, subSkeleton->mName.length);
-        parent.bone.transform = Carrot::glmMat4FromAssimp(subSkeleton->mTransformation);
+        parent.bone.transform = glmMat4FromAssimp(subSkeleton->mTransformation);
         parent.bone.originalTransform = parent.bone.transform;
 
         std::size_t meshCount = subSkeleton->mNumMeshes;
@@ -367,7 +351,7 @@ namespace Carrot::Render {
 
     void AssimpLoader::loadSkeleton(aiNode* armature) {
         verify(armature != nullptr, Carrot::sprintf("Cannot load non-existent skeleton (%s)", currentScene.debugName.c_str()));
-        currentScene.nodeHierarchy = std::make_unique<Render::Skeleton>(glm::inverse(Carrot::glmMat4FromAssimp(armature->mTransformation)));
+        currentScene.nodeHierarchy = std::make_unique<Render::Skeleton>(glm::inverse(glmMat4FromAssimp(armature->mTransformation)));
         loadSubSkeleton(armature, currentScene.nodeHierarchy->hierarchy);
     }
 }

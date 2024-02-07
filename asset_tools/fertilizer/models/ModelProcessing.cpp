@@ -2,13 +2,13 @@
 // Created by jglrxavpok on 05/11/2022.
 //
 
-#include <gltf/GLTFProcessing.h>
+#include <models/ModelProcessing.h>
 #include <core/utils/CarrotTinyGLTF.h>
 #include <core/utils/UserNotifications.h>
 #include <core/scene/LoadedScene.h>
 #include <core/Macros.h>
 #include <core/scene/GLTFLoader.h>
-#include <gltf/GLTFWriter.h>
+#include <models/GLTFWriter.h>
 #include <unordered_set>
 #include <core/io/Logging.hpp>
 #include <glm/gtx/component_wise.hpp>
@@ -17,7 +17,7 @@
 #include <core/containers/KDTree.hpp>
 #include <glm/gtx/hash.hpp>
 
-#include <gltf/MikkTSpaceInterface.h>
+#include <models/MikkTSpaceInterface.h>
 
 #include <meshoptimizer.h>
 
@@ -25,7 +25,10 @@
 #define REALTYPEWIDTH 64
 #include <metis.h>
 #include <core/math/Sphere.h>
+#include <core/scene/AssimpLoader.h>
 #include <glm/gtx/norm.hpp>
+
+#include "assimp/Importer.hpp"
 
 namespace Fertilizer {
 
@@ -749,13 +752,7 @@ namespace Fertilizer {
         }
     }
 
-    static void processModel(const std::string& modelName, tinygltf::Model& model) {
-        Carrot::NotificationID loadNotifID = Carrot::UserNotifications::getInstance().showNotification({.title = Carrot::sprintf("Processing %s", modelName.c_str())});
-        CLEANUP(Carrot::UserNotifications::getInstance().closeNotification(loadNotifID));
-
-        GLTFLoader loader{};
-        LoadedScene scene = loader.load(model, {});
-
+    static void processScene(LoadedScene& scene, const std::string& modelName, const Carrot::NotificationID& loadNotifID) {
         for(std::size_t i = 0; i < scene.primitives.size(); i++) {
             Carrot::UserNotifications::getInstance().setProgress(loadNotifID, float(i) / scene.primitives.size());
 
@@ -787,6 +784,16 @@ namespace Fertilizer {
                 generateClusterHierarchy(primitive, simplifyScale);
             }
         }
+    }
+
+    static void processGLTFModel(const std::string& modelName, tinygltf::Model& model) {
+        Carrot::NotificationID loadNotifID = Carrot::UserNotifications::getInstance().showNotification({.title = Carrot::sprintf("Processing %s", modelName.c_str())});
+        CLEANUP(Carrot::UserNotifications::getInstance().closeNotification(loadNotifID));
+
+        GLTFLoader loader{};
+        LoadedScene scene = loader.load(model, {});
+
+        processScene(scene, modelName, loadNotifID);
 
         // re-export model
         tinygltf::Model reexported = std::move(writeAsGLTF(modelName, scene));
@@ -796,6 +803,26 @@ namespace Fertilizer {
 
         model = std::move(reexported);
     }
+
+    ConversionResult processAssimp(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
+        AssimpLoader loader;
+        Assimp::Importer importer;
+        LoadedScene scene = std::move(loader.load(inputFile.string(), importer));
+
+        tinygltf::TinyGLTF gltf;
+        tinygltf::Model reexported = std::move(writeAsGLTF(Carrot::toString(outputFile.stem().u8string()), scene));
+        if(!gltf.WriteGltfSceneToFile(&reexported, outputFile.string(), false, false, true/* pretty-print */, false)) {
+            return {
+                .errorCode = ConversionResultError::ModelCompressionError,
+                .errorMessage = "Could not write GLTF",
+            };
+        }
+
+        return {
+            .errorCode = ConversionResultError::Success,
+        };
+    }
+
 
     ConversionResult processGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
         using namespace tinygltf;
@@ -819,7 +846,7 @@ namespace Fertilizer {
 
         if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, inputFile.string())) {
             return {
-                .errorCode = ConversionResultError::GLTFCompressionError,
+                .errorCode = ConversionResultError::ModelCompressionError,
                 .errorMessage = errors,
             };
         }
@@ -827,13 +854,13 @@ namespace Fertilizer {
         // ----------
 
         // buffers are regenerated inside 'processModel' method too, so we don't copy the .bin file
-        processModel(Carrot::toString(outputFile.stem().u8string()), model);
+        processGLTFModel(Carrot::toString(outputFile.stem().u8string()), model);
 
         // ----------
 
         if(!parser.WriteGltfSceneToFile(&model, outputFile.string(), false, false, true/* pretty-print */, false)) {
             return {
-                .errorCode = ConversionResultError::GLTFCompressionError,
+                .errorCode = ConversionResultError::ModelCompressionError,
                 .errorMessage = "Could not write GLTF",
             };
         }

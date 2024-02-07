@@ -1,9 +1,9 @@
 add_library(fertilizer-lib
         Fertilizer.cpp
 
-        gltf/GLTFProcessing.cpp
-        gltf/GLTFWriter.cpp
-        gltf/MikkTSpaceInterface.cpp
+        models/ModelProcessing.cpp
+        models/GLTFWriter.cpp
+        models/MikkTSpaceInterface.cpp
         TextureCompression.cpp
 )
 

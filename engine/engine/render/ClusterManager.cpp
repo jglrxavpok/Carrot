@@ -81,16 +81,12 @@ namespace Carrot::Render {
             const std::size_t firstIndexIndex = indices.size();
             indices.resize(firstIndexIndex + meshlet.indexCount);
 
-            //Carrot::Async::parallelFor(meshlet.vertexCount, [&](std::size_t index) {
             for(std::size_t index = 0; index < meshlet.vertexCount; index++) {
                 vertices[index + firstVertexIndex] = desc.originalVertices[desc.meshletVertexIndices[index + meshlet.vertexOffset]];
             }
-            //}, 8);
             for(std::size_t index = 0; index < meshlet.indexCount; index++) {
-            //Carrot::Async::parallelFor(meshlet.indexCount, [&](std::size_t index) {
                 indices[index + firstIndexIndex] = desc.meshletIndices[index + meshlet.indexOffset];
             }
-            //}, 8);
         }
 
         BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(Carrot::Vertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer);

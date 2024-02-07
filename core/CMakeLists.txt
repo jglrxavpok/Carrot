@@ -38,6 +38,7 @@ set(CORE-SOURCES
         ${CoreRoot}render/Skeleton.cpp
         ${CoreRoot}render/VertexTypes.cpp
 
+        ${CoreRoot}scene/AssimpLoader.cpp
         ${CoreRoot}scene/GLTFLoader.cpp
 
         ${CoreRoot}scripting/csharp/CSAppDomain.cpp
@@ -113,7 +114,7 @@ function(add_core_includes Target)
 
 endfunction()
 
-set(ALL_CORE_LIBS ktx glm tinygltf nfd cider)
+set(ALL_CORE_LIBS ktx glm tinygltf nfd cider assimp::assimp)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})

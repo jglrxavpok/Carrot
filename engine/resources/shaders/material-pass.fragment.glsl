@@ -61,7 +61,6 @@ void main() {
     uint materialIndex = instances[instanceIndex].materialIndex;
 
 #define getVertex(n) (clusters[clusterID].vertices.v[clusters[clusterID].indices.i[(n)]])
-//#define getVertex(n) v
     Vertex vA = getVertex(triangleIndex * 3 + 0);
     Vertex vB = getVertex(triangleIndex * 3 + 1);
     Vertex vC = getVertex(triangleIndex * 3 + 2);

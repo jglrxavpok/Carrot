@@ -27,7 +27,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/Vertex.cpp
         ${EngineRoot}render/resources/VertexFormat.cpp
 
-        ${EngineRoot}render/resources/model_loading/AssimpLoader.cpp
         ${EngineRoot}render/resources/model_loading/SceneLoader.cpp
 
         ${EngineRoot}render/shaders/ShaderModule.cpp
@@ -341,7 +340,7 @@ set(THIRDPARTY-SOURCES
 
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm assimp::assimp OpenAL SPIRV ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
         OpenXR::headers
         OpenXR::openxr_loader
         ${ADDITIONAL_LIBS})

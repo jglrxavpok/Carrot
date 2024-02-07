@@ -9,4 +9,5 @@
 
 namespace Fertilizer {
     ConversionResult processGLTF(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
+    ConversionResult processAssimp(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile);
 }

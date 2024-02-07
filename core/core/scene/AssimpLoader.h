@@ -5,8 +5,7 @@
 #pragma once
 
 #include <core/scene/LoadedScene.h>
-#include "core/io/Resource.h"
-#include "engine/render/resources/Mesh.h"
+#include <core/io/Resource.h>
 #include <core/render/Animation.h>
 #include <core/render/Skeleton.h>
 
@@ -15,10 +14,14 @@ struct aiNode;
 struct aiNodeAnim;
 struct aiScene;
 
+namespace Assimp {
+    class Importer;
+}
+
 namespace Carrot::Render {
     class AssimpLoader {
     public:
-        LoadedScene&& load(const Carrot::IO::Resource& resource);
+        LoadedScene&& load(const std::string& filepath, Assimp::Importer& importer);
 
     private:
         void loadMesh(LoadedPrimitive& primitive, std::size_t meshIndex, const aiMesh* mesh);

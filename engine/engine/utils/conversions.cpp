@@ -6,10 +6,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Carrot {
-    glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix) {
-        return glm::transpose(glm::make_mat4(&assimpMatrix.a1));
-    }
-
     JPH::Float2 carrotToJolt(const glm::vec2& v) {
         return {v.x, v.y};
     }

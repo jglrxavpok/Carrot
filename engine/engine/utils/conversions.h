@@ -19,8 +19,6 @@
 #include <Jolt/Math/Float2.h>
 
 namespace Carrot {
-    glm::mat4 glmMat4FromAssimp(const aiMatrix4x4& assimpMatrix);
-
     // From https://github.com/jherico/Vulkan/blob/experimental/openxr/examples/vr_openxr/vr_openxr.cpp
     // (MIT License) Code written by Bradley Austin Davis ("jherico")
     inline XrFovf toTanFovf(const XrFovf& fov) {

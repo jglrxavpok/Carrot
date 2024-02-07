@@ -137,7 +137,7 @@ namespace Carrot::Render {
                     return;
                 }
 
-                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.json");
+                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.json", (std::uint64_t)(VkRenderPass)pass.getRenderPass());
                 const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());
