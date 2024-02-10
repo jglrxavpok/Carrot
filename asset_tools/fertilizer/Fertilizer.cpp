@@ -31,8 +31,8 @@ namespace Fertilizer {
             { ".pnm", { ".ktx2",  compressTexture } },
 
             { ".gltf", { ".gltf", processGLTF } },
-            /*{ ".obj", { ".gltf", processAssimp } },
-            { ".fbx", { ".gltf", processAssimp } },*/
+            { ".obj", { ".gltf", processAssimp } },
+            { ".fbx", { ".gltf", processAssimp } },
     };
 
     bool isSupportedFormat(const fspath& input) {

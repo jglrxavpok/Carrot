@@ -121,6 +121,11 @@ namespace Carrot {
         };
     }
 
+    void AssetServer::removeFromModelCache(const Carrot::IO::VFS::Path& vfsPath) {
+        models.remove(vfsPath.toString());
+    }
+
+
     std::shared_ptr<Render::Texture> AssetServer::blockingLoadTexture(const Carrot::IO::VFS::Path& path) {
         ZoneScopedN("Loading texture");
         const std::string textureName = path.toString();

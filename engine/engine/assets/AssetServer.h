@@ -51,6 +51,7 @@ namespace Carrot {
         std::shared_ptr<Model> blockingLoadModel(const Carrot::IO::VFS::Path& path);
         LoadTaskProc<Model> loadModelTask(const Carrot::IO::VFS::Path& path);
         std::shared_ptr<Model> loadModel(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
+        void removeFromModelCache(const Carrot::IO::VFS::Path& vfsPath);
 
         std::shared_ptr<Render::Texture> blockingLoadTexture(const Carrot::IO::VFS::Path& path);
         LoadTaskProc<Render::Texture> loadTextureTask(const Carrot::IO::VFS::Path& path);
