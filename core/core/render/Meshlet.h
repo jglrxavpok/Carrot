@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <core/math/Sphere.h>
 #include <glm/vec3.hpp>
 
 namespace Carrot::Render {
@@ -16,11 +17,8 @@ namespace Carrot::Render {
         std::uint32_t indexCount = 0;
 
         std::uint32_t lod = 0;
-        glm::vec3 boundingSphereCenter{0.0f};
-        float boundingSphereRadius{0.0f};
-
-        glm::vec3 parentBoundingSphereCenter{0.0f};
-        float parentBoundingSphereRadius{0.0f};
+        Math::Sphere boundingSphere;
+        Math::Sphere parentBoundingSphere;
 
         // Meshlets form a graph where the root is the most simplified version of the entire model, and each node's children
         // are the meshlets which were simplified to create that node.

@@ -609,7 +609,7 @@ namespace Fertilizer {
         return vertexRemap;
     }
 
-    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const meshopt_Bounds& clusterBounds, float clusterError) {
+    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const Carrot::Math::Sphere& clusterBounds, float clusterError) {
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
@@ -658,10 +658,7 @@ namespace Fertilizer {
             carrotMeshlet.indexOffset = indexOffset + meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
 
-            carrotMeshlet.boundingSphereCenter = glm::vec3 {
-                clusterBounds.center[0], clusterBounds.center[1], clusterBounds.center[2]
-            };
-            carrotMeshlet.boundingSphereRadius = clusterBounds.radius;
+            carrotMeshlet.boundingSphere = clusterBounds;
             carrotMeshlet.clusterError = clusterError;
         }, 32);
     }
@@ -679,11 +676,18 @@ namespace Fertilizer {
         auto& indexBuffer = primitive.indices;
         std::size_t previousMeshletsStart = 0;
         {
-            Carrot::Vector<unsigned int> lod0Indices;
-            lod0Indices.resize(indexBuffer.size());
-            meshopt_Bounds lod0Bounds = meshopt_computeClusterBounds(
-                lod0Indices.data(), lod0Indices.size(),
-                &primitive.vertices[0].pos.x, primitive.vertices.size(), sizeof(Carrot::Vertex));
+            glm::vec3 min { +INFINITY, +INFINITY, +INFINITY };
+            glm::vec3 max { -INFINITY, -INFINITY, -INFINITY };
+
+            // remap simplified index buffer to mesh-wide vertex indices
+            for(auto& index : indexBuffer) {
+                const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz };
+                min = glm::min(min, vertexPos);
+                max = glm::max(max, vertexPos);
+            }
+
+            Carrot::Math::Sphere lod0Bounds;
+            lod0Bounds.loadFromAABB(min, max);
             appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f);
         }
 
@@ -823,14 +827,25 @@ namespace Fertilizer {
                 // ===== Generate meshlets for this group
                 // TODO: if cluster is not simplified, use it for next LOD
                 if(simplifiedIndexCount > 0 && simplifiedIndexCount != groupVertexIndices.size()) {
-                    meshopt_Bounds simplifiedClusterBounds = meshopt_computeClusterBounds(
-                        simplifiedIndexBuffer.data(), simplifiedIndexBuffer.size(),
-                        &groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
-
                     float localScale = meshopt_simplifyScale(&groupVertexBuffer[0].pos.x, groupVertexBuffer.size(), sizeof(Carrot::Vertex));
                     // TODO: numerical stability
                     float meshSpaceError = simplificationError * localScale;
                     float parentError = 0.0f;
+
+                    glm::vec3 min { +INFINITY, +INFINITY, +INFINITY };
+                    glm::vec3 max { -INFINITY, -INFINITY, -INFINITY };
+
+                    // remap simplified index buffer to mesh-wide vertex indices
+                    for(auto& index : simplifiedIndexBuffer) {
+                        index = group2meshVertexRemap[index];
+
+                        const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz };
+                        min = glm::min(min, vertexPos);
+                        max = glm::max(max, vertexPos);
+                    }
+
+                    Carrot::Math::Sphere simplifiedClusterBounds;
+                    simplifiedClusterBounds.loadFromAABB(min, max);
 
                     for(const auto& meshletIndex : group.meshlets) {
                         const auto& previousMeshlet = previousLevelMeshlets[meshletIndex];
@@ -841,14 +856,7 @@ namespace Fertilizer {
                     meshSpaceError += parentError;
                     for(const auto& meshletIndex : group.meshlets) {
                         previousLevelMeshlets[meshletIndex].parentError = meshSpaceError;
-                        previousLevelMeshlets[meshletIndex].parentBoundingSphereCenter =
-                            glm::vec3 { simplifiedClusterBounds.center[0], simplifiedClusterBounds.center[1], simplifiedClusterBounds.center[2] };
-                        previousLevelMeshlets[meshletIndex].parentBoundingSphereRadius = simplifiedClusterBounds.radius;
-                    }
-
-                    // remap simplified index buffer to mesh-wide vertex indices
-                    for(auto& index : simplifiedIndexBuffer) {
-                        index = group2meshVertexRemap[index];
+                        previousLevelMeshlets[meshletIndex].parentBoundingSphere = simplifiedClusterBounds;
                     }
 
                     appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError);

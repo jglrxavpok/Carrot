@@ -9,6 +9,8 @@
 #include <engine/render/VulkanRenderer.h>
 #include <engine/Engine.h>
 
+#pragma optimize("", off)
+
 namespace Carrot::Render {
 
     ClustersTemplate::ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
@@ -75,6 +77,11 @@ namespace Carrot::Render {
             cluster.lod = meshlet.lod;
             cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
 
+            cluster.boundingSphere = meshlet.boundingSphere;
+            cluster.parentBoundingSphere = meshlet.parentBoundingSphere;
+            cluster.parentError = meshlet.parentError;
+            cluster.error = meshlet.clusterError;
+
             const std::size_t firstVertexIndex = vertices.size();
             vertices.resize(firstVertexIndex + meshlet.vertexCount);
 
@@ -102,10 +109,6 @@ namespace Carrot::Render {
             cluster.indexBufferAddress = indexData.view.getDeviceAddress() + indexOffset;
 
             const auto& meshlet = desc.meshlets[i];
-            cluster.boundingSphere = glm::vec4 { meshlet.boundingSphereCenter, meshlet.boundingSphereRadius };
-            cluster.parentBoundingSphere = glm::vec4 { meshlet.parentBoundingSphereCenter, meshlet.parentBoundingSphereRadius };
-            cluster.parentError = meshlet.parentError;
-            cluster.error = meshlet.clusterError;
             vertexOffset += sizeof(Carrot::Vertex) * meshlet.vertexCount;
             indexOffset += sizeof(std::uint32_t) * meshlet.indexCount;
         }
@@ -229,7 +232,7 @@ namespace Carrot::Render {
                 };
 
                 Math::Sphere projectedBounds {
-                    c.boundingSphere.xyz,
+                    c.boundingSphere.center,
                     std::max(c.error, 10e-10f)
                 };
                 const glm::mat4 completeProj = camera.getCurrentFrameViewMatrix() * instance.instanceData.transform * c.transform;
@@ -237,7 +240,7 @@ namespace Carrot::Render {
                 const float clusterError = projectErrorToScreen(projectedBounds);
 
                 Math::Sphere parentProjectedBounds {
-                    c.parentBoundingSphere.xyz,
+                    c.parentBoundingSphere.center,
                     std::max(c.parentError, 10e-10f)
                 };
                 parentProjectedBounds.transform(completeProj);
@@ -297,7 +300,6 @@ namespace Carrot::Render {
 
                 packet.clearPerDrawData();
                 packet.unindexedDrawCommands.clear();
-                packet.useInstance(instance->instanceData); // TODO: remove and use only instanceDataRefs
                 std::uint32_t instanceIndex = 0;
 
                 for(const auto& pTemplate : instance->templates) {
