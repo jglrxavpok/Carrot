@@ -380,12 +380,12 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
     Carrot::GBufferDrawData data;
 
     bool inTransparentPass = renderPass == Render::PassEnum::TransparentGBuffer;
-    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, renderContext);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(renderPass, Render::PacketType::DrawIndexedInstanced, renderContext);
     packet.pipeline = inTransparentPass ? model->transparentMeshesPipeline : model->opaqueMeshesPipeline;
     packet.transparentGBuffer.zOrder = 0.0f;
 
     packet.instanceCount = 1;
-    packet.indexedDrawCommands.resize(1);
+    packet.commands.resize(1);
 
     for (const auto&[mat, meshList]: model->skinnedMeshes) {
         data.materialIndex = mat;
@@ -421,7 +421,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
 
                 packet.vertexBuffer = Carrot::BufferView(nullptr, *fullySkinnedUnitVertices, sizeof(Carrot::Vertex) * vertexOffset, sizeof(Carrot::Vertex) * mesh->getVertexCount());
                 packet.indexBuffer = mesh->getIndexBuffer();
-                auto& cmd = packet.indexedDrawCommands[0];
+                auto& cmd = packet.commands[0].drawIndexedInstanced;
                 cmd.instanceCount = 1;
                 cmd.indexCount = mesh->getIndexCount();
 

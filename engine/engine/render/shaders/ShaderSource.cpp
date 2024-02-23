@@ -100,4 +100,8 @@ namespace Carrot::Render {
             return Carrot::toString(u8string);
         }
     }
+
+    ShaderSource::operator bool() const {
+        return fromFile || !rawData.empty();
+    }
 }

@@ -2,6 +2,7 @@ struct Cluster {
     VertexBuffer vertices;
     IndexBuffer indices;
     uint8_t triangleCount;
+    uint8_t vertexCount;
     uint32_t lod;
     mat4 transform;
     vec4 boundingSphere;

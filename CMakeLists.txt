@@ -118,6 +118,7 @@ FetchContent_Declare(spirv_cross
         GIT_REPOSITORY      https://github.com/KhronosGroup/SPIRV-Cross.git
         GIT_TAG             e9cc6403341baf0edd430a4027b074d0a06b782f)
 FetchContent_MakeAvailable(spirv_cross)
+set(ENABLE_OPT 0)
 add_subdirectory(thirdparty/glslang)
 
 FetchContent_Declare(openal-soft

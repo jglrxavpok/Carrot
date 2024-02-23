@@ -28,7 +28,9 @@
 #include <robin_hood.h>
 #include <core/math/BasicFunctions.h>
 #include <IconsFontAwesome5.h>
+#include <core/allocators/StackAllocator.h>
 #include <engine/console/Console.h>
+#include <engine/vulkan/VulkanDefines.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 1 * 1024 * 1024; // 1MiB per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -1034,13 +1036,13 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eUniformBuffer,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+                    .stageFlags = Carrot::AllVkStages,
             },
             {
                     .binding = 1,
                     .descriptorType = vk::DescriptorType::eUniformBuffer,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+                    .stageFlags = Carrot::AllVkStages,
             }
     };
     cameraDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -1066,7 +1068,7 @@ void Carrot::VulkanRenderer::createViewportSetResources() {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eUniformBuffer,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+                    .stageFlags = Carrot::AllVkStages,
             }
     };
     viewportDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -1092,13 +1094,13 @@ void Carrot::VulkanRenderer::createPerDrawSetResources() {
                     .binding = 0,
                     .descriptorType = vk::DescriptorType::eStorageBuffer,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+                    .stageFlags = Carrot::AllVkStages,
             },
             {
                     .binding = 1,
                     .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
                     .descriptorCount = 1,
-                    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+                    .stageFlags = Carrot::AllVkStages,
             }
     };
     perDrawDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
@@ -1243,7 +1245,7 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
             .binding = 0,
             .descriptorType = vk::DescriptorType::eUniformBuffer,
             .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics | vk::ShaderStageFlagBits::eRaygenKHR,
+            .stageFlags = Carrot::AllVkStages,
     };
     debugDescriptorSetLayout = getVulkanDriver().getLogicalDevice().createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo {
             .bindingCount = 1,
@@ -1477,8 +1479,10 @@ void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassEnum packetPa
 
     auto packets = getRenderPackets(viewport, packetPass);
     const Carrot::Render::Packet* previousPacket = nullptr;
+    Carrot::StackAllocator tempAllocator { Carrot::Allocator::getDefault() };
     for(const auto& p : packets) {
-        p.record(pass, renderContext, commands, previousPacket);
+        tempAllocator.clear();
+        p.record(tempAllocator, pass, renderContext, commands, previousPacket);
         previousPacket = &p;
     }
 }
@@ -1614,7 +1618,7 @@ void Carrot::VulkanRenderer::render3DArrow(const Carrot::Render::Context& render
 }
 
 void Carrot::VulkanRenderer::renderModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, renderContext);
     Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
@@ -1632,7 +1636,7 @@ void Carrot::VulkanRenderer::renderModel(const Carrot::Model& model, const Carro
 }
 
 void Carrot::VulkanRenderer::renderWireframeModel(const Carrot::Model& model, const Carrot::Render::Context& renderContext, const glm::mat4& transform, const glm::vec4& color, const Carrot::UUID& objectID) {
-    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, renderContext);
+    Render::Packet& packet = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, renderContext);
     Carrot::GBufferDrawData data;
     data.materialIndex = whiteMaterial->getSlot();
 
@@ -1674,12 +1678,12 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCube() {
     return unitCubeModel;
 }
 
-Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::Context& renderContext, std::source_location location) {
-    return makeRenderPacket(pass, *renderContext.pViewport, location);
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location) {
+    return makeRenderPacket(pass, packetType, *renderContext.pViewport, location);
 }
 
-Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location) {
-    return (*threadLocalPacketStorage)[getCurrentBufferPointerForMain()].make(pass, &viewport, location);
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location) {
+    return (*threadLocalPacketStorage)[getCurrentBufferPointerForMain()].make(pass, packetType, &viewport, location);
 }
 
 void Carrot::VulkanRenderer::render(const Render::Packet& packet) {

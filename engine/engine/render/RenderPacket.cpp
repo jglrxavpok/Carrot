@@ -3,6 +3,9 @@
 //
 
 #include "RenderPacket.h"
+
+#include <core/containers/Vector.hpp>
+
 #include "RenderPacketContainer.h"
 #include <engine/Engine.h>
 #include <core/math/BasicFunctions.h>
@@ -11,7 +14,12 @@
 
 
 namespace Carrot::Render {
-    Packet::Packet(PacketContainer& container, PassEnum pass, std::source_location sourceLocation): container(container), source(sourceLocation), pass(pass) {
+    Packet::Packet(PacketContainer& container, PassEnum pass, const Render::PacketType& packetType, std::source_location sourceLocation)
+    : container(container)
+    , source(sourceLocation)
+    , pass(pass)
+    , packetType(packetType)
+    {
         viewport = &GetEngine().getMainViewport();
     };
 
@@ -32,7 +40,7 @@ namespace Carrot::Render {
         vertexBuffer = mesh.getVertexBuffer();
         indexBuffer = mesh.getIndexBuffer();
 
-        auto& cmd = indexedDrawCommands.empty() ? indexedDrawCommands.emplace_back() : indexedDrawCommands[0];
+        auto& cmd = commands.empty() ? commands.emplace_back().drawIndexedInstanced : commands[0].drawIndexedInstanced;
         cmd.indexCount = mesh.getIndexCount();
         cmd.instanceCount = 1;
     }
@@ -63,6 +71,7 @@ namespace Carrot::Render {
     }
 
     bool Packet::merge(const Packet& other) {
+#if 0
         if(true)
             return false; // TODO: fix packet merging
 
@@ -117,12 +126,14 @@ namespace Carrot::Render {
         std::memcpy(newInstancingDataBuffer.data() + instancingDataBuffer.size(), other.instancingDataBuffer.data(), other.instancingDataBuffer.size());
         instancingDataBuffer = std::move(newInstancingDataBuffer);
         return true;
+#endif
+        return false; // TODO: fix packet merging
     }
 
-    void Packet::record(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
+    void Packet::record(Carrot::Allocator& tempAllocator, vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& cmds, const Packet* previousPacket) const {
         ZoneScoped;
 
-        if(unindexedDrawCommands.empty() && indexedDrawCommands.empty()) {
+        if(commands.empty()) {
             return; // nothing to draw
         }
 
@@ -130,7 +141,7 @@ namespace Carrot::Render {
         {
             ZoneScopedN("Aftermath markers");
             GetVulkanDriver().setFormattedMarker(cmds, "Record RenderPacket %s %s %llu", source.file_name(), source.function_name(), (std::uint64_t)source.line());
-            GetVulkanDriver().setFormattedMarker(cmds, "command count: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)indexedDrawCommands.size(), (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
+            GetVulkanDriver().setFormattedMarker(cmds, "command count: %llu instanceCount: %%lu vertexBuffer: %x indexBuffer: %x", (std::uint64_t)commands.size(), (std::uint64_t)instanceCount, vertexBuffer.getDeviceAddress(), indexBuffer.getDeviceAddress());
         }
 
         auto& renderer = renderContext.renderer;
@@ -211,18 +222,67 @@ namespace Carrot::Render {
             }
         }
 
-        if(indexBuffer) {
-            cmds.bindIndexBuffer(indexBuffer.getVulkanBuffer(), indexBuffer.getStart(), vk::IndexType::eUint32);
+        switch(packetType) {
+            case PacketType::DrawIndexedInstanced: {
+                cmds.bindIndexBuffer(indexBuffer.getVulkanBuffer(), indexBuffer.getStart(), vk::IndexType::eUint32);
 
-            Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
-            indexedDrawCommandBuffer.directUpload(std::span{ indexedDrawCommands });
+                Carrot::Vector<vk::DrawIndexedIndirectCommand> indexedDrawCommands { tempAllocator };
+                indexedDrawCommands.ensureReserve(commands.size());
+                for(const auto& cmd : commands) {
+                    indexedDrawCommands.pushBack(cmd.drawIndexedInstanced);
+                }
 
-            cmds.drawIndexedIndirect(indexedDrawCommandBuffer.getVulkanBuffer(), indexedDrawCommandBuffer.getStart(), indexedDrawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
-        } else {
-            Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
-            unindexedDrawCommandBuffer.directUpload(std::span{ unindexedDrawCommands });
+                Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
+                indexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndexedIndirectCommand>{ indexedDrawCommands });
 
-            cmds.drawIndirect(unindexedDrawCommandBuffer.getVulkanBuffer(), unindexedDrawCommandBuffer.getStart(), unindexedDrawCommands.size(), sizeof(vk::DrawIndirectCommand));
+                cmds.drawIndexedIndirect(indexedDrawCommandBuffer.getVulkanBuffer(), indexedDrawCommandBuffer.getStart(), indexedDrawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
+            } break;
+
+            case PacketType::DrawUnindexedInstanced: {
+                Carrot::Vector<vk::DrawIndirectCommand> unindexedDrawCommands { tempAllocator };
+                unindexedDrawCommands.ensureReserve(commands.size());
+                for(const auto& cmd : commands) {
+                    unindexedDrawCommands.pushBack(cmd.drawUnindexedInstanced);
+                }
+
+                Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
+                unindexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndirectCommand>{ unindexedDrawCommands });
+
+                cmds.drawIndirect(unindexedDrawCommandBuffer.getVulkanBuffer(), unindexedDrawCommandBuffer.getStart(), unindexedDrawCommands.size(), sizeof(vk::DrawIndirectCommand));
+            } break;
+
+            case PacketType::Compute: {
+                Carrot::Vector<vk::DispatchIndirectCommand> unindexedDispatchCommands { tempAllocator };
+                unindexedDispatchCommands.ensureReserve(commands.size());
+                for(const auto& cmd : commands) {
+                    unindexedDispatchCommands.pushBack(cmd.compute);
+                }
+
+                Carrot::BufferView unindexedDispatchCommandBuffer = renderer.getSingleFrameBuffer(unindexedDispatchCommands.size() * sizeof(vk::DispatchIndirectCommand));
+                unindexedDispatchCommandBuffer.directUpload(std::span<const vk::DispatchIndirectCommand>{ unindexedDispatchCommands });
+
+                cmds.drawIndirect(unindexedDispatchCommandBuffer.getVulkanBuffer(), unindexedDispatchCommandBuffer.getStart(), unindexedDispatchCommands.size(), sizeof(vk::DispatchIndirectCommand));
+                break;
+            }
+
+            case PacketType::Mesh: {
+                Carrot::Vector<vk::DrawMeshTasksIndirectCommandEXT> drawMeshTasks { tempAllocator };
+                drawMeshTasks.ensureReserve(commands.size());
+                for(const auto& cmd : commands) {
+                    drawMeshTasks.pushBack(cmd.drawMeshTasks);
+                }
+
+                Carrot::BufferView meshDrawCommandBuffer = renderer.getSingleFrameBuffer(drawMeshTasks.size() * sizeof(vk::DrawMeshTasksIndirectCommandEXT));
+                meshDrawCommandBuffer.directUpload(std::span<const vk::DrawMeshTasksIndirectCommandEXT>{ drawMeshTasks });
+
+                cmds.drawMeshTasksIndirectEXT(meshDrawCommandBuffer.getVulkanBuffer(),
+                    meshDrawCommandBuffer.getStart(),
+                    drawMeshTasks.size(),
+                    sizeof(vk::DrawMeshTasksIndirectCommandEXT));
+            } break;
+
+            default:
+                verify(false, "Don't know what to do :(");
         }
     }
 
@@ -234,17 +294,28 @@ namespace Carrot::Render {
         verify(pipeline, "Pipeline must not be null");
         verify(pass != Render::PassEnum::Undefined, "Render pass must be defined");
 
-        if(!indexedDrawCommands.empty()) {
-            verify(indexBuffer, "Index buffer must not be null if there are indexed draw commands");
-            verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null if there are indexed draw commands");
-        }
+        verify(commands.size() > 0, "Must have at least one draw command");
         verify(viewport, "Viewport must not be null");
-        verify(indexedDrawCommands.size() > 0 || unindexedDrawCommands.size() > 0, "Must have at least one draw command");
-        const bool bothHaveCommands = indexedDrawCommands.size() > 0 && unindexedDrawCommands.size() > 0;
-        verify(!bothHaveCommands, "Must only have either indexed or unindexed draw commands.");
+        switch(packetType) {
+            case PacketType::DrawIndexedInstanced: {
+                verify(indexBuffer, "Index buffer must not be null if there are indexed draw commands");
+                verify(((VkBuffer)indexBuffer.getVulkanBuffer()) != VK_NULL_HANDLE, "Index buffer must not be null if there are indexed draw commands");
+            } break;
+
+            case PacketType::Compute:
+            case PacketType::Mesh:
+                verify(!vertexBuffer, "Cannot use index buffer in compute or mesh shaders");
+                verify(!indexBuffer, "Cannot use index buffer in compute or mesh shaders");
+                break;
+
+            default:
+            case PacketType::Unknown:
+                verify(false, "Unknown packet type");
+                break;
+        }
 
         if(!perDrawData.empty()) {
-            verify(unindexedDrawCommands.size() + indexedDrawCommands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many drawCommands than per draw data!");
+            verify(commands.size() == perDrawData.size_bytes() / sizeof(GBufferDrawData), "Must have as many commands than per draw data!");
         }
     }
 
@@ -258,8 +329,8 @@ namespace Carrot::Render {
 
         vertexBuffer = std::move(toMove.vertexBuffer);
         indexBuffer = std::move(toMove.indexBuffer);
-        indexedDrawCommands = std::move(toMove.indexedDrawCommands);
-        unindexedDrawCommands = std::move(toMove.unindexedDrawCommands);
+        packetType = toMove.packetType;
+        commands = std::move(toMove.commands);
         perDrawData = std::move(toMove.perDrawData);
         instanceCount = std::move(toMove.instanceCount);
 
@@ -287,8 +358,8 @@ namespace Carrot::Render {
 
         vertexBuffer = toCopy.vertexBuffer;
         indexBuffer = toCopy.indexBuffer;
-        indexedDrawCommands = toCopy.indexedDrawCommands;
-        unindexedDrawCommands = toCopy.unindexedDrawCommands;
+        packetType = toCopy.packetType;
+        commands = toCopy.commands;
         perDrawData = toCopy.perDrawData;
         instanceCount = toCopy.instanceCount;
 

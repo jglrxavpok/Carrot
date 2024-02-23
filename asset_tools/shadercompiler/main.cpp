@@ -14,11 +14,11 @@
 #include <core/utils/stringmanip.h>
 
 // imports from glslang
-#include <StandAlone/ResourceLimits.h>
 #include <SPIRV/Logger.h>
 #include <SPIRV/SpvTools.h>
 #include <SPIRV/GlslangToSpv.h>
 #include "glslang/Public/ShaderLang.h"
+#include "glslang/Public/ResourceLimits.h"
 
 static std::filesystem::path outputList = "shadercompilerlist.txt";
 
@@ -59,6 +59,10 @@ int main(int argc, const char** argv) {
         stage = EShLangCompute;
     } else if(strcmp(stageStr, "rmiss") == 0) {
         stage = EShLangMiss;
+    } else if(strcmp(stageStr, "task") == 0) {
+        stage = EShLangTask;
+    } else if(strcmp(stageStr, "mesh") == 0) {
+        stage = EShLangMesh;
     } else {
         std::cerr << "Invalid stage: " << stageStr << std::endl;
         return -1;
@@ -115,7 +119,7 @@ int main(int argc, const char** argv) {
     shader.setStringsWithLengthsAndNames(strs.data(), nullptr, names.data(), strs.size());
 
     ShaderCompiler::FileIncluder includer { basePath };
-    TBuiltInResource Resources = glslang::DefaultTBuiltInResource;
+    TBuiltInResource Resources = *GetDefaultResources();
     if(!shader.parse(&Resources, 460, false, EShMsgDefault, includer)) {
         std::cerr << "Failed shader compilation. " << shader.getInfoLog() << std::endl;
         return -4;

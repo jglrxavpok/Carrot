@@ -342,10 +342,10 @@ namespace Carrot::Render {
                 continue;
             }
             ZoneScopedN("per bucket");
-            Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, renderContext);
+            Render::Packet& renderPacket = GetRenderer().makeRenderPacket(renderPass, Render::PacketType::DrawIndexedInstanced, renderContext);
             renderPacket.pipeline = bucket.pipeline;
 
-            renderPacket.indexedDrawCommands = bucket.drawCommands;
+            renderPacket.commands = bucket.drawCommands;
 
             renderPacket.vertexBuffer = model.getStaticMeshData().getVertexBuffer();
             renderPacket.indexBuffer = model.getStaticMeshData().getIndexBuffer();
@@ -361,7 +361,7 @@ namespace Carrot::Render {
                 ZoneScopedN("mesh use");
 
                 InstanceData* pInstanceData = &instancesData[meshIndex];
-                vk::DrawIndexedIndirectCommand* pDrawCommand = &renderPacket.indexedDrawCommands[meshIndex];
+                vk::DrawIndexedIndirectCommand* pDrawCommand = &renderPacket.commands[meshIndex].drawIndexedInstanced;
                 *pInstanceData = instanceData;
 
                 pInstanceData->transform = instanceData.transform * transform;
@@ -486,7 +486,7 @@ namespace Carrot::Render {
                     auto& drawData = bucket.drawData.emplace_back();
                     drawData.materialIndex = pMat->getSlot();
 
-                    auto& drawCommand = bucket.drawCommands.emplace_back();
+                    auto& drawCommand = bucket.drawCommands.emplace_back().drawIndexedInstanced;
                     drawCommand.instanceCount = 1;
                     drawCommand.firstInstance = meshIndex; // increment just before
                     drawCommand.firstIndex = meshInfo.startIndex;

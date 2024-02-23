@@ -72,6 +72,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
         VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+        VK_EXT_MESH_SHADER_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -519,6 +520,10 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                             .shaderStorageBufferArrayDynamicIndexing = true,
                             .shaderStorageImageArrayDynamicIndexing = true,
                     },
+            },
+            vk::PhysicalDeviceMeshShaderFeaturesEXT {
+                .taskShader = true,
+                .meshShader = true,
             },
             vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
                     .rayTracingPipeline = GetCapabilities().supportsRaytracing,

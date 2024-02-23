@@ -9,6 +9,8 @@
 #include <source_location>
 #include <list>
 #include <span>
+#include <core/Allocator.h>
+
 #include "resources/Buffer.h"
 #include "resources/BufferView.h"
 #include "PassEnum.h"
@@ -26,6 +28,25 @@ namespace Carrot {
 
 namespace Carrot::Render {
     class PacketContainer;
+
+    enum class PacketType {
+        Unknown = 0,
+        DrawIndexedInstanced,
+        DrawUnindexedInstanced,
+        Compute,
+        Mesh
+    };
+
+    union PacketCommand {
+        vk::DrawIndexedIndirectCommand drawIndexedInstanced;
+        vk::DrawIndirectCommand drawUnindexedInstanced;
+        vk::DispatchIndirectCommand compute;
+        vk::DrawMeshTasksIndirectCommandEXT drawMeshTasks;
+
+        PacketCommand(): compute() {
+
+        }
+    };
 
     class Packet {
     public:
@@ -75,8 +96,8 @@ namespace Carrot::Render {
 
         std::uint32_t instanceCount = 1; // Total number of instances for this packet, used to offset firstInstance when merging packets
 
-        std::vector<vk::DrawIndirectCommand> unindexedDrawCommands;
-        std::vector<vk::DrawIndexedIndirectCommand> indexedDrawCommands;
+        PacketType packetType = PacketType::Unknown;
+        std::vector<PacketCommand> commands;
 
         TransparentPassData transparentGBuffer;
 
@@ -86,7 +107,7 @@ namespace Carrot::Render {
         std::optional<vk::Rect2D> scissor;
 
     public:
-        explicit Packet(PacketContainer& container, PassEnum pass, std::source_location location = std::source_location::current());
+        explicit Packet(PacketContainer& container, PassEnum pass, const Render::PacketType& packetType, std::source_location location = std::source_location::current());
 
         Packet(const Packet&);
         Packet(Packet&& toMove);
@@ -121,7 +142,7 @@ namespace Carrot::Render {
         /// \param renderContext
         /// \param commands
         /// \param previousRenderPacket if you know the proper state is already bound, you can skip its bind thanks to this parameter to save time
-        void record(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
+        void record(Carrot::Allocator& tempAllocator, vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, const Packet* previousRenderPacket) const;
 
     private:
         std::span<std::uint8_t> allocateGeneric(std::size_t size);

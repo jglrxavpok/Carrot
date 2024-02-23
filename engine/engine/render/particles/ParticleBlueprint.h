@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <SPIRV/SpvBuilder.h>
 #include <vector>
 #include <iostream>
 #include <memory>

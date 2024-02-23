@@ -31,7 +31,7 @@ namespace Carrot::Physics {
             return;
         }
 
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, debugViewport);
         renderPacket.pipeline = debugTrianglesPipeline;
 
         Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameBuffer(vertices.size() * sizeof(Carrot::Vertex));
@@ -43,7 +43,7 @@ namespace Carrot::Physics {
         renderPacket.vertexBuffer = vertexBuffer;
         renderPacket.indexBuffer = indexBuffer;
 
-        auto& cmd = renderPacket.indexedDrawCommands.emplace_back();
+        auto& cmd = renderPacket.commands.emplace_back().drawIndexedInstanced;
         cmd.indexCount = indices.size();
         cmd.instanceCount = 1;
 
@@ -153,7 +153,7 @@ namespace Carrot::Physics {
         // TODO: lod selection
         // TODO: handle shadow/cull/draw modes
         TriangleMesh* triangleMesh = (TriangleMesh*)inGeometry->mLODs[0].mTriangleBatch.GetPtr();
-        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, debugViewport);
+        Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::Unlit, Render::PacketType::DrawIndexedInstanced, debugViewport);
 
         renderPacket.pipeline = debugTrianglesPipeline;
         renderPacket.useMesh(*triangleMesh->mesh);

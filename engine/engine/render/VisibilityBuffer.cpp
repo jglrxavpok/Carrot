@@ -33,7 +33,7 @@ namespace Carrot::Render {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
                 auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
 
-                auto clearPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json");
+                auto clearPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
                 renderer.bindStorageImage(*clearPipeline, frame, texture, 0, 0,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 const auto& extent = texture.getSize();

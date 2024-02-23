@@ -13,6 +13,8 @@
 #include <engine/render/resources/Pipeline.h>
 #include <engine/render/MaterialSystem.h>
 
+#include <engine/render/RenderPacket.h>
+
 namespace Carrot {
     class Model;
 }
@@ -83,7 +85,7 @@ namespace Carrot::Render {
         bool virtualizedGeometry = false;
         std::shared_ptr<Carrot::Pipeline> pipeline;
 
-        std::vector<vk::DrawIndexedIndirectCommand> drawCommands;
+        std::vector<Render::PacketCommand> drawCommands;
         std::vector<Carrot::InstanceData> instanceData;
         std::vector<Carrot::GBufferDrawData> drawData; // contains index of material
 

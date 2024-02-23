@@ -217,7 +217,7 @@ namespace Carrot::Render {
         }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags>(0), *copySyncSemaphore);
         renderer.getEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
-        Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, renderContext);
+        Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, Render::PacketType::DrawIndexedInstanced, renderContext);
         packet.pipeline = pImpl->perWindow[windowID].pipeline;
         packet.vertexBuffer = vertexBuffer;
         packet.indexBuffer = indexBuffer;
@@ -263,7 +263,7 @@ namespace Carrot::Render {
         }
 
         int drawIndex = 0;
-        auto& drawCommand = packet.indexedDrawCommands.emplace_back();
+        auto& drawCommand = packet.commands.emplace_back().drawIndexedInstanced;
         for (int n = 0; n < pDrawData->CmdListsCount; n++) {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
             std::size_t commandListVertexOffset = vertexStarts[n];

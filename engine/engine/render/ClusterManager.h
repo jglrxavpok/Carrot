@@ -36,6 +36,7 @@ namespace Carrot::Render {
         vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
         vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
         std::uint8_t triangleCount;
+        std::uint8_t vertexCount;
         std::uint32_t lod;
         glm::mat4 transform{ 1.0f };
         Math::Sphere boundingSphere{}; // xyz + radius

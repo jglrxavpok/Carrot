@@ -76,6 +76,7 @@ namespace Carrot::Render {
             cluster.transform = desc.transform;
             cluster.lod = meshlet.lod;
             cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
+            cluster.vertexCount = static_cast<std::uint8_t>(meshlet.vertexCount);
 
             cluster.boundingSphere = meshlet.boundingSphere;
             cluster.parentBoundingSphere = meshlet.parentBoundingSphere;
@@ -250,7 +251,7 @@ namespace Carrot::Render {
         };
 
         // draw all instances that match with the given render context
-        auto& packet = renderer.makeRenderPacket(PassEnum::VisibilityBuffer, renderContext);
+        auto& packet = renderer.makeRenderPacket(PassEnum::VisibilityBuffer, Render::PacketType::Mesh, renderContext);
         packet.pipeline = getPipeline(renderContext);
 
         if(requireClusterUpdate) {
@@ -289,6 +290,7 @@ namespace Carrot::Render {
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
         }
 
+#if 0
         for(const auto& [index, pInstance] : models) {
             if(const auto instance = pInstance.lock()) {
                 if(!instance->enabled) {
@@ -331,6 +333,26 @@ namespace Carrot::Render {
                     renderer.render(packet);
             }
         }
+#endif
+
+#if 1
+        if(renderContext.pViewport == &GetEngine().getMainViewport()) {
+            return; // TODO: debug only, remove
+        }
+
+        auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
+        {
+            std::uint32_t maxID = gpuInstances.size();
+            pushConstant.setData(std::move(maxID));
+        }
+
+        Render::PacketCommand& drawCommand = packet.commands.emplace_back();
+        //drawCommand.drawMeshTasks.groupCountX = 1;
+        drawCommand.drawMeshTasks.groupCountX = gpuInstances.size();
+        drawCommand.drawMeshTasks.groupCountY = 1;
+        drawCommand.drawMeshTasks.groupCountZ = 1;
+        renderer.render(packet);
+#endif
     }
 
     void ClusterManager::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {

@@ -291,6 +291,17 @@ set(RAYHIT_SHADERS
         #PARENT_SCOPE
         )
 
+set(TASK_SHADERS
+
+        #PARENT_SCOPE
+)
+
+set(MESH_SHADERS
+        visibility-buffer.mesh.glsl
+
+        #PARENT_SCOPE
+)
+
 set(ENGINE-SHADERS "" PARENT_SCOPE)
 foreach(shader ${VERTEX_SHADERS})
     add_spirv_shader(vertex "${shader}" "${shader}.spv")
@@ -319,6 +330,16 @@ endforeach()
 
 foreach(shader ${RAYHIT_SHADERS})
     add_spirv_shader(rchit "${shader}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
+endforeach()
+
+foreach(shader ${TASK_SHADERS})
+    add_spirv_shader(task "${shader}" "${shader}.spv")
+    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
+endforeach()
+
+foreach(shader ${MESH_SHADERS})
+    add_spirv_shader(mesh "${shader}" "${shader}.spv")
     set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
 endforeach()
 

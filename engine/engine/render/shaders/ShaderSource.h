@@ -23,6 +23,8 @@ namespace Carrot::Render {
 
         ShaderSource& operator=(const ShaderSource& toCopy) = default;
 
+        explicit operator bool() const;
+
     public:
         bool hasSourceBeenModified() const;
         void clearModifyFlag();

@@ -240,8 +240,8 @@ namespace Carrot {
 
     public:
         /// Reference is valid only for the current frame
-        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::Context& renderContext, std::source_location location = std::source_location::current());
-        Render::Packet& makeRenderPacket(Render::PassEnum pass, Render::Viewport& viewport, std::source_location location = std::source_location::current());
+        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location = std::source_location::current());
+        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
         void renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());

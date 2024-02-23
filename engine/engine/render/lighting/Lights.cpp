@@ -5,6 +5,8 @@
 #include "Lights.h"
 
 #include <utility>
+#include <engine/vulkan/VulkanDefines.h>
+
 #include "engine/Engine.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/utils/Macros.h"
@@ -30,7 +32,7 @@ namespace Carrot::Render {
 
     Lighting::Lighting() {
         reallocateBuffers(DefaultLightBufferSize);
-        vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR;
+        vk::ShaderStageFlags stageFlags = Carrot::AllVkStages;
         std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
                 // Light Buffer
                 vk::DescriptorSetLayoutBinding {

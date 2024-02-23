@@ -9,6 +9,7 @@
 #include <core/io/Logging.hpp>
 #include <core/math/BasicFunctions.h>
 #include <robin_hood.h>
+#include <engine/vulkan/VulkanDefines.h>
 #include <glm/gtx/hash.hpp>
 
 namespace Carrot::Render {
@@ -166,7 +167,7 @@ namespace Carrot::Render {
         reallocateMaterialBuffer(DefaultMaterialBufferSize);
         boundTextures.resize(GetEngine().getSwapchainImageCount());
 
-        vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR;
+        vk::ShaderStageFlags stageFlags = Carrot::AllVkStages;
         std::array<vk::DescriptorSetLayoutBinding, BindingCount> bindings = {
             // Material Buffer
             vk::DescriptorSetLayoutBinding {

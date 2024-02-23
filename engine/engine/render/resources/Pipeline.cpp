@@ -155,32 +155,53 @@ void Carrot::Pipeline::reloadShaders() {
 }
 
 void Carrot::Pipeline::createGraphicsTemplate() {
-    stages = make_unique<Carrot::ShaderStages>(driver,
-                                               std::vector<Render::ShaderSource> {
-                                                       description.vertexShader,
-                                                       description.fragmentShader
-                                               },
-                                               std::vector<vk::ShaderStageFlagBits> {
-                                                       vk::ShaderStageFlagBits::eVertex,
-                                                       vk::ShaderStageFlagBits::eFragment
-                                               }
-    );
+    if(description.meshShader) {
+        verify(!description.vertexShader, "Pipelines with mesh shaders cannot use vertex shaders!");
+        std::vector<Render::ShaderSource> sources {
+            description.meshShader,
+            description.fragmentShader
+        };
+        std::vector<vk::ShaderStageFlagBits> stageList {
+            vk::ShaderStageFlagBits::eMeshEXT,
+            vk::ShaderStageFlagBits::eFragment
+        };
+        if(description.taskShader) {
+            sources.emplace_back(description.taskShader);
+            stageList.emplace_back(vk::ShaderStageFlagBits::eTaskEXT);
+        }
+        stages = make_unique<Carrot::ShaderStages>(
+            driver,
+            sources,
+            stageList
+        );
+    } else {
+        stages = make_unique<Carrot::ShaderStages>(driver,
+                                                   std::vector<Render::ShaderSource> {
+                                                           description.vertexShader,
+                                                           description.fragmentShader
+                                                   },
+                                                   std::vector<vk::ShaderStageFlagBits> {
+                                                           vk::ShaderStageFlagBits::eVertex,
+                                                           vk::ShaderStageFlagBits::eFragment
+                                                   }
+        );
 
-    graphicsPipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
-    graphicsPipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
+        graphicsPipelineTemplate.vertexBindingDescriptions = Carrot::getBindingDescriptions(description.vertexFormat);
+        graphicsPipelineTemplate.vertexAttributes = Carrot::getAttributeDescriptions(description.vertexFormat);
 
-    graphicsPipelineTemplate.vertexInput = {
+        graphicsPipelineTemplate.vertexInput = {
             .vertexBindingDescriptionCount = static_cast<std::uint32_t>(graphicsPipelineTemplate.vertexBindingDescriptions.size()),
             .pVertexBindingDescriptions = graphicsPipelineTemplate.vertexBindingDescriptions.data(),
 
             .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(graphicsPipelineTemplate.vertexAttributes.size()),
             .pVertexAttributeDescriptions = graphicsPipelineTemplate.vertexAttributes.data(),
-    };
+        };
 
-    graphicsPipelineTemplate.inputAssembly = {
+        graphicsPipelineTemplate.inputAssembly = {
             .topology = description.topology,
             .primitiveRestartEnable = false,
-    };
+        };
+    }
 
     graphicsPipelineTemplate.rasterizer = {
             // TODO: change for shadow maps
@@ -700,6 +721,12 @@ Carrot::PipelineDescription::PipelineDescription(const Carrot::IO::Resource json
     }
     if(json.HasMember("computeShader")) {
         computeShader = json["computeShader"].GetString();
+    }
+    if(json.HasMember("taskShader")) {
+        taskShader = json["taskShader"].GetString();
+    }
+    if(json.HasMember("meshShader")) {
+        meshShader = json["meshShader"].GetString();
     }
     if(json.HasMember("vertexFormat")) {
         vertexFormat = Carrot::getVertexFormat(json["vertexFormat"].GetString());

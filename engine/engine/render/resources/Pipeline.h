@@ -71,6 +71,8 @@ namespace Carrot {
 
 
         Render::ShaderSource computeShader;
+        Render::ShaderSource taskShader;
+        Render::ShaderSource meshShader;
 
 
         Carrot::IO::Resource originatingResource;
