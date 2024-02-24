@@ -34,3 +34,13 @@ vec3 barycentrics(vec3 a, vec3 b, vec3 c, vec3 p) {
 
     return vec3(u, v, 1-u-v);
 }
+
+// Transforms a sphere by the given transform
+// xyz is sphere center
+// w is sphere radius
+vec4 transformSphere(vec4 sphere, mat4 transform) {
+    vec4 hCenter = vec4(sphere.xyz, 1.0f);
+    hCenter = transform * hCenter;
+    const vec3 center = hCenter.xyz / hCenter.w;
+    return vec4(center, length((transform * vec4(sphere.w, 0, 0, 0)).xyz));
+}

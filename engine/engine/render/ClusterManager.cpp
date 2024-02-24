@@ -122,6 +122,7 @@ namespace Carrot::Render {
 
     std::shared_ptr<ClusterModel> ClusterManager::addModel(const ClustersInstanceDescription& desc) {
         verify(desc.templates.size() == desc.pMaterials.size(), "There must be as many templates as material handles!");
+        auto& gpuInstances = gpuInstancesPerViewport[desc.pViewport];
 
         std::uint32_t clusterCount = 0;
 
@@ -130,7 +131,7 @@ namespace Carrot::Render {
         }
 
         Async::LockGuard l { accessLock };
-        requireInstanceUpdate = true;
+        requireInstanceUpdatePerViewport[desc.pViewport] = true;
         const std::uint32_t firstInstanceID = gpuInstances.size();
         gpuInstances.resize(firstInstanceID + clusterCount);
 
@@ -165,7 +166,11 @@ namespace Carrot::Render {
     }
 
     Carrot::BufferView ClusterManager::getClusterInstances(const Carrot::Render::Context& renderContext) {
-        auto& pAlloc = instancesPerFrame[renderContext.swapchainIndex];
+        auto iter = instancesPerFramePerViewport.find(renderContext.pViewport);
+        if(iter == instancesPerFramePerViewport.end()) {
+            return Carrot::BufferView{};
+        }
+        auto& pAlloc = iter->second[renderContext.swapchainIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
 
@@ -209,6 +214,11 @@ namespace Carrot::Render {
             }
             ImGui::End();
             triangleCount = 0;
+        }
+
+        auto& gpuInstances = gpuInstancesPerViewport[renderContext.pViewport];
+        if(gpuInstances.empty()) {
+            return;
         }
 
         const Carrot::Camera& camera = renderContext.getCamera();
@@ -260,7 +270,9 @@ namespace Carrot::Render {
             requireClusterUpdate = false;
         }
 
+        auto& instanceGPUVisibleArray = instanceGPUVisibleArrays[renderContext.pViewport];
         // TODO: allow material update once instance are already created? => needs something similar to MaterialSystem::getData
+        bool& requireInstanceUpdate = requireInstanceUpdatePerViewport[renderContext.pViewport];
         if(requireInstanceUpdate) {
             instanceGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterInstance) * gpuInstances.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
             instanceGPUVisibleArray->view.stageUpload(std::span<const ClusterInstance>{ gpuInstances });
@@ -278,6 +290,10 @@ namespace Carrot::Render {
         }
 
         clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
+        auto& instancesPerFrame = instancesPerFramePerViewport[renderContext.pViewport];
+        if(instancesPerFrame.empty()) {
+            instancesPerFrame.resize(GetEngine().getSwapchainImageCount());
+        }
         instancesPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         instanceDataPerFrame[renderContext.swapchainIndex] = instanceDataGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
 
@@ -340,14 +356,25 @@ namespace Carrot::Render {
             return; // TODO: debug only, remove
         }
 
-        auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
         {
-            std::uint32_t maxID = gpuInstances.size();
-            pushConstant.setData(std::move(maxID));
+            auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
+            struct PushConstantData {
+                std::uint32_t maxClusterID;
+                std::uint32_t lodSelectionMode;
+                float lodErrorThreshold;
+                std::uint32_t forcedLOD;
+                float screenHeight;
+            };
+            PushConstantData data{};
+            data.maxClusterID = gpuInstances.size();
+            data.lodSelectionMode = lodSelectionMode;
+            data.lodErrorThreshold = errorThreshold;
+            data.forcedLOD = globalLOD;
+            data.screenHeight = renderContext.pViewport->getHeight();
+            pushConstant.setData(std::move(data));
         }
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
-        //drawCommand.drawMeshTasks.groupCountX = 1;
         drawCommand.drawMeshTasks.groupCountX = gpuInstances.size();
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
@@ -361,7 +388,7 @@ namespace Carrot::Render {
 
     void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
         clusterDataPerFrame.resize(newCount);
-        instancesPerFrame.resize(newCount);
+        instancesPerFramePerViewport.clear();
         instanceDataPerFrame.resize(newCount);
     }
 

@@ -170,18 +170,18 @@ namespace Carrot::Render {
         WeakPool<ClusterModel> models;
 
         std::vector<Cluster> gpuClusters;
-        std::vector<ClusterInstance> gpuInstances;
+        std::unordered_map<Carrot::Render::Viewport*, std::vector<ClusterInstance>> gpuInstancesPerViewport;
 
         bool requireClusterUpdate = true;
-        bool requireInstanceUpdate = true;
+        std::unordered_map<Carrot::Render::Viewport*, bool> requireInstanceUpdatePerViewport;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
-        std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;
+        std::unordered_map<Viewport*, std::shared_ptr<Carrot::BufferAllocation>> instanceGPUVisibleArrays;
         std::shared_ptr<Carrot::BufferAllocation> instanceDataGPUVisibleArray;
         Carrot::InstanceData* pInstanceData = nullptr; // CPU visible version of instanceDataGPUVisibleArray
 
         std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
-        Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesPerFrame;
+        std::unordered_map<Viewport*, Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>>> instancesPerFramePerViewport;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
     };
 
