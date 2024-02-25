@@ -292,6 +292,7 @@ set(RAYHIT_SHADERS
         )
 
 set(TASK_SHADERS
+        visibility-buffer.task.glsl
 
         #PARENT_SCOPE
 )

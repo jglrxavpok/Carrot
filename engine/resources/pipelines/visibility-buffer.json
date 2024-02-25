@@ -15,6 +15,7 @@
   ],
   "depthWrite": true,
   "depthTest": true,
+  "taskShader": "resources/shaders/visibility-buffer.task.glsl.spv",
   "meshShader": "resources/shaders/visibility-buffer.mesh.glsl.spv",
   "fragmentShader": "resources/shaders/visibility-buffer.fragment.glsl.spv"
 }

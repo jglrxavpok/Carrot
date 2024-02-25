@@ -28,6 +28,9 @@ Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vect
         if(filename.ends_with(".mesh.spv")) {
             stage = vk::ShaderStageFlagBits::eMeshEXT;
         }
+        if(filename.ends_with(".task.spv")) {
+            stage = vk::ShaderStageFlagBits::eTaskEXT;
+        }
         stages.emplace_back(std::make_pair(stage, std::move(std::make_unique<ShaderModule>(driver, filename))));
     }
 }

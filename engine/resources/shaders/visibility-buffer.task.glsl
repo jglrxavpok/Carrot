@@ -16,21 +16,14 @@ DEFINE_CAMERA_SET(1)
 
 // TODO: change workgroup size
 const uint WORKGROUP_SIZE = 1;
-
 layout(local_size_x = WORKGROUP_SIZE) in;
-
-// this is per workgroup!! not per shader invocation!
-layout(max_vertices=128, max_primitives=128) out;
-layout(triangles) out;
 
 struct Task
 {
     uint clusterInstanceID;
 };
-taskPayloadSharedEXT Task IN;
 
-layout(location=0) out vec4 outNDCPosition[];
-layout(location=1) out flat uint outClusterInstanceID[];
+taskPayloadSharedEXT Task OUT;
 
 layout(push_constant) uniform PushConstant {
     uint maxCluster;
@@ -53,8 +46,6 @@ layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
     InstanceData modelData[];
 };
 
-// TODO: stats buffer
-
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
 const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
@@ -72,8 +63,15 @@ float projectErrorToScreen(vec4 transformedSphere) {
     return push.screenHeight * cotHalfFov * r / sqrt(d2 - r*r);
 }
 
-bool cull(uint instanceID, uint clusterID, uint modelDataIndex, mat4 modelview) {
+bool cull(uint clusterInstanceID) {
+    // TODO: occlusion culling
+    // TODO: backface culling
+    // TODO: frustum culling
+    uint clusterID = instances[clusterInstanceID].clusterID;
+    uint modelDataIndex = instances[clusterInstanceID].instanceDataIndex;
+
     if(push.lodSelectionMode == 0) {
+        const mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
         vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
         projectedBounds = transformSphere(projectedBounds, modelview);
 
@@ -90,31 +88,13 @@ bool cull(uint instanceID, uint clusterID, uint modelDataIndex, mat4 modelview) 
 }
 
 void main() {
-    uint instanceID = IN.clusterInstanceID;
+    uint clusterID = gl_GlobalInvocationID.x;
+    bool culled = clusterID >= push.maxCluster || cull(clusterID);
 
-    #define instance instances[instanceID]
-
-    uint clusterID = instance.clusterID;
-    #define cluster clusters[clusterID]
-
-    uint modelDataIndex = instance.instanceDataIndex;
-    mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
-
-    SetMeshOutputsEXT(cluster.vertexCount, cluster.triangleCount);
-
-    for(uint vertexIndex = 0; vertexIndex < cluster.vertexCount; vertexIndex++) {
-        const vec4 viewPosition = modelview * cluster.vertices.v[vertexIndex].pos*5;
-        const vec4 ndcPosition = cbo.jitteredProjection * viewPosition;
-        gl_MeshVerticesEXT[vertexIndex].gl_Position = ndcPosition;
-        outNDCPosition[vertexIndex] = ndcPosition;
-        outClusterInstanceID[vertexIndex] = clusterID;
+    // TODO: do multiple emits per task shader? (see NVIDIA example)
+    if(!culled) {
+        OUT.clusterInstanceID = clusterID;
+        EmitMeshTasksEXT(1, 1, 1);
     }
 
-    for(uint triangleIndex = 0; triangleIndex < cluster.triangleCount; triangleIndex++) {
-        uvec3 indices = uvec3(cluster.indices.i[triangleIndex * 3 + 0],
-                              cluster.indices.i[triangleIndex * 3 + 1],
-                              cluster.indices.i[triangleIndex * 3 + 2]);
-        gl_PrimitiveTriangleIndicesEXT[triangleIndex] = indices;
-        gl_MeshPrimitivesEXT[triangleIndex].gl_PrimitiveID = int(triangleIndex);
-    }
 }
