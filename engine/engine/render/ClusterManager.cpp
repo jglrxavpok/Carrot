@@ -221,6 +221,20 @@ namespace Carrot::Render {
             return;
         }
 
+        auto& statsCPUBufferPerFrame = statsCPUBuffers[renderContext.pViewport];
+        if(statsCPUBufferPerFrame.empty()) {
+            statsCPUBufferPerFrame.resize(GetEngine().getSwapchainImageCount());
+
+            for(std::size_t i = 0; i< statsCPUBufferPerFrame.size(); i++) {
+                statsCPUBufferPerFrame[i] = GetResourceAllocator().allocateStagingBuffer(sizeof(StatsBuffer));
+            }
+        }
+        auto& statsCPUBuffer = statsCPUBufferPerFrame[renderContext.swapchainIndex];
+
+        StatsBuffer* pStats = statsCPUBuffer.view.map<StatsBuffer>();
+        triangleCount += pStats->totalTriangleCount;
+        pStats->totalTriangleCount = 0;
+
         const Carrot::Camera& camera = renderContext.getCamera();
 
         auto testLOD = [&](const Cluster& c, const ClusterModel& instance) {
@@ -304,6 +318,7 @@ namespace Carrot::Render {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
+            renderer.bindBuffer(*packet.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
         }
 
 #if 0
@@ -351,11 +366,6 @@ namespace Carrot::Render {
         }
 #endif
 
-#if 1
-        if(renderContext.pViewport == &GetEngine().getMainViewport()) {
-            return; // TODO: debug only, remove
-        }
-
         {
             auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
             struct PushConstantData {
@@ -379,7 +389,6 @@ namespace Carrot::Render {
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
         renderer.render(packet);
-#endif
     }
 
     void ClusterManager::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
@@ -389,6 +398,7 @@ namespace Carrot::Render {
     void ClusterManager::onSwapchainImageCountChange(size_t newCount) {
         clusterDataPerFrame.resize(newCount);
         instancesPerFramePerViewport.clear();
+        statsCPUBuffers.clear();
         instanceDataPerFrame.resize(newCount);
     }
 

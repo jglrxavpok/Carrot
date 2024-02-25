@@ -162,6 +162,10 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
+        struct StatsBuffer {
+            std::uint32_t totalTriangleCount = 0;
+        };
+
         std::shared_ptr<Carrot::Pipeline> getPipeline(const Carrot::Render::Context& renderContext);
 
         VulkanRenderer& renderer;
@@ -173,16 +177,18 @@ namespace Carrot::Render {
         std::unordered_map<Carrot::Render::Viewport*, std::vector<ClusterInstance>> gpuInstancesPerViewport;
 
         bool requireClusterUpdate = true;
-        std::unordered_map<Carrot::Render::Viewport*, bool> requireInstanceUpdatePerViewport;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
-        std::unordered_map<Viewport*, std::shared_ptr<Carrot::BufferAllocation>> instanceGPUVisibleArrays;
         std::shared_ptr<Carrot::BufferAllocation> instanceDataGPUVisibleArray;
         Carrot::InstanceData* pInstanceData = nullptr; // CPU visible version of instanceDataGPUVisibleArray
 
-        std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
-        std::unordered_map<Viewport*, Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>>> instancesPerFramePerViewport;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
+
+        std::unordered_map<Carrot::Render::Viewport*, bool> requireInstanceUpdatePerViewport;
+        std::unordered_map<Viewport*, std::shared_ptr<Carrot::BufferAllocation>> instanceGPUVisibleArrays;
+        std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
+        std::unordered_map<Viewport*, Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>>> instancesPerFramePerViewport;
+        std::unordered_map<Carrot::Render::Viewport*, Render::PerFrame<BufferAllocation>> statsCPUBuffers;
     };
 
 } // Carrot::Render

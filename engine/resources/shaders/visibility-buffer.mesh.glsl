@@ -53,7 +53,11 @@ layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
     InstanceData modelData[];
 };
 
-// TODO: stats buffer
+// slot 3 is output image
+
+layout(set = 0, binding = 4, scalar) buffer Statistics {
+    uint totalTriangleCount;
+} stats;
 
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
@@ -117,4 +121,6 @@ void main() {
         gl_PrimitiveTriangleIndicesEXT[triangleIndex] = indices;
         gl_MeshPrimitivesEXT[triangleIndex].gl_PrimitiveID = int(triangleIndex);
     }
+
+    atomicAdd(stats.totalTriangleCount, cluster.triangleCount);
 }
