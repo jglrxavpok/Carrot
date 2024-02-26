@@ -49,8 +49,8 @@ layout(set = 0, binding = 1, scalar) buffer ClusterInstanceRef {
     ClusterInstance instances[];
 };
 
-layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
-    InstanceData modelData[];
+layout(set = 0, binding = 2, std430) buffer ModelDataRef {
+    ClusterBasedModelData modelData[];
 };
 
 // slot 3 is output image
@@ -58,40 +58,6 @@ layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
 layout(set = 0, binding = 4, scalar) buffer Statistics {
     uint totalTriangleCount;
 } stats;
-
-// assume a fixed resolution and fov
-const float testFOV = M_PI_OVER_2;
-const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
-
-// project given transformed (ie in view space) sphere to an error value in pixels
-// xyz is center of sphere
-// w is radius of sphere
-float projectErrorToScreen(vec4 transformedSphere) {
-    // https://stackoverflow.com/questions/21648630/radius-of-projected-sphere-in-screen-space
-    if (isinf(transformedSphere.w)) {
-        return transformedSphere.w;
-    }
-    const float d2 = dot(transformedSphere.xyz, transformedSphere.xyz);
-    const float r = transformedSphere.w;
-    return push.screenHeight * cotHalfFov * r / sqrt(d2 - r*r);
-}
-
-bool cull(uint instanceID, uint clusterID, uint modelDataIndex, mat4 modelview) {
-    if(push.lodSelectionMode == 0) {
-        vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
-        projectedBounds = transformSphere(projectedBounds, modelview);
-
-        vec4 parentProjectedBounds = vec4(clusters[clusterID].parentBoundingSphere.xyz, max(clusters[clusterID].parentError, 10e-10f));
-        parentProjectedBounds = transformSphere(parentProjectedBounds, modelview);
-
-        const float clusterError = projectErrorToScreen(projectedBounds);
-        const float parentError = projectErrorToScreen(parentProjectedBounds);
-        const bool render = clusterError <= push.lodErrorThreshold && parentError > push.lodErrorThreshold;
-        return !render;
-    } else {
-        return clusters[clusterID].lod != uint(push.forcedLOD);
-    }
-}
 
 void main() {
     uint instanceID = IN.clusterInstanceID;
@@ -102,7 +68,7 @@ void main() {
     #define cluster clusters[clusterID]
 
     uint modelDataIndex = instance.instanceDataIndex;
-    mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
+    mat4 modelview = cbo.view * modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
 
     SetMeshOutputsEXT(cluster.vertexCount, cluster.triangleCount);
 

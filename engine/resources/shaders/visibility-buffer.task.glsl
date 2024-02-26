@@ -42,8 +42,8 @@ layout(set = 0, binding = 1, scalar) buffer ClusterInstanceRef {
     ClusterInstance instances[];
 };
 
-layout(set = 0, binding = 2, scalar) buffer ModelDataRef {
-    InstanceData modelData[];
+layout(set = 0, binding = 2, std430) buffer ModelDataRef {
+    ClusterBasedModelData modelData[];
 };
 
 // assume a fixed resolution and fov
@@ -70,8 +70,12 @@ bool cull(uint clusterInstanceID) {
     uint clusterID = instances[clusterInstanceID].clusterID;
     uint modelDataIndex = instances[clusterInstanceID].instanceDataIndex;
 
+    if(modelData[modelDataIndex].visible == 0) {
+        return true;
+    }
+
     if(push.lodSelectionMode == 0) {
-        const mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
+        const mat4 modelview = cbo.view * modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
         vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
         projectedBounds = transformSphere(projectedBounds, modelview);
 

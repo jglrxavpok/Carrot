@@ -27,8 +27,8 @@ layout(set = 2, binding = 2, scalar) buffer ClusterInstanceRef {
     ClusterInstance instances[];
 };
 
-layout(set = 2, binding = 3, scalar) buffer ModelDataRef {
-    InstanceData modelData[];
+layout(set = 2, binding = 3, std430) buffer ModelDataRef {
+    ClusterBasedModelData modelData[];
 };
 DEFINE_CAMERA_SET(3)
 
@@ -67,7 +67,7 @@ void main() {
 
     mat4 clusterTransform = clusters[clusterID].transform;
     uint modelDataIndex = instances[instanceIndex].instanceDataIndex;
-    mat4 modelTransform = modelData[modelDataIndex].transform;
+    mat4 modelTransform = modelData[modelDataIndex].instanceData.transform;
     mat4 modelview = cbo.view * modelTransform * clusterTransform;
 
     vec2 posA = project(modelview, vA.pos.xyz);
@@ -86,7 +86,7 @@ void main() {
     uint metallicRoughnessTexture = nonuniformEXT(material.metallicRoughness);
     vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
     texColor *= material.baseColor;
-    texColor *= modelData[modelDataIndex].color;
+    texColor *= modelData[modelDataIndex].instanceData.color;
 
     texColor.a = 1.0;
     if(texColor.a < 0.01) {
@@ -123,14 +123,14 @@ void main() {
     o.viewTBN = mat3(T_, B_, N_);
 
     o.intProperty = IntPropertiesRayTracedLighting;
-    o.entityID = modelData[modelDataIndex].uuid;
+    o.entityID = modelData[modelDataIndex].instanceData.uuid;
 
     vec2 metallicRoughness = texture(sampler2D(textures[metallicRoughnessTexture], linearSampler), uv).bg * material.metallicRoughnessFactor;
     o.metallicness = metallicRoughness.x;
     o.roughness = metallicRoughness.y;
     o.emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
 
-    mat4 previousFrameModelTransform = modelData[modelDataIndex].lastFrameTransform;
+    mat4 previousFrameModelTransform = modelData[modelDataIndex].instanceData.lastFrameTransform;
     mat4 previousFrameModelview = previousFrameCBO.view * previousFrameModelTransform * clusterTransform;
     vec4 previousFrameClipPos = previousFrameModelview * vec4(position, 1.0);
     vec3 previousFrameViewPosition = previousFrameClipPos.xyz / previousFrameClipPos.w;

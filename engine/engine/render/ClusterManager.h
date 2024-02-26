@@ -179,7 +179,6 @@ namespace Carrot::Render {
         bool requireClusterUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
         std::shared_ptr<Carrot::BufferAllocation> instanceDataGPUVisibleArray;
-        Carrot::InstanceData* pInstanceData = nullptr; // CPU visible version of instanceDataGPUVisibleArray
 
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;

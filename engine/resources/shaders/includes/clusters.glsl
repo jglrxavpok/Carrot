@@ -16,3 +16,8 @@ struct ClusterInstance {
     uint32_t materialIndex;
     uint32_t instanceDataIndex;
 };
+
+struct ClusterBasedModelData {
+    InstanceData instanceData;
+    uint8_t visible;
+};

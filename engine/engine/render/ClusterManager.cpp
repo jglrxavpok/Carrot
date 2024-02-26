@@ -9,9 +9,15 @@
 #include <engine/render/VulkanRenderer.h>
 #include <engine/Engine.h>
 
-#pragma optimize("", off)
-
 namespace Carrot::Render {
+
+    struct ClusterBasedModelData {
+        Carrot::InstanceData instanceData;
+
+        // include padding (due to alignment, ClusterBasedModelData cannot be less than 176 bytes)
+        std::uint8_t visible;
+        std::uint8_t pad[15];
+    };
 
     ClustersTemplate::ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                        ClusterManager& manager,
@@ -291,15 +297,19 @@ namespace Carrot::Render {
             instanceGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterInstance) * gpuInstances.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
             instanceGPUVisibleArray->view.stageUpload(std::span<const ClusterInstance>{ gpuInstances });
 
-            instanceDataGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateStagingBuffer(sizeof(Carrot::InstanceData) * models.getRequiredStorageCount(), alignof(InstanceData))));
-            pInstanceData = instanceDataGPUVisibleArray->view.map<Carrot::InstanceData>();
+            instanceDataGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateStagingBuffer(sizeof(ClusterBasedModelData) * models.getRequiredStorageCount(), alignof(InstanceData))));
 
             requireInstanceUpdate = false;
         }
 
-        for(auto& [slot, pModel] : models) {
-            if(auto pLockedModel = pModel.lock()) {
-                pInstanceData[slot] = pLockedModel->instanceData;
+        if(instanceDataGPUVisibleArray) {
+            ClusterBasedModelData* pModelData = instanceDataGPUVisibleArray->view.map<ClusterBasedModelData>();
+
+            for(auto& [slot, pModel] : models) {
+                if(auto pLockedModel = pModel.lock()) {
+                    pModelData[slot].visible = pLockedModel->enabled;
+                    pModelData[slot].instanceData = pLockedModel->instanceData;
+                }
             }
         }
 
