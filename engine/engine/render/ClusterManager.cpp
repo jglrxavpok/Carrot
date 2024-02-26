@@ -8,8 +8,11 @@
 #include <engine/render/resources/ResourceAllocator.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/Engine.h>
+#include <engine/console/RuntimeOption.hpp>
 
 namespace Carrot::Render {
+
+    static Carrot::RuntimeOption ShowLODOverride("Debug/Clusters/Show LOD override", false);
 
     struct ClusterBasedModelData {
         Carrot::InstanceData instanceData;
@@ -198,16 +201,14 @@ namespace Carrot::Render {
     static std::uint64_t triangleCount = 0;
 
     void ClusterManager::render(const Carrot::Render::Context& renderContext) {
-        if(gpuClusters.empty()) {
-            return;
-        }
-
         static int globalLOD = 0;
         static int lodSelectionMode = 0;
         static float errorThreshold = 1.0f;
         const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
-        if(isMainViewport) {
-            if(ImGui::Begin("Debug clusters")) {
+        if(ShowLODOverride && isMainViewport) {
+            bool keepOpen = true;
+
+            if(ImGui::Begin("Debug clusters", &keepOpen)) {
                 ImGui::RadioButton("Automatic LOD selection", &lodSelectionMode, 0);
                 ImGui::RadioButton("Manual LOD selection", &lodSelectionMode, 1);
 
@@ -219,7 +220,14 @@ namespace Carrot::Render {
                 ImGui::Text("Current triangle count: %llu", triangleCount);
             }
             ImGui::End();
+            if(!keepOpen) {
+                ShowLODOverride.setValue(false);
+            }
             triangleCount = 0;
+        }
+
+        if(gpuClusters.empty()) {
+            return;
         }
 
         auto& gpuInstances = gpuInstancesPerViewport[renderContext.pViewport];
