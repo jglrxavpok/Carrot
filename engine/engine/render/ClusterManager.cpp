@@ -3,6 +3,8 @@
 //
 
 #include "ClusterManager.h"
+
+#include <core/containers/Vector.hpp>
 #include <engine/utils/Profiling.h>
 #include <engine/utils/Macros.h>
 #include <engine/render/resources/ResourceAllocator.h>
@@ -310,6 +312,9 @@ namespace Carrot::Render {
             requireInstanceUpdate = false;
         }
 
+        BufferView activeModelsBufferView;
+        activeInstancesAllocator.clear();
+        Vector<std::uint32_t> activeInstances { activeInstancesAllocator };
         if(instanceDataGPUVisibleArray) {
             ClusterBasedModelData* pModelData = instanceDataGPUVisibleArray->view.map<ClusterBasedModelData>();
 
@@ -317,13 +322,22 @@ namespace Carrot::Render {
                 if(auto pLockedModel = pModel.lock()) {
                     pModelData[slot].visible = pLockedModel->enabled;
                     pModelData[slot].instanceData = pLockedModel->instanceData;
+
+                    activeInstances.ensureReserve(activeInstances.size() + pLockedModel->instanceCount);
+                    const std::size_t endInstance = pLockedModel->firstInstance + pLockedModel->instanceCount;
+                    for(std::size_t instanceIndex = pLockedModel->firstInstance; instanceIndex < endInstance; instanceIndex++) {
+                        activeInstances.pushBack(instanceIndex);
+                    }
                 }
             }
+
+            activeModelsBufferView = renderer.getSingleFrameBuffer(activeInstances.size() * sizeof(std::uint32_t));
+            activeModelsBufferView.directUpload(std::span<const std::uint32_t>(activeInstances));
         }
 
         clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
         auto& instancesPerFrame = instancesPerFramePerViewport[renderContext.pViewport];
-        if(instancesPerFrame.empty()) {
+        if(instancesPerFrame.size() != GetEngine().getSwapchainImageCount()) {
             instancesPerFrame.resize(GetEngine().getSwapchainImageCount());
         }
         instancesPerFrame[renderContext.swapchainIndex] = instanceGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
@@ -337,52 +351,9 @@ namespace Carrot::Render {
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
             renderer.bindBuffer(*packet.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
+            renderer.bindBuffer(*packet.pipeline, renderContext, activeModelsBufferView, 0, 5);
         }
 
-#if 0
-        for(const auto& [index, pInstance] : models) {
-            if(const auto instance = pInstance.lock()) {
-                if(!instance->enabled) {
-                    continue;
-                }
-                if(instance->pViewport != renderContext.pViewport) {
-                    continue;
-                }
-
-                packet.clearPerDrawData();
-                packet.unindexedDrawCommands.clear();
-                std::uint32_t instanceIndex = 0;
-
-                for(const auto& pTemplate : instance->templates) {
-                    std::size_t clusterOffset = 0;
-                    for(const auto& cluster : pTemplate->clusters) {
-                        if(testLOD(cluster, *instance)) {
-                            auto& drawCommand = packet.unindexedDrawCommands.emplace_back();
-                            drawCommand.instanceCount = 1;
-                            drawCommand.firstInstance = 0;
-                            drawCommand.firstVertex = 0;
-                            drawCommand.vertexCount = std::uint32_t(cluster.triangleCount)*3;
-
-                            triangleCount += cluster.triangleCount;
-
-                            GBufferDrawData drawData;
-                            drawData.materialIndex = 0;
-                            drawData.uuid0 = instance->firstInstance + instanceIndex;
-                            packet.addPerDrawData(std::span{ &drawData, 1 });
-
-                        }
-
-                        instanceIndex++;
-                        clusterOffset++;
-                    }
-                }
-                verify(instanceIndex == instance->instanceCount, "instanceIndex == instance->instanceCount");
-
-                if(packet.unindexedDrawCommands.size() > 0)
-                    renderer.render(packet);
-            }
-        }
-#endif
 
         {
             auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
@@ -403,7 +374,7 @@ namespace Carrot::Render {
         }
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
-        drawCommand.drawMeshTasks.groupCountX = gpuInstances.size();
+        drawCommand.drawMeshTasks.groupCountX = activeInstances.size();
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
         renderer.render(packet);

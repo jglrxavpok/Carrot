@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/allocators/StackAllocator.h>
 #include <core/utils/WeakPool.hpp>
 #include <engine/render/InstanceData.h>
 #include <core/render/Meshlet.h>
@@ -188,6 +189,8 @@ namespace Carrot::Render {
         std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
         std::unordered_map<Viewport*, Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>>> instancesPerFramePerViewport;
         std::unordered_map<Carrot::Render::Viewport*, Render::PerFrame<BufferAllocation>> statsCPUBuffers;
+
+        Carrot::StackAllocator activeInstancesAllocator { Carrot::Allocator::getDefault() };
     };
 
 } // Carrot::Render

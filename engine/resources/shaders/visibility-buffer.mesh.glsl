@@ -77,7 +77,7 @@ void main() {
         const vec4 ndcPosition = cbo.jitteredProjection * viewPosition;
         gl_MeshVerticesEXT[vertexIndex].gl_Position = ndcPosition;
         outNDCPosition[vertexIndex] = ndcPosition;
-        outClusterInstanceID[vertexIndex] = clusterID;
+        outClusterInstanceID[vertexIndex] = instanceID;
     }
 
     for(uint triangleIndex = 0; triangleIndex < cluster.triangleCount; triangleIndex++) {

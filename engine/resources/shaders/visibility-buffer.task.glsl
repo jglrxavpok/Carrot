@@ -46,6 +46,12 @@ layout(set = 0, binding = 2, std430) buffer ModelDataRef {
     ClusterBasedModelData modelData[];
 };
 
+// slot 3 used by output image
+// slot 4 is stats buffer
+layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
+    uint activeClusters[];
+};
+
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
 const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
@@ -92,7 +98,7 @@ bool cull(uint clusterInstanceID) {
 }
 
 void main() {
-    uint clusterID = gl_GlobalInvocationID.x;
+    uint clusterID = activeClusters[gl_GlobalInvocationID.x];
     bool culled = clusterID >= push.maxCluster || cull(clusterID);
 
     // TODO: do multiple emits per task shader? (see NVIDIA example)
