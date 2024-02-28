@@ -101,8 +101,8 @@ namespace Carrot {
         vk::DescriptorSet getAnimationDataDescriptorSet() const;
 
     public:
-        void renderStatic(Render::ModelRendererStorage& rendererStorage, const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
-        void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassEnum renderPass = Render::PassEnum::OpaqueGBuffer);
+        void renderStatic(Render::ModelRendererStorage& rendererStorage, const Render::Context& renderContext, const InstanceData& instanceData = {}, Render::PassName renderPass = Render::PassEnum::OpaqueGBuffer);
+        void renderSkinned(const Render::Context& renderContext, const AnimatedInstanceData& instanceData = {}, Render::PassName renderPass = Render::PassEnum::OpaqueGBuffer);
 
     public:
         const Carrot::IO::Resource& getOriginatingResource() const { return resource; }

@@ -92,7 +92,7 @@ namespace Carrot::Render {
         void beginFrame();
 
         /// Makes a new RenderPacket. The returned reference is valid only for the current frame
-        Packet& make(Carrot::Render::PassEnum pass, const Carrot::Render::PacketType& packetType, Carrot::Render::Viewport* viewport, std::source_location location = std::source_location::current());
+        Packet& make(Carrot::Render::PassName pass, const Carrot::Render::PacketType& packetType, Carrot::Render::Viewport* viewport, std::source_location location = std::source_location::current());
 
         Packet::PushConstant& makePushConstant();
 

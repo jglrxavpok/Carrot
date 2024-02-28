@@ -781,7 +781,7 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
 struct PacketKey {
     Carrot::Pipeline* pipeline = nullptr;
 
-    Carrot::Render::PassEnum pass = Carrot::Render::PassEnum::Undefined;
+    Carrot::Render::PassName pass = Carrot::Render::PassEnum::Undefined;
     Carrot::Render::Viewport* viewport = nullptr;
 
     Carrot::BufferView vertexBuffer;
@@ -803,7 +803,7 @@ struct std::hash<PacketKey> {
 #define hash_s(member) hash_combine(h, static_cast<std::size_t>((member)));
         std::size_t h = 0;
         hash_r(key.pipeline);
-        hash_s(key.pass);
+        hash_s(key.pass.hash());
         hash_r(key.viewport);
         if(key.vertexBuffer) {
             hash_r((VkBuffer)key.vertexBuffer.getVulkanBuffer());
@@ -1466,7 +1466,7 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
     return blackCubeMapTexture;
 }
 
-void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassEnum packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
+void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
     ASSERT_RENDER_THREAD();
 
@@ -1537,7 +1537,7 @@ void Carrot::VulkanRenderer::recordTransparentGBufferPass(vk::RenderPass pass, C
     recordPassPackets(Render::PassEnum::TransparentGBuffer, pass, renderContext, commands);
 }
 
-std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const {
+std::span<const Carrot::Render::Packet> Carrot::VulkanRenderer::getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassName pass) const {
     ZoneScoped;
     auto predicate = [&](const auto& packet) {
         return packet.viewport == viewport && packet.pass == pass;
@@ -1567,7 +1567,7 @@ void Carrot::VulkanRenderer::sortRenderPackets(std::vector<Carrot::Render::Packe
         }
 
         if(a.pass != b.pass) {
-            return a.pass < b.pass;
+            return a.pass.key < b.pass.key;
         }
 
         if(a.transparentGBuffer.zOrder != b.transparentGBuffer.zOrder) {
@@ -1678,11 +1678,11 @@ std::shared_ptr<Carrot::Model> Carrot::VulkanRenderer::getUnitCube() {
     return unitCubeModel;
 }
 
-Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location) {
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location) {
     return makeRenderPacket(pass, packetType, *renderContext.pViewport, location);
 }
 
-Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location) {
+Carrot::Render::Packet& Carrot::VulkanRenderer::makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location) {
     return (*threadLocalPacketStorage)[getCurrentBufferPointerForMain()].make(pass, packetType, &viewport, location);
 }
 

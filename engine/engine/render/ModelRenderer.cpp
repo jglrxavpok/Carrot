@@ -294,7 +294,7 @@ namespace Carrot::Render {
         return cloned;
     }
 
-    void ModelRenderer::render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const {
+    void ModelRenderer::render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassName renderPass) const {
         ZoneScoped;
 
         if(storage.pCreator != this) {

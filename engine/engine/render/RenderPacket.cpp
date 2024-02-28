@@ -14,7 +14,7 @@
 
 
 namespace Carrot::Render {
-    Packet::Packet(PacketContainer& container, PassEnum pass, const Render::PacketType& packetType, std::source_location sourceLocation)
+    Packet::Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, std::source_location sourceLocation)
     : container(container)
     , source(sourceLocation)
     , pass(pass)

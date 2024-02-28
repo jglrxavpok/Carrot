@@ -88,7 +88,7 @@ namespace Carrot::Render {
 
     public:
         std::shared_ptr<Carrot::Pipeline> pipeline;
-        PassEnum pass = PassEnum::Undefined;
+        PassName pass = PassEnum::Undefined;
         Render::Viewport* viewport = nullptr;
 
         Carrot::BufferView vertexBuffer;
@@ -107,7 +107,7 @@ namespace Carrot::Render {
         std::optional<vk::Rect2D> scissor;
 
     public:
-        explicit Packet(PacketContainer& container, PassEnum pass, const Render::PacketType& packetType, std::source_location location = std::source_location::current());
+        explicit Packet(PacketContainer& container, PassName pass, const Render::PacketType& packetType, std::source_location location = std::source_location::current());
 
         Packet(const Packet&);
         Packet(Packet&& toMove);

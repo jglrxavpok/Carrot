@@ -28,7 +28,7 @@ namespace Carrot::Render {
     }
 
     /// Makes a new RenderPacket. The returned reference is valid only for the current frame
-    Packet& PacketContainer::make(Carrot::Render::PassEnum pass, const Render::PacketType& packetType, Carrot::Render::Viewport* viewport, std::source_location location) {
+    Packet& PacketContainer::make(Carrot::Render::PassName pass, const Render::PacketType& packetType, Carrot::Render::Viewport* viewport, std::source_location location) {
         ZoneScoped;
         auto& r = renderPackets.allocate(*this, pass, packetType, location);
         r.viewport = viewport;

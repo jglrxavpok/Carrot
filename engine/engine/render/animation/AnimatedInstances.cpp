@@ -368,11 +368,11 @@ void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::R
     TODO;
 }
 
-void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass) {
+void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass) {
     render(renderContext, renderPass, maxInstanceCount);
 }
 
-void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass, std::size_t instanceCount) {
+void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass, std::size_t instanceCount) {
     verify(instanceCount <= maxInstanceCount, "instanceCount > maxInstanceCount !");
     currentInstanceCount = instanceCount;
     onFrame(renderContext.swapchainIndex);

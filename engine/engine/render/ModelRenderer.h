@@ -122,7 +122,7 @@ namespace Carrot::Render {
         std::shared_ptr<ModelRenderer> clone() const;
 
     public:
-        void render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassEnum renderPass) const;
+        void render(ModelRendererStorage& storage, const Render::Context& renderContext, const InstanceData& instanceData, Render::PassName renderPass) const;
 
     public:
         void addOverride(const MaterialOverride& override);

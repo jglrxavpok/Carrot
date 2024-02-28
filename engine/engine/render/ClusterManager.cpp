@@ -144,6 +144,7 @@ namespace Carrot::Render {
         Async::LockGuard l { accessLock };
         requireInstanceUpdatePerViewport[desc.pViewport] = true;
         const std::uint32_t firstInstanceID = gpuInstances.size();
+        // TODO: gpu instances should be inside a weakpool map too (to reuse slots and memory)
         gpuInstances.resize(firstInstanceID + clusterCount);
 
         std::uint32_t clusterIndex = 0;

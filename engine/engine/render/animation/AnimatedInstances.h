@@ -40,8 +40,8 @@ namespace Carrot {
 
         vk::Semaphore& getSkinningSemaphore(std::size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
 
-        void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass);
-        void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassEnum renderPass, std::size_t instanceCount);
+        void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass);
+        void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass, std::size_t instanceCount);
 
 #pragma region RenderingUpdate
         vk::Semaphore& onFrame(std::size_t frameIndex);

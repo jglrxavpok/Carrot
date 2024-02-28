@@ -240,8 +240,8 @@ namespace Carrot {
 
     public:
         /// Reference is valid only for the current frame
-        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location = std::source_location::current());
-        Render::Packet& makeRenderPacket(Render::PassEnum pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location = std::source_location::current());
+        Render::Packet& makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, const Render::Context& renderContext, std::source_location location = std::source_location::current());
+        Render::Packet& makeRenderPacket(Render::PassName pass, const Render::PacketType& packetType, Render::Viewport& viewport, std::source_location location = std::source_location::current());
 
         void renderSphere(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
         void renderCapsule(const Carrot::Render::Context& renderContext, const glm::mat4& transform, float radius, float height, const glm::vec4& color, const Carrot::UUID& objectID = Carrot::UUID::null());
@@ -270,7 +270,7 @@ namespace Carrot {
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         const Carrot::BufferView getNullBufferInfo() const;
 
-        void recordPassPackets(Carrot::Render::PassEnum passEnum, vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
+        void recordPassPackets(Carrot::Render::PassName passEnum, vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordOpaqueGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
         void recordTransparentGBufferPass(vk::RenderPass pass, Render::Context renderContext, vk::CommandBuffer& commands);
 
@@ -425,7 +425,7 @@ namespace Carrot {
         void initImGui();
 
     private:
-        std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassEnum pass) const;
+        std::span<const Render::Packet> getRenderPackets(Carrot::Render::Viewport* viewport, Carrot::Render::PassName pass) const;
         void sortRenderPackets(std::vector<Carrot::Render::Packet>& packets);
 
         // debug

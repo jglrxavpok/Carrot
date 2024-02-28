@@ -383,14 +383,14 @@ Carrot::Model::~Model() {
     }
 }
 
-void Carrot::Model::renderStatic(Render::ModelRendererStorage& rendererStorage, const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassEnum renderPass) {
+void Carrot::Model::renderStatic(Render::ModelRendererStorage& rendererStorage, const Carrot::Render::Context& renderContext, const Carrot::InstanceData& instanceData, Render::PassName renderPass) {
     if(defaultRenderer == nullptr) {
         defaultRenderer = new Render::ModelRenderer(*this);
     }
     defaultRenderer->render(rendererStorage, renderContext, instanceData, renderPass);
 }
 
-void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassEnum renderPass) {
+void Carrot::Model::renderSkinned(const Carrot::Render::Context& renderContext, const Carrot::AnimatedInstanceData& instanceData, Render::PassName renderPass) {
 /* TODO
     GBufferDrawData data;
 
