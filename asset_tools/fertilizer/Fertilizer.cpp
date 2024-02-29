@@ -31,6 +31,7 @@ namespace Fertilizer {
             { ".pnm", { ".ktx2",  compressTexture } },
 
             { ".gltf", { ".gltf", processGLTF } },
+            { ".glb", { ".gltf", processGLTF } },
             { ".obj", { ".gltf", processAssimp } },
             { ".fbx", { ".gltf", processAssimp } },
     };

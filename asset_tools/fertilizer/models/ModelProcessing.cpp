@@ -969,11 +969,20 @@ namespace Fertilizer {
         std::string errors;
         std::string warnings;
 
-        if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, inputFile.string())) {
-            return {
-                .errorCode = ConversionResultError::ModelCompressionError,
-                .errorMessage = errors,
-            };
+        if(inputFile.extension() == ".glb") {
+            if(!parser.LoadBinaryFromFile(&model, &errors, &warnings, inputFile.string())) {
+                return {
+                    .errorCode = ConversionResultError::ModelCompressionError,
+                    .errorMessage = errors,
+                };
+            }
+        } else {
+            if(!parser.LoadASCIIFromFile(&model, &errors, &warnings, inputFile.string())) {
+                return {
+                    .errorCode = ConversionResultError::ModelCompressionError,
+                    .errorMessage = errors,
+                };
+            }
         }
 
         // ----------

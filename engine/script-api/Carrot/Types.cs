@@ -32,6 +32,38 @@ namespace Carrot {
                 other.Y * t + Y * oneMinusT
             );
         }
+
+        public float Dot(Vec2 other) {
+            return X * other.X + Y * other.Y;
+        }
+
+        public static Vec2 operator +(Vec2 a, Vec2 b) {
+            return new Vec2(a.X + b.X, a.Y + b.Y);
+        }
+        
+        public static Vec2 operator -(Vec2 a, Vec2 b) {
+            return new Vec2(a.X - b.X, a.Y - b.Y);
+        }
+        
+        public static Vec2 operator -(Vec2 a) {
+            return new Vec2(-a.X, -a.Y);
+        }
+        
+        public static Vec2 operator *(Vec2 a, float s) {
+            return new Vec2(a.X * s, a.Y * s);
+        }
+        
+        public static Vec2 operator /(Vec2 a, float s) {
+            return new Vec2(a.X / s, a.Y / s);
+        }
+        
+        public static Vec2 operator *(float s, Vec2 a) {
+            return new Vec2(a.X * s, a.Y * s);
+        }
+        
+        public static Vec2 operator /(float s, Vec2 a) {
+            return new Vec2(s / a.X, s / a.Y);
+        }
     }
     
     public struct Vec3 {
@@ -69,8 +101,40 @@ namespace Carrot {
                 other.Z * t + Z * oneMinusT
             );
         }
-    }
 
+        public float Dot(Vec3 other) {
+            return X * other.X + Y * other.Y + Z * other.Z;
+        }
+
+        public static Vec3 operator +(Vec3 a, Vec3 b) {
+            return new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+        }
+        
+        public static Vec3 operator -(Vec3 a, Vec3 b) {
+            return new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+        }
+        
+        public static Vec3 operator -(Vec3 a) {
+            return new Vec3(-a.X, -a.Y, -a.Z);
+        }
+        
+        public static Vec3 operator *(Vec3 a, float s) {
+            return new Vec3(a.X * s, a.Y * s, a.Z * s);
+        }
+        
+        public static Vec3 operator /(Vec3 a, float s) {
+            return new Vec3(a.X / s, a.Y / s, a.Z / s);
+        }
+        
+        public static Vec3 operator *(float s, Vec3 a) {
+            return new Vec3(a.X * s, a.Y * s, a.Z * s);
+        }
+        
+        public static Vec3 operator /(float s, Vec3 a) {
+            return new Vec3(s / a.X, s / a.Y, s / a.Z);
+        }
+    }
+    
     public struct EntityID {
         private UInt32 data0;
         private UInt32 data1;

@@ -8,6 +8,8 @@
 #include <optional>
 #include <list>
 #include <xhash>
+#include <cider/Mutex.h>
+
 #include "core/Macros.h"
 #include "core/async/Locks.h"
 #include "core/utils/Concepts.hpp"
@@ -24,7 +26,7 @@ namespace Carrot::Async {
         using Hash = std::size_t;
 
         struct Node {
-            Async::SpinLock nodeAccess;
+            Cider::Mutex nodeAccess;
             KeyType key;
 
             Hash hashedKey = 0;
@@ -103,7 +105,62 @@ namespace Carrot::Async {
                 }
 
                 writeLock.unlock();
-                Async::LockGuard l { existingNode->nodeAccess };
+                Cider::BlockingLockGuard l { existingNode->nodeAccess };
+
+                if(existingNode->value.has_value()) {
+                    return existingNode->value.value();
+                }
+
+                existingNode->value = std::move(generator());
+
+                return existingNode->value.value();
+            }
+        }
+
+        /// Gets the value corresponding to the given key. If no such value exists, the value is created via generator.
+        ValueType& getOrCompute(Cider::FiberHandle& fiberHandle, const KeyType& key, std::function<ValueType()> generator) {
+            Hash hashedKey = hasher(key);
+
+            Node* existingNode = nullptr;
+            {
+                Async::LockGuard l { storageAccess.read() };
+                for(auto& node : storage) {
+                    if(node.hashedKey == hashedKey) {
+                        verify(key == node.key, "Collision!");
+                        if(node.value.has_value()) {
+                            return node.value.value();
+                        } else {
+                            existingNode = &node;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Value does not exist
+            {
+                auto& writeLock = storageAccess.write();
+                writeLock.lock();
+
+                // node might have been created by another thread
+                if(!existingNode) {
+                    for(auto& node : storage) {
+                        if(node.hashedKey == hashedKey) {
+                            existingNode = &node;
+                        }
+                    }
+                }
+
+                // insert empty node
+                if(!existingNode) {
+                    existingNode = &storage.emplace_back();
+                    existingNode->key = key;
+                    existingNode->hashedKey = hashedKey;
+                    existingNode->value = {};
+                }
+
+                writeLock.unlock();
+                Cider::LockGuard l { fiberHandle, existingNode->nodeAccess };
 
                 if(existingNode->value.has_value()) {
                     return existingNode->value.value();
@@ -121,7 +178,7 @@ namespace Carrot::Async {
             Async::LockGuard l { storageAccess.read() };
             for(auto& node : storage) {
                 if(node.hashedKey == hashedKey) {
-                    Async::LockGuard l1 { node.nodeAccess };
+                    Cider::BlockingLockGuard l1 { node.nodeAccess };
                     bool result = node.value.has_value();
                     node.value.reset();
                     return result;
@@ -199,7 +256,7 @@ namespace Carrot::Async {
         void clear() {
             Async::LockGuard g { storageAccess.write() };
             for(auto& node : storage) {
-                Async::LockGuard g2 { node.nodeAccess };
+                Cider::BlockingLockGuard g2 { node.nodeAccess };
                 node.value.reset();
             }
             storage.clear();

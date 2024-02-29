@@ -109,7 +109,7 @@ namespace Carrot {
         ZoneScopedN("Loading model");
         const std::string modelPath = path.toString();
         ZoneText(modelPath.c_str(), modelPath.size());
-        return models.getOrCompute(modelPath, [&]() {
+        return models.getOrCompute(task.getFiberHandle(), modelPath, [&]() {
             return asyncLoadModel(task, path);
         });
     }

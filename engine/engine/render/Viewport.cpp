@@ -22,6 +22,12 @@ namespace Carrot::Render {
         for(auto& pScene : scenes) {
             pScene->unbindFromViewport(*this);
         }
+        if(!cameraDescriptorSets.empty()) {
+            renderer.destroyCameraDescriptorSets(cameraDescriptorSets);
+        }
+        if(!viewportDescriptorSets.empty()) {
+            renderer.destroyViewportDescriptorSets(viewportDescriptorSets);
+        }
     }
 
     Carrot::Camera& Viewport::getCamera(Carrot::Render::Eye eye) {

@@ -100,6 +100,32 @@ namespace Peeler {
             ImGui::Text("Model is loading...");
             return;
         }
+
+        ImGui::BeginGroup();
+        CLEANUP({
+            ImGui::EndGroup();
+            if(ImGui::BeginDragDropTarget()) {
+                if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                    std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                    std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                    buffer.get()[payload->DataSize] = '\0';
+
+                    std::u8string str = buffer.get();
+                    std::string s = Carrot::toString(str);
+
+                    auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                    // TODO: no need to go through disk again
+                    std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                    if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
+                        component->setFile(vfsPath);
+                        edition.hasModifications = true;
+                    }
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+        });
         std::string path = asyncModel.isEmpty() ? "" : asyncModel->getOriginatingResource().getName();
         if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
             component->setFile(Carrot::IO::VFS::Path(path));
@@ -111,28 +137,6 @@ namespace Peeler {
             GetAssetServer().removeFromModelCache(vfsPath);
             component->setFile(vfsPath);
             edition.hasModifications = true;
-        }
-
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string str = buffer.get();
-                std::string s = Carrot::toString(str);
-
-                auto vfsPath = Carrot::IO::VFS::Path(s);
-
-                // TODO: no need to go through disk again
-                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
-                    component->setFile(vfsPath);
-                    edition.hasModifications = true;
-                }
-            }
-
-            ImGui::EndDragDropTarget();
         }
 
         ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &component->isTransparent);
