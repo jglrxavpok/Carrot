@@ -15,7 +15,8 @@
 namespace Carrot {
 
     Scene& SceneManager::getMainScene() {
-        return mainScene;
+        verify(pMainScene, "Main scen")
+        return *pMainScene;
     }
 
     Scene& SceneManager::loadScene(const Carrot::IO::VFS::Path& path) {
@@ -48,6 +49,7 @@ namespace Carrot {
 
     Scene& SceneManager::changeScene(const Carrot::IO::VFS::Path& scenePath) {
         rapidjson::Document sceneDoc;
+        Scene& mainScene = getMainScene();
         try {
             Carrot::IO::Resource sceneData = scenePath;
             sceneDoc.Parse(sceneData.readText());
@@ -73,7 +75,7 @@ namespace Carrot {
     Scene* SceneManager::SceneIterator::operator*() {
         verify(index <= pManager->scenes.size(), "Dereferencing an invalid iterator");
         if(index == 0) {
-            return &pManager->mainScene;
+            return pManager->pMainScene.get();
         } else {
             std::size_t n = index-1;
             auto iter = pManager->scenes.begin();
@@ -117,7 +119,7 @@ namespace Carrot {
         }
 
         static MonoObject* GetMainScene() {
-            return GetCSharpBindings().requestCarrotReference(self().SceneClass, &GetSceneManager().mainScene)->toMono();
+            return GetCSharpBindings().requestCarrotReference(self().SceneClass, &GetSceneManager().getMainScene())->toMono();
         }
 
         static MonoObject* ChangeScene(MonoString* vfsPathObj) {
@@ -166,5 +168,7 @@ namespace Carrot {
 
     void SceneManager::initScripting() {
         bindingsImpl = new Bindings;
+
+        pMainScene = std::make_unique<Scene>();
     }
 } // Carrot

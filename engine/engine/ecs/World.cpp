@@ -5,6 +5,9 @@
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/math/Transform.h>
 #include "World.h"
+
+#include <engine/scripting/CSharpBindings.h>
+
 #include "systems/System.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "EntityTypes.h"
@@ -136,7 +139,19 @@ namespace Carrot::ECS {
         return getWorld().getSignature(*this);
     }
 
-    World::World() {}
+    World::World() {
+        csharpLoadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() {
+            queries.clear();
+        });
+        csharpUnloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() {
+            queries.clear();
+        });
+    }
+
+    World::~World() {
+        GetCSharpBindings().unregisterGameAssemblyLoadCallback(csharpLoadCallbackHandle);
+        GetCSharpBindings().unregisterGameAssemblyUnloadCallback(csharpUnloadCallbackHandle);
+    }
 
     EntityFlags World::getFlags(const Entity& entity) const {
         auto it = entityFlags.find(entity);
@@ -680,6 +695,7 @@ namespace Carrot::ECS {
     }
 
     World& World::operator=(const World& toCopy) {
+        queries.clear(); // make sure we don't reference entities that no longer exist
         entitiesUpdated.clear();
         entityParents = toCopy.entityParents;
         entityChildren = toCopy.entityChildren;

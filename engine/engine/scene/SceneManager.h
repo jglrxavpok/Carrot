@@ -75,7 +75,7 @@ namespace Carrot {
     private:
         void* bindingsImpl = nullptr;
 
-        Scene mainScene{};
+        std::unique_ptr<Scene> pMainScene; // init in initScripting because World has a dependency on CSharpBindings
         std::list<Scene> scenes;
         friend struct Bindings;
     };

@@ -12,6 +12,8 @@
 #include <engine/ecs/components/Component.h>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/WorldData.h>
+#include <eventpp/callbacklist.h>
+
 #include "EntityTypes.h"
 
 namespace Carrot::ECS {
@@ -19,7 +21,8 @@ namespace Carrot::ECS {
     class World {
     public:
         explicit World();
-        World(const World& toCopy) {
+        ~World();
+        World(const World& toCopy): World() {
             *this = toCopy;
         }
 
@@ -196,6 +199,10 @@ namespace Carrot::ECS {
         std::vector<std::unique_ptr<System>> renderSystems;
 
         bool frozenLogic = false;
+
+        // used to invalidate structures that hold csharp components
+        eventpp::CallbackList<void()>::Handle csharpLoadCallbackHandle;
+        eventpp::CallbackList<void()>::Handle csharpUnloadCallbackHandle;
 
     private: // internal representation of hierarchy
         std::unordered_map<EntityID, EntityID> entityParents;

@@ -68,7 +68,7 @@ namespace Carrot {
          * By default entities are visible
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern bool Hide(bool recursive);
+        public extern void Hide(bool recursive);
 
         /**
          * Shows this entity and potentially its children, if recursive is set to true
@@ -76,7 +76,7 @@ namespace Carrot {
          * By default entities are visible
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern bool Show(bool recursive);
+        public extern void Show(bool recursive);
 
         /**
          * Does this object point to an existing entity?
