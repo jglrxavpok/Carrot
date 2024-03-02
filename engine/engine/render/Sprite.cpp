@@ -43,13 +43,9 @@ namespace Carrot::Render {
 
         packet.useInstance(instanceData);
 
-        Render::Packet::PushConstant& materialData = packet.addPushConstant();
-        materialData.id = "drawDataPush";
-        materialData.stages = vk::ShaderStageFlagBits::eFragment;
-
         Carrot::GBufferDrawData drawData;
         drawData.materialIndex = material->getSlot();
-        materialData.setData(drawData);
+        packet.addPerDrawData(std::span{ &drawData, 1 });
 
         Render::Packet::PushConstant& region = packet.addPushConstant();
         region.id = "region";

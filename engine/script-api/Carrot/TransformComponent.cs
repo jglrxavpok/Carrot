@@ -30,6 +30,7 @@ namespace Carrot {
          */
         public Vec3 WorldPosition {
             get => _GetWorldPosition();
+            // TODO: setter
         }
         
         private TransformComponent(Entity owner) : base(owner) {

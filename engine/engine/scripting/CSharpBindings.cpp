@@ -33,6 +33,7 @@
 #include <engine/scripting/CSharpHelpers.ipp>
 #include <engine/utils/Profiling.h>
 #include <TracyC.h>
+#include <engine/ecs/components/Kinematics.h>
 
 namespace Carrot::Scripting {
     static thread_local std::stack<TracyCZoneCtx> ProfilingZones_TLS;
@@ -126,6 +127,9 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.NavMeshComponent::GetClosestPointInMesh", GetClosestPointInMesh);
         mono_add_internal_call("Carrot.NavMeshComponent::PathFind", PathFind);
+
+        mono_add_internal_call("Carrot.KinematicsComponent::_GetLocalVelocity", _GetKinematicsLocalVelocity);
+        mono_add_internal_call("Carrot.KinematicsComponent::_SetLocalVelocity", _SetKinematicsLocalVelocity);
 
         {
             mono_add_internal_call("Carrot.Physics.Collider::Raycast", RaycastCollider);
@@ -455,6 +459,8 @@ namespace Carrot::Scripting {
         LOAD_CLASS(RigidBodyComponent);
         LOAD_CLASS(CharacterComponent);
         LOAD_CLASS(NavMeshComponent);
+        LOAD_CLASS(CameraComponent);
+        LOAD_CLASS(KinematicsComponent);
 
         {
             LOAD_CLASS(NavPath);
@@ -507,6 +513,14 @@ namespace Carrot::Scripting {
             hardcodedComponents["Carrot.NavMeshComponent"] = {
                     .id = ECS::NavMeshComponent::getID(),
                     .clazz = NavMeshComponentClass,
+            };
+            hardcodedComponents["Carrot.CameraComponent"] = {
+                    .id = ECS::CameraComponent::getID(),
+                    .clazz = CameraComponentClass,
+            };
+            hardcodedComponents["Carrot.KinematicsComponent"] = {
+                    .id = ECS::CameraComponent::getID(),
+                    .clazz = KinematicsComponentClass,
             };
         }
 
@@ -696,6 +710,18 @@ namespace Carrot::Scripting {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
         ECS::Entity entity = convertToEntity(ownerEntity);
         return entity.getComponent<ECS::TransformComponent>()->computeFinalPosition();
+    }
+
+    void CSharpBindings::_SetKinematicsLocalVelocity(MonoObject* transformComp, glm::vec3 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::Kinematics>()->velocity = value;
+    }
+
+    glm::vec3 CSharpBindings::_GetKinematicsLocalVelocity(MonoObject* transformComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(transformComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::Kinematics>()->velocity;
     }
 
     void CSharpBindings::TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos) {

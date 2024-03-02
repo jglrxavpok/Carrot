@@ -54,6 +54,7 @@
         <Compile Include="IComponent.cs" />
         <Compile Include="Input\Actions.cs" />
         <Compile Include="Input\ActionSet.cs" />
+        <Compile Include="KinematicsComponent.cs" />
         <Compile Include="LogicSystem.cs" />
         <Compile Include="NavMeshComponent.cs" />
         <Compile Include="Object.cs" />

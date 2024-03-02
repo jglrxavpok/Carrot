@@ -4,7 +4,6 @@
   "vertexFormat": "ScreenSpace",
   "cull": false,
   "alphaBlending": true,
-  "reserveSet2ForCamera": true,
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": "resources/shaders/billboards.vertex.glsl.spv",

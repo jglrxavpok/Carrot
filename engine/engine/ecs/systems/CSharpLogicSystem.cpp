@@ -45,6 +45,7 @@ namespace Carrot::ECS {
             return;
         }
         foundInAssemblies = true;
+        // TODO: search in parent classes too!
         csTickMethod = clazz->findMethod("Tick", 1);
         std::uint64_t ptr = reinterpret_cast<std::uint64_t>(this);
         void* args[1] { (void*)&ptr };

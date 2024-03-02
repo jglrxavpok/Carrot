@@ -17,7 +17,7 @@ layout(location = 5) flat in mat4 inModelview;
 layout(location = 9) flat in int inDrawID;
 
 void main() {
-    DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset+inDrawID]; // TODO: instancing
+    DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset+inDrawID];
     //#define material (materials[instanceDrawData.materialIndex])
 
     Material material = materials[instanceDrawData.materialIndex];

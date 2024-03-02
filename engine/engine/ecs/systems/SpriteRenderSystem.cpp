@@ -8,36 +8,15 @@
 
 namespace Carrot::ECS {
     void SpriteRenderSystem::transparentGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
-            if(!entity.isVisible()) {
-                return;
-            }
-
-            if(spriteComp.sprite && spriteComp.isTransparent) {
-                setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
-                spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
-            }
-        });
+        // TODO: remove
     }
 
     void SpriteRenderSystem::opaqueGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
-        forEachEntity([&](Entity& entity, TransformComponent& transform, SpriteComponent& spriteComp) {
-            if(!entity.isVisible()) {
-                return;
-            }
-
-            if(spriteComp.sprite && !spriteComp.isTransparent) {
-                setupEntityData(entity, *spriteComp.sprite, renderContext, commands);
-                spriteComp.sprite->soloGBufferRender(renderPass, renderContext, commands);
-            }
-        });
+        // TODO: remove
     }
 
     void SpriteRenderSystem::setupEntityData(const Entity& entity, const Carrot::Render::Sprite& sprite, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {
-        GBufferDrawData entityData;
-        entityData.materialIndex = 0;
-        entityData.setUUID(entity.getID());
-        renderContext.renderer.pushConstantBlock("drawDataPush", sprite.getRenderingPipeline(), renderContext, vk::ShaderStageFlagBits::eFragment, commands, entityData);
+        // TODO: remove
     }
 
     void SpriteRenderSystem::onFrame(Carrot::Render::Context renderContext) {

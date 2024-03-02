@@ -147,15 +147,18 @@ namespace Peeler {
         }
         if(ImGui::BeginDragDropTarget()) {
             if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+1);
-                std::memcpy(buffer.get(), static_cast<const void*>(payload->Data), payload->DataSize);
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
                 buffer.get()[payload->DataSize] = '\0';
 
-                std::u8string newPath = buffer.get();
+                std::u8string str = buffer.get();
+                std::string s = Carrot::toString(str);
 
-                std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
+                auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
                 if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isImageFormatFromPath(fsPath)) {
-                    *pOut = GetAssetServer().blockingLoadTexture(fsPath.string().c_str());
+                    *pOut = GetAssetServer().blockingLoadTexture(vfsPath);
                     updated = true;
                 }
             }

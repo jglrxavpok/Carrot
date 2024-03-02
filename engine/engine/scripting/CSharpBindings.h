@@ -57,6 +57,9 @@ namespace Carrot::Scripting {
         CSClass* NavPathClass = nullptr;
         CSField* NavPathWaypointsField = nullptr;
 
+        CSClass* CameraComponentClass = nullptr;
+        CSClass* KinematicsComponentClass = nullptr;
+
         CSClass* RaycastInfoClass = nullptr;
         CSField* RaycastInfoWorldPointField = nullptr;
         CSField* RaycastInfoWorldNormalField = nullptr;
@@ -197,6 +200,9 @@ namespace Carrot::Scripting {
         static glm::vec3 _GetEulerAngles(MonoObject* transformComp);
         static void _SetEulerAngles(MonoObject* transformComp, glm::vec3 value);
         static glm::vec3 _GetWorldPosition(MonoObject* transformComp);
+
+        static glm::vec3 _GetKinematicsLocalVelocity(MonoObject* comp);
+        static void _SetKinematicsLocalVelocity(MonoObject* comp, glm::vec3 value);
 
         static void TeleportCharacter(MonoObject* characterComp, glm::vec3 newPos);
         static glm::vec3 _GetCharacterVelocity(MonoObject* characterComp);

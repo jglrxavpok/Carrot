@@ -124,7 +124,7 @@ namespace Carrot::Render {
             return;
         auto& renderPacket = GetRenderer().makeRenderPacket(Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, renderContext);
 
-        renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering");
+        renderPacket.pipeline = renderContext.renderer.getOrCreatePipeline("text-rendering", (std::uint64_t)&renderContext.pViewport);
         renderPacket.useMesh(*mesh);
         renderPacket.instanceCount = 1;
 

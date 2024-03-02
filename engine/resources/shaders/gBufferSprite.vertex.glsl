@@ -10,6 +10,7 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec4 inInstanceColor;
 layout(location = 2) in uvec4 inUUID;
 layout(location = 3) in mat4 inInstanceTransform;
+layout(location = 7) in mat4 inLastFrameInstanceTransform;
 
 
 layout(location = 0) out vec4 fragColor;
@@ -21,7 +22,7 @@ layout(location = 5) out flat mat4 outModelview;
 layout(location = 9) out flat int outDrawID;
 
 layout(push_constant) uniform TexRegion {
-    layout(offset = 24) vec2 center;
+    vec2 center;
     vec2 halfSize;
 } region;
 
