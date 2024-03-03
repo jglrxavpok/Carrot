@@ -229,6 +229,8 @@ namespace Carrot::Scripting {
         static glm::vec3 GetClosestPointInMesh(MonoObject* navMeshComponent, glm::vec3 p);
         static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);
 
+        static glm::vec3 GetAimDirectionFromScreen(MonoObject* cameraComponent, glm::vec2 screenPosition);
+
         /**
          * From a given component ID, returns the C# class used to represent that component type.
          * Can return null if there is none.

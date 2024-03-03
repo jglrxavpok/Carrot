@@ -61,6 +61,8 @@ namespace Carrot {
          */
         void unbindFromViewport(Carrot::Render::Viewport& viewport);
 
+        std::span<Carrot::Render::Viewport*> getViewports();
+
     public:
         /**
          * Copies settings and world from 'toCopy'.

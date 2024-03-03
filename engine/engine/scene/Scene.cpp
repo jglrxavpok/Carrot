@@ -192,6 +192,10 @@ namespace Carrot {
         std::erase(viewports, &viewport);
     }
 
+    std::span<Carrot::Render::Viewport*> Scene::getViewports() {
+        return viewports;
+    }
+
     void Scene::copyFrom(const Scene& toCopy) {
         world = toCopy.world;
         lighting = toCopy.lighting;

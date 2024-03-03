@@ -151,6 +151,8 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.Input.Vec2InputAction::Create", CreateVec2InputAction);
         mono_add_internal_call("Carrot.Input.Vec2InputAction::_GetValue", _GetVec2InputValue);
+
+        mono_add_internal_call("Carrot.Input.Aim::GetDirectionFromScreen", GetAimDirectionFromScreen);
     }
 
     CSharpBindings::~CSharpBindings() {
@@ -1096,5 +1098,28 @@ namespace Carrot::Scripting {
     void CSharpBindings::_ActivateActionSet(MonoObject* setObj) {
         auto& set = getObject<Carrot::IO::ActionSet>(setObj);
         set.activate();
+    }
+
+    glm::vec3 CSharpBindings::GetAimDirectionFromScreen(MonoObject* cameraComponentObj, glm::vec2 screenPosition) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(cameraComponentObj));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        // TODO: allow to query for proper scene (not only main scene)
+        // TODO: this assumes the transform component is set on the entity
+        auto viewports = GetSceneManager().getMainScene().getViewports();
+        Carrot::Render::Viewport& viewport = *viewports[0];
+        ECS::CameraComponent& cameraComponent = entity.getComponent<ECS::CameraComponent>();
+        ECS::TransformComponent& transformComponent = entity.getComponent<ECS::TransformComponent>();
+
+        const glm::mat4 viewMatrix = glm::inverse(transformComponent.toTransformMatrix());
+        const glm::vec3 cameraPosition = transformComponent.computeFinalPosition();
+        const glm::mat4 cameraProjection = cameraComponent.makeProjectionMatrix();
+        const glm::vec4 viewportRect {
+            viewport.getOffset().x, viewport.getOffset().y, viewport.getSizef().x, viewport.getSizef().y
+        };
+        return glm::unProject(glm::vec3{screenPosition.x, screenPosition.y, 0},
+                               viewMatrix,
+                               cameraProjection,
+                               viewportRect)
+                - cameraPosition;
     }
 }
