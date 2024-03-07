@@ -7,6 +7,7 @@
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/scripting/CSharpReflectionHelper.h>
 #include <Peeler.h>
+#include <core/io/Logging.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Peeler {
@@ -198,6 +199,20 @@ namespace Peeler {
         ImGui::Text("%s (%s) - User defined type", property.displayName.c_str(), property.typeStr.c_str());
     }
 
+    static void drawUserEnumProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
+        const std::string previewValue = GetCSharpBindings().enumValueToString(property.field->get(csComponent));
+        if(ImGui::BeginCombo(property.displayName.c_str(), previewValue.c_str())) {
+            for(const std::string& validEnumValue : property.validUserEnumValues) {
+                if(ImGui::Selectable(validEnumValue.c_str(), validEnumValue == previewValue)) {
+                    const Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, validEnumValue);
+                    property.field->set(csComponent, enumValue);
+                    edition.hasModifications = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
     void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component) {
         if(!component->isLoaded()) {
             ImGui::Text("Not found inside assembly");
@@ -233,6 +248,10 @@ namespace Peeler {
 
                 case Scripting::ComponentType::Entity:
                     drawEntityProperty(edition, component->getCSComponentObject(), property);
+                    break;
+
+                case Scripting::ComponentType::UserEnum:
+                    drawUserEnumProperty(edition, component->getCSComponentObject(), property);
                     break;
 
                 case Scripting::ComponentType::UserDefined:

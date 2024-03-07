@@ -45,7 +45,25 @@ namespace Carrot::Scripting {
          */
         bool isInternalComponent(const std::string& namespaceName, const std::string& className);
 
+        /**
+         * Attempts to convert a given string into a enum value, for a given enum type.
+         * Will throw if the enum type name is invalid, or if the value itself is invalid.
+         * @param enumTypeName fully qualified name of the enum (MyNameSpace.ExampleEnum)
+         * @param enumValue name of the enum value to convert to
+         * @return a CSObject corresponding to the value of the enum (can be given to field or methods expecting the enum type)
+         */
+        CSObject stringToEnumValue(const std::string& enumTypeName, const std::string& enumValue) const;
+
+        /**
+         * Converts a given enum value to its string representation
+         * @param enumValue CSObject containing the enum value
+         * @return a std::string corresponding to the string representation of the enum value
+         */
+        std::string enumValueToString(const CSObject& enumValue) const;
+
     private:
+        void parseUserType(ComponentProperty& outProperty);
+
         CSClass* ComponentPropertyClass = nullptr;
         CSField* ComponentPropertyFieldNameField = nullptr;
         CSField* ComponentPropertyTypeField = nullptr;
@@ -65,6 +83,11 @@ namespace Carrot::Scripting {
         CSClass* ReflectionClass = nullptr;
         CSMethod* ReflectionFindAllComponentPropertiesMethod = nullptr;
         CSMethod* ReflectionIsInternalComponentMethod = nullptr;
+        CSMethod* ReflectionGetEnumNamesMethod = nullptr;
+        CSMethod* ReflectionParseEnumMethod = nullptr;
+
+        CSClass* EnumClass = nullptr;
+        CSMethod* EnumToStringMethod = nullptr;
     };
 
 } // Carrot::Scripting

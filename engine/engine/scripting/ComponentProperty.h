@@ -7,6 +7,7 @@
 #include <string>
 #include <optional>
 #include <core/scripting/csharp/forward.h>
+#include <core/containers/Vector.hpp>
 
 namespace Carrot::Scripting {
     struct IntRange {
@@ -46,6 +47,7 @@ namespace Carrot::Scripting {
 
         std::optional<IntRange> intRange;
         std::optional<FloatRange> floatRange;
+        Carrot::Vector<std::string> validUserEnumValues;
 
         /**
          * Called after loading the class from the assembly, ensure all data inside this struct is coherent

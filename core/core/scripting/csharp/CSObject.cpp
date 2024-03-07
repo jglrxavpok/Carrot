@@ -27,6 +27,14 @@ namespace Carrot::Scripting {
         return obj;
     }
 
+    std::string CSObject::toString() const {
+        MonoString* asStr = (MonoString*)obj;
+        char* str = mono_string_to_utf8(asStr);
+        std::string r = str;
+        mono_free(str);
+        return r;
+    }
+
     void* CSObject::unboxInternal() const {
         if(obj == nullptr) {
             return nullptr;

@@ -41,6 +41,13 @@ namespace Carrot::Scripting {
             LOAD_CLASS(Reflection);
             LOAD_METHOD(Reflection, FindAllComponentProperties);
             LOAD_METHOD(Reflection, IsInternalComponent);
+            LOAD_METHOD(Reflection, GetEnumNames);
+            LOAD_METHOD(Reflection, ParseEnum);
+        }
+
+        {
+            LOAD_CLASS_NS("System", Enum);
+            LOAD_METHOD(Enum, ToString);
         }
     }
 
@@ -76,6 +83,7 @@ namespace Carrot::Scripting {
             char* typeStr = mono_string_to_utf8((MonoString*)(MonoObject*)typeStrObj);
             CLEANUP(mono_free(typeStr));
 
+            property.typeStr = typeStr;
             if(std::string_view("System.Int") == typeStr
             || std::string_view("System.Int32") == typeStr
             ) {
@@ -93,9 +101,8 @@ namespace Carrot::Scripting {
             } else if(std::string_view("Carrot.Vec3") == typeStr) {
                 property.type = ComponentType::Vec3;
             } else {
-                property.type = ComponentType::UserDefined;
+                parseUserType(property);
             }
-            property.typeStr = typeStr;
 
             property.field = klass->findField(property.fieldName);
             verify(property.field != nullptr, "Reflection helper returned a field which does not exist");
@@ -153,5 +160,50 @@ namespace Carrot::Scripting {
         };
         auto result = ReflectionIsInternalComponentMethod->staticInvoke(args);
         return result.unbox<bool>();
+    }
+
+    CSObject CSharpReflectionHelper::stringToEnumValue(const std::string& enumTypeName, const std::string& enumValue) const {
+        MonoString* enumTypeNameObj = mono_string_new_wrapper(enumTypeName.c_str());
+        MonoString* enumValueObj = mono_string_new_wrapper(enumValue.c_str());
+        void* args[2] = {
+            enumTypeNameObj,
+            enumValueObj
+        };
+        CSObject result = ReflectionParseEnumMethod->staticInvoke(args);
+        void* v = mono_object_unbox(result); // enums are integral types, so need an unbox/box to properly pass to Mono...
+        return Scripting::CSObject((MonoObject*)v);
+    }
+
+    std::string CSharpReflectionHelper::enumValueToString(const CSObject& enumValue) const {
+        return EnumToStringMethod->invoke(enumValue, {}).toString();
+    }
+
+    void CSharpReflectionHelper::parseUserType(ComponentProperty& outProperty) {
+        const std::string& typeName = outProperty.typeStr;
+        std::size_t lastDotPosition = typeName.find_last_of('.');
+        std::string typeNamespace = lastDotPosition == std::string::npos ? "" : typeName.substr(0, lastDotPosition);
+        std::string typeClassName = lastDotPosition == std::string::npos ? typeName : typeName.substr(lastDotPosition+1);
+
+        CSClass* userTypeClass = GetCSharpScripting().findClass(typeNamespace, typeClassName);
+        if(mono_class_is_enum(userTypeClass->toMono())) {
+            outProperty.type = ComponentType::UserEnum;
+            MonoString* fullTypeStr = mono_string_new_wrapper(typeName.c_str());
+
+            void* args[1] = {
+                fullTypeStr
+            };
+            CSObject enumNamesResult = ReflectionGetEnumNamesMethod->staticInvoke(args);
+            MonoArray* enumNamesAsArray = (MonoArray*)(MonoObject*)enumNamesResult;
+            std::size_t nameCount = mono_array_length(enumNamesAsArray);
+            outProperty.validUserEnumValues.ensureReserve(nameCount);
+            for(std::size_t index = 0; index < nameCount; index++) {
+                MonoString* entryNameObj = (MonoString*)mono_array_get(enumNamesAsArray, MonoObject*, index);
+                char* entryNameStr = mono_string_to_utf8(entryNameObj);
+                outProperty.validUserEnumValues.pushBack(entryNameStr);
+                CLEANUP(mono_free(entryNameStr));
+            }
+        } else {
+            outProperty.type = ComponentType::UserDefined;
+        }
     }
 } // Carrot::Scripting

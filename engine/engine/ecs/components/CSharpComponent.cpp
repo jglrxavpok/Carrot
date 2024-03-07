@@ -71,6 +71,11 @@ namespace Carrot::ECS {
                     r.AddMember(serializationNameJSON, rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
                 } break;
 
+                case Scripting::ComponentType::UserEnum: {
+                    const std::string enumValueAsString = GetCSharpBindings().enumValueToString(property.field->get(*csComponent));
+                    r.AddMember(serializationNameJSON, rapidjson::Value(enumValueAsString, doc.GetAllocator()), doc.GetAllocator());
+                } break;
+
                 case Scripting::ComponentType::UserDefined:
                 default:
                     Carrot::Log::warn("Property inside %s.%s has type %s which is not supported for serialization", namespaceName.c_str(), className.c_str(), property.typeStr.c_str());
@@ -159,6 +164,11 @@ namespace Carrot::ECS {
                         Carrot::UUID uuid = Carrot::UUID::fromString(serializedVersion[property.serializationName].GetString());
                         Entity e = getEntity().getWorld().wrap(uuid);
                         property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(e));
+                    } break;
+
+                    case Scripting::ComponentType::UserEnum: {
+                        Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, serializedVersion[property.serializationName].GetString());
+                        property.field->set(*csComponent, enumValue);
                     } break;
 
                     case Scripting::ComponentType::UserDefined:

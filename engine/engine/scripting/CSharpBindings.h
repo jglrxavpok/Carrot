@@ -133,6 +133,16 @@ namespace Carrot::Scripting {
 
         std::shared_ptr<Scripting::CSArray> entityListToCSharp(std::span<const ECS::EntityWithComponents> entities);
 
+        /**
+         * Attempts to convert a given string into a enum value, for a given enum type.
+         * Will throw if the enum type name is invalid, or if the value itself is invalid.
+         * @param enumTypeName fully qualified name of the enum (MyNameSpace.ExampleEnum)
+         * @param enumValue name of the enum value to convert to
+         * @return a CSObject corresponding to the value of the enum (can be given to field or methods expecting the enum type)
+         */
+        CSObject stringToEnumValue(const std::string& enumTypeName, const std::string& enumValue) const;
+        std::string enumValueToString(const CSObject& enumValue) const;
+
     public: // public because they might be useful to other parts of the engine
         struct CppComponent {
             bool isCSharp = false;

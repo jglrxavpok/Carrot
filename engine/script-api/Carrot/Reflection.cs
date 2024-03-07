@@ -82,6 +82,10 @@ namespace Carrot {
         // https://stackoverflow.com/a/20008954
         private static Type FindTypeByName(string namespaceName, string className) {
             string fullName = namespaceName + '.' + className;
+            return FindTypeByName(fullName);
+        }
+        
+        private static Type FindTypeByName(string fullName) {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().Reverse()) {
                 var tt = assembly.GetType(fullName);
                 if (tt != null) {
@@ -177,6 +181,32 @@ namespace Carrot {
             }
 
             return false;
+        }
+
+        /**
+         * Returns the list of valid values for the given enum name.
+         * Throws if enum name is invalid.
+         */
+        public static string[] GetEnumNames(string enumTypeName) {
+            Type enumType = FindTypeByName(enumTypeName);
+            if (enumType == null) {
+                throw new ArgumentException($"Invalid enumTypeName: {enumTypeName}");
+            }
+
+            return Enum.GetNames(enumType);
+        }
+
+        /**
+         * Returns the matching enum instance for the given enum type name and enum value.
+         * Throws if enum name or value is invalid.
+         */
+        public static object ParseEnum(string enumTypeName, string enumValue) {
+            Type enumType = FindTypeByName(enumTypeName);
+            if (enumType == null) {
+                throw new ArgumentException($"Invalid enumTypeName: {enumTypeName}");
+            }
+
+            return Enum.Parse(enumType, enumValue);
         }
     }
 }

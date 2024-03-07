@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <core/scripting/csharp/forward.h>
 #include <mono/metadata/object-forward.h>
 
@@ -26,6 +27,11 @@ namespace Carrot::Scripting {
         operator MonoObject*() const;
 
         MonoObject* toMono() const;
+
+        /**
+         * Assumes this object is a "string" (C# type) and **copies** its content to a std::string.
+         */
+        std::string toString() const;
 
         /**
          * Unbox this object to the given type

@@ -389,6 +389,14 @@ namespace Carrot::Scripting {
         return result;
     }
 
+    CSObject CSharpBindings::stringToEnumValue(const std::string& enumTypeName, const std::string& enumValue) const {
+        return reflectionHelper.stringToEnumValue(enumTypeName, enumValue);
+    }
+
+    std::string CSharpBindings::enumValueToString(const CSObject& enumValue) const {
+        return reflectionHelper.enumValueToString(enumValue);
+    }
+
     CSClass* CSharpBindings::getHardcodedComponentClass(const ComponentID& componentID) {
         for(auto& [_, hardcodedComp] : hardcodedComponents) {
             if(hardcodedComp.id == componentID) {
