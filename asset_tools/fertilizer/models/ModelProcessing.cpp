@@ -240,7 +240,6 @@ namespace Fertilizer {
         Carrot::UserNotifications::getInstance().setBody(notifID, "Clean tangents");
 
         verify(mesh.vertices.size() % 3 == 0, "Only triangle meshs are supported");
-        bool needsRegeneration = false;
         for (std::size_t i = 0; i < mesh.vertices.size(); i += 3) {
             auto isCloseToCollinear = [](const glm::vec3& a, const glm::vec3& b) {
                 constexpr float epsilon = 10e-12f;
@@ -248,6 +247,7 @@ namespace Fertilizer {
                 return glm::all(glm::lessThan(glm::abs(rejected), glm::vec3(epsilon)));
             };
 
+            bool needsRegeneration = false;
             for(std::size_t j = 0; j < 3; j++) {
                 const glm::vec3& normal = mesh.vertices[i + j].vertex.normal;
                 const glm::vec3 tangent = mesh.vertices[i + j].vertex.tangent.xyz;
@@ -255,14 +255,6 @@ namespace Fertilizer {
             }
 
             if(needsRegeneration) {
-                break;
-            }
-        }
-
-        if(needsRegeneration) {
-            Carrot::Log::warn("Found collinear normals and tangents (maybe due to missing UV mapping), generating basic tangents");
-            // regenerate all tangents for this mesh, we found collinear normal and tangents
-            for (std::size_t i = 0; i < mesh.vertices.size(); i += 3) {
                 const glm::vec3 edge = mesh.vertices[i + 1].vertex.pos.xyz - mesh.vertices[i + 0].vertex.pos.xyz;
                 for (std::size_t j = 0; j < 3; j++) {
                     glm::vec4& tangentW = mesh.vertices[i + j].vertex.tangent;
