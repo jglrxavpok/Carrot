@@ -42,7 +42,7 @@ namespace Carrot {
         void newFrame(std::size_t frameIndex);
 
     public: // allocations
-        Carrot::BufferView allocate(std::size_t size);
+        Carrot::BufferView allocate(std::size_t size, std::size_t alignment = 1);
 
     public: // stats
         vk::DeviceSize getAllocatedSizeThisFrame() const;

@@ -61,8 +61,8 @@ namespace Carrot {
         buffers.clear(currentFrame);
     }
 
-    Carrot::BufferView SingleFrameStackGPUAllocator::allocate(std::size_t size) {
-        return buffers.allocateAligned(currentFrame, size);
+    Carrot::BufferView SingleFrameStackGPUAllocator::allocate(std::size_t size, std::size_t alignment) {
+        return buffers.allocateAligned(currentFrame, size, alignment);
     }
 
     vk::DeviceSize SingleFrameStackGPUAllocator::getAllocatedSizeThisFrame() const {

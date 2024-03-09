@@ -43,8 +43,8 @@ namespace Carrot::Render {
         vk::DispatchIndirectCommand compute;
         vk::DrawMeshTasksIndirectCommandEXT drawMeshTasks;
 
-        PacketCommand(): compute() {
-
+        PacketCommand() {
+            memset(this, 0, sizeof(PacketCommand));
         }
     };
 

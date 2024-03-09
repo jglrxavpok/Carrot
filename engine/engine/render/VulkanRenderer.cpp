@@ -1704,8 +1704,8 @@ void Carrot::VulkanRenderer::blink() {
     hasBlinked = false;
 }
 
-Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes) {
-    return singleFrameAllocator.allocate(bytes);
+Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes, vk::DeviceSize alignment) {
+    return singleFrameAllocator.allocate(bytes, alignment);
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize bytes) {
