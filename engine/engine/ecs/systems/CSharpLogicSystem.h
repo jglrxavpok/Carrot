@@ -36,7 +36,12 @@ namespace Carrot::ECS {
         Scripting::CSArray* getEntityList();
 
     private:
-        void init();
+        /**
+         * Loads the system from C# assemblies (engine + game)
+         * @param needToReloadEntities whether to ask the world to reload entities for this system.
+         *  Set to false in constructors because world copy would re-add entities afterwards (so entities would be multiple times inside the 'entities' vector)
+         */
+        void init(bool needToReloadEntities);
 
         void recreateEntityList();
 

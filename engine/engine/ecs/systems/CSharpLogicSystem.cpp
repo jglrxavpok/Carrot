@@ -16,7 +16,7 @@ namespace Carrot::ECS {
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
-        init();
+        init(false);
     }
 
     CSharpLogicSystem::CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className):
@@ -25,7 +25,7 @@ namespace Carrot::ECS {
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
         // TODO: load from JSON
-        init();
+        init(false);
     }
 
     CSharpLogicSystem::~CSharpLogicSystem() {
@@ -33,7 +33,7 @@ namespace Carrot::ECS {
         GetCSharpBindings().unregisterGameAssemblyUnloadCallback(unloadCallbackHandle);
     }
 
-    void CSharpLogicSystem::init() {
+    void CSharpLogicSystem::init(bool needToReloadEntities) {
         systemName = namespaceName;
         systemName += '.';
         systemName += className;
@@ -83,8 +83,10 @@ namespace Carrot::ECS {
             }
         }
 
-        world.reloadSystemEntities(this);
-        recreateEntityList();
+        if(needToReloadEntities) {
+            world.reloadSystemEntities(this);
+            recreateEntityList();
+        }
     }
 
     void CSharpLogicSystem::tick(double dt) {
@@ -145,7 +147,7 @@ namespace Carrot::ECS {
     }
 
     void CSharpLogicSystem::onAssemblyLoad() {
-        init();
+        init(true);
     }
 
     void CSharpLogicSystem::onAssemblyUnload() {
