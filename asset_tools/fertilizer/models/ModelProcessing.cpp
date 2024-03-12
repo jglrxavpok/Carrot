@@ -327,7 +327,7 @@ namespace Fertilizer {
         }
 
         for(const auto& [edge, meshlets] : edges2Meshlets) {
-            if(meshlets.size() != 1) {
+            if(meshlets.size() == 1) {
                 boundaryVertices[edge.first] = true;
                 boundaryVertices[edge.second] = true;
             }
