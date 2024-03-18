@@ -7,6 +7,7 @@
 #include <core/Allocator.h>
 #include <core/Macros.h>
 #include <span>
+#include <initializer_list>
 
 namespace Carrot {
     /**
@@ -23,6 +24,7 @@ namespace Carrot {
          * \param allocator allocator to use for this vector. Allocator::getDefault() by default
          */
         explicit Vector(Allocator& allocator = Allocator::getDefault());
+        Vector(std::initializer_list<TElement> initList, Allocator& allocator = Allocator::getDefault());
         Vector(const Vector& toCopy);
         Vector(Vector&& toMove) noexcept;
         ~Vector();
@@ -102,6 +104,7 @@ namespace Carrot {
         Vector& operator=(const Vector& o);
 
         Vector& operator=(Vector&& o) noexcept;
+        Vector& operator=(std::initializer_list<TElement> o) noexcept;
 
         /**
          * \brief Sort the vector based on a given comparison function

@@ -446,3 +446,20 @@ TEST(Vector, GrowthFactor) {
         EXPECT_EQ(v.capacity(), 5); // 3 * 1.5 = 4.5, so 5 (ceil)
     }
 }
+
+TEST(Vector, InitializationList) {
+    ConstructorCalls = 0;
+    EXPECT_EQ(StructCount, 0);
+    EXPECT_EQ(ConstructorCalls, 0);
+
+    Carrot::Vector<S2> fromList = {
+        S2(40),
+        S2(42),
+    };
+
+    EXPECT_EQ(StructCount, 2);
+    EXPECT_EQ(ConstructorCalls, 4); // copies
+    EXPECT_EQ(fromList.size(), 2);
+    EXPECT_EQ(fromList[0].a, 40);
+    EXPECT_EQ(fromList[1].a, 42);
+}

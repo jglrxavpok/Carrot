@@ -12,6 +12,11 @@ namespace Carrot {
     Vector<TElement>::Vector(Allocator& allocator): allocator(allocator) {}
 
     VECTOR_TEMPLATE
+    Vector<TElement>::Vector(std::initializer_list<TElement> initList, Allocator& allocator): Vector(allocator) {
+        *this = initList;
+    }
+
+    VECTOR_TEMPLATE
     Vector<TElement>::Vector(const Vector& toCopy)
     : Vector(toCopy.allocator) {
         *this = toCopy;
@@ -189,6 +194,19 @@ namespace Carrot {
                 new (&pData[i]) TElement(std::move(o[i]));
             }
             o.flush(); // remove old elements from other vector
+        }
+        return *this;
+    }
+
+    VECTOR_TEMPLATE
+    Vector<TElement>& Vector<TElement>::operator=(std::initializer_list<TElement> list) noexcept {
+        clear();
+        ensureReserve(list.size());
+        this->elementCount = list.size();
+        TElement* pData = data();
+        const TElement* pListData = list.begin();
+        for (std::size_t i = 0; i < size(); ++i) {
+            new (&pData[i]) TElement(pListData[i]);
         }
         return *this;
     }
