@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <core/containers/Vector.hpp>
+
 #include "EditorPanel.h"
 #include <core/utils/Identifiable.h>
 #include <engine/render/resources/Texture.h>
@@ -25,7 +27,7 @@ namespace Peeler {
         bool hasModifications = false; // TODO: replace with action stack (for Undo/Redo)
     };
 
-    using ComponentEditor = std::function<void(EditContext& edition, Carrot::ECS::Component* component)>;
+    using ComponentEditor = std::function<void(EditContext& edition, const Carrot::Vector<Carrot::ECS::Component*>& components)>;
 
     class InspectorPanel: public EditorPanel {
     public:
@@ -67,7 +69,7 @@ namespace Peeler {
         bool drawPickPipelineWidget(const char* label, std::shared_ptr<Carrot::Pipeline>* pDestination, bool allowNull = true);
 
     private:
-        void editComponent(EditContext& editContext, Carrot::ECS::Component* component);
+        void editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components);
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;
         std::unordered_map<Carrot::ComponentID, std::string> displayNames;

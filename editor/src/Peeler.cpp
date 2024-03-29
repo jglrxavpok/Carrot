@@ -292,6 +292,8 @@ namespace Peeler {
         }
         ImGui::End();
 
+        undoStack.debugDraw();
+
         UIStatusBar(renderContext);
 
         // all UI has had an opportunity to use this
@@ -1146,7 +1148,8 @@ namespace Peeler {
         stopButtonIcon(engine.getVulkanDriver(), "resources/textures/ui/stop_button.png"),
         resourcePanel(*this),
         inspectorPanel(*this),
-        navMeshPanel(*this)
+        navMeshPanel(*this),
+        undoStack(*this)
     {
         Instance = this;
         NFD_Init();

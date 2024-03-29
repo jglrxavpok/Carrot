@@ -19,4 +19,16 @@ namespace Peeler {
     void registerDisplayNames(InspectorPanel& inspector);
 
     void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component);
+
+    namespace Helpers {
+        /**
+         * Checks whether all values in 'values' are true
+         */
+        bool all(std::span<bool> values);
+
+        /**
+         * Checks whether any value in 'values' is true
+         */
+        bool any(std::span<bool> values);
+    }
 }

@@ -6,6 +6,11 @@ set(EditorSources
         ${EditorRoot}GridRenderer.cpp
         ${EditorRoot}InspectorWidgets.cpp
 
+        ${EditorRoot}commands/AddComponentsCommand.cpp
+        ${EditorRoot}commands/RemoveComponentsCommand.cpp
+        ${EditorRoot}commands/RenameEntities.cpp
+        ${EditorRoot}commands/UndoStack.cpp
+
         ${EditorRoot}layers/GizmosLayer.cpp
         ${EditorRoot}layers/ISceneViewLayer.cpp
 

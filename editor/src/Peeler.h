@@ -19,6 +19,7 @@
 #include "panels/NavMeshPanel.h"
 #include "panels/ResourcePanel.h"
 #include "layers/ISceneViewLayer.h"
+#include <commands/UndoStack.h>
 
 namespace Peeler {
     extern Application* Instance;
@@ -192,6 +193,8 @@ namespace Peeler {
         // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
         Carrot::Render::Texture::Ref gameTextureRef;
         std::vector<Carrot::ECS::EntityID> selectedIDs;
+
+        UndoStack undoStack;
 
     private:
         Carrot::Render::Texture playButtonIcon;

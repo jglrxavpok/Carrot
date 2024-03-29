@@ -24,39 +24,222 @@
 #include <core/io/Logging.hpp>
 #include <engine/render/ModelRenderer.h>
 #include <IconsFontAwesome5.h>
+#include <Peeler.h>
+#include <core/allocators/StackAllocator.h>
 
 namespace Peeler {
+    namespace Helpers {
+        bool any(std::span<bool> values) {
+            for(const bool& b : values) {
+                if(b) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool all(std::span<bool> values) {
+            for(const bool& b : values) {
+                if(!b) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
     template<typename ComponentType>
-    void registerFunction(InspectorPanel& inspector, void(*editionFunction)(EditContext&, ComponentType*)) {
-        inspector.registerComponentEditor(ComponentType::getID(), [editionFunction](EditContext& editContext, Carrot::ECS::Component* comp) {
-            editionFunction(editContext, dynamic_cast<ComponentType*>(comp));
+    void registerFunction(InspectorPanel& inspector, void(*editionFunction)(EditContext&, const Carrot::Vector<ComponentType*>&)) {
+        inspector.registerComponentEditor(ComponentType::getID(), [editionFunction](EditContext& editContext, const Carrot::Vector<Carrot::ECS::Component*>& comps) {
+            Carrot::Vector<ComponentType*> typedComponents;
+            typedComponents.resize(comps.size());
+            for(std::int64_t i = 0; i < typedComponents.size(); i++) {
+                typedComponents[i] = dynamic_cast<ComponentType*>(comps[i]);
+            }
+            editionFunction(editContext, typedComponents);
         });
     }
 
-    static void editTransformComponent(EditContext& edition, Carrot::ECS::TransformComponent* component) {
-        Carrot::Math::Transform& localTransform = component->localTransform;
+    // instead of using ImGui::DragFloat3 & co, reimplement it. Because multiple positions are modified at once,
+    //  they might not have all the same coordinates. This way, we can modify only the coordinate that has been modified
+    static bool editMultipleVec3(const char* id, std::span<glm::vec3> vectors) {
+        bool modified = false;
+        ImGui::BeginGroup();
+        ImGui::PushID(id);
+
+        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+
+        for(std::size_t axisIndex = 0; axisIndex < 3; axisIndex++) {
+            ImGui::PushID(axisIndex);
+            float currentValue = (vectors[0])[axisIndex];
+            bool sameValue = true;
+
+            for(std::size_t j = 1; j < vectors.size(); j++) {
+                if(currentValue != (vectors[j])[axisIndex]) {
+                    sameValue = false;
+                }
+            }
+
+            const char* format = sameValue ? nullptr : "<VARIOUS>";
+
+            if (axisIndex != 0) {
+                ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+            }
+
+            if(ImGui::DragScalar("", ImGuiDataType_Float, &currentValue, 1, nullptr, nullptr, format)) {
+                modified = true;
+                for(glm::vec3& vec : vectors) {
+                    vec[axisIndex] = currentValue;
+                }
+            }
+            ImGui::PopItemWidth();
+            ImGui::PopID();
+        }
+
+        ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TextUnformatted(id);
+
+        ImGui::PopID();
+        ImGui::EndGroup();
+        return modified;
+    }
+
+    // maybe merge with function editMultipleVec3, but for now copy paste will do
+    static bool editMultipleQuat(const char* id, std::span<glm::quat> values) {
+        bool modified = false;
+        ImGui::BeginGroup();
+        ImGui::PushID(id);
+
+        ImGui::PushMultiItemsWidths(4, ImGui::CalcItemWidth());
+
+        for(std::size_t axisIndex = 0; axisIndex < 4; axisIndex++) {
+            ImGui::PushID(axisIndex);
+            float currentValue = (values[0])[axisIndex];
+            bool sameValue = true;
+
+            for(std::size_t j = 1; j < values.size(); j++) {
+                if(currentValue != (values[j])[axisIndex]) {
+                    sameValue = false;
+                }
+            }
+
+            const char* format = sameValue ? nullptr : "<VARIOUS>";
+
+            if (axisIndex != 0) {
+                ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+            }
+
+            if(ImGui::DragScalar("", ImGuiDataType_Float, &currentValue, 1, nullptr, nullptr, format)) {
+                modified = true;
+                for(glm::quat& q : values) {
+                    q[axisIndex] = currentValue;
+                }
+            }
+            ImGui::PopItemWidth();
+            ImGui::PopID();
+        }
+
+        ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TextUnformatted(id);
+
+        ImGui::PopID();
+        ImGui::EndGroup();
+        return modified;
+    }
+
+    static bool editMultipleCheckbox(const char* id, std::span<bool> values) {
+        int tristate = -1;
+        if(Helpers::all(values)) {
+            tristate = 1;
+        } else if(!Helpers::any(values)) {
+            tristate = 0;
+        }
+        if(ImGui::CheckBoxTristate(id, &tristate)) {
+            for(bool& b : values) {
+                b = tristate == 1;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template<typename TComponent, typename TValue>
+    struct UpdateComponentValues: Peeler::ICommand {
+        Carrot::Vector<Carrot::ECS::EntityID> entityList;
+        Carrot::Vector<TValue> newValues;
+        Carrot::Vector<TValue> oldValues;
+        std::function<TValue&(TComponent& comp)> accessor;
+
+        UpdateComponentValues(Application &app, const std::string& desc, std::span<Carrot::ECS::EntityID> _entityList, std::span<TValue> _newValues,
+            std::function<TValue&(TComponent& comp)> _accessor)
+            : ICommand(app, desc)
+            , entityList(_entityList)
+            , newValues(_newValues)
+            , accessor(_accessor)
         {
-            float arr[] = { localTransform.position.x, localTransform.position.y, localTransform.position.z };
-            if (ImGui::DragFloat3("Position", arr)) {
-                localTransform.position = { arr[0], arr[1], arr[2] };
-                edition.hasModifications = true;
+            oldValues.ensureReserve(newValues.size());
+            for(const auto& entityID : _entityList) {
+                oldValues.pushBack(accessor(app.currentScene.world.getComponent<TComponent>(entityID)));
             }
         }
 
-        {
-            float arr[] = { localTransform.scale.x, localTransform.scale.y, localTransform.scale.z };
-            if (ImGui::DragFloat3("Scale", arr)) {
-                localTransform.scale = { arr[0], arr[1], arr[2] };
-                edition.hasModifications = true;
+        void undo() override {
+            for(std::size_t i = 0; i < entityList.size(); i++) {
+                accessor(editor.currentScene.world.getComponent<TComponent>(entityList[i])) = oldValues[i];
             }
         }
 
-        {
-            float arr[] = { localTransform.rotation.x, localTransform.rotation.y, localTransform.rotation.z, localTransform.rotation.w };
-            if (ImGui::DragFloat4("Rotation", arr)) {
-                localTransform.rotation = { arr[3], arr[0], arr[1], arr[2] };
-                edition.hasModifications = true;
+        void redo() override {
+            for(std::size_t i = 0; i < entityList.size(); i++) {
+                accessor(editor.currentScene.world.getComponent<TComponent>(entityList[i])) = newValues[i];
             }
+        }
+    };
+
+    static void editTransformComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::TransformComponent*>& components) {
+        Carrot::StackAllocator allocator { Carrot::Allocator::getDefault(), sizeof(void*) * (3 * components.size()) };
+        Carrot::Vector<glm::vec3> positions;
+        Carrot::Vector<glm::quat> rotations;
+        Carrot::Vector<glm::vec3> scales;
+        positions.resize(components.size());
+        rotations.resize(components.size());
+        scales.resize(components.size());
+
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            positions[i] = components[i]->localTransform.position;
+            rotations[i] = components[i]->localTransform.rotation;
+            scales[i] = components[i]->localTransform.scale;
+        }
+
+        struct UpdateEntityPositions: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::vec3> {
+            UpdateEntityPositions(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _positions)
+                : UpdateComponentValues(app, "Update entities position", _entityList, _positions, [](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.position; })
+            {}
+        };
+
+        struct UpdateEntityRotations: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::quat> {
+            UpdateEntityRotations(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::quat> _scales)
+                : UpdateComponentValues(app, "Update entities rotations", _entityList, _scales, [](Carrot::ECS::TransformComponent& t) -> glm::quat& { return t.localTransform.rotation; })
+            {}
+        };
+
+        struct UpdateEntityScales: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::vec3> {
+            UpdateEntityScales(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _scales)
+                : UpdateComponentValues(app, "Update entities scale", _entityList, _scales, [](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.scale; })
+            {}
+        };
+
+        if(editMultipleVec3("Position", positions)) {
+            edition.editor.undoStack.push<UpdateEntityPositions>(edition.editor.selectedIDs, positions);
+            edition.hasModifications = true;
+        }
+        if(editMultipleQuat("Rotation", rotations)) {
+            edition.editor.undoStack.push<UpdateEntityRotations>(edition.editor.selectedIDs, rotations);
+            edition.hasModifications = true;
+        }
+        if(editMultipleVec3("Scale", scales)) {
+            edition.editor.undoStack.push<UpdateEntityScales>(edition.editor.selectedIDs, scales);
+            edition.hasModifications = true;
         }
     }
 
@@ -195,26 +378,63 @@ namespace Peeler {
         line("Center Position", component->centerPosition);
     }
 
-    void editCameraComponent(EditContext& edition, Carrot::ECS::CameraComponent* component) {
-        ImGui::Checkbox("Primary", &component->isPrimary);
-        ImGui::BeginGroup();
-        if(ImGui::RadioButton("Perspective", !component->isOrthographic)) {
-            component->isOrthographic = false;
-        }
-        ImGui::SameLine();
-        if(ImGui::RadioButton("Orthographic", component->isOrthographic)) {
-            component->isOrthographic = true;
-        }
-        ImGui::EndGroup();
+    void editCameraComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CameraComponent*>& components) {
+        const bool hasMultipleCamerasSelected = components.size() > 1;
+        ImGui::BeginDisabled(hasMultipleCamerasSelected);
 
-        if(component->isOrthographic) {
-            float arr[3] = { component->orthoSize.x, component->orthoSize.y, component->orthoSize.z };
-            if(ImGui::DragFloat3("Bounds", arr, 0.5f)) {
-                component->orthoSize = { arr[0], arr[1], arr[2] };
+        bool isPrimary = components[0]->isPrimary;
+        if(ImGui::Checkbox("Primary", &isPrimary)) {
+            TODO;
+        }
+        if(hasMultipleCamerasSelected) {
+            if(ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Only one camera can be the primary camera. Please deselect the others.");
+                ImGui::EndTooltip();
             }
+        }
+        ImGui::EndDisabled();
+
+
+        Carrot::Vector<bool> isOrthoFields;
+        isOrthoFields.resize(components.size());
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            isOrthoFields[i] = components[i]->isOrthographic;
+        }
+
+        if(editMultipleCheckbox("Orthographic", isOrthoFields)) {
+            struct UpdateOrthographic: UpdateComponentValues<Carrot::ECS::CameraComponent, bool> {
+                UpdateOrthographic(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<bool> _positions)
+                : UpdateComponentValues(app, "Update camera ortho flag", _entityList, _positions,
+                    [](Carrot::ECS::CameraComponent& t) -> bool& { return t.isOrthographic; })
+                {}
+            };
+
+            edition.editor.undoStack.push<UpdateOrthographic>(edition.editor.selectedIDs, isOrthoFields);
+        }
+
+        if(Helpers::all(isOrthoFields)) {
+            Carrot::Vector<glm::vec3> bounds;
+            bounds.resize(components.size());
+            for(std::int64_t i = 0; i < components.size(); i++) {
+                bounds[i] = components[i]->orthoSize;
+            }
+
+            struct UpdateBounds: UpdateComponentValues<Carrot::ECS::CameraComponent, glm::vec3> {
+                UpdateBounds(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _positions)
+                : UpdateComponentValues(app, "Update camera ortho bounds", _entityList, _positions,
+                    [](Carrot::ECS::CameraComponent& t) -> glm::vec3& { return t.orthoSize; })
+                {}
+            };
+
+            if(editMultipleVec3("Bounds", bounds)) {
+                edition.editor.undoStack.push<UpdateBounds>(edition.editor.selectedIDs, bounds);
+            }
+        } else if(!Helpers::any(isOrthoFields)) {
+            /* TODO ImGui::DragFloatRange2("Z Range", &component->perspectiveNear, &component->perspectiveFar, 0.0f, 10000.0f);
+            ImGui::SliderAngle("FOV", &component->perspectiveFov, 0.001f, 360.0f);*/
         } else {
-            ImGui::DragFloatRange2("Z Range", &component->perspectiveNear, &component->perspectiveFar, 0.0f, 10000.0f);
-            ImGui::SliderAngle("FOV", &component->perspectiveFov, 0.001f, 360.0f);
+            ImGui::Text("Cannot edit mix of orthographic and perspective cameras at the same time.");
         }
     }
 
@@ -338,7 +558,7 @@ namespace Peeler {
 
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);
-        registerFunction(inspector, editForceSinPositionComponent);
+        /*registerFunction(inspector, editForceSinPositionComponent);
         registerFunction(inspector, editKinematicsComponent);
         registerFunction(inspector, editLightComponent);
         registerFunction(inspector, editLuaScriptComponent);
@@ -346,10 +566,10 @@ namespace Peeler {
         registerFunction(inspector, editAnimatedModelComponent);
         registerFunction(inspector, editRigidBodyComponent);
         registerFunction(inspector, editSpriteComponent);
-        registerFunction(inspector, editTextComponent);
+        registerFunction(inspector, editTextComponent);*/
         registerFunction(inspector, editTransformComponent);
-        registerFunction(inspector, editPhysicsCharacterComponent);
-        registerFunction(inspector, editNavMeshComponent);
+        /*registerFunction(inspector, editPhysicsCharacterComponent);
+        registerFunction(inspector, editNavMeshComponent);*/
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {

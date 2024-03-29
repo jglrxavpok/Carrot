@@ -5,9 +5,17 @@ layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 outColor;
 
 layout(push_constant) uniform PushConstant {
-    uvec4 selectedEntity;
+    uvec4[16] entities;
 } selection;
 
+bool isSelected(uvec4 entity) {
+    [[unroll]] for(int i = 0; i < 16; i++) {
+        if(entity == selection.entities[i]) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void main() {
     bool isSelectedAtCenter = false;
@@ -19,7 +27,7 @@ void main() {
         for(int dy = -radius; dy <= radius; dy++) {
             const vec2 dUV = vec2(dx, dy) / textureDimensions;
             const uvec4 entityAtPixel = texture(entityIDTexture, uv + dUV);
-            const bool entityMatches = entityAtPixel == selection.selectedEntity;
+            const bool entityMatches = isSelected(entityAtPixel);
 
             if(entityMatches)
             {

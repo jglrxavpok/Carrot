@@ -62,13 +62,16 @@ namespace Peeler {
             pipeline->bind(pass.getRenderPass(), renderContext, cmds);
 
             struct ConstantBlock {
-                Carrot::UUID selectedEntity;
+                Carrot::UUID selectedEntities[16];
             };
             ConstantBlock block;
-            if(this->selectedIDs.empty()) {
-                block.selectedEntity = Carrot::UUID::null();
-            } else {
-                block.selectedEntity = this->selectedIDs[0];
+            std::size_t i = 0;
+            for(; i < this->selectedIDs.size() && i < 16; i++) {
+                block.selectedEntities[i] = this->selectedIDs[i];
+            }
+            // fill remaining slots with 0,0,0,1 (not null because that's the default value when rendering content)
+            for(;i < 16; i++) {
+                block.selectedEntities[i] = Carrot::UUID(0,0,0,1);
             }
 
             renderer.pushConstantBlock("selection", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, cmds, block);
