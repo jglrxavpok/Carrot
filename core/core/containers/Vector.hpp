@@ -25,6 +25,7 @@ namespace Carrot {
          */
         explicit Vector(Allocator& allocator = Allocator::getDefault());
         Vector(std::initializer_list<TElement> initList, Allocator& allocator = Allocator::getDefault());
+        Vector(std::span<const TElement> initList, Allocator& allocator = Allocator::getDefault());
         Vector(const Vector& toCopy);
         Vector(Vector&& toMove) noexcept;
         ~Vector();
@@ -105,6 +106,7 @@ namespace Carrot {
 
         Vector& operator=(Vector&& o) noexcept;
         Vector& operator=(std::initializer_list<TElement> o) noexcept;
+        Vector& operator=(std::span<const TElement> o) noexcept;
 
         /**
          * \brief Sort the vector based on a given comparison function

@@ -16,7 +16,9 @@ namespace Carrot {
     class UniquePtr {
     public:
         UniquePtr(): allocator(Allocator::getDefault()) {}
-        UniquePtr(UniquePtr&& toMove) noexcept : allocator(toMove.allocator) {
+
+        template<typename SubType> requires std::is_base_of_v<T, SubType>
+        UniquePtr(UniquePtr<SubType>&& toMove) noexcept : allocator(toMove.allocator) {
             *this = std::move(toMove);
         }
 
@@ -36,6 +38,7 @@ namespace Carrot {
         }
 
     public: // comparisons
+        template<typename SubType> requires std::is_base_of_v<T, SubType>
         bool operator==(const UniquePtr& o) const {
             return allocation.ptr == o.allocation.ptr;
         }
@@ -44,6 +47,7 @@ namespace Carrot {
             return allocation.ptr == nullptr;
         }
 
+        template<typename SubType> requires std::is_base_of_v<T, SubType>
         bool operator!=(const UniquePtr& o) const {
             return !(*this == o);
         }
@@ -103,8 +107,9 @@ namespace Carrot {
             return *this;
         }
 
-        UniquePtr& operator=(UniquePtr&& toMove)  noexcept {
-            if(&toMove == this) {
+        template<typename SubType> requires std::is_base_of_v<T, SubType>
+        UniquePtr& operator=(UniquePtr<SubType>&& toMove)  noexcept {
+            if((void*)this == (void*)&toMove) {
                 return *this;
             }
             reset();
@@ -116,6 +121,9 @@ namespace Carrot {
     private:
         Allocator& allocator;
         MemoryBlock allocation{};
+
+        template<class>
+        friend class UniquePtr;
     };
 
     /**

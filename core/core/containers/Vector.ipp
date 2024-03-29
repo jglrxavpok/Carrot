@@ -17,6 +17,11 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    Vector<TElement>::Vector(std::span<const TElement> initList, Allocator& allocator): Vector(allocator) {
+        *this = initList;
+    }
+
+    VECTOR_TEMPLATE
     Vector<TElement>::Vector(const Vector& toCopy)
     : Vector(toCopy.allocator) {
         *this = toCopy;
@@ -205,6 +210,19 @@ namespace Carrot {
         this->elementCount = list.size();
         TElement* pData = data();
         const TElement* pListData = list.begin();
+        for (std::size_t i = 0; i < size(); ++i) {
+            new (&pData[i]) TElement(pListData[i]);
+        }
+        return *this;
+    }
+
+    VECTOR_TEMPLATE
+    Vector<TElement>& Vector<TElement>::operator=(std::span<const TElement> list) noexcept {
+        clear();
+        ensureReserve(list.size());
+        this->elementCount = list.size();
+        TElement* pData = data();
+        const TElement* pListData = list.data();
         for (std::size_t i = 0; i < size(); ++i) {
             new (&pData[i]) TElement(pListData[i]);
         }
