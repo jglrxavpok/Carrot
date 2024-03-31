@@ -29,6 +29,27 @@
 
 namespace Peeler {
     namespace Helpers {
+        /**
+         * Wrapper of angles to use a different slider than "regular" floats
+         */
+        struct AngleWrapper {
+            float radianValue;
+        };
+
+        /**
+         * Wrapper of angles to use a different slider than "regular" floats, but described as their cos value
+         */
+        struct CosAngleWrapper {
+            float cosRadianValue;
+        };
+
+        /**
+         * Wrapper for vec3 used as RGB color values
+         */
+        struct RGBColorWrapper {
+            glm::vec3 rgb;
+        };
+
         bool any(std::span<bool> values) {
             for(const bool& b : values) {
                 if(b) {
@@ -46,6 +67,20 @@ namespace Peeler {
             }
             return true;
         }
+
+        template<typename T>
+        struct Limits {};
+
+        template<>
+        struct Limits<AngleWrapper> {
+            float min = -2 * glm::pi<float>();
+            float max = 2 * glm::pi<float>();
+        };
+
+        template<>
+        struct Limits<std::string_view> {
+            bool multiline = false;
+        };
     }
 
     template<typename ComponentType>
@@ -60,16 +95,21 @@ namespace Peeler {
         });
     }
 
+    template<typename T>
+    static bool editMultiple(const char* id, std::span<T> values, const Helpers::Limits<T>& limits = {}) = delete;
+
     // instead of using ImGui::DragFloat3 & co, reimplement it. Because multiple positions are modified at once,
     //  they might not have all the same coordinates. This way, we can modify only the coordinate that has been modified
-    static bool editMultipleVec3(const char* id, std::span<glm::vec3> vectors) {
+    template<int ComponentCount>
+    static bool editMultipleVec(const char* id, std::span<glm::vec<ComponentCount, float>> vectors, const Helpers::Limits<glm::vec<ComponentCount, float>>& limits) {
+        using VecType = glm::vec<ComponentCount, float>;
         bool modified = false;
         ImGui::BeginGroup();
         ImGui::PushID(id);
 
-        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+        ImGui::PushMultiItemsWidths(ComponentCount, ImGui::CalcItemWidth());
 
-        for(std::size_t axisIndex = 0; axisIndex < 3; axisIndex++) {
+        for(std::size_t axisIndex = 0; axisIndex < ComponentCount; axisIndex++) {
             ImGui::PushID(axisIndex);
             float currentValue = (vectors[0])[axisIndex];
             bool sameValue = true;
@@ -88,7 +128,7 @@ namespace Peeler {
 
             if(ImGui::DragScalar("", ImGuiDataType_Float, &currentValue, 1, nullptr, nullptr, format)) {
                 modified = true;
-                for(glm::vec3& vec : vectors) {
+                for(VecType& vec : vectors) {
                     vec[axisIndex] = currentValue;
                 }
             }
@@ -104,8 +144,14 @@ namespace Peeler {
         return modified;
     }
 
+    template<>
+    static bool editMultiple<glm::vec3>(const char* id, std::span<glm::vec3> vectors, const Helpers::Limits<glm::vec3>& limits) {
+        return editMultipleVec<3>(id, vectors, limits);
+    }
+
     // maybe merge with function editMultipleVec3, but for now copy paste will do
-    static bool editMultipleQuat(const char* id, std::span<glm::quat> values) {
+    template<>
+    static bool editMultiple<glm::quat>(const char* id, std::span<glm::quat> values, const Helpers::Limits<glm::quat>& limits) {
         bool modified = false;
         ImGui::BeginGroup();
         ImGui::PushID(id);
@@ -147,7 +193,8 @@ namespace Peeler {
         return modified;
     }
 
-    static bool editMultipleCheckbox(const char* id, std::span<bool> values) {
+    template<>
+    static bool editMultiple<bool>(const char* id, std::span<bool> values, const Helpers::Limits<bool>& limits) {
         int tristate = -1;
         if(Helpers::all(values)) {
             tristate = 1;
@@ -163,149 +210,326 @@ namespace Peeler {
         return false;
     }
 
+    template<>
+    static bool editMultiple<Carrot::Render::bool32>(const char* id, std::span<Carrot::Render::bool32> values, const Helpers::Limits<Carrot::Render::bool32>& limits) {
+        Carrot::Vector<bool> asBools;
+        asBools.resize(values.size());
+        for(std::int64_t i = 0; i < asBools.size(); i++) {
+            asBools[i] = values[i];
+        }
+        if(editMultiple(id, std::span<bool>(asBools))) {
+            for(auto& v : values) {
+                v = asBools[0];
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<float>(const char* id, std::span<float> values, const Helpers::Limits<float>& limits) {
+        float sameValue = values[0];
+        bool areSame = true;
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i] != sameValue) {
+                areSame = false;
+                break;
+            }
+        }
+
+        const char* format = areSame ? "%.3f" : "<VARIOUS>";
+        if(ImGui::DragFloat(id, &sameValue, 1, 0, 0, format)) {
+            for(float& v : values) {
+                v = sameValue;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<Helpers::AngleWrapper>(const char* id, std::span<Helpers::AngleWrapper> values, const Helpers::Limits<Helpers::AngleWrapper>& limits) {
+        float sameValue = values[0].radianValue;
+        bool areSame = true;
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i].radianValue != sameValue) {
+                areSame = false;
+                break;
+            }
+        }
+
+        const char* format = areSame ? "%.0f deg" : "<VARIOUS>";
+        if(ImGui::SliderAngle(id, &sameValue, Carrot::Math::Rad2Degrees * limits.min, Carrot::Math::Rad2Degrees * limits.max, format)) {
+            for(Helpers::AngleWrapper& angle : values) {
+                angle.radianValue = sameValue;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<Helpers::CosAngleWrapper>(const char* id, std::span<Helpers::CosAngleWrapper> values, const Helpers::Limits<Helpers::CosAngleWrapper>& limits) {
+        Carrot::Vector<Helpers::AngleWrapper> asAngles;
+        asAngles.resize(values.size());
+        for(std::int64_t i = 0; i < asAngles.size(); i++) {
+            asAngles[i].radianValue = glm::acos(values[i].cosRadianValue);
+        }
+        if(editMultiple(id, std::span<Helpers::AngleWrapper>(asAngles))) {
+            for(auto& v : values) {
+                v.cosRadianValue = glm::cos(asAngles[0].radianValue);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<Helpers::RGBColorWrapper>(const char* id, std::span<Helpers::RGBColorWrapper> values, const Helpers::Limits<Helpers::RGBColorWrapper>& limits) {
+        const glm::vec3& colorValue = values[0].rgb;
+        float colorArr[3] { colorValue.r, colorValue.g, colorValue.b };
+        if(ImGui::ColorPicker3(id, colorArr)) {
+            for(Helpers::RGBColorWrapper& v : values) {
+                v.rgb = glm::vec3 { colorArr[0], colorArr[1], colorArr[2] };
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<std::string_view>(const char* id, std::span<std::string_view> values, const Helpers::Limits<std::string_view>& limits) {
+        static std::string sameValue; // expected to have its contents copied immediatly after returning out of this function
+        sameValue = std::string { values[0] };
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i] != sameValue) {
+                sameValue = "<VARIOUS>";
+                break;
+            }
+        }
+
+        bool modified = false;
+        if(limits.multiline) {
+            modified = ImGui::InputTextMultiline(id, sameValue);
+        } else {
+            modified = ImGui::InputText(id, sameValue);
+        }
+
+        if(modified) {
+            for(std::string_view& v : values) {
+                v = sameValue;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
     template<typename TComponent, typename TValue>
     struct UpdateComponentValues: Peeler::ICommand {
         Carrot::Vector<Carrot::ECS::EntityID> entityList;
         Carrot::Vector<TValue> newValues;
         Carrot::Vector<TValue> oldValues;
-        std::function<TValue&(TComponent& comp)> accessor;
+        std::function<TValue(TComponent& comp)> getter;
+        std::function<void(TComponent& comp, const TValue& value)> setter;
 
         UpdateComponentValues(Application &app, const std::string& desc, std::span<Carrot::ECS::EntityID> _entityList, std::span<TValue> _newValues,
-            std::function<TValue&(TComponent& comp)> _accessor)
+            std::function<TValue(TComponent& comp)> _getter, std::function<void(TComponent& comp, const TValue& value)> _setter)
             : ICommand(app, desc)
             , entityList(_entityList)
             , newValues(_newValues)
-            , accessor(_accessor)
+            , getter(_getter)
+            , setter(_setter)
         {
             oldValues.ensureReserve(newValues.size());
             for(const auto& entityID : _entityList) {
-                oldValues.pushBack(accessor(app.currentScene.world.getComponent<TComponent>(entityID)));
+                oldValues.pushBack(getter(app.currentScene.world.getComponent<TComponent>(entityID)));
             }
         }
 
         void undo() override {
             for(std::size_t i = 0; i < entityList.size(); i++) {
-                accessor(editor.currentScene.world.getComponent<TComponent>(entityList[i])) = oldValues[i];
+                setter(editor.currentScene.world.getComponent<TComponent>(entityList[i]), oldValues[i]);
             }
         }
 
         void redo() override {
             for(std::size_t i = 0; i < entityList.size(); i++) {
-                accessor(editor.currentScene.world.getComponent<TComponent>(entityList[i])) = newValues[i];
+                setter(editor.currentScene.world.getComponent<TComponent>(entityList[i]), newValues[i]);
             }
         }
     };
 
-    static void editTransformComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::TransformComponent*>& components) {
-        Carrot::StackAllocator allocator { Carrot::Allocator::getDefault(), sizeof(void*) * (3 * components.size()) };
-        Carrot::Vector<glm::vec3> positions;
-        Carrot::Vector<glm::quat> rotations;
-        Carrot::Vector<glm::vec3> scales;
-        positions.resize(components.size());
-        rotations.resize(components.size());
-        scales.resize(components.size());
-
-        for(std::int64_t i = 0; i < components.size(); i++) {
-            positions[i] = components[i]->localTransform.position;
-            rotations[i] = components[i]->localTransform.rotation;
-            scales[i] = components[i]->localTransform.scale;
+    /**
+     * Helper function for editing the same property in multiple entities at once. Handles undo stack automatically
+     * @tparam TComponent Type of component to edit
+     * @tparam TPropertyType Type of property to edit (underlying type, for positions this would be vec3)
+     * @param id label used to show user which property they are editing
+     * @param components list of components to edit
+     * @param getterFunc function to get the property's value
+     * @param setterFunc function to set the property's value
+     */
+    template<typename TComponent, typename TPropertyType>
+    static void multiEditField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*> components,
+        std::function<TPropertyType(TComponent&)> getterFunc,
+        std::function<void(TComponent&, const TPropertyType&)> setterFunc,
+        const Helpers::Limits<TPropertyType>& limits = {}
+    ) {
+        Carrot::Vector<TPropertyType> values;
+        values.ensureReserve(components.size());
+        for(TComponent* pComponent : components) {
+            values.emplaceBack(getterFunc(*pComponent));
         }
 
-        struct UpdateEntityPositions: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::vec3> {
-            UpdateEntityPositions(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _positions)
-                : UpdateComponentValues(app, "Update entities position", _entityList, _positions, [](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.position; })
-            {}
-        };
+        bool modified = editMultiple<TPropertyType>(id, values, limits);
 
-        struct UpdateEntityRotations: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::quat> {
-            UpdateEntityRotations(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::quat> _scales)
-                : UpdateComponentValues(app, "Update entities rotations", _entityList, _scales, [](Carrot::ECS::TransformComponent& t) -> glm::quat& { return t.localTransform.rotation; })
-            {}
-        };
-
-        struct UpdateEntityScales: UpdateComponentValues<Carrot::ECS::TransformComponent, glm::vec3> {
-            UpdateEntityScales(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _scales)
-                : UpdateComponentValues(app, "Update entities scale", _entityList, _scales, [](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.scale; })
-            {}
-        };
-
-        if(editMultipleVec3("Position", positions)) {
-            edition.editor.undoStack.push<UpdateEntityPositions>(edition.editor.selectedIDs, positions);
-            edition.hasModifications = true;
-        }
-        if(editMultipleQuat("Rotation", rotations)) {
-            edition.editor.undoStack.push<UpdateEntityRotations>(edition.editor.selectedIDs, rotations);
-            edition.hasModifications = true;
-        }
-        if(editMultipleVec3("Scale", scales)) {
-            edition.editor.undoStack.push<UpdateEntityScales>(edition.editor.selectedIDs, scales);
+        if(modified) {
+            using UpdateProperty = UpdateComponentValues<TComponent, TPropertyType>;
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getterFunc, setterFunc);
             edition.hasModifications = true;
         }
     }
 
-    static void editLightComponent(EditContext& edition, Carrot::ECS::LightComponent* component) {
-        if(component->lightRef) {
-            auto& light = component->lightRef->light;
+    /**
+     * Helper function for editing the same property in multiple entities at once. Handles undo stack automatically
+     * @tparam TComponent Type of component to edit
+     * @tparam TPropertyType Type of property to edit (underlying type, for positions this would be vec3)
+     * @param id label used to show user which property they are editing
+     * @param components list of components to edit
+     * @param getter function to get the property's value
+     * @param setter function to set the property's value
+     */
+    template<typename TComponent, typename TPropertyType>
+    static void multiEditField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*> components,
+        TPropertyType(getter)(TComponent&),
+        void(setter)(TComponent&, const TPropertyType&),
+        const Helpers::Limits<TPropertyType>& limits = {}
+    ) {
+        multiEditField(edition, id, components, std::function(getter), std::function(setter), limits);
+    }
 
-            bool enabled = light.enabled;
-            if(ImGui::Checkbox("Enabled##inspector lightcomponent", &enabled)) {
-                light.enabled = enabled;
-            }
+    /**
+     * Helper function for editing the same property in multiple entities at once. Handles undo stack automatically
+     * @tparam TComponent Type of component to edit
+     * @tparam TPropertyType Type of property to edit (underlying type, for positions this would be vec3)
+     * @param id label used to show user which property they are editing
+     * @param components list of components to edit
+     * @param accessor function to access the property's value
+     */
+    template<typename TComponent, typename TPropertyType>
+    static void multiEditField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*> components, TPropertyType&(accessor)(TComponent&), const Helpers::Limits<TPropertyType>& limits = {}) {
+        multiEditField(edition, id, components,
+            std::function([&](TComponent& c) -> TPropertyType { return accessor(c); }),
+            std::function([&](TComponent& c, const TPropertyType& v) { accessor(c) = v; }),
+            limits);
+    }
 
-            if(ImGui::BeginCombo("Light type##inspector lightcomponent", Carrot::Render::Light::nameOf(light.type))) {
-                auto selectable = [&](Carrot::Render::LightType type) {
-                    std::string id = Carrot::Render::Light::nameOf(type);
-                    id += "##inspector lightcomponent";
-                    bool selected = type == light.type;
-                    if(ImGui::Selectable(id.c_str(), &selected)) {
-                        light.type = type;
+    static void editTransformComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::TransformComponent*>& components) {
+        multiEditField(edition, "Position", components,
+            +[](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.position; });
+        multiEditField(edition, "Rotation", components,
+            +[](Carrot::ECS::TransformComponent& t) -> glm::quat& { return t.localTransform.rotation; });
+        multiEditField(edition, "Scale", components,
+            +[](Carrot::ECS::TransformComponent& t) -> glm::vec3& { return t.localTransform.scale; });
+    }
+
+    template<typename TComponent, typename TEnum>
+    static void multiEditEnumField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*>& components, TEnum(getter)(TComponent&), void(setter)(TComponent&, const TEnum&),
+        const char*(nameGetter)(TEnum),
+        const Carrot::Vector<TEnum>& validValues,
+        const Helpers::Limits<TEnum>& limits = {})
+    {
+        Carrot::Vector<TEnum> values;
+        values.ensureReserve(components.size());
+        TEnum currentlySelectedValue = getter(*components[0]);
+        bool allSame = true;
+        for(TComponent* pComponent : components) {
+            values.emplaceBack(getter(*pComponent));
+            allSame = currentlySelectedValue == values[values.size()-1];
+        }
+
+        bool modified = false;
+        const char* previewValue = allSame ? Carrot::Render::Light::nameOf(currentlySelectedValue) : "<VARIOUS>";
+        if(ImGui::BeginCombo(id, previewValue)) {
+            auto selectable = [&](TEnum entry) {
+                bool selected = entry == currentlySelectedValue;
+                if(ImGui::Selectable(nameGetter(entry), &selected)) {
+                    modified = true;
+                    for(auto& v : values) {
+                        v = entry;
                     }
-                };
+                }
+            };
 
-                selectable(Carrot::Render::LightType::Point);
-                selectable(Carrot::Render::LightType::Directional);
-                selectable(Carrot::Render::LightType::Spot);
-
-                ImGui::EndCombo();
+            for(const auto& validValue : validValues) {
+                selectable(validValue);
             }
 
-            ImGui::BeginDisabled(!enabled);
-            ImGui::DragFloat("Intensity##inspector lightcomponent", &light.intensity);
+            ImGui::EndCombo();
+        }
 
-            if(ImGui::CollapsingHeader("Parameters")) {
-                switch (light.type) {
+        if(modified) {
+            using UpdateProperty = UpdateComponentValues<TComponent, TEnum>;
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getter, setter);
+            edition.hasModifications = true;
+        }
+    }
+
+    static void editLightComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::LightComponent*>& components) {
+        multiEditField(edition, "Enabled", components,
+            +[](Carrot::ECS::LightComponent& c) -> Carrot::Render::bool32& { return c.lightRef->light.enabled; });
+
+        multiEditEnumField(edition, "Light type", components,
+            +[](Carrot::ECS::LightComponent& c) { return c.lightRef->light.type ; },
+            +[](Carrot::ECS::LightComponent& c, const Carrot::Render::LightType& v) { c.lightRef->light.type = v; },
+            Carrot::Render::Light::nameOf, { Carrot::Render::LightType::Point, Carrot::Render::LightType::Directional, Carrot::Render::LightType::Spot });
+
+        multiEditField(edition, "Intensity", components,
+            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.intensity; });
+
+        if(ImGui::CollapsingHeader("Parameters")) {
+            bool allSameType = true;
+            Carrot::Render::LightType lightType = components[0]->lightRef->light.type;
+            for(std::size_t i = 1; i < components.size(); i++) {
+                if(lightType != components[i]->lightRef->light.type) {
+                    allSameType = false;
+                    break;
+                }
+            }
+            if(allSameType) {
+                switch (lightType) {
                     case Carrot::Render::LightType::Spot: {
-                        float cutoffAngle = glm::acos(light.cutoffCosAngle);
-                        float outerCutoffAngle = glm::acos(light.outerCutoffCosAngle);
-                        if(ImGui::DragAngle("Cutoff angle", &cutoffAngle)) {
-                            light.cutoffCosAngle = glm::cos(cutoffAngle);
-                        }
-                        if(ImGui::DragAngle("Outer cutoff angle", &outerCutoffAngle)) {
-                            light.outerCutoffCosAngle = glm::cos(outerCutoffAngle);
-                        }
+                        multiEditField(edition, "Cutoff angle", components,
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.cutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.cutoffCosAngle = v.cosRadianValue; });
+                        multiEditField(edition, "Outer cutoff angle", components,
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.outerCutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.outerCutoffCosAngle = v.cosRadianValue; });
                     } break;
 
                     case Carrot::Render::LightType::Point: {
-                        ImGui::DragFloat("Constant attenuation", &light.constantAttenuation);
-                        ImGui::DragFloat("Linear attenuation", &light.linearAttenuation);
-                        ImGui::DragFloat("Quadratic attenuation", &light.quadraticAttenuation);
+                        multiEditField(edition, "Constant attenuation", components,
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.constantAttenuation; });
+                        multiEditField(edition, "Linear attenuation", components,
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.linearAttenuation; });
+                        multiEditField(edition, "Quadratic attenuation", components,
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.quadraticAttenuation; });
+                    } break;
+
+                    default: {
+                        ImGui::Text("Unhandled light type :(");
                     } break;
                 }
+            } else {
+                ImGui::Text("Lights are not all of same type, cannot edit them at the same time.");
             }
-
-            float colorArr[3] = { light.color.r, light.color.g, light.color.b };
-            glm::vec3& color = light.color;
-            if(ImGui::ColorPicker3("Light color##inspector lightcomponent", colorArr)) {
-                color = glm::vec3 { colorArr[0], colorArr[1], colorArr[2] };
-                edition.hasModifications = true;
-            }
-
-            ImGui::EndDisabled();
-        } else {
-            ImGui::BeginDisabled();
-            ImGui::TextWrapped("%s", "No light reference in this component. It must have been disabled explicitly.");
-            ImGui::EndDisabled();
         }
+
+        multiEditField(edition, "Light color", components,
+            +[](Carrot::ECS::LightComponent& c) { return Helpers::RGBColorWrapper { .rgb = c.lightRef->light.color }; },
+            +[](Carrot::ECS::LightComponent& c, const Helpers::RGBColorWrapper& v) { c.lightRef->light.color = v.rgb; });
     }
 
     static void editSpriteComponent(EditContext& edition, Carrot::ECS::SpriteComponent* component) {
@@ -356,45 +580,25 @@ namespace Peeler {
     void editModelComponent(EditContext& edition, Carrot::ECS::ModelComponent* component);
     void editAnimatedModelComponent(EditContext& edition, Carrot::ECS::AnimatedModelComponent* component);
 
-    void editKinematicsComponent(EditContext& edition, Carrot::ECS::Kinematics* component) {
-        float arr[] = { component->velocity.x, component->velocity.y, component->velocity.z };
-        if (ImGui::DragFloat3("Velocity", arr)) {
-            component->velocity = { arr[0], arr[1], arr[2] };
-            edition.hasModifications = true;
-        }
+    void editKinematicsComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::Kinematics*>& components) {
+        multiEditField(edition, "Velocity", components,
+            +[](Carrot::ECS::Kinematics& c) -> glm::vec3& { return c.velocity; });
     }
 
-    void editForceSinPositionComponent(EditContext& edition, Carrot::ECS::ForceSinPosition* component) {
-        auto line = [&](const char* id, glm::vec3& vec) {
-            float arr[] = { vec.x, vec.y, vec.z };
-            if (ImGui::DragFloat3(id, arr)) {
-                vec = { arr[0], arr[1], arr[2] };
-                edition.hasModifications = true;
-            }
-        };
-        line("Angular Frequency", component->angularFrequency);
-        line("Amplitude", component->amplitude);
-        line("Angular Offset", component->angularOffset);
-        line("Center Position", component->centerPosition);
+    void editForceSinPositionComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ForceSinPosition*>& components) {
+        multiEditField(edition, "Angular Frequency", components,
+            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.angularFrequency; });
+        multiEditField(edition, "Amplitude", components,
+            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.amplitude; });
+        multiEditField(edition, "Angular Offset", components,
+            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.angularOffset; });
+        multiEditField(edition, "Center Position", components,
+            +[](Carrot::ECS::ForceSinPosition& c) -> glm::vec3& { return c.centerPosition; });
     }
 
     void editCameraComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CameraComponent*>& components) {
-        const bool hasMultipleCamerasSelected = components.size() > 1;
-        ImGui::BeginDisabled(hasMultipleCamerasSelected);
-
-        bool isPrimary = components[0]->isPrimary;
-        if(ImGui::Checkbox("Primary", &isPrimary)) {
-            TODO;
-        }
-        if(hasMultipleCamerasSelected) {
-            if(ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::Text("Only one camera can be the primary camera. Please deselect the others.");
-                ImGui::EndTooltip();
-            }
-        }
-        ImGui::EndDisabled();
-
+        multiEditField(edition, "Primary", components,
+            +[](Carrot::ECS::CameraComponent& c) -> bool& { return c.isPrimary; });
 
         Carrot::Vector<bool> isOrthoFields;
         isOrthoFields.resize(components.size());
@@ -402,47 +606,29 @@ namespace Peeler {
             isOrthoFields[i] = components[i]->isOrthographic;
         }
 
-        if(editMultipleCheckbox("Orthographic", isOrthoFields)) {
-            struct UpdateOrthographic: UpdateComponentValues<Carrot::ECS::CameraComponent, bool> {
-                UpdateOrthographic(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<bool> _positions)
-                : UpdateComponentValues(app, "Update camera ortho flag", _entityList, _positions,
-                    [](Carrot::ECS::CameraComponent& t) -> bool& { return t.isOrthographic; })
-                {}
-            };
-
-            edition.editor.undoStack.push<UpdateOrthographic>(edition.editor.selectedIDs, isOrthoFields);
-        }
+        multiEditField(edition, "Orthographic", components,
+            +[](Carrot::ECS::CameraComponent& c) -> bool& { return c.isOrthographic; });
 
         if(Helpers::all(isOrthoFields)) {
-            Carrot::Vector<glm::vec3> bounds;
-            bounds.resize(components.size());
-            for(std::int64_t i = 0; i < components.size(); i++) {
-                bounds[i] = components[i]->orthoSize;
-            }
-
-            struct UpdateBounds: UpdateComponentValues<Carrot::ECS::CameraComponent, glm::vec3> {
-                UpdateBounds(Application &app, std::span<Carrot::ECS::EntityID> _entityList, std::span<glm::vec3> _positions)
-                : UpdateComponentValues(app, "Update camera ortho bounds", _entityList, _positions,
-                    [](Carrot::ECS::CameraComponent& t) -> glm::vec3& { return t.orthoSize; })
-                {}
-            };
-
-            if(editMultipleVec3("Bounds", bounds)) {
-                edition.editor.undoStack.push<UpdateBounds>(edition.editor.selectedIDs, bounds);
-            }
+            multiEditField(edition, "Bounds", components,
+                +[](Carrot::ECS::CameraComponent& c) -> glm::vec3& { return c.orthoSize; });
         } else if(!Helpers::any(isOrthoFields)) {
-            /* TODO ImGui::DragFloatRange2("Z Range", &component->perspectiveNear, &component->perspectiveFar, 0.0f, 10000.0f);
-            ImGui::SliderAngle("FOV", &component->perspectiveFov, 0.001f, 360.0f);*/
+            multiEditField(edition, "FOV", components,
+                +[](Carrot::ECS::CameraComponent& c) { return Helpers::AngleWrapper{ c.perspectiveFov }; },
+                +[](Carrot::ECS::CameraComponent& c, const Helpers::AngleWrapper& v) { c.perspectiveFov = v.radianValue; },
+                Helpers::Limits<Helpers::AngleWrapper> { .min = 0.0001f, .max = 360.0f });
+            multiEditField(edition, "Z Near", components, +[](Carrot::ECS::CameraComponent& c) -> float& { return c.perspectiveNear; });
+            multiEditField(edition, "Z Far", components, +[](Carrot::ECS::CameraComponent& c) -> float& { return c.perspectiveFar; });
         } else {
             ImGui::Text("Cannot edit mix of orthographic and perspective cameras at the same time.");
         }
     }
 
-    void editTextComponent(EditContext& edition, Carrot::ECS::TextComponent* component) {
-        std::string text { component->getText() };
-        if(ImGui::InputTextMultiline("Content##TextComponent input field", text)) {
-            component->setText(text);
-        }
+    void editTextComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::TextComponent*>& components) {
+        multiEditField(edition, "Content", components,
+            +[](Carrot::ECS::TextComponent& c) { return c.getText(); },
+            +[](Carrot::ECS::TextComponent& c, const std::string_view& v) { c.setText(v); },
+            Helpers::Limits<std::string_view> { .multiline = true });
     }
 
     void editLuaScriptComponent(EditContext& edition, Carrot::ECS::LuaScriptComponent* component) {
@@ -558,15 +744,15 @@ namespace Peeler {
 
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);
-        /*registerFunction(inspector, editForceSinPositionComponent);
+        registerFunction(inspector, editForceSinPositionComponent);
         registerFunction(inspector, editKinematicsComponent);
         registerFunction(inspector, editLightComponent);
-        registerFunction(inspector, editLuaScriptComponent);
+        /*registerFunction(inspector, editLuaScriptComponent);
         registerFunction(inspector, editModelComponent);
         registerFunction(inspector, editAnimatedModelComponent);
         registerFunction(inspector, editRigidBodyComponent);
-        registerFunction(inspector, editSpriteComponent);
-        registerFunction(inspector, editTextComponent);*/
+        registerFunction(inspector, editSpriteComponent);*/
+        registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
         /*registerFunction(inspector, editPhysicsCharacterComponent);
         registerFunction(inspector, editNavMeshComponent);*/
