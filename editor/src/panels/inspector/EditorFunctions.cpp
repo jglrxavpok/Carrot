@@ -81,6 +81,12 @@ namespace Peeler {
         struct Limits<std::string_view> {
             bool multiline = false;
         };
+
+        template<>
+        struct Limits<Carrot::IO::VFS::Path> {
+            bool allowDirectories = false;
+            std::function<bool(const Carrot::IO::VFS::Path&)> validityChecker = [](const Carrot::IO::VFS::Path& p) { return true; };
+        };
     }
 
     template<typename ComponentType>
@@ -325,6 +331,52 @@ namespace Peeler {
         }
 
         return false;
+    }
+
+    template<>
+    static bool editMultiple<Carrot::IO::VFS::Path>(const char* id, std::span<Carrot::IO::VFS::Path> values, const Helpers::Limits<Carrot::IO::VFS::Path>& limits) {
+        std::string pathStr = values[0].toString();
+
+        for(const auto& v : values) {
+            if(pathStr != v.toString()) {
+                pathStr = "<VARIOUS>";
+                break;
+            }
+        }
+
+        bool wasModified = false;
+        if(ImGui::InputText(id, pathStr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            wasModified = true;
+        }
+
+        if(ImGui::BeginDragDropTarget()) {
+            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                buffer.get()[payload->DataSize] = '\0';
+
+                std::u8string str = buffer.get();
+                std::string s = Carrot::toString(str);
+
+                auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                // TODO: no need to go through disk again
+                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                if((std::filesystem::is_directory(fsPath) == limits.allowDirectories) && limits.validityChecker(vfsPath)) {
+                    pathStr = s;
+                    wasModified = true;
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
+        if(wasModified) {
+            for(auto& v : values) {
+                v = Carrot::IO::VFS::Path { pathStr };
+            }
+        }
+        return wasModified;
     }
 
     template<typename TComponent, typename TValue>
@@ -709,34 +761,17 @@ namespace Peeler {
         ImGui::PopID();
     }
 
-    void editNavMeshComponent(EditContext& edition, Carrot::ECS::NavMeshComponent* component) {
-        std::string path = component->meshFile.isFile() ? component->meshFile.getName() : "";
-        if(ImGui::InputText("Mesh##NavMesh filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            component->setMesh(Carrot::IO::VFS::Path(path));
-            edition.hasModifications = true;
-        }
-
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string str = buffer.get();
-                std::string s = Carrot::toString(str);
-
-                auto vfsPath = Carrot::IO::VFS::Path(s);
-
-                // TODO: no need to go through disk again
-                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
-                    component->setMesh(vfsPath);
-                    edition.hasModifications = true;
-                }
-            }
-
-            ImGui::EndDragDropTarget();
-        }
+    void editNavMeshComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::NavMeshComponent*>& components) {
+        multiEditField(edition, "Mesh", components,
+            +[](Carrot::ECS::NavMeshComponent& component) {
+                return Carrot::IO::VFS::Path { component.meshFile.isFile() ? component.meshFile.getName() : "" };
+            },
+            +[](Carrot::ECS::NavMeshComponent& c, const Carrot::IO::VFS::Path& v) {
+                c.setMesh(v);
+            },
+            Helpers::Limits<Carrot::IO::VFS::Path> {
+                .validityChecker = [](auto& p) { return Carrot::IO::getFileFormat(p.toString().c_str()) == Carrot::IO::FileFormat::CNAV; }
+            });
     }
 
     void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
@@ -754,8 +789,8 @@ namespace Peeler {
         registerFunction(inspector, editSpriteComponent);*/
         registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
-        /*registerFunction(inspector, editPhysicsCharacterComponent);
-        registerFunction(inspector, editNavMeshComponent);*/
+        /*registerFunction(inspector, editPhysicsCharacterComponent);*/
+        registerFunction(inspector, editNavMeshComponent);
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
