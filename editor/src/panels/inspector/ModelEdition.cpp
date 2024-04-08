@@ -94,11 +94,14 @@ namespace Peeler {
         return false;
     }
 
-    void editModelComponent(EditContext& edition, Carrot::ECS::ModelComponent* component) {
-        auto& asyncModel = component->asyncModel;
-        if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
-            ImGui::Text("Model is loading...");
-            return;
+    void editModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ModelComponent*>& components) {
+        // check if all components have loaded their models
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            auto& asyncModel = components[i]->asyncModel;
+            if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
+                ImGui::Text("Loading model(s)...");
+                return;
+            }
         }
 
         ImGui::BeginGroup();
@@ -118,7 +121,9 @@ namespace Peeler {
                     // TODO: no need to go through disk again
                     std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
                     if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
-                        component->setFile(vfsPath);
+                        for(auto& pComponent : components) {
+                            pComponent->setFile(vfsPath);
+                        }
                         edition.hasModifications = true;
                     }
                 }
@@ -126,126 +131,177 @@ namespace Peeler {
                 ImGui::EndDragDropTarget();
             }
         });
-        std::string path = asyncModel.isEmpty() ? "" : asyncModel->getOriginatingResource().getName();
-        if(ImGui::InputText("Filepath##ModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            component->setFile(Carrot::IO::VFS::Path(path));
-            edition.hasModifications = true;
-        }
+
+        multiEditField(edition, "Filepath", components,
+            +[](Carrot::ECS::ModelComponent& c) {
+                return Carrot::IO::VFS::Path { c.asyncModel.isEmpty() ? "" : c.asyncModel->getOriginatingResource().getName() };
+            },
+            +[](Carrot::ECS::ModelComponent& c, const Carrot::IO::VFS::Path& path) {
+                c.setFile(path);
+            },
+            Helpers::Limits<Carrot::IO::VFS::Path> {
+                .validityChecker = [](const auto& path) { return Carrot::IO::isModelFormat(path.toString().c_str()); }
+            }
+        );
 
         if(ImGui::SmallButton("Reload")) {
-            const Carrot::IO::VFS::Path vfsPath = Carrot::IO::VFS::Path(path);
-            GetAssetServer().removeFromModelCache(vfsPath);
-            component->setFile(vfsPath);
+            for(auto& pComponent : components) {
+                const Carrot::IO::VFS::Path vfsPath { pComponent->asyncModel.isEmpty() ? "" : pComponent->asyncModel->getOriginatingResource().getName() };
+                pComponent->setFile(vfsPath);
+            }
             edition.hasModifications = true;
         }
 
-        ImGui::Checkbox("Transparent##ModelComponent transparent inspector", &component->isTransparent);
-        ImGui::Checkbox("Casts shadows##ModelComponent casts shadows inspector", &component->castsShadows);
+        multiEditField(edition, "Transparent", components,
+            +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.isTransparent; });
+        multiEditField(edition, "Casts shadows", components,
+            +[](Carrot::ECS::ModelComponent& c) -> bool& { return c.castsShadows; });
 
-        float colorArr[4] = { component->color.r, component->color.g, component->color.b, component->color.a };
-        if(ImGui::ColorPicker4("Model color", colorArr)) {
-            component->color = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
-            edition.hasModifications = true;
+        multiEditField(edition, "Model color", components,
+            +[](Carrot::ECS::ModelComponent& c) { return Helpers::RGBAColorWrapper { c.color }; },
+            +[](Carrot::ECS::ModelComponent& c, const Helpers::RGBAColorWrapper& v) { c.color = v.rgba; });
+
+        for(const auto& pComponent : components) {
+            if(!pComponent->asyncModel.isReady()) {
+                return;
+            }
         }
+        if(ImGui::CollapsingHeader("Material overrides")) {
+            auto& worldData = components[0]->getEntity().getWorld().getWorldData();
 
-        if(asyncModel.isReady() && ImGui::CollapsingHeader("Material overrides")) {
-            auto& worldData = component->getEntity().getWorld().getWorldData();
-            auto cloneRenderer = [&]() {
-                if(component->modelRenderer) {
-                    return component->modelRenderer->clone();
+            bool allSame = true;
+            Carrot::Render::ModelRenderer* pModelRenderer = components[0]->modelRenderer.get();
+            for(std::int64_t i = 1; i < components.size(); i++) {
+                allSame &= pModelRenderer == components[i]->modelRenderer.get();
+            }
+
+            auto cloneRenderer = [&](Carrot::ECS::ModelComponent& component) {
+                if(pModelRenderer) {
+                    return pModelRenderer->clone();
                 }
 
-                return std::make_shared<Carrot::Render::ModelRenderer>(*asyncModel);
+                return std::make_shared<Carrot::Render::ModelRenderer>(*component.asyncModel);
             };
+            if(allSame) {
+                // handle rendering overrides (replacing pipeline and/or material textures)
+                if(pModelRenderer) {
+                    std::shared_ptr<Carrot::Render::ModelRenderer> clonedRenderer = nullptr;
+                    auto cloneIfNeeded = [&]() {
+                        if(!clonedRenderer) {
+                            clonedRenderer = cloneRenderer(*components[0] /* all same, so can reuse this one */);
+                        }
 
-            std::size_t virtualGeometryCount = 0;
-            std::size_t staticMeshCount = component->modelRenderer ? component->modelRenderer->getModel().getStaticMeshes().size() : component->asyncModel->getStaticMeshes().size();
+                        return clonedRenderer;
+                    };
 
-            // handle rendering overrides (replacing pipeline and/or material textures)
-            if(component->modelRenderer) {
-                std::shared_ptr<Carrot::Render::ModelRenderer> clonedRenderer = nullptr;
-                auto cloneIfNeeded = [&]() {
-                    if(!clonedRenderer) {
-                        clonedRenderer = cloneRenderer();
+                    static std::string albedoPath = "<<path>>";
+
+                    Carrot::Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
+                    std::size_t index = 0;
+                    const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+                    const float spacing = ImGui::GetStyle().ItemSpacing.y;
+
+                    std::size_t toRemove = ~0ull;
+
+                    for(const auto& override : pModelRenderer->getOverrides()) {
+                        ImGui::BeginChild(Carrot::sprintf("Material overrides##%llu", index).c_str(), ImVec2(0, lineHeight * 9 + spacing*5), true);
+
+                        bool removed = editSingleOverride(edition, override, *pModelRenderer, cloneIfNeeded);
+                        if(removed) {
+                            toRemove = index;
+                        }
+
+                        ImGui::EndChild();
+                        index++;
                     }
 
-                    return clonedRenderer;
-                };
-
-                static std::string albedoPath = "<<path>>";
-
-                Carrot::Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
-                std::size_t index = 0;
-                const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
-                const float spacing = ImGui::GetStyle().ItemSpacing.y;
-
-                std::size_t toRemove = ~0ull;
-
-                for(const auto& override : component->modelRenderer->getOverrides()) {
-                    ImGui::BeginChild(Carrot::sprintf("Material overrides##%llu", index).c_str(), ImVec2(0, lineHeight * 9 + spacing*5), true);
-
-                    bool removed = editSingleOverride(edition, override, *component->modelRenderer, cloneIfNeeded);
-                    if(removed) {
-                        toRemove = index;
+                    if(toRemove < pModelRenderer->getOverrides().size()) {
+                        cloneIfNeeded()->removeOverride(toRemove);
                     }
 
+                    if(clonedRenderer) {
+                        for(auto& pComponent : components) {
+                            pComponent->modelRenderer = clonedRenderer;
+                        }
+                        clonedRenderer->recreateStructures();
+                        worldData.storeModelRenderer(clonedRenderer);
+                    }
+                }
+
+                if(ImGui::Button("+")) {
+                    std::shared_ptr<Carrot::Render::ModelRenderer> pClone = cloneRenderer(*components[0]);
+                    pClone->addOverride({});
+                    for(auto& pComponent : components) {
+                        pComponent->modelRenderer = pClone;
+                    }
+                    pClone->recreateStructures();
+                    worldData.storeModelRenderer(pClone);
+                    edition.hasModifications = true;
+                }
+            } else {
+                ImGui::Text("Not all using the same renderer/model, cannot modify overrides with the current selection of entities.");
+                pModelRenderer = nullptr;
+            }
+
+            bool allWithVirtualGeometry = true;
+            bool allWithoutVirtualGeometry = true;
+            for(const auto& pComponent : components) {
+                std::size_t virtualGeometryCount = 0;
+
+                for(auto& override : pComponent->modelRenderer->getOverrides()) {
                     if(override.virtualizedGeometry) {
                         virtualGeometryCount++;
                     }
-
-                    ImGui::EndChild();
-                    index++;
                 }
 
-                if(toRemove < component->modelRenderer->getOverrides().size()) {
-                    cloneIfNeeded()->removeOverride(toRemove);
-                }
-
-                if(clonedRenderer) {
-                    component->modelRenderer = clonedRenderer;
-                    clonedRenderer->recreateStructures();
-                    worldData.storeModelRenderer(clonedRenderer);
+                std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->asyncModel->getStaticMeshes().size();
+                if(staticMeshCount == virtualGeometryCount) {
+                    allWithoutVirtualGeometry = false;
+                } else if(virtualGeometryCount == 0) {
+                    allWithVirtualGeometry = false;
+                } else {
+                    allWithVirtualGeometry = false;
+                    allWithoutVirtualGeometry = false;
                 }
             }
 
-            if(ImGui::Button("+")) {
-                component->modelRenderer = cloneRenderer();
-                component->modelRenderer->addOverride({});
-                worldData.storeModelRenderer(component->modelRenderer);
-                edition.hasModifications = true;
-            }
-
-            int tristate = -1; // partially selected
-            if(staticMeshCount == virtualGeometryCount) {
+            int tristate = -1;
+            if(allWithVirtualGeometry) {
                 tristate = 1;
-            } else if(virtualGeometryCount == 0) {
+            } else if(allWithoutVirtualGeometry) {
                 tristate = 0;
             }
+
             if(ImGui::CheckBoxTristate("Virtual Geometry for everything", &tristate)) {
                 if(tristate == 0) {
-                    if(component->modelRenderer) {
-                        component->modelRenderer = cloneRenderer();
-                        for(auto& override : component->modelRenderer->getOverrides()) {
-                            override.virtualizedGeometry = false;
+                    for(const auto& pComponent : components) {
+                        if(pComponent->modelRenderer) {
+                            pComponent->modelRenderer = cloneRenderer(*pComponent);
+                            for(auto& override : pComponent->modelRenderer->getOverrides()) {
+                                override.virtualizedGeometry = false;
+                            }
+                            pComponent->modelRenderer->recreateStructures();
+                            worldData.storeModelRenderer(pComponent->modelRenderer);
                         }
-                        component->modelRenderer->recreateStructures();
-                        worldData.storeModelRenderer(component->modelRenderer);
                     }
                 } else if(tristate == 1) {
-                    component->modelRenderer = cloneRenderer();
-                    for(std::size_t i = 0; i < staticMeshCount; i++) {
-                        Carrot::Render::MaterialOverride* pExistingOverride = component->modelRenderer->getOverrides().findForMesh(i);
-                        if(pExistingOverride) {
-                            pExistingOverride->virtualizedGeometry = true;
-                        } else {
-                            Carrot::Render::MaterialOverride override;
-                            override.meshIndex = i;
-                            override.virtualizedGeometry = true;
-                            component->modelRenderer->addOverride(override);
+                    for(const auto& pComponent : components) {
+                        pComponent->modelRenderer = cloneRenderer(*pComponent);
+                        std::size_t staticMeshCount = pComponent->modelRenderer ? pComponent->modelRenderer->getModel().getStaticMeshes().size() : pComponent->asyncModel->getStaticMeshes().size();
+                        for(std::size_t i = 0; i < staticMeshCount; i++) {
+                            Carrot::Render::MaterialOverride* pExistingOverride = pComponent->modelRenderer->getOverrides().findForMesh(i);
+                            if(pExistingOverride) {
+                                pExistingOverride->virtualizedGeometry = true;
+                            } else {
+                                Carrot::Render::MaterialOverride override;
+                                override.meshIndex = i;
+                                override.virtualizedGeometry = true;
+                                pComponent->modelRenderer->addOverride(override);
+                            }
                         }
+                        pComponent->modelRenderer->recreateStructures();
+                        worldData.storeModelRenderer(pComponent->modelRenderer);
                     }
-                    component->modelRenderer->recreateStructures();
-                    worldData.storeModelRenderer(component->modelRenderer);
                 }
             }
         }
