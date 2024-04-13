@@ -16,7 +16,7 @@ namespace Peeler {
     constexpr const char* const PickWidgetTexture = "resources/textures/ui/picker.png";
     constexpr const char* const ResetWidgetTexture = "resources/textures/ui/reset.png";
 
-    bool Application::drawPickEntityWidget(const char* label, Carrot::ECS::Entity& destination) {
+    bool Application::drawPickEntityWidget(const char* label, Carrot::ECS::Entity& destination, const char* nameDisplayOverride) {
         struct WidgetState {
             bool tryingToPick = false;
             std::uint32_t lastFrame = 0;
@@ -42,8 +42,12 @@ namespace Peeler {
             entityName = currentScene.world.getName(destination);
         }
 
+        if(nameDisplayOverride) {
+            entityName = nameDisplayOverride;
+        }
+
         std::string text = strLabel.substr(0, strLabel.find("##"));
-        ImGui::Text("%s", text.c_str());
+        ImGui::TextUnformatted(text.c_str());
 
         ImGui::SameLine();
 

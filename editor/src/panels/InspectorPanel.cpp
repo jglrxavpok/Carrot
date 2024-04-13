@@ -33,9 +33,14 @@ namespace Peeler {
     void InspectorPanel::registerCSharpEdition() {
         for(const auto& [componentName, pComponentID] : GetCSharpBindings().getAllComponents()) {
             auto componentID = *pComponentID;
-            /* TODO: registerComponentEditor(componentID, [](EditContext& edition, Carrot::ECS::Component* component) {
-                editCSharpComponent(edition, dynamic_cast<Carrot::ECS::CSharpComponent*>(component));
-            });*/
+            registerComponentEditor(componentID, [](EditContext& edition, const Carrot::Vector<Carrot::ECS::Component*>& components) {
+                Carrot::Vector<Carrot::ECS::CSharpComponent*> typedComponents;
+                typedComponents.resize(components.size());
+                for(std::int64_t i = 0; i < typedComponents.size(); i++) {
+                    typedComponents[i] = dynamic_cast<Carrot::ECS::CSharpComponent*>(components[i]);
+                }
+                editCSharpComponent(edition, typedComponents);
+            });
             registerComponentDisplayName(componentID, Carrot::sprintf(ICON_FA_CODE "  %s", componentName.c_str()));
         }
     }

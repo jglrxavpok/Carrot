@@ -202,7 +202,7 @@ namespace Carrot::Render {
         verify(false, "Unknown light type!");
     }
 
-    const char* Light::nameOf(LightType type) {
+    const char* Light::nameOf(const LightType& type) {
         switch(type) {
             case LightType::Point:
                 return "Point";

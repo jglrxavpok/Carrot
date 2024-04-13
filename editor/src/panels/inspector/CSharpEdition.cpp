@@ -23,239 +23,164 @@ namespace Peeler {
     id += "-";                      \
     id += __FUNCTION__;
 
-    static void drawIntProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        std::int32_t value = *((std::int32_t*)mono_object_unbox(property.field->get(csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        if(property.intRange.has_value()) {
-            std::int32_t min = std::min(property.intRange->min, property.intRange->max);
-            std::int32_t max = std::max(property.intRange->min, property.intRange->max);
-
-            // ImGui limits
-            bool useSlider = true;
-            if(min <= -INT_MAX) {
-                useSlider = false;
+    static void drawIntProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, std::int32_t>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return *((std::int32_t*)mono_object_unbox(property.field->get(c.getCSComponentObject())));
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const std::int32_t& v) {
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&v));
+            },
+            Helpers::Limits<std::int32_t> {
+                .min = property.intRange.has_value() ? property.intRange->min : std::numeric_limits<std::int32_t>::min(),
+                .max = property.intRange.has_value() ? property.intRange->max : std::numeric_limits<std::int32_t>::max(),
             }
-            if(max >= INT_MAX) {
-                useSlider = false;
-            }
-
-            if(useSlider) {
-                changed |= ImGui::SliderInt(id.c_str(), &value, min, max);
-            } else {
-                changed |= ImGui::DragInt(id.c_str(), &value, 0.1f, min, max);
-            }
-        } else {
-            changed |= ImGui::DragInt(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
-        }
-
-        if(changed) {
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
+        );
     }
 
-    static void drawFloatProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        float value = *((float*)mono_object_unbox(property.field->get(csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        if(property.floatRange.has_value()) {
-            float min = std::min(property.floatRange->min, property.floatRange->max);
-            float max = std::max(property.floatRange->min, property.floatRange->max);
-
-            // ImGui limits
-            bool useSlider = true;
-            if(min < -FLT_MAX/2.0f) {
-                min = -FLT_MAX/2.0f;
-                useSlider = false;
+    static void drawFloatProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, float>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return *((float*)mono_object_unbox(property.field->get(c.getCSComponentObject())));
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const float& v) {
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&v));
+            },
+            Helpers::Limits<float> {
+                .min = property.floatRange.has_value() ? property.floatRange->min : FLT_MIN,
+                .max = property.floatRange.has_value() ? property.floatRange->max : FLT_MAX,
             }
-            if(max > FLT_MAX/2.0f) {
-                max = FLT_MAX/2.0f;
-                useSlider = false;
-            }
-
-            if(useSlider) {
-                changed |= ImGui::SliderFloat(id.c_str(), &value, min, max);
-            } else {
-                changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f, min, max);
-            }
-        } else {
-            changed |= ImGui::DragFloat(id.c_str(), &value, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
-        }
-
-        if(changed) {
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
+        );
     }
 
-    static void drawDoubleProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        double value = *((double*)mono_object_unbox(property.field->get(csComponent)));
-        float floatValue = (float)value;
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        if(property.floatRange.has_value()) {
-            float min = std::min(property.floatRange->min, property.floatRange->max);
-            float max = std::max(property.floatRange->min, property.floatRange->max);
-
-            // ImGui limits
-            bool useSlider = true;
-            const double MaxDouble = std::numeric_limits<double>::max();
-            if(min < -MaxDouble/2.0f) {
-                min = -MaxDouble/2.0f;
-                useSlider = false;
+    static void drawDoubleProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, float>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return (float)*((double*)mono_object_unbox(property.field->get(c.getCSComponentObject())));
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const float& v) {
+                double converted = v;
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&converted));
+            },
+            Helpers::Limits<float> {
+                .min = property.floatRange.has_value() ? property.floatRange->min : FLT_MIN,
+                .max = property.floatRange.has_value() ? property.floatRange->max : FLT_MAX,
             }
-            if(max > MaxDouble/2.0f) {
-                max = MaxDouble/2.0f;
-                useSlider = false;
+        );
+    }
+
+    static void drawBooleanProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, bool>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return *((bool*)mono_object_unbox(property.field->get(c.getCSComponentObject())));
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const bool& v) {
+                bool tmp = v;
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&tmp));
             }
+        );
+    }
 
-            if(useSlider) {
-                changed |= ImGui::SliderFloat(id.c_str(), &floatValue, min, max);
-            } else {
-                changed |= ImGui::DragFloat(id.c_str(), &floatValue, 0.1f, min, max);
+    static void drawVec2Property(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, glm::vec2>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return *(glm::vec2*)mono_object_unbox(property.field->get(c.getCSComponentObject()).toMono());
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const glm::vec2& v) {
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&v));
             }
-        } else {
-            changed |= ImGui::DragFloat(id.c_str(), &floatValue, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f);
-        }
-
-        if(changed) {
-            value = (double)floatValue;
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
+        );
     }
 
-    static void drawBooleanProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        bool value = *((bool*)mono_object_unbox(property.field->get(csComponent)));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= ImGui::Checkbox(id.c_str(), &value);
-
-        if(changed) {
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
+    static void drawVec3Property(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, glm::vec3>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return *(glm::vec3*)mono_object_unbox(property.field->get(c.getCSComponentObject()).toMono());
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const glm::vec3& v) {
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject((MonoObject*)&v));
+            }
+        );
     }
 
-    static void drawVec2Property(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        glm::vec2 value = *(glm::vec2*)mono_object_unbox(property.field->get(csComponent).toMono());
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= ImGui::InputFloat2(id.c_str(), glm::value_ptr(value));
-
-        if(changed) {
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
+    static void drawEntityProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, ECS::Entity>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(c.getCSComponentObject()));
+                return value;
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const ECS::Entity& v) {
+                ECS::Entity copy = v; // entityToCSObject takes Entity& not const Entity&
+                property.field->set(c.getCSComponentObject(), *GetCSharpBindings().entityToCSObject(copy));
+            }
+        );
     }
 
-    static void drawVec3Property(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        glm::vec3 value = *(glm::vec3*)mono_object_unbox(property.field->get(csComponent).toMono());
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= ImGui::InputFloat3(id.c_str(), glm::value_ptr(value));
-
-        if(changed) {
-            property.field->set(csComponent, Scripting::CSObject((MonoObject*)&value));
-            edition.hasModifications = true;
-        }
-    }
-
-    static void drawEntityProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        ECS::Entity value = GetCSharpBindings().convertToEntity(property.field->get(csComponent));
-
-        bool changed = false;
-
-        MAKE_ID(property);
-
-        changed |= edition.inspector.drawPickEntityWidget(id.c_str(), &value);
-
-        if(changed) {
-            property.field->set(csComponent, *GetCSharpBindings().entityToCSObject(value));
-            edition.hasModifications = true;
-        }
-    }
-
-    static void drawUserDefinedProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
+    static void drawUserDefinedProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
         ImGui::Text("%s (%s) - User defined type", property.displayName.c_str(), property.typeStr.c_str());
     }
 
-    static void drawUserEnumProperty(EditContext& edition, Carrot::Scripting::CSObject& csComponent, Scripting::ComponentProperty& property) {
-        const std::string previewValue = GetCSharpBindings().enumValueToString(property.field->get(csComponent));
-        if(ImGui::BeginCombo(property.displayName.c_str(), previewValue.c_str())) {
-            for(const std::string& validEnumValue : property.validUserEnumValues) {
-                if(ImGui::Selectable(validEnumValue.c_str(), validEnumValue == previewValue)) {
-                    const Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, validEnumValue);
-                    property.field->set(csComponent, enumValue);
-                    edition.hasModifications = true;
-                }
-            }
-            ImGui::EndCombo();
-        }
+    static void drawUserEnumProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        // will refer to each enum values by its name
+        multiEditEnumField<Carrot::ECS::CSharpComponent, std::string>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                return GetCSharpBindings().enumValueToString(property.field->get(c.getCSComponentObject()));
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const std::string& v) {
+                const Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, v);
+                property.field->set(c.getCSComponentObject(), enumValue);
+            },
+            +[](const std::string& s) {
+                return s.c_str();
+            },
+            property.validUserEnumValues
+        );
     }
 
-    void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component) {
-        if(!component->isLoaded()) {
+    void editCSharpComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components) {
+        if(!components[0]->isLoaded()) {
             ImGui::Text("Not found inside assembly");
             return;
         }
 
-        for(auto& property : component->getProperties()) {
+        for(auto& property : components[0]->getProperties()) {
 
             switch(property.type) {
                 case Scripting::ComponentType::Int:
-                    drawIntProperty(edition, component->getCSComponentObject(), property);
+                    drawIntProperty(edition, components, property);
                     break;
 
+
                 case Scripting::ComponentType::Float:
-                    drawFloatProperty(edition, component->getCSComponentObject(), property);
+                    drawFloatProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::Double:
-                    drawDoubleProperty(edition, component->getCSComponentObject(), property);
+                    drawDoubleProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::Boolean:
-                    drawBooleanProperty(edition, component->getCSComponentObject(), property);
+                    drawBooleanProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::Vec2:
-                    drawVec2Property(edition, component->getCSComponentObject(), property);
+                    drawVec2Property(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::Vec3:
-                    drawVec3Property(edition, component->getCSComponentObject(), property);
+                    drawVec3Property(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::Entity:
-                    drawEntityProperty(edition, component->getCSComponentObject(), property);
+                    drawEntityProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::UserEnum:
-                    drawUserEnumProperty(edition, component->getCSComponentObject(), property);
+                    drawUserEnumProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::UserDefined:
-                    drawUserDefinedProperty(edition, component->getCSComponentObject(), property);
+                    drawUserDefinedProperty(edition, components, property);
                     break;
 
                 default:

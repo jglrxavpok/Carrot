@@ -98,8 +98,10 @@ namespace Peeler {
 
         /**
          * Returns true iif an entity was picked this frame. Stores the result in 'destination' if one was found
+         *
+         * nameDisplayOverride !=nullptr is used to tell the widget that it should display the contents of nameDisplayOverride instead of the entity name
          */
-        bool drawPickEntityWidget(const char* label, Carrot::ECS::Entity& destination);
+        bool drawPickEntityWidget(const char* label, Carrot::ECS::Entity& destination, const char* nameDisplayOverride = nullptr);
 
     private:
         void addEntityMenu(std::optional<Carrot::ECS::Entity> parent = {});

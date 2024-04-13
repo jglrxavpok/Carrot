@@ -36,7 +36,7 @@ namespace Carrot::Render {
         float outerCutoffCosAngle = glm::cos(glm::pi<float>()/8.0f);
 
         static LightType fromString(std::string_view str);
-        static const char* nameOf(LightType type);
+        static const char* nameOf(const LightType& type);
     };
 
     class Lighting;

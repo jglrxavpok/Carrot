@@ -66,6 +66,18 @@ namespace Peeler {
         struct Limits {};
 
         template<>
+        struct Limits<float> {
+            float min = FLT_MIN;
+            float max = FLT_MAX;
+        };
+
+        template<>
+        struct Limits<std::int32_t> {
+            std::int32_t min = std::numeric_limits<std::int32_t>::min();
+            std::int32_t max = std::numeric_limits<std::int32_t>::max();
+        };
+
+        template<>
         struct Limits<AngleWrapper> {
             float min = -2 * glm::pi<float>();
             float max = 2 * glm::pi<float>();
@@ -133,8 +145,18 @@ namespace Peeler {
     }
 
     template<>
+    static bool editMultiple<glm::vec2>(const char* id, std::span<glm::vec2> vectors, const Helpers::Limits<glm::vec2>& limits) {
+        return editMultipleVec<2>(id, vectors, limits);
+    }
+
+    template<>
     static bool editMultiple<glm::vec3>(const char* id, std::span<glm::vec3> vectors, const Helpers::Limits<glm::vec3>& limits) {
         return editMultipleVec<3>(id, vectors, limits);
+    }
+
+    template<>
+    static bool editMultiple<glm::vec4>(const char* id, std::span<glm::vec4> vectors, const Helpers::Limits<glm::vec4>& limits) {
+        return editMultipleVec<4>(id, vectors, limits);
     }
 
     // maybe merge with function editMultipleVec3, but for now copy paste will do
@@ -226,8 +248,80 @@ namespace Peeler {
         }
 
         const char* format = areSame ? "%.3f" : "<VARIOUS>";
-        if(ImGui::DragFloat(id, &sameValue, 1, 0, 0, format)) {
+
+        bool changed = false;
+        if(limits.min != FLT_MIN && limits.max != FLT_MAX) {
+            float min = std::min(limits.min, limits.max);
+            float max = std::max(limits.min, limits.max);
+
+            // ImGui limits
+            bool useSlider = true;
+            if(min < -FLT_MAX) {
+                min = -FLT_MAX;
+                useSlider = false;
+            }
+            if(max > FLT_MAX) {
+                max = FLT_MAX;
+                useSlider = false;
+            }
+
+            if(useSlider) {
+                changed |= ImGui::SliderFloat(id, &sameValue, min, max, format);
+            } else {
+                changed |= ImGui::DragFloat(id, &sameValue, 0.1f/*TODO: speed attribute*/, min, max, format);
+            }
+        } else {
+            changed |= ImGui::DragFloat(id, &sameValue, 0.1f/*TODO: speed attribute*/, 0.0f, 0.0f, format);
+        }
+        if(changed) {
             for(float& v : values) {
+                v = sameValue;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<std::int32_t>(const char* id, std::span<std::int32_t> values, const Helpers::Limits<std::int32_t>& limits) {
+        int sameValue = values[0]; // ImGui uses int
+        bool areSame = true;
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i] != sameValue) {
+                areSame = false;
+                break;
+            }
+        }
+
+        const char* format = areSame ? "%d" : "<VARIOUS>";
+
+        bool changed = false;
+        if(limits.min != std::numeric_limits<std::int32_t>::min() && limits.max != std::numeric_limits<std::int32_t>::max()) {
+            std::int32_t min = std::min(limits.min, limits.max);
+            std::int32_t max = std::max(limits.min, limits.max);
+
+            // ImGui limits
+            bool useSlider = true;
+            if(min < std::numeric_limits<std::int32_t>::min()) {
+                min = std::numeric_limits<std::int32_t>::min();
+                useSlider = false;
+            }
+            if(max > std::numeric_limits<std::int32_t>::max()) {
+                max = std::numeric_limits<std::int32_t>::max();
+                useSlider = false;
+            }
+
+            if(useSlider) {
+                changed |= ImGui::SliderInt(id, &sameValue, min, max, format);
+            } else {
+                changed |= ImGui::DragInt(id, &sameValue, 1/*TODO: speed attribute*/, min, max, format);
+            }
+        } else {
+            changed |= ImGui::DragInt(id, &sameValue, 1/*TODO: speed attribute*/, 0.0f, 0.0f, format);
+        }
+        if(changed) {
+            for(std::int32_t& v : values) {
                 v = sameValue;
             }
             return true;
@@ -329,6 +423,26 @@ namespace Peeler {
     }
 
     template<>
+    static bool editMultiple<Carrot::ECS::Entity>(const char* id, std::span<Carrot::ECS::Entity> values, const Helpers::Limits<Carrot::ECS::Entity>& limits) {
+        Carrot::ECS::Entity sameValue { values[0] };
+        const char* nameOverride = nullptr;
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i].getID() != sameValue.getID()) {
+                nameOverride = "<VARIOUS>";
+                break;
+            }
+        }
+
+        if(Peeler::Instance->drawPickEntityWidget(id, sameValue, nameOverride)) {
+            for(Carrot::ECS::Entity& v : values) {
+                v = sameValue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    template<>
     static bool editMultiple<Carrot::IO::VFS::Path>(const char* id, std::span<Carrot::IO::VFS::Path> values, const Helpers::Limits<Carrot::IO::VFS::Path>& limits) {
         std::string pathStr = values[0].toString();
 
@@ -374,6 +488,10 @@ namespace Peeler {
         return wasModified;
     }
 
+    /**
+     * Command which updates the value of a component property.
+     * Component ID has to be explicitely specified (for support of C# components).
+     */
     template<typename TComponent, typename TValue>
     struct UpdateComponentValues: Peeler::ICommand {
         Carrot::Vector<Carrot::ECS::EntityID> entityList;
@@ -382,29 +500,33 @@ namespace Peeler {
         std::function<TValue(TComponent& comp)> getter;
         std::function<void(TComponent& comp, const TValue& value)> setter;
 
+        Carrot::ComponentID componentID;
+
         UpdateComponentValues(Application &app, const std::string& desc, std::span<Carrot::ECS::EntityID> _entityList, std::span<TValue> _newValues,
-            std::function<TValue(TComponent& comp)> _getter, std::function<void(TComponent& comp, const TValue& value)> _setter)
+            std::function<TValue(TComponent& comp)> _getter, std::function<void(TComponent& comp, const TValue& value)> _setter,
+            Carrot::ComponentID _componentID)
             : ICommand(app, desc)
             , entityList(_entityList)
             , newValues(_newValues)
             , getter(_getter)
             , setter(_setter)
+            , componentID(_componentID)
         {
             oldValues.ensureReserve(newValues.size());
             for(const auto& entityID : _entityList) {
-                oldValues.pushBack(getter(app.currentScene.world.getComponent<TComponent>(entityID)));
+                oldValues.pushBack(getter(reinterpret_cast<TComponent&>(app.currentScene.world.getComponent(entityID, componentID).asRef())));
             }
         }
 
         void undo() override {
             for(std::size_t i = 0; i < entityList.size(); i++) {
-                setter(editor.currentScene.world.getComponent<TComponent>(entityList[i]), oldValues[i]);
+                setter(reinterpret_cast<TComponent&>(editor.currentScene.world.getComponent(entityList[i], componentID).asRef()), oldValues[i]);
             }
         }
 
         void redo() override {
             for(std::size_t i = 0; i < entityList.size(); i++) {
-                setter(editor.currentScene.world.getComponent<TComponent>(entityList[i]), newValues[i]);
+                setter(reinterpret_cast<TComponent&>(editor.currentScene.world.getComponent(entityList[i], componentID).asRef()), newValues[i]);
             }
         }
     };
@@ -434,7 +556,7 @@ namespace Peeler {
 
         if(modified) {
             using UpdateProperty = UpdateComponentValues<TComponent, TPropertyType>;
-            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getterFunc, setterFunc);
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
             edition.hasModifications = true;
         }
     }
@@ -474,8 +596,10 @@ namespace Peeler {
     }
 
     template<typename TComponent, typename TEnum>
-    static void multiEditEnumField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*>& components, TEnum(getter)(TComponent&), void(setter)(TComponent&, const TEnum&),
-        const char*(nameGetter)(TEnum),
+    static void multiEditEnumField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*>& components,
+        std::function<TEnum(TComponent&)> getter,
+        std::function<void(TComponent&, const TEnum&)> setter,
+        const char*(nameGetter)(const TEnum&),
         const Carrot::Vector<TEnum>& validValues,
         const Helpers::Limits<TEnum>& limits = {})
     {
@@ -489,7 +613,7 @@ namespace Peeler {
         }
 
         bool modified = false;
-        const char* previewValue = allSame ? Carrot::Render::Light::nameOf(currentlySelectedValue) : "<VARIOUS>";
+        const char* previewValue = allSame ? nameGetter(currentlySelectedValue) : "<VARIOUS>";
         if(ImGui::BeginCombo(id, previewValue)) {
             auto selectable = [&](TEnum entry) {
                 bool selected = entry == currentlySelectedValue;
@@ -510,9 +634,17 @@ namespace Peeler {
 
         if(modified) {
             using UpdateProperty = UpdateComponentValues<TComponent, TEnum>;
-            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getter, setter);
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getter, setter, components[0]->getComponentTypeID());
             edition.hasModifications = true;
         }
+    }
+
+    template<typename TComponent, typename TEnum>
+    static void multiEditEnumField(EditContext& edition, const char* id, const Carrot::Vector<TComponent*>& components, TEnum(getter)(TComponent&), void(setter)(TComponent&, const TEnum&),
+        const char*(nameGetter)(const TEnum&),
+        const Carrot::Vector<TEnum>& validValues,
+        const Helpers::Limits<TEnum>& limits = {}) {
+        multiEditEnumField<TComponent, TEnum>(edition, id, components, std::function(getter), std::function(setter), nameGetter, validValues, limits);
     }
 }
 
@@ -523,7 +655,7 @@ namespace Peeler {
     void registerEditionFunctions(InspectorPanel& inspector);
     void registerDisplayNames(InspectorPanel& inspector);
 
-    void editCSharpComponent(EditContext& edition, Carrot::ECS::CSharpComponent* component);
+    void editCSharpComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components);
 
     namespace Helpers {
         /**
