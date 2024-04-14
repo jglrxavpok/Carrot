@@ -488,6 +488,32 @@ namespace Peeler {
         return wasModified;
     }
 
+    template<>
+    static bool editMultiple<Carrot::Render::Texture::Ref>(const char* id, std::span<Carrot::Render::Texture::Ref> values, const Helpers::Limits<Carrot::Render::Texture::Ref>& limits) {
+        Carrot::Vector<Carrot::IO::VFS::Path> paths;
+        paths.ensureReserve(values.size());
+        for(const auto& texture : values) {
+            if(texture) {
+                paths.emplaceBack(texture->getOriginatingResource().getName());
+            } else {
+                paths.emplaceBack();
+            }
+        }
+        bool modified = editMultiple<Carrot::IO::VFS::Path>(id, paths,
+            Helpers::Limits<Carrot::IO::VFS::Path> {
+                .validityChecker = [](const Carrot::IO::VFS::Path& path) {
+                    return Carrot::IO::isImageFormat(path.toString().c_str());
+                }
+            });
+        if(modified) {
+            Carrot::Render::Texture::Ref texture = GetAssetServer().blockingLoadTexture(paths[0]);
+            for(auto& v : values) {
+                v = texture;
+            }
+        }
+        return modified;
+    }
+
     /**
      * Command which updates the value of a component property.
      * Component ID has to be explicitely specified (for support of C# components).

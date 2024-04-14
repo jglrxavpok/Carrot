@@ -11,7 +11,6 @@
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/components/ForceSinPosition.h>
 #include <engine/ecs/components/Kinematics.h>
-#include <engine/ecs/components/LuaScriptComponent.h>
 #include <engine/ecs/components/LightComponent.h>
 #include <engine/ecs/components/ModelComponent.h>
 #include <engine/ecs/components/NavMeshComponent.h>
@@ -104,49 +103,71 @@ namespace Peeler {
             +[](Carrot::ECS::LightComponent& c, const Helpers::RGBColorWrapper& v) { c.lightRef->light.color = v.rgb; });
     }
 
-    static void editSpriteComponent(EditContext& edition, Carrot::ECS::SpriteComponent* component) {
-        static std::string path = "<<path>>";
-        static Carrot::ECS::SpriteComponent* inInspector = nullptr;
-        auto& sprite = component->sprite;
-        if(inInspector != component) {
-            inInspector = component;
-            if(sprite) {
-                path = sprite->getTexture().getOriginatingResource().getName();
-            } else {
-                path = "";
+    static void editSpriteComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::SpriteComponent*>& components) {
+        multiEditField(edition, "Sprite asset", components,
+            +[](Carrot::ECS::SpriteComponent& c) -> Carrot::Render::Texture::Ref {
+                return c.sprite ? c.sprite->getTextureRef() : nullptr;
+            },
+            +[](Carrot::ECS::SpriteComponent& c, const Carrot::Render::Texture::Ref& texture) {
+                if(!c.sprite) {
+                    c.sprite = std::make_shared<Carrot::Render::Sprite>(texture);
+                } else {
+                    c.sprite->setTexture(texture);
+                }
             }
-        }
+        );
 
-        Carrot::Render::Texture::Ref textureRef;
-        if(edition.inspector.drawPickTextureWidget("Filepath##Sprite component edition", &textureRef)) {
-            if(!sprite) {
-                sprite = std::make_shared<Carrot::Render::Sprite>(textureRef);
-            } else {
-                sprite->setTexture(textureRef);
-            }
-
-            edition.hasModifications = true;
-        }
-
-        if(sprite) {
-            auto& region = sprite->getTextureRegion();
-            bool recompute = false;
-            float minU = region.getMinX();
-            float minV = region.getMinY();
-            float maxU = region.getMaxX();
-            float maxV = region.getMaxY();
-            if(ImGui::InputFloat("Min U##SpriteComponent minU inspector", &minU)
-               |  ImGui::InputFloat("Min V##SpriteComponent minV inspector", &minV)
-               |  ImGui::InputFloat("Max U##SpriteComponent maxU inspector", &maxU)
-               |  ImGui::InputFloat("Max V##SpriteComponent maxV inspector", &maxV)) {
-                recompute = true;
-            }
-
-            if(recompute) {
-                edition.hasModifications = true;
+        multiEditField(edition, "Min U", components,
+            +[](Carrot::ECS::SpriteComponent& c) { return c.sprite ? c.sprite->getTextureRegion().getMinX() : 0.0f; },
+            +[](Carrot::ECS::SpriteComponent& c, const float& v) {
+                if(!c.sprite) return;
+                auto& region = c.sprite->getTextureRegion();
+                float minU = v;
+                float minV = region.getMinY();
+                float maxU = region.getMaxX();
+                float maxV = region.getMaxY();
                 region = Carrot::Math::Rect2Df(minU, minV, maxU, maxV);
             }
-        }
+        );
+
+        multiEditField(edition, "Min V", components,
+            +[](Carrot::ECS::SpriteComponent& c) { return c.sprite ? c.sprite->getTextureRegion().getMinY() : 0.0f; },
+            +[](Carrot::ECS::SpriteComponent& c, const float& v) {
+                if(!c.sprite) return;
+                auto& region = c.sprite->getTextureRegion();
+                float minU = region.getMinX();
+                float minV = v;
+                float maxU = region.getMaxX();
+                float maxV = region.getMaxY();
+                region = Carrot::Math::Rect2Df(minU, minV, maxU, maxV);
+            }
+        );
+
+        multiEditField(edition, "Max U", components,
+            +[](Carrot::ECS::SpriteComponent& c) { return c.sprite ? c.sprite->getTextureRegion().getMaxX() : 1.0f; },
+            +[](Carrot::ECS::SpriteComponent& c, const float& v) {
+                if(!c.sprite) return;
+                auto& region = c.sprite->getTextureRegion();
+                float minU = region.getMinX();
+                float minV = region.getMinY();
+                float maxU = v;
+                float maxV = region.getMaxY();
+                region = Carrot::Math::Rect2Df(minU, minV, maxU, maxV);
+            }
+        );
+
+        multiEditField(edition, "Max V", components,
+            +[](Carrot::ECS::SpriteComponent& c) { return c.sprite ? c.sprite->getTextureRegion().getMaxY() : 1.0f; },
+            +[](Carrot::ECS::SpriteComponent& c, const float& v) {
+                if(!c.sprite) return;
+                auto& region = c.sprite->getTextureRegion();
+                float minU = region.getMinX();
+                float minV = region.getMinY();
+                float maxU = region.getMaxX();
+                float maxV = v;
+                region = Carrot::Math::Rect2Df(minU, minV, maxU, maxV);
+            }
+        );
     }
 
     void editModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ModelComponent*>& components);
@@ -203,84 +224,6 @@ namespace Peeler {
             Helpers::Limits<std::string_view> { .multiline = true });
     }
 
-    void editLuaScriptComponent(EditContext& edition, Carrot::ECS::LuaScriptComponent* component) {
-        ImGui::PushID("LuaScriptComponent");
-        std::vector<Carrot::IO::VFS::Path> toRemove;
-        std::size_t index = 0;
-        for(auto& [path, script] : component->scripts) {
-            ImGui::PushID(index);
-
-            ImGui::Text("[%llu]", index);
-            ImGui::SameLine();
-
-            std::string pathStr = path.toString();
-            if(ImGui::InputText("Filepath", pathStr, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                script = nullptr;
-                Carrot::IO::VFS::Path vfsPath = Carrot::IO::VFS::Path(pathStr);
-                if(GetVFS().exists(vfsPath)) {
-                    script = std::make_unique<Carrot::Lua::Script>(vfsPath);
-                }
-                script = std::move(script);
-                path = vfsPath;
-            }
-
-            if(ImGui::BeginDragDropTarget()) {
-                if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                    std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                    std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                    buffer.get()[payload->DataSize] = '\0';
-
-                    std::filesystem::path newPath = buffer.get();
-
-                    std::filesystem::path fsPath = std::filesystem::proximate(newPath, std::filesystem::current_path());
-                    if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isScriptFormatFromPath(fsPath)) {
-                        script = nullptr;
-                        auto inVFS = GetVFS().represent(fsPath);
-                        if(inVFS.has_value()) {
-                            const auto& vfsPath = inVFS.value();
-                            if(GetVFS().exists(vfsPath)) {
-                                script = std::make_unique<Carrot::Lua::Script>(vfsPath);
-                            }
-                            script = std::move(script);
-                            path = vfsPath;
-                            edition.hasModifications = true;
-                        } else {
-                            Carrot::Log::error("Not inside VFS: %s", fsPath.u8string().c_str());
-                        }
-                    }
-                }
-
-                ImGui::EndDragDropTarget();
-            }
-
-            ImGui::SameLine();
-            if(ImGui::Button("x")) {
-                toRemove.push_back(path);
-            }
-
-            ImGui::SameLine();
-            if(ImGui::Button("Reload")) {
-                script = nullptr;
-                if(GetVFS().exists(path)) {
-                    script = std::make_unique<Carrot::Lua::Script>(path);
-                }
-                script = std::move(script);
-            }
-
-            ImGui::PopID();
-            index++;
-        }
-
-        for(const auto& p : toRemove) {
-            std::erase_if(component->scripts, [&](const auto& pair) { return pair.first == p; });
-        }
-
-        if(ImGui::Button("+")) {
-            component->scripts.emplace_back("", nullptr);
-        }
-        ImGui::PopID();
-    }
-
     void editNavMeshComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::NavMeshComponent*>& components) {
         multiEditField(edition, "Mesh", components,
             +[](Carrot::ECS::NavMeshComponent& component) {
@@ -303,10 +246,9 @@ namespace Peeler {
         registerFunction(inspector, editKinematicsComponent);
         registerFunction(inspector, editLightComponent);
         registerFunction(inspector, editModelComponent);
-        /*registerFunction(inspector, editLuaScriptComponent);
-        registerFunction(inspector, editAnimatedModelComponent);
-        registerFunction(inspector, editRigidBodyComponent);
-        registerFunction(inspector, editSpriteComponent);*/
+        /*registerFunction(inspector, editAnimatedModelComponent);
+        registerFunction(inspector, editRigidBodyComponent);*/
+        registerFunction(inspector, editSpriteComponent);
         registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
         /*registerFunction(inspector, editPhysicsCharacterComponent);*/

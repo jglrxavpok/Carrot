@@ -50,6 +50,7 @@ namespace Carrot::Render {
 
     public:
         const Texture& getTexture() const { return *texture; }
+        Texture::Ref getTextureRef() { return texture; }
         Math::Rect2Df& getTextureRegion() { return textureRegion; }
         const Math::Rect2Df& getTextureRegion() const { return textureRegion; }
         Pipeline& getRenderingPipeline() const { return *renderingPipeline; }
