@@ -69,6 +69,8 @@ namespace Peeler {
         struct Limits<float> {
             float min = FLT_MIN;
             float max = FLT_MAX;
+
+            const char* formatOverride = nullptr;
         };
 
         template<>
@@ -247,7 +249,7 @@ namespace Peeler {
             }
         }
 
-        const char* format = areSame ? "%.3f" : "<VARIOUS>";
+        const char* format = areSame ? (limits.formatOverride ? limits.formatOverride : "%.3f") : "<VARIOUS>";
 
         bool changed = false;
         if(limits.min != FLT_MIN && limits.max != FLT_MAX) {

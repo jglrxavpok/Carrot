@@ -237,8 +237,8 @@ namespace Peeler {
             });
     }
 
-    void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component);
-    void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component);
+    void editRigidBodyComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::RigidBodyComponent*>& components);
+    void editPhysicsCharacterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PhysicsCharacterComponent*>& components);
 
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);
@@ -246,12 +246,12 @@ namespace Peeler {
         registerFunction(inspector, editKinematicsComponent);
         registerFunction(inspector, editLightComponent);
         registerFunction(inspector, editModelComponent);
-        /*registerFunction(inspector, editAnimatedModelComponent);
-        registerFunction(inspector, editRigidBodyComponent);*/
+        /*registerFunction(inspector, editAnimatedModelComponent);*/
+        registerFunction(inspector, editRigidBodyComponent);
         registerFunction(inspector, editSpriteComponent);
         registerFunction(inspector, editTextComponent);
         registerFunction(inspector, editTransformComponent);
-        /*registerFunction(inspector, editPhysicsCharacterComponent);*/
+        registerFunction(inspector, editPhysicsCharacterComponent);
         registerFunction(inspector, editNavMeshComponent);
     }
 

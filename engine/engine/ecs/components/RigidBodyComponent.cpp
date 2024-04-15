@@ -59,7 +59,7 @@ namespace Carrot::ECS {
         return obj;
     }
 
-    const char* RigidBodyComponent::getTypeName(Physics::BodyType type) {
+    const char* RigidBodyComponent::getTypeName(const Physics::BodyType& type) {
         switch (type) {
             case Physics::BodyType::Dynamic:
                 return "Dynamic";

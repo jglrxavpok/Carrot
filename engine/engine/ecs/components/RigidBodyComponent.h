@@ -32,7 +32,7 @@ namespace Carrot::ECS {
         void reload();
         void unload();
 
-        static const char* getTypeName(Physics::BodyType type);
+        static const char* getTypeName(const Physics::BodyType& type);
         static Physics::BodyType getTypeFromName(const std::string& name);
 
     private:

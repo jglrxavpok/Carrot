@@ -27,6 +27,7 @@ namespace Peeler {
     static const char* ResetWidgetTexture = "resources/textures/ui/reset.png";
     static const char* LockedWidgetTexture = "resources/textures/ui/locked.png";
     static const char* UnlockedWidgetTexture = "resources/textures/ui/unlocked.png";
+    static const char* LockedVariousWidgetTexture = "resources/textures/ui/locked_various.png";
 
     class ColliderEditionLayer: public ISceneViewLayer {
     public:
@@ -363,151 +364,218 @@ namespace Peeler {
         return modified;
     }
 
-    void editPhysicsCharacterComponent(EditContext& edition, Carrot::ECS::PhysicsCharacterComponent* component) {
-        float mass = component->character.getMass();
-        if(ImGui::DragFloat("Mass", &mass, 0.1f, 0.001f, FLT_MAX, "%.2f kg")) {
-            component->character.setMass(mass);
+    void editPhysicsCharacterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PhysicsCharacterComponent*>& components) {
+        multiEditField(edition, "Mass", components,
+            +[](Carrot::ECS::PhysicsCharacterComponent& c) {
+                return c.character.getMass();
+            },
+            +[](Carrot::ECS::PhysicsCharacterComponent& c, const float& mass) {
+                c.character.setMass(mass);
+            },
+            Helpers::Limits<float> {
+                .formatOverride = "%.2f kg"
+            });
+
+        Carrot::Vector<CollisionLayerID> validIDs;
+        const std::vector<CollisionLayer>& layers = GetPhysics().getCollisionLayers().getLayers();
+        validIDs.ensureReserve(layers.size());
+        for(const auto& layer : layers) {
+            validIDs.pushBack(layer.layerID);
         }
+        multiEditEnumField(edition, "Collision layer", components,
+            +[](Carrot::ECS::PhysicsCharacterComponent& c) {
+                return c.character.getCollisionLayer();
+            },
+            +[](Carrot::ECS::PhysicsCharacterComponent& c, const CollisionLayerID& v) {
+                c.character.setCollisionLayer(v);
+            },
+            +[](const CollisionLayerID& c) { return GetPhysics().getCollisionLayers().getLayer(c).name.c_str(); },
+            validIDs
+        );
 
-        Carrot::Physics::CollisionLayerID layerID = component->character.getCollisionLayer();
-        auto& layersManager = GetPhysics().getCollisionLayers();
-        const auto& currentLayer = layersManager.getLayer(layerID);
-
-        bool changedLayer = false;
-        if(ImGui::BeginCombo("Collision layer", currentLayer.name.c_str())) {
-            for(const auto& layer : layersManager.getLayers()) {
-                if(ImGui::Selectable(layer.name.c_str(), layer.layerID == layerID)) {
-                    changedLayer = true;
-                    layerID = layer.layerID;
-                }
+        if(components.size() == 1) {
+            auto& component = components[0];
+            bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr);
+            if(modified) {
+                component->character.applyColliderChanges();
             }
-            ImGui::EndCombo();
-        }
-
-        if(changedLayer) {
-            edition.hasModifications = true;
-            component->character.setCollisionLayer(layerID);
-        }
-
-        bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr);
-        if(modified) {
-            component->character.applyColliderChanges();
+        } else {
+            ImGui::Text("Edition of colliders is not supported for multiple selected entities.");
         }
     }
 
-    void editRigidBodyComponent(EditContext& edition, Carrot::ECS::RigidBodyComponent* component) {
-        auto& rigidbody = component->rigidbody;
-        const BodyType type = rigidbody.getBodyType();
+    /// Wrapper for vec3 to allow edition of locked axes
+    struct AxisLockWrapper {
+        glm::vec3 axes;
+    };
 
-        if(ImGui::BeginCombo("Type##rigidbodycomponent", component->getTypeName(type))) {
-            for(BodyType bodyType : { BodyType::Dynamic, BodyType::Kinematic, BodyType::Static }) {
-                bool selected = bodyType == type;
-                if(ImGui::Selectable(component->getTypeName(bodyType), selected)) {
-                    rigidbody.setBodyType(bodyType);
-                    edition.hasModifications = true;
+    template<>
+    static bool editMultiple<AxisLockWrapper>(const char* id, std::span<AxisLockWrapper> values, const Helpers::Limits<AxisLockWrapper>& limits) {
+        enum class State {
+            LOCKED,
+            UNLOCKED,
+            VARIOUS // happens when multiple entities are selected but have different lock values
+        };
+        ImGui::PushID(id);
+        auto showLockButton = [&](const char *id, State* pTristate) -> bool {
+            const ImVec2 buttonSize{ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
+
+            Carrot::Render::Texture::Ref textureRef;
+            switch(*pTristate) {
+                case State::LOCKED:
+                    textureRef = GetAssetServer().blockingLoadTexture(LockedWidgetTexture);
+                    break;
+
+                case State::UNLOCKED:
+                    textureRef = GetAssetServer().blockingLoadTexture(UnlockedWidgetTexture);
+                    break;
+
+                default:
+                    textureRef = GetAssetServer().blockingLoadTexture(LockedVariousWidgetTexture);
+                    break; // TODO
+            }
+            const ImTextureID textureID = textureRef->getImguiID();
+            bool wasLocked = *pTristate != State::UNLOCKED;
+            const bool changed = ImGui::ImageToggleButton(id, textureID, &wasLocked, buttonSize);
+            if(ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                switch(*pTristate) {
+                    case State::LOCKED:
+                        ImGui::Text("Locked");
+                    break;
+
+                    case State::UNLOCKED:
+                        ImGui::Text("Unlocked");
+                    break;
+
+                    case State::VARIOUS:
+                        ImGui::Text("Various (multiple selected entities with different values)");
+                    break;
+                }
+                ImGui::EndTooltip();
+            }
+            if(changed) {
+                *pTristate = wasLocked ? State::UNLOCKED : State::LOCKED;
+            }
+            return changed;
+        };
+
+        ImGui::TextUnformatted(id);
+
+        const char* names[3] = { "X", "Y", "Z" };
+        bool modified = false;
+        for(int i = 0; i < 3; i++) {
+            ImGui::SameLine();
+            State tristate = glm::abs(values[0].axes[i]) < 0.01f ? State::LOCKED : State::UNLOCKED;
+            for(int j = 1; j < values.size(); j++) {
+                State stateForCurrentValue = glm::abs(values[j].axes[i]) < 0.01f ? State::LOCKED : State::UNLOCKED;
+                if(stateForCurrentValue != tristate) {
+                    tristate = State::VARIOUS;
+                    break;
                 }
             }
-            ImGui::EndCombo();
-        }
 
-        Carrot::Physics::CollisionLayerID layerID = component->rigidbody.getCollisionLayer();
-        auto& layersManager = GetPhysics().getCollisionLayers();
-        const auto& currentLayer = layersManager.getLayer(layerID);
-
-        bool changedLayer = false;
-        if(ImGui::BeginCombo("Collision layer", currentLayer.name.c_str())) {
-            for(const auto& layer : layersManager.getLayers()) {
-                if(ImGui::Selectable(layer.name.c_str(), layer.layerID == layerID)) {
-                    changedLayer = true;
-                    layerID = layer.layerID;
+            if(showLockButton(names[i], &tristate)) {
+                const bool isLocked = tristate == State::LOCKED;
+                for(AxisLockWrapper& axisLock : values) {
+                    axisLock.axes[i] = isLocked ? 0.0f : 1.0f;
+                    modified = true;
                 }
             }
-            ImGui::EndCombo();
         }
+        ImGui::PopID();
+        return modified;
+    }
 
-        if(changedLayer) {
-            edition.hasModifications = true;
-            component->rigidbody.setCollisionLayer(layerID);
+    void editRigidBodyComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::RigidBodyComponent*>& components) {
+        multiEditEnumField(edition, "Type", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.getBodyType();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const BodyType& v) {
+                c.rigidbody.setBodyType(v);
+            },
+            Carrot::ECS::RigidBodyComponent::getTypeName,
+            { BodyType::Dynamic, BodyType::Kinematic, BodyType::Static }
+        );
+
+        Carrot::Vector<CollisionLayerID> validIDs;
+        const std::vector<CollisionLayer>& layers = GetPhysics().getCollisionLayers().getLayers();
+        validIDs.ensureReserve(layers.size());
+        for(const auto& layer : layers) {
+            validIDs.pushBack(layer.layerID);
         }
+        multiEditEnumField(edition, "Collision layer", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.getCollisionLayer();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const CollisionLayerID& v) {
+                c.rigidbody.setCollisionLayer(v);
+            },
+            +[](const CollisionLayerID& c) { return GetPhysics().getCollisionLayers().getLayer(c).name.c_str(); },
+            validIDs
+        );
 
         // handle axis locking
         {
-            glm::vec3 translationAxes = rigidbody.getTranslationAxes();
-            glm::vec3 rotationAxes = rigidbody.getRotationAxes();
-            auto showLockButton = [&](const char *id, glm::vec3& axes, std::uint8_t axisIndex) -> bool {
-                const ImVec2 buttonSize{ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()};
-                bool isLocked = glm::abs(axes[axisIndex]) < 0.01f;
-
-                const auto textureRef = isLocked ? GetAssetServer().blockingLoadTexture(LockedWidgetTexture)
-                                                 : GetAssetServer().blockingLoadTexture(UnlockedWidgetTexture);
-                const ImTextureID textureID = textureRef->getImguiID();
-                const bool changed = ImGui::ImageToggleButton(id, textureID, &isLocked, buttonSize);
-                if (changed) {
-                    axes[axisIndex] = isLocked ? 0.0f : 1.0f;
-                }
-
-                return changed;
-            };
-
-            ImGui::Text("Lock translation");
-            bool translationAxesChanged = false;
-            ImGui::SameLine();
-            translationAxesChanged |= showLockButton("X##lock translate X", translationAxes, 0);
-            ImGui::SameLine();
-            translationAxesChanged |= showLockButton("Y##lock translate Y", translationAxes, 1);
-            ImGui::SameLine();
-            translationAxesChanged |= showLockButton("Z##lock translate Z", translationAxes, 2);
-            if (translationAxesChanged) {
-                rigidbody.setTranslationAxes(translationAxes);
-            }
-
-            ImGui::Text("Lock rotation");
-            bool rotationAxesChanged = false;
-            ImGui::SameLine();
-            rotationAxesChanged |= showLockButton("X##lock rotation X", rotationAxes, 0);
-            ImGui::SameLine();
-            rotationAxesChanged |= showLockButton("Y##lock rotation Y", rotationAxes, 1);
-            ImGui::SameLine();
-            rotationAxesChanged |= showLockButton("Z##lock rotation Z", rotationAxes, 2);
-            if (rotationAxesChanged) {
-                rigidbody.setRotationAxes(rotationAxes);
-            }
+            multiEditField(edition, "Lock translation", components,
+                +[](Carrot::ECS::RigidBodyComponent& c) {
+                    return AxisLockWrapper { c.rigidbody.getTranslationAxes() };
+                },
+                +[](Carrot::ECS::RigidBodyComponent& c, const AxisLockWrapper& v) {
+                    c.rigidbody.setTranslationAxes(v.axes);
+                });
+            multiEditField(edition, "Lock rotation", components,
+               +[](Carrot::ECS::RigidBodyComponent& c) {
+                   return AxisLockWrapper { c.rigidbody.getRotationAxes() };
+               },
+               +[](Carrot::ECS::RigidBodyComponent& c, const AxisLockWrapper& v) {
+                   c.rigidbody.setRotationAxes(v.axes);
+               });
         }
 
-        if(ImGui::BeginChild("Colliders##rigidbodycomponent", ImVec2(), true)) {
-            for(std::size_t index = 0; index < rigidbody.getColliderCount(); index++) {
-                if(index != 0) {
-                    ImGui::Separator();
+        if(components.size() == 1) {
+            // TODO: undo commands
+            auto& component = components[0];
+            auto& rigidbody = component->rigidbody;
+
+            if(ImGui::BeginChild("Colliders##rigidbodycomponent", ImVec2(), true)) {
+                for(std::size_t index = 0; index < rigidbody.getColliderCount(); index++) {
+                    if(index != 0) {
+                        ImGui::Separator();
+                    }
+                    bool removed;
+                    edition.hasModifications |= drawColliderUI(edition, component->getEntity(), rigidbody.getCollider(index), index, &removed);
+                    if(removed) {
+                        rigidbody.removeCollider(index);
+                        index--;
+                        edition.hasModifications = true;
+                    }
                 }
-                bool removed;
-                edition.hasModifications |= drawColliderUI(edition, component->getEntity(), rigidbody.getCollider(index), index, &removed);
-                if(removed) {
-                    rigidbody.removeCollider(index);
-                    index--;
-                    edition.hasModifications = true;
+
+                ImGui::Separator();
+
+                if(ImGui::BeginMenu("Add##rigidbodycomponent colliders")) {
+                    if(ImGui::MenuItem("Sphere Collider##rigidbodycomponent colliders")) {
+                        rigidbody.addCollider(Carrot::Physics::SphereCollisionShape(1.0f));
+                        edition.hasModifications = true;
+                    }
+                    if(ImGui::MenuItem("Box Collider##rigidbodycomponent colliders")) {
+                        rigidbody.addCollider(Carrot::Physics::BoxCollisionShape(glm::vec3(0.5f)));
+                        edition.hasModifications = true;
+                    }
+                    if(ImGui::MenuItem("Capsule Collider##rigidbodycomponent colliders")) {
+                        rigidbody.addCollider(Carrot::Physics::CapsuleCollisionShape(1.0f, 1.0f));
+                        edition.hasModifications = true;
+                    }
+                    // TODO: convex
+
+                    ImGui::EndMenu();
                 }
             }
-
-            ImGui::Separator();
-
-            if(ImGui::BeginMenu("Add##rigidbodycomponent colliders")) {
-                if(ImGui::MenuItem("Sphere Collider##rigidbodycomponent colliders")) {
-                    rigidbody.addCollider(Carrot::Physics::SphereCollisionShape(1.0f));
-                    edition.hasModifications = true;
-                }
-                if(ImGui::MenuItem("Box Collider##rigidbodycomponent colliders")) {
-                    rigidbody.addCollider(Carrot::Physics::BoxCollisionShape(glm::vec3(0.5f)));
-                    edition.hasModifications = true;
-                }
-                if(ImGui::MenuItem("Capsule Collider##rigidbodycomponent colliders")) {
-                    rigidbody.addCollider(Carrot::Physics::CapsuleCollisionShape(1.0f, 1.0f));
-                    edition.hasModifications = true;
-                }
-                // TODO: convex
-
-                ImGui::EndMenu();
-            }
+            ImGui::EndChild();
+        } else {
+            ImGui::Text("Edition of colliders is not supported for multiple selected entities.");
         }
-        ImGui::EndChild();
     }
 }
