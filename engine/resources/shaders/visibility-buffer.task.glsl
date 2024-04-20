@@ -14,6 +14,8 @@
 #include <draw_data.glsl>
 DEFINE_CAMERA_SET(1)
 
+#include <includes/frustum.glsl>
+
 // TODO: change workgroup size
 const uint WORKGROUP_SIZE = 1;
 layout(local_size_x = WORKGROUP_SIZE) in;
@@ -72,7 +74,6 @@ float projectErrorToScreen(vec4 transformedSphere) {
 bool cull(uint clusterInstanceID) {
     // TODO: occlusion culling
     // TODO: backface culling
-    // TODO: frustum culling
     uint clusterID = instances[clusterInstanceID].clusterID;
     uint modelDataIndex = instances[clusterInstanceID].instanceDataIndex;
 
@@ -81,7 +82,17 @@ bool cull(uint clusterInstanceID) {
     }
 
     if(push.lodSelectionMode == 0) {
-        const mat4 modelview = cbo.view * modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
+        const mat4 model = modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
+        const mat4 modelview = cbo.view * model;
+
+        // frustum check
+        {
+            const vec4 worldSphere = transformSphere(clusters[clusterID].boundingSphere, model);
+            // frustum check, need groupBounds in world space
+            if(!frustumCheck(cbo.frustumPlanes, worldSphere.xyz, worldSphere.w)) {
+                return true;
+            }
+        }
         vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
         projectedBounds = transformSphere(projectedBounds, modelview);
 
@@ -102,9 +113,7 @@ void main() {
     bool culled = clusterID >= push.maxCluster || cull(clusterID);
 
     // TODO: do multiple emits per task shader? (see NVIDIA example)
-    if(!culled) {
-        OUT.clusterInstanceID = clusterID;
-        EmitMeshTasksEXT(1, 1, 1);
-    }
+    OUT.clusterInstanceID = clusterID;
+    EmitMeshTasksEXT(culled ? 0 : 1, 1, 1);
 
 }

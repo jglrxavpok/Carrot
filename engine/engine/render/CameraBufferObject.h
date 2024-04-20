@@ -32,6 +32,9 @@ namespace Carrot {
         /// Use for motion vectors and things that should not move from one frame to the next
         alignas(16) glm::mat4 inverseNonJitteredProjection;
 
+        /// Frustum planes of camera (in world space)
+        alignas(16) std::array<Carrot::Math::Plane, 6> frustum;
+
         void update(Camera& camera, const Render::Context& renderContext);
     };
 }

@@ -248,9 +248,11 @@ namespace Peeler {
             for(const auto& pComponent : components) {
                 std::size_t virtualGeometryCount = 0;
 
-                for(auto& override : pComponent->modelRenderer->getOverrides()) {
-                    if(override.virtualizedGeometry) {
-                        virtualGeometryCount++;
+                if(pComponent->modelRenderer) {
+                    for(auto& override : pComponent->modelRenderer->getOverrides()) {
+                        if(override.virtualizedGeometry) {
+                            virtualGeometryCount++;
+                        }
                     }
                 }
 

@@ -32,7 +32,7 @@
 #include <engine/console/Console.h>
 #include <engine/vulkan/VulkanDefines.h>
 
-static constexpr std::size_t SingleFrameAllocatorSize = 1 * 1024 * 1024; // 1MiB per frame-in-flight
+static constexpr std::size_t SingleFrameAllocatorSize = 16 * 1024 * 1024; // 16MiB per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
 static Carrot::RuntimeOption ShowGBuffer("Engine/Show GBuffer", false);
 

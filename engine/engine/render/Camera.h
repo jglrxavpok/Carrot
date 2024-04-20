@@ -41,6 +41,8 @@ namespace Carrot {
         /// Called after camera is modified by game, but before rendering
         void updateFrustum();
 
+        const Math::Plane& getFrustumPlane(std::size_t index) const;
+
     public:
         bool isInFrustum(const Math::Sphere& sphere) const;
 
@@ -68,7 +70,7 @@ namespace Carrot {
         glm::vec3 position{};
         glm::vec3 target{};
 
-        Math::Plane frustum[6];
+        std::array<Math::Plane, 6> frustum;
     };
 }
 

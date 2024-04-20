@@ -24,5 +24,9 @@ namespace Carrot {
 
         inverseJitteredProjection = glm::inverse(jitteredProjection);
         inverseNonJitteredProjection = glm::inverse(nonJitteredProjection);
+
+        for (int i = 0; i < 6; ++i) {
+            frustum[i] = camera.getFrustumPlane(i);
+        }
     }
 }

@@ -14,8 +14,7 @@
 #include <draw_data.glsl>
 DEFINE_CAMERA_SET(1)
 
-// TODO: change workgroup size
-const uint WORKGROUP_SIZE = 1;
+const uint WORKGROUP_SIZE = 64;
 
 layout(local_size_x = WORKGROUP_SIZE) in;
 
@@ -72,15 +71,15 @@ void main() {
 
     SetMeshOutputsEXT(cluster.vertexCount, cluster.triangleCount);
 
-    for(uint vertexIndex = 0; vertexIndex < cluster.vertexCount; vertexIndex++) {
-        const vec4 viewPosition = modelview * cluster.vertices.v[vertexIndex].pos*5;
-        const vec4 ndcPosition = cbo.jitteredProjection * viewPosition;
+    const mat4 viewProj = cbo.jitteredProjection * modelview;
+    for(uint vertexIndex = gl_LocalInvocationIndex; vertexIndex < cluster.vertexCount; vertexIndex+= WORKGROUP_SIZE) {
+        const vec4 ndcPosition = viewProj * cluster.vertices.v[vertexIndex].pos;
         gl_MeshVerticesEXT[vertexIndex].gl_Position = ndcPosition;
         outNDCPosition[vertexIndex] = ndcPosition;
         outClusterInstanceID[vertexIndex] = instanceID;
     }
 
-    for(uint triangleIndex = 0; triangleIndex < cluster.triangleCount; triangleIndex++) {
+    for(uint triangleIndex = gl_LocalInvocationIndex; triangleIndex < cluster.triangleCount; triangleIndex+=WORKGROUP_SIZE) {
         uvec3 indices = uvec3(cluster.indices.i[triangleIndex * 3 + 0],
                               cluster.indices.i[triangleIndex * 3 + 1],
                               cluster.indices.i[triangleIndex * 3 + 2]);
@@ -88,5 +87,7 @@ void main() {
         gl_MeshPrimitivesEXT[triangleIndex].gl_PrimitiveID = int(triangleIndex);
     }
 
-    atomicAdd(stats.totalTriangleCount, cluster.triangleCount);
+    if(gl_LocalInvocationIndex == 0) {
+        atomicAdd(stats.totalTriangleCount, cluster.triangleCount);
+    }
 }

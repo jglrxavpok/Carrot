@@ -118,6 +118,10 @@ namespace Carrot {
         }
     }
 
+    const Math::Plane& Camera::getFrustumPlane(std::size_t index) const {
+        return frustum[index];
+    }
+
     bool Camera::isInFrustum(const Math::Sphere& sphere) const {
         for(int i = 0; i < 6; i++) {
             auto& plane = frustum[i];

@@ -1,3 +1,6 @@
+#ifndef _MATH_GLSL
+#define _MATH_GLSL
+
 #define M_PI 3.14159265358979323846
 #define M_INV_PI (1.0/M_PI)
 #define M_PI_OVER_2 (M_PI/2.0)
@@ -44,3 +47,9 @@ vec4 transformSphere(vec4 sphere, mat4 transform) {
     const vec3 center = hCenter.xyz / hCenter.w;
     return vec4(center, length((transform * vec4(sphere.w, 0, 0, 0)).xyz));
 }
+
+float getSignedDistanceToPlane(vec3 planeNormal, float planeDistanceFromOrigin, vec3 point) {
+    return dot(planeNormal, point) + planeDistanceFromOrigin;
+}
+
+#endif // _MATH_GLSL
