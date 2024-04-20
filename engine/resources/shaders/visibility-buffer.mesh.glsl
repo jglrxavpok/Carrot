@@ -12,21 +12,16 @@
 #include <includes/clusters.glsl>
 #include <includes/math.glsl>
 #include <draw_data.glsl>
+#include <includes/visibility-buffer-common.glsl>
 DEFINE_CAMERA_SET(1)
 
-const uint WORKGROUP_SIZE = 64;
-
-layout(local_size_x = WORKGROUP_SIZE) in;
+layout(local_size_x = MESH_WORKGROUP_SIZE) in;
 
 // this is per workgroup!! not per shader invocation!
-layout(max_vertices=128, max_primitives=128) out;
+layout(max_vertices=64, max_primitives=128) out;
 layout(triangles) out;
 
-struct Task
-{
-    uint clusterInstanceID;
-};
-taskPayloadSharedEXT Task IN;
+taskPayloadSharedEXT VisibilityPayload IN;
 
 layout(location=0) out vec4 outNDCPosition[];
 layout(location=1) out flat uint outClusterInstanceID[];
@@ -59,7 +54,7 @@ layout(set = 0, binding = 4, scalar) buffer Statistics {
 } stats;
 
 void main() {
-    uint instanceID = IN.clusterInstanceID;
+    uint instanceID = IN.clusterInstanceIDs[gl_WorkGroupID.x % TASK_WORKGROUP_SIZE];
 
     #define instance instances[instanceID]
 
@@ -72,14 +67,14 @@ void main() {
     SetMeshOutputsEXT(cluster.vertexCount, cluster.triangleCount);
 
     const mat4 viewProj = cbo.jitteredProjection * modelview;
-    for(uint vertexIndex = gl_LocalInvocationIndex; vertexIndex < cluster.vertexCount; vertexIndex+= WORKGROUP_SIZE) {
+    for(uint vertexIndex = gl_LocalInvocationIndex; vertexIndex < cluster.vertexCount; vertexIndex += MESH_WORKGROUP_SIZE) {
         const vec4 ndcPosition = viewProj * cluster.vertices.v[vertexIndex].pos;
         gl_MeshVerticesEXT[vertexIndex].gl_Position = ndcPosition;
         outNDCPosition[vertexIndex] = ndcPosition;
         outClusterInstanceID[vertexIndex] = instanceID;
     }
 
-    for(uint triangleIndex = gl_LocalInvocationIndex; triangleIndex < cluster.triangleCount; triangleIndex+=WORKGROUP_SIZE) {
+    for(uint triangleIndex = gl_LocalInvocationIndex; triangleIndex < cluster.triangleCount; triangleIndex += MESH_WORKGROUP_SIZE) {
         uvec3 indices = uvec3(cluster.indices.i[triangleIndex * 3 + 0],
                               cluster.indices.i[triangleIndex * 3 + 1],
                               cluster.indices.i[triangleIndex * 3 + 2]);

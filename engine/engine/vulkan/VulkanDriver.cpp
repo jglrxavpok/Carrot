@@ -430,6 +430,7 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
             families.transferFamily = index;
         }
 
+        // TODO: check if not graphics => async compute queue
         if(family.queueFlags & vk::QueueFlagBits::eCompute) {
             families.computeFamily = index;
         }

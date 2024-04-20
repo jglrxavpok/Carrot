@@ -12,20 +12,14 @@
 #include <includes/clusters.glsl>
 #include <includes/math.glsl>
 #include <draw_data.glsl>
+#include <includes/visibility-buffer-common.glsl>
 DEFINE_CAMERA_SET(1)
 
 #include <includes/frustum.glsl>
 
-// TODO: change workgroup size
-const uint WORKGROUP_SIZE = 1;
-layout(local_size_x = WORKGROUP_SIZE) in;
+layout(local_size_x = TASK_WORKGROUP_SIZE) in;
 
-struct Task
-{
-    uint clusterInstanceID;
-};
-
-taskPayloadSharedEXT Task OUT;
+taskPayloadSharedEXT VisibilityPayload OUT;
 
 layout(push_constant) uniform PushConstant {
     uint maxCluster;
@@ -108,12 +102,25 @@ bool cull(uint clusterInstanceID) {
     }
 }
 
+shared uint meshletCount;
+
 void main() {
-    uint clusterID = activeClusters[gl_GlobalInvocationID.x];
+    if(gl_LocalInvocationIndex == 0) {
+        meshletCount = 0;
+    }
+    barrier();
+
+    uint clusterID = activeClusters[gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE];
     bool culled = clusterID >= push.maxCluster || cull(clusterID);
 
-    // TODO: do multiple emits per task shader? (see NVIDIA example)
-    OUT.clusterInstanceID = clusterID;
-    EmitMeshTasksEXT(culled ? 0 : 1, 1, 1);
+    if(!culled) {
+        uint index = atomicAdd(meshletCount, 1);
+        OUT.clusterInstanceIDs[index] = clusterID;
+    }
 
+    barrier();
+
+    if(gl_LocalInvocationIndex == 0) {
+        EmitMeshTasksEXT(meshletCount, 1, 1);
+    }
 }

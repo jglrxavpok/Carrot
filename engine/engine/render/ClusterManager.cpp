@@ -375,7 +375,8 @@ namespace Carrot::Render {
         }
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
-        drawCommand.drawMeshTasks.groupCountX = activeInstances.size();
+        const int groupSize = 32;
+        drawCommand.drawMeshTasks.groupCountX = activeInstances.size() / groupSize;
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
         renderer.render(packet);
