@@ -171,7 +171,7 @@ namespace Peeler {
     }
 
     void editModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ModelComponent*>& components);
-    void editAnimatedModelComponent(EditContext& edition, Carrot::ECS::AnimatedModelComponent* component);
+    void editAnimatedModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::AnimatedModelComponent*>& components);
 
     void editKinematicsComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::Kinematics*>& components) {
         multiEditField(edition, "Velocity", components,
@@ -246,7 +246,7 @@ namespace Peeler {
         registerFunction(inspector, editKinematicsComponent);
         registerFunction(inspector, editLightComponent);
         registerFunction(inspector, editModelComponent);
-        /*registerFunction(inspector, editAnimatedModelComponent);*/
+        registerFunction(inspector, editAnimatedModelComponent);
         registerFunction(inspector, editRigidBodyComponent);
         registerFunction(inspector, editSpriteComponent);
         registerFunction(inspector, editTextComponent);

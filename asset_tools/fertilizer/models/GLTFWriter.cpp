@@ -144,6 +144,11 @@ namespace Fertilizer {
         tinygltf::Model& model = payload.glTFModel;
         model.meshes.reserve(scene.primitives.size());
 
+        bool hasMeshlets = false;
+        for(const auto& primitive : scene.primitives) {
+            hasMeshlets |= !primitive.meshlets.empty();
+        }
+
         int staticVertexBufferIndex = -1;
         int staticVertexBufferViewIndex = -1;
         int skinnedVertexBufferIndex = -1;
@@ -152,14 +157,14 @@ namespace Fertilizer {
         // meshlets buffer
         int meshletBufferIndex = (int)model.buffers.size();
         int meshletBufferViewIndex = (int)model.bufferViews.size();
-        {
+        if(hasMeshlets) {
             auto& meshletBuffer = model.buffers.emplace_back();
             meshletBuffer.uri = modelName + "-meshlets.bin";
             model.bufferViews.emplace_back();
         }
         int clustersBufferIndex = (int)model.buffers.size();
         int clustersBufferViewIndex = (int)model.bufferViews.size();
-        {
+        if(hasMeshlets) {
             auto& clustersBuffer = model.buffers.emplace_back();
             clustersBuffer.uri = modelName + "-cluster-data.bin";
             model.bufferViews.emplace_back();
@@ -338,7 +343,7 @@ namespace Fertilizer {
             }
 
             // write meshlets
-            {
+            if(hasMeshlets) {
                 auto& meshletsExtensionJSON = glTFPrimitive.extensions[Carrot::Render::GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME];
                 tinygltf::Value::Object meshletsExtension;
 
@@ -419,22 +424,25 @@ namespace Fertilizer {
             indicesBufferView.byteOffset = 0;
             indicesBufferView.buffer = indexBufferIndex;
         }
-        {
-            auto& meshletBuffer = model.buffers[meshletBufferIndex];
-            auto& meshletsBufferView = model.bufferViews[meshletBufferViewIndex];
-            meshletsBufferView.name = "Meshlets";
-            meshletsBufferView.byteLength = meshletBuffer.data.size();
-            meshletsBufferView.byteOffset = 0;
-            meshletsBufferView.byteStride = sizeof(Carrot::Render::Meshlet);
-            meshletsBufferView.buffer = meshletBufferIndex;
-        }
-        {
-            auto& clustersBuffer = model.buffers[clustersBufferIndex];
-            auto& clustersBufferView = model.bufferViews[clustersBufferViewIndex];
-            clustersBufferView.name = "Cluster-data";
-            clustersBufferView.byteLength = clustersBuffer.data.size();
-            clustersBufferView.byteOffset = 0;
-            clustersBufferView.buffer = clustersBufferIndex;
+
+        if(hasMeshlets) {
+            {
+                auto& meshletBuffer = model.buffers[meshletBufferIndex];
+                auto& meshletsBufferView = model.bufferViews[meshletBufferViewIndex];
+                meshletsBufferView.name = "Meshlets";
+                meshletsBufferView.byteLength = meshletBuffer.data.size();
+                meshletsBufferView.byteOffset = 0;
+                meshletsBufferView.byteStride = sizeof(Carrot::Render::Meshlet);
+                meshletsBufferView.buffer = meshletBufferIndex;
+            }
+            {
+                auto& clustersBuffer = model.buffers[clustersBufferIndex];
+                auto& clustersBufferView = model.bufferViews[clustersBufferViewIndex];
+                clustersBufferView.name = "Cluster-data";
+                clustersBufferView.byteLength = clustersBuffer.data.size();
+                clustersBufferView.byteOffset = 0;
+                clustersBufferView.buffer = clustersBufferIndex;
+            }
         }
         if(pStaticGeometryBuffer != nullptr)
         {

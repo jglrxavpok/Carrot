@@ -27,76 +27,109 @@ namespace Peeler {
     };
     static std::unordered_map<ImGuiID, WidgetState> states{};
 
-    void updatePreview(WidgetState& state, Carrot::AnimatedInstanceData& instance) {
+    void updatePreview(WidgetState& state, const Carrot::Vector<Carrot::ECS::AnimatedModelComponent*>& components) {
         const double currentTime = GetEngine().getCurrentFrameTime();
         double deltaTime = currentTime - state.lastUpdateTime;
         if(state.previousState != PreviewState::Playing) {
             deltaTime = 0.0;
         }
         if(state.state == PreviewState::Playing) {
-            instance.animationTime += deltaTime;
+            for(auto& c : components) {
+                auto& instance = c->asyncAnimatedModelHandle->getData();
+                instance.animationTime += deltaTime;
+            }
         } else if(state.state == PreviewState::Stopped) {
-            instance.animationTime = 0.0f;
+            for(auto& c : components) {
+                auto& instance = c->asyncAnimatedModelHandle->getData();
+                instance.animationTime = 0.0f;
+            }
         }
 
         state.lastUpdateTime = currentTime;
         state.previousState = state.state;
     }
 
-    void editAnimatedModelComponent(EditContext& edition, Carrot::ECS::AnimatedModelComponent* component) {
+    void editAnimatedModelComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::AnimatedModelComponent*>& components) {
+        // check if all components have loaded their models
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            auto& asyncModel = components[i]->asyncAnimatedModelHandle;
+            if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
+                ImGui::Text("Loading model(s)...");
+                return;
+            }
+        }
+
+        ImGui::BeginGroup();
+        CLEANUP({
+            ImGui::EndGroup();
+            if(ImGui::BeginDragDropTarget()) {
+                if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
+                    std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
+                    std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
+                    buffer.get()[payload->DataSize] = '\0';
+
+                    std::u8string str = buffer.get();
+                    std::string s = Carrot::toString(str);
+
+                    auto vfsPath = Carrot::IO::VFS::Path(s);
+
+                    // TODO: no need to go through disk again
+                    std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
+                    if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
+                        for(auto& pComponent : components) {
+                            pComponent->queueLoad(vfsPath);
+                        }
+                        edition.hasModifications = true;
+                    }
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+        });
+
         const ImGuiID currentID = ImGui::GetID("Preview");
 
         WidgetState& state = states[currentID];
 
-        auto& asyncModel = component->asyncAnimatedModelHandle;
-        if(!asyncModel.isReady() && !asyncModel.isEmpty()) {
-            ImGui::Text("Model is loading...");
-            return;
-        }
-        std::string path = asyncModel.isEmpty() ? "" : component->waitLoadAndGetOriginatingResource().getName();
-        if(ImGui::InputText("Filepath##AnimatedModelComponent filepath inspector", path, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            component->queueLoad(Carrot::IO::VFS::Path(path));
-            edition.hasModifications = true;
-        }
-
-        if(ImGui::BeginDragDropTarget()) {
-            if(auto* payload = ImGui::AcceptDragDropPayload(Carrot::Edition::DragDropTypes::FilePath)) {
-                std::unique_ptr<char8_t[]> buffer = std::make_unique<char8_t[]>(payload->DataSize+sizeof(char8_t));
-                std::memcpy(buffer.get(), static_cast<const char8_t*>(payload->Data), payload->DataSize);
-                buffer.get()[payload->DataSize] = '\0';
-
-                std::u8string str = buffer.get();
-                std::string s = Carrot::toString(str);
-
-                auto vfsPath = Carrot::IO::VFS::Path(s);
-
-                // TODO: no need to go through disk again
-                std::filesystem::path fsPath = GetVFS().resolve(vfsPath);
-                if(!std::filesystem::is_directory(fsPath) && Carrot::IO::isModelFormatFromPath(s.c_str())) {
-                    component->queueLoad(vfsPath);
-                    edition.hasModifications = true;
-                }
+        multiEditField(edition, "Filepath", components,
+            +[](Carrot::ECS::AnimatedModelComponent& c) {
+                return Carrot::IO::VFS::Path { c.asyncAnimatedModelHandle.isEmpty() ? "" : c.asyncAnimatedModelHandle->getParent().getModel().getOriginatingResource().getName() };
+            },
+            +[](Carrot::ECS::AnimatedModelComponent& c, const Carrot::IO::VFS::Path& path) {
+                c.queueLoad(path);
+            },
+            Helpers::Limits<Carrot::IO::VFS::Path> {
+                .validityChecker = [](const auto& path) { return Carrot::IO::isModelFormat(path.toString().c_str()); }
             }
+        );
 
-            ImGui::EndDragDropTarget();
+        // check components actually have a model
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            auto& asyncModel = components[i]->asyncAnimatedModelHandle;
+            if(asyncModel.isEmpty()) {
+                return;
+            }
         }
 
-        if(asyncModel.isEmpty() || !asyncModel.isReady()) {
-            return;
+        // check if all components use the same animated model
+        Carrot::Render::AnimatedModel* pAnimatedModel = &components[0]->asyncAnimatedModelHandle->getParent();
+        for(std::int64_t i = 1; i < components.size(); i++) {
+            if(pAnimatedModel != &components[i]->asyncAnimatedModelHandle->getParent()) {
+                return;
+            }
         }
 
-        auto& handle = *asyncModel.get();
-        auto& animatedModel = handle.getParent().getModel();
+        const Carrot::Render::AnimatedModel& animatedModel = *pAnimatedModel;
+        const Carrot::Model& baseModel = animatedModel.getModel();
+        Carrot::Render::AnimatedModel::Handle& firstHandle = *components[0]->asyncAnimatedModelHandle.get();
 
         if(ImGui::CollapsingHeader("Preview")) {
-            // TODO: play, pause, stop buttons
-            // TODO: ability to disable preview=> stop
-            const Carrot::AnimationMetadata* selectedAnimation = animatedModel.getAnimationMetadata(state.selectedAnimation);
+            const Carrot::AnimationMetadata* selectedAnimation = baseModel.getAnimationMetadata(state.selectedAnimation);
             const std::string previewText = selectedAnimation ? state.selectedAnimation : "";
             const float lineHeight = ImGui::GetTextLineHeight();
             const ImVec2 buttonSize = ImVec2(lineHeight, lineHeight);
-            const char* comboLabel = "Animation##AnimatedModelComponent preview combo";
-            const float labelWidth = ImGui::CalcTextSize(comboLabel, NULL, true).x;
+            const char* comboLabel = "Animation";
+            const float labelWidth = ImGui::CalcTextSize(comboLabel, nullptr, true).x;
             const float comboWidth =
                     ImGui::GetContentRegionAvail().x // available width
                     - labelWidth // combo box size does not take label width into account
@@ -107,9 +140,9 @@ namespace Peeler {
 
             ImGui::SetNextItemWidth(comboWidth);
             if(ImGui::BeginCombo(comboLabel, previewText.c_str())) {
-                for(const auto& [animationName, animationData] : animatedModel.getAnimationMetadata()) {
-                    if(ImGui::Selectable(animationName.c_str(), handle.getData().animationIndex == animationData.index)) {
-                        handle.getData().animationIndex = animationData.index;
+                for(const auto& [animationName, animationData] : baseModel.getAnimationMetadata()) {
+                    if(ImGui::Selectable(animationName.c_str(), firstHandle.getData().animationIndex == animationData.index)) {
+                        firstHandle.getData().animationIndex = animationData.index;
                         state.selectedAnimation = animationName;
                     }
                 }
@@ -160,6 +193,6 @@ namespace Peeler {
             ImGui::EndDisabled();
         }
 
-        updatePreview(state, handle.getData());
+        updatePreview(state, components);
     }
 }
