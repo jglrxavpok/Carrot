@@ -412,6 +412,14 @@ int Carrot::VulkanDriver::ratePhysicalDevice(const vk::PhysicalDevice& device) {
         return 0;
     }
 
+    if(deviceProperties.limits.timestampPeriod == 0) {
+        return 0; // does not support timestamp queries
+    }
+
+    if(!deviceProperties.limits.timestampComputeAndGraphics) {
+        return 0; // does not support timestamp queries for all computes & graphics queues.
+    }
+
     return score;
 }
 
@@ -548,6 +556,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .runtimeDescriptorArray = true,
 
                     .scalarBlockLayout = true,
+                    .hostQueryReset =  true,
                     .bufferDeviceAddress = true,
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {

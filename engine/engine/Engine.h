@@ -459,6 +459,8 @@ namespace Carrot {
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};
         std::vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>> additionalWaitSemaphores{};
+        vk::UniqueQueryPool timingQueryPool{};
+        std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};
 
         std::list<Carrot::Render::Viewport> viewports;
         std::list<Carrot::Window> externalWindows;
@@ -486,6 +488,7 @@ namespace Carrot {
         CircleBuffer<float, 600> tickTimeHistory; //< Latest tick times
         CircleBuffer<float, 600> onFrameTimeHistory; //< Latest onFrame times
         CircleBuffer<float, 600> recordTimeHistory; //< Latest record times
+        CircleBuffer<float, 600> gpuTimeHistory; //< Latest gpu times
         std::vector<ImGuiTextures> imguiTextures;
 
         std::unique_ptr<Render::Graph> leftEyeGlobalFrameGraph = nullptr;
@@ -527,6 +530,7 @@ namespace Carrot {
 
         /// Create fences and semaphores used for rendering
         void createSynchronizationObjects();
+        void createTimingQueryPools();
 
 
         void initGame();

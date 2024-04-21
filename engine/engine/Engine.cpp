@@ -540,6 +540,7 @@ void Carrot::Engine::initVulkan() {
     initGame();
 
     createSynchronizationObjects();
+    createTimingQueryPools();
 }
 
 void Carrot::Engine::initScripting() {
@@ -630,6 +631,10 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             ZoneScopedN("mainCommandBuffers[frameIndex].begin(beginInfo)");
             mainCommandBuffers[frameIndex].begin(beginInfo);
 
+            if(timestampsWithAvailability[2*frameIndex * 2 + 1] != 0) {
+                mainCommandBuffers[frameIndex].writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, *timingQueryPool, frameIndex*2 + 0);
+            }
+
             DebugNameable::nameSingle(Carrot::sprintf("Main command buffer, frame %lu", renderer.getFrameCount()), mainCommandBuffers[frameIndex]);
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "begin command buffer");
         }
@@ -663,6 +668,16 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                     viewport.render(newRenderContext(swapchainIndex, viewport, Render::Eye::NoVR), mainCommandBuffers[frameIndex]);
                 }
             }
+        }
+
+        mainCommandBuffers[frameIndex].writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *timingQueryPool, frameIndex*2 + 1);
+
+        DISCARD(getVulkanDriver().getLogicalDevice().getQueryPoolResults(*timingQueryPool, frameIndex*2, 2, 4 * sizeof(std::uint64_t), &timestampsWithAvailability.data()[frameIndex*2*2], 2 * sizeof(std::uint64_t), vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability));
+
+        if(timestampsWithAvailability[2*frameIndex * 2 + 1] != 0) {
+            const float diff = timestampsWithAvailability[2*(frameIndex*2 + 1)] - timestampsWithAvailability[2*frameIndex * 2];
+            const float time = diff * vkDriver.getPhysicalDeviceLimits().timestampPeriod / 1000000000.0f;
+            gpuTimeHistory.push(time);
         }
 
         TracyVkCollect(tracyCtx[swapchainIndex], mainCommandBuffers[frameIndex]);
@@ -1010,6 +1025,9 @@ void Carrot::Engine::drawFrame(size_t currentFrame) {
                 ImGui::Text("Tick time");
                 drawHistory(tickTimeHistory, 50, expectedDelta);
 
+                ImGui::Text("GPU time");
+                drawHistory(gpuTimeHistory, 50, goodDelta);
+
                 ImGui::Text("OnFrame time");
                 drawHistory(onFrameTimeHistory, 50, expectedDelta);
 
@@ -1046,6 +1064,14 @@ void Carrot::Engine::createSynchronizationObjects() {
         renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
+}
+
+void Carrot::Engine::createTimingQueryPools() {
+    vk::QueryPoolCreateInfo createInfo {
+        .queryType = vk::QueryType::eTimestamp,
+        .queryCount = 2 * MAX_FRAMES_IN_FLIGHT,
+    };
+    timingQueryPool = vkDriver.getLogicalDevice().createQueryPoolUnique(createInfo, vkDriver.getAllocationCallbacks());
 }
 
 void Carrot::Engine::recreateSwapchain(Window& window) {
