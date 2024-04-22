@@ -34,12 +34,61 @@ DEFINE_CAMERA_SET(3)
 
 layout(location = 0) in vec2 screenUV;
 
-vec2 project(mat4 modelview, vec3 p) {
-    vec4 hPosition = cbo.jitteredProjection * modelview * vec4(p, 1.0);
+// https://cg.ivd.kit.edu/publications/2015/dais/DAIS.pdf
+// Deferred Attribute Interpolation for Memory-Efficient Deferred Shading
+// Scheid, Dachsbacher
+struct Interpolator {
+    vec3 invWi;
+    vec3 barycentrics;
+    float invDivider; // 1 / (wi * barycentrics)
+};
 
-    hPosition.xyz /= hPosition.w;
-    vec2 projected = (hPosition.xy + 1.0) / 2.0;
+vec2 toScreenUV(vec4 homogeneousVec) {
+    vec2 projected = (homogeneousVec.xy / homogeneousVec.w + 1.0) / 2.0;
     return projected;
+}
+
+Interpolator createInterlopator(in Vertex vA, in Vertex vB, in Vertex vC, in mat4 modelview) {
+    vec4 a = cbo.jitteredProjection * modelview * vA.pos;
+    vec4 b = cbo.jitteredProjection * modelview * vB.pos;
+    vec4 c = cbo.jitteredProjection * modelview * vC.pos;
+
+    vec2 screenPosA = toScreenUV(a);
+    vec2 screenPosB = toScreenUV(b);
+    vec2 screenPosC = toScreenUV(c);
+
+    Interpolator interpolator;
+    interpolator.invWi = vec3(1.0f / a.w, 1.0f / b.w, 1.0f / c.w);
+    interpolator.barycentrics = barycentrics(vec3(screenPosA, 0), vec3(screenPosB, 0), vec3(screenPosC, 0), vec3(screenUV, 0));
+    interpolator.invDivider = 1.0f / dot(interpolator.invWi, interpolator.barycentrics);
+    return interpolator;
+}
+
+float interpolate1D(in Interpolator interlopator, float a, float b, float c) {
+    float numerator =
+        interlopator.barycentrics.x * a * interlopator.invWi.x
+    +   interlopator.barycentrics.y * b * interlopator.invWi.y
+    +   interlopator.barycentrics.z * c * interlopator.invWi.z;
+
+    return numerator * interlopator.invDivider;
+}
+
+vec2 interpolate2D(in Interpolator interlopator, vec2 a, vec2 b, vec2 c) {
+    vec2 numerator =
+        interlopator.barycentrics.x * a * interlopator.invWi.x
+    +   interlopator.barycentrics.y * b * interlopator.invWi.y
+    +   interlopator.barycentrics.z * c * interlopator.invWi.z;
+
+    return numerator * interlopator.invDivider;
+}
+
+vec3 interpolate3D(in Interpolator interlopator, vec3 a, vec3 b, vec3 c) {
+    vec3 numerator =
+        interlopator.barycentrics.x * a * interlopator.invWi.x
+    +   interlopator.barycentrics.y * b * interlopator.invWi.y
+    +   interlopator.barycentrics.z * c * interlopator.invWi.z;
+
+    return numerator * interlopator.invDivider;
 }
 
 void main() {
@@ -70,14 +119,10 @@ void main() {
     mat4 modelTransform = modelData[modelDataIndex].instanceData.transform;
     mat4 modelview = cbo.view * modelTransform * clusterTransform;
 
-    vec2 posA = project(modelview, vA.pos.xyz);
-    vec2 posB = project(modelview, vB.pos.xyz);
-    vec2 posC = project(modelview, vC.pos.xyz);
+    Interpolator interlopator = createInterlopator(vA, vB, vC, modelview);
 
-    vec3 barycentricsInsideTriangle = barycentrics(vec3(posA, 0), vec3(posB, 0), vec3(posC, 0), vec3(screenUV, 0));
-
-    vec2 uv = barycentricsInsideTriangle.x * vA.uv + barycentricsInsideTriangle.y * vB.uv + barycentricsInsideTriangle.z * vC.uv;
-    vec3 position = barycentricsInsideTriangle.x * vA.pos.xyz + barycentricsInsideTriangle.y * vB.pos.xyz + barycentricsInsideTriangle.z * vC.pos.xyz;
+    vec2 uv = interpolate2D(interlopator, vA.uv, vB.uv, vC.uv);
+    vec3 position = interpolate3D(interlopator, vA.pos.xyz, vB.pos.xyz, vC.pos.xyz);
 
     Material material = materials[materialIndex];
     uint albedoTexture = nonuniformEXT(material.albedo);
@@ -100,12 +145,12 @@ void main() {
     vec4 hPosition = modelview * vec4(position, 1.0);
     o.viewPosition = hPosition.xyz / hPosition.w;
 
-    vec3 N = barycentricsInsideTriangle.x * vA.normal + barycentricsInsideTriangle.y * vB.normal + barycentricsInsideTriangle.z * vC.normal;
-    vec3 T = barycentricsInsideTriangle.x * vA.tangent.xyz + barycentricsInsideTriangle.y * vB.tangent.xyz + barycentricsInsideTriangle.z * vC.tangent.xyz;
+    vec3 N = interpolate3D(interlopator, vA.normal, vB.normal, vC.normal);
+    vec3 T = interpolate3D(interlopator, vA.tangent.xyz, vB.tangent.xyz, vC.tangent.xyz);
 
     N = mat3(modelview) * N;
     T = mat3(modelview) * T;
-    float bitangentSign = barycentricsInsideTriangle.x * vA.tangent.w + barycentricsInsideTriangle.y * vB.tangent.w + barycentricsInsideTriangle.z * vC.tangent.w;
+    float bitangentSign = interpolate1D(interlopator, vA.tangent.w, vB.tangent.w, vC.tangent.w);
 
     vec3 N_ = normalize(N);
     vec3 T_ = normalize(T - dot(T, N_) * N_);

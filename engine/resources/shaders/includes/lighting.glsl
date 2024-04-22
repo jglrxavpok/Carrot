@@ -448,7 +448,6 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
 vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     vec3 finalColor = vec3(0.0);
 
-    const vec3 cameraForward = (cbo.inverseView * vec4(0, 0, 1, 0)).xyz;
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
@@ -578,7 +577,6 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
 }
 
 vec3 calculateReflections(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
-    const vec3 cameraForward = (cbo.inverseView * vec4(0, 0, 1, 0)).xyz;
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING

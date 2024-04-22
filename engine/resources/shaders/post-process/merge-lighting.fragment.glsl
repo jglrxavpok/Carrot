@@ -36,7 +36,10 @@ bool earlyExits(uint debugMode) {
 void main() {
     GBuffer g = unpackGBuffer(uv);
     vec4 albedoColor = g.albedo;
-    vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv) + texture(sampler2D(reflections, gLinearSampler), uv);
+    vec4 lightingColor = vec4(0)
+    + texture(sampler2D(lighting, gLinearSampler), uv)
+    + texture(sampler2D(reflections, gLinearSampler), uv)
+    ;
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 
