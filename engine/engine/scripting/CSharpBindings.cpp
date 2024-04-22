@@ -32,7 +32,7 @@
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/scripting/CSharpHelpers.ipp>
 #include <engine/utils/Profiling.h>
-#include <TracyC.h>
+#include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
 
 namespace Carrot::Scripting {

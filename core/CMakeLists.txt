@@ -66,7 +66,7 @@ set(CORE-SOURCES
         )
 
 set(CORE-THIRDPARTY-SOURCES
-        ${ProjectRoot}thirdparty/tracy/TracyClient.cpp
+        ${ProjectRoot}thirdparty/tracy/public/TracyClient.cpp
         ${ProjectRoot}thirdparty/MikkTSpace/mikktspace.c
 
         ${ProjectRoot}thirdparty/tribox3/tribox3.cpp
@@ -86,7 +86,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/imgui/misc/cpp/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/IconFontCppHeaders/)
-    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tracy/public/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/stb/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidjson/include)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/rapidxml/rapidxml-1.13)

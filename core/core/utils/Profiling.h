@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <Tracy.hpp>
+#include <tracy/Tracy.hpp>
 #include <client/TracyProfiler.hpp>
 #include <chrono>
 #include <unordered_map>

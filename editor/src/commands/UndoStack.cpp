@@ -4,7 +4,7 @@
 
 #include "UndoStack.h"
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 namespace Peeler {
     ICommand::ICommand(Application& app, const std::string& _description): editor(app), description(_description) {}

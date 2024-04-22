@@ -4,7 +4,6 @@
 
 #include <engine/render/RenderContext.h>
 #include "Component.h"
-#include <imgui/imgui.h>
 
 namespace Carrot::ECS {
     ComponentLibrary& getComponentLibrary() {

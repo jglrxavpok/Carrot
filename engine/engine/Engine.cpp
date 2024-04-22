@@ -436,7 +436,7 @@ void Carrot::Engine::run() {
             TracyPlot("Tick lag", lag.count());
             TracyPlot("Estimated FPS", currentFPS);
             TracyPlot("Estimated VRAM usage", static_cast<std::int64_t>(Carrot::DeviceMemory::TotalMemoryUsed.load()));
-            TracyPlotConfig("Estimated VRAM usage", tracy::PlotFormatType::Memory);
+            TracyPlotConfig("Estimated VRAM usage", tracy::PlotFormatType::Memory, false, false, 0);
 
             const std::uint32_t maxCatchupTicks = 10;
             std::uint32_t caughtUp = 0;
