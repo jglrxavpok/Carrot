@@ -26,6 +26,8 @@ taskPayloadSharedEXT VisibilityPayload IN;
 layout(location=0) out vec4 outNDCPosition[];
 layout(location=1) out flat uint outClusterInstanceID[];
 
+uint8_t Flags_OutputTriangleCount = uint8_t(1);
+
 layout(push_constant) uniform PushConstant {
     uint maxCluster;
     uint lodSelectionMode; // 0= screen size based, 1= force specific LOD
@@ -33,6 +35,7 @@ layout(push_constant) uniform PushConstant {
     uint forcedLOD; // lod to force
 
     float screenHeight;
+    uint8_t flags;
 } push;
 
 layout(set = 0, binding = 0, scalar) buffer ClusterRef {
@@ -82,7 +85,7 @@ void main() {
         gl_MeshPrimitivesEXT[triangleIndex].gl_PrimitiveID = int(triangleIndex);
     }
 
-    if(gl_LocalInvocationIndex == 0) {
+    if(gl_LocalInvocationIndex == 0 && (push.flags & Flags_OutputTriangleCount) != 0) {
         atomicAdd(stats.totalTriangleCount, cluster.triangleCount);
     }
 }

@@ -672,7 +672,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
         mainCommandBuffers[frameIndex].writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *timingQueryPool, frameIndex*2 + 1);
 
-        DISCARD(getVulkanDriver().getLogicalDevice().getQueryPoolResults(*timingQueryPool, frameIndex*2, 2, 4 * sizeof(std::uint64_t), &timestampsWithAvailability.data()[frameIndex*2*2], 2 * sizeof(std::uint64_t), vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability));
+        DISCARD(getVulkanDriver().getLogicalDevice().getQueryPoolResults(*timingQueryPool, frameIndex*2, 2, 4 * sizeof(std::uint64_t), &timestampsWithAvailability[frameIndex*2*2], 2 * sizeof(std::uint64_t), vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability));
 
         if(timestampsWithAvailability[2*frameIndex * 2 + 1] != 0) {
             const float diff = timestampsWithAvailability[2*(frameIndex*2 + 1)] - timestampsWithAvailability[2*frameIndex * 2];
@@ -1072,6 +1072,8 @@ void Carrot::Engine::createTimingQueryPools() {
         .queryCount = 2 * MAX_FRAMES_IN_FLIGHT,
     };
     timingQueryPool = vkDriver.getLogicalDevice().createQueryPoolUnique(createInfo, vkDriver.getAllocationCallbacks());
+
+    timestampsWithAvailability.fill(1);
 }
 
 void Carrot::Engine::recreateSwapchain(Window& window) {

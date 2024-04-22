@@ -207,6 +207,7 @@ namespace Carrot::Render {
         static int globalLOD = 0;
         static int lodSelectionMode = 0;
         static float errorThreshold = 1.0f;
+        static bool showTriangleCount = false;
         const bool isMainViewport = renderContext.pViewport == &GetEngine().getMainViewport();
         if(ShowLODOverride && isMainViewport) {
             bool keepOpen = true;
@@ -220,7 +221,10 @@ namespace Carrot::Render {
                 } else if(lodSelectionMode == 1) {
                     ImGui::SliderInt("LOD", &globalLOD, 0, 25);
                 }
-                ImGui::Text("Current triangle count: %llu", triangleCount);
+                ImGui::Checkbox("Show triangle count (eats performance)", &showTriangleCount);
+                if(showTriangleCount) {
+                    ImGui::Text("Current triangle count: %llu", triangleCount);
+                }
             }
             ImGui::End();
             if(!keepOpen) {
@@ -358,12 +362,16 @@ namespace Carrot::Render {
 
         {
             auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
+            using Flags = std::uint8_t;
+            constexpr std::uint8_t Flags_None = 0;
+            constexpr std::uint8_t Flags_OutputTriangleCount = 1;
             struct PushConstantData {
                 std::uint32_t maxClusterID;
                 std::uint32_t lodSelectionMode;
                 float lodErrorThreshold;
                 std::uint32_t forcedLOD;
                 float screenHeight;
+                Flags flags;
             };
             PushConstantData data{};
             data.maxClusterID = gpuInstances.size();
@@ -371,6 +379,10 @@ namespace Carrot::Render {
             data.lodErrorThreshold = errorThreshold;
             data.forcedLOD = globalLOD;
             data.screenHeight = renderContext.pViewport->getHeight();
+            data.flags = Flags_None;
+            if(ShowLODOverride && showTriangleCount) {
+                data.flags |= Flags_OutputTriangleCount;
+            }
             pushConstant.setData(std::move(data));
         }
 
