@@ -48,18 +48,33 @@ vec2 toScreenUV(vec4 homogeneousVec) {
     return projected;
 }
 
-Interpolator createInterlopator(in Vertex vA, in Vertex vB, in Vertex vC, in mat4 modelview) {
-    vec4 a = cbo.jitteredProjection * modelview * vA.pos;
-    vec4 b = cbo.jitteredProjection * modelview * vB.pos;
-    vec4 c = cbo.jitteredProjection * modelview * vC.pos;
+vec3 interpolatorBarycentrics(vec4 aClipSpace, vec4 bClipSpace, vec4 cClipSpace) {
+    const vec2 ndcUV = screenUV * 2 - 1;
 
-    vec2 screenPosA = toScreenUV(a);
-    vec2 screenPosB = toScreenUV(b);
-    vec2 screenPosC = toScreenUV(c);
+    const float D = determinant(mat2(cClipSpace.xy - bClipSpace.xy, aClipSpace.xy - bClipSpace.xy));
+    float lambda1 = (bClipSpace.y - cClipSpace.y) * (ndcUV.x - cClipSpace.x) + (cClipSpace.x - bClipSpace.x) * (ndcUV.y - cClipSpace.y);
+    float lambda2 = (cClipSpace.y - aClipSpace.y) * (ndcUV.x - cClipSpace.x) + (aClipSpace.x - cClipSpace.x) * (ndcUV.y - cClipSpace.y);
+    lambda1 /= D;
+    lambda2 /= D;
+    return vec3(lambda1, lambda2, 1 - lambda1 - lambda2);
+}
+
+Interpolator createInterpolator(in Vertex vA, in Vertex vB, in Vertex vC, in mat4 modelview, float ndcDepth) {
+    vec4 pointViewSpace = (cbo.inverseNonJitteredProjection * vec4(vec3(screenUV * 2.0 - 1.0, ndcDepth * 2 - 1), 1.0));
+    pointViewSpace.xyz *= pointViewSpace.w;
+
+    const mat4 clipSpaceFromMesh = cbo.jitteredProjection * modelview;
+    vec4 aClipSpace = clipSpaceFromMesh * vA.pos;
+    vec4 bClipSpace = clipSpaceFromMesh * vB.pos;
+    vec4 cClipSpace = clipSpaceFromMesh * vC.pos;
 
     Interpolator interpolator;
-    interpolator.invWi = vec3(1.0f / a.w, 1.0f / b.w, 1.0f / c.w);
-    interpolator.barycentrics = barycentrics(vec3(screenPosA, 0), vec3(screenPosB, 0), vec3(screenPosC, 0), vec3(screenUV, 0));
+    interpolator.invWi = 1.0f / vec3(aClipSpace.w, bClipSpace.w, cClipSpace.w);
+    aClipSpace.xy /= aClipSpace.w;
+    bClipSpace.xy /= bClipSpace.w;
+    cClipSpace.xy /= cClipSpace.w;
+
+    interpolator.barycentrics = interpolatorBarycentrics(aClipSpace, bClipSpace, cClipSpace);
     interpolator.invDivider = 1.0f / dot(interpolator.invWi, interpolator.barycentrics);
     return interpolator;
 }
@@ -119,7 +134,7 @@ void main() {
     mat4 modelTransform = modelData[modelDataIndex].instanceData.transform;
     mat4 modelview = cbo.view * modelTransform * clusterTransform;
 
-    Interpolator interlopator = createInterlopator(vA, vB, vC, modelview);
+    Interpolator interlopator = createInterpolator(vA, vB, vC, modelview, float(visibilityBufferDepth));
 
     vec2 uv = interpolate2D(interlopator, vA.uv, vB.uv, vC.uv);
     vec3 position = interpolate3D(interlopator, vA.pos.xyz, vB.pos.xyz, vC.pos.xyz);
