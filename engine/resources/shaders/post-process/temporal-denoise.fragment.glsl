@@ -29,74 +29,77 @@ layout(location = 2) out vec4 outFirstSpatialDenoiseForNextFrame;
 
 vec4 AdjustHDRColor(vec4 color)
 {
-    float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    /*float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
     float luminanceWeight = 1.0 / (1.0 + luminance);
-    return vec4(color.rgb, 1.0) * luminanceWeight;
+    return vec4(color.rgb, 1.0) * luminanceWeight;*/
+    return vec4(color.rgb, 1.0);
 }
 
 void main() {
     GBuffer gbuffer = unpackGBuffer(uv);
-    vec4 currentFrameColor = texture(sampler2D(currentFrame, linearSampler), uv);
-    vec4 adjustedCurrent = AdjustHDRColor(currentFrameColor);
+    vec4 currentFrameColor = AdjustHDRColor(texture(sampler2D(currentFrame, linearSampler), uv));
 
     vec4 viewSpacePosH = texture(sampler2D(currentViewPos, linearSampler), uv);
     bool isSkybox = viewSpacePosH.w <= 0.01f;
+
+    if(isSkybox) {
+        outColor = currentFrameColor;
+
+        vec2 moments = vec2(luminance(currentFrameColor.rgb), 0.0);
+        moments.y = moments.x * moments.x;
+
+        outMomentHistoryHistoryLength = vec4(moments, 1.0f, 1.0f);
+        outFirstSpatialDenoiseForNextFrame = vec4(0.0);
+        return;
+    }
+
     vec4 viewSpacePos = vec4(viewSpacePosH.rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
     vec4 prevNDC = cbo.nonJitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
-    prevNDC.xyz += gbuffer.motionVector;
 
-    vec2 reprojectedUV = fract((prevNDC.xy + 1.0) / 2.0);
+    vec2 reprojectedUV = (prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
     vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = 1.0f;
+    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 200);
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
 
-    vec4 minColor = vec4(100000);
-    vec4 maxColor = vec4(-100000);
-    const ivec2 size = textureSize(sampler2D(currentFrame, linearSampler), 0);
+    vec3 minColor = vec3(100000);
+    vec3 maxColor = vec3(-100000);
+    const vec2 textureDimensions = vec2(textureSize(sampler2D(currentFrame, linearSampler), 0));
 
-    if(!isSkybox) {
-        for(int x = -1; x <= 1; x++) {
-            for(int y = -1; y <= 1; y++) {
-                const vec2 dUV = vec2(x, y) / size;
-                vec4 color = texture(sampler2D(currentFrame, linearSampler), reprojectedUV + dUV);
-                minColor = min(minColor, color);
-                maxColor = max(maxColor, color);
-            }
+    for(int x = -1; x <= 1; x++) {
+        for(int y = -1; y <= 1; y++) {
+            const vec2 dUV = vec2(x, y) / textureDimensions;
+            vec4 color = AdjustHDRColor(texture(sampler2D(currentFrame, linearSampler), uv + dUV));
+            minColor = min(minColor, color.rgb);
+            maxColor = max(maxColor, color.rgb);
         }
     }
-    vec4 previousFrameColor = texture(sampler2D(previousFrame, linearSampler), reprojectedUV);
-    vec4 adjustedPrevious = AdjustHDRColor(clamp(previousFrameColor, minColor, maxColor));
-
-    const float colorClampStrength = 200.0f;
+    vec4 previousFrameColor = AdjustHDRColor(texture(sampler2D(previousFrame, linearSampler), reprojectedUV));
+    vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
 
     float historyLength = momentHistoryHistoryLength.b * reprojected + 1.0;
-    float alpha = 0.9f;
-    const float currentWeight = (1-alpha) * adjustedCurrent.a;
-    const float previousWeight = alpha * adjustedPrevious.a;
+    float alpha = 1.0f - 1.0f / (historyLength+1);
+    const float currentWeight = (1-alpha) * currentFrameColor.a;
+    const float previousWeight = alpha * previousFrameColor.a;
     const float normalization = 1.0f / (currentWeight + previousWeight);
 
-    //if(uv.x > 0.5)
+    if(isnan(previousFrameColor.x))
     {
-        if(isnan(previousFrameColor.x))
-        {
-            outColor = currentFrameColor;
-        }
-        else
-        {
-            //outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
-            vec3 outRGB = (previousFrameColor.rgb * previousWeight + currentFrameColor.rgb * currentWeight) * normalization;
-            outColor = vec4(outRGB, 1.0);
-        }
+        outColor = currentFrameColor;
+    }
+    else
+    {
+        //outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
+        vec3 outRGB = (previousFrameColorClamped.rgb * previousWeight + currentFrameColor.rgb * currentWeight) * normalization;
+        outColor = vec4(outRGB, 1.0);
     }
 
     vec2 moments = vec2(luminance(currentFrameColor.rgb), 0.0);
     moments.y = moments.x * moments.x;
-
 
     vec2 outMoments = (momentHistoryHistoryLength.xy * previousWeight + moments * currentWeight) * normalization;
 
