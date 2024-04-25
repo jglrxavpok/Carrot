@@ -56,7 +56,7 @@ void main() {
     vec4 viewSpacePos = vec4(viewSpacePosH.rgb, 1.0);
     vec4 hWorldSpacePos = cbo.inverseView * viewSpacePos;
 
-    vec4 prevNDC = cbo.nonJitteredProjection * viewSpacePos;
+    vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
 
     vec2 reprojectedUV = (prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
@@ -82,7 +82,7 @@ void main() {
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
 
     float historyLength = momentHistoryHistoryLength.b * reprojected + 1.0;
-    float alpha = 1.0f - 1.0f / (historyLength+1);
+    float alpha = min(0.9f, 1.0f - 1.0f / historyLength);
     const float currentWeight = (1-alpha) * currentFrameColor.a;
     const float previousWeight = alpha * previousFrameColor.a;
     const float normalization = 1.0f / (currentWeight + previousWeight);

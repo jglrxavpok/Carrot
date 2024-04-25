@@ -54,30 +54,24 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Render::FrameResource denoiseResult;
     };
 
-    auto denoise = [&](const Render::FrameResource& input) -> DenoisingResult {
-        if(!GetCapabilities().supportsRaytracing) {
-            // no-op
-            DenoisingResult result;
-            result.input = input;
-            result.denoiseResult = input;
-            return result;
-        }
+    struct Denoising {
+        Render::FrameResource beauty;
+        Render::PassData::GBuffer gBufferInput;
+        Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
+        Render::FrameResource denoisedResult;
+        Render::FrameResource firstSpatialDenoiseColor;
+    };
 
-        struct Denoising {
-            Render::FrameResource beauty;
-            Render::PassData::GBuffer gBufferInput;
-            Render::FrameResource momentsHistoryHistoryLength; // vec4(moment, moment², history length, __unused__)
-            Render::FrameResource denoisedResult;
-            Render::FrameResource firstSpatialDenoiseColor;
-        };
+    auto makeTAAPass = [&](std::string_view name, const Render::FrameResource& toAntiAlias, const Render::PassData::GBuffer& gBuffer,
+        const Render::TextureSize& textureSize) -> Render::Pass<Denoising>& {
         auto& temporalAccumulationPass = mainGraph.addPass<Denoising>(
-                "temporal-denoise - " + input.name,
-                [this, input, lightingPass, lightingFramebufferSize](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
-                    data.gBufferInput.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                    data.beauty = builder.read(input, vk::ImageLayout::eShaderReadOnlyOptimal);
+                "temporal anti aliasing - " + std::string(name),
+                [this, toAntiAlias, framebufferSize, textureSize, gBuffer](Render::GraphBuilder& builder, Render::Pass<Denoising>& pass, Denoising& data) {
+                    data.gBufferInput.readFrom(builder, gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eShaderReadOnlyOptimal);
                     data.denoisedResult = builder.createRenderTarget("Temporal accumulation",
                                                                      vk::Format::eR32G32B32A32Sfloat,
-                                                                     lightingFramebufferSize,
+                                                                     textureSize,
                                                                      vk::AttachmentLoadOp::eClear,
                                                                      vk::ClearColorValue(std::array{0,0,0,0}),
                                                                      vk::ImageLayout::eGeneral // TODO: color attachment?
@@ -137,6 +131,20 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     screenQuadMesh.draw(buffer);
                 }
         );
+        return temporalAccumulationPass;
+    };
+
+    auto denoise = [&](const Render::FrameResource& input) -> DenoisingResult {
+        if(!GetCapabilities().supportsRaytracing) {
+            // no-op
+            DenoisingResult result;
+            result.input = input;
+            result.denoiseResult = input;
+            return result;
+        }
+
+
+        auto& temporalAccumulationPass = makeTAAPass("lighting", input, lightingPass.getData().gBuffer, lightingFramebufferSize);
 
         struct FireflyRejection {
             Render::FrameResource temporalAccumulation;
@@ -525,7 +533,10 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             }
     );
 
-    return toneMapping.getData().postProcessed;
+    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, framebufferSize);
+
+    return finalTAA.getData().denoisedResult;
+    //return toneMapping.getData().postProcessed;
 }
 
 const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {
