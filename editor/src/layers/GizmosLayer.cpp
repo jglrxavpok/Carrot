@@ -169,8 +169,8 @@ namespace Peeler {
                 }
 
                 editor.markDirty();
-                usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
             }
+            usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
 
             if(!usingGizmo && wasUsingGizmo) {
                 // TODO: undo command
@@ -216,9 +216,8 @@ namespace Peeler {
                     transformRef->localTransform.scale = glm::vec3(scale[0], scale[1], scale[2]);
 
                     editor.markDirty();
-
-                    usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
                 }
+                usingGizmo = ImGuizmo::IsUsing() || ImGuizmo::IsOver();
 
                 if(!usingGizmo && wasUsingGizmo) {
                     // TODO: undo command
