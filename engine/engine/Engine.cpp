@@ -170,9 +170,7 @@ void Carrot::Engine::init() {
 
     auto addPresentPass = [&](Render::GraphBuilder& mainGraph, const Render::FrameResource& toPresent) {
         mainGraph.addPass<Carrot::Render::PassData::Present>("present",
-
                                                              [toPresent](Render::GraphBuilder& builder, Render::Pass<Carrot::Render::PassData::Present>& pass, Carrot::Render::PassData::Present& data) {
-                                                                 // pass.rasterized = false;
                                                                  data.input = builder.read(toPresent, vk::ImageLayout::eShaderReadOnlyOptimal);
                                                                  data.output = builder.write(builder.getSwapchainImage(), vk::AttachmentLoadOp::eClear, vk::ImageLayout::eColorAttachmentOptimal, vk::ClearColorValue(std::array{0,0,0,0}));
                                                                  // uses ImGui, so no pre-record: pass.prerecordable = false;
@@ -185,20 +183,13 @@ void Carrot::Engine::init() {
                                                                  frame.renderer.fullscreenBlit(pass.getRenderPass(), frame, inputTexture, swapchainTexture, cmds);
 
                                                                  renderer.recordImGuiPass(cmds, pass.getRenderPass(), frame);
-
-                                                                 //swapchainTexture.assumeLayout(vk::ImageLayout::eUndefined);
-                                                                 //frame.renderer.blit(inputTexture, swapchainTexture, cmds);
-                                                                 //swapchainTexture.transitionInline(cmds, vk::ImageLayout::ePresentSrcKHR);
-                                                             },
-                                                             [this](Render::CompiledPass& pass, Carrot::Render::PassData::Present& data) {
-                                                                 renderer.initImGuiPass(pass.getRenderPass());
                                                              }
         );
     };
 
+    Render::GraphBuilder mainGraph(vkDriver, mainWindow);
     if(config.runInVR) {
         Render::GraphBuilder leftEyeGraph(vkDriver, mainWindow);
-        Render::GraphBuilder mainGraph(vkDriver, mainWindow);
         Render::Composer companionComposer(vkDriver);
 
         auto leftEyeFinalPass = fillGraphBuilder(leftEyeGraph, Render::Eye::LeftEye);
@@ -222,22 +213,35 @@ void Carrot::Engine::init() {
         leftEyeGlobalFrameGraph = std::move(leftEyeGraph.compile());
         rightEyeGlobalFrameGraph = std::move(rightEyeGraph.compile());
 
-       // auto& imguiPass = renderer.addImGuiPass(mainGraph);
-
         addPresentPass(mainGraph, composerPass.getData().color);
-
-        getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     } else {
-        Render::GraphBuilder mainGraph(vkDriver, mainWindow);
+        if(config.simplifiedMainRenderGraph) {
+            struct DummyPass {
+                Render::FrameResource dummy;
+            };
+            // created to provide an empty image to present pass
+            auto dummyPass = mainGraph.addPass<DummyPass>("dummy",
+                [](Render::GraphBuilder& builder, Render::Pass<DummyPass>& pass, DummyPass& data) {
+                    Render::TextureSize dummySize;
+                    dummySize.type = Render::TextureSize::Type::Fixed;
+                    dummySize.width = 1;
+                    dummySize.height = 1;
+                    dummySize.depth = 1;
+                    data.dummy = builder.createRenderTarget("Dummy", vk::Format::eR8G8B8A8Unorm, dummySize, vk::AttachmentLoadOp::eClear);
+                }, [](const Render::CompiledPass& pass, const Render::Context& frame, const DummyPass& data, vk::CommandBuffer& cmds) {
+                    // no op
+                });
+            addPresentPass(mainGraph, dummyPass.getData().dummy);
+        } else {
+            auto lastPass = fillGraphBuilder(mainGraph);
 
-        auto lastPass = fillGraphBuilder(mainGraph);
+            composers[Render::Eye::NoVR]->add(lastPass);
+            auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
+            addPresentPass(mainGraph, composerPass.getData().color);
+        }
 
-        composers[Render::Eye::NoVR]->add(lastPass);
-        auto& composerPass = composers[Render::Eye::NoVR]->appendPass(mainGraph);
-        addPresentPass(mainGraph, composerPass.getData().color);
-
-        getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
     }
+    getMainViewport().setRenderGraph(std::move(mainGraph.compile()));
 
     initConsole();
     initInputStructures();

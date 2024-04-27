@@ -70,7 +70,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     data.gBufferInput.readFrom(builder, gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                     data.beauty = builder.read(toAntiAlias, vk::ImageLayout::eShaderReadOnlyOptimal);
                     data.denoisedResult = builder.createRenderTarget("Temporal accumulation",
-                                                                     vk::Format::eR32G32B32A32Sfloat,
+                                                                     toAntiAlias.format,
                                                                      textureSize,
                                                                      vk::AttachmentLoadOp::eClear,
                                                                      vk::ClearColorValue(std::array{0,0,0,0}),
@@ -536,7 +536,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, framebufferSize);
 
     return finalTAA.getData().denoisedResult;
-    //return toneMapping.getData().postProcessed;
 }
 
 const Carrot::Render::FrameResource& Carrot::Engine::fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye, const Render::TextureSize& framebufferSize) {

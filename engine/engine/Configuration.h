@@ -29,6 +29,7 @@ namespace Carrot {
     struct Configuration {
         RaytracingSupport raytracingSupport = RaytracingSupport::Supported;
         bool runInVR = false;
+        bool simplifiedMainRenderGraph = false; //< Set to true if the default render graph should only display ImGui (can be useful for tools)
 
         /**
          * Wanted tick rate (in Hz) for your game

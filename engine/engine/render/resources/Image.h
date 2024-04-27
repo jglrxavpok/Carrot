@@ -79,8 +79,17 @@ namespace Carrot {
 
         ~Image() noexcept;
 
+        /// Returns true iif this image was created by the engine, and is not a view to an external VkImage (swapchain, external libs)
+        bool isOwned() const;
+
         const vk::Image& getVulkanImage() const;
-        vk::DeviceMemory getMemory() const;
+
+        /// Only valid for owned images (ie created by the engine, not swapchain / external libs)
+        vk::DeviceMemory getVkMemory() const;
+
+        /// Only valid for owned images (ie created by the engine, not swapchain / external libs)
+        const Carrot::DeviceMemory& getMemory() const;
+
         const vk::Extent3D& getSize() const;
         vk::Format getFormat() const;
         std::uint32_t getLayerCount() const { return layerCount; }

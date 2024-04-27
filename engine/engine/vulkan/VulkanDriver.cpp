@@ -17,6 +17,8 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <core/containers/Vector.hpp>
+
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/Engine.h"
 
@@ -58,7 +60,7 @@ const std::vector<const char*> VULKAN_DEBUG_EXTENSIONS = {
 #endif
 };
 #ifdef IS_DEBUG_BUILD
-constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
+constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
 #else
 //constexpr bool USE_VULKAN_VALIDATION_LAYERS = true;
 constexpr bool USE_VULKAN_VALIDATION_LAYERS = false;
@@ -1074,6 +1076,106 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 
                         ImGui::TableSetColumnIndex(4);
                         ImGui::Text("%llu - %llu", address, address + buffer->getSize());
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            if(ImGui::CollapsingHeader("Show images")) {
+                ImGuiTextFilter filter;
+                filter.Draw("Image name");
+
+                Vector<const Carrot::Image*> sortedImages;
+
+                Carrot::Async::LockGuard g { Carrot::Image::AliveImagesAccess };
+                sortedImages.ensureReserve(Carrot::Image::AliveImages.size());
+                std::uint64_t totalSize = 0;
+                std::uint64_t totalFilteredSize = 0;
+                for(const Carrot::Image* pImage : Carrot::Image::AliveImages) {
+                    if(pImage->isOwned()) {
+                        totalSize += pImage->getMemory().getSize();
+                    }
+
+                    const std::string& name = pImage->getDebugName();
+                    if(!filter.PassFilter(name.c_str(), name.c_str() + name.size())) {
+                        continue;
+                    }
+
+                    if(pImage->isOwned()) {
+                        totalFilteredSize += pImage->getMemory().getSize();
+                    }
+                    sortedImages.emplaceBack(pImage);
+                }
+
+                ImGui::Text("Total size: %s", Carrot::IO::toReadableFormat(totalSize).c_str());
+                ImGui::Text("Total filtered size: %s", Carrot::IO::toReadableFormat(totalFilteredSize).c_str());
+
+
+                if(ImGui::BeginTable("images", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_Reorderable)) {
+                    ImGui::TableSetupColumn("Image name");
+                    ImGui::TableSetupColumn("Size");
+                    ImGui::TableHeadersRow();
+
+                    ImGuiTableSortSpecs* sorting = ImGui::TableGetSortSpecs();
+
+                    if(sorting != nullptr && sorting->SpecsCount > 0) {
+                        verify(sorting->SpecsCount == 1, "Only one column at a time is supported");
+                        const int columnIndex = sorting->Specs[0].ColumnIndex;
+                        const int directionMultiplier = sorting->Specs[0].SortDirection == ImGuiSortDirection_Descending ? -1 : 1;
+
+                        struct NameSorter {
+                            const int directionMultiplier = 0;
+
+                            bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
+                                return a->getDebugName().compare(b->getDebugName()) * directionMultiplier < 0;
+                            }
+                        };
+                        struct LengthSorter {
+                            const int directionMultiplier = 0;
+
+                            bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
+                                if(a->isOwned() && b->isOwned()) {
+                                    return std::less<std::uint64_t>{}(a->getMemory().getSize(), b->getMemory().getSize()) == (directionMultiplier == 1);
+                                } else if(a->isOwned()) {
+                                    // a must be higher
+                                    return directionMultiplier < 0;
+                                } else if(b->isOwned()) {
+                                    // b must be higher
+                                    return directionMultiplier > 0;
+                                } else {
+                                    return false;
+                                }
+                            }
+                        };
+
+                        switch(columnIndex) {
+                            case 0:
+                                sortedImages.sort(NameSorter{});
+                                break;
+
+                            case 1:
+                                sortedImages.sort(LengthSorter{});
+                            break;
+
+                            default:
+                                verify(false, "Invalid sort index");
+                            break;
+                        }
+                    }
+
+                    for(const Carrot::Image* pImage : sortedImages) {
+                        ImGui::TableNextRow();
+
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", pImage->getDebugName().c_str());
+
+                        ImGui::TableSetColumnIndex(1);
+                        if(pImage->isOwned()) {
+                            ImGui::Text("%llu", pImage->getMemory().getSize());
+                        } else {
+                            ImGui::TextUnformatted("External image, no info");
+                        }
                     }
 
                     ImGui::EndTable();

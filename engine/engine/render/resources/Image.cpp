@@ -62,7 +62,7 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
     imageData.asOwned.memory = std::move(Carrot::DeviceMemory(allocationInfo));
 
     // bind memory to image
-    driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getMemory(), 0);
+    driver.getLogicalDevice().bindImageMemory(getVulkanImage(), getVkMemory(), 0);
 
     Async::LockGuard g { AliveImagesAccess };
     AliveImages.insert(this);
@@ -81,6 +81,10 @@ Carrot::Image::~Image() noexcept {
         Async::LockGuard g { AliveImagesAccess };
         AliveImages.erase(this);
     }
+}
+
+bool Carrot::Image::isOwned() const {
+    return imageData.ownsImage;
 }
 
 const vk::Image& Carrot::Image::getVulkanImage() const {
@@ -443,7 +447,7 @@ void Carrot::Image::setDebugNames(const std::string& name) {
     nameSingle(name, getVulkanImage());
     if(imageData.ownsImage) {
         imageData.asOwned.memory.name(name);
-        nameSingle(name + " Memory", getMemory());
+        nameSingle(name + " Memory", getVkMemory());
     }
 }
 
@@ -532,7 +536,12 @@ vk::Format Carrot::Image::getFormat() const {
     return format;
 }
 
-vk::DeviceMemory Carrot::Image::getMemory() const {
+vk::DeviceMemory Carrot::Image::getVkMemory() const {
     verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
     return imageData.asOwned.memory.getVulkanMemory();
+}
+
+const Carrot::DeviceMemory& Carrot::Image::getMemory() const {
+    verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
+    return imageData.asOwned.memory;
 }

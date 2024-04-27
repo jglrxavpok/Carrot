@@ -10,6 +10,7 @@ int main() {
     Carrot::Configuration config {
             .raytracingSupport = Carrot::RaytracingSupport::Supported,
             .runInVR = false,
+            .simplifiedMainRenderGraph = true,
             .applicationName = "Peeler",
             .applicationVersion = VK_MAKE_VERSION(0,0,1),
     };

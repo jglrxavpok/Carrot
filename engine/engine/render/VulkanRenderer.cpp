@@ -250,10 +250,6 @@ void Carrot::VulkanRenderer::initImGui() {
     imGuiBackend.initResources();
 }
 
-void Carrot::VulkanRenderer::initImGuiPass(const vk::RenderPass& renderPass) {
-    // TODO: remove
-}
-
 void Carrot::VulkanRenderer::shutdownImGui() {
     imGuiBackend.cleanup();
 }

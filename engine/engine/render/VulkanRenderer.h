@@ -186,7 +186,6 @@ namespace Carrot {
         float getLastRecordDuration() const;
 
     public:
-        void initImGuiPass(const vk::RenderPass& renderPass);
         void shutdownImGui();
 
     public:
