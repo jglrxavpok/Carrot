@@ -12,11 +12,12 @@
 
 namespace Carrot::IO {
     enum class OpenMode {
-        Read,
-        NewReadWrite,
-        AlreadyExistingReadWrite,
-        Write,
-        Append,
+        Read, // Read an existing file
+        NewReadWrite, // Creates a new file, with RW access (file must not already exist)
+        NewOrExistingReadWrite, // Creates a new file, with RW access, or open the file in RW access if it already exists
+        AlreadyExistingReadWrite, // Opens a file in RW access only if it already exists
+        Write, // Opens an existing file with write access, and truncates its content
+        Append, // Opens an existing file with write access, with the write cursor at the end of the file
 
         Invalid,
     };
@@ -26,6 +27,7 @@ namespace Carrot::IO {
             case OpenMode::Read:
                 return false;
             case OpenMode::NewReadWrite:
+            case OpenMode::NewOrExistingReadWrite:
             case OpenMode::AlreadyExistingReadWrite:
             case OpenMode::Write:
             case OpenMode::Append:
@@ -41,6 +43,7 @@ namespace Carrot::IO {
             case OpenMode::Write:
                 return false;
             case OpenMode::NewReadWrite:
+            case OpenMode::NewOrExistingReadWrite:
             case OpenMode::AlreadyExistingReadWrite:
             case OpenMode::Read:
             case OpenMode::Append:

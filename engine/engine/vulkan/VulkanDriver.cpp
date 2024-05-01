@@ -1301,7 +1301,7 @@ void Carrot::VulkanDriver::setMarker(vk::CommandBuffer& cmds, const std::string&
 
 bool Carrot::VulkanDriver::hasDebugNames() const {
 #ifdef IS_DEBUG_BUILD
-    return true;
+    return false;
 #else
     return false;
 #endif

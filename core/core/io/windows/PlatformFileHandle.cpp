@@ -27,6 +27,11 @@ namespace Carrot::IO {
                 creationDisposition = CREATE_NEW;
                 break;
 
+            case OpenMode::NewOrExistingReadWrite:
+                desiredAccess = GENERIC_WRITE;
+                creationDisposition = CREATE_ALWAYS;
+                break;
+
             case OpenMode::AlreadyExistingReadWrite:
                 desiredAccess = GENERIC_WRITE;
                 creationDisposition = OPEN_EXISTING;

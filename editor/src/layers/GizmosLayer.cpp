@@ -106,13 +106,13 @@ namespace Peeler {
         usingGizmo = false;
 
         // draw gizmos and move entities
-        if(editor.selectedIDs.size() > 1) {
+        if(editor.selectedEntityIDs.size() > 1) {
             gizmoMode = ImGuizmo::MODE::WORLD;
             glm::vec3 centerOfSelection;
             glm::vec3 min { +INFINITY, +INFINITY, +INFINITY };
             glm::vec3 max { -INFINITY, -INFINITY, -INFINITY };
             Carrot::Vector<glm::vec3> offsetFromCenter;
-            for(const auto& e : editor.selectedIDs) {
+            for(const auto& e : editor.selectedEntityIDs) {
                 auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(e);
                 if(transformRef) {
                     glm::vec3 p = transformRef->computeFinalPosition();
@@ -123,7 +123,7 @@ namespace Peeler {
 
             centerOfSelection = (min + max) / 2.0f;
 
-            for(const auto& e : editor.selectedIDs) {
+            for(const auto& e : editor.selectedEntityIDs) {
                 auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(e);
                 if(transformRef) {
                     glm::vec3 p = transformRef->computeFinalPosition();
@@ -152,7 +152,7 @@ namespace Peeler {
                 ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(deltaMatrix), dtranslation, drotation,
                                                       dscale);
 
-                for(const auto& e : editor.selectedIDs) {
+                for(const auto& e : editor.selectedEntityIDs) {
                     auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(e);
                     if(transformRef) {
                         transformRef->localTransform.position += glm::vec3(dtranslation[0], dtranslation[1],
@@ -175,8 +175,8 @@ namespace Peeler {
             if(!usingGizmo && wasUsingGizmo) {
                 // TODO: undo command
             }
-        } else if (editor.selectedIDs.size() == 1) {
-            auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(editor.selectedIDs[0]);
+        } else if (editor.selectedEntityIDs.size() == 1) {
+            auto transformRef = editor.currentScene.world.getComponent<Carrot::ECS::TransformComponent>(editor.selectedEntityIDs[0]);
             if (transformRef) {
                 glm::mat4 parentMatrix = glm::identity<glm::mat4>();
                 auto parentEntity = transformRef->getEntity().getParent();

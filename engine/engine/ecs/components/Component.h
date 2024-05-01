@@ -45,6 +45,9 @@ namespace Carrot::ECS {
 
         [[nodiscard]] virtual ComponentID getComponentTypeID() const = 0;
 
+        /// Should this component be serialized inside scene files?
+        virtual bool isSerializable() const;
+
     private:
         Entity entity;
     };

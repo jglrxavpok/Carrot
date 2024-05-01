@@ -584,7 +584,7 @@ namespace Peeler {
 
         if(modified) {
             using UpdateProperty = UpdateComponentValues<TComponent, TPropertyType>;
-            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
             edition.hasModifications = true;
         }
     }
@@ -662,7 +662,7 @@ namespace Peeler {
 
         if(modified) {
             using UpdateProperty = UpdateComponentValues<TComponent, TEnum>;
-            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedIDs, values, getter, setter, components[0]->getComponentTypeID());
+            edition.editor.undoStack.push<UpdateProperty>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
             edition.hasModifications = true;
         }
     }

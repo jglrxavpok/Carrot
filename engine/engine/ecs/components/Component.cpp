@@ -6,6 +6,10 @@
 #include "Component.h"
 
 namespace Carrot::ECS {
+    bool Component::isSerializable() const {
+        return true;
+    }
+
     ComponentLibrary& getComponentLibrary() {
         static ComponentLibrary lib;
         return lib;

@@ -52,11 +52,13 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/CameraComponent.cpp
         ${EngineRoot}ecs/components/CSharpComponent.cpp
         ${EngineRoot}ecs/components/Component.cpp
+        ${EngineRoot}ecs/components/ErrorComponent.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/LuaScriptComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/NavMeshComponent.cpp
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
+        ${EngineRoot}ecs/components/PrefabInstanceComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
         ${EngineRoot}ecs/components/SoundListenerComponent.cpp
         ${EngineRoot}ecs/components/SpriteComponent.cpp
@@ -81,6 +83,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/RigidBodySystem.cpp
 
         ${EngineRoot}ecs/EntityTypes.cpp
+        ${EngineRoot}ecs/Prefab.cpp
         ${EngineRoot}ecs/Signature.cpp
         ${EngineRoot}ecs/World.cpp
         ${EngineRoot}ecs/WorldData.cpp

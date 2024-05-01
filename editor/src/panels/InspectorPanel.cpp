@@ -46,13 +46,31 @@ namespace Peeler {
     }
 
     void InspectorPanel::draw(const Carrot::Render::Context &renderContext) {
-        if(app.selectedIDs.empty()) {
+        switch(app.inspectorType) {
+            case Application::InspectorType::Entities:
+                drawEntities(renderContext);
+            break;
+
+            case Application::InspectorType::Assets:
+                drawAssets(renderContext);
+            break;
+
+            case Application::InspectorType::System:
+                drawSystem(renderContext);
+            break;
+
+            default: TODO;
+        }
+    }
+
+    void InspectorPanel::drawEntities(const Carrot::Render::Context& renderContext) {
+        if(app.selectedEntityIDs.empty()) {
             return;
         }
 
-        const bool multipleEntities = app.selectedIDs.size() > 1;
+        const bool multipleEntities = app.selectedEntityIDs.size() > 1;
         std::unordered_map<Carrot::ComponentID, Carrot::Vector<Carrot::ECS::Component*>> componentsInCommon;
-        auto& firstEntityID = app.selectedIDs[0];
+        auto& firstEntityID = app.selectedEntityIDs[0];
         auto& world = app.currentScene.world;
         if(!world.exists(firstEntityID)) {
             ImGui::Text("First selected entity no longer exists?!");
@@ -66,8 +84,8 @@ namespace Peeler {
         }
 
         // remove all components that are not inside in the other entities, and append those who are in common
-        for(std::size_t i = 1; i < app.selectedIDs.size(); i++) {
-            auto& entityID = app.selectedIDs[i];
+        for(std::size_t i = 1; i < app.selectedEntityIDs.size(); i++) {
+            auto& entityID = app.selectedEntityIDs[i];
             if(!world.exists(entityID)) {
                 continue;
             }
@@ -94,13 +112,13 @@ namespace Peeler {
         }
 
         if(multipleEntities) {
-            ImGui::Text("%d selected entities", app.selectedIDs.size());
+            ImGui::Text("%d selected entities", app.selectedEntityIDs.size());
         }
 
         std::string displayedName = world.getName(firstEntityID);
         if(multipleEntities) {
-            for(std::size_t i = 1; i < app.selectedIDs.size(); i++) {
-                const std::string& entityName = world.getName(app.selectedIDs[i]);
+            for(std::size_t i = 1; i < app.selectedEntityIDs.size(); i++) {
+                const std::string& entityName = world.getName(app.selectedEntityIDs[i]);
                 if(entityName != displayedName) {
                     displayedName = "<VARIOUS>";
                     break;
@@ -110,7 +128,7 @@ namespace Peeler {
 
         if(ImGui::InputText("Entity name##entity name field inspector", displayedName, ImGuiInputTextFlags_EnterReturnsTrue)) {
             // multi-rename
-            app.undoStack.push<RenameEntitiesCommand>(app.selectedIDs, displayedName);
+            app.undoStack.push<RenameEntitiesCommand>(app.selectedEntityIDs, displayedName);
         }
 
         Carrot::Vector<std::string> toRemoveNames;
@@ -133,7 +151,7 @@ namespace Peeler {
         }
 
         if(!toRemoveNames.empty()) {
-            app.undoStack.push<RemoveComponentsCommand>(app.selectedIDs, toRemoveNames, toRemoveIDs);
+            app.undoStack.push<RemoveComponentsCommand>(app.selectedEntityIDs, toRemoveNames, toRemoveIDs);
         }
 
         if(ImGui::Button("Add component##inspector add component")) {
@@ -152,19 +170,46 @@ namespace Peeler {
                 id += "##add component menu item inspector";
                 if(ImGui::MenuItem(id.c_str())) {
                     // TODO: find more graceful way to find component ID
-                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(app.selectedIDs[0]));
+                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(app.selectedEntityIDs[0]));
 
-                    app.undoStack.push<AddComponentsCommand>(app.selectedIDs, Carrot::Vector{compID}, Carrot::Vector{unusedComp->getComponentTypeID()});
+                    app.undoStack.push<AddComponentsCommand>(app.selectedEntityIDs, Carrot::Vector{compID}, Carrot::Vector{unusedComp->getComponentTypeID()});
                 }
             }
             ImGui::EndPopup();
         }
     }
 
+    void InspectorPanel::drawAssets(const Carrot::Render::Context& renderContext) {
+        if(app.selectedAssetPaths.empty()) {
+            return;
+        } else if(app.selectedAssetPaths.size() > 1) {
+            for(const auto& path : app.selectedAssetPaths) {
+                ImGui::BulletText("%s", path.toString().c_str());
+            }
+        } else {
+            const Carrot::IO::VFS::Path& assetPath = app.selectedAssetPaths[0];
+            const std::string assetPathAsStr = assetPath.toString();
+            const Carrot::IO::FileFormat fileFormat = Carrot::IO::getFileFormat(assetPathAsStr.c_str());
+
+            ImGui::TextUnformatted(assetPathAsStr.c_str());
+
+            if(Carrot::IO::isImageFormat(fileFormat)) {
+                Carrot::Render::Texture::Ref texture = GetAssetServer().blockingLoadTexture(assetPath);
+                const float aspectRatio = (float)texture->getSize().width / (float) texture->getSize().height;
+
+                const ImVec2 size = ImVec2(ImGui::GetContentRegionAvailWidth(), ImGui::GetContentRegionAvailWidth() / aspectRatio);
+                ImGui::Image(texture->getImguiID(), size);
+            }
+        }
+    }
+
+    void InspectorPanel::drawSystem(const Carrot::Render::Context& renderContext) {
+        TODO;
+    }
+
     void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {
         bool shouldKeep = true;
         verify(!components.empty(), "There must be at least one component to edit.");
-#if 1
 
         std::string displayName;
         auto displayNameIter = displayNames.find(componentID);
@@ -185,22 +230,6 @@ namespace Peeler {
             }
             ImGui::PopID();
         }
-#elif 0
-        auto descIter = componentDescriptions.find(component->getComponentTypeID());
-        if(descIter != componentDescriptions.end()) {
-            const auto& desc = descIter->second;
-            if(ImGui::CollapsingHeader(desc.componentDisplayName.c_str(), &shouldKeep)) {
-                for(const auto& editor : desc.propertyEditors) {
-                    editor.editor(editor, editContext, component);
-                }
-            }
-        } else {
-            const std::string componentName = component->getName();
-            if(ImGui::CollapsingHeader(componentName.c_str(), &shouldKeep)) {
-                ImGui::Text("No edition function registered via registerComponentDescription!");
-            }
-        }
-#endif
 
         if(!shouldKeep) {
             editContext.shouldBeRemoved = true;

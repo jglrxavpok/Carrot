@@ -109,6 +109,7 @@ namespace Peeler {
     public:
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
+        void convertEntityToPrefab(const Carrot::ECS::Entity& entity);
 
     private:
         void addDefaultSystems(Carrot::Scene& scene);
@@ -194,7 +195,16 @@ namespace Peeler {
         Carrot::Render::Viewport& gameViewport;
         // hold game texture available at least for the frame it is used. The texture needs to be available at least until the next frame for ImGui to be able to use it.
         Carrot::Render::Texture::Ref gameTextureRef;
-        std::vector<Carrot::ECS::EntityID> selectedIDs;
+
+        enum class InspectorType {
+            Entities,
+            Assets,
+            System,
+        } inspectorType = InspectorType::Entities;
+
+        Carrot::Vector<Carrot::ECS::EntityID> selectedEntityIDs;
+        Carrot::Vector<Carrot::IO::VFS::Path> selectedAssetPaths;
+        // TODO: Carrot::Vector<Carrot::ECS::System*> selectedSystems;
 
         UndoStack undoStack;
 

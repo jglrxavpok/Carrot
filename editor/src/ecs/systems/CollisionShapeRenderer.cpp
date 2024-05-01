@@ -68,7 +68,7 @@ namespace Peeler::ECS {
         });
     }
 
-    void CollisionShapeRenderer::setSelected(const std::vector<Carrot::ECS::EntityID>& selection) {
+    void CollisionShapeRenderer::setSelected(const Carrot::Vector<Carrot::ECS::EntityID>& selection) {
         selectedIDs = selection;
     }
 

@@ -69,6 +69,15 @@ namespace Peeler {
         bool drawPickPipelineWidget(const char* label, std::shared_ptr<Carrot::Pipeline>* pDestination, bool allowNull = true);
 
     private:
+        // used when entities are selected
+        void drawEntities(const Carrot::Render::Context& renderContext);
+
+        // used when assets are selected
+        void drawAssets(const Carrot::Render::Context& renderContext);
+
+        // used when systems are selected
+        void drawSystem(const Carrot::Render::Context& renderContext);
+
         void editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components);
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;

@@ -56,6 +56,7 @@ namespace Carrot::ECS {
 
     class World;
     class Component;
+    class Prefab;
 
     /// Wrapper struct to allow easy addition of components. This does NOT hold the components.
     struct Entity {
