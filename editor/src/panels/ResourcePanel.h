@@ -22,6 +22,7 @@ namespace Peeler {
 
     private:
         void fillModelContextPopup(const Carrot::IO::VFS::Path& vfsPath);
+        void fillPrefabContextPopup(const Carrot::IO::VFS::Path& vfsPath);
 
     private:
         enum class ResourceType {

@@ -40,6 +40,7 @@
 #include <engine/ecs/components/SoundListenerComponent.h>
 #include <engine/ecs/systems/SoundListenerSystem.h>
 
+#include "ecs/components/PrefabInstanceComponent.h"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -595,6 +596,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::NavMeshComponent>();
         components.add<Carrot::ECS::SoundListenerComponent>();
         components.add<Carrot::ECS::BillboardComponent>();
+        components.add<Carrot::ECS::PrefabInstanceComponent>();
     }
 
     {

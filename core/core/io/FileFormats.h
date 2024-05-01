@@ -44,6 +44,7 @@ namespace Carrot::IO {
         TXT,
 
         CNAV, // Carrot navmeshes
+        CPREFAB, // Carrot prefabs
 
         MP3,
         OGG,
@@ -106,6 +107,7 @@ namespace Carrot::IO {
         CHECK(TXT);
 
         CHECK(CNAV);
+        CHECK(CPREFAB);
 
         CHECK(MP3);
         CHECK(OGG);

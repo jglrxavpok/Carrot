@@ -17,7 +17,6 @@
 #include "EntityTypes.h"
 
 namespace Carrot::ECS {
-
     class World {
     public:
         explicit World();
@@ -162,6 +161,10 @@ namespace Carrot::ECS {
         /// Gets the first entity with the given name
         std::optional<Entity> findEntityByName(std::string_view name) const;
 
+        /// Go through the entire hierarchy starting from 'root', and change the components references to entities based on 'remap'.
+        /// Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
+        void repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);
+
     public:
         World& operator=(const World& toCopy);
 
@@ -175,12 +178,6 @@ namespace Carrot::ECS {
         /// The next call to queryEntities will therefore recompute the proper list of entities matching a signature
         /// Called *before* changes are applied, because we need to get the signature of entities which are being removed
         void invalidateQueries();
-
-        /**
-         * Go through the entire hierarchy starting from 'root', and change the components references to entities based on 'remap'.
-         * Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
-         */
-        void repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);
 
     private:
         WorldData worldData;

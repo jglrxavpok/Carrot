@@ -51,6 +51,9 @@ namespace Carrot {
             auto components = world.getAllComponents(entity);
 
             for(const auto& comp : components) {
+                if(!comp->isSerializable()) {
+                    continue;
+                }
                 rapidjson::Value key(comp->getName(), dest.GetAllocator());
                 entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
             }

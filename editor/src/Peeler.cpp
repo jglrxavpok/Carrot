@@ -50,6 +50,9 @@
 
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
+#include <engine/ecs/Prefab.h>
+#include <engine/ecs/components/ErrorComponent.h>
+#include <engine/ecs/components/PrefabInstanceComponent.h>
 #include <core/io/FileSystemOS.h>
 
 namespace fs = std::filesystem;
@@ -82,6 +85,16 @@ namespace Peeler {
                 if(canSave()) {
                     this->triggerSave();
                 }
+            }
+
+            // TODO: debug only
+            static bool canSpawnPrefab = true;
+            if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_PRESS && canSpawnPrefab) {
+                canSpawnPrefab = false;
+                Carrot::ECS::Prefab prefab { "game://PrefabRoot.cprefab" };
+                prefab.instantiate(currentScene.world);
+            } else if (glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_RELEASE) {
+                canSpawnPrefab = true;
             }
         }
         if(renderContext.pViewport == &gameViewport) {
@@ -521,6 +534,18 @@ namespace Peeler {
         ImGui::End();
     }
 
+    static ImColor getEntityNameColor(Carrot::ECS::Entity& entity) {
+        const ImColor prefabColor { 0.0f, 0.8f, 1.0f, 1.0f };
+        const ImColor errorColor { 0.8f, 0.2f, 0.0f, 1.0f };
+        if(entity.getComponent<Carrot::ECS::PrefabInstanceComponent>().hasValue()) {
+            return prefabColor;
+        }
+        if(entity.getComponent<Carrot::ECS::ErrorComponent>().hasValue()) {
+            return errorColor;
+        }
+        return ImGui::GetStyle().Colors[ImGuiCol_Text];
+    }
+
     void Application::UIWorldHierarchy(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
         if(ImGui::IsItemClicked()) {
@@ -545,13 +570,13 @@ namespace Peeler {
             if(!entity)
                 return;
             ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if(std::find(selectedIDs.begin(), selectedIDs.end(), entity.getID()) != selectedIDs.end()) {
+            if(std::find(selectedEntityIDs.begin(), selectedEntityIDs.end(), entity.getID()) != selectedEntityIDs.end()) {
                 nodeFlags |= ImGuiTreeNodeFlags_Selected;
             }
             auto children = currentScene.world.getChildren(entity, Carrot::ShouldRecurse::NoRecursion);
 
             if(recursivelySelect) {
-                selectedIDs.push_back(entity.getID());
+                selectEntity(entity.getID(), true);
             }
 
             auto addChildMenu = [&]() {
@@ -568,10 +593,14 @@ namespace Peeler {
                     if(ImGui::MenuItem("Remove##remove entity world hierarchy")) {
                         removeEntity(entity);
                     }
+                    ImGui::Separator();
+                    if(ImGui::MenuItem("Convert to prefab##convert to prefab entity world hierarchy")) {
+                        convertEntityToPrefab(entity);
+                    }
 
                     ImGui::Separator();
                     if(ImGui::MenuItem("Apply transform to colliders")) {
-                        for(const auto& selectedID : selectedIDs) {
+                        for(const auto& selectedID : selectedEntityIDs) {
                             Carrot::ECS::Entity selectedEntity = currentScene.world.wrap(selectedID);
                             if(selectedEntity) {
                                 auto transformRef = selectedEntity.getComponent<Carrot::ECS::TransformComponent>();
@@ -634,7 +663,9 @@ namespace Peeler {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             if(!children.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, getEntityNameColor(entity).Value);
                 bool showChildren = ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
+                ImGui::PopStyleColor();
                 bool dragging = dragAndDrop();
 
                 addChildMenu();
@@ -656,7 +687,9 @@ namespace Peeler {
                 }
             } else { // has no children
                 nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                ImGui::PushStyleColor(ImGuiCol_Text, getEntityNameColor(entity).Value);
                 ImGui::TreeNodeEx((void*)entity.getID().hash(), nodeFlags, "%s", currentScene.world.getName(entity).c_str());
+                ImGui::PopStyleColor();
 
                 bool dragging = dragAndDrop();
 
@@ -1444,12 +1477,12 @@ namespace Peeler {
             }
         }
 
-        selectedIDs.clear();
+        selectedEntityIDs.clear();
         if(description.HasMember("selectedIDs")) {
             for(const auto& selectedIDValue : description["selectedIDs"].GetArray()) {
                 auto wantedSelection = Carrot::UUID::fromString(selectedIDValue.GetString());
                 if(currentScene.world.exists(wantedSelection)) {
-                    selectedIDs.push_back(wantedSelection);
+                    selectedEntityIDs.emplaceBack(wantedSelection);
                 }
             }
         }
@@ -1482,9 +1515,9 @@ namespace Peeler {
             }
         }
 
-        if(!selectedIDs.empty()) {
+        if(!selectedEntityIDs.empty()) {
             rapidjson::Value uuidArray{rapidjson::kArrayType};
-            for(const auto& id : selectedIDs) {
+            for(const auto& id : selectedEntityIDs) {
                 uuidArray.PushBack(rapidjson::Value(id.toString().c_str(), document.GetAllocator()), document.GetAllocator());
             }
             document.AddMember("selectedIDs", uuidArray, document.GetAllocator());
@@ -1619,36 +1652,72 @@ namespace Peeler {
     }
 
     void Application::selectEntity(const Carrot::ECS::EntityID& entity, bool additive) {
+        inspectorType = InspectorType::Entities;
         if(additive) {
             // TODO: make sure there are no duplicates
-            selectedIDs.push_back(entity);
+            selectedEntityIDs.emplaceBack(entity);
         } else {
-            selectedIDs.clear();
-            selectedIDs.push_back(entity);
+            selectedEntityIDs.clear();
+            selectedEntityIDs.emplaceBack(entity);
         }
 
         auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
         if(shapeRenderer) {
-            shapeRenderer->setSelected(selectedIDs);
+            shapeRenderer->setSelected(selectedEntityIDs);
         }
     }
 
     void Application::deselectAllEntities() {
-        selectedIDs.clear();
+        selectedEntityIDs.clear();
 
         auto* shapeRenderer = currentScene.world.getRenderSystem<ECS::CollisionShapeRenderer>();
         if(shapeRenderer) {
-            shapeRenderer->setSelected(selectedIDs);
+            shapeRenderer->setSelected(selectedEntityIDs);
         }
     }
 
     void Application::removeEntity(const Carrot::ECS::Entity& entity) {
-        auto it = std::find(selectedIDs.begin(), selectedIDs.end(), entity.getID());
-        if(it != selectedIDs.end()) {
-            selectedIDs.erase(it);
+        for (std::int64_t i = selectedEntityIDs.size()-1; i >= 0; i--) {
+            if(selectedEntityIDs[i] == entity.getID()) {
+                selectedEntityIDs.remove(i);
+            }
         }
         currentScene.world.removeEntity(entity);
         markDirty();
+    }
+
+    void Application::convertEntityToPrefab(const Carrot::ECS::Entity& entity) {
+        nfdchar_t* savePath;
+
+        // prepare filters for the dialog
+        nfdfilteritem_t filterItem[1] = {{"Carrot Prefab", "cprefab"}};
+
+        // show the dialog
+        std::string defaultName = Carrot::sprintf("%s", std::string(entity.getName()).c_str());
+        nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultName.c_str());
+        if (result == NFD_OKAY) {
+            Carrot::ECS::Prefab prefab;
+            std::optional<Carrot::IO::VFS::Path> vfsPathOpt = GetVFS().represent(savePath);
+            if(vfsPathOpt.has_value()) {
+                const Carrot::IO::VFS::Path& vfsPath = vfsPathOpt.value();
+                prefab.createFromEntity(entity);
+                bool success = prefab.save(vfsPath);
+                if(!success) {
+                    Carrot::Log::error("Failed to save prefab at %s :(", vfsPath.toString().c_str());
+                }
+            } else {
+                Carrot::Log::error("File %s is not inside VFS, cannot save prefab to it.", savePath);
+            }
+
+            // remember to free the memory (since NFD_OKAY is returned)
+            NFD_FreePath(savePath);
+        } else if (result == NFD_CANCEL) {
+            /* no op */ ;
+        } else {
+            std::string msg = "Error: ";
+            msg += NFD_GetError();
+            throw std::runtime_error(msg);
+        }
     }
 
     void Application::drawCantSavePopup() {

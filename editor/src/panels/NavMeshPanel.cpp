@@ -15,11 +15,11 @@ namespace Peeler {
     }
 
     void NavMeshPanel::draw(const Carrot::Render::Context& renderContext) {
-        ImGui::Text("%llu selected entities", app.selectedIDs.size());
+        ImGui::Text("%llu selected entities", app.selectedEntityIDs.size());
 
         auto& world = app.currentScene.world;
         bool waitForBaking = false;
-        for(const auto& entityID : app.selectedIDs) {
+        for(const auto& entityID : app.selectedEntityIDs) {
             Carrot::ECS::Entity entity = world.wrap(entityID);
 
             if(auto transformCompRef = entity.getComponent<Carrot::ECS::TransformComponent>()) {
@@ -43,7 +43,7 @@ namespace Peeler {
         if(ImGui::Button("Bake")) {
             // avoid memory cost of copy each frame
             std::vector<Carrot::AI::NavMeshBuilder::MeshEntry> buildEntries;
-            for(const auto& entityID : app.selectedIDs) {
+            for(const auto& entityID : app.selectedEntityIDs) {
                 Carrot::ECS::Entity entity = world.wrap(entityID);
 
                 if(auto transformCompRef = entity.getComponent<Carrot::ECS::TransformComponent>()) {

@@ -327,8 +327,11 @@ namespace Peeler {
             ImGui::TextWrapped("%s", filename.c_str());
 
             if(ImGui::BeginPopupContextWindow()) {
-                if(Carrot::IO::isModelFormat(vfsPath.getPath().c_str())) {
+                const Carrot::IO::FileFormat fileFormat = Carrot::IO::getFileFormat(vfsPath.getPath().c_str());
+                if(Carrot::IO::isModelFormat(fileFormat)) {
                     fillModelContextPopup(vfsPath);
+                } else if(fileFormat == Carrot::IO::FileFormat::CPREFAB) {
+                    fillPrefabContextPopup(vfsPath);
                 }
                 ImGui::EndPopup();
             }
@@ -346,7 +349,14 @@ namespace Peeler {
             if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
                 if (std::filesystem::is_directory(GetVFS().resolve(vfsPath))) {
                     result = true;
+                } else {
+                    app.inspectorType = Application::InspectorType::Assets;
+                    app.selectedAssetPaths.clear();
+                    app.selectedAssetPaths.emplaceBack(vfsPath);
                 }
+            } else if(ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                app.inspectorType = Application::InspectorType::Assets;
+                app.selectedAssetPaths.emplaceBack(vfsPath);
             }
         }
 
@@ -371,6 +381,12 @@ namespace Peeler {
                     .addComponent<Carrot::ECS::ModelComponent>();
             newEntity.updateName(vfsPath.getPath().getFilename());
             newEntity.getComponent<Carrot::ECS::ModelComponent>()->setFile(vfsPath);
+        }
+    }
+
+    void ResourcePanel::fillPrefabContextPopup(const Carrot::IO::VFS::Path& vfsPath) {
+        if(ImGui::MenuItem("Add to scene")) {
+            // TODO
         }
     }
 }

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/containers/Vector.hpp>
 #include <engine/ecs/systems/System.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/RigidBodyComponent.h>
@@ -19,7 +20,7 @@ namespace Peeler::ECS {
 
         std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
-        void setSelected(const std::vector<Carrot::ECS::EntityID>& selection);
+        void setSelected(const Carrot::Vector<Carrot::ECS::EntityID>& selection);
 
         virtual bool shouldBeSerialized() const override {
             return false;
@@ -33,6 +34,6 @@ namespace Peeler::ECS {
         std::shared_ptr<Carrot::Model> sphereMesh;
         std::shared_ptr<Carrot::Pipeline> pipeline;
         std::shared_ptr<Carrot::Render::MaterialHandle> material;
-        std::vector<Carrot::UUID> selectedIDs;
+        Carrot::Vector<Carrot::UUID> selectedIDs;
     };
 }

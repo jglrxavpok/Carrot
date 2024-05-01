@@ -173,12 +173,12 @@ namespace Peeler {
 
         virtual void draw(const Carrot::Render::Context& renderContext, float startX, float startY) override final {
             // make sure we are still editing the entity we think we are
-            if (editor.selectedIDs.empty()) {
+            if (editor.selectedEntityIDs.empty()) {
                 remove();
                 return;
             }
 
-            auto selectedEntity = editor.currentScene.world.wrap(editor.selectedIDs[0]);
+            auto selectedEntity = editor.currentScene.world.wrap(editor.selectedEntityIDs[0]);
             if (!selectedEntity) {
                 remove();
                 return;
