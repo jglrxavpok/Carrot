@@ -91,8 +91,8 @@ namespace Peeler {
             static bool canSpawnPrefab = true;
             if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_PRESS && canSpawnPrefab) {
                 canSpawnPrefab = false;
-                Carrot::ECS::Prefab prefab { "game://PrefabRoot.cprefab" };
-                prefab.instantiate(currentScene.world);
+                auto pPrefab = GetAssetServer().blockingLoadPrefab("game://PrefabRoot.cprefab");
+                pPrefab->instantiate(currentScene.world);
             } else if (glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_RELEASE) {
                 canSpawnPrefab = true;
             }
@@ -1696,12 +1696,12 @@ namespace Peeler {
         std::string defaultName = Carrot::sprintf("%s", std::string(entity.getName()).c_str());
         nfdresult_t result = NFD_SaveDialog(&savePath, filterItem, 1, nullptr, defaultName.c_str());
         if (result == NFD_OKAY) {
-            Carrot::ECS::Prefab prefab;
             std::optional<Carrot::IO::VFS::Path> vfsPathOpt = GetVFS().represent(savePath);
             if(vfsPathOpt.has_value()) {
+                auto pPrefab = Carrot::ECS::Prefab::makePrefab();
                 const Carrot::IO::VFS::Path& vfsPath = vfsPathOpt.value();
-                prefab.createFromEntity(entity);
-                bool success = prefab.save(vfsPath);
+                pPrefab->createFromEntity(entity);
+                bool success = pPrefab->save(vfsPath);
                 if(!success) {
                     Carrot::Log::error("Failed to save prefab at %s :(", vfsPath.toString().c_str());
                 }

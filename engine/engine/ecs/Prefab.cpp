@@ -12,7 +12,12 @@
 #include "components/PrefabInstanceComponent.h"
 
 namespace Carrot::ECS {
-    Prefab::Prefab(const Carrot::IO::VFS::Path& prefabAsset): path(prefabAsset) {
+    /*static*/ std::shared_ptr<Prefab> Prefab::makePrefab() {
+        return std::shared_ptr<Prefab>(new Prefab);
+    }
+
+    void Prefab::load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset) {
+        path = prefabAsset;
         const Carrot::IO::Resource r { prefabAsset };
         std::string text = r.readText();
 
@@ -35,7 +40,7 @@ namespace Carrot::ECS {
         auto childrenObject = doc["children"].GetArray();
         for(std::size_t i = 0; i < childrenObject.Size(); i++) {
             const Carrot::IO::VFS::Path childPath { std::string_view { childrenObject[i].GetString(), childrenObject[i].GetStringLength() } };
-            std::unique_ptr<Prefab> child = std::make_unique<Prefab>(childPath);
+            std::shared_ptr<Prefab> child = GetAssetServer().loadPrefab(task, childPath);
             children[child->getEntityID()] = std::move(child);
         }
     }
@@ -103,7 +108,7 @@ namespace Carrot::ECS {
         }
 
         for(const auto& child : entity.getWorld().getChildren(entity, ShouldRecurse::NoRecursion)) {
-            std::unique_ptr<Prefab> childPrefab = std::make_unique<Prefab>();
+            std::shared_ptr<Prefab> childPrefab = Prefab::makePrefab();
             childPrefab->createFromEntity(child);
             children[child.getID()] = std::move(childPrefab);
         }
@@ -131,7 +136,7 @@ namespace Carrot::ECS {
             remap[prefab.getEntityID()] = instantiated.getID(); // clone will get a new id, so keep a mapping
             instantiated.addComponent<PrefabInstanceComponent>();
             PrefabInstanceComponent& component = instantiated.getComponent<PrefabInstanceComponent>();
-            component.prefabPath = prefab.path;
+            component.prefab = prefab.shared_from_this();
             component.isRoot = isRoot;
 
             for(const auto& [childID, pChild] : prefab.children) {
@@ -166,4 +171,9 @@ namespace Carrot::ECS {
     Carrot::ECS::EntityID Prefab::getEntityID() const {
         return fakeEntityID;
     }
+
+    const Carrot::IO::VFS::Path& Prefab::getVFSPath() const {
+        return path;
+    }
+
 } // Carrot::ECS

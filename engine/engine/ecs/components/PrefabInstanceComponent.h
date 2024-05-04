@@ -7,7 +7,7 @@ namespace Carrot::ECS {
 
     class PrefabInstanceComponent: public Carrot::ECS::IdentifiableComponent<PrefabInstanceComponent> {
     public:
-        Carrot::IO::VFS::Path prefabPath;
+        std::shared_ptr<const Carrot::ECS::Prefab> prefab;
         bool isRoot = false;
 
         explicit PrefabInstanceComponent(Carrot::ECS::Entity entity);
