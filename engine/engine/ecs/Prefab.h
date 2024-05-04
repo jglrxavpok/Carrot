@@ -7,6 +7,11 @@
 #include <core/io/Resource.h>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/ecs/components/Component.h>
+#include <engine/task/TaskScheduler.h>
+
+namespace Carrot {
+    class AssetServer;
+}
 
 namespace Carrot::ECS {
 
@@ -31,10 +36,9 @@ namespace Carrot::ECS {
 ///
 /// Prefabs can have children prefab, which will also be replicated to instances. The instance will therefore have children,
 /// which in turn point to the child prefabs of this prefab.
-class Prefab {
+class Prefab: public std::enable_shared_from_this<Prefab> {
 public:
-    Prefab() = default;
-    explicit Prefab(const Carrot::IO::VFS::Path& prefabAsset);
+    static std::shared_ptr<Prefab> makePrefab();
 
     /// Gets the given component inside this prefab, if it exists
     Memory::OptionalRef<Component> getComponent(const ComponentID& componentID) const;
@@ -62,7 +66,15 @@ public:
 
     Carrot::ECS::EntityID getEntityID() const;
 
+    /// VFS path used to create or save this prefab
+    const Carrot::IO::VFS::Path& getVFSPath() const;
+
 private:
+    Prefab() = default;
+
+    /// Loads this prefab from the given VFS path
+    void load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset);
+
     /// Instantiate a copy of this prefab, EXCLUDING its children.
     /// This is repeatively used to recursively create all instances of the hierarchy, and *then* link everything (see instantiate)
     Entity instantiateOnlyThis(World& world) const;
@@ -72,9 +84,11 @@ private:
     Carrot::ECS::Entity fakeEntity { fakeEntityID, *(World*)nullptr /* don't do this at home kids */};
     std::string name = "prefab";
     std::unordered_map<ComponentID, std::unique_ptr<Component>> components;
-    std::unordered_map<Carrot::UUID, std::unique_ptr<Prefab>> children;
+    std::unordered_map<Carrot::UUID, std::shared_ptr<Prefab>> children;
 
     Carrot::IO::VFS::Path path;
+
+    friend class ::Carrot::AssetServer; // Prefabs are expected to only be loaded from the asset server
 };
 
 } // Carrot::ECS

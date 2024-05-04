@@ -25,6 +25,8 @@
 #include <IconsFontAwesome5.h>
 #include <Peeler.h>
 #include <core/allocators/StackAllocator.h>
+#include <engine/ecs/Prefab.h>
+#include <engine/ecs/components/PrefabInstanceComponent.h>
 
 namespace Peeler {
     template<typename ComponentType>
@@ -240,6 +242,26 @@ namespace Peeler {
     void editRigidBodyComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::RigidBodyComponent*>& components);
     void editPhysicsCharacterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PhysicsCharacterComponent*>& components);
 
+    void editPrefabComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PrefabInstanceComponent*>& components) {
+        auto getPath = [&](std::int64_t index) -> Carrot::IO::VFS::Path {
+            return components[index]->prefab ? components[index]->prefab->getVFSPath() : "";
+        };
+        Carrot::IO::VFS::Path pathToDisplay = getPath(0);
+        bool samePath = true;
+        for (int i = 1; i < components.size(); ++i) {
+            if(getPath(i) != pathToDisplay) {
+                samePath = false;
+                break;
+            }
+        }
+
+        if(samePath) {
+            ImGui::Text("Prefab: %s", pathToDisplay.toString().c_str());
+        } else {
+            ImGui::TextWrapped("Selected entities are not instances of the same prefab, nothing interesting to show.");
+        }
+    }
+
     void registerEditionFunctions(InspectorPanel& inspector) {
         registerFunction(inspector, editCameraComponent);
         registerFunction(inspector, editForceSinPositionComponent);
@@ -253,6 +275,7 @@ namespace Peeler {
         registerFunction(inspector, editTransformComponent);
         registerFunction(inspector, editPhysicsCharacterComponent);
         registerFunction(inspector, editNavMeshComponent);
+        registerFunction(inspector, editPrefabComponent);
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
@@ -267,5 +290,6 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::TextComponent::getID(), ICON_FA_FONT "  Text");
         inspector.registerComponentDisplayName(Carrot::ECS::NavMeshComponent::getID(), ICON_FA_ROUTE "  NavMesh");
         inspector.registerComponentDisplayName(Carrot::ECS::SoundListenerComponent::getID(), ICON_FA_PODCAST "  SoundListener");
+        inspector.registerComponentDisplayName(Carrot::ECS::PrefabInstanceComponent::getID(), ICON_FA_TOOLBOX "  PrefabInstance");
     }
 }

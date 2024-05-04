@@ -12,13 +12,17 @@
 #include <engine/render/animation/AnimatedModel.h>
 
 namespace Carrot {
-    struct Model;
-    struct Pipeline;
+    class Model;
+    class Pipeline;
 
     namespace Render {
         struct Context;
         struct Font;
-        struct Texture;
+        class Texture;
+    }
+
+    namespace ECS {
+        class Prefab;
     }
 
     /**
@@ -65,6 +69,9 @@ namespace Carrot {
         LoadTaskProc<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstanceTask(const Carrot::IO::VFS::Path& path);
         std::shared_ptr<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstance(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
+        std::shared_ptr<ECS::Prefab> blockingLoadPrefab(const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<ECS::Prefab> loadPrefab(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
+
     public:
         std::int64_t getCurrentlyLoadingCount() const;
 
@@ -88,6 +95,7 @@ namespace Carrot {
 
         Async::ParallelMap<std::string, std::shared_ptr<Render::Font>> fonts{};
         Async::ParallelMap<std::string, std::shared_ptr<Render::AnimatedModel>> animatedModels{};
+        Async::ParallelMap<std::string, std::shared_ptr<ECS::Prefab>> prefabs{};
 
     private: // migration stuff
         bool hasReloadedShadersThisFrame = false;
