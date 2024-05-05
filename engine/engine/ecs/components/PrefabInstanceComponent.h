@@ -28,5 +28,5 @@ namespace Carrot::ECS {
 
 template<>
 inline const char* Carrot::Identifiable<Carrot::ECS::PrefabInstanceComponent>::getStringRepresentation() {
-    return "Carrot::ECS::PrefabInstanceComponent";
+    return "PrefabInstanceComponent";
 }

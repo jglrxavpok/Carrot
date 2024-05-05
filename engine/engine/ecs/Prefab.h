@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/containers/Vector.hpp>
 #include <core/io/Resource.h>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/ecs/components/Component.h>
@@ -43,8 +44,15 @@ public:
     /// Gets the given component inside this prefab, if it exists
     Memory::OptionalRef<Component> getComponent(const ComponentID& componentID) const;
 
+    /// Gets the given component inside this prefab, if it exists.
+    /// Slower than getComponent, here to have easier deserialisation code
+    Memory::OptionalRef<Component> getComponentByName(std::string_view componentName) const;
+
     /// Gets the given component inside this prefab, or creates it if it does not exist
     Component& getOrAddComponent(const ComponentID& componentID);
+
+    /// Gets all components of this prefab. Pointers returned should not be kept.
+    Vector<const Component*> getAllComponents() const;
 
     /// Save to disk. Can fail if the target path is not writtable.
     /// Modifies the VFS path kept internally to refer to this prefab
