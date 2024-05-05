@@ -7,11 +7,13 @@
 #include <commands/AddComponentsCommand.h>
 #include <commands/RemoveComponentsCommand.h>
 #include <commands/RenameEntities.h>
+#include <core/allocators/InlineAllocator.h>
 
 #include "../Peeler.h"
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/EntityTypes.h>
+#include <engine/ecs/Prefab.h>
 #include <engine/ecs/World.h>
 #include <engine/scripting/CSharpBindings.h>
 #include <panels/inspector/EditorFunctions.h>
@@ -199,12 +201,49 @@ namespace Peeler {
 
                 const ImVec2 size = ImVec2(ImGui::GetContentRegionAvailWidth(), ImGui::GetContentRegionAvailWidth() / aspectRatio);
                 ImGui::Image(texture->getImguiID(), size);
+            } else if(fileFormat == Carrot::IO::FileFormat::CPREFAB) {
+                drawPrefab(renderContext, assetPath);
             }
         }
     }
 
     void InspectorPanel::drawSystem(const Carrot::Render::Context& renderContext) {
         TODO;
+    }
+
+    void InspectorPanel::drawPrefab(const Carrot::Render::Context& renderContext, const Carrot::IO::VFS::Path& vfsPath) {
+        auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
+        if(!pPrefab) {
+            ImGui::TextColored(ImVec4(1,0,0,1), "No prefab at the given path.");
+            return;
+        }
+
+        if(ImGui::Button("Save")) {
+            pPrefab->save(pPrefab->getVFSPath());
+        }
+
+        Carrot::InlineAllocator<sizeof(Carrot::ECS::Component*)> inlineAlloc;
+        for(auto& pComponent : pPrefab->getAllComponents()) {
+            Carrot::ComponentID componentID = pComponent->getComponentTypeID();
+            EditContext editContext {
+                .editor = app,
+                .inspector = *this,
+                .renderContext = renderContext
+            };
+            Carrot::Vector<Carrot::ECS::Component*> componentList { inlineAlloc };
+            componentList.pushBack(const_cast<Carrot::ECS::Component*>(pComponent));
+            editComponents(editContext, componentID, componentList);
+
+            if(editContext.shouldBeRemoved) {
+                /* TODO toRemoveIDs.pushBack(componentID);
+                toRemoveNames.pushBack(componentList[0]->getName());*/
+            }
+
+            if(editContext.hasModifications) {
+                // TODO Apply to scene
+                app.markDirty();
+            }
+        }
     }
 
     void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {

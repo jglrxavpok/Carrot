@@ -146,6 +146,14 @@ namespace Carrot::ECS {
             return internalEntity;
         }
 
+        bool operator==(const Entity& o) const {
+            return internalEntity == o.internalEntity && worldRef == o.worldRef;
+        }
+
+        bool operator!=(const Entity& o) const {
+            return !(*this == o);
+        }
+
         const EntityID& getID() const {
             return internalEntity;
         }
