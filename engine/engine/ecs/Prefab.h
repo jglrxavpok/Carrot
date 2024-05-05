@@ -77,6 +77,57 @@ public:
     /// VFS path used to create or save this prefab
     const Carrot::IO::VFS::Path& getVFSPath() const;
 
+private: // runtime edition and application of changes
+
+    /// Represents a change to the prefab, which will
+    struct Change {
+        virtual void apply(Entity& to) = 0;
+
+        virtual ~Change() = default;
+    };
+
+    template<typename TComponent, typename TValue>
+    struct ComponentChange: public Change {
+        std::function<TValue(TComponent&)> getter;
+        std::function<void(TComponent&, const TValue&)> setter;
+        const Carrot::ComponentID& componentID;
+        TValue oldValue;
+        TValue newValue;
+
+        explicit ComponentChange(std::function<TValue(TComponent&)> getter, std::function<void(TComponent&, const TValue&)> setter, const Carrot::ComponentID& componentID, TValue oldValue, TValue newValue)
+            : getter(getter)
+            , setter(setter)
+            , componentID(componentID)
+            , oldValue(std::move(oldValue))
+            , newValue(std::move(newValue))
+        {}
+
+        virtual void apply(Entity& to) override {
+            TComponent& entityComponent = reinterpret_cast<TComponent&>(to.getComponent(componentID).asRef());
+            if(getter(entityComponent) == oldValue) {
+                setter(entityComponent, newValue);
+            }
+        }
+    };
+
+    void applyChange(World& currentScene, Change& change);
+
+public: // runtime edition and application of changes
+
+    /// Records a change to this prefab. Required to be called when modification are done to be able
+    /// to apply the modifications to instances of this prefab
+    template<typename TComponent, typename TValue>
+    void applyComponentChangeToInstances(
+        World& world,
+        const Carrot::ComponentID& componentID,
+        std::function<TValue(TComponent&)> getter,
+        std::function<void(TComponent&, const TValue&)> setter,
+        TValue oldValue,
+        TValue newValue) {
+        ComponentChange<TComponent, TValue> compChange { getter, setter, componentID, std::move(oldValue), std::move(newValue) };
+        applyChange(world, compChange);
+    }
+
 private:
     Prefab() = default;
 

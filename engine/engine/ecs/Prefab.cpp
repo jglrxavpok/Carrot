@@ -99,6 +99,7 @@ namespace Carrot::ECS {
         rapidjson::Value childrenArray { rapidjson::kArrayType };
         for(const auto& [childID, pChild] : children) {
             std::filesystem::path childDiskPath = diskPath / childID.toString();
+            childDiskPath += ".cprefab";
             if(!std::filesystem::exists(childDiskPath.parent_path())) {
                 std::filesystem::create_directories(childDiskPath.parent_path());
             }
@@ -126,6 +127,7 @@ namespace Carrot::ECS {
         name = entity.getName();
         fakeEntityID = entity.getID();
         components.clear();
+        children.clear();
         for(const Carrot::ECS::Component* pComponent : entity.getAllComponents()) {
             components[pComponent->getComponentTypeID()] = pComponent->duplicate(fakeEntity);
         }
@@ -197,6 +199,18 @@ namespace Carrot::ECS {
 
     const Carrot::IO::VFS::Path& Prefab::getVFSPath() const {
         return path;
+    }
+
+    void Prefab::applyChange(World& currentScene, Change& change) {
+        for(auto& [entity, pComponents] : currentScene.queryEntities<PrefabInstanceComponent>()) {
+            // first ensure we only modify instances of this prefab
+            PrefabInstanceComponent& prefabInstanceComp = *reinterpret_cast<PrefabInstanceComponent*>(pComponents[0]);
+            if(prefabInstanceComp.prefab.get() != this) {
+                continue;
+            }
+
+            change.apply(const_cast<Entity&> /* yolo */ (entity));
+        }
     }
 
 } // Carrot::ECS

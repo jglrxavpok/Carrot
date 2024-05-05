@@ -407,6 +407,9 @@ namespace Peeler {
     /// Wrapper for vec3 to allow edition of locked axes
     struct AxisLockWrapper {
         glm::vec3 axes;
+
+        bool operator==(const AxisLockWrapper &) const = default;
+        bool operator!=(const AxisLockWrapper &) const = default;
     };
 
     template<>
