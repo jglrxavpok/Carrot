@@ -28,5 +28,5 @@ namespace Carrot::ECS {
 
 template<>
 inline const char *Carrot::Identifiable<Carrot::ECS::ErrorComponent>::getStringRepresentation() {
-    return "Carrot::ECS::ErrorComponent";
+    return "ErrorComponent";
 }

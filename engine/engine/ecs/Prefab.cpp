@@ -47,13 +47,36 @@ namespace Carrot::ECS {
 
     /// Gets the given component inside this prefab, if it exists
     Memory::OptionalRef<Component> Prefab::getComponent(const ComponentID& componentID) const {
-        TODO;
+        auto iter = components.find(componentID);
+        if(iter == components.end()) {
+            return {};
+        }
+        return *iter->second;
+    }
+
+    Memory::OptionalRef<Component> Prefab::getComponentByName(std::string_view componentName) const {
+        for(const auto& [_, pComp] : components) {
+            if(componentName == pComp->getName()) {
+                return *pComp;
+            }
+        }
+        return {};
     }
 
     /// Gets the given component inside this prefab, or creates it if it does not exist
     Component& Prefab::getOrAddComponent(const ComponentID& componentID) {
         TODO;
     }
+
+    Vector<const Component*> Prefab::getAllComponents() const {
+        Vector<const Component*> output;
+        output.ensureReserve(components.size());
+        for(const auto& [_, pComp] : components) {
+            output.emplaceBack(pComp.get());
+        }
+        return output;
+    }
+
 
     /// Save to disk. Can fail if the target path is not writtable.
     bool Prefab::save(const Carrot::IO::VFS::Path& prefabAsset) {
