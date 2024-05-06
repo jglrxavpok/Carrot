@@ -249,6 +249,14 @@ namespace Carrot {
         });
     }
 
+    void AssetServer::storePrefab(ECS::Prefab& prefab) {
+        prefabs.remove(prefab.getVFSPath().toString());
+        DISCARD(prefabs.getOrCompute(prefab.getVFSPath().toString(), [&]() {
+            // if it does not already exist, replace with the input prefab
+            return prefab.shared_from_this();
+        }));
+    }
+
     void AssetServer::indexAssets() {
         // TODO
     }

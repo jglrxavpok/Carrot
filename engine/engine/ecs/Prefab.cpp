@@ -119,6 +119,7 @@ namespace Carrot::ECS {
         document.Accept(writer);
         f.write(std::span { reinterpret_cast<const std::uint8_t*>(strBuffer.GetString()), strBuffer.GetLength() });
 
+        GetAssetServer().storePrefab(*this);
         return true;
     }
 

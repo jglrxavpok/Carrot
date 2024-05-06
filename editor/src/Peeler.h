@@ -109,7 +109,7 @@ namespace Peeler {
     public:
         void duplicateEntity(const Carrot::ECS::Entity& entity, std::optional<Carrot::ECS::Entity> parent = {});
         void removeEntity(const Carrot::ECS::Entity& entity);
-        void convertEntityToPrefab(const Carrot::ECS::Entity& entity);
+        void convertEntityToPrefab(Carrot::ECS::Entity& entity);
 
     private:
         void addDefaultSystems(Carrot::Scene& scene);
