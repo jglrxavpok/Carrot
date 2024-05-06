@@ -1668,7 +1668,7 @@ namespace Peeler {
         markDirty();
     }
 
-    void Application::convertEntityToPrefab(const Carrot::ECS::Entity& entity) {
+    void Application::convertEntityToPrefab(Carrot::ECS::Entity& entity) {
         nfdchar_t* savePath;
 
         // prepare filters for the dialog
@@ -1684,7 +1684,11 @@ namespace Peeler {
                 const Carrot::IO::VFS::Path& vfsPath = vfsPathOpt.value();
                 pPrefab->createFromEntity(entity);
                 bool success = pPrefab->save(vfsPath);
-                if(!success) {
+                if(success) {
+                    // replace entity with an instance of the prefab
+                    Carrot::ECS::Entity instance = pPrefab->instantiate(entity.getWorld());
+                    entity.remove();
+                } else {
                     Carrot::Log::error("Failed to save prefab at %s :(", vfsPath.toString().c_str());
                 }
             } else {

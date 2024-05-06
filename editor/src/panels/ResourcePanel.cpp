@@ -9,8 +9,10 @@
 #include <core/utils/ImGuiUtils.hpp>
 #include <core/io/IO.h>
 #include <core/io/Files.h>
+#include <core/io/Logging.hpp>
 #include <engine/edition/DragDropTypes.h>
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/ecs/Prefab.h>
 
 namespace Peeler {
     ResourcePanel::ResourcePanel(Application& app):
@@ -386,7 +388,12 @@ namespace Peeler {
 
     void ResourcePanel::fillPrefabContextPopup(const Carrot::IO::VFS::Path& vfsPath) {
         if(ImGui::MenuItem("Add to scene")) {
-            // TODO
+            auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
+            if(pPrefab) {
+                pPrefab->instantiate(app.currentScene.world);
+            } else {
+                Carrot::Log::error("No prefab at %s", vfsPath.toString().c_str());
+            }
         }
     }
 }
