@@ -28,5 +28,24 @@ namespace Peeler {
         Carrot::Vector<std::string> componentNames;
         Carrot::Vector<rapidjson::Value> savedComponents;
     };
+    /**
+     * Removes components from a prefab, this affects instance of the prefab.
+     * See RemoveComponentsCommand
+     */
+    class RemovePrefabComponentsCommand: public ICommand {
+    public:
+        RemovePrefabComponentsCommand(Application& app, std::shared_ptr<Carrot::ECS::Prefab> prefab, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs);
+
+        virtual void undo() override;
+        virtual void redo() override;
+
+    private:
+        rapidjson::Document globalDoc; // TODO: replace with allocator
+        Carrot::UniquePtr<RemoveComponentsCommand> pEntitiesCommand;
+        std::shared_ptr<Carrot::ECS::Prefab> prefab;
+        Carrot::Vector<Carrot::ComponentID> componentIDs;
+        Carrot::Vector<std::string> componentNames;
+        Carrot::Vector<rapidjson::Value> savedComponents;
+    };
 
 } // Peeler

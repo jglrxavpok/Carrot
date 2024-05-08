@@ -48,8 +48,15 @@ public:
     /// Slower than getComponent, here to have easier deserialisation code
     Memory::OptionalRef<Component> getComponentByName(std::string_view componentName) const;
 
-    /// Gets the given component inside this prefab, or creates it if it does not exist
-    Component& getOrAddComponent(const ComponentID& componentID);
+    /// Creates and adds a new component for this prefab
+    Component& addComponent(std::string_view componentName);
+
+    /// Creates a new component, based on componentName, and deserialises it from the given JSON.
+    Component& deserialiseAddComponent(std::string_view componentName, const rapidjson::Value& json);
+
+    /// Removes a component from this prefab.
+    /// Returns false if the component was not present inside this prefab
+    bool removeComponent(const ComponentID& componentID);
 
     /// Gets all components of this prefab. Pointers returned should not be kept.
     Vector<const Component*> getAllComponents() const;
@@ -127,6 +134,8 @@ public: // runtime edition and application of changes
         ComponentChange<TComponent, TValue> compChange { getter, setter, componentID, std::move(oldValue), std::move(newValue) };
         applyChange(world, compChange);
     }
+
+    void forEachInstance(World& currentScene, std::function<void(Carrot::ECS::Entity)> action);
 
 private:
     Prefab() = default;

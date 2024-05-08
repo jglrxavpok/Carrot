@@ -223,8 +223,16 @@ namespace Peeler {
         }
 
         Carrot::InlineAllocator<sizeof(Carrot::ECS::Component*)> inlineAlloc;
-        for(auto& pComponent : pPrefab->getAllComponents()) {
+        std::unordered_set<std::string> componentNames;
+
+        Carrot::Vector<Carrot::ComponentID> toRemoveIDs;
+        Carrot::Vector<std::string> toRemoveNames;
+
+        Carrot::Vector<const Carrot::ECS::Component*> components = pPrefab->getAllComponents();
+        componentNames.reserve(components.size());
+        for(auto& pComponent : components) {
             Carrot::ComponentID componentID = pComponent->getComponentTypeID();
+            componentNames.insert(pComponent->getName());
             EditContext editContext {
                 .editor = app,
                 .inspector = *this,
@@ -235,14 +243,43 @@ namespace Peeler {
             editComponents(editContext, componentID, componentList);
 
             if(editContext.shouldBeRemoved) {
-                /* TODO toRemoveIDs.pushBack(componentID);
-                toRemoveNames.pushBack(componentList[0]->getName());*/
+                toRemoveIDs.pushBack(componentID);
+                toRemoveNames.pushBack(componentList[0]->getName());
             }
 
             if(editContext.hasModifications) {
-                // TODO Apply to scene
                 app.markDirty();
             }
+        }
+
+        if(!toRemoveNames.empty()) {
+            app.undoStack.push<RemovePrefabComponentsCommand>(pPrefab, toRemoveNames, toRemoveIDs);
+        }
+
+        const char* addComponentPopupID = "Add component##inspector add component prefab";
+
+        if(ImGui::Button(addComponentPopupID)) {
+            ImGui::OpenPopup(addComponentPopupID);
+        }
+
+        if(ImGui::BeginPopup(addComponentPopupID)) {
+            const auto& lib = Carrot::ECS::getComponentLibrary();
+            for(const auto& compID : lib.getAllIDs()) {
+                std::string id = compID;
+
+                if(componentNames.contains(compID)) {
+                    continue;
+                }
+
+                id += "##add component menu item inspector";
+                if(ImGui::MenuItem(id.c_str())) {
+                    // TODO: find more graceful way to find component ID
+                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(app.selectedEntityIDs[0]));
+
+                    app.undoStack.push<AddPrefabComponentsCommand>(pPrefab, Carrot::Vector{compID}, Carrot::Vector{unusedComp->getComponentTypeID()});
+                }
+            }
+            ImGui::EndPopup();
         }
     }
 
