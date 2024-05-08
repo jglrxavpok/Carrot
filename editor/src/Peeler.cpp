@@ -85,16 +85,6 @@ namespace Peeler {
                     this->triggerSave();
                 }
             }
-
-            // TODO: debug only
-            static bool canSpawnPrefab = true;
-            if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_PRESS && canSpawnPrefab) {
-                canSpawnPrefab = false;
-                auto pPrefab = GetAssetServer().blockingLoadPrefab("game://PrefabRoot.cprefab");
-                pPrefab->instantiate(currentScene.world);
-            } else if (glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F1) == GLFW_RELEASE) {
-                canSpawnPrefab = true;
-            }
         }
         if(renderContext.pViewport == &gameViewport) {
             ZoneScopedN("Game viewport");

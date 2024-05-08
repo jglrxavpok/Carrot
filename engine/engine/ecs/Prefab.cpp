@@ -33,8 +33,7 @@ namespace Carrot::ECS {
         auto& componentsObject = doc["components"];
         for(auto it = componentsObject.MemberBegin(); it != componentsObject.MemberEnd(); ++it) {
             std::string name { std::string_view { it->name.GetString() , it->name.GetStringLength() } };
-            std::unique_ptr<Component> prefabComponent = Carrot::ECS::getComponentLibrary().deserialise(name, it->value, fakeEntity);
-            components[prefabComponent->getComponentTypeID()] = std::move(prefabComponent);
+            deserialiseAddComponent(name, it->value);
         }
 
         auto childrenObject = doc["children"].GetArray();
@@ -63,9 +62,25 @@ namespace Carrot::ECS {
         return {};
     }
 
-    /// Gets the given component inside this prefab, or creates it if it does not exist
-    Component& Prefab::getOrAddComponent(const ComponentID& componentID) {
-        TODO;
+    /// Creates and adds a new component for this prefab
+    Component& Prefab::addComponent(std::string_view componentName) {
+        auto comp = Carrot::ECS::getComponentLibrary().create(std::string { componentName }, fakeEntity);
+        Carrot::ComponentID compID = comp->getComponentTypeID();
+        components[compID] = std::move(comp);
+        return *components[compID];
+    }
+
+    Component& Prefab::deserialiseAddComponent(std::string_view componentName, const rapidjson::Value& json) {
+        std::unique_ptr<Component> prefabComponent = Carrot::ECS::getComponentLibrary().deserialise(std::string { componentName }, json, fakeEntity);
+        Carrot::ComponentID compID = prefabComponent->getComponentTypeID();
+        components[compID] = std::move(prefabComponent);
+        return *components[compID];
+    }
+
+    /// Removes a component from this prefab.
+    /// Returns false if the component was not present inside this prefab
+    bool Prefab::removeComponent(const ComponentID& compID) {
+        return components.erase(compID) != 0;
     }
 
     Vector<const Component*> Prefab::getAllComponents() const {
@@ -203,6 +218,12 @@ namespace Carrot::ECS {
     }
 
     void Prefab::applyChange(World& currentScene, Change& change) {
+        forEachInstance(currentScene, [&](Carrot::ECS::Entity e) {
+            change.apply(e);
+        });
+    }
+
+    void Prefab::forEachInstance(World& currentScene, std::function<void(Carrot::ECS::Entity)> action) {
         for(auto& [entity, pComponents] : currentScene.queryEntities<PrefabInstanceComponent>()) {
             // first ensure we only modify instances of this prefab
             PrefabInstanceComponent& prefabInstanceComp = *reinterpret_cast<PrefabInstanceComponent*>(pComponents[0]);
@@ -210,7 +231,7 @@ namespace Carrot::ECS {
                 continue;
             }
 
-            change.apply(const_cast<Entity&> /* yolo */ (entity));
+            action(const_cast<Entity&> /* yolo */ (entity));
         }
     }
 
