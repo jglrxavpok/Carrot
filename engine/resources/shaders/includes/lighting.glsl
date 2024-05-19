@@ -253,7 +253,7 @@ float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     float distance = length(point2light);
     float attenuation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
 
-    float inclinaisonFactor = abs(dot(normal, point2light / distance));
+    float inclinaisonFactor = 1.0;//abs(dot(normal, point2light / distance));
 
     return max(0, 1.0f / attenuation) * inclinaisonFactor;
     #undef light
@@ -465,8 +465,8 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
     else
     {
         vec3 lightContribution = lights.ambientColor;
-
-        vec3 incomingRay = normalize(worldPos - cameraPos);
+        vec3 rayOrigin = worldPos;
+        vec3 incomingRay = normalize(rayOrigin - cameraPos);
         const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
         const uint MAX_BOUNCES = 3; /* TODO: specialization constant?*/
         float roughnessBias = 0.0f;
@@ -479,20 +479,23 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
         for(; depth < MAX_BOUNCES; depth++) {
+            rayOrigin += normal*0.001f; // avoid self intersection
+
             const float oldRoughness = roughness;
             roughness = min(1, oldRoughness + roughnessBias);
             roughnessBias += oldRoughness * 0.75f; // firefly rejection
 
             const float u = sampleNoise(rng);
+
+            bool sampledSpecular = u <= metallic;
+            float sampledSpecularF = float(sampledSpecular);
+
             SurfaceIntersection intersection;
             intersection.hasIntersection = false;
 
-            // direct lighting
-            float weight = 1.0f - metallic;
-
             float lightPDF = 1.0f;
 
-            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, worldPos, normal, MAX_LIGHT_DISTANCE);
+            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, rayOrigin, normal, MAX_LIGHT_DISTANCE);
 
             /*vec3 wh = normalize(lightDirection + incomingRay);
             vec3 fresnel = schlickFresnel(vec3(0.0), clamp(dot(wh, lightDirection), 0.0, 1.0)); // TODO ?*/
@@ -519,25 +522,33 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
             if(depth == MAX_BOUNCES - 1)
                 break;
 
-            vec3 direction;
-            float pdf;
-            vec3 f = sampleLambertianF(rng, roughness, invTBN * incomingRay, direction, pdf);
+            if(sampledSpecular) {
+                // sample specular reflection
+                vec3 reflectedRay = reflect(incomingRay, normal);
+                traceRay(intersection, rayOrigin, reflectedRay, MAX_LIGHT_DISTANCE);
+                incomingRay = reflectedRay;
+            } else {
+                vec3 direction;
+                float pdf;
+                vec3 f = sampleLambertianF(rng, roughness, invTBN * incomingRay, direction, pdf);
 
-            if(pdf == 0.0 || dot(f, f) <= 0.0f)
-                break;
+                if (pdf == 0.0 || dot(f, f) <= 0.0f) {
+                    break;
+                }
 
-            vec3 worldSpaceDirection = tbn * normalize(-direction);
-            beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
+                vec3 worldSpaceDirection = tbn * normalize(-direction);
+                beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
 
-            traceRay(intersection, worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
-            incomingRay = worldSpaceDirection;
+                traceRay(intersection, rayOrigin, worldSpaceDirection, MAX_LIGHT_DISTANCE);
+                incomingRay = worldSpaceDirection;
+            }
 
             if(intersection.hasIntersection) {
                 #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
                 beta *= _sample(albedo).rgb;
                 beta *= intersection.surfaceColor;
 
-                worldPos = intersection.position;
+                rayOrigin = intersection.position;
                 emissive = _sample(emissive).rgb;
 
                 vec3 T = normalize(intersection.surfaceTangent);

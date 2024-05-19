@@ -45,5 +45,6 @@ void main() {
     vec3 xyz = rgb2xyz(rgb);
     vec3 reinhard = reinhard(xyz);
 
+    //outColor = fragmentColor;
     outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
 }
