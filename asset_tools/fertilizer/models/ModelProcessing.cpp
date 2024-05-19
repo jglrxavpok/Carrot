@@ -453,23 +453,26 @@ namespace Fertilizer {
         }
 #endif
 
+        static Carrot::Async::SpinLock metisLock {};
         idx_t edgeCut;
-        int result = METIS_PartGraphKway(&vertexCount,
-                                         &ncon,
-                                         xadjacency.data(),
-                                         edgeAdjacency.data(),
-                                         nullptr, /* vertex weights */
-                                         nullptr, /* vertex size */
-                                         edgeWeights.data(),
-                                         &nparts,
-                                         nullptr,
-                                         nullptr,
-                                         options,
-                                         &edgeCut,
-                                         partition.data()
-                            );
-
-        verify(result == METIS_OK, "Graph partitioning failed!");
+        {
+            Carrot::Async::LockGuard g { metisLock };
+            int result = METIS_PartGraphKway(&vertexCount,
+                                             &ncon,
+                                             xadjacency.data(),
+                                             edgeAdjacency.data(),
+                                             nullptr, /* vertex weights */
+                                             nullptr, /* vertex size */
+                                             edgeWeights.data(),
+                                             &nparts,
+                                             nullptr,
+                                             nullptr,
+                                             options,
+                                             &edgeCut,
+                                             partition.data()
+                                );
+            verify(result == METIS_OK, "Graph partitioning failed!");
+        }
 
         // ===== Group meshlets together
         groups.resize(nparts);
