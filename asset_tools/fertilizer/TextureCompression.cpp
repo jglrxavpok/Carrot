@@ -86,6 +86,17 @@ namespace Fertilizer {
         // Set other BasisLZ/ETC1S or UASTC params to change default quality settings.
         result = ktxTexture2_CompressBasisEx(texture, &params);
 
+        // Assume all GPUs targeted by Carrot support BC compression (they better)
+        ktx_transcode_fmt_e targetFormat = KTX_TTF_BC3_RGBA;
+
+        result = ktxTexture2_TranscodeBasis(texture, targetFormat, 0);
+        if(result != ktx_error_code_e::KTX_SUCCESS) {
+            return ConversionResult {
+                .errorCode = ConversionResultError::TextureCompressionError,
+                .errorMessage = ktxErrorString(result),
+            };
+        }
+
         ktxTexture_WriteToNamedFile(ktxTexture(texture), outputFile.string().c_str());
         ktxTexture_Destroy(ktxTexture(texture));
 

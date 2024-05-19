@@ -223,7 +223,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                 std::size_t ktxDataSize = resource.getSize();
 
                 result = ktxTexture2_CreateFromMemory(ktxData.get(), ktxDataSize,
-                                                     KTX_TEXTURE_CREATE_NO_FLAGS,
+                                                     KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
                                                      &texture);
 
                 if(result != ktx_error_code_e::KTX_SUCCESS) {
