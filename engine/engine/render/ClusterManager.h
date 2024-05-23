@@ -5,6 +5,7 @@
 #pragma once
 
 #include <core/allocators/StackAllocator.h>
+#include <core/containers/Vector.hpp>
 #include <core/utils/WeakPool.hpp>
 #include <engine/render/InstanceData.h>
 #include <core/render/Meshlet.h>
@@ -16,6 +17,7 @@
 #include <engine/render/resources/Pipeline.h>
 
 #include "MaterialSystem.h"
+#include "raytracing/AccelerationStructure.h"
 
 /**
  * The difference between Meshlets and Clusters is that:
@@ -38,8 +40,8 @@ namespace Carrot::Render {
         vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
         std::uint8_t triangleCount;
         std::uint8_t vertexCount;
-        std::uint32_t lod;
-        glm::mat4 transform{ 1.0f };
+        std::uint8_t lod;
+        glm::mat4x3 transform{ 1.0f };
         Math::Sphere boundingSphere{}; // xyz + radius
         Math::Sphere parentBoundingSphere{}; // xyz + radius
         float error = 0.0f;
@@ -57,6 +59,10 @@ namespace Carrot::Render {
         std::uint32_t clusterID;
         std::uint32_t materialIndex;
         std::uint32_t instanceDataIndex;
+    };
+
+    struct ClusterReadbackData {
+        std::uint8_t visible;
     };
 
     /**
@@ -163,8 +169,19 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
+        Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
+        void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
+        std::shared_ptr<Carrot::InstanceHandle> createClusterInstanceAS(const ClusterInstance& clusterInstance);
+        void processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count);
+
         struct StatsBuffer {
             std::uint32_t totalTriangleCount = 0;
+        };
+
+        /// Raytracing-related data, per cluster
+        struct RTData {
+            double lastUpdateTime = 0.0;
+            std::shared_ptr<Carrot::InstanceHandle> as;
         };
 
         std::shared_ptr<Carrot::Pipeline> getPipeline(const Carrot::Render::Context& renderContext);
@@ -175,7 +192,16 @@ namespace Carrot::Render {
         WeakPool<ClusterModel> models;
 
         std::vector<Cluster> gpuClusters;
+        Carrot::Vector<std::uint32_t> templatesFromClusters; // from a cluster ID, returns the slot of the corresponding template inside 'geometries'
+
+        struct BLASHolder {
+            std::shared_ptr<BLASHandle> blas;
+            Async::SpinLock lock;
+        };
+        Carrot::Vector<BLASHolder> clusterBLASes; // as many as gpuClusters, maybe be null if never used
+
         std::unordered_map<Carrot::Render::Viewport*, std::vector<ClusterInstance>> gpuInstancesPerViewport;
+        std::unordered_map<Carrot::Render::Viewport*, Carrot::Vector<RTData>> clusterRTDataPerViewport; // same size of gpuClusters
 
         bool requireClusterUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
@@ -183,6 +209,8 @@ namespace Carrot::Render {
 
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
+        std::unordered_map<Viewport*, Render::PerFrame<std::unique_ptr<Carrot::Buffer>>> readbackBuffersPerFramePerViewport;
+        Render::PerFrame<Async::Counter> readbackJobsSync;
 
         std::unordered_map<Carrot::Render::Viewport*, bool> requireInstanceUpdatePerViewport;
         std::unordered_map<Viewport*, std::shared_ptr<Carrot::BufferAllocation>> instanceGPUVisibleArrays;

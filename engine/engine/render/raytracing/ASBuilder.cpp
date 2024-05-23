@@ -25,10 +25,9 @@ namespace Carrot {
         verify(meshes.size() == transforms.size(), "Need as many meshes as there are transforms!");
         verify(meshes.size() == materialSlots.size(), "Need as many material handles as there are meshes!");
 
-        transformData = GetResourceAllocator().allocateDedicatedBuffer(
+        transformData = GetResourceAllocator().allocateDeviceBuffer(
                 transforms.size() * sizeof(vk::TransformMatrixKHR),
-                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR,
-                vk::MemoryPropertyFlagBits::eDeviceLocal);
+                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
 
         std::vector<vk::TransformMatrixKHR> rtTransforms;
         rtTransforms.resize(transforms.size());
@@ -42,30 +41,36 @@ namespace Carrot {
         }
 
         // TODO: don't wait for upload to complete?
-        transformData->stageUploadWithOffset(0, rtTransforms.data(), rtTransforms.size() * sizeof(vk::TransformMatrixKHR));
+        transformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>(rtTransforms));
 
         for(std::size_t i = 0; i < meshes.size(); i++) {
             auto& meshPtr = meshes[i];
-            auto& transform = transforms[i];
-            verify(meshPtr->getSizeOfSingleVertex() == sizeof(Carrot::Vertex), "Only Carrot::Vertex structure is supported for the moment");
-            // TODO: support SkinnedVertex format
 
-            auto& device = GetRenderer().getLogicalDevice();
             auto vertexAddress = meshPtr->getVertexBuffer().getDeviceAddress();
             auto indexAddress = meshPtr->getIndexBuffer().getDeviceAddress();
             auto primitiveCount = meshPtr->getIndexCount() / 3; // all triangles
 
             auto& geometry = geometries.emplace_back();
             geometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+
+            vk::IndexType indexType = vk::IndexType::eNoneKHR;
+            if(meshPtr->getSizeOfSingleIndex() == sizeof(std::uint32_t)) {
+                indexType = vk::IndexType::eUint32;
+            } else if(meshPtr->getSizeOfSingleIndex() == sizeof(std::uint16_t)) {
+                indexType = vk::IndexType::eUint16;
+            } else {
+                verify(false, Carrot::sprintf("Unsupported index size for raytracing: %llu", meshPtr->getSizeOfSingleIndex())); // unsupported
+            }
+
             geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
-                    // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors) TODO: pass said attributes
+                    // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
                     .vertexFormat = vk::Format::eR32G32B32Sfloat,
                     .vertexData = vertexAddress,
-                    .vertexStride = sizeof(Carrot::Vertex),
+                    .vertexStride = meshPtr->getSizeOfSingleVertex(),
                     .maxVertex = static_cast<uint32_t>(meshPtr->getVertexCount()-1),
-                    .indexType = vk::IndexType::eUint32,
+                    .indexType = indexType,
                     .indexData = indexAddress,
-                    .transformData = transformData->getDeviceAddress() + i * sizeof(vk::TransformMatrixKHR),
+                    .transformData = transformData.view.getDeviceAddress() + i * sizeof(vk::TransformMatrixKHR),
             };
 
             buildRanges.emplace_back(vk::AccelerationStructureBuildRangeInfoKHR {

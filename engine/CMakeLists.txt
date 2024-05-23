@@ -44,9 +44,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/animation/AnimatedModel.cpp
         ${EngineRoot}render/animation/SkeletalModelRenderer.cpp
 
-        ${EngineRoot}utils/conversions.cpp
-        ${EngineRoot}utils/Macros.cpp
-
         ${EngineRoot}ecs/components/AnimatedModelComponent.cpp
         ${EngineRoot}ecs/components/BillboardComponent.cpp
         ${EngineRoot}ecs/components/CameraComponent.cpp
@@ -198,6 +195,9 @@ set(ENGINE-SOURCES
         ${EngineRoot}vulkan/VulkanDriver.cpp
 
         ${EngineRoot}utils/AftermathIntegration.cpp
+        ${EngineRoot}utils/conversions.cpp
+        ${EngineRoot}utils/Macros.cpp
+        ${EngineRoot}utils/Time.cpp
 
         # VR specific code
         ${EngineRoot}vr/HandTracking.cpp

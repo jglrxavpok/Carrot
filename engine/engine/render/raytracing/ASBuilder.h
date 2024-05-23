@@ -55,7 +55,7 @@ namespace Carrot {
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
         std::unique_ptr<AccelerationStructure> as = nullptr;
-        std::unique_ptr<Carrot::Buffer> transformData;
+        Carrot::BufferAllocation transformData;
         std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
         std::vector<std::uint32_t> materialSlots;
         std::uint32_t firstGeometryIndex = (std::uint32_t)-1;

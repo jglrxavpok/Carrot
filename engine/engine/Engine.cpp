@@ -80,6 +80,7 @@
 #include "engine/ecs/components/TextComponent.h"
 #include "engine/ecs/components/TransformComponent.h"
 #include "engine/ecs/systems/LuaSystems.h"
+#include "utils/Time.h"
 
 #include "vr/VRInterface.h"
 
@@ -435,6 +436,7 @@ void Carrot::Engine::run() {
         }
 
         auto tickStartTime = std::chrono::steady_clock::now();
+        Time::updateTime();
         {
             ZoneScopedN("Tick");
             TracyPlot("Tick lag", lag.count());

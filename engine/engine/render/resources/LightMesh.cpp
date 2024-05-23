@@ -5,15 +5,19 @@
 #include "LightMesh.h"
 
 namespace Carrot {
-    LightMesh::LightMesh(const BufferView& vertexBuffer, const BufferView& indexBuffer, std::size_t vertexSize): vertexBuffer(vertexBuffer), indexBuffer(indexBuffer), vertexSize(vertexSize) {
+    LightMesh::LightMesh(const BufferView& vertexBuffer, const BufferView& indexBuffer, std::size_t vertexSize, std::size_t indexSize): vertexBuffer(vertexBuffer), indexBuffer(indexBuffer), vertexSize(vertexSize), indexSize(indexSize) {
         verify(vertexSize > 0, "vertexSize must be > 0");
         verify(vertexBuffer.getSize() > 0, "vertex buffer must not be empty");
         verify(indexBuffer.getSize() > 0, "index buffer must not be empty");
         verify(vertexBuffer.getSize() % vertexSize == 0, "Vertex buffer must hold a multiple of 'vertexSize' bytes");
-        verify(indexBuffer.getSize() % indexSize == 0, "Index buffer must hold a multiple of 4 (size of u32)");
+        verify(indexBuffer.getSize() % indexSize == 0, "Index buffer must hold a multiple of 'indexSize' bytes");
 
         vertexCount = vertexBuffer.getSize() / vertexSize;
         indexCount = indexBuffer.getSize() / indexSize;
+    }
+
+    size_t LightMesh::getSizeOfSingleIndex() const {
+        return indexSize;
     }
 
     size_t LightMesh::getSizeOfSingleVertex() const {

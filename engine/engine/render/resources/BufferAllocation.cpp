@@ -6,6 +6,8 @@
 #include "ResourceAllocator.h"
 
 namespace Carrot {
+    /* static */ Carrot::Async::ParallelMap<vk::DeviceAddress, BufferAllocation::DebugData> BufferAllocation::AllocationsByStartAddress;
+
     BufferAllocation::BufferAllocation(ResourceAllocator *allocator): allocator(allocator) {}
 
     BufferAllocation::BufferAllocation(const BufferAllocation& toCopy) {
@@ -47,10 +49,27 @@ namespace Carrot {
         return *this;
     }
 
+    void BufferAllocation::setDebugNames(const std::string& name) {
+        if(!view) {
+            return; // was moved
+        }
+        vk::DeviceAddress addr = view.getDeviceAddress();
+        AllocationsByStartAddress.remove(addr);
+        AllocationsByStartAddress.getOrCompute(addr, [&]() {
+            return DebugData {
+                .name = name,
+                .size = view.getSize(),
+                .isDedicated = dedicated,
+            };
+        });
+    }
+
     void BufferAllocation::free() {
         if(!allocator) {
             return; // was moved
         }
+        vk::DeviceAddress addr = view.getDeviceAddress();
+        AllocationsByStartAddress.remove(addr);
         allocator->freeStagingBuffer(this);
     }
 

@@ -48,6 +48,10 @@ layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
     uint activeClusters[];
 };
 
+layout(set = 0, binding = 6, scalar) buffer ReadbackRef {
+    ClusterReadbackData readback[];
+};
+
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
 const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
@@ -76,7 +80,7 @@ bool cull(uint clusterInstanceID) {
     }
 
     if(push.lodSelectionMode == 0) {
-        const mat4 model = modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
+        const mat4 model = modelData[modelDataIndex].instanceData.transform * mat4(clusters[clusterID].transform);
         const mat4 modelview = cbo.view * model;
 
         // frustum check
@@ -111,7 +115,12 @@ void main() {
     barrier();
 
     uint clusterID = activeClusters[gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE];
-    bool culled = clusterID >= push.maxCluster || cull(clusterID);
+
+    if(clusterID >= push.maxCluster) {
+        return;
+    }
+    bool culled = cull(clusterID);
+    readback[clusterID].visible = culled ? uint8_t(0) : uint8_t(1);
 
     if(!culled) {
         uint index = atomicAdd(meshletCount, 1);

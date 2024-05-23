@@ -26,6 +26,7 @@ namespace Carrot {
         virtual Carrot::BufferView getVertexBuffer() override;
         virtual const Carrot::BufferView getVertexBuffer() const  override;
 
+        virtual std::size_t getSizeOfSingleIndex() const override;
         virtual std::uint64_t getIndexCount() const override;
         virtual std::size_t getIndexBufferSize() const override;
         virtual std::uint64_t getIndexStartOffset() const override;

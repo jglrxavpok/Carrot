@@ -173,6 +173,14 @@ void Carrot::Buffer::flushMappedMemory(vk::DeviceSize start, vk::DeviceSize leng
     });
 }
 
+void Carrot::Buffer::invalidateMappedRange(vk::DeviceSize start, vk::DeviceSize length) {
+    driver.getLogicalDevice().invalidateMappedMemoryRanges(vk::MappedMemoryRange {
+       .memory = memory.getVulkanMemory(),
+       .offset = start,
+       .size = length,
+    });
+}
+
 void Carrot::Buffer::destroyNow() {
     if(mappedPtr) {
         unmap();

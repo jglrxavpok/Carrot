@@ -60,6 +60,37 @@ Carrot::BufferView Carrot::BufferView::subView(std::size_t substart, std::size_t
     };
 }
 
+Carrot::BufferView Carrot::BufferView::subViewFromAddress(vk::DeviceAddress startAddress) const {
+    const vk::DeviceAddress selfAddress = getDeviceAddress();
+    verify(startAddress >= selfAddress, "start address must be in range of this buffer");
+    verify(startAddress <= selfAddress + size, "start address must be in range of this buffer");
+
+    std::size_t substart = startAddress - getDeviceAddress();
+    std::size_t subcount = getSize() - substart;
+    verify(substart+subcount <= size, "subview exceeds original buffer");
+    return BufferView {
+        allocator,
+        *buffer,
+        start + substart,
+        subcount
+    };
+}
+
+Carrot::BufferView Carrot::BufferView::subViewFromAddress(vk::DeviceAddress startAddress, std::size_t subcount) const {
+    const vk::DeviceAddress selfAddress = getDeviceAddress();
+    verify(startAddress >= selfAddress, "start address must be in range of this buffer");
+    verify(startAddress+subcount <= selfAddress + getSize(), "start address + count must be in range of this buffer");
+
+    std::size_t substart = startAddress - getDeviceAddress();
+    verify(substart+subcount <= size, "subview exceeds original buffer");
+    return BufferView {
+        allocator,
+        *buffer,
+        start + substart,
+        subcount
+    };
+}
+
 void Carrot::BufferView::directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
     verify(length <= size, "Cannot upload more data than this view allows");
     getBuffer().directUpload(data, length, start+offset);

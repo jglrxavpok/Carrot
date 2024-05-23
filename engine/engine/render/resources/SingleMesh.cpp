@@ -27,6 +27,10 @@ std::size_t Carrot::SingleMesh::getSizeOfSingleVertex() const {
     return sizeofVertex;
 }
 
+std::size_t Carrot::SingleMesh::getSizeOfSingleIndex() const {
+    return sizeof(std::uint32_t);
+}
+
 Carrot::BufferView Carrot::SingleMesh::getVertexBuffer() {
     return BufferView(nullptr, getBackingBuffer(), static_cast<vk::DeviceSize>(getVertexStartOffset()), static_cast<vk::DeviceSize>(getVertexBufferSize()));
 }
@@ -69,6 +73,6 @@ const Carrot::Buffer& Carrot::SingleMesh::getBackingBuffer() const {
 
 Carrot::LightMesh Carrot::SingleMesh::getSubMesh(std::size_t startVertex, std::size_t vertexCount, std::size_t startIndex, std::size_t indexCount) const {
     Carrot::BufferView vertexBuffer = getVertexBuffer().subView(startVertex * sizeofVertex, vertexCount * sizeofVertex);
-    Carrot::BufferView indexBuffer = getIndexBuffer().subView(startIndex * sizeof(std::uint32_t), indexCount * sizeof(std::uint32_t));
-    return LightMesh(vertexBuffer, indexBuffer, sizeofVertex);
+    Carrot::BufferView indexBuffer = getIndexBuffer().subView(startIndex * getSizeOfSingleIndex(), indexCount * getSizeOfSingleIndex());
+    return LightMesh(vertexBuffer, indexBuffer, getSizeOfSingleVertex(), getSizeOfSingleIndex());
 }

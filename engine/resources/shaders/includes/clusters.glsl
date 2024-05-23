@@ -1,10 +1,14 @@
+layout(buffer_reference, scalar) buffer IndexBuffer16 {
+    uint16_t i[];
+};
+
 struct Cluster {
-    VertexBuffer vertices;
-    IndexBuffer indices;
+    PackedVertexBuffer vertices;
+    IndexBuffer16 indices;
     uint8_t triangleCount;
     uint8_t vertexCount;
-    uint32_t lod;
-    mat4 transform;
+    uint8_t lod;
+    mat4x3 transform;
     vec4 boundingSphere;
     vec4 parentBoundingSphere;
     float error;
@@ -19,5 +23,9 @@ struct ClusterInstance {
 
 struct ClusterBasedModelData {
     InstanceData instanceData;
+    uint8_t visible;
+};
+
+struct ClusterReadbackData {
     uint8_t visible;
 };

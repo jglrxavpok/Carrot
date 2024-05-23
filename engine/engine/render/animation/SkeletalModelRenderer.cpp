@@ -207,7 +207,7 @@ namespace Carrot::Render {
                 semaphoresForThisFrame.emplace_back(GetVulkanDevice().createSemaphoreUnique({}));
 
                 // create corresponding rendering meshes
-                renderingMeshes[imageIndex].emplace_back(std::make_shared<Carrot::LightMesh>(outputBufferView, mesh->getIndexBuffer(), sizeof(OutputVertexFormat)));
+                renderingMeshes[imageIndex].emplace_back(std::make_shared<Carrot::LightMesh>(outputBufferView, mesh->getIndexBuffer(), sizeof(OutputVertexFormat), sizeof(std::uint32_t)));
             });
 
             if(GetCapabilities().supportsRaytracing) {

@@ -65,13 +65,13 @@ void main() {
     #define cluster clusters[clusterID]
 
     uint modelDataIndex = instance.instanceDataIndex;
-    mat4 modelview = cbo.view * modelData[modelDataIndex].instanceData.transform * clusters[clusterID].transform;
+    mat4 modelview = cbo.view * modelData[modelDataIndex].instanceData.transform * mat4(clusters[clusterID].transform);
 
     SetMeshOutputsEXT(cluster.vertexCount, cluster.triangleCount);
 
     const mat4 viewProj = cbo.jitteredProjection * modelview;
     for(uint vertexIndex = gl_LocalInvocationIndex; vertexIndex < cluster.vertexCount; vertexIndex += MESH_WORKGROUP_SIZE) {
-        const vec4 ndcPosition = viewProj * cluster.vertices.v[vertexIndex].pos;
+        const vec4 ndcPosition = viewProj * vec4(cluster.vertices.v[vertexIndex].pos, 1.0);
         gl_MeshVerticesEXT[vertexIndex].gl_Position = ndcPosition;
         outNDCPosition[vertexIndex] = ndcPosition;
         outClusterInstanceID[vertexIndex] = instanceID;

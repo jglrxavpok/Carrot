@@ -40,11 +40,11 @@ void main() {
     instanceID = instanceDrawData.uuid0;
     uint clusterID = instances[instanceID].clusterID;
     uint modelDataIndex = instances[instanceID].instanceDataIndex;
-    Vertex vertex = clusters[clusterID].vertices.v[clusters[clusterID].indices.i[gl_VertexIndex]];
+    PackedVertex vertex = clusters[clusterID].vertices.v[clusters[clusterID].indices.i[gl_VertexIndex]];
 
-    mat4 modelview = cbo.view * modelData[modelDataIndex].transform * clusters[clusterID].transform;
+    mat4 modelview = cbo.view * modelData[modelDataIndex].transform * mat4(clusters[clusterID].transform);
 
-    vec4 viewPosition = modelview * vertex.pos;
+    vec4 viewPosition = modelview * vec4(vertex.pos, 1.0);
 
     ndcPosition = cbo.jitteredProjection * viewPosition;
     gl_Position = ndcPosition;

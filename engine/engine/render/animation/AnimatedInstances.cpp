@@ -99,7 +99,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 
             if(GetCapabilities().supportsRaytracing) {
                 Carrot::BufferView vertexBuffer{nullptr, *fullySkinnedUnitVertices, static_cast<vk::DeviceSize>(vertexOffset * sizeof(Carrot::Vertex)), mesh->getVertexCount() * sizeof(Carrot::Vertex) };
-                instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex)));
+                instanceMeshes.push_back(std::make_shared<Carrot::LightMesh>(vertexBuffer, mesh->getIndexBuffer(), sizeof(Carrot::Vertex), sizeof(std::uint32_t)));
                 meshTransforms.push_back(glm::mat4(1.0f)); // TODO: use actual mesh transform
                 meshMaterialSlots.push_back(materialSlot);
             }

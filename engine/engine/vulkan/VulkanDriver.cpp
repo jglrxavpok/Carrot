@@ -18,6 +18,7 @@
 #include <map>
 #include <set>
 #include <core/containers/Vector.hpp>
+#include <core/io/Serialisation.h>
 
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "engine/Engine.h"
@@ -929,6 +930,59 @@ void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool command
     deferredCommandBufferDestructions[swapchainIndex].emplace_back(commandPool, commandBuffer);
 }
 
+namespace ImageSorters {
+    struct NameSorter {
+        const int directionMultiplier = 0;
+
+        bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
+            return a->getDebugName().compare(b->getDebugName()) * directionMultiplier < 0;
+        }
+    };
+    struct LengthSorter {
+        const int directionMultiplier = 0;
+
+        bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
+            if(a->isOwned() && b->isOwned()) {
+                return std::less<std::uint64_t>{}(a->getMemory().getSize(), b->getMemory().getSize()) == (directionMultiplier == 1);
+            } else if(a->isOwned()) {
+                // a must be higher
+                return directionMultiplier < 0;
+            } else if(b->isOwned()) {
+                // b must be higher
+                return directionMultiplier > 0;
+            } else {
+                return false;
+            }
+        }
+    };
+}
+
+namespace BufferSorters {
+    using PairType = std::pair<vk::DeviceAddress, const Carrot::Buffer*>;
+
+    struct NameSorter {
+        const int directionMultiplier = 0;
+
+        bool operator()(PairType a, PairType b) const {
+            return a.second->getDebugName().compare(b.second->getDebugName()) * directionMultiplier < 0;
+        }
+    };
+    struct StartAddressSorter {
+        const int directionMultiplier = 0;
+
+        bool operator()(PairType a, PairType b) const {
+            return std::less<vk::DeviceAddress>{}(a.second->getDeviceAddress(), b.second->getDeviceAddress()) == (directionMultiplier == 1);
+        }
+    };
+    struct LengthSorter {
+        const int directionMultiplier = 0;
+
+        bool operator()(PairType a, PairType b) const {
+            return std::less<std::uint64_t>{}(a.second->getSize(), b.second->getSize()) == (directionMultiplier == 1);
+        }
+    };
+}
+
 void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderContext) {
     if(memoryBudgetSupported) {
         vk::StructureChain<vk::PhysicalDeviceMemoryProperties2, vk::PhysicalDeviceMemoryBudgetPropertiesEXT> chain;
@@ -947,6 +1001,9 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
     if(showGPUMemoryUsage) {
         bool isOpen = true;
         if(ImGui::Begin("GPU Memory", &isOpen)) {
+            if(ImGui::Button("Dump!")) {
+                dumpActiveGPUResources();
+            }
             std::size_t totalUsage = 0;
             if(memoryBudgetSupported) {
                 for (int j = 0; j < VK_MAX_MEMORY_HEAPS; ++j) {
@@ -1002,7 +1059,6 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 
                     ImGuiTableSortSpecs* sorting = ImGui::TableGetSortSpecs();
                     std::vector<std::pair<vk::DeviceAddress, const Carrot::Buffer*>> sortedBuffers;
-                    using PairType = decltype(sortedBuffers)::value_type;
 
                     auto snapshot = Carrot::Buffer::BufferByStartAddress.snapshot();
                     sortedBuffers.reserve(snapshot.size());
@@ -1015,32 +1071,11 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                         const int columnIndex = sorting->Specs[0].ColumnIndex;
                         const int directionMultiplier = sorting->Specs[0].SortDirection == ImGuiSortDirection_Descending ? -1 : 1;
 
-                        struct NameSorter {
-                            const int directionMultiplier = 0;
-
-                            bool operator()(PairType a, PairType b) const {
-                                return a.second->getDebugName().compare(b.second->getDebugName()) * directionMultiplier < 0;
-                            }
-                        };
-                        struct StartAddressSorter {
-                            const int directionMultiplier = 0;
-
-                            bool operator()(PairType a, PairType b) const {
-                                return std::less<vk::DeviceAddress>{}(a.second->getDeviceAddress(), b.second->getDeviceAddress()) == (directionMultiplier == 1);
-                            }
-                        };
-                        struct LengthSorter {
-                            const int directionMultiplier = 0;
-
-                            bool operator()(PairType a, PairType b) const {
-                                return std::less<std::uint64_t>{}(a.second->getSize(), b.second->getSize()) == (directionMultiplier == 1);
-                            }
-                        };
                         switch(columnIndex) {
                             case 0:
                                 std::sort(sortedBuffers.begin(),
                                           sortedBuffers.end(),
-                                          NameSorter{directionMultiplier});
+                                          BufferSorters::NameSorter{directionMultiplier});
                                 break;
 
                             case 1:
@@ -1048,13 +1083,13 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                             case 4:
                                 std::sort(sortedBuffers.begin(),
                                           sortedBuffers.end(),
-                                          StartAddressSorter{directionMultiplier});
+                                          BufferSorters::StartAddressSorter{directionMultiplier});
                                 break;
 
                             case 3:
                                 std::sort(sortedBuffers.begin(),
                                           sortedBuffers.end(),
-                                          LengthSorter{directionMultiplier});
+                                          BufferSorters::LengthSorter{directionMultiplier});
                                 break;
                         }
                     }
@@ -1076,6 +1111,50 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
 
                         ImGui::TableSetColumnIndex(4);
                         ImGui::Text("%llu - %llu", address, address + buffer->getSize());
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            if(ImGui::CollapsingHeader("Show allocations")) {
+                if(ImGui::BeginTable("all allocs", 5, ImGuiTableFlags_Resizable | /* TODO? ImGuiTableFlags_Sortable |*/ ImGuiTableFlags_Reorderable)) {
+                    ImGui::TableSetupColumn("Allocation name");
+                    ImGui::TableSetupColumn("Range");
+                    ImGui::TableSetupColumn("Start Address");
+                    ImGui::TableSetupColumn("Length");
+                    ImGui::TableSetupColumn("Dedicated");
+                    ImGui::TableHeadersRow();
+                    using PairType = std::pair<vk::DeviceAddress, BufferAllocation::DebugData>;
+                    Carrot::Vector<PairType> sortedAllocations;
+
+                    auto snapshot = Carrot::BufferAllocation::AllocationsByStartAddress.snapshot();
+                    sortedAllocations.ensureReserve(snapshot.size());
+                    for(auto& [address, buffer] : snapshot) {
+                        sortedAllocations.emplaceBack(address, *buffer);
+                    }
+
+                    sortedAllocations.sort([](const PairType& a, const PairType& b) {
+                        return a.second.size > b.second.size;
+                    });
+
+                    for(const auto& [address, debugData] : sortedAllocations) {
+                        ImGui::TableNextRow();
+
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TextUnformatted(debugData.name.c_str());
+
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%llx - %llx", address, address + debugData.size);
+
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%llx", address);
+
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::Text("%llu", debugData.size);
+
+                        ImGui::TableSetColumnIndex(4);
+                        ImGui::TextColored(debugData.isDedicated ? ImVec4(1,0,0,1) : ImVec4(0,1,0,1), debugData.isDedicated ? "Yes" : "No");
                     }
 
                     ImGui::EndTable();
@@ -1124,38 +1203,13 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
                         const int columnIndex = sorting->Specs[0].ColumnIndex;
                         const int directionMultiplier = sorting->Specs[0].SortDirection == ImGuiSortDirection_Descending ? -1 : 1;
 
-                        struct NameSorter {
-                            const int directionMultiplier = 0;
-
-                            bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
-                                return a->getDebugName().compare(b->getDebugName()) * directionMultiplier < 0;
-                            }
-                        };
-                        struct LengthSorter {
-                            const int directionMultiplier = 0;
-
-                            bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
-                                if(a->isOwned() && b->isOwned()) {
-                                    return std::less<std::uint64_t>{}(a->getMemory().getSize(), b->getMemory().getSize()) == (directionMultiplier == 1);
-                                } else if(a->isOwned()) {
-                                    // a must be higher
-                                    return directionMultiplier < 0;
-                                } else if(b->isOwned()) {
-                                    // b must be higher
-                                    return directionMultiplier > 0;
-                                } else {
-                                    return false;
-                                }
-                            }
-                        };
-
                         switch(columnIndex) {
                             case 0:
-                                sortedImages.sort(NameSorter{});
+                                sortedImages.sort(ImageSorters::NameSorter{});
                                 break;
 
                             case 1:
-                                sortedImages.sort(LengthSorter{});
+                                sortedImages.sort(ImageSorters::LengthSorter{});
                             break;
 
                             default:
@@ -1305,4 +1359,100 @@ bool Carrot::VulkanDriver::hasDebugNames() const {
 #else
     return false;
 #endif
+}
+
+void Carrot::VulkanDriver::dumpActiveGPUResources() {
+    std::ofstream f { "./gpu-resources.txt" };
+
+    f << "========== Buffers ==========" << std::endl;
+    {
+        Carrot::Vector<std::pair<vk::DeviceAddress, const Carrot::Buffer*>> sortedBuffers;
+
+        auto snapshot = Carrot::Buffer::BufferByStartAddress.snapshot();
+        sortedBuffers.ensureReserve(snapshot.size());
+        for(auto& [address, buffer] : snapshot) {
+            sortedBuffers.emplaceBack(address, *buffer);
+        }
+
+        sortedBuffers.sort(BufferSorters::LengthSorter{});
+
+        f << "Name -- Range -- Size" << std::endl;
+        for(const auto& [address, buffer] : sortedBuffers) {
+            f << buffer->getDebugName();
+            f << " -- ";
+            f << address << " - " << address + buffer->getSize();
+
+            f << " -- " << buffer->getSize();
+
+            f << std::endl;
+        }
+    }
+
+    f << "========== Buffer Allocations ==========\n";
+    {
+        using PairType = std::pair<vk::DeviceAddress, BufferAllocation::DebugData>;
+        Carrot::Vector<PairType> sortedAllocations;
+
+        auto snapshot = Carrot::BufferAllocation::AllocationsByStartAddress.snapshot();
+        sortedAllocations.ensureReserve(snapshot.size());
+        for(auto& [address, buffer] : snapshot) {
+            sortedAllocations.emplaceBack(address, *buffer);
+        }
+
+        sortedAllocations.sort([](const PairType& a, const PairType& b) {
+            return a.second.size > b.second.size;
+        });
+
+        f << "Name -- Size -- Dedicated\n";
+        for(const PairType& pair : sortedAllocations) {
+            f << pair.second.name;
+            f << " -- ";
+            f << pair.second.size;
+            f << " -- ";
+            f << (pair.second.isDedicated ? "true" : "false");
+            f << std::endl;
+        }
+    }
+
+    f << "========== Images ==========" << std::endl;
+    {
+        Vector<const Carrot::Image*> sortedImages;
+
+        Carrot::Async::LockGuard g { Carrot::Image::AliveImagesAccess };
+        sortedImages.ensureReserve(Carrot::Image::AliveImages.size());
+        std::uint64_t totalSize = 0;
+        std::uint64_t totalFilteredSize = 0;
+        for(const Carrot::Image* pImage : Carrot::Image::AliveImages) {
+            if(pImage->isOwned()) {
+                totalSize += pImage->getMemory().getSize();
+            }
+
+            const std::string& name = pImage->getDebugName();
+
+            if(pImage->isOwned()) {
+                totalFilteredSize += pImage->getMemory().getSize();
+            }
+            sortedImages.emplaceBack(pImage);
+        }
+
+        sortedImages.sort(ImageSorters::LengthSorter{});
+
+        f << "Name -- Size" << std::endl;
+        for(const Carrot::Image* pImage : sortedImages) {
+            f << pImage->getDebugName();
+            f << " -- ";
+
+            if(pImage->isOwned()) {
+                f << pImage->getMemory().getSize();
+            } else {
+                f << "External image, no info";
+            }
+            f << std::endl;
+        }
+    }
+}
+
+/// Used to dump when a crash happens (can be called from debugger)
+static void _DumpGPUResources() {
+    GetVulkanDriver().dumpActiveGPUResources();
 }

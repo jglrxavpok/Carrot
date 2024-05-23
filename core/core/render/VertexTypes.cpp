@@ -6,6 +6,14 @@
 
 constexpr int BoneWeightCount = 4;
 
+Carrot::PackedVertex::PackedVertex(const Carrot::Vertex& v) {
+    pos = v.pos;
+    color = v.color;
+    normal = v.normal;
+    tangent = v.tangent;
+    uv = v.uv;
+}
+
 void Carrot::SkinnedVertex::addBoneInformation(uint32_t boneID, float weight) {
     std::int32_t leastInfluential = -1;
     float smallestWeight = 10000.0f;

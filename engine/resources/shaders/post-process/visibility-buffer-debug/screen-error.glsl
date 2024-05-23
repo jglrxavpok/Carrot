@@ -7,7 +7,7 @@ float projectError(uint instanceID, uint clusterID, float testScreenWidth, float
 
     // replicates what is done by ClusterManager
 #define cluster (clusters[clusterID])
-    const mat4 completeTransform = cbo.view * modelData[modelDataIndex].transform * cluster.transform;
+    const mat4 completeTransform = cbo.view * modelData[modelDataIndex].transform * mat4(cluster.transform);
     const vec3 sphereCenter = (completeTransform * vec4(cluster.boundingSphere.xyz, 1.0)).xyz;
     float sphereRadius = cluster.error;
 

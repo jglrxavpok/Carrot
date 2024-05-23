@@ -10,8 +10,20 @@ struct Vertex {
     vec2 uv;
 };
 
+struct PackedVertex {
+    vec3 pos;
+    vec3 color;
+    vec3 normal;
+    vec4 tangent;
+    vec2 uv;
+};
+
 layout(buffer_reference, std140) buffer VertexBuffer {
     Vertex v[];
+};
+
+layout(buffer_reference, scalar) buffer PackedVertexBuffer {
+    PackedVertex v[];
 };
 
 layout(buffer_reference, scalar) buffer IndexBuffer {

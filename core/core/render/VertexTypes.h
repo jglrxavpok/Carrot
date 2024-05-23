@@ -31,6 +31,19 @@ namespace Carrot {
         alignas(16) glm::vec2 uv;
     };
 
+    /// Same general shape than "Vertex", but intented for places where we can use scalar layout and memory is in short supply
+    /// (for instance, meshlets)
+    struct PackedVertex {
+        glm::vec3 pos;
+        glm::vec3 color;
+        glm::vec3 normal;
+        glm::vec4 tangent;
+        glm::vec2 uv;
+
+        PackedVertex() = default;
+        explicit PackedVertex(const Vertex&);
+    };
+
     struct ComputeSkinnedVertex {
         /// World position of the vertex
         alignas(16) glm::vec4 pos;

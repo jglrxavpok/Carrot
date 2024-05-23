@@ -13,32 +13,35 @@ namespace Carrot {
         /**
          * Creates the mesh
          * @param vertexBuffer must hold a multiple of 'vertexSize' bytes, representing the vertices of the mesh
-         * @param indexBuffer must hold u32 values, representing the indices of the mesh
+         * @param indexBuffer must hold a multiple of 'indexSize' bytes, representing the indices of the mesh
          * @param vertexSize how many bytes does a single vertex take?
+         * @param indexSize how many bytes does a single index take?
          */
-        LightMesh(const Carrot::BufferView& vertexBuffer, const Carrot::BufferView& indexBuffer, std::size_t vertexSize);
+        LightMesh(const Carrot::BufferView& vertexBuffer, const Carrot::BufferView& indexBuffer, std::size_t vertexSize, std::size_t indexSize);
 
-        size_t getSizeOfSingleVertex() const override;
+        virtual std::size_t getSizeOfSingleIndex() const override;
 
-        uint64_t getVertexCount() const override;
+        virtual size_t getSizeOfSingleVertex() const override;
 
-        size_t getVertexBufferSize() const override;
+        virtual uint64_t getVertexCount() const override;
 
-        uint64_t getVertexStartOffset() const override;
+        virtual size_t getVertexBufferSize() const override;
 
-        BufferView getVertexBuffer() override;
+        virtual uint64_t getVertexStartOffset() const override;
 
-        const BufferView getVertexBuffer() const override;
+        virtual BufferView getVertexBuffer() override;
 
-        uint64_t getIndexCount() const override;
+        virtual const BufferView getVertexBuffer() const override;
 
-        size_t getIndexBufferSize() const override;
+        virtual uint64_t getIndexCount() const override;
 
-        uint64_t getIndexStartOffset() const override;
+        virtual size_t getIndexBufferSize() const override;
 
-        BufferView getIndexBuffer() override;
+        virtual uint64_t getIndexStartOffset() const override;
 
-        const BufferView getIndexBuffer() const override;
+        virtual BufferView getIndexBuffer() override;
+
+        virtual const BufferView getIndexBuffer() const override;
 
     protected:
         void setDebugNames(const std::string& name) override;

@@ -174,6 +174,7 @@ namespace Carrot {
 
         void newFrame(const Carrot::Render::Context& renderContext);
 
+    public: // debug
         void breakOnNextVulkanError();
 
         //! Called when a device lost occurs, used to wait for Aftermath to complete its work
@@ -186,6 +187,9 @@ namespace Carrot {
         void setFormattedMarker(vk::CommandBuffer& cmds, const char* format, Args&&... args) {
             setMarker(cmds, Carrot::sprintf(format, std::forward<Args>(args)...));
         }
+
+        /// Writes current active gpu resources to "./gpu-resources.txt"
+        void dumpActiveGPUResources();
 
     public:
         const vk::PhysicalDeviceFeatures& getPhysicalDeviceFeatures() const;

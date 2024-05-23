@@ -64,6 +64,7 @@ namespace Carrot {
             BufferAllocation result { this };
             dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
+            pBuffer->name("ResourceAllocator::allocateStagingBuffer");
             result.allocation = pBuffer.get();
             result.dedicated = true;
             result.view = pBuffer->getWholeView();
@@ -86,6 +87,7 @@ namespace Carrot {
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
             dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
+            pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
             result.allocation = pBuffer.get();
             result.dedicated = true;
             result.view = pBuffer->getWholeView();
@@ -99,6 +101,9 @@ namespace Carrot {
         } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
             allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
         } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
+            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
+        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
+            // TODO: which value is valid?
             allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
         }
 
@@ -149,7 +154,9 @@ namespace Carrot {
     std::unique_ptr<Buffer> ResourceAllocator::allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                                           vk::MemoryPropertyFlags properties,
                                                                           const std::set<uint32_t>& families) {
-        return std::make_unique<Buffer>(device, size, usage, properties, families);
+        auto pBuffer = std::make_unique<Buffer>(device, size, usage, properties, families);
+        pBuffer->name("ResourceAllocator::allocateDedicatedBuffer");
+        return pBuffer;
     }
 
     void ResourceAllocator::freeBufferView(BufferView& view) {
@@ -198,6 +205,7 @@ namespace Carrot {
             resultBuffer.allocation = alloc;
             resultBuffer.dedicated = false;
             resultBuffer.view = heapStorage.getWholeView().subView(offset, allocInfo.size);
+            resultBuffer.name("Unnamed suballoc");
             return resultBuffer;
         } else {
             // if we reach here, no block has space available, create a dedicated buffer

@@ -1,4 +1,5 @@
 # Carrot
+![Splash screen](./engine/resources/splash.png)
 
 Game engine in C++, mostly for my own fun.
 

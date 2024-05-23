@@ -79,6 +79,8 @@ namespace Carrot {
 
         void flushMappedMemory(vk::DeviceSize start, vk::DeviceSize length);
 
+        void invalidateMappedRange(vk::DeviceSize start, vk::DeviceSize length);
+
         //! Does not immediately destroy the buffer. The destruction is deferred via VulkanRenderer::deferDestroy, unless destroyNow() was called before.
         ~Buffer();
 

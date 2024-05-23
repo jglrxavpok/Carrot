@@ -3,6 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_atomic_int64 : require
 #extension GL_EXT_shader_image_int64 : require
@@ -59,14 +60,14 @@ vec3 interpolatorBarycentrics(vec4 aClipSpace, vec4 bClipSpace, vec4 cClipSpace)
     return vec3(lambda1, lambda2, 1 - lambda1 - lambda2);
 }
 
-Interpolator createInterpolator(in Vertex vA, in Vertex vB, in Vertex vC, in mat4 modelview, float ndcDepth) {
+Interpolator createInterpolator(in PackedVertex vA, in PackedVertex vB, in PackedVertex vC, in mat4 modelview, float ndcDepth) {
     vec4 pointViewSpace = (cbo.inverseNonJitteredProjection * vec4(vec3(screenUV * 2.0 - 1.0, ndcDepth * 2 - 1), 1.0));
     pointViewSpace.xyz *= pointViewSpace.w;
 
     const mat4 clipSpaceFromMesh = cbo.jitteredProjection * modelview;
-    vec4 aClipSpace = clipSpaceFromMesh * vA.pos;
-    vec4 bClipSpace = clipSpaceFromMesh * vB.pos;
-    vec4 cClipSpace = clipSpaceFromMesh * vC.pos;
+    vec4 aClipSpace = clipSpaceFromMesh * vec4(vA.pos, 1.0);
+    vec4 bClipSpace = clipSpaceFromMesh * vec4(vB.pos, 1.0);
+    vec4 cClipSpace = clipSpaceFromMesh * vec4(vC.pos, 1.0);
 
     Interpolator interpolator;
     interpolator.invWi = 1.0f / vec3(aClipSpace.w, bClipSpace.w, cClipSpace.w);
@@ -125,11 +126,11 @@ void main() {
     uint materialIndex = instances[instanceIndex].materialIndex;
 
 #define getVertex(n) (clusters[clusterID].vertices.v[clusters[clusterID].indices.i[(n)]])
-    Vertex vA = getVertex(triangleIndex * 3 + 0);
-    Vertex vB = getVertex(triangleIndex * 3 + 1);
-    Vertex vC = getVertex(triangleIndex * 3 + 2);
+    PackedVertex vA = getVertex(triangleIndex * 3 + 0);
+    PackedVertex vB = getVertex(triangleIndex * 3 + 1);
+    PackedVertex vC = getVertex(triangleIndex * 3 + 2);
 
-    mat4 clusterTransform = clusters[clusterID].transform;
+    mat4 clusterTransform = mat4(clusters[clusterID].transform);
     uint modelDataIndex = instances[instanceIndex].instanceDataIndex;
     mat4 modelTransform = modelData[modelDataIndex].instanceData.transform;
     mat4 modelview = cbo.view * modelTransform * clusterTransform;

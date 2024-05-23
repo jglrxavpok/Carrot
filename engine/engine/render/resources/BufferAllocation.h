@@ -11,6 +11,13 @@ namespace Carrot {
     class ResourceAllocator;
 
     struct BufferAllocation: public DebugNameable {
+        struct DebugData {
+            std::string name;
+            vk::DeviceSize size;
+            bool isDedicated;
+        };
+        static Carrot::Async::ParallelMap<vk::DeviceAddress, DebugData> AllocationsByStartAddress;
+
         BufferView view;
 
         BufferAllocation() = default;
@@ -20,7 +27,7 @@ namespace Carrot {
         BufferAllocation& operator=(BufferAllocation&&) noexcept;
 
     protected:
-        void setDebugNames(const std::string& name) override final {};
+        void setDebugNames(const std::string& name) override final;
 
     private:
         explicit BufferAllocation(ResourceAllocator* allocator);
