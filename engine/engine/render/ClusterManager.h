@@ -63,6 +63,9 @@ namespace Carrot::Render {
 
     struct ClusterReadbackData {
         std::uint8_t visible;
+        std::uint8_t pad[3];
+
+        glm::vec3 pad2;
     };
 
     /**
@@ -169,20 +172,54 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
-        Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
-        void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
-        std::shared_ptr<Carrot::InstanceHandle> createClusterInstanceAS(const ClusterInstance& clusterInstance);
-        void processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count);
-
         struct StatsBuffer {
             std::uint32_t totalTriangleCount = 0;
         };
 
         /// Raytracing-related data, per cluster
         struct RTData {
+            Async::SpinLock mutex;
+
             double lastUpdateTime = 0.0;
             std::shared_ptr<Carrot::InstanceHandle> as;
+
+            std::uint32_t lastUpdateFrame;
         };
+
+        struct ClusterGroup {
+            Carrot::Vector<std::uint32_t> clusters; // IDs of cluster inside this group (template or instance based on usage)
+        };
+
+        struct GroupInstance {
+            ClusterGroup group;
+            std::uint32_t templateID; // index of the template corresponding to this instance, inside groupInstancesPerViewport[current viewport]
+        };
+
+        struct BLASHolder {
+            std::shared_ptr<BLASHandle> blas;
+            Async::SpinLock lock;
+        };
+
+        struct GroupInstances {
+            // ClusterInstanceID -> GroupInstanceID
+            Carrot::Vector<std::uint32_t> perCluster;
+
+            Carrot::Vector<GroupInstance> groups;
+
+            Carrot::Vector<BLASHolder> blases; // as many as there are elements inside 'groups'
+        };
+
+        Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
+        void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
+        std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& instance, std::uint32_t groupID);
+        void processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count);
+        void processSingleClusterReadbackData(
+            Carrot::TaskHandle& task,
+            std::uint32_t clusterIndex,
+            double currentTime,
+            GroupInstances& groupInstances,
+            std::span<const ClusterInstance> clusterInstances,
+            const ClusterReadbackData* pData);
 
         std::shared_ptr<Carrot::Pipeline> getPipeline(const Carrot::Render::Context& renderContext);
 
@@ -192,16 +229,33 @@ namespace Carrot::Render {
         WeakPool<ClusterModel> models;
 
         std::vector<Cluster> gpuClusters;
+        Carrot::Vector<ClusterGroup> templateClusterGroups;
         Carrot::Vector<std::uint32_t> templatesFromClusters; // from a cluster ID, returns the slot of the corresponding template inside 'geometries'
+        Carrot::Vector<std::uint32_t> groupsFromClusters; // from a cluster ID, returns the index of its group
 
-        struct BLASHolder {
-            std::shared_ptr<BLASHandle> blas;
-            Async::SpinLock lock;
+        struct PerViewport {
+            GroupInstances groupInstances;
+            Carrot::Vector<ClusterInstance> gpuClusterInstances;
+
+            Render::PerFrame<std::unique_ptr<Carrot::Buffer>> readbackBuffersPerFrame;
+
+            bool requireInstanceUpdate = false;
+            std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;
+            std::shared_ptr<Carrot::Pipeline> pipeline;
+            Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesPerFrame;
+            Render::PerFrame<BufferAllocation> statsCPUBuffersPerFrame;
         };
-        Carrot::Vector<BLASHolder> clusterBLASes; // as many as gpuClusters, maybe be null if never used
 
-        std::unordered_map<Carrot::Render::Viewport*, std::vector<ClusterInstance>> gpuInstancesPerViewport;
-        std::unordered_map<Carrot::Render::Viewport*, Carrot::Vector<RTData>> clusterRTDataPerViewport; // same size of gpuClusters
+        std::unordered_map<Carrot::Render::Viewport*, PerViewport> perViewport;
+
+
+        struct GroupRTData {
+            std::uint32_t firstGroupInstanceIndex; // offset inside "groupInstancesPerViewport[current viewport]" of the group at data[0]
+            Carrot::Vector<RTData> data;
+
+            void resetForNewFrame();
+        };
+        std::unordered_map<std::uint32_t, GroupRTData> groupRTDataPerModel; // [clusterModel->getSlot()][groupID - firstGroupInstanceIndex]
 
         bool requireClusterUpdate = true;
         std::shared_ptr<Carrot::BufferAllocation> clusterGPUVisibleArray;
@@ -209,14 +263,7 @@ namespace Carrot::Render {
 
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
-        std::unordered_map<Viewport*, Render::PerFrame<std::unique_ptr<Carrot::Buffer>>> readbackBuffersPerFramePerViewport;
         Render::PerFrame<Async::Counter> readbackJobsSync;
-
-        std::unordered_map<Carrot::Render::Viewport*, bool> requireInstanceUpdatePerViewport;
-        std::unordered_map<Viewport*, std::shared_ptr<Carrot::BufferAllocation>> instanceGPUVisibleArrays;
-        std::unordered_map<Viewport*, std::shared_ptr<Carrot::Pipeline>> pipelines;
-        std::unordered_map<Viewport*, Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>>> instancesPerFramePerViewport;
-        std::unordered_map<Carrot::Render::Viewport*, Render::PerFrame<BufferAllocation>> statsCPUBuffers;
 
         Carrot::StackAllocator activeInstancesAllocator { Carrot::Allocator::getDefault() };
     };

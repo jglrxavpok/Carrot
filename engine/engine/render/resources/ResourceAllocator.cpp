@@ -16,7 +16,9 @@ namespace Carrot {
         stagingHeap = std::make_unique<Buffer>(device, HeapSize,
                                         vk::BufferUsageFlagBits::eTransferSrc
                                         | vk::BufferUsageFlagBits::eTransferDst
-                                        | vk::BufferUsageFlagBits::eStorageBuffer,
+                                        | vk::BufferUsageFlagBits::eStorageBuffer
+                                        | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR
+                                        | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR,
                                         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                         std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()});
         stagingHeap->setDebugNames("ResourceAllocator heap for staging buffers");
@@ -30,6 +32,7 @@ namespace Carrot {
                                               | vk::BufferUsageFlagBits::eIndexBuffer
                                               | vk::BufferUsageFlagBits::eTransferSrc
                                               | vk::BufferUsageFlagBits::eTransferDst
+                                              | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR
                                               ,
                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
                                               std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()});

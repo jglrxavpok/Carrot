@@ -48,7 +48,7 @@ layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
     uint activeClusters[];
 };
 
-layout(set = 0, binding = 6, scalar) buffer ReadbackRef {
+layout(set = 0, binding = 6, scalar) writeonly buffer ReadbackRef {
     ClusterReadbackData readback[];
 };
 
@@ -120,7 +120,7 @@ void main() {
         return;
     }
     bool culled = cull(clusterID);
-    readback[clusterID].visible = culled ? uint8_t(0) : uint8_t(1);
+    readback[nonuniformEXT(clusterID)].visible = culled ? uint8_t(0) : uint8_t(1);
 
     if(!culled) {
         uint index = atomicAdd(meshletCount, 1);

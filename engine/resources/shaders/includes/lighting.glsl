@@ -445,6 +445,8 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
 }
 #endif
 
+#undef HARDWARE_SUPPORTS_RAY_TRACING // TODO debug only remove
+
 vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     vec3 finalColor = vec3(0.0);
 

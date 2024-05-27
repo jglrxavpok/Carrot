@@ -604,7 +604,7 @@ namespace Fertilizer {
         return vertexRemap;
     }
 
-    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const Carrot::Math::Sphere& clusterBounds, float clusterError) {
+    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const Carrot::Math::Sphere& clusterBounds, float clusterError, std::uint32_t groupIndex) {
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
@@ -652,6 +652,7 @@ namespace Fertilizer {
 
             carrotMeshlet.indexOffset = indexOffset + meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
+            carrotMeshlet.groupIndex = groupIndex;
 
             carrotMeshlet.boundingSphere = clusterBounds;
             carrotMeshlet.clusterError = clusterError;
@@ -670,6 +671,7 @@ namespace Fertilizer {
         // tell meshoptimizer to generate meshlets
         auto& indexBuffer = primitive.indices;
         std::size_t previousMeshletsStart = 0;
+        std::uint32_t meshletGroupIndex = 0;
         {
             glm::vec3 min { +INFINITY, +INFINITY, +INFINITY };
             glm::vec3 max { -INFINITY, -INFINITY, -INFINITY };
@@ -683,7 +685,7 @@ namespace Fertilizer {
 
             Carrot::Math::Sphere lod0Bounds;
             lod0Bounds.loadFromAABB(min, max);
-            appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f);
+            appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f, meshletGroupIndex++);
         }
 
         Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
@@ -854,7 +856,7 @@ namespace Fertilizer {
                         previousLevelMeshlets[meshletIndex].parentBoundingSphere = simplifiedClusterBounds;
                     }
 
-                    appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError);
+                    appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError, meshletGroupIndex++);
                 }
             }
 
