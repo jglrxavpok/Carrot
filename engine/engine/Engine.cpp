@@ -715,10 +715,12 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             });
         }
 
-        vk::SemaphoreSubmitInfo signalSemaphore = {
+        std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {2};
+        signalSemaphores[0] = {
             .semaphore = *renderFinishedSemaphore[frameIndex],
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         };
+        signalSemaphores[1] = GetRenderer().createCopySemaphoreResetInfo();
 
         for(auto [stage, semaphore] : additionalWaitSemaphores) {
             vk::PipelineStageFlags2 mask;
@@ -733,6 +735,8 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         vk::CommandBufferSubmitInfo commandBufferInfo {
             .commandBuffer = mainCommandBuffers[frameIndex],
         };
+
+        waitSemaphores.emplace_back(renderer.createCopySemaphoreWaitInfo());
         vk::SubmitInfo2 submitInfo{
                 .waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphores.size()),
                 .pWaitSemaphoreInfos = waitSemaphores.data(),
@@ -740,8 +744,8 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                 .commandBufferInfoCount = 1,
                 .pCommandBufferInfos = &commandBufferInfo,
 
-                .signalSemaphoreInfoCount = 1,
-                .pSignalSemaphoreInfos = &signalSemaphore,
+                .signalSemaphoreInfoCount = static_cast<std::uint32_t>(signalSemaphores.size()),
+                .pSignalSemaphoreInfos = signalSemaphores.data(),
         };
 
         {
@@ -784,9 +788,9 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                 swapchainIndices.emplace_back((std::uint32_t)((swapchainIndex + window.getSwapchainIndexOffset()) % getSwapchainImageCount()));
             }
 
-            vk::PresentInfoKHR presentInfo{
+            vk::PresentInfoKHR presentInfo {
                     .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = &signalSemaphore.semaphore,
+                    .pWaitSemaphores = &(*renderFinishedSemaphore[frameIndex]),
 
                     .swapchainCount = static_cast<std::uint32_t>(swapchains.size()),
                     .pSwapchains = swapchains.data(),

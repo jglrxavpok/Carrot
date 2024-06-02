@@ -631,13 +631,17 @@ void Carrot::VulkanDriver::createLogicalDevice() {
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
 
     transferQueue = device->getQueue(queueFamilies.transferFamily.value(), 0);
+    transferQueue.name("Transfer queue");
 
     graphicsQueueIndex = 0;
     graphicsQueue = device->getQueue(queueFamilies.graphicsFamily.value(), graphicsQueueIndex);
+    graphicsQueue.name("Graphics queue");
 
     computeQueue = device->getQueue(queueFamilies.computeFamily.value(), 0);
+    graphicsQueue.name("Compute queue");
 
     presentQueue = device->getQueue(queueFamilies.presentFamily.value(), 0);
+    graphicsQueue.name("Present queue");
 }
 
 bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice) {

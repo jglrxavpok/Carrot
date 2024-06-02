@@ -265,7 +265,7 @@ namespace Carrot {
 
     public:
         /// Returns a portion of buffer that can be used for the current frame
-        Carrot::BufferView getSingleFrameBuffer(vk::DeviceSize size, vk::DeviceSize alignment = 1);
+        Carrot::BufferView getSingleFrameHostBuffer(vk::DeviceSize size, vk::DeviceSize alignment = 1);
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         const Carrot::BufferView getNullBufferInfo() const;
 
@@ -276,6 +276,18 @@ namespace Carrot {
     public:
         Render::Texture::Ref getDefaultImage();
         Render::Texture::Ref getBlackCubeMapTexture();
+
+
+        /// Increments the internal counter for the copy semaphore, and returns it
+        vk::Semaphore getCopySemaphore() const;
+        std::uint64_t incrementAndGetCopyCounter();
+
+        /// Creates a vk::SemaphoreSubmitInfo with the required info to wait for all copies started during the frame
+        vk::SemaphoreSubmitInfo createCopySemaphoreWaitInfo() const;
+
+        /// Creates a vk::SemaphoreSubmitInfo with the required info to reset the timeline semaphore for copies.
+        /// Also resets the internal counter!
+        vk::SemaphoreSubmitInfo createCopySemaphoreResetInfo();
 
     public:
         struct ThreadPackets {
@@ -309,6 +321,8 @@ namespace Carrot {
         Async::Counter renderThreadKickoff; //< non-0 if render thread is waiting to start, 0 if still rendering
 
         Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
+        vk::UniqueSemaphore copySemaphore;
+        std::atomic<std::uint64_t> copyTimelineCounter{0};
 
         SingleFrameStackGPUAllocator singleFrameAllocator;
         std::unique_ptr<Carrot::Buffer> nullBuffer;

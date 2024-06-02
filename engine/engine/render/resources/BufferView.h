@@ -72,6 +72,17 @@ namespace Carrot {
         /// Upload to device-local memory
         void stageUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
 
+        /**
+         * Copies the input data into a temporary buffer, and copies that temporary buffer to GPU memory.
+         * Note that this function does NOT wait for the copy to finish.
+         * The GPU will "automatically" (this is handled by the engine) wait for the copy to finish before starting to render the current frame.
+         *
+         * @param data list of contiguous elements to copy to this GPU buffer
+         * @param length length, in bytes, of the contents of 'data'
+         * @param offset offset, in bytes, of where to copy data inside this buffer view
+         */
+        void uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
+
         void copyToAndWait(Carrot::BufferView destination) const;
         void copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const;
         void cmdCopyTo(vk::CommandBuffer& cmds, Carrot::BufferView destination) const;
@@ -84,6 +95,19 @@ namespace Carrot {
         template<typename T>
         void stageUpload(const std::span<const T>& data) {
             stageUpload(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
+        }
+
+        /**
+         * Copies the input data into a temporary buffer, and copies that temporary buffer to GPU memory.
+         * Note that this function does NOT wait for the copy to finish.
+         * The GPU will "automatically" (this is handled by the engine) wait for the copy to finish before starting to render the current frame.
+         *
+         * @tparam T Data type to send
+         * @param data list of contiguous elements to copy to this GPU buffer
+         */
+        template<typename T>
+        void uploadForFrame(const std::span<const T>& data) {
+            uploadForFrame(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
         }
 
         /// Copies the contents of this buffer to the given memory

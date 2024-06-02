@@ -101,6 +101,36 @@ void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length, vk
     getBuffer().stageUploadWithOffset(start+offset, data, length);
 }
 
+void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+    verify(length-offset <= size, "Cannot upload more data than this view allows");
+    Carrot::BufferView staging = GetRenderer().getSingleFrameHostBuffer(length);
+    staging.directUpload(data, length, 0);
+    vk::CommandBuffer cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
+        staging.cmdCopyTo(cmds, this->subView(offset, length));
+    });
+
+    vk::CommandBufferSubmitInfo bufferInfo {
+        .commandBuffer = cmds
+    };
+    // copies will be ordered, must be done before call to "incrementAndGetCopyCounter"
+    vk::SemaphoreSubmitInfo waitInfo = GetRenderer().createCopySemaphoreWaitInfo();
+    vk::SemaphoreSubmitInfo signalInfo {
+        .semaphore = GetRenderer().getCopySemaphore(),
+        .value = GetRenderer().incrementAndGetCopyCounter(),
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+    GetVulkanDriver().submitTransfer(vk::SubmitInfo2 {
+        .waitSemaphoreInfoCount = 1,
+        .pWaitSemaphoreInfos = &waitInfo,
+
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &bufferInfo,
+
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signalInfo
+    });
+}
+
 void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {
     verify(destination.size >= size, "copying too much data");
     GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {

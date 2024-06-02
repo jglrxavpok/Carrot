@@ -34,8 +34,8 @@ namespace Carrot::Physics {
         Carrot::Render::Packet& renderPacket = GetRenderer().makeRenderPacket(Carrot::Render::PassEnum::OpaqueGBuffer, Render::PacketType::DrawIndexedInstanced, debugViewport);
         renderPacket.pipeline = debugTrianglesPipeline;
 
-        Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameBuffer(vertices.size() * sizeof(Carrot::Vertex));
-        Carrot::BufferView indexBuffer = GetRenderer().getSingleFrameBuffer(indices.size() * sizeof(std::uint32_t));
+        Carrot::BufferView vertexBuffer = GetRenderer().getSingleFrameHostBuffer(vertices.size() * sizeof(Carrot::Vertex));
+        Carrot::BufferView indexBuffer = GetRenderer().getSingleFrameHostBuffer(indices.size() * sizeof(std::uint32_t));
 
         vertexBuffer.directUpload(std::span<const Carrot::Vertex>{vertices});
         indexBuffer.directUpload(std::span<const std::uint32_t>{indices});

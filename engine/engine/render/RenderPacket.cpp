@@ -232,7 +232,7 @@ namespace Carrot::Render {
                     indexedDrawCommands.pushBack(cmd.drawIndexedInstanced);
                 }
 
-                Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
+                Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameHostBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
                 indexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndexedIndirectCommand>{ indexedDrawCommands });
 
                 cmds.drawIndexedIndirect(indexedDrawCommandBuffer.getVulkanBuffer(), indexedDrawCommandBuffer.getStart(), indexedDrawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
@@ -245,7 +245,7 @@ namespace Carrot::Render {
                     unindexedDrawCommands.pushBack(cmd.drawUnindexedInstanced);
                 }
 
-                Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
+                Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameHostBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
                 unindexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndirectCommand>{ unindexedDrawCommands });
 
                 cmds.drawIndirect(unindexedDrawCommandBuffer.getVulkanBuffer(), unindexedDrawCommandBuffer.getStart(), unindexedDrawCommands.size(), sizeof(vk::DrawIndirectCommand));
@@ -258,7 +258,7 @@ namespace Carrot::Render {
                     unindexedDispatchCommands.pushBack(cmd.compute);
                 }
 
-                Carrot::BufferView unindexedDispatchCommandBuffer = renderer.getSingleFrameBuffer(unindexedDispatchCommands.size() * sizeof(vk::DispatchIndirectCommand));
+                Carrot::BufferView unindexedDispatchCommandBuffer = renderer.getSingleFrameHostBuffer(unindexedDispatchCommands.size() * sizeof(vk::DispatchIndirectCommand));
                 unindexedDispatchCommandBuffer.directUpload(std::span<const vk::DispatchIndirectCommand>{ unindexedDispatchCommands });
 
                 cmds.drawIndirect(unindexedDispatchCommandBuffer.getVulkanBuffer(), unindexedDispatchCommandBuffer.getStart(), unindexedDispatchCommands.size(), sizeof(vk::DispatchIndirectCommand));
@@ -272,7 +272,7 @@ namespace Carrot::Render {
                     drawMeshTasks.pushBack(cmd.drawMeshTasks);
                 }
 
-                Carrot::BufferView meshDrawCommandBuffer = renderer.getSingleFrameBuffer(drawMeshTasks.size() * sizeof(vk::DrawMeshTasksIndirectCommandEXT));
+                Carrot::BufferView meshDrawCommandBuffer = renderer.getSingleFrameHostBuffer(drawMeshTasks.size() * sizeof(vk::DrawMeshTasksIndirectCommandEXT));
                 meshDrawCommandBuffer.directUpload(std::span<const vk::DrawMeshTasksIndirectCommandEXT>{ drawMeshTasks });
 
                 cmds.drawMeshTasksIndirectEXT(meshDrawCommandBuffer.getVulkanBuffer(),

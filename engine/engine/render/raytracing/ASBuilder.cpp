@@ -63,8 +63,7 @@ namespace Carrot {
                 }
             }
 
-            // TODO: don't wait for upload to complete?
-            transformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>(rtTransforms));
+            transformData.view.uploadForFrame(std::span<const vk::TransformMatrixKHR>(rtTransforms));
             transformDataAddress = transformData.view.getDeviceAddress();
         } else {
             transformDataAddress = builder->getIdentityMatrixBufferView().getDeviceAddress();

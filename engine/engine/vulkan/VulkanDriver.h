@@ -131,6 +131,15 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags2 waitDstFlags = static_cast<vk::PipelineStageFlagBits2>(0), vk::Semaphore signalSemaphore = {});
 
+        template<typename CommandBufferConsumer>
+        vk::CommandBuffer recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer);
+
+        template<typename CommandBufferConsumer>
+        vk::CommandBuffer recordStandaloneTransferBuffer(const CommandBufferConsumer& consumer);
+
+        template<typename CommandBufferConsumer>
+        vk::CommandBuffer recordStandaloneComputeBuffer(const CommandBufferConsumer& consumer);
+
         [[nodiscard]] vk::UniqueImageView createImageView(const vk::Image& image, vk::Format imageFormat,
                                                           vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor,
                                                           vk::ImageViewType viewType = vk::ImageViewType::e2D, uint32_t layerCount = 1);
@@ -326,6 +335,9 @@ namespace Carrot {
         void waitDeviceIdle();
 
     private:
+        template<typename CommandBufferConsumer>
+        vk::CommandBuffer recordStandaloneBuffer(vk::CommandPool& commandPool, const CommandBufferConsumer& consumer);
+
         template<typename CommandBufferConsumer>
         void performSingleTimeCommands(vk::CommandPool& commandPool, const std::function<void(const vk::SubmitInfo2&, const vk::Fence&)>& submitAction, const std::function<void()>& waitAction, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore, CommandBufferConsumer consumer);
 

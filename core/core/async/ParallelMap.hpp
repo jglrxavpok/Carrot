@@ -27,9 +27,7 @@ namespace Carrot::Async {
 
         struct Node {
             Cider::Mutex nodeAccess;
-            KeyType key;
 
-            Hash hashedKey = 0;
             std::optional<ValueType> value;
         };
 
@@ -64,20 +62,16 @@ namespace Carrot::Async {
 
         /// Gets the value corresponding to the given key. If no such value exists, the value is created via generator.
         ValueType& getOrCompute(const KeyType& key, std::function<ValueType()> generator) {
-            Hash hashedKey = hasher(key);
-
             Node* existingNode = nullptr;
             {
                 Async::LockGuard l { storageAccess.read() };
-                for(auto& node : storage) {
-                    if(node.hashedKey == hashedKey) {
-                        verify(key == node.key, "Collision!");
-                        if(node.value.has_value()) {
-                            return node.value.value();
-                        } else {
-                            existingNode = &node;
-                            break;
-                        }
+                auto iter = storage.find(key);
+                if(iter != storage.end()) {
+                    auto& node = iter->second;
+                    if(node.value.has_value()) {
+                        return node.value.value();
+                    } else {
+                        existingNode = &node;
                     }
                 }
             }
@@ -89,18 +83,15 @@ namespace Carrot::Async {
 
                 // node might have been created by another thread
                 if(!existingNode) {
-                    for(auto& node : storage) {
-                        if(node.hashedKey == hashedKey) {
-                            existingNode = &node;
-                        }
+                    auto iter = storage.find(key);
+                    if(iter != storage.end()) {
+                        existingNode = &iter->second;
                     }
                 }
 
                 // insert empty node
                 if(!existingNode) {
-                    existingNode = &storage.emplace_back();
-                    existingNode->key = key;
-                    existingNode->hashedKey = hashedKey;
+                    existingNode = &storage[key];
                     existingNode->value = {};
                 }
 
@@ -119,20 +110,16 @@ namespace Carrot::Async {
 
         /// Gets the value corresponding to the given key. If no such value exists, the value is created via generator.
         ValueType& getOrCompute(Cider::FiberHandle& fiberHandle, const KeyType& key, std::function<ValueType()> generator) {
-            Hash hashedKey = hasher(key);
-
             Node* existingNode = nullptr;
             {
                 Async::LockGuard l { storageAccess.read() };
-                for(auto& node : storage) {
-                    if(node.hashedKey == hashedKey) {
-                        verify(key == node.key, "Collision!");
-                        if(node.value.has_value()) {
-                            return node.value.value();
-                        } else {
-                            existingNode = &node;
-                            break;
-                        }
+                auto iter = storage.find(key);
+                if(iter != storage.end()) {
+                    auto& node = iter->second;
+                    if(node.value.has_value()) {
+                        return node.value.value();
+                    } else {
+                        existingNode = &node;
                     }
                 }
             }
@@ -144,18 +131,15 @@ namespace Carrot::Async {
 
                 // node might have been created by another thread
                 if(!existingNode) {
-                    for(auto& node : storage) {
-                        if(node.hashedKey == hashedKey) {
-                            existingNode = &node;
-                        }
+                    auto iter = storage.find(key);
+                    if(iter != storage.end()) {
+                        existingNode = &iter->second;
                     }
                 }
 
                 // insert empty node
                 if(!existingNode) {
-                    existingNode = &storage.emplace_back();
-                    existingNode->key = key;
-                    existingNode->hashedKey = hashedKey;
+                    existingNode = &storage[key];
                     existingNode->value = {};
                 }
 
@@ -174,51 +158,34 @@ namespace Carrot::Async {
 
         /// Removes the value corresponding to the given key. If no such value exists, returns false. Returns true otherwise.
         bool remove(const KeyType& key) {
-            Hash hashedKey = hasher(key);
             Async::LockGuard l { storageAccess.read() };
-            for(auto& node : storage) {
-                if(node.hashedKey == hashedKey) {
-                    Cider::BlockingLockGuard l1 { node.nodeAccess };
-                    bool result = node.value.has_value();
-                    node.value.reset();
-                    return result;
-                }
+            auto iter = storage.find(key);
+            if(iter != storage.end()) {
+                auto& node = iter->second;
+                Cider::BlockingLockGuard l1 { node.nodeAccess };
+                bool result = node.value.has_value();
+                node.value.reset();
+                return result;
             }
             return false;
         }
 
         ValueType* find(const KeyType& key) {
-            Hash hashedKey = hasher(key);
-
-            Node *existingNode = nullptr;
-            {
-                Async::LockGuard l{storageAccess.read()};
-                for (auto& node: storage) {
-                    if (node.hashedKey == hashedKey) {
-                        if (node.value.has_value()) {
-                            return &node.value.value();
-                        }
-                    }
-                }
+            Async::LockGuard l{storageAccess.read()};
+            auto iter = storage.find(key);
+            if(iter == storage.end()) {
+                return nullptr;
             }
-            return nullptr;
+            return &iter->second.value.value();
         }
 
         const ValueType* find(const KeyType& key) const {
-            Hash hashedKey = hasher(key);
-
-            Node* existingNode = nullptr;
-            {
-                Async::LockGuard l { storageAccess.read() };
-                for(auto& node : storage) {
-                    if(node.hashedKey == hashedKey) {
-                        if(node.value.has_value()) {
-                            return &node.value.value();
-                        }
-                    }
-                }
+            Async::LockGuard l { storageAccess.read() };
+            auto iter = storage.find(key);
+            if(iter == storage.end()) {
+                return nullptr;
             }
-            return nullptr;
+            return &iter->second.value.value();
         }
 
         /// Provides a copy of this map's contents. Can be used to iterate over this structure
@@ -227,9 +194,9 @@ namespace Carrot::Async {
 
             NonConstSnapshot result;
             result.keyValuePairs.reserve(storage.size());
-            for(auto& node : storage) {
+            for(auto& [key, node] : storage) {
                 if(node.value.has_value()) {
-                    result.keyValuePairs.emplace_back(node.key, &node.value.value());
+                    result.keyValuePairs.emplace_back(key, &node.value.value());
                 }
             }
             result.keyValuePairs.shrink_to_fit();
@@ -243,9 +210,9 @@ namespace Carrot::Async {
 
             ConstSnapshot result;
             result.keyValuePairs.reserve(storage.size());
-            for(auto& node : storage) {
+            for(auto& [key, node] : storage) {
                 if(node.value.has_value()) {
-                    result.keyValuePairs.emplace_back(node.key, &node.value.value());
+                    result.keyValuePairs.emplace_back(key, &node.value.value());
                 }
             }
             result.keyValuePairs.shrink_to_fit();
@@ -255,7 +222,7 @@ namespace Carrot::Async {
 
         void clear() {
             Async::LockGuard g { storageAccess.write() };
-            for(auto& node : storage) {
+            for(auto& [key, node] : storage) {
                 Cider::BlockingLockGuard g2 { node.nodeAccess };
                 node.value.reset();
             }
@@ -264,7 +231,6 @@ namespace Carrot::Async {
 
     private:
         mutable Async::ReadWriteLock storageAccess{};
-        std::list<Node> storage{};
-        std::hash<KeyType> hasher{};
+        std::unordered_map<KeyType, Node> storage{};
     };
 }

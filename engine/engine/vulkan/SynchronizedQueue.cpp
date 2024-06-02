@@ -58,4 +58,8 @@ namespace Carrot::Vulkan {
         queue = toCopy.queue;
         return *this;
     }
+
+    void SynchronizedQueue::setDebugNames(const std::string &name) {
+        nameSingle(name, queue);
+    }
 }

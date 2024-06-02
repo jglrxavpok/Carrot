@@ -7,8 +7,10 @@
 #include "includes.h"
 #include <mutex>
 
+#include <engine/vulkan/DebugNameable.h>
+
 namespace Carrot::Vulkan {
-    class SynchronizedQueue {
+    class SynchronizedQueue: public DebugNameable {
     public:
         SynchronizedQueue() = default;
         SynchronizedQueue(vk::Queue queue);
@@ -27,6 +29,9 @@ namespace Carrot::Vulkan {
 
     public:
         SynchronizedQueue& operator=(const SynchronizedQueue& toCopy);
+
+    protected:
+        void setDebugNames(const std::string &name) override;
 
     private:
         vk::Queue queue;

@@ -90,6 +90,16 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                3,2,0,
                                        });
 
+    copySemaphore = driver.getLogicalDevice().createSemaphoreUnique(vk::StructureChain {
+        vk::SemaphoreCreateInfo {
+        },
+        vk::SemaphoreTypeCreateInfo {
+            .semaphoreType = vk::SemaphoreType::eTimeline,
+            .initialValue = 0,
+        }
+    }.get<vk::SemaphoreCreateInfo>());
+    DebugNameable::nameSingle("Copy timeline semaphore", *copySemaphore);
+
     createCameraSetResources();
     createViewportSetResources();
     createPerDrawSetResources();
@@ -1462,6 +1472,31 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
     return blackCubeMapTexture;
 }
 
+vk::Semaphore Carrot::VulkanRenderer::getCopySemaphore() const {
+    return *copySemaphore;
+}
+
+std::uint64_t Carrot::VulkanRenderer::incrementAndGetCopyCounter() {
+    return ++copyTimelineCounter;
+}
+
+vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreWaitInfo() const {
+    return vk::SemaphoreSubmitInfo {
+        .semaphore = getCopySemaphore(),
+        .value = copyTimelineCounter,
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+}
+
+vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreResetInfo() {
+    copyTimelineCounter = 0;
+    return vk::SemaphoreSubmitInfo {
+        .semaphore = getCopySemaphore(),
+        .value = 0,
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+}
+
 void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;
     ASSERT_RENDER_THREAD();
@@ -1700,7 +1735,7 @@ void Carrot::VulkanRenderer::blink() {
     hasBlinked = false;
 }
 
-Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameBuffer(vk::DeviceSize bytes, vk::DeviceSize alignment) {
+Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameHostBuffer(vk::DeviceSize bytes, vk::DeviceSize alignment) {
     return singleFrameAllocator.allocate(bytes, alignment);
 }
 

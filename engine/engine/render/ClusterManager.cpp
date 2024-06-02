@@ -378,7 +378,7 @@ namespace Carrot::Render {
                 }
             }
 
-            activeModelsBufferView = renderer.getSingleFrameBuffer(activeInstances.size() * sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeModelsBufferView = renderer.getSingleFrameHostBuffer(activeInstances.size() * sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeModelsBufferView.directUpload(std::span<const std::uint32_t>(activeInstances));
         }
 
@@ -579,8 +579,6 @@ namespace Carrot::Render {
         for(std::size_t jobIndex = 0; jobIndex <= parallelJobs; jobIndex++) {
             processRange(jobIndex * granularity);
         }
-
-        processRange(parallelJobs * granularity);
 
         sync.sleepWait();
     }
