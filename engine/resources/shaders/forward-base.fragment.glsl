@@ -1,4 +1,8 @@
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 #include "includes/camera.glsl"
 #include "draw_data.glsl"
@@ -10,7 +14,6 @@
 #extension GL_EXT_ray_query : enable
 
 #extension GL_EXT_buffer_reference: enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 #extension GL_EXT_buffer_reference2 : enable
 #include "includes/buffers.glsl"
 #endif

@@ -6,17 +6,22 @@
 
 #include <cstdint>
 
-namespace Carrot::SceneDescription {
+namespace Carrot {
 
-    struct Geometry {
-        vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
-        vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
-        std::uint32_t materialIndex = (std::uint32_t)-1;
-        std::uint32_t _pad = (std::uint32_t)-1;
-    };
+    enum class BLASGeometryFormat: std::uint8_t;
 
-    struct Instance {
-        glm::vec4 instanceColor{1,1,1,1};
-        std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
-    };
+    namespace SceneDescription {
+        struct Geometry {
+            vk::DeviceAddress vertexBufferAddress = (vk::DeviceAddress)-1;
+            vk::DeviceAddress indexBufferAddress = (vk::DeviceAddress)-1;
+            std::uint32_t materialIndex = (std::uint32_t)-1;
+            BLASGeometryFormat geometryFormat = (BLASGeometryFormat)-1; // See Carrot::BLASGeometryFormat
+        };
+
+        struct Instance {
+            glm::vec4 instanceColor{1,1,1,1};
+            std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
+        };
+    }
+
 }

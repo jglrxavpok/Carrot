@@ -368,19 +368,54 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     }
     vec2 barycentrics = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
 
+
     Geometry geometry = (geometries[nonuniformEXT(geometryID)]);
 
-    uint index2 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)]);
-    uint index0 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)]);
-    uint index1 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)]);
-    Vertex P2 = (geometry.vertexBuffer.v[index2]);
-    Vertex P0 = (geometry.vertexBuffer.v[index0]);
-    Vertex P1 = (geometry.vertexBuffer.v[index1]);
+    vec2 uvPos;
+    vec3 surfaceNormal;
+    vec3 surfaceTangent;
+    vec3 color;
+    const uint geometryFormat = geometry.geometryFormat;
+    switch(geometryFormat) {
+        case GEOMETRY_FORMAT_DEFAULT: {
+            uint index2 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)]);
+            uint index0 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)]);
+            uint index1 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)]);
 
-    vec2 uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
-    vec3 surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
-    vec3 surfaceTangent = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz;
-    vec3 color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            Vertex P2 = geometry.vertexBuffer.v[index2];
+            Vertex P0 = geometry.vertexBuffer.v[index0];
+            Vertex P1 = geometry.vertexBuffer.v[index1];
+
+            uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
+            surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
+            surfaceTangent = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz;
+            color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+        } break;
+
+        case GEOMETRY_FORMAT_PACKED: {
+            IndexBuffer16 idxBuffer = IndexBuffer16(uint64_t(geometry.indexBuffer));
+            uint index2 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+0)]);
+            uint index0 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+1)]);
+            uint index1 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+2)]);
+
+            PackedVertexBuffer vtxBuffer = PackedVertexBuffer(uint64_t(geometry.vertexBuffer));
+            PackedVertex P2 = vtxBuffer.v[index2];
+            PackedVertex P0 = vtxBuffer.v[index0];
+            PackedVertex P1 = vtxBuffer.v[index1];
+
+            uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
+            surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
+            surfaceTangent = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz;
+            color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+
+        } break;
+
+        default: {
+            // maybe crashing would be better? not sure
+            r.hasIntersection = false;
+            return;
+        } break;
+    }
 
     mat3 modelRotation = mat3(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
     r.hasIntersection = true;
@@ -444,8 +479,6 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
     #undef light
 }
 #endif
-
-#undef HARDWARE_SUPPORTS_RAY_TRACING // TODO debug only remove
 
 vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     vec3 finalColor = vec3(0.0);

@@ -76,6 +76,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
         VK_EXT_MESH_SHADER_EXTENSION_NAME,
+        VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -128,11 +129,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     } else if(pCallbackData->messageIdNumber == 2484131348u) /* VUID-vkCmdDrawIndexedIndirect-None-02699 */{
         debug_break();
     } else if(pCallbackData->messageIdNumber == 1318213324u) /* VUID-vkAllocateMemory-maxMemoryAllocationCount-04101 */ {
-        debug_break();
+        //debug_break();
     } else if(pCallbackData->messageIdNumber == 3316570872u) /* VUID-vkCmdBindDescriptorSets-pDynamicOffsets-01972 */ {
         debug_break();
     } else if(pCallbackData->messageIdNumber == 2707007331u) /* VUID-vkCmdBindDescriptorSets-pDescriptorSets-01979 */ {
         //debug_break();
+    } else if(pCallbackData->messageIdNumber == 3926398030u) /* VUID-VkWriteDescriptorSet-descriptorType-00328 */ {
+        debug_break();
     } else if(strstr(pCallbackData->pMessage, "Threading-MultipleThreads") != nullptr) {
         debug_break();
     } else if(strstr(pCallbackData->pMessage, "FreeMemory-memory") != nullptr) {

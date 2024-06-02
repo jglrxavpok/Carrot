@@ -30,12 +30,18 @@ layout(buffer_reference, scalar) buffer IndexBuffer {
     uint i[];
 };
 
+layout(buffer_reference, scalar) buffer IndexBuffer16 {
+    uint16_t i[];
+};
+
+#define GEOMETRY_FORMAT_DEFAULT 0
+#define GEOMETRY_FORMAT_PACKED 1
+
 struct Geometry {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
     uint materialIndex;
-
-    uint _pad;
+    uint8_t geometryFormat;
 };
 
 struct Instance {

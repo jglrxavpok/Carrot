@@ -16,9 +16,10 @@ namespace Carrot {
                            const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<glm::mat4>& transforms,
                            const std::vector<std::uint32_t>& materialSlots,
+                           BLASGeometryFormat geometryFormat,
                            ASBuilder* builder):
     WeakPoolHandle(index, std::move(destructor)),
-    meshes(meshes), materialSlots(materialSlots), builder(builder) {
+    meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat) {
         geometries.reserve(meshes.size());
         buildRanges.reserve(meshes.size());
 
@@ -171,11 +172,12 @@ void Carrot::ASBuilder::createDescriptors() {
 
 std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<glm::mat4>& transforms,
-                                                                      const std::vector<std::uint32_t>& materials) {
+                                                                      const std::vector<std::uint32_t>& materials,
+                                                                      BLASGeometryFormat geometryFormat) {
     if(!enabled)
         return nullptr;
     Async::LockGuard l { access };
-    return staticGeometries.create(meshes, transforms, materials, this);
+    return staticGeometries.create(meshes, transforms, materials, geometryFormat, this);
 }
 
 void Carrot::ASBuilder::createSemaphores() {
@@ -242,6 +244,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     bool requireTLASRebuildNow = !toBuild.empty() || dirtyInstances || activeInstances > previousActiveInstances;
+    //previousActiveInstances = activeInstances;
 
     dirtyInstances = false;
     if(requireTLASRebuildNow) {
@@ -354,10 +357,11 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 allGeometries.reserve(allGeometries.size() + blas.geometries.size());
             }
             for (std::size_t j = 0; j < blas.geometries.size(); ++j) {
-                allGeometries.emplace_back(SceneDescription::Geometry{
+                allGeometries.emplace_back(SceneDescription::Geometry {
                         .vertexBufferAddress = blas.geometries[j].geometry.triangles.vertexData.deviceAddress,
                         .indexBufferAddress = blas.geometries[j].geometry.triangles.indexData.deviceAddress,
                         .materialIndex = blas.materialSlots[j],
+                        .geometryFormat = blas.geometryFormat,
                 });
             }
         }
@@ -557,12 +561,13 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         return;
     static int prevPrimitiveCount = 0;
     ZoneScoped;
+    ZoneValue(update ? 1 : 0);
 
     auto& device = renderer.getLogicalDevice();
     const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
 
     std::vector<vk::AccelerationStructureInstanceKHR> vkInstances{};
-    std::vector<SceneDescription::Instance> logicalInstances { vkInstances.size() };
+    std::vector<SceneDescription::Instance> logicalInstances {};
     vkInstances.reserve(instances.size());
     logicalInstances.reserve(instances.size());
 

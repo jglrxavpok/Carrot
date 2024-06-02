@@ -91,7 +91,7 @@ namespace Carrot::Render {
         templatesFromClusters.resize(gpuClusters.size());
         groupsFromClusters.resize(gpuClusters.size());
 
-        std::vector<Carrot::PackedVertex> vertices;
+        std::vector<ClusterVertex> vertices;
         std::vector<ClusterIndex> indices;
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             Meshlet& meshlet = desc.meshlets[i];
@@ -114,7 +114,7 @@ namespace Carrot::Render {
             indices.resize(firstIndexIndex + meshlet.indexCount);
 
             for(std::size_t index = 0; index < meshlet.vertexCount; index++) {
-                vertices[index + firstVertexIndex] = Carrot::PackedVertex{ desc.originalVertices[desc.meshletVertexIndices[index + meshlet.vertexOffset]] };
+                vertices[index + firstVertexIndex] = ClusterVertex{ desc.originalVertices[desc.meshletVertexIndices[index + meshlet.vertexOffset]] };
             }
             for(std::size_t index = 0; index < meshlet.indexCount; index++) {
                 indices[index + firstIndexIndex] = static_cast<ClusterIndex>(desc.meshletIndices[index + meshlet.indexOffset]);
@@ -130,10 +130,10 @@ namespace Carrot::Render {
             templateClusterGroups[globalGroupIndex].clusters.pushBack(firstClusterIndex + i);
         }
 
-        BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(Carrot::PackedVertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer);
+        BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterVertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
         vertexData.name(Carrot::sprintf("Virtual geometry vertex buffer %llu meshlets", desc.meshlets.size()));
-        vertexData.view.stageUpload(std::span<const Carrot::PackedVertex>{vertices});
-        BufferAllocation indexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterIndex) * indices.size(), vk::BufferUsageFlagBits::eStorageBuffer);
+        vertexData.view.stageUpload(std::span<const ClusterVertex>{vertices});
+        BufferAllocation indexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterIndex) * indices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
         indexData.name(Carrot::sprintf("Virtual geometry index buffer %llu meshlets", desc.meshlets.size()));
         indexData.view.stageUpload(std::span<const ClusterIndex>{indices});
 
@@ -145,7 +145,7 @@ namespace Carrot::Render {
             cluster.indexBufferAddress = indexData.view.getDeviceAddress() + indexOffset;
 
             const auto& meshlet = desc.meshlets[i];
-            vertexOffset += sizeof(Carrot::PackedVertex) * meshlet.vertexCount;
+            vertexOffset += sizeof(ClusterVertex) * meshlet.vertexCount;
             indexOffset += sizeof(ClusterIndex) * meshlet.indexCount;
         }
 
@@ -378,7 +378,7 @@ namespace Carrot::Render {
                 }
             }
 
-            activeModelsBufferView = renderer.getSingleFrameBuffer(activeInstances.size() * sizeof(std::uint32_t));
+            activeModelsBufferView = renderer.getSingleFrameBuffer(activeInstances.size() * sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeModelsBufferView.directUpload(std::span<const std::uint32_t>(activeInstances));
         }
 
@@ -502,9 +502,9 @@ namespace Carrot::Render {
                     const ClusterInstance& clusterInstance = clusterInstances[clusterInstanceID];
                     if(auto pTemplate = geometries.find(templatesFromClusters[clusterInstance.clusterID]).lock()) {
                         const Cluster& cluster = gpuClusters[clusterInstance.clusterID];
-                        const BufferView vertexBuffer = pTemplate->vertexData.view.subViewFromAddress(cluster.vertexBufferAddress, cluster.vertexCount * sizeof(PackedVertex));
+                        const BufferView vertexBuffer = pTemplate->vertexData.view.subViewFromAddress(cluster.vertexBufferAddress, cluster.vertexCount * sizeof(ClusterVertex));
                         const BufferView indexBuffer = pTemplate->indexData.view.subViewFromAddress(cluster.indexBufferAddress, cluster.triangleCount * 3 * sizeof(ClusterIndex));
-                        std::shared_ptr<LightMesh> mesh = std::make_shared<LightMesh>(vertexBuffer, indexBuffer, sizeof(PackedVertex), sizeof(ClusterIndex));
+                        std::shared_ptr<LightMesh> mesh = std::make_shared<LightMesh>(vertexBuffer, indexBuffer, sizeof(ClusterVertex), sizeof(ClusterIndex));
 
                         meshes.push_back(mesh);
                         transforms.push_back(cluster.transform);
@@ -516,7 +516,7 @@ namespace Carrot::Render {
                     return nullptr;
                 }
 
-                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transforms, materialIndices);
+                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transforms, materialIndices, BLASGeometryFormat::ClusterCompressed);
             }
 
             blas = correspondingBLAS.blas;
@@ -547,8 +547,6 @@ namespace Carrot::Render {
 
                 if(!rtData.as) {
                     rtData.as = createGroupInstanceAS(clusterInstances, groupInstances, *pModel, groupInstanceID);
-                    rtData.as->enabled = true;
-                    rtData.as->transform = pModel->instanceData.transform;
                 }
                 // update instance AS transform
                 rtData.as->enabled = true;
@@ -582,7 +580,7 @@ namespace Carrot::Render {
             processRange(jobIndex * granularity);
         }
 
-        //12409
+        processRange(parallelJobs * granularity);
 
         sync.sleepWait();
     }
@@ -600,7 +598,7 @@ namespace Carrot::Render {
         }
 
         // reset state
-        for(auto [slot, pModel] : models) {
+        for(auto& [slot, pModel] : models) {
             if(auto pLockedModel = pModel.lock()) {
                 auto& rtData = groupRTDataPerModel[slot];
                 rtData.resetForNewFrame();
@@ -617,7 +615,6 @@ namespace Carrot::Render {
             const ClusterReadbackData* pData = readbackBuffer.map<const ClusterReadbackData>();
             readbackBuffer.invalidateMappedRange(0, VK_WHOLE_SIZE);
 
-            Async::Counter& syncCounter = readbackJobsSync[lastFrameIndex];
             std::size_t count = static_cast<std::size_t>(perViewport[pViewport].gpuClusterInstances.size());
             processReadbackData(pViewport, pData, count);
         }

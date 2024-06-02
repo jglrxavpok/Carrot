@@ -34,6 +34,12 @@ namespace Carrot {
 
     class ASBuilder;
 
+
+    enum class BLASGeometryFormat: std::uint8_t {
+        Default = 0, // Carrot::Vertex
+        ClusterCompressed = 1, // Carrot::PackedVertex
+    };
+
     class BLASHandle: public WeakPoolHandle {
     public:
         bool dynamicGeometry = false;
@@ -42,6 +48,7 @@ namespace Carrot {
                    const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<glm::mat4>& transforms,
                    const std::vector<std::uint32_t>& materialSlots,
+                   BLASGeometryFormat geometryFormat,
                    ASBuilder* builder);
 
         bool isBuilt() const { return built; }
@@ -61,6 +68,7 @@ namespace Carrot {
         std::uint32_t firstGeometryIndex = (std::uint32_t)-1;
         bool built = false;
         ASBuilder* builder = nullptr;
+        BLASGeometryFormat geometryFormat = BLASGeometryFormat::Default;
 
         friend class ASBuilder;
         friend class InstanceHandle;
@@ -82,8 +90,9 @@ namespace Carrot {
 
     public:
         glm::mat4 transform{1.0f};
-        glm::vec4 instanceColor;
+        glm::vec4 instanceColor{1.0f};
         vk::GeometryInstanceFlagsKHR flags = vk::GeometryInstanceFlagBitsKHR::eForceOpaque | vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable | vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable;
+
         std::uint8_t mask = 0xFF;
         std::uint32_t customIndex = 0;
         bool enabled = true;
@@ -110,7 +119,8 @@ namespace Carrot {
 
         std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                    const std::vector<glm::mat4>& transforms,
-                                                   const std::vector<std::uint32_t>& materialSlots);
+                                                   const std::vector<std::uint32_t>& materialSlots,
+                                                   BLASGeometryFormat geometryFormat);
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);

@@ -212,7 +212,7 @@ namespace Carrot::Render {
 
             if(GetCapabilities().supportsRaytracing) {
                 auto& asBuilder = GetRenderer().getASBuilder();
-                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials));
+                auto& createdBLAS = blas.emplace_back(asBuilder.addBottomLevel(renderingMeshes[imageIndex], meshTransforms, meshMaterials, BLASGeometryFormat::Default));
                 rtInstance.emplace_back(asBuilder.addInstance(createdBLAS));
             }
         }

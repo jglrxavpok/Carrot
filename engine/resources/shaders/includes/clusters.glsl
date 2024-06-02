@@ -1,7 +1,3 @@
-layout(buffer_reference, scalar) buffer IndexBuffer16 {
-    uint16_t i[];
-};
-
 struct Cluster {
     PackedVertexBuffer vertices;
     IndexBuffer16 indices;

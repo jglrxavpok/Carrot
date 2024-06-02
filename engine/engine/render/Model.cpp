@@ -339,7 +339,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
         }
 
         if(!allStaticMeshes.empty()) {
-            //staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms, staticMeshMaterials);
+            //staticBLAS = builder.addBottomLevel(allStaticMeshes, transforms, staticMeshMaterials, BLASGeometryFormat::Default);
         }
     }
     task.wait(waitMaterialLoads); // hide latency by doing this last

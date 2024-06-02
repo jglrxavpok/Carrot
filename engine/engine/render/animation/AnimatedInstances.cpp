@@ -107,7 +107,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
 
         if(GetCapabilities().supportsRaytracing) {
             auto& asBuilder = GetRenderer().getASBuilder();
-            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots);
+            auto blas = asBuilder.addBottomLevel(instanceMeshes, meshTransforms, meshMaterialSlots, BLASGeometryFormat::Default);
             blas->dynamicGeometry = true;
             raytracingBLASes.push_back(blas);
             raytracingInstances.push_back(asBuilder.addInstance(blas));
