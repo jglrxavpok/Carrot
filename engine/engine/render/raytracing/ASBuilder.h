@@ -156,6 +156,9 @@ namespace Carrot {
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
         void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild);
 
+        /// Returns the buffer view which contains an identity matrix, intended for reusing the same memory location for BLASes which do not have a specific transform
+        BufferView getIdentityMatrixBufferView() const;
+
     private:
         VulkanRenderer& renderer;
         Async::SpinLock access;
@@ -203,6 +206,7 @@ namespace Carrot {
         std::vector<SceneDescription::Geometry> allGeometries;
 
         std::size_t lastFrameIndexForTLAS = 0;
+        Carrot::BufferAllocation identityMatrixForBLASes;
 
     private:
         std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;

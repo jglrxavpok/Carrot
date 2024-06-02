@@ -12,6 +12,8 @@
 #include "engine/render/resources/ResourceAllocator.h"
 
 namespace Carrot {
+    static constexpr glm::mat4 IdentityMatrix = glm::identity<glm::mat4>();
+
     BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
                            const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<glm::mat4>& transforms,
@@ -26,23 +28,47 @@ namespace Carrot {
         verify(meshes.size() == transforms.size(), "Need as many meshes as there are transforms!");
         verify(meshes.size() == materialSlots.size(), "Need as many material handles as there are meshes!");
 
-        transformData = GetResourceAllocator().allocateDeviceBuffer(
-                transforms.size() * sizeof(vk::TransformMatrixKHR),
-                vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
-
-        std::vector<vk::TransformMatrixKHR> rtTransforms;
-        rtTransforms.resize(transforms.size());
-
-        for (int j = 0; j < transforms.size(); ++j) {
-            for (int column = 0; column < 4; ++column) {
-                for (int row = 0; row < 3; ++row) {
-                    rtTransforms[j].matrix[row][column] = transforms[j][column][row];
+        bool allIdentity = true;
+        for(const auto& transform : transforms) {
+            for (int x = 0; x < 4; ++x) {
+                for (int y = 0; y < 4; ++y) {
+                    if(glm::abs(transform[x][y] - IdentityMatrix[x][y]) > 10e-6) {
+                        allIdentity = false;
+                        break;
+                    }
                 }
+                if(!allIdentity) {
+                    break;
+                }
+            }
+            if(!allIdentity) {
+                break;
             }
         }
 
-        // TODO: don't wait for upload to complete?
-        transformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>(rtTransforms));
+        vk::DeviceAddress transformDataAddress;
+        if(!allIdentity) {
+            transformData = GetResourceAllocator().allocateDeviceBuffer(
+                    transforms.size() * sizeof(vk::TransformMatrixKHR),
+                    vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+
+            std::vector<vk::TransformMatrixKHR> rtTransforms;
+            rtTransforms.resize(transforms.size());
+
+            for (int j = 0; j < transforms.size(); ++j) {
+                for (int column = 0; column < 4; ++column) {
+                    for (int row = 0; row < 3; ++row) {
+                        rtTransforms[j].matrix[row][column] = transforms[j][column][row];
+                    }
+                }
+            }
+
+            // TODO: don't wait for upload to complete?
+            transformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>(rtTransforms));
+            transformDataAddress = transformData.view.getDeviceAddress();
+        } else {
+            transformDataAddress = builder->getIdentityMatrixBufferView().getDeviceAddress();
+        }
 
         for(std::size_t i = 0; i < meshes.size(); i++) {
             auto& meshPtr = meshes[i];
@@ -63,6 +89,8 @@ namespace Carrot {
                 verify(false, Carrot::sprintf("Unsupported index size for raytracing: %llu", meshPtr->getSizeOfSingleIndex())); // unsupported
             }
 
+            // if all identity, always point to the same location in GPU memory
+            vk::DeviceAddress specificTransformAddress = transformDataAddress + (allIdentity ? 0 : i * sizeof(vk::TransformMatrixKHR));
             geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
                     // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
                     .vertexFormat = vk::Format::eR32G32B32Sfloat,
@@ -71,7 +99,7 @@ namespace Carrot {
                     .maxVertex = static_cast<uint32_t>(meshPtr->getVertexCount()-1),
                     .indexType = indexType,
                     .indexData = indexAddress,
-                    .transformData = transformData.view.getDeviceAddress() + i * sizeof(vk::TransformMatrixKHR),
+                    .transformData = specificTransformAddress,
             };
 
             buildRanges.emplace_back(vk::AccelerationStructureBuildRangeInfoKHR {
@@ -144,6 +172,15 @@ Carrot::ASBuilder::ASBuilder(Carrot::VulkanRenderer& renderer): renderer(rendere
     enabled = GetCapabilities().supportsRaytracing;
 
     onSwapchainImageCountChange(GetEngine().getSwapchainImageCount());
+
+    identityMatrixForBLASes = GetResourceAllocator().allocateDeviceBuffer(sizeof(vk::TransformMatrixKHR), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+    vk::TransformMatrixKHR identityValue;
+    for (int column = 0; column < 4; ++column) {
+        for (int row = 0; row < 3; ++row) {
+            identityValue.matrix[row][column] = IdentityMatrix[column][row];
+        }
+    }
+    identityMatrixForBLASes.view.stageUpload(std::span<const vk::TransformMatrixKHR>{ &identityValue, 1 });
 }
 
 void Carrot::ASBuilder::createBuildCommandBuffers() {
@@ -547,6 +584,10 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             toBuild[i]->as = std::move(compactedASes[i]);
         }
     }
+}
+
+Carrot::BufferView Carrot::ASBuilder::getIdentityMatrixBufferView() const {
+    return identityMatrixForBLASes.view;
 }
 
 std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
