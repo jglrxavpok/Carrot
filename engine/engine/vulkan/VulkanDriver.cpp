@@ -1247,15 +1247,15 @@ void Carrot::VulkanDriver::startFrame(const Carrot::Render::Context& renderConte
     }
 }
 
-void Carrot::VulkanDriver::submitGraphics(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+void Carrot::VulkanDriver::submitGraphics(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
     graphicsQueue.submit(submit, completeFence);
 }
 
-void Carrot::VulkanDriver::submitCompute(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+void Carrot::VulkanDriver::submitCompute(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
     computeQueue.submit(submit, completeFence);
 }
 
-void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo2& submit, const vk::Fence& completeFence) {
     transferQueue.submit(submit, completeFence);
 }
 

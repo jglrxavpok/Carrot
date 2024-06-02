@@ -51,7 +51,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     flatVertices->name("flat vertices");
 
     // copy mesh vertices into a flat buffer to allow for easy indexing inside the compute shader
-    engine.performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
+    engine.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& commands) {
         forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
             int32_t vertexOffset = static_cast<int32_t>(meshOffsets[mesh->getMeshID()]);
 
@@ -349,14 +349,20 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
 
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
-    GetVulkanDriver().submitCompute(vk::SubmitInfo {
-            .waitSemaphoreCount = 0,
-            .pWaitSemaphores = nullptr,
-            .pWaitDstStageMask = nullptr,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &skinningCommandBuffers[frameIndex],
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &(*skinningSemaphores[frameIndex]),
+    vk::CommandBufferSubmitInfo commandBufferInfo {
+        .commandBuffer = skinningCommandBuffers[frameIndex],
+    };
+    vk::SemaphoreSubmitInfo signalInfo {
+        .semaphore = *skinningSemaphores[frameIndex],
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+    GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
+            .waitSemaphoreInfoCount = 0,
+            .pWaitSemaphoreInfos = nullptr,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &commandBufferInfo,
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signalInfo,
     });
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[frameIndex]);
     return *skinningSemaphores[frameIndex];

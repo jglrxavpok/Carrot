@@ -431,11 +431,11 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
     if(onGraphicsQueue) {
         driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer &commands) {
             transitionLayoutInline(commands, oldLayout, newLayout);
-        }, true, {}, static_cast<vk::PipelineStageFlagBits>(0));
+        }, true, {}, static_cast<vk::PipelineStageFlagBits2>(0));
     } else {
         driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
             transitionLayoutInline(commands, oldLayout, newLayout);
-        }, true, {}, static_cast<vk::PipelineStageFlagBits>(0));
+        }, true, {}, static_cast<vk::PipelineStageFlagBits2>(0));
     }
 }
 

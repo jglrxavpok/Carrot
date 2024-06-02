@@ -214,7 +214,7 @@ namespace Carrot::Render {
         renderer.getVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer& cmds) {
             stagingBuffer.subView(0, vertexBuffer.getSize()).cmdCopyTo(cmds, vertexBuffer);
             stagingBuffer.subView(vertexBuffer.getSize(), indexBuffer.getSize()).cmdCopyTo(cmds, indexBuffer);
-        }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags>(0), *copySyncSemaphore);
+        }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags2>(0), *copySyncSemaphore);
         renderer.getEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
         Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, Render::PacketType::DrawIndexedInstanced, renderContext);

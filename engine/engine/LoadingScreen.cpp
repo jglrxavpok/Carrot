@@ -142,19 +142,12 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
     cmds.endRenderPass();
 
     cmds.end();
-
-    std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-    vk::SubmitInfo submitInfo {
-            .waitSemaphoreCount = 0,
-            .pWaitSemaphores = nullptr,
-
-            .pWaitDstStageMask = waitStages.data(),
-
-            .commandBufferCount = 1,
-            .pCommandBuffers = &cmds,
-
-            .signalSemaphoreCount = 0,
-            .pSignalSemaphores = nullptr,
+    vk::CommandBufferSubmitInfo commandInfo {
+            .commandBuffer = cmds,
+    };
+    vk::SubmitInfo2 submitInfo {
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &commandInfo,
     };
 
     GetVulkanDriver().submitGraphics(submitInfo, nullptr);

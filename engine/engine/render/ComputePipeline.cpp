@@ -247,13 +247,20 @@ void Carrot::ComputePipeline::dispatch(uint32_t groupCountX, uint32_t groupCount
     dispatchSizes->z = groupCountZ;
 
     engine.getLogicalDevice().resetFences(*finishedFence);
-    GetVulkanDriver().submitCompute(vk::SubmitInfo {
-            .waitSemaphoreCount = 0,
-            .pWaitSemaphores = nullptr,
-            .pWaitDstStageMask = nullptr,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffer,
-            .signalSemaphoreCount = signal != nullptr ? 1u : 0u,
-            .pSignalSemaphores = signal,
+    vk::SemaphoreSubmitInfo signalInfo;
+    if(signal) {
+        signalInfo.semaphore = *signal;
+        signalInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
+    }
+    vk::CommandBufferSubmitInfo commandBufferInfo {
+        .commandBuffer = commandBuffer,
+    };
+    GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
+            .waitSemaphoreInfoCount = 0,
+            .pWaitSemaphoreInfos = nullptr,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &commandBufferInfo,
+            .signalSemaphoreInfoCount = signal != nullptr ? 1u : 0u,
+            .pSignalSemaphoreInfos = &signalInfo,
     }, *finishedFence);
 }

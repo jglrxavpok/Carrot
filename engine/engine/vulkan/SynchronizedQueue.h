@@ -16,6 +16,7 @@ namespace Carrot::Vulkan {
         void waitIdle();
 
         void submit(const vk::SubmitInfo& info, const vk::Fence& fence = {});
+        void submit(const vk::SubmitInfo2& info, const vk::Fence& fence = {});
         void presentKHR(const vk::PresentInfoKHR& info);
 
         /// Gets the mutex for this queue, can be used to synchronize when only the vk::Queue is supported in a function call

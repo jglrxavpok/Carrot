@@ -516,17 +516,23 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     {
         ZoneScopedN("Submit BLAS build commands");
-        std::vector<vk::CommandBuffer> dereferencedBuildCommands{};
-        dereferencedBuildCommands.reserve(buildCommands.size());
+        std::vector<vk::CommandBufferSubmitInfo> commandBufferInfos{};
+        commandBufferInfos.reserve(buildCommands.size());
         for(auto& pBuffer : buildCommands) {
-            dereferencedBuildCommands.push_back(*pBuffer);
+            commandBufferInfos.emplace_back(vk::CommandBufferSubmitInfo {
+                .commandBuffer = *pBuffer,
+            });
         }
-        GetVulkanDriver().submitCompute(vk::SubmitInfo {
-                .commandBufferCount = static_cast<uint32_t>(toBuild.size()),
-                .pCommandBuffers = dereferencedBuildCommands.data(),
+        vk::SemaphoreSubmitInfo signalInfo {
+            .semaphore = hasASToCompact ? (*preCompactBLASSemaphore[renderContext.swapchainIndex]) : (*blasBuildSemaphore[renderContext.swapchainIndex]),
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        };
+        GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
+                .commandBufferInfoCount = static_cast<uint32_t>(toBuild.size()),
+                .pCommandBufferInfos = commandBufferInfos.data(),
 
-                .signalSemaphoreCount = 1,
-                .pSignalSemaphores = hasASToCompact ? &(*preCompactBLASSemaphore[renderContext.swapchainIndex]) : &(*blasBuildSemaphore[renderContext.swapchainIndex]),
+                .signalSemaphoreInfoCount = 1,
+                .pSignalSemaphoreInfos = &signalInfo,
         });
         builtBLASThisFrame = true;
         GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eTopOfPipe, *blasBuildSemaphore[renderContext.swapchainIndex]);
@@ -562,22 +568,31 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             cmds->end();
         }
 
-        vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR;
-        std::vector<vk::CommandBuffer> dereferencedCompactCommands{};
-        dereferencedCompactCommands.reserve(compactCommands.size());
+        vk::PipelineStageFlags2 waitStage = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR;
+        std::vector<vk::CommandBufferSubmitInfo> commandBufferInfos{};
+        commandBufferInfos.reserve(compactCommands.size());
         for(auto& pBuffer : compactCommands) {
-            dereferencedCompactCommands.push_back(*pBuffer);
+            commandBufferInfos.emplace_back(vk::CommandBufferSubmitInfo {
+                .commandBuffer = *pBuffer,
+            });
         }
-        GetVulkanDriver().submitCompute(vk::SubmitInfo {
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &(*preCompactBLASSemaphore[renderContext.swapchainIndex]),
-            .pWaitDstStageMask = &waitStage,
+        vk::SemaphoreSubmitInfo waitInfo {
+            .semaphore = (*preCompactBLASSemaphore[renderContext.swapchainIndex]),
+            .stageMask = waitStage,
+        };
+        vk::SemaphoreSubmitInfo signalInfo {
+            .semaphore = (*blasBuildSemaphore[renderContext.swapchainIndex]),
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        };
+        GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
+            .waitSemaphoreInfoCount = 1,
+            .pWaitSemaphoreInfos = &waitInfo,
 
-            .commandBufferCount = static_cast<uint32_t>(toBuild.size()),
-            .pCommandBuffers = dereferencedCompactCommands.data(),
+            .commandBufferInfoCount = static_cast<uint32_t>(toBuild.size()),
+            .pCommandBufferInfos = commandBufferInfos.data(),
 
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &(*blasBuildSemaphore[renderContext.swapchainIndex]),
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signalInfo,
         });
         // replace old AS with compacted AS
         for(size_t i = 0; i < blasCount; i++) {
@@ -734,26 +749,35 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     GetVulkanDriver().setFormattedMarker(buildCommand, "After TLAS build, update = %d, framesBeforeRebuildingTLAS = %d, instanceCount = %llu, prevInstanceCount = %llu", update, framesBeforeRebuildingTLAS, vkInstances.size(), (std::size_t)prevPrimitiveCount);
     buildCommand.end();
 
-    std::vector<vk::Semaphore> waitSemaphores;
-    std::vector<vk::PipelineStageFlags> waitStages;
+    std::vector<vk::SemaphoreSubmitInfo> waitSemaphores;
 
-    waitStages.push_back(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR);
-    waitSemaphores.push_back(*instanceUploadSemaphore[renderContext.swapchainIndex]);
+    waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+        .semaphore = *instanceUploadSemaphore[renderContext.swapchainIndex],
+        .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
+    });
     if(builtBLASThisFrame) {
-        waitStages.emplace_back(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR);
-        waitSemaphores.push_back(*blasBuildSemaphore[renderContext.swapchainIndex]);
+        waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = *blasBuildSemaphore[renderContext.swapchainIndex],
+            .stageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR,
+        });
     }
 
-    GetVulkanDriver().submitCompute(vk::SubmitInfo {
-        .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
-        .pWaitSemaphores = waitSemaphores.data(),
-        .pWaitDstStageMask = waitStages.data(),
+    vk::CommandBufferSubmitInfo buildCommandInfo {
+        .commandBuffer = buildCommand,
+    };
+    vk::SemaphoreSubmitInfo signalInfo {
+        .semaphore = (*tlasBuildSemaphore[renderContext.swapchainIndex]),
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
+    GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
+        .waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphores.size()),
+        .pWaitSemaphoreInfos = waitSemaphores.data(),
 
-        .commandBufferCount = 1,
-        .pCommandBuffers = &buildCommand,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &buildCommandInfo,
 
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &(*tlasBuildSemaphore[renderContext.swapchainIndex]),
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signalInfo,
     });
 
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *tlasBuildSemaphore[renderContext.swapchainIndex]);

@@ -7,11 +7,11 @@
 
 template<typename CommandBufferConsumer>
 void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPool,
-                                                     const std::function<void(const vk::SubmitInfo&, const vk::Fence&)>& submitAction,
+                                                     const std::function<void(const vk::SubmitInfo2&, const vk::Fence&)>& submitAction,
                                                      const std::function<void()>& waitAction,
                                                      bool waitFor,
                                                      vk::Semaphore waitSemaphore,
-                                                     vk::PipelineStageFlags waitDstFlags,
+                                                     vk::PipelineStageFlags2 waitDstFlags,
                                                      vk::Semaphore signalSemaphore,
                                                      CommandBufferConsumer consumer) {
     // allocate command buffer
@@ -36,19 +36,30 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
     // end and submit
     stagingCommands.end();
 
-    vk::SubmitInfo submitInfo = {
-            .commandBufferCount = 1,
-            .pCommandBuffers = &stagingCommands,
+    vk::CommandBufferSubmitInfo stagingCommandInfo {
+        .commandBuffer = stagingCommands
     };
 
+    vk::SubmitInfo2 submitInfo = {
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &stagingCommandInfo,
+    };
+
+    vk::SemaphoreSubmitInfo waitInfo;
+    vk::SemaphoreSubmitInfo signalInfo;
     if(waitSemaphore) {
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &waitSemaphore;
-        submitInfo.pWaitDstStageMask = &waitDstFlags;
+        waitInfo.semaphore = waitSemaphore;
+        waitInfo.stageMask = waitDstFlags;
+
+        submitInfo.waitSemaphoreInfoCount = 1;
+        submitInfo.pWaitSemaphoreInfos = &waitInfo;
     }
     if(signalSemaphore) {
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &signalSemaphore;
+        signalInfo.semaphore = signalSemaphore;
+        signalInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
+
+        submitInfo.signalSemaphoreInfoCount = 1;
+        submitInfo.pSignalSemaphoreInfos = &signalInfo;
     }
     submitAction(submitInfo, nullptr);
 
@@ -64,11 +75,11 @@ void Carrot::VulkanDriver::performSingleTimeCommands(vk::CommandPool& commandPoo
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, vk::Semaphore signalSemaphore) {
-    performSingleTimeCommands(getThreadTransferCommandPool(), [&](const vk::SubmitInfo& info, const vk::Fence& fence) { submitTransfer(info, fence); }, waitTransfer, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
+void Carrot::VulkanDriver::performSingleTimeTransferCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore) {
+    performSingleTimeCommands(getThreadTransferCommandPool(), [&](const vk::SubmitInfo2& info, const vk::Fence& fence) { submitTransfer(info, fence); }, waitTransfer, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
 }
 
 template<typename CommandBufferConsumer>
-void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags waitDstFlags, vk::Semaphore signalSemaphore) {
-    performSingleTimeCommands(getThreadGraphicsCommandPool(), [&](const vk::SubmitInfo& info, const vk::Fence& fence) { submitGraphics(info, fence); }, waitGraphics, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
+void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore) {
+    performSingleTimeCommands(getThreadGraphicsCommandPool(), [&](const vk::SubmitInfo2& info, const vk::Fence& fence) { submitGraphics(info, fence); }, waitGraphics, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
 }

@@ -400,9 +400,12 @@ namespace Carrot::VR {
 
 
             ZoneScopedN("Submit");
-            GetVulkanDriver().submitGraphics(vk::SubmitInfo {
-                    .commandBufferCount = 1,
-                    .pCommandBuffers = &blitCommandBuffers[xrSwapchainIndex],
+            vk::CommandBufferSubmitInfo commandBufferInfo {
+                .commandBuffer = blitCommandBuffers[xrSwapchainIndex],
+            };
+            GetVulkanDriver().submitGraphics(vk::SubmitInfo2 {
+                    .commandBufferInfoCount = 1,
+                    .pCommandBufferInfos = &commandBufferInfo,
             }, *renderFences[xrSwapchainIndex]);
         }
 

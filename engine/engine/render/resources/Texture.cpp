@@ -148,7 +148,7 @@ namespace Carrot::Render {
         std::int32_t x = u * getSize().width;
         std::int32_t y = v * getSize().height;
         Carrot::Buffer tmpBuffer{engine.getVulkanDriver(), sizeof(vectype), vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible};
-        engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+        engine.getVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
             // TODO: move color attachment to parameters
             getImage().transition(getImage().getVulkanImage(), cmds, vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eTransferSrcOptimal);
             vk::BufferImageCopy region {

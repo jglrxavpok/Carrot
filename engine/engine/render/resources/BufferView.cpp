@@ -117,7 +117,7 @@ void Carrot::BufferView::copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferVi
     verify(destination.size >= size, "copying too much data");
     GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {
         cmdCopyTo(stagingCommands, destination);
-    }, false, {}, static_cast<vk::PipelineStageFlagBits>(0), signalSemaphore);
+    }, false, {}, static_cast<vk::PipelineStageFlagBits2>(0), signalSemaphore);
 }
 
 void Carrot::BufferView::cmdCopyTo(vk::CommandBuffer& cmds, Carrot::BufferView destination) const {

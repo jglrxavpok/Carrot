@@ -694,12 +694,12 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
     {
         ZoneScopedN("Present");
 
-        std::vector<vk::Semaphore> waitSemaphores;
-        std::vector<vk::PipelineStageFlags> waitStages;
+        std::vector<vk::SemaphoreSubmitInfo> waitSemaphores;
         waitSemaphores.reserve(1 + externalWindows.size());
-        waitStages.reserve(1 + externalWindows.size());
-        waitSemaphores.emplace_back(mainWindow.getImageAvailableSemaphore(frameIndex));
-        waitStages.emplace_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = mainWindow.getImageAvailableSemaphore(frameIndex),
+            .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        });
 
         for(auto& window : externalWindows) {
             if(!window.hasAcquiredAtLeastOneImage()) {
@@ -709,31 +709,39 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                 continue;
             }
 
-            waitSemaphores.emplace_back(window.getImageAvailableSemaphore(frameIndex));
-            waitStages.emplace_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+            waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+                .semaphore = window.getImageAvailableSemaphore(frameIndex),
+                .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+            });
         }
 
-        vk::Semaphore signalSemaphores[] = {*renderFinishedSemaphore[frameIndex]};
-
-        game->changeGraphicsWaitSemaphores(frameIndex, waitSemaphores, waitStages);
+        vk::SemaphoreSubmitInfo signalSemaphore = {
+            .semaphore = *renderFinishedSemaphore[frameIndex],
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        };
 
         for(auto [stage, semaphore] : additionalWaitSemaphores) {
-            waitSemaphores.push_back(semaphore);
-            waitStages.push_back(stage);
+            vk::PipelineStageFlags2 mask;
+            mask = static_cast<vk::PipelineStageFlags2>(static_cast<VkPipelineStageFlags>(stage));
+            waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+                .semaphore = semaphore,
+                .stageMask = mask,
+            });
         }
         additionalWaitSemaphores.clear();
 
-        vk::SubmitInfo submitInfo{
-                .waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
-                .pWaitSemaphores = waitSemaphores.data(),
+        vk::CommandBufferSubmitInfo commandBufferInfo {
+            .commandBuffer = mainCommandBuffers[frameIndex],
+        };
+        vk::SubmitInfo2 submitInfo{
+                .waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphores.size()),
+                .pWaitSemaphoreInfos = waitSemaphores.data(),
 
-                .pWaitDstStageMask = waitStages.data(),
+                .commandBufferInfoCount = 1,
+                .pCommandBufferInfos = &commandBufferInfo,
 
-                .commandBufferCount = 1,
-                .pCommandBuffers = &mainCommandBuffers[frameIndex],
-
-                .signalSemaphoreCount = 1,
-                .pSignalSemaphores = signalSemaphores,
+                .signalSemaphoreInfoCount = 1,
+                .pSignalSemaphoreInfos = &signalSemaphore,
         };
 
         {
@@ -778,7 +786,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
             vk::PresentInfoKHR presentInfo{
                     .waitSemaphoreCount = 1,
-                    .pWaitSemaphores = signalSemaphores,
+                    .pWaitSemaphores = &signalSemaphore.semaphore,
 
                     .swapchainCount = static_cast<std::uint32_t>(swapchains.size()),
                     .pSwapchains = swapchains.data(),
@@ -1343,7 +1351,7 @@ void Carrot::Engine::takeScreenshot() {
             .y = static_cast<int32_t>(swapchainExtent.height),
             .z = 1,
     };
-    performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
+    vkDriver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& commands) {
         lastImage->assumeLayout(vk::ImageLayout::ePresentSrcKHR);
         lastImage->transitionInline(commands, vk::ImageLayout::eTransferSrcOptimal);
         screenshotImage.transitionLayoutInline(commands, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);

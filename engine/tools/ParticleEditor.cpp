@@ -251,7 +251,7 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
         if(previewSystem) {
             previewSystem->onFrame(renderContext);
 
-            engine.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+            engine.getVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 previewRenderGraph->execute(renderContext, cmds);
             });
         }
