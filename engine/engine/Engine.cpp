@@ -715,12 +715,23 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             });
         }
 
-        std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {2};
-        signalSemaphores[0] = {
+        // needs to be done *before* the reset
+        vk::SemaphoreSubmitInfo copyWait = renderer.createCopySemaphoreWaitInfo(swapchainIndex);
+        if(copyWait.value > 0) {
+            Carrot::Log::debug("Waiting timeline semaphore!! %llu", copyWait.value);
+            waitSemaphores.emplace_back(copyWait);
+        }
+
+        std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};
+        signalSemaphores.reserve(2);
+        signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
             .semaphore = *renderFinishedSemaphore[frameIndex],
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        };
-        signalSemaphores[1] = GetRenderer().createCopySemaphoreResetInfo();
+        });
+
+        if(copyWait.value > 0) {
+            signalSemaphores.emplace_back(renderer.createCopySemaphoreResetInfo(swapchainIndex));
+        }
 
         for(auto [stage, semaphore] : additionalWaitSemaphores) {
             vk::PipelineStageFlags2 mask;
@@ -736,7 +747,6 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             .commandBuffer = mainCommandBuffers[frameIndex],
         };
 
-        waitSemaphores.emplace_back(renderer.createCopySemaphoreWaitInfo());
         vk::SubmitInfo2 submitInfo{
                 .waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphores.size()),
                 .pWaitSemaphoreInfos = waitSemaphores.data(),

@@ -90,15 +90,20 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                3,2,0,
                                        });
 
-    copySemaphore = driver.getLogicalDevice().createSemaphoreUnique(vk::StructureChain {
-        vk::SemaphoreCreateInfo {
-        },
-        vk::SemaphoreTypeCreateInfo {
-            .semaphoreType = vk::SemaphoreType::eTimeline,
-            .initialValue = 0,
-        }
-    }.get<vk::SemaphoreCreateInfo>());
-    DebugNameable::nameSingle("Copy timeline semaphore", *copySemaphore);
+    copySemaphores.reserve(driver.getSwapchainImageCount());
+    copyTimelineCounters.reserve(driver.getSwapchainImageCount());
+    for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+        copyTimelineCounters.emplace_back(std::make_unique<std::atomic<std::uint64_t>>(0));
+        copySemaphores.emplace_back(driver.getLogicalDevice().createSemaphoreUnique(vk::StructureChain {
+            vk::SemaphoreCreateInfo {
+            },
+            vk::SemaphoreTypeCreateInfo {
+                .semaphoreType = vk::SemaphoreType::eTimeline,
+                .initialValue = 0,
+            }
+        }.get<vk::SemaphoreCreateInfo>()));
+        DebugNameable::nameSingle("Copy timeline semaphore", *copySemaphores[i]);
+    }
 
     createCameraSetResources();
     createViewportSetResources();
@@ -1472,26 +1477,27 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
     return blackCubeMapTexture;
 }
 
-vk::Semaphore Carrot::VulkanRenderer::getCopySemaphore() const {
-    return *copySemaphore;
+std::uint64_t Carrot::VulkanRenderer::incrementAndGetCopyCounter(std::size_t frameIndex) {
+    return ++(*copyTimelineCounters[frameIndex]);
 }
 
-std::uint64_t Carrot::VulkanRenderer::incrementAndGetCopyCounter() {
-    return ++copyTimelineCounter;
+vk::Semaphore Carrot::VulkanRenderer::getCopySemaphore(std::size_t frameIndex) const {
+    return *copySemaphores[frameIndex];
 }
 
-vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreWaitInfo() const {
+
+vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreWaitInfo(std::size_t frameIndex) const {
     return vk::SemaphoreSubmitInfo {
-        .semaphore = getCopySemaphore(),
-        .value = copyTimelineCounter,
+        .semaphore = *copySemaphores[frameIndex],
+        .value = *copyTimelineCounters[frameIndex],
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
 }
 
-vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreResetInfo() {
-    copyTimelineCounter = 0;
+vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreResetInfo(std::size_t frameIndex) {
+    *copyTimelineCounters[frameIndex] = 0;
     return vk::SemaphoreSubmitInfo {
-        .semaphore = getCopySemaphore(),
+        .semaphore = *copySemaphores[frameIndex],
         .value = 0,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };

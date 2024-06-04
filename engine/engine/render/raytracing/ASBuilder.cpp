@@ -212,8 +212,14 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
                                                                       BLASGeometryFormat geometryFormat) {
     if(!enabled)
         return nullptr;
-    Async::LockGuard l { access };
-    return staticGeometries.create(meshes, transforms, materials, geometryFormat, this);
+    access.lock();
+    WeakPool<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
+    access.unlock();
+    auto ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
+                staticGeometries.freeSlot(element->getSlot());
+    }, meshes, transforms, materials, geometryFormat, this);
+    slot.ptr = ptr;
+    return ptr;
 }
 
 void Carrot::ASBuilder::createSemaphores() {

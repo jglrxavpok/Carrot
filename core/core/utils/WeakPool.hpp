@@ -68,8 +68,22 @@ namespace Carrot {
         }
 
     public:
+        struct Reservation {
+            std::uint32_t index;
+            std::weak_ptr<ElementType>& ptr;
+        };
+
         template<typename... Args>
         std::shared_ptr<ElementType> create(Args&&... args) {
+            auto slot = reserveSlot();
+            auto ptr = std::make_shared<ElementType>(slot.index, [this](WeakPoolHandle* element) {
+                freeSlot(element->getSlot());
+            }, std::forward<Args>(args)...);
+            slot.ptr = ptr;
+            return ptr;
+        }
+
+        Reservation reserveSlot() {
             std::uint32_t slot;
             if(!freeSlots.empty()) {
                 slot = freeSlots.front();
@@ -78,11 +92,10 @@ namespace Carrot {
                 slot = nextID++;
             }
             requiredStorageCount = std::max(slot+1, requiredStorageCount);
-            auto ptr = std::make_shared<ElementType>(slot, [this](WeakPoolHandle* element) {
-                freeSlot(element->getSlot());
-            }, std::forward<Args>(args)...);
-            registry[slot] = ptr;
-            return ptr;
+            return Reservation {
+                .index = slot,
+                .ptr = registry[slot],
+            };
         }
 
         void freeSlot(std::uint32_t slot) {

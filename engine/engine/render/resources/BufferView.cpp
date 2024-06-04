@@ -101,7 +101,10 @@ void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length, vk
     getBuffer().stageUploadWithOffset(start+offset, data, length);
 }
 
+static Carrot::Async::SpinLock l;
+
 void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+
     verify(length-offset <= size, "Cannot upload more data than this view allows");
     Carrot::BufferView staging = GetRenderer().getSingleFrameHostBuffer(length);
     staging.directUpload(data, length, 0);
@@ -112,11 +115,18 @@ void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length,
     vk::CommandBufferSubmitInfo bufferInfo {
         .commandBuffer = cmds
     };
+
     // copies will be ordered, must be done before call to "incrementAndGetCopyCounter"
-    vk::SemaphoreSubmitInfo waitInfo = GetRenderer().createCopySemaphoreWaitInfo();
+    l.lock();
+    std::uint64_t counterValue = GetRenderer().incrementAndGetCopyCounter(GetEngine().getSwapchainImageIndexRightNow());
+    vk::SemaphoreSubmitInfo waitInfo {
+        .semaphore = GetRenderer().getCopySemaphore(GetEngine().getSwapchainImageIndexRightNow()),
+        .value = counterValue-1,
+        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+    };
     vk::SemaphoreSubmitInfo signalInfo {
-        .semaphore = GetRenderer().getCopySemaphore(),
-        .value = GetRenderer().incrementAndGetCopyCounter(),
+        .semaphore = GetRenderer().getCopySemaphore(GetEngine().getSwapchainImageIndexRightNow()),
+        .value = counterValue,
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
     GetVulkanDriver().submitTransfer(vk::SubmitInfo2 {
@@ -129,6 +139,8 @@ void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length,
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos = &signalInfo
     });
+    l.unlock();
+
 }
 
 void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {
