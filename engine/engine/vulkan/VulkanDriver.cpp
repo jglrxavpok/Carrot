@@ -1263,6 +1263,11 @@ void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo2& submit, const v
     transferQueue.submit(submit, completeFence);
 }
 
+
+void Carrot::VulkanDriver::submitTransfer(const vk::SubmitInfo& submit, const vk::Fence& completeFence) {
+    transferQueue.submit(submit, completeFence);
+}
+
 void Carrot::VulkanDriver::waitGraphics() {
     GetVulkanDriver().getGraphicsQueue().waitIdle();
 }

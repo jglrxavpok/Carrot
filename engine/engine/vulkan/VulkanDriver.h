@@ -327,6 +327,7 @@ namespace Carrot {
     public:
         void submitGraphics(const vk::SubmitInfo2& info, const vk::Fence& fence = {});
         void submitTransfer(const vk::SubmitInfo2& info, const vk::Fence& fence = {});
+        void submitTransfer(const vk::SubmitInfo& info, const vk::Fence& fence = {});
         void submitCompute(const vk::SubmitInfo2& info, const vk::Fence& fence = {});
 
         std::mutex& getDeviceMutex();

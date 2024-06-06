@@ -8,22 +8,25 @@
 #include <map>
 #include <source_location>
 #include <functional>
-#include "engine/vulkan/VulkanDriver.h"
-#include "engine/render/ImGuiBackend.h"
-#include "engine/render/resources/PerFrame.h"
-#include "engine/render/resources/Pipeline.h"
-#include "engine/render/resources/Texture.h"
-#include "engine/vulkan/SwapchainAware.h"
-#include "engine/render/RenderContext.h"
-#include "engine/render/RenderGraph.h"
-#include "engine/render/MaterialSystem.h"
-#include "engine/render/lighting/Lights.h"
-#include "engine/render/RenderPacket.h"
-#include "engine/render/resources/SingleFrameStackGPUAllocator.h"
-#include "backends/imgui_impl_vulkan.h"
-#include "backends/imgui_impl_glfw.h"
-#include "RenderPacketContainer.h"
-#include "GBufferDrawData.h"
+#include <core/ThreadSafeQueue.hpp>
+
+#include <engine/vulkan/VulkanDriver.h>
+#include <engine/render/ImGuiBackend.h>
+#include <engine/render/resources/PerFrame.h>
+#include <engine/render/resources/Pipeline.h>
+#include <engine/render/resources/Texture.h>
+#include <engine/vulkan/SwapchainAware.h>
+#include <engine/render/RenderContext.h>
+#include <engine/render/RenderGraph.h>
+#include <engine/render/MaterialSystem.h>
+#include <engine/render/lighting/Lights.h>
+#include <engine/render/RenderPacket.h>
+#include <engine/render/resources/SingleFrameStackGPUAllocator.h>
+#include <engine/render/resources/SemaphorePool.h>
+#include <backends/imgui_impl_vulkan.h>
+#include <backends/imgui_impl_glfw.h>
+#include <engine/render/RenderPacketContainer.h>
+#include <engine/render/GBufferDrawData.h>
 #include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
@@ -277,18 +280,16 @@ namespace Carrot {
         Render::Texture::Ref getDefaultImage();
         Render::Texture::Ref getBlackCubeMapTexture();
 
+        /// Fetches a binary semaphore to be signaled at the end of a transfer operation
+        vk::Semaphore fetchACopySemaphore();
 
-        /// Increments the internal counter for the copy semaphore, and returns it
-        std::uint64_t incrementAndGetCopyCounter(std::size_t frameIndex);
+        /// Queues a copy that will be performed before rendering the current frame.
+        /// Both source and destination must be valid until the next frame!
+        void queueAsyncCopy(Carrot::BufferView source, Carrot::BufferView destination);
 
-        vk::Semaphore getCopySemaphore(std::size_t frameIndex) const;
-
-        /// Creates a vk::SemaphoreSubmitInfo with the required info to wait for all copies started during the frame
-        vk::SemaphoreSubmitInfo createCopySemaphoreWaitInfo(std::size_t frameIndexInSwapchain) const;
-
-        /// Creates a vk::SemaphoreSubmitInfo with the required info to reset the timeline semaphore for copies.
-        /// Also resets the internal counter!
-        vk::SemaphoreSubmitInfo createCopySemaphoreResetInfo(std::size_t frameIndexInSwapchain);
+        /// Adds SemaphoreSubmitInfo corresponding to the copy semaphores that will be signaled for this frame (ie fetched via fetchACopySemaphore)
+        /// This will also reset the underlying pool (to let semaphores be reused for next frame)
+        void submitAsyncCopies(std::size_t frameIndex, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList);
 
     public:
         struct ThreadPackets {
@@ -322,8 +323,6 @@ namespace Carrot {
         Async::Counter renderThreadKickoff; //< non-0 if render thread is waiting to start, 0 if still rendering
 
         Async::Counter mustBeDoneByNextFrameCounter; // use for work that needs to be done before the next call to beginFrame
-        Render::PerFrame<vk::UniqueSemaphore> copySemaphores;
-        Render::PerFrame<std::unique_ptr<std::atomic<std::uint64_t>>> copyTimelineCounters;
 
         SingleFrameStackGPUAllocator singleFrameAllocator;
         std::unique_ptr<Carrot::Buffer> nullBuffer;
@@ -407,6 +406,16 @@ namespace Carrot {
         std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
 
         std::list<DeferredCarrotBufferDestruction> deferredCarrotBufferDestructions;
+
+        Render::SemaphorePool semaphorePool;
+        ThreadSafeQueue<vk::Semaphore> semaphoresQueueForCurrentFrame;
+        Render::PerFrame<vk::UniqueSemaphore> asyncCopySemaphores;
+
+        struct AsyncCopyDesc {
+            BufferView source;
+            BufferView destination;
+        };
+        ThreadSafeQueue<AsyncCopyDesc> asyncCopiesQueue;
 
     private:
         bool hasBlinked = false;

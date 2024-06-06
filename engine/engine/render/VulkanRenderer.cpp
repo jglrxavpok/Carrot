@@ -41,7 +41,7 @@ static thread_local std::array<Carrot::Render::PacketContainer, 2>* threadLocalP
 
 static std::thread::id RenderThreadID{};
 
-#if 0
+#if 1
 #define ASSERT_NOT_RENDER_THREAD() verify(std::this_thread::get_id() != RenderThreadID, "Only valid on non-Render threads!")
 #define ASSERT_RENDER_THREAD() verify(std::this_thread::get_id() == RenderThreadID, "Only valid on Render threads!")
 #else
@@ -68,6 +68,7 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
     renderThread = std::jthread([&]() {
         renderThreadProc();
     });
+    RenderThreadID = renderThread.get_id();
     Carrot::Threads::setName(renderThread, "Carrot Render Thread");
 
     nullBuffer = std::make_unique<Buffer>(driver,
@@ -90,19 +91,10 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
                                                3,2,0,
                                        });
 
-    copySemaphores.reserve(driver.getSwapchainImageCount());
-    copyTimelineCounters.reserve(driver.getSwapchainImageCount());
+    asyncCopySemaphores.resize(driver.getSwapchainImageCount());
     for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
-        copyTimelineCounters.emplace_back(std::make_unique<std::atomic<std::uint64_t>>(0));
-        copySemaphores.emplace_back(driver.getLogicalDevice().createSemaphoreUnique(vk::StructureChain {
-            vk::SemaphoreCreateInfo {
-            },
-            vk::SemaphoreTypeCreateInfo {
-                .semaphoreType = vk::SemaphoreType::eTimeline,
-                .initialValue = 0,
-            }
-        }.get<vk::SemaphoreCreateInfo>()));
-        DebugNameable::nameSingle("Copy timeline semaphore", *copySemaphores[i]);
+        asyncCopySemaphores[i] = driver.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+        DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[i]);
     }
 
     createCameraSetResources();
@@ -278,13 +270,17 @@ void Carrot::VulkanRenderer::onSwapchainImageCountChange(std::size_t newCount) {
 
     lighting.onSwapchainImageCountChange(newCount);
     forwardRenderingFrameInfo.clear();
-    forwardRenderingFrameInfo.resize(getSwapchainImageCount());
+    forwardRenderingFrameInfo.resize(newCount);
+    asyncCopySemaphores.resize(newCount);
     for (std::size_t j = 0; j < getSwapchainImageCount(); ++j) {
         forwardRenderingFrameInfo[j] = getEngine().getResourceAllocator().allocateDedicatedBuffer(
                 sizeof(ForwardFrameInfo),
                 vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
         );
+
+        asyncCopySemaphores[j] = driver.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+        DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[j]);
     }
 
     perDrawBuffers.resize(getSwapchainImageCount());
@@ -1477,31 +1473,53 @@ Carrot::Render::Texture::Ref Carrot::VulkanRenderer::getBlackCubeMapTexture() {
     return blackCubeMapTexture;
 }
 
-std::uint64_t Carrot::VulkanRenderer::incrementAndGetCopyCounter(std::size_t frameIndex) {
-    return ++(*copyTimelineCounters[frameIndex]);
+vk::Semaphore Carrot::VulkanRenderer::fetchACopySemaphore() {
+    const vk::Semaphore r = semaphorePool.get();
+    semaphoresQueueForCurrentFrame.push(vk::Semaphore{r} /* copy does not matter, this is just an handle at the end of the day*/);
+    return r;
 }
 
-vk::Semaphore Carrot::VulkanRenderer::getCopySemaphore(std::size_t frameIndex) const {
-    return *copySemaphores[frameIndex];
+void Carrot::VulkanRenderer::queueAsyncCopy(Carrot::BufferView source, Carrot::BufferView destination) {
+    asyncCopiesQueue.push(AsyncCopyDesc{source, destination});
 }
 
 
-vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreWaitInfo(std::size_t frameIndex) const {
-    return vk::SemaphoreSubmitInfo {
-        .semaphore = *copySemaphores[frameIndex],
-        .value = *copyTimelineCounters[frameIndex],
-        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
-    };
+void Carrot::VulkanRenderer::submitAsyncCopies(std::size_t frameIndex, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList) {
+    bool needAsyncCopies = false;
+    vk::CommandBuffer cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
+        AsyncCopyDesc copyDesc;
+        while(asyncCopiesQueue.popSafe(copyDesc)) {
+            copyDesc.source.cmdCopyTo(cmds, copyDesc.destination);
+            needAsyncCopies = true;
+        }
+    });
+    if(needAsyncCopies) {
+        vk::Semaphore asyncCopySemaphore = *asyncCopySemaphores[frameIndex];
+        semaphoreList.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = asyncCopySemaphore,
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        });
+
+        driver.submitTransfer(vk::SubmitInfo {
+            .commandBufferCount = 1,
+            .pCommandBuffers = &cmds,
+
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &asyncCopySemaphore,
+        });
+    }
+
+    // for semaphores fetched via fetchACopySemaphore
+    vk::Semaphore sem;
+    while(semaphoresQueueForCurrentFrame.popSafe(sem)) {
+        semaphoreList.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = sem,
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        });
+    }
+    semaphorePool.reset();
 }
 
-vk::SemaphoreSubmitInfo Carrot::VulkanRenderer::createCopySemaphoreResetInfo(std::size_t frameIndex) {
-    *copyTimelineCounters[frameIndex] = 0;
-    return vk::SemaphoreSubmitInfo {
-        .semaphore = *copySemaphores[frameIndex],
-        .value = 0,
-        .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
-    };
-}
 
 void Carrot::VulkanRenderer::recordPassPackets(Carrot::Render::PassName packetPass, vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {
     ZoneScoped;

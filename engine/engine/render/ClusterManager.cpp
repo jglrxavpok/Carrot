@@ -540,8 +540,8 @@ namespace Carrot::Render {
         if(auto pModel = models.find(clusterInstance.instanceDataIndex).lock()) {
             GroupRTData& groupRTData = groupRTDataPerModel[pModel->getSlot()];
             RTData& rtData = groupRTData.data[groupInstanceID - groupRTData.firstGroupInstanceIndex];
-            //Cider::LockGuard g { task, rtData.mutex };
-            Async::LockGuard g { rtData.mutex };
+            Cider::LockGuard g { task, rtData.mutex };
+            //Async::LockGuard g { rtData.mutex };
             if(readbackData.visible) {
                 rtData.lastUpdateTime = currentTime;
 
@@ -562,8 +562,8 @@ namespace Carrot::Render {
         double currentTime = Time::getCurrentTime();
 
         Async::Counter sync;
-        std::size_t granularity = 64;
-        std::size_t parallelJobs = count / granularity; // truncate on purpose, the calling thread will participate
+        std::size_t parallelJobs = 256;
+        std::size_t granularity = count / parallelJobs; // truncate on purpose, the calling thread will participate
         auto processRange = [&](std::size_t start) {
             GetTaskScheduler().schedule(TaskDescription {
                 .name = "processSingleClusterReadbackData",

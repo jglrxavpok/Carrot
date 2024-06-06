@@ -178,7 +178,8 @@ namespace Carrot::Render {
 
         /// Raytracing-related data, per cluster
         struct RTData {
-            Async::SpinLock mutex;
+            //Async::SpinLock mutex;
+            Cider::Mutex mutex;
 
             double lastUpdateTime = 0.0;
             std::shared_ptr<Carrot::InstanceHandle> as;

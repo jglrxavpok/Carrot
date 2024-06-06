@@ -21,6 +21,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/resources/LightMesh.cpp
         ${EngineRoot}render/resources/Mesh.cpp
         ${EngineRoot}render/resources/ResourceAllocator.cpp
+        ${EngineRoot}render/resources/SemaphorePool.cpp
         ${EngineRoot}render/resources/SingleFrameStackGPUAllocator.cpp
         ${EngineRoot}render/resources/SingleMesh.cpp
         ${EngineRoot}render/resources/Texture.cpp
