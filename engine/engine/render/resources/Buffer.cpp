@@ -103,16 +103,8 @@ const vk::Buffer& Carrot::Buffer::getVulkanBuffer() const {
 }
 
 void Carrot::Buffer::directUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
-    void* pData;
-    if(driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), offset, length, static_cast<vk::MemoryMapFlags>(0), &pData) != vk::Result::eSuccess) {
-        throw std::runtime_error("Failed to map memory!");
-    }
-    std::memcpy(reinterpret_cast<uint8_t*>(pData), data, length);
-
-    {
-        ZoneScopedN("unmapMemory");
-        driver.getLogicalDevice().unmapMemory(memory.getVulkanMemory());
-    }
+    void* pData = map<void>();
+    std::memcpy(static_cast<uint8_t*>(pData) + offset, data, length);
 }
 
 uint64_t Carrot::Buffer::getSize() const {

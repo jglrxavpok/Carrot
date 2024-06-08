@@ -35,13 +35,17 @@ namespace Carrot::Render {
     ClustersTemplate::ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                        ClusterManager& manager,
                                        std::size_t firstCluster, std::span<const Cluster> clusters,
-                                       Carrot::BufferAllocation&& vertexData, Carrot::BufferAllocation&& indexData)
+                                       Carrot::BufferAllocation&& vertexData,
+                                       Carrot::BufferAllocation&& indexData,
+                                       Carrot::BufferAllocation&& rtTransformData
+                                       )
                                        : WeakPoolHandle(index, destructor)
                                        , manager(manager)
                                        , firstCluster(firstCluster)
                                        , clusters(clusters.begin(), clusters.end())
                                        , vertexData(std::move(vertexData))
                                        , indexData(std::move(indexData))
+                                       , rtTransformData(std::move(rtTransformData))
     {
 
     }
@@ -90,9 +94,12 @@ namespace Carrot::Render {
         gpuClusters.resize(gpuClusters.size() + desc.meshlets.size());
         templatesFromClusters.resize(gpuClusters.size());
         groupsFromClusters.resize(gpuClusters.size());
+        clusterTransforms.resize(gpuClusters.size());
 
         std::vector<ClusterVertex> vertices;
         std::vector<ClusterIndex> indices;
+        std::vector<vk::TransformMatrixKHR> transforms;
+        transforms.reserve(desc.meshlets.size());
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             Meshlet& meshlet = desc.meshlets[i];
             Cluster& cluster = gpuClusters[i + firstClusterIndex];
@@ -101,6 +108,8 @@ namespace Carrot::Render {
             cluster.lod = meshlet.lod;
             cluster.triangleCount = static_cast<std::uint8_t>(meshlet.indexCount/3);
             cluster.vertexCount = static_cast<std::uint8_t>(meshlet.vertexCount);
+
+            transforms.emplace_back(ASBuilder::glmToRTTransformMatrix(desc.transform));
 
             cluster.boundingSphere = meshlet.boundingSphere;
             cluster.parentBoundingSphere = meshlet.parentBoundingSphere;
@@ -133,9 +142,14 @@ namespace Carrot::Render {
         BufferAllocation vertexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterVertex) * vertices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
         vertexData.name(Carrot::sprintf("Virtual geometry vertex buffer %llu meshlets", desc.meshlets.size()));
         vertexData.view.stageUpload(std::span<const ClusterVertex>{vertices});
+
         BufferAllocation indexData = GetResourceAllocator().allocateDeviceBuffer(sizeof(ClusterIndex) * indices.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
         indexData.name(Carrot::sprintf("Virtual geometry index buffer %llu meshlets", desc.meshlets.size()));
         indexData.view.stageUpload(std::span<const ClusterIndex>{indices});
+
+        BufferAllocation rtTransformData = GetResourceAllocator().allocateDeviceBuffer(sizeof(vk::TransformMatrixKHR) * transforms.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+        rtTransformData.name(Carrot::sprintf("Virtual geometry transform buffer %llu meshlets", transforms.size()));
+        rtTransformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>{transforms});
 
         std::size_t vertexOffset = 0;
         std::size_t indexOffset = 0;
@@ -143,6 +157,7 @@ namespace Carrot::Render {
             auto& cluster = gpuClusters[i + firstClusterIndex];
             cluster.vertexBufferAddress = vertexData.view.getDeviceAddress() + vertexOffset;
             cluster.indexBufferAddress = indexData.view.getDeviceAddress() + indexOffset;
+            clusterTransforms[i + firstClusterIndex].address = rtTransformData.view.getDeviceAddress() + i * sizeof(vk::TransformMatrixKHR);
 
             const auto& meshlet = desc.meshlets[i];
             vertexOffset += sizeof(ClusterVertex) * meshlet.vertexCount;
@@ -152,7 +167,7 @@ namespace Carrot::Render {
         requireClusterUpdate = true;
         std::shared_ptr<ClustersTemplate> pTemplate = geometries.create(std::ref(*this),
                                  firstClusterIndex, std::span{ gpuClusters.data() + firstClusterIndex, desc.meshlets.size() },
-                                 std::move(vertexData), std::move(indexData));
+                                 std::move(vertexData), std::move(indexData), std::move(rtTransformData));
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             templatesFromClusters[i + firstClusterIndex] = pTemplate->getSlot();
             groupsFromClusters[i + firstClusterIndex] = firstGroupIndex + desc.meshlets[i].groupIndex;
@@ -481,6 +496,7 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<Carrot::InstanceHandle> ClusterManager::createGroupInstanceAS(std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& modelInstance, std::uint32_t groupInstanceID) {
+        ZoneScoped;
         auto& asBuilder = GetRenderer().getASBuilder();
 
         // will need synchronisation if done on multiple threads in the future
@@ -489,13 +505,14 @@ namespace Carrot::Render {
         {
             Async::LockGuard g { correspondingBLAS.lock };
             if(!correspondingBLAS.blas) {
+                ZoneScopedN("Create corresponding BLAS");
                 const GroupInstance& groupInstance = groupInstances.groups[groupInstanceID];
 
                 std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
-                std::vector<glm::mat4> transforms;
+                std::vector<vk::DeviceAddress> transformAddresses;
                 std::vector<std::uint32_t> materialIndices;
                 meshes.reserve(groupInstance.group.clusters.size());
-                transforms.reserve(meshes.size());
+                transformAddresses.reserve(meshes.size());
                 materialIndices.reserve(meshes.size());
 
                 for(std::uint32_t clusterInstanceID : groupInstance.group.clusters) {
@@ -506,9 +523,9 @@ namespace Carrot::Render {
                         const BufferView indexBuffer = pTemplate->indexData.view.subViewFromAddress(cluster.indexBufferAddress, cluster.triangleCount * 3 * sizeof(ClusterIndex));
                         std::shared_ptr<LightMesh> mesh = std::make_shared<LightMesh>(vertexBuffer, indexBuffer, sizeof(ClusterVertex), sizeof(ClusterIndex));
 
-                        meshes.push_back(mesh);
-                        transforms.push_back(cluster.transform);
-                        materialIndices.push_back(clusterInstance.materialIndex);
+                        meshes.emplace_back(mesh);
+                        transformAddresses.emplace_back(clusterTransforms[clusterInstance.clusterID].address);
+                        materialIndices.emplace_back(clusterInstance.materialIndex);
                     }
                 }
 
@@ -516,7 +533,7 @@ namespace Carrot::Render {
                     return nullptr;
                 }
 
-                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transforms, materialIndices, BLASGeometryFormat::ClusterCompressed);
+                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed);
             }
 
             blas = correspondingBLAS.blas;
@@ -533,6 +550,7 @@ namespace Carrot::Render {
         std::span<const ClusterInstance> clusterInstances,
         const ClusterReadbackData* pData)
     {
+        ZoneScoped;
         const ClusterReadbackData& readbackData = pData[clusterIndex];
         const ClusterInstance& clusterInstance = clusterInstances[clusterIndex];
         const std::uint32_t groupInstanceID = groupInstances.perCluster[clusterIndex];
@@ -540,9 +558,9 @@ namespace Carrot::Render {
         if(auto pModel = models.find(clusterInstance.instanceDataIndex).lock()) {
             GroupRTData& groupRTData = groupRTDataPerModel[pModel->getSlot()];
             RTData& rtData = groupRTData.data[groupInstanceID - groupRTData.firstGroupInstanceIndex];
-            Cider::LockGuard g { task, rtData.mutex };
-            //Async::LockGuard g { rtData.mutex };
             if(readbackData.visible) {
+                //Cider::LockGuard g { task, rtData.mutex };
+                Async::LockGuard g { rtData.mutex };
                 rtData.lastUpdateTime = currentTime;
 
                 if(!rtData.as) {
@@ -562,8 +580,8 @@ namespace Carrot::Render {
         double currentTime = Time::getCurrentTime();
 
         Async::Counter sync;
-        std::size_t parallelJobs = 256;
-        std::size_t granularity = count / parallelJobs; // truncate on purpose, the calling thread will participate
+        std::size_t parallelJobs = 64;
+        std::size_t granularity = count / parallelJobs;
         auto processRange = [&](std::size_t start) {
             GetTaskScheduler().schedule(TaskDescription {
                 .name = "processSingleClusterReadbackData",

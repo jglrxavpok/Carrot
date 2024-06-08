@@ -51,6 +51,14 @@ namespace Carrot {
                    BLASGeometryFormat geometryFormat,
                    ASBuilder* builder);
 
+        // Version of BLASHandle that does not hold its transform data but only refers to data already somewhere in memory
+        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
+                   const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                   const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transformAddresses,
+                   const std::vector<std::uint32_t>& materialSlots,
+                   BLASGeometryFormat geometryFormat,
+                   ASBuilder* builder);
+
         bool isBuilt() const { return built; }
         void update();
         void setDirty();
@@ -58,6 +66,8 @@ namespace Carrot {
         virtual ~BLASHandle() noexcept override;
 
     private:
+        void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
+
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
@@ -122,6 +132,12 @@ namespace Carrot {
                                                    const std::vector<std::uint32_t>& materialSlots,
                                                    BLASGeometryFormat geometryFormat);
 
+        /// Version of addBottomLevel which does not have ownership over transform data
+        std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                                                   const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transforms,
+                                                   const std::vector<std::uint32_t>& materialSlots,
+                                                   BLASGeometryFormat geometryFormat);
+
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
 
@@ -144,6 +160,8 @@ namespace Carrot {
          * Buffer containing of vector of SceneDescription::Instance
          */
         Carrot::BufferView getInstancesBuffer(const Render::Context& renderContext);
+
+        static vk::TransformMatrixKHR glmToRTTransformMatrix(const glm::mat4& mat);
 
     private:
         void createGraveyard();

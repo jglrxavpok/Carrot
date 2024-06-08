@@ -9,7 +9,6 @@ namespace Carrot {
     template<std::size_t MaxSize>
     MemoryBlock InlineAllocator<MaxSize>::allocate(std::size_t size, std::size_t alignment) {
         verify(reinterpret_cast<std::size_t>(pData) % alignment == 0, "Trying to allocate a block with the wrong alignment! Align this allocator properly.");
-        verify(size <= MaxSize, "Trying to allocate a block which is too big!");
         if(alreadyAllocated || size > MaxSize) {
             throw OutOfMemoryException();
         }

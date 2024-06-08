@@ -7,6 +7,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <iostream>
+#include <core/allocators/InlineAllocator.h>
+#include <core/allocators/FallbackAllocator.h>
+#include <core/allocators/MallocAllocator.h>
 #include <core/io/Logging.hpp>
 #include "RayTracer.h"
 #include "engine/render/resources/ResourceAllocator.h"
@@ -22,11 +25,7 @@ namespace Carrot {
                            ASBuilder* builder):
     WeakPoolHandle(index, std::move(destructor)),
     meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat) {
-        geometries.reserve(meshes.size());
-        buildRanges.reserve(meshes.size());
-
-        verify(meshes.size() == transforms.size(), "Need as many meshes as there are transforms!");
-        verify(meshes.size() == materialSlots.size(), "Need as many material handles as there are meshes!");
+        ZoneScoped;
 
         bool allIdentity = true;
         for(const auto& transform : transforms) {
@@ -46,28 +45,51 @@ namespace Carrot {
             }
         }
 
-        vk::DeviceAddress transformDataAddress;
+        Carrot::Vector<vk::DeviceAddress> transformAddresses;
+        transformAddresses.resize(meshes.size());
         if(!allIdentity) {
             transformData = GetResourceAllocator().allocateDeviceBuffer(
                     transforms.size() * sizeof(vk::TransformMatrixKHR),
                     vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
 
-            std::vector<vk::TransformMatrixKHR> rtTransforms;
+            FallbackAllocator<InlineAllocator<sizeof(vk::TransformMatrixKHR)*4>, MallocAllocator> stackAlloc; // with virtual geometry, most calls will be at most 4 meshes at once
+            Carrot::Vector<vk::TransformMatrixKHR> rtTransforms { stackAlloc };
             rtTransforms.resize(transforms.size());
+            vk::DeviceAddress baseTransformDataAddress = transformData.view.getDeviceAddress();
 
             for (int j = 0; j < transforms.size(); ++j) {
-                for (int column = 0; column < 4; ++column) {
-                    for (int row = 0; row < 3; ++row) {
-                        rtTransforms[j].matrix[row][column] = transforms[j][column][row];
-                    }
-                }
+                rtTransforms[j] = ASBuilder::glmToRTTransformMatrix(transforms[j]);
+
+                transformAddresses[j] = baseTransformDataAddress + j * sizeof(vk::TransformMatrixKHR);
             }
 
             transformData.view.uploadForFrame(std::span<const vk::TransformMatrixKHR>(rtTransforms));
-            transformDataAddress = transformData.view.getDeviceAddress();
         } else {
-            transformDataAddress = builder->getIdentityMatrixBufferView().getDeviceAddress();
+            vk::DeviceAddress transformDataAddress = builder->getIdentityMatrixBufferView().getDeviceAddress();
+            transformAddresses.fill(transformDataAddress);
         }
+
+        innerInit(transformAddresses);
+    }
+
+    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
+                           const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                           const std::vector<vk::DeviceAddress>& transforms,
+                           const std::vector<std::uint32_t>& materialSlots,
+                           BLASGeometryFormat geometryFormat,
+                           ASBuilder* builder):
+    WeakPoolHandle(index, std::move(destructor)),
+    meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat) {
+        innerInit(transforms);
+    }
+
+    void BLASHandle::innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses) {
+        ZoneScoped;
+        geometries.reserve(meshes.size());
+        buildRanges.reserve(meshes.size());
+
+        verify(meshes.size() == transformAddresses.size(), "Need as many meshes as there are transforms!");
+        verify(meshes.size() == materialSlots.size(), "Need as many material handles as there are meshes!");
 
         for(std::size_t i = 0; i < meshes.size(); i++) {
             auto& meshPtr = meshes[i];
@@ -89,7 +111,7 @@ namespace Carrot {
             }
 
             // if all identity, always point to the same location in GPU memory
-            vk::DeviceAddress specificTransformAddress = transformDataAddress + (allIdentity ? 0 : i * sizeof(vk::TransformMatrixKHR));
+            vk::DeviceAddress specificTransformAddress = transformAddresses[i];
             geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
                     // vec3 triangle position, other attributes are passed via the vertex buffer used as a storage buffer (via descriptors)
                     .vertexFormat = vk::Format::eR32G32B32Sfloat,
@@ -207,9 +229,27 @@ void Carrot::ASBuilder::createDescriptors() {
 }
 
 std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+                                                                      const std::vector<vk::DeviceAddress>& transformAddresses,
+                                                                      const std::vector<std::uint32_t>& materials,
+                                                                      BLASGeometryFormat geometryFormat) {
+    ZoneScoped;
+    if(!enabled)
+        return nullptr;
+    access.lock();
+    WeakPool<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
+    access.unlock();
+    auto ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
+                staticGeometries.freeSlot(element->getSlot());
+    }, meshes, transformAddresses, materials, geometryFormat, this);
+    slot.ptr = ptr;
+    return ptr;
+}
+
+std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                                       const std::vector<glm::mat4>& transforms,
                                                                       const std::vector<std::uint32_t>& materials,
                                                                       BLASGeometryFormat geometryFormat) {
+    ZoneScoped;
     if(!enabled)
         return nullptr;
     access.lock();
@@ -863,4 +903,14 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {
     return instancesBufferPerFrame[renderContext.swapchainIndex];
+}
+
+/*static*/ vk::TransformMatrixKHR Carrot::ASBuilder::glmToRTTransformMatrix(const glm::mat4& mat) {
+    vk::TransformMatrixKHR rtTransform;
+    for (int column = 0; column < 4; ++column) {
+        for (int row = 0; row < 3; ++row) {
+            rtTransform.matrix[row][column] = mat[column][row];
+        }
+    }
+    return rtTransform;
 }

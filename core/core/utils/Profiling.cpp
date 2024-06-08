@@ -6,6 +6,13 @@
 #include "core/io/Logging.hpp"
 #include "core/async/Locks.h"
 #include <unordered_map>
+#include <tracy/TracyC.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <WinPixEventRuntime/pix3.h>
+#endif
 
 namespace Carrot::Profiling {
     static Carrot::Log::Category category { "Profiler" };
@@ -42,4 +49,18 @@ namespace Carrot::Profiling {
         auto elapsed = duration_cast<std::chrono::duration<float>>((std::chrono::steady_clock::now() - start));
         Carrot::Log::debug(category, "'%s' took %f", name.c_str(), elapsed.count());
     }
+
+
+    ScopedMarker::ScopedMarker(const char* name, std::source_location where) {
+        TracyCZoneN(tracyZone, name, true);
+        currentTracyZone = tracyZone;
+        PIXBeginEvent(PIX_COLOR_INDEX(reinterpret_cast<std::uint64_t>(name) % 10), name);
+    }
+
+    ScopedMarker::~ScopedMarker() {
+        PIXEndEvent();
+        TracyCZoneEnd(currentTracyZone);
+    }
+
+
 }

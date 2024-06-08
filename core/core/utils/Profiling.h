@@ -7,9 +7,11 @@
 #include <tracy/Tracy.hpp>
 #include <client/TracyProfiler.hpp>
 #include <chrono>
+#include <source_location>
 #include <unordered_map>
 #include <string>
 #include <string_view>
+#include <tracy/TracyC.h>
 
 namespace Carrot::Profiling {
     class ScopedTimer {
@@ -28,6 +30,19 @@ namespace Carrot::Profiling {
     public:
         explicit PrintingScopedTimer(std::string_view name): ScopedTimer::ScopedTimer(name) {};
         virtual ~PrintingScopedTimer() override;
+    };
+
+    /**
+     * Scoped marker.
+     * Will send data to PIX and/or Tracy depending on configuration
+     */
+    class ScopedMarker {
+    public:
+        explicit ScopedMarker(const char* name, std::source_location where = std::source_location::current());
+        ~ScopedMarker();
+
+    private:
+        TracyCZoneCtx currentTracyZone;
     };
 
     void beginFrame();

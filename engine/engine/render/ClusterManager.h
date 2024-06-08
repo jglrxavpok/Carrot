@@ -76,11 +76,15 @@ namespace Carrot::Render {
         const std::vector<Cluster> clusters;
         const Carrot::BufferAllocation vertexData;
         const Carrot::BufferAllocation indexData;
+        const Carrot::BufferAllocation rtTransformData;
 
         explicit ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                   ClusterManager& manager,
                                   std::size_t firstCluster, std::span<const Cluster> clusters,
-                                  Carrot::BufferAllocation&& vertexData, Carrot::BufferAllocation&& indexData);
+                                  Carrot::BufferAllocation&& vertexData,
+                                  Carrot::BufferAllocation&& indexData,
+                                  Carrot::BufferAllocation&& rtTransformData
+                                  );
 
         ~ClustersTemplate();
 
@@ -178,8 +182,8 @@ namespace Carrot::Render {
 
         /// Raytracing-related data, per cluster
         struct RTData {
-            //Async::SpinLock mutex;
-            Cider::Mutex mutex;
+            Async::SpinLock mutex;
+            //Cider::Mutex mutex;
 
             double lastUpdateTime = 0.0;
             std::shared_ptr<Carrot::InstanceHandle> as;
@@ -210,6 +214,12 @@ namespace Carrot::Render {
             Carrot::Vector<BLASHolder> blases; // as many as there are elements inside 'groups'
         };
 
+        /// Holds data related to the transform of clusters.
+        /// This is separate from Cluster because this needs to be in another format for BLASes
+        struct ClusterTransformData {
+            vk::DeviceAddress address; // address to a vk::TransformMatrixKHR
+        };
+
         Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
         void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
         std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& instance, std::uint32_t groupID);
@@ -230,6 +240,7 @@ namespace Carrot::Render {
         WeakPool<ClusterModel> models;
 
         std::vector<Cluster> gpuClusters;
+        std::vector<ClusterTransformData> clusterTransforms;
         Carrot::Vector<ClusterGroup> templateClusterGroups;
         Carrot::Vector<std::uint32_t> templatesFromClusters; // from a cluster ID, returns the slot of the corresponding template inside 'geometries'
         Carrot::Vector<std::uint32_t> groupsFromClusters; // from a cluster ID, returns the index of its group

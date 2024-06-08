@@ -105,7 +105,12 @@ function(add_core_includes Target)
     target_compile_definitions("${Target}" PUBLIC TRACY_ENABLE=1)
     target_compile_definitions("${Target}" PUBLIC TRACY_ON_DEMAND=1)
     target_compile_definitions("${Target}" PUBLIC TRACY_FIBERS=1)
+    target_compile_definitions("${Target}" PUBLIC USE_PIX=1)
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
+
+    # PIX on Windows
+    target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/)
+    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.lib)
 
     # METIS
     target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/)
@@ -120,3 +125,4 @@ add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
 
 file(COPY ${MonoDLLs} DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.dll DESTINATION ${CMAKE_BINARY_DIR})

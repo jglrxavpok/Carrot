@@ -354,6 +354,7 @@ void Carrot::Engine::run() {
     auto lag = std::chrono::duration<float>(0.0f);
     bool ticked = false;
     while(running) {
+        Profiling::ScopedMarker _("Frame");
 #if USE_LIVEPP
         if (lppAgent.WantsReload()) {
             lppAgent.CompileAndReloadChanges(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);

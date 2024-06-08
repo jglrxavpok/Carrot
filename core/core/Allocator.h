@@ -83,4 +83,7 @@ namespace Carrot {
             return "The allocator is out of memory!";
         }
     };
+
+    template<typename T>
+    concept IsAllocator = std::is_base_of_v<Allocator, T>;
 }
