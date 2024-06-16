@@ -329,11 +329,11 @@ namespace Carrot {
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, Cider::Proc proc, void *userData) {
         schedule(toSchedule);
-        //proc(userData);
+        proc(userData);
     }
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, const Cider::StdFunctionProc& proc) {
         schedule(toSchedule);
-        //proc();
+        proc();
     }
 }

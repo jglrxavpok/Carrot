@@ -41,9 +41,8 @@ namespace Carrot::Async {
                 toContinue();
             }
 
-            //Cider::BlockingLockGuard g { waitQueueLock };
-            std::unique_lock<std::mutex> g { waitQueueLock };
-            fibersWaiting.notifyAll();
+            Cider::UniqueSpinLock g { waitQueueLock };
+            fibersWaiting.notifyAll(g);
         }
     }
 
@@ -88,8 +87,7 @@ namespace Carrot::Async {
     }
 
     void Counter::wait(Cider::FiberHandle& task) {
-        //Cider::BlockingLockGuard g { waitQueueLock };
-        std::unique_lock<std::mutex> g { waitQueueLock };
+        Cider::UniqueSpinLock g { waitQueueLock };
         if(isIdle()) {
             return;
         }
