@@ -3,6 +3,9 @@
 //
 
 #include "Counter.h"
+
+#include <cider/Mutex.h>
+
 #include "Coroutines.hpp"
 
 namespace Carrot::Async {
@@ -37,6 +40,9 @@ namespace Carrot::Async {
             if(toContinue) {
                 toContinue();
             }
+
+            //Cider::BlockingLockGuard g { waitQueueLock };
+            std::unique_lock<std::mutex> g { waitQueueLock };
             fibersWaiting.notifyAll();
         }
     }
@@ -82,10 +88,12 @@ namespace Carrot::Async {
     }
 
     void Counter::wait(Cider::FiberHandle& task) {
+        //Cider::BlockingLockGuard g { waitQueueLock };
+        std::unique_lock<std::mutex> g { waitQueueLock };
         if(isIdle()) {
             return;
         }
-        fibersWaiting.suspendAndWait(task);
+        fibersWaiting.suspendAndWait(g, task);
     }
 
     void Counter::onCoroutineSuspend(std::coroutine_handle<> h) {

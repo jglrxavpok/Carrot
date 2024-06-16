@@ -238,9 +238,10 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
     access.lock();
     WeakPool<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
     access.unlock();
-    auto ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
+    std::shared_ptr<BLASHandle> ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
                 staticGeometries.freeSlot(element->getSlot());
     }, meshes, transformAddresses, materials, geometryFormat, this);
+    //std::shared_ptr<BLASHandle> ptr = nullptr;
     slot.ptr = ptr;
     return ptr;
 }

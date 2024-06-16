@@ -18,6 +18,7 @@
 
 #include "MaterialSystem.h"
 #include "raytracing/AccelerationStructure.h"
+#include "resources/LightMesh.h"
 
 /**
  * The difference between Meshlets and Clusters is that:
@@ -182,8 +183,8 @@ namespace Carrot::Render {
 
         /// Raytracing-related data, per cluster
         struct RTData {
-            Async::SpinLock mutex;
-            //Cider::Mutex mutex;
+            //Async::SpinLock mutex;
+            Cider::Mutex mutex;
 
             double lastUpdateTime = 0.0;
             std::shared_ptr<Carrot::InstanceHandle> as;
@@ -202,7 +203,8 @@ namespace Carrot::Render {
 
         struct BLASHolder {
             std::shared_ptr<BLASHandle> blas;
-            Async::SpinLock lock;
+            //Async::SpinLock lock;
+            Cider::Mutex lock;
         };
 
         struct GroupInstances {
@@ -222,7 +224,12 @@ namespace Carrot::Render {
 
         Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
         void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
-        std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& instance, std::uint32_t groupID);
+        std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(
+            Carrot::TaskHandle& task,
+            std::span<const ClusterInstance> clusterInstances,
+            GroupInstances& groupInstances,
+            const ClusterModel& instance,
+            std::uint32_t groupID);
         void processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count);
         void processSingleClusterReadbackData(
             Carrot::TaskHandle& task,
@@ -241,6 +248,7 @@ namespace Carrot::Render {
 
         std::vector<Cluster> gpuClusters;
         std::vector<ClusterTransformData> clusterTransforms;
+        Carrot::Vector<std::shared_ptr<LightMesh>> clusterMeshes;
         Carrot::Vector<ClusterGroup> templateClusterGroups;
         Carrot::Vector<std::uint32_t> templatesFromClusters; // from a cluster ID, returns the slot of the corresponding template inside 'geometries'
         Carrot::Vector<std::uint32_t> groupsFromClusters; // from a cluster ID, returns the index of its group

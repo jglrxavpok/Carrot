@@ -81,6 +81,8 @@ namespace Carrot::Async {
 
         mutable ReadWriteLock counterLock;
         std::source_location source; // helps debug
+        //Cider::SpinLock waitQueueLock;
+        std::mutex waitQueueLock;
         Cider::WaitQueue fibersWaiting;
 
         template<typename T>

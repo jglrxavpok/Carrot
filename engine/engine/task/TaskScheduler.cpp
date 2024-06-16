@@ -225,6 +225,11 @@ namespace Carrot {
         }
     }
 
+    void TaskScheduler::stealJobAndRun(const Async::TaskLane& lane) {
+        runSingleTask(lane, false);
+    }
+
+
     void TaskScheduler::parallelFor(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity) {
         if(count == 0) {
             return;
@@ -324,11 +329,11 @@ namespace Carrot {
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, Cider::Proc proc, void *userData) {
         schedule(toSchedule);
-        proc(userData);
+        //proc(userData);
     }
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, const Cider::StdFunctionProc& proc) {
         schedule(toSchedule);
-        proc();
+        //proc();
     }
 }

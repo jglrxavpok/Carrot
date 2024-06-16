@@ -33,17 +33,15 @@ namespace Carrot::Profiling {
     };
 
     /**
-     * Scoped marker.
-     * Will send data to PIX and/or Tracy depending on configuration
+     * Scoped PIX marker. Calls BeginEvent and EndEvent on scope boundaries
      */
-    class ScopedMarker {
-    public:
-        explicit ScopedMarker(const char* name, std::source_location where = std::source_location::current());
-        ~ScopedMarker();
-
-    private:
-        TracyCZoneCtx currentTracyZone;
+    struct ScopedPixMarker {
+        explicit ScopedPixMarker(const char* name, std::source_location where = std::source_location::current());
+        ~ScopedPixMarker();
     };
+
+#define ScopedMarkerNamed(markerText, markerName) ZoneScopedN(markerText); Profiling::ScopedPixMarker markerName { markerText }
+#define ScopedMarker(markerText) ScopedMarkerNamed(markerText, _)
 
     void beginFrame();
     const std::unordered_map<std::string, std::chrono::duration<float>>& getLastFrameTimes();

@@ -96,7 +96,7 @@ namespace Carrot::Async {
                 }
 
                 writeLock.unlock();
-                Cider::BlockingLockGuard l { existingNode->nodeAccess };
+                Cider::BlockingMutexGuard l { existingNode->nodeAccess };
 
                 if(existingNode->value.has_value()) {
                     return existingNode->value.value();
@@ -162,7 +162,7 @@ namespace Carrot::Async {
             auto iter = storage.find(key);
             if(iter != storage.end()) {
                 auto& node = iter->second;
-                Cider::BlockingLockGuard l1 { node.nodeAccess };
+                Cider::BlockingMutexGuard l1 { node.nodeAccess };
                 bool result = node.value.has_value();
                 node.value.reset();
                 return result;
@@ -223,7 +223,7 @@ namespace Carrot::Async {
         void clear() {
             Async::LockGuard g { storageAccess.write() };
             for(auto& [key, node] : storage) {
-                Cider::BlockingLockGuard g2 { node.nodeAccess };
+                Cider::BlockingMutexGuard g2 { node.nodeAccess };
                 node.value.reset();
             }
             storage.clear();

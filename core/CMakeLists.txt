@@ -2,6 +2,7 @@ set(CoreRoot "core/")
 set(CORE-SOURCES
 
         ${CoreRoot}allocators/MallocAllocator.cpp
+        ${CoreRoot}allocators/MimallocIntegration.cpp
         ${CoreRoot}allocators/StackAllocator.cpp
 
         ${CoreRoot}async/Coroutines.cpp
@@ -98,6 +99,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/robin-hood-hashing/src/include/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tribox3/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/cider/include/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mimalloc/include/)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)
@@ -107,6 +109,7 @@ function(add_core_includes Target)
     target_compile_definitions("${Target}" PUBLIC TRACY_FIBERS=1)
     target_compile_definitions("${Target}" PUBLIC USE_PIX=1)
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
+    #target_link_libraries("${Target}" PUBLIC mimalloc-static)
 
     # PIX on Windows
     target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/)

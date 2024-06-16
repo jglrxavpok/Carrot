@@ -20,7 +20,7 @@ namespace ShaderCompiler {
         std::ifstream inputStream(fullPath, std::fstream::binary | std::fstream::ate);
         std::size_t headerLength = inputStream.tellg();
         inputStream.seekg(0);
-        char* headerData = reinterpret_cast<char*>(malloc(headerLength));
+        char* headerData = reinterpret_cast<char*>(operator new(headerLength));
         inputStream.read(headerData, headerLength);
 
         includedFiles.push_back(fullPath);
@@ -41,8 +41,8 @@ namespace ShaderCompiler {
     void FileIncluder::releaseInclude(glslang::TShader::Includer::IncludeResult *result) {
         if(!result)
             return;
-        free((void *) result->headerData);
-        free(result);
+        operator delete((void *) result->headerData);
+        delete result;
     }
 
     FileIncluder::~FileIncluder() {

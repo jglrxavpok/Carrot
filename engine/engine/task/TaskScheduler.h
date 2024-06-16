@@ -119,6 +119,10 @@ namespace Carrot {
         /// Schedule a task for execution. Call at the beginning of rendering
         void executeRendering();
 
+        /// Steals a job from the given lane and runs it.
+        /// If there are no jobs to steal, does nothing
+        void stealJobAndRun(const Async::TaskLane& lane);
+
     public:
         /// How many threads can we use for the task scheduler? Only count "short" tasks
         static std::size_t frameParallelWorkParallelismAmount();

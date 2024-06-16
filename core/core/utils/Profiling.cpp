@@ -51,15 +51,12 @@ namespace Carrot::Profiling {
     }
 
 
-    ScopedMarker::ScopedMarker(const char* name, std::source_location where) {
-        TracyCZoneN(tracyZone, name, true);
-        currentTracyZone = tracyZone;
+    ScopedPixMarker::ScopedPixMarker(const char* name, std::source_location where) {
         PIXBeginEvent(PIX_COLOR_INDEX(reinterpret_cast<std::uint64_t>(name) % 10), name);
     }
 
-    ScopedMarker::~ScopedMarker() {
+    ScopedPixMarker::~ScopedPixMarker() {
         PIXEndEvent();
-        TracyCZoneEnd(currentTracyZone);
     }
 
 

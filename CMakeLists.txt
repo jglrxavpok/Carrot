@@ -137,6 +137,8 @@ set(OPENXR_SDK_SRC_DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source)
 set(OPENXR_SDK_BUILD_DIR ${CMAKE_BINARY_DIR}/thirdparty/OpenXR-SDK-Source)
 add_subdirectory(thirdparty/OpenXR-Hpp)
 
+add_subdirectory(thirdparty/mimalloc)
+
 function(add_includes Target)
     add_core_includes(${Target})
     target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)

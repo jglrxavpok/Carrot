@@ -40,7 +40,7 @@ namespace Carrot::Render {
                 if(!dynamicStorage.empty()) {
                     std::size_t previousSize = staticStorageSize;
                     deleteStorage();
-                    staticStorage = static_cast<StoredType*>(malloc((previousSize + dynamicStorage.size()) * sizeof(StoredType)));
+                    staticStorage = static_cast<StoredType*>(operator new((previousSize + dynamicStorage.size()) * sizeof(StoredType)));
                     verify(staticStorage != nullptr, "allocation error!");
                     staticStorageSize = previousSize + dynamicStorage.size();
                 }
@@ -70,7 +70,7 @@ namespace Carrot::Render {
 
             void deleteStorage() {
                 if(staticStorage != nullptr) {
-                    free(staticStorage);
+                    operator delete(staticStorage);
                     staticStorage = nullptr;
                     staticStorageSize = 0;
                 }
