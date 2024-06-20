@@ -285,7 +285,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     if(renderContext.pViewport != &GetEngine().getMainViewport()) {
         return;
     }
-    ZoneScoped;
+    ScopedMarker("ASBuilder::onFrame");
     Async::LockGuard l { access };
     auto purge = [](auto& pool) {
         pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto a) { return a.second.expired(); }), pool.end());
@@ -358,18 +358,30 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
 }
 
 void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild) {
-    ZoneScoped;
+    ScopedMarker("buildBottomLevels");
     if(!enabled)
         return;
     auto& device = renderer.getLogicalDevice();
 
     // add a bottom level AS for each geometry entry
     std::size_t blasCount = toBuild.size();
+    if(blasCount == 0) {
+        return;
+    }
+    
+    const std::size_t maxCommandBuffers = 32;
+    const std::size_t elementsPerBuffer = (blasCount+blasCount-1) / maxCommandBuffers;
+    auto elementIndexToBuffer = [&](std::size_t elementIndex) {
+        return elementIndex / elementsPerBuffer;
+    };
 
     auto& tracyCtxList = blasBuildTracyCtx[renderContext.swapchainIndex];
     auto& buildCommands = blasBuildCommands[renderContext.swapchainIndex];
     auto& compactCommands = compactBLASCommands[renderContext.swapchainIndex];
     vk::UniqueQueryPool& queryPool = queryPools[renderContext.swapchainIndex];
+
+    // TODO: reduce number of command buffers (batch of 32 ?)
+    // TODO: fast build
     if(buildCommands.size() < blasCount) {
         ZoneScopedN("Reallocate command buffers");
         buildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
@@ -662,7 +674,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     if(!enabled)
         return;
     static int prevPrimitiveCount = 0;
-    ZoneScoped;
+    ScopedMarker("ASBuilder::buildTopLevelAS");
     ZoneValue(update ? 1 : 0);
 
     auto& device = renderer.getLogicalDevice();

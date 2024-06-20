@@ -158,7 +158,7 @@ namespace Carrot::Async {
 
         /// Removes the value corresponding to the given key. If no such value exists, returns false. Returns true otherwise.
         bool remove(const KeyType& key) {
-            Async::LockGuard l { storageAccess.read() };
+            Async::LockGuard l { storageAccess.write() };
             auto iter = storage.find(key);
             if(iter != storage.end()) {
                 auto& node = iter->second;

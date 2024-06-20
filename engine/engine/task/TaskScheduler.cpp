@@ -258,7 +258,9 @@ namespace Carrot {
             }
 
             run(parallelJobs * granularity);
-            sync.busyWait(); // TODO: potential deadlock if done on thread already running tasks
+            while(!sync.isIdle()) {
+                stealJobAndRun(FrameParallelWork);
+            }
         } else {
             run(0);
         }

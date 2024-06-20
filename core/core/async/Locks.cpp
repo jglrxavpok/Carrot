@@ -143,7 +143,8 @@ namespace Carrot::Async {
         verify(parent.readerCount > 0, "Mismatched lock/unlock");
 
         std::uint32_t currentReaderCount = parent.atomicValue.load();
-        verify(currentReaderCount > 0 && currentReaderCount != ReadWriteLock::WriterPresentValue, "Lock acquired while a writer was still present?");
+        verify(currentReaderCount > 0, "Invalid reader count");
+        //verify(currentReaderCount > 0 && currentReaderCount != ReadWriteLock::WriterPresentValue, "Lock acquired while a writer was still present?");
 
         std::uint32_t nextReaderCount = currentReaderCount -1;
 
@@ -152,6 +153,7 @@ namespace Carrot::Async {
         while(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
             verify(currentReaderCount != ReadWriteLock::WriterPresentValue, "Lock acquired while a writer was still present?");
             currentReaderCount = parent.atomicValue.load();
+            verify(currentReaderCount > 0, "Invalid reader count");
             nextReaderCount = currentReaderCount - 1;
             std::this_thread::yield();
         }

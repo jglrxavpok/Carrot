@@ -162,7 +162,7 @@ namespace Carrot::Async {
     private:
         std::atomic<std::uint32_t> readerCount = 0;
         std::atomic<std::uint32_t> atomicValue = 0;
-        static constexpr std::uint32_t WriterPresentValue = std::numeric_limits<std::uint32_t>::max();
+        static constexpr std::uint32_t WriterPresentValue = 0xFFFFFF42;
         ReadLock readLock;
         WriteLock writeLock;
 
