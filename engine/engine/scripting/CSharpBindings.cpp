@@ -89,7 +89,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
         mono_add_internal_call("Carrot.Entity::GetName", GetName);
         mono_add_internal_call("Carrot.Entity::Remove", Remove);
-        mono_add_internal_call("Carrot.Entity::GetChildren", nullptr); // TODO
+        mono_add_internal_call("Carrot.Entity::GetChildren", GetEntityChildren);
         mono_add_internal_call("Carrot.Entity::GetParent", GetParent);
         mono_add_internal_call("Carrot.Entity::SetParent", SetParent);
         mono_add_internal_call("Carrot.Entity::ReParent", ReParent);
@@ -944,6 +944,31 @@ namespace Carrot::Scripting {
     MonoString* CSharpBindings::GetName(MonoObject* entityMonoObj) {
         auto entity = convertToEntity(entityMonoObj);
         return mono_string_new_wrapper(entity.getName().c_str());
+    }
+
+    std::shared_ptr<Scripting::CSArray> CSharpBindings::createArrayFromEntityList(std::span<const Carrot::ECS::Entity> entities) const {
+        std::shared_ptr<Scripting::CSArray> result = EntityClass->newArray(entities.size());
+
+        std::size_t i = 0;
+        for(auto& e : entities) {
+            ECS::EntityID uuid = e.getID();
+            const ECS::World* worldPtr = &e.getWorld();
+            void* args[2] = {
+                &uuid,
+                &worldPtr,
+            };
+            auto entityObj = EntityClass->newObject(args);
+
+            result->set(i, *entityObj);
+            i++;
+        }
+        return result;
+    }
+
+    MonoArray* CSharpBindings::GetEntityChildren(MonoObject* entityMonoObj) {
+        auto entity = convertToEntity(entityMonoObj);
+
+        return instance().createArrayFromEntityList(entity.getWorld().getChildren(entity, ShouldRecurse::NoRecursion /* TODO */))->toMono();
     }
 
     MonoObject* CSharpBindings::GetParent(MonoObject* entityMonoObj) {

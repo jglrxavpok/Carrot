@@ -79,14 +79,14 @@ namespace Carrot::ECS {
         if(!GetCapabilities().supportsRaytracing) {
             return;
         }
-        /*if(tlasIsWaitingForModel && asyncModel.isReady()) {
+        if(tlasIsWaitingForModel && asyncModel.isReady()) {
             Async::LockGuard l{ tlasAccess };
             if(tlasIsWaitingForModel) {
                 tlasIsWaitingForModel = false;
                 tlas = GetRenderer().getASBuilder().addInstance(asyncModel->getStaticBLAS());
                 tlas->enabled = true;
             }
-        }*/
+        }
     }
 
     void ModelComponent::setFile(const IO::VFS::Path& path) {

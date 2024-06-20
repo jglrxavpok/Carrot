@@ -143,6 +143,8 @@ namespace Carrot::Scripting {
         CSObject stringToEnumValue(const std::string& enumTypeName, const std::string& enumValue) const;
         std::string enumValueToString(const CSObject& enumValue) const;
 
+        std::shared_ptr<Scripting::CSArray> createArrayFromEntityList(std::span<const Carrot::ECS::Entity> entities) const;
+
     public: // public because they might be useful to other parts of the engine
         struct CppComponent {
             bool isCSharp = false;
@@ -171,6 +173,7 @@ namespace Carrot::Scripting {
 
         static void Remove(MonoObject* entityMonoObj);
         static MonoObject* GetParent(MonoObject* entityMonoObj);
+        static MonoArray* GetEntityChildren(MonoObject* entityMonoObj);
         static void SetParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
         static void ReParent(MonoObject* entityMonoObj, MonoObject* newParentMonoObj);
         static MonoObject* Duplicate(MonoObject* entityMonoObj);

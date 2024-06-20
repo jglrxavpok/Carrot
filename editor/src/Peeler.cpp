@@ -1239,7 +1239,8 @@ namespace Peeler {
         if(movingGameViewCamera && !isPlaying) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
                 turnCamera.getValue().x, turnCamera.getValue().y,
-                frameTime*3);
+                // TODO: GP Direct
+                frameTime*5);
         }
     }
 

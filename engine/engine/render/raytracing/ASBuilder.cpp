@@ -63,7 +63,9 @@ namespace Carrot {
                 transformAddresses[j] = baseTransformDataAddress + j * sizeof(vk::TransformMatrixKHR);
             }
 
-            transformData.view.uploadForFrame(std::span<const vk::TransformMatrixKHR>(rtTransforms));
+            // TODO: GP Direct
+            //transformData.view.uploadForFrame(std::span<const vk::TransformMatrixKHR>(rtTransforms));
+            transformData.view.stageUpload(std::span<const vk::TransformMatrixKHR>(rtTransforms));
         } else {
             vk::DeviceAddress transformDataAddress = builder->getIdentityMatrixBufferView().getDeviceAddress();
             transformAddresses.fill(transformDataAddress);

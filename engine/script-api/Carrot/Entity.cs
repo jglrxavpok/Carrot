@@ -101,7 +101,7 @@ namespace Carrot {
          * Children of this entity.
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern EntityEnumerator GetChildren();
+        public extern Entity[] GetChildren();
 
         /**
          * Returns the parent of this entity, or null if none.
