@@ -125,9 +125,10 @@ void main() {
     const ivec2 coords = ivec2(gl_GlobalInvocationID);
 
     // from SVGF
+    // TODO: GP Direct
     const float sigmaNormals = 128.0f;
-    const float sigmaPositions = 1.0f;
-    const float sigmaLuminance = 4.0f;
+    const float sigmaPositions = 4.0f;
+    const float sigmaLuminance = 2.0f;
 
     const int STEP_SIZE = 1 << iterationData.index;
 

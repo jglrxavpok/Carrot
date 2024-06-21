@@ -46,8 +46,10 @@ void main() {
     vec3 t = normalize(inTangent.xyz);
     vec3 n = normalize(inNormal);
 
-    N = normalize(mat3(modelview) * n);
-    T = normalize(mat3(modelview) * (t - dot(t, n) * n));
+    mat3 normalMatrix = mat3(modelview);
+    normalMatrix = transpose(inverse(normalMatrix));
+    N = normalize(normalMatrix * n);
+    T = normalize(normalMatrix * (t - dot(t, n) * n));
 
     outBitangentSign = inTangent.w;
 

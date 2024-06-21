@@ -164,8 +164,10 @@ void main() {
     vec3 N = interpolate3D(interlopator, vA.normal, vB.normal, vC.normal);
     vec3 T = interpolate3D(interlopator, vA.tangent.xyz, vB.tangent.xyz, vC.tangent.xyz);
 
-    N = mat3(modelview) * N;
-    T = mat3(modelview) * T;
+    mat3 normalMatrix = mat3(modelview);
+    normalMatrix = transpose(inverse(normalMatrix));
+    N = normalMatrix * N;
+    T = normalMatrix * T;
     float bitangentSign = interpolate1D(interlopator, vA.tangent.w, vB.tangent.w, vC.tangent.w);
 
     vec3 N_ = normalize(N);

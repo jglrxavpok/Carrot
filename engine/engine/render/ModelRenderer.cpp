@@ -239,6 +239,10 @@ namespace Carrot::Render {
                         return;
                     }
 
+                    if(!texture->texture) {
+                        return;
+                    }
+
                     const Carrot::IO::Resource& textureSource = texture->texture->getOriginatingResource();
                     if(!textureSource.isFile()) {
                         return;

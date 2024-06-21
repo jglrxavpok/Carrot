@@ -319,7 +319,7 @@ bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
 
     // Initializes a ray query object but does not start traversal
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, startPos, tMin, direction, maxDistance);
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
 
     // Start traversal: return false if traversal is complete
     while(rayQueryProceedEXT(rayQuery)) {}
@@ -339,7 +339,7 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
 
     // Initializes a ray query object but does not start traversal
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, startPos, tMin, direction, maxDistance);
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
 
     // Start traversal: return false if traversal is complete
     while(rayQueryProceedEXT(rayQuery)) {}
@@ -387,8 +387,10 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
             Vertex P1 = geometry.vertexBuffer.v[index1];
 
             uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
-            surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
-            surfaceTangent = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz;
+            surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
+
+            vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
+            surfaceTangent = normalize(tangentWithBitangentSign.xyz);
             color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
         } break;
 
@@ -404,8 +406,8 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
             PackedVertex P1 = vtxBuffer.v[index1];
 
             uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
-            surfaceNormal = P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y);
-            surfaceTangent = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz;
+            surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
+            surfaceTangent = normalize((P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz);
             color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
 
         } break;
@@ -417,12 +419,14 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
         } break;
     }
 
-    mat3 modelRotation = mat3(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
+    mat3 normalMatrix = mat3(rayQueryGetIntersectionObjectToWorldEXT(rayQuery, true));
+    normalMatrix = inverse(normalMatrix);
+    normalMatrix = transpose(normalMatrix);
     r.hasIntersection = true;
     r.materialIndex = geometry.materialIndex;
     r.uv = uvPos;
-    r.surfaceNormal = modelRotation * surfaceNormal;
-    r.surfaceTangent = modelRotation * surfaceTangent;
+    r.surfaceNormal = normalize(normalMatrix * surfaceNormal);
+    r.surfaceTangent = normalize(normalMatrix * surfaceTangent);
     r.surfaceColor = color * instance.instanceColor.rgb;
     r.position = rayQueryGetIntersectionTEXT(rayQuery, true) * direction + startPos;
 }
@@ -552,11 +556,6 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
                 lightWeight *= powerHeuristic(1, lightPDF, 1, scatteringPDF);
             }
 
-            lightContribution += (emissive + lightAtPoint * fresnel) * beta;
-
-            if(depth == MAX_BOUNCES - 1)
-                break;
-
             if(sampledSpecular) {
                 // sample specular reflection
                 vec3 reflectedRay = reflect(incomingRay, normal);
@@ -579,6 +578,10 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
             }
 
             if(intersection.hasIntersection) {
+                // TODO: GP Direct
+                if(!sampledSpecular)
+                    lightContribution += (emissive + lightAtPoint * fresnel) * beta;
+
                 #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
                 beta *= _sample(albedo).rgb;
                 beta *= intersection.surfaceColor;
@@ -613,8 +616,20 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
                     vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
                     lightContribution += skyboxColor * beta;
                 }
-                break;
+                return lightContribution;
             }
+        }
+
+        vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
+        if(isnan(uv.x))
+        {
+            // incomingRay-> NaN ???
+            return vec3(0, 100000, 0);
+        }
+        else
+        {
+            vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
+            lightContribution += skyboxColor * beta;
         }
 
         return lightContribution;

@@ -25,7 +25,7 @@ namespace Carrot::Render {
         glm::vec3 emissiveColor {0.0f};
         std::uint32_t emissive = 0;
 
-        glm::vec2 metallicRoughnessFactor{0.0f};
+        glm::vec2 metallicRoughnessFactor{1.0f};
 
         std::uint32_t albedo = 0;
         std::uint32_t normalMap = 0;
@@ -55,8 +55,8 @@ namespace Carrot::Render {
         glm::vec3 emissiveColor {0.0f};
         std::shared_ptr<TextureHandle> emissive;
 
-        float roughnessFactor = 0.0f;
-        float metallicFactor = 0.0f;
+        float roughnessFactor = 1.0f;
+        float metallicFactor = 1.0f;
 
         std::shared_ptr<TextureHandle> albedo;
         std::shared_ptr<TextureHandle> normalMap;
