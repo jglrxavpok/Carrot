@@ -115,7 +115,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 clearColor,
                                                                 vk::ImageLayout::eColorAttachmentOptimal);
 
-                resolveData.reflections = graph.createRenderTarget("Reflections",
+                resolveData.firstBouncePositions = graph.createRenderTarget("First bounce positions (view space)",
+                                                                vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::AttachmentLoadOp::eClear,
+                                                                clearColor,
+                                                                vk::ImageLayout::eColorAttachmentOptimal);
+                resolveData.firstBounceNormals = graph.createRenderTarget("First bounce normals (view space)",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::AttachmentLoadOp::eClear,

@@ -44,7 +44,9 @@ void main() {
 
     GBuffer o = initGBuffer(inModelview);
 
-    o.albedo = vec4(texColor.rgb, texColor.a * instanceColor.a);
+    vec3 emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
+
+    o.albedo = vec4(texColor.rgb + emissiveColor, texColor.a * instanceColor.a);
     o.viewPosition = viewPosition;
 
     vec3 N_ = normalize(N);
@@ -68,7 +70,7 @@ void main() {
     vec2 metallicRoughness = texture(sampler2D(textures[metallicRoughnessTexture], linearSampler), uv).bg * material.metallicRoughnessFactor;
     o.metallicness = metallicRoughness.x;
     o.roughness = metallicRoughness.y;
-    o.emissiveColor = texture(sampler2D(textures[emissiveTexture], linearSampler), uv).rgb * material.emissiveColor;
+    o.emissiveColor = emissiveColor;
 
     vec4 clipPos = cbo.nonJitteredProjection * vec4(viewPosition, 1.0);
     vec4 previousClipPos = previousFrameCBO.nonJitteredProjection * vec4(previousFrameViewPosition, 1.0);

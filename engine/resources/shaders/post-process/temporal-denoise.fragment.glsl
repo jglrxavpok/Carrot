@@ -59,11 +59,11 @@ void main() {
     vec4 prevNDC = cbo.jitteredProjection * viewSpacePos;
     prevNDC.xyz /= prevNDC.w;
 
-    vec2 reprojectedUV = (prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
-    vec4 previousViewSpacePos = texture(sampler2D(previousViewPos, linearSampler), reprojectedUV);
+    vec2 reprojectedUV = uv + (gbuffer.motionVector.xy / 2.0);//(prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
+    vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, linearSampler), reprojectedUV).xyz, 1);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 200);
+    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 2);
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
 
     vec3 minColor = vec3(100000);

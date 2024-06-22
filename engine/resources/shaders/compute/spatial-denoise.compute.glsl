@@ -15,6 +15,8 @@ layout(rgba32f, set = 1, binding = 1) uniform readonly image2D varianceInput;
 
 layout(rgba32f, set = 1, binding = 2) uniform writeonly image2D outputImage;
 layout(rgba32f, set = 1, binding = 3) uniform writeonly image2D varianceOutput;
+layout(set = 1, binding = 4) uniform texture2D firstBounceViewPositions;
+layout(set = 1, binding = 5) uniform texture2D firstBounceViewNormals;
 
 layout(push_constant) uniform Push {
     uint index;
@@ -48,11 +50,13 @@ ExtractedGBuffer nullGBuffer() {
     return r;
 }
 
-ExtractedGBuffer extractUsefulInfo(in GBuffer g) {
+ExtractedGBuffer extractUsefulInfo(in GBuffer g, vec2 uv) {
     ExtractedGBuffer e;
     e.albedo = g.albedo;
-    e.viewPosition = g.viewPosition;
-    e.normal = g.viewTBN[2];
+    e.viewPosition = texture(sampler2D(firstBounceViewPositions, gNearestSampler), uv).xyz;
+    //e.viewPosition = g.viewPosition;
+    e.normal = texture(sampler2D(firstBounceViewNormals, gNearestSampler), uv).xyz;
+    //e.normal = g.viewTBN[2];
     e.entityID = g.entityID;
     return e;
 }
@@ -80,7 +84,7 @@ ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) 
     }
 
     const vec2 filterUV = coords / vec2(size);
-    return extractUsefulInfo(unpackGBuffer(filterUV));
+    return extractUsefulInfo(unpackGBuffer(filterUV), filterUV);
 }
 
 float readVariance(ivec2 coordsOffset/* offset from current pixel */) {
@@ -130,6 +134,7 @@ void main() {
     const float sigmaPositions = 4.0f;
     const float sigmaLuminance = 2.0f;
 
+
     const int STEP_SIZE = 1 << iterationData.index;
 
     const ivec2 size = imageSize(outputImage);
@@ -143,7 +148,7 @@ void main() {
     vec4 finalPixel = imageLoad(inputImage, coords);
 
     const vec2 currentUV = coords/vec2(size);
-    sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = extractUsefulInfo(unpackGBufferLight(currentUV));
+    sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = extractUsefulInfo(unpackGBufferLight(currentUV), currentUV);
     sharedLuminanceMomentsReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y] = imageLoad(varianceInput, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
     #define currentGBuffer (sharedGBufferReads[gl_LocalInvocationID.x][gl_LocalInvocationID.y])
 

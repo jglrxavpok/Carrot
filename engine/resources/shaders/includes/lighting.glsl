@@ -7,6 +7,7 @@ struct SurfaceIntersection {
     vec3 surfaceTangent;
     vec3 surfaceColor;
     vec2 uv;
+    int bitangentSign;
     bool hasIntersection;
 };
 
@@ -391,6 +392,7 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
 
             vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
             surfaceTangent = normalize(tangentWithBitangentSign.xyz);
+            r.bitangentSign = int(tangentWithBitangentSign.w);
             color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
         } break;
 
@@ -407,7 +409,9 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
 
             uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
             surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
-            surfaceTangent = normalize((P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y)).xyz);
+            vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
+            surfaceTangent = normalize(tangentWithBitangentSign.xyz);
+            r.bitangentSign = int(tangentWithBitangentSign.w);
             color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
 
         } break;
@@ -484,7 +488,18 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
 }
 #endif
 
-vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
+struct LightingResult {
+    vec3 color;
+    vec3 position;
+    vec3 normal;
+    vec3 tangent;
+};
+
+LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
+    LightingResult r;
+    r.position = worldPos;
+    r.normal = normal;
+    r.tangent = tangent;
     vec3 finalColor = vec3(0.0);
 
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
@@ -498,7 +513,11 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
             uint lightIndex = activeLights.indices[i];
             lightContribution += computeLightContribution(lightIndex, worldPos, normal);
         }
-        return lightContribution;
+        r.color = lightContribution;
+        r.position = worldPos;
+        r.normal = normal;
+        r.tangent = tangent;
+        return r;
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     }
     else
@@ -580,10 +599,10 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
             if(intersection.hasIntersection) {
                 // TODO: GP Direct
                 if(!sampledSpecular)
-                    lightContribution += (emissive + lightAtPoint * fresnel) * beta;
+                    lightContribution += (emissive*5 /* TODO: GP DIrect */ + lightAtPoint * fresnel) * beta;
 
                 #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
-                beta *= _sample(albedo).rgb;
+                beta *= _sample(albedo).rgb + _sample(emissive).rgb;
                 beta *= intersection.surfaceColor;
 
                 rayOrigin = intersection.position;
@@ -591,7 +610,7 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
 
                 vec3 T = normalize(intersection.surfaceTangent);
                 vec3 N = normalize(intersection.surfaceNormal);
-                vec3 B = cross(T, N);
+                vec3 B = cross(T, N) * intersection.bitangentSign;
 
                 mat3 tbn = mat3(T, B, N);
                 vec3 mappedNormal = _sample(normalMap).rgb;
@@ -604,19 +623,32 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
                 vec2 metallicRoughness = _sample(metallicRoughness).rg;
                 metallic = metallicRoughness.x;
                 roughness = metallicRoughness.y;
+
+                if(sampledSpecular && depth == 0) {
+                    // TODO: motion vectors?
+                    r.position = rayOrigin;
+                    r.normal = vec3(normal.x, normal.z, normal.y); // TODO: GP Direct (wtf?)
+                    r.tangent = tangent;
+                }
             } else {
                 vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
                 if(isnan(uv.x))
                 {
                     // incomingRay-> NaN ???
-                    return vec3(0, 100000, 0);
+                    lightContribution = vec3(0, 100000, 0);
+                    r.color = lightContribution;
+                    r.position = worldPos;
+                    r.normal = normal;
+                    r.tangent = tangent;
+                    return r;
                 }
                 else
                 {
                     vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
                     lightContribution += skyboxColor * beta;
                 }
-                return lightContribution;
+                r.color = lightContribution;
+                return r;
             }
         }
 
@@ -624,7 +656,9 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
         if(isnan(uv.x))
         {
             // incomingRay-> NaN ???
-            return vec3(0, 100000, 0);
+            lightContribution = vec3(0, 100000, 0);
+            r.color = lightContribution;
+            return r;
         }
         else
         {
@@ -632,147 +666,8 @@ vec3 calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 nor
             lightContribution += skyboxColor * beta;
         }
 
-        return lightContribution;
-    }
-    #endif
-}
-
-vec3 calculateReflections(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
-    const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
-
-    #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-    if (!raytracing)
-    {
-    #endif
-        if(metallicRoughness.x > 0.0f) {
-            vec3 incomingRay = normalize(worldPos - cameraPos);
-            vec3 reflectedRay = reflect(incomingRay, normal);
-            vec3 uv = vec3(reflectedRay.x, reflectedRay.z, -reflectedRay.y);
-
-        // not physically accurate, but looks good enough for now
-            return texture(gSkybox3D, uv).rgb * metallicRoughness.x * (1-metallicRoughness.y);
-        }
-        return vec3(0.0);
-    #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-    }
-    else
-    {
-        vec3 lightContribution = vec3(0.0);
-
-        vec3 incomingRay = normalize(worldPos - cameraPos);
-        const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
-        const uint MAX_BOUNCES = 3; /* TODO: specialization constant?*/
-        float roughnessBias = 0.0f;
-        float roughness = metallicRoughness.y;
-        float metallic = metallicRoughness.x;
-
-        vec3 beta = vec3(1.0f);
-        int depth = 0;
-
-        float lightPDF = 1.0f;
-        vec3 pathContribution = vec3(0.0f);
-        bool lastIsSpecular = false;
-        SurfaceIntersection intersection;
-        intersection.hasIntersection = false;
-        for(; depth < MAX_BOUNCES; depth++) {
-            const float oldRoughness = roughness;
-            roughness = min(1, oldRoughness + roughnessBias);
-            roughnessBias += oldRoughness * 0.75f; // firefly rejection
-
-            const float u = sampleNoise(rng);
-
-            // direct lighting
-            float weight = 1.0f;
-            bool sampledSpecular = u <= metallic;
-
-            float sampledSpecularF = float(sampledSpecular);
-
-            /*vec3 wh = normalize(lightDirection + incomingRay);
-            vec3 fresnel = schlickFresnel(vec3(0.0), clamp(dot(wh, lightDirection), 0.0, 1.0)); // TODO ?*/
-            vec3 fresnel = vec3(1.0);
-
-            vec3 T = tangent;
-            vec3 N = normal;
-            T = normalize(T - dot(T, N) * N);
-            vec3 B = cross(T, N);
-
-            mat3 tbn = mat3(T, B, N);
-            mat3 invTBN = transpose(tbn);
-
-            float lightWeight = 1.0;
-
-            // TODO: non-delta lights (ie area lights)
-            if(false) {
-                float scatteringPDF = 1.0; // TODO
-                lightWeight *= powerHeuristic(1, lightPDF, 1, scatteringPDF);
-            }
-
-
-            vec3 lightAtPoint = computeDirectLighting(/*inout*/rng, /*inout*/lightPDF, worldPos, normal, MAX_LIGHT_DISTANCE);
-            lightContribution += lightAtPoint * beta;
-
-            if(depth == MAX_BOUNCES - 1)
-                break;
-
-            if(sampledSpecular) {
-                // sample specular reflection
-                vec3 reflectedRay = reflect(incomingRay, normal);
-                traceRay(intersection, worldPos, reflectedRay, MAX_LIGHT_DISTANCE);
-                incomingRay = reflectedRay;
-            } else {
-                vec3 direction;
-                float pdf;
-                vec3 f = sampleGGXF(rng, roughness, invTBN * incomingRay, direction, pdf);
-
-                if(pdf == 0.0 || dot(f, f) <= 0.0f)
-                    break;
-
-                vec3 worldSpaceDirection = tbn * normalize(-direction);
-                beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
-
-                traceRay(intersection, worldPos, worldSpaceDirection, MAX_LIGHT_DISTANCE);
-                incomingRay = worldSpaceDirection;
-            }
-
-            if(intersection.hasIntersection) {
-                #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
-                beta *= _sample(albedo).rgb;
-                beta *= intersection.surfaceColor;
-
-                worldPos = intersection.position;
-
-                vec3 T = normalize(intersection.surfaceTangent);
-                vec3 N = normalize(intersection.surfaceNormal);
-                vec3 B = cross(T, N);
-
-                mat3 tbn = mat3(T, B, N);
-                vec3 mappedNormal = _sample(normalMap).rgb;
-
-                mappedNormal = mappedNormal * 2 -1;
-                mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
-
-                normal = mappedNormal;
-                tangent = T;
-                vec2 metallicRoughness = _sample(metallicRoughness).rg;
-                metallic = metallicRoughness.x;
-                roughness = metallicRoughness.y;
-            } else {
-                vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
-                if(isnan(uv.x))
-                {
-                    // incomingRay-> NaN ???
-                    return vec3(0, 100000, 0);
-                }
-                else
-                {
-                    vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
-                    lightContribution += skyboxColor * beta;
-                }
-                break;
-            }
-        }
-
-        return lightContribution;
+        r.color = lightContribution;
+        return r;
     }
     #endif
 }

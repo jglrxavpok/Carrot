@@ -10,7 +10,6 @@ DEFINE_GBUFFER_INPUTS(0)
 #include <includes/gbuffer_unpack.glsl>
 
 layout(set = 1, binding = 0) uniform texture2D lighting;
-layout(set = 1, binding = 1) uniform texture2D reflections;
 layout(set = 1, binding = 2) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
@@ -36,9 +35,7 @@ bool earlyExits(uint debugMode) {
 void main() {
     GBuffer g = unpackGBuffer(uv);
     vec4 albedoColor = g.albedo;
-    vec4 lightingColor = vec4(0)
-    + texture(sampler2D(lighting, gLinearSampler), uv)
-    ;
+    vec4 lightingColor = texture(sampler2D(lighting, gLinearSampler), uv);
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 

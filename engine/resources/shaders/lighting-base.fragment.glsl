@@ -60,7 +60,8 @@ layout(set = 5, binding = 3, scalar) buffer RTInstances {
 layout(location = 0) in vec2 inUV;
 
 layout(location = 0) out vec4 outGlobalIllumination;
-layout(location = 1) out vec4 outReflections;
+layout(location = 1) out vec4 outFirstBounceViewPositions;
+layout(location = 2) out vec4 outFirstBounceViewNormals;
 
 void main() {
     vec4 outColorWorld;
@@ -78,8 +79,11 @@ void main() {
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
         vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 
-        vec3 normal = mat3(cbo.inverseView) * gbuffer.viewTBN[2];
-        vec3 tangent = mat3(cbo.inverseView) * gbuffer.viewTBN[0];
+        // TODO: store directly in CBO
+        mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
+        mat3 inverseNormalView = inverse(cboNormalView);
+        vec3 normal = inverseNormalView * gbuffer.viewTBN[2];
+        vec3 tangent = inverseNormalView * gbuffer.viewTBN[0];
         vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
 
         initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
@@ -91,19 +95,29 @@ void main() {
 
         vec3 globalIllumination = vec3(0.0);
         vec3 reflections = vec3(0.0);
+
+        vec3 firstBounceWorldPos = vec3(0.0);
+        vec3 firstBounceNormal = vec3(0.0);
         for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            globalIllumination += calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
-            reflections += calculateReflections(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+            LightingResult result = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+            firstBounceWorldPos += result.position;
+            firstBounceNormal += result.normal;
+            globalIllumination += result.color.rgb;
         }
         outGlobalIllumination.rgb = globalIllumination * INV_SAMPLE_COUNT;
-        outReflections.rgb = reflections * INV_SAMPLE_COUNT;
+
+        outFirstBounceViewPositions = vec4((cbo.view * vec4(firstBounceWorldPos * INV_SAMPLE_COUNT, 1)).xyz, 1);
+
+        outFirstBounceViewNormals = vec4(cboNormalView * normalize(firstBounceNormal * INV_SAMPLE_COUNT), 1.0);
 #else
         vec3 gi;
         vec3 r;
-        outGlobalIllumination.rgb = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
-        outReflections.rgb = calculateReflections(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
+        LightingResult result = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
+        outGlobalIllumination.rgb = result.color.rgb;
+        outFirstBounceViewPositions = vec4((cbo.view * vec4(result.position, 1)).xyz, 1);
+        outFirstBounceViewNormals = vec4(cboNormalView * result.normal, 1.0);
 #endif
 
         distanceToCamera = length(gbuffer.viewPosition);
@@ -120,12 +134,12 @@ void main() {
 
         outGlobalIllumination = vec4(skyboxRGB.rgb,1.0);
         distanceToCamera = 1.0f/0.0f;
-        outReflections.rgb = vec3(0.0);
+        outFirstBounceViewPositions = vec4(0,0,0, 0);
+        outFirstBounceViewNormals = vec4(0,0,0, 1.0);
     }
 
     float fogFactor = clamp((distanceToCamera - lights.fogDistance) / lights.fogDepth, 0, 1);
     outGlobalIllumination.rgb = mix(outGlobalIllumination.rgb, lights.fogColor, fogFactor);
 
     outGlobalIllumination.a = 1.0;
-    outReflections.a = 1.0;
 }

@@ -112,11 +112,12 @@ void main() {
 
     vec3 l = vec3(0.0);
     for(int i = 0; i < SAMPLE_COUNT; i++) {
-        l += calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
+        LightingResult result = calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
+        l += result.color.rgb;
     }
     outColor = l * INV_SAMPLE_COUNT;
 #else
-    outColor = calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
+    outColor = calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true).color.rgb;
 #endif
 
     color = vec4(outColor * startingColor.rgb, alpha);
