@@ -335,10 +335,7 @@ std::vector<const char *> Carrot::VulkanDriver::getRequiredExtensions() {
 
     // copy GLFW extensions
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    if(USE_VULKAN_VALIDATION_LAYERS) {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     return extensions;
 }
@@ -1369,7 +1366,7 @@ bool Carrot::VulkanDriver::hasDebugNames() const {
 #ifdef IS_DEBUG_BUILD
     return true;
 #else
-    return false;
+    return true;
 #endif
 }
 

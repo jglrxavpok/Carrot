@@ -365,6 +365,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             .pSignalSemaphoreInfos = &signalInfo,
     });
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[frameIndex]);
+    // TODO: transfer this semaphore to BLAS
     return *skinningSemaphores[frameIndex];
 }
 

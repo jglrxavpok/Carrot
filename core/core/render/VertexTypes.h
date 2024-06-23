@@ -60,8 +60,8 @@ namespace Carrot {
 
     struct SkinnedVertex: public Vertex {
         /// Skinning information
-        alignas(16) glm::i8vec4 boneIDs{-1,-1,-1,-1};
         alignas(16) glm::vec4 boneWeights{0,0,0,0};
+        alignas(16) glm::u8vec4 boneIDs{0,0,0,0};
 
         void addBoneInformation(uint32_t boneID, float weight);
         void normalizeWeights();

@@ -111,6 +111,14 @@ namespace Peeler {
             }
         }
 
+        for(std::int64_t i = 0; i < components.size(); i++) {
+            auto& asyncModel = components[i]->asyncAnimatedModelHandle;
+            if(!asyncModel.isReady()) {
+                ImGui::Text("A model is loading...");
+                return;
+            }
+        }
+
         // check if all components use the same animated model
         Carrot::Render::AnimatedModel* pAnimatedModel = &components[0]->asyncAnimatedModelHandle->getParent();
         for(std::int64_t i = 1; i < components.size(); i++) {

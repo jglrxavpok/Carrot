@@ -356,12 +356,12 @@ std::unique_ptr<Carrot::Render::Texture> Carrot::Model::generateBoneTransformsSt
     };
     std::unique_ptr<Carrot::Image> storageImage = std::make_unique<Carrot::Image>(GetVulkanDriver(),
                                                                                   extent,
-                                                                                  vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst,
+                                                                                  vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
                                                                                   vk::Format::eR32G32B32A32Sfloat);
     std::vector<glm::vec4> pixels;
     pixels.resize(extent.width * extent.height);
-    for (int keyframeIndex = 0; keyframeIndex < animation.keyframeCount; ++keyframeIndex) {
-        for(int boneIndex = 0; boneIndex < boneCount; boneIndex++) {
+    for(int boneIndex = 0; boneIndex < boneCount; boneIndex++) {
+        for (int keyframeIndex = 0; keyframeIndex < animation.keyframeCount; ++keyframeIndex) {
             glm::vec4& row0 = pixels[keyframeIndex + (boneIndex * 3 + 0) * extent.width];
             glm::vec4& row1 = pixels[keyframeIndex + (boneIndex * 3 + 1) * extent.width];
             glm::vec4& row2 = pixels[keyframeIndex + (boneIndex * 3 + 2) * extent.width];
@@ -373,6 +373,7 @@ std::unique_ptr<Carrot::Render::Texture> Carrot::Model::generateBoneTransformsSt
     }
     storageImage->stageUpload(std::span { (std::uint8_t*)pixels.data(), pixels.size() * sizeof(glm::vec4) });
     auto tex = std::make_unique<Carrot::Render::Texture>(std::move(storageImage));
+    tex->name(Carrot::sprintf("Animation data"));
     tex->transitionNow(vk::ImageLayout::eGeneral);
     return tex;
 }

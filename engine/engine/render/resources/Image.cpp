@@ -99,7 +99,7 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
     verify(usage & vk::ImageUsageFlagBits::eTransferDst, "Cannot transfer to this image!");
     // create buffer holding data
     auto stagingBuffer = Carrot::Buffer(driver,
-                                        static_cast<vk::DeviceSize>(data.size()),
+                                        static_cast<vk::DeviceSize>(data.size_bytes()),
                                         vk::BufferUsageFlagBits::eTransferSrc,
                                          vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
                                         {driver.getQueueFamilies().transferFamily.value()});
@@ -110,7 +110,7 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
     stagingBuffer.directUpload(data.data(), data.size());
 
     // prepare image for transfer
-    transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    transitionLayout(format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     // copy from staging buffer to image
     driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
         vk::BufferImageCopy region = {
@@ -130,7 +130,7 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
     });
 
     // prepare image for shader reads
-    transitionLayout(vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    transitionLayout(format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
 std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource) {

@@ -2,6 +2,7 @@
 
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
 
 // vertex
 layout (local_size_x = 128) in;
@@ -20,8 +21,8 @@ struct VertexWithBones {
     vec3 normal;
     vec4 tangent;
     vec2 uv;
-    ivec4 boneIDs;
     vec4 boneWeights;
+    u8vec4 boneIDs;
 };
 
 struct Vertex {
@@ -70,7 +71,7 @@ float loadKeyframeTimestamp(uint animationIndex, uint keyframeIndex) {
     return keyframeIndex * animations[animationIndex].duration / animations[animationIndex].keyframeCount;
 }
 
-mat4 loadBoneTransform(uint animationIndex, uint keyframeIndex, uint boneIndex) {
+mat4 loadBoneTransform(uint animationIndex, uint keyframeIndex, int boneIndex) {
     vec4 row0 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 0));
     vec4 row1 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 1));
     vec4 row2 = imageLoad(animationDataBoneTextures[animationIndex], ivec2(keyframeIndex, boneIndex * 3 + 2));
