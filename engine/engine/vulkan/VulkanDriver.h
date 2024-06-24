@@ -11,6 +11,7 @@
 #include <vector>
 #include <set>
 #include <core/memory/NakedPtr.hpp>
+#include <engine/render/resources/BufferAllocation.h>
 #include <GLFW/glfw3.h>
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/vulkan/SynchronizedQueue.h"
@@ -82,7 +83,12 @@ namespace Carrot {
     using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
     using DeferredMemoryDestruction = DeferredDestruction<Carrot::DeviceMemory>;
     using DeferredBufferDestruction = DeferredDestruction<vk::UniqueBuffer>;
-    using DeferredAccelerationStructureDestruction = DeferredDestruction<vk::UniqueAccelerationStructureKHR>;
+
+    struct AccelerationStructureAndBackingMemory {
+        vk::UniqueAccelerationStructureKHR as;
+        Carrot::BufferAllocation backingMemory;
+    };
+    using DeferredAccelerationStructureDestruction = DeferredDestruction<AccelerationStructureAndBackingMemory>;
 
     class VulkanDriver: public SwapchainAware {
     public:
@@ -209,7 +215,7 @@ namespace Carrot {
         void deferDestroy(const std::string& name, vk::UniqueImageView&& imageView);
         void deferDestroy(const std::string& name, Carrot::DeviceMemory&& memory);
         void deferDestroy(const std::string& name, vk::UniqueBuffer&& resource);
-        void deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource);
+        void deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource, Carrot::BufferAllocation&& backingMemory);
 
     public: // swapchain & viewport
         void updateViewportAndScissor(vk::CommandBuffer& commands, const vk::Extent2D& size);

@@ -63,10 +63,18 @@ namespace Carrot {
         void update();
         void setDirty();
 
+        /// Bind semaphores to this BLAS:
+        /// building this BLAS must wait on the provided semaphore for the current frame
+        /// (one semaphore per swapchain image)
+        void bindSemaphores(const Render::PerFrame<vk::Semaphore>& semaphores);
+
         virtual ~BLASHandle() noexcept override;
 
     private:
         void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
+
+        /// semaphore to wait for before building this BLAS
+        vk::Semaphore getBoundSemaphore(std::size_t swapchainIndex) const;
 
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
@@ -79,6 +87,7 @@ namespace Carrot {
         bool built = false;
         ASBuilder* builder = nullptr;
         BLASGeometryFormat geometryFormat = BLASGeometryFormat::Default;
+        Render::PerFrame<vk::Semaphore> boundSemaphores;
 
         friend class ASBuilder;
         friend class InstanceHandle;

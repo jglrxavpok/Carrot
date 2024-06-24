@@ -923,9 +923,12 @@ void Carrot::VulkanDriver::deferDestroy(const std::string& name, Carrot::DeviceM
     deferredMemoryDestructions.push_back(std::move(DeferredMemoryDestruction(name, std::move(resource))));
 }
 
-void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource) {
+void Carrot::VulkanDriver::deferDestroy(const std::string& name, vk::UniqueAccelerationStructureKHR&& resource, Carrot::BufferAllocation&& backingMemory) {
     Async::LockGuard g { deferredDestroysLock };
-    deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(name, std::move(resource))));
+    deferredAccelerationStructureDestructions.push_back(std::move(DeferredAccelerationStructureDestruction(name, AccelerationStructureAndBackingMemory {
+        .as = std::move(resource),
+        .backingMemory = std::move(backingMemory),
+    })));
 }
 
 void Carrot::VulkanDriver::deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer) {

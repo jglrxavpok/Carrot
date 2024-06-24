@@ -12,8 +12,8 @@ namespace Carrot {
 
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
 
-        explicit AccelerationStructure(AccelerationStructure&&) = default;
-        explicit AccelerationStructure(AccelerationStructure&) = delete;
+        AccelerationStructure(AccelerationStructure&&) = default;
+        AccelerationStructure(const AccelerationStructure&) = delete;
 
         AccelerationStructure& operator=(AccelerationStructure&&) = default;
         AccelerationStructure& operator=(const AccelerationStructure&) = delete;

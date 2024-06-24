@@ -46,5 +46,5 @@ const Carrot::BufferAllocation& Carrot::AccelerationStructure::getBuffer() const
 Carrot::AccelerationStructure::~AccelerationStructure() {
     ASByStartAddress.remove(deviceAddress);
     deviceAddress = 0x0;
-    GetVulkanDriver().deferDestroy(buffer.getDebugName()+"-as", std::move(as));
+    GetVulkanDriver().deferDestroy(buffer.getDebugName()+"-as", std::move(as), std::move(buffer));
 }

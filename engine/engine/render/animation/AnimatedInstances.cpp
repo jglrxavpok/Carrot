@@ -329,6 +329,16 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
 
         skinningSemaphores.emplace_back(std::move(engine.getLogicalDevice().createSemaphoreUnique({})));
     }
+
+    Render::PerFrame<vk::Semaphore> semaphores;
+    semaphores.reserve(skinningSemaphores.size());
+    for(auto& pSemaphore : skinningSemaphores) {
+        semaphores.emplace_back(*pSemaphore);
+    }
+
+    for(auto& blas : raytracingBLASes) {
+        blas->bindSemaphores(semaphores);
+    }
 }
 
 vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {

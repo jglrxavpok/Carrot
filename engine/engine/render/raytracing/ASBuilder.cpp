@@ -148,6 +148,17 @@ namespace Carrot {
         built = false;
     }
 
+    void BLASHandle::bindSemaphores(const Render::PerFrame<vk::Semaphore>& boundSemaphores) {
+        this->boundSemaphores = boundSemaphores;
+    }
+
+    vk::Semaphore BLASHandle::getBoundSemaphore(std::size_t swapchainIndex) const {
+        if(boundSemaphores.empty()) {
+            return {};
+        }
+        return boundSemaphores[swapchainIndex];
+    }
+
     InstanceHandle::InstanceHandle(std::uint32_t index, std::function<void(WeakPoolHandle *)> destructor,
                                    std::weak_ptr<BLASHandle> geometry, ASBuilder* builder):
             WeakPoolHandle(index, destructor), geometry(geometry), builder(builder) {
@@ -583,16 +594,31 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 .commandBuffer = *pBuffer,
             });
         }
+        Carrot::Vector<vk::SemaphoreSubmitInfo> waitSemaphoreList;
+        waitSemaphoreList.setGrowthFactor(2);
+
+        for(auto& blas : toBuild) {
+            // TODO: deduplicate semaphores inside list? Is it even useful?
+            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.swapchainIndex);
+            if(boundSemaphore != VK_NULL_HANDLE) {
+                vk::SemaphoreSubmitInfo& submitInfo = waitSemaphoreList.emplaceBack();
+                submitInfo.semaphore = boundSemaphore;
+                submitInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
+            }
+        }
         vk::SemaphoreSubmitInfo signalInfo {
             .semaphore = hasASToCompact ? (*preCompactBLASSemaphore[renderContext.swapchainIndex]) : (*blasBuildSemaphore[renderContext.swapchainIndex]),
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         };
         GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
-                .commandBufferInfoCount = static_cast<uint32_t>(toBuild.size()),
-                .pCommandBufferInfos = commandBufferInfos.data(),
+            .waitSemaphoreInfoCount = static_cast<std::uint32_t>(waitSemaphoreList.size()),
+            .pWaitSemaphoreInfos = waitSemaphoreList.data(),
 
-                .signalSemaphoreInfoCount = 1,
-                .pSignalSemaphoreInfos = &signalInfo,
+            .commandBufferInfoCount = static_cast<uint32_t>(toBuild.size()),
+            .pCommandBufferInfos = commandBufferInfos.data(),
+
+            .signalSemaphoreInfoCount = 1,
+            .pSignalSemaphoreInfos = &signalInfo,
         });
         builtBLASThisFrame = true;
         GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eTopOfPipe, *blasBuildSemaphore[renderContext.swapchainIndex]);
