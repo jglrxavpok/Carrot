@@ -385,7 +385,7 @@ namespace Carrot {
         std::unordered_map<ImageBindingKey, vk::Image> boundStorageImages;
         std::unordered_map<BindingKey, vk::AccelerationStructureKHR> boundAS;
         std::unordered_map<BindingKey, vk::Sampler> boundSamplers;
-        std::unordered_map<BindingKey, vk::DescriptorBufferInfo> boundBuffers;
+        std::unordered_map<BindingKey, Carrot::BufferView> boundBuffers;
 
         Async::SpinLock threadRegistrationLock;
 
