@@ -1,3 +1,5 @@
+#extension GL_EXT_control_flow_attributes: enable
+
 #include <includes/math.glsl>
 
 struct SurfaceIntersection {
@@ -450,7 +452,7 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
 //    lightPDF = 1.0 / pdfInv;
     lightPDF = 1.0;
 
-    for (uint li = 0; li < activeLights.count; li++)
+    [[dont_unroll]] for (uint li = 0; li < activeLights.count; li++)
     {
         uint i = activeLights.indices[li];
         float enabledF = float(light.enabled);
@@ -536,7 +538,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
 
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
-        for(; depth < MAX_BOUNCES; depth++) {
+        [[dont_unroll]] for(; depth < MAX_BOUNCES; depth++) {
             rayOrigin += normal*0.001f; // avoid self intersection
 
             const float oldRoughness = roughness;
