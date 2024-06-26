@@ -353,7 +353,7 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             auto& instance = raytracingInstances[i];
             instance->transform = getInstance(i).transform;
 
-            instance->enabled = i < currentInstanceCount;
+            instance->enabled = i < currentInstanceCount && getInstance(i).raytraced;
         }
     }
 
@@ -375,14 +375,11 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             .pSignalSemaphoreInfos = &signalInfo,
     });
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[frameIndex]);
-    // TODO: transfer this semaphore to BLAS
     return *skinningSemaphores[frameIndex];
 }
 
 void Carrot::AnimatedInstances::recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, std::size_t indirectDrawCount) {
-    TracyVulkanZone(*engine.tracyCtx[renderContext.swapchainIndex], commands, "Render units");
-    commands.bindVertexBuffers(0, fullySkinnedUnitVertices->getVulkanBuffer(), {0});
-    TODO;
+    TODO; // deprecated
 }
 
 void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass) {

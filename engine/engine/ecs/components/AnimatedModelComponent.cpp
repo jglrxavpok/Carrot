@@ -9,9 +9,13 @@ namespace Carrot::ECS {
     AnimatedModelComponent::AnimatedModelComponent(Entity entity): IdentifiableComponent<AnimatedModelComponent>(std::move(entity)) {}
 
     AnimatedModelComponent::AnimatedModelComponent(const rapidjson::Value& json, Entity entity): AnimatedModelComponent(std::move(entity)) {
-        auto& modelPathJSON = json["model"]["model_path"];
+        auto& modelJSON = json["model"];
+        auto& modelPathJSON = modelJSON["model_path"];
         const std::string modelPath = std::string{ modelPathJSON.GetString(), modelPathJSON.GetStringLength() };
         queueLoad(Carrot::IO::VFS::Path { modelPath });
+        if(auto pRaytracedIter = modelJSON.FindMember("raytraced"); pRaytracedIter != modelJSON.MemberEnd()) {
+            raytraced = pRaytracedIter->value.GetBool();
+        }
     }
 
     const char *const AnimatedModelComponent::getName() const {
@@ -35,6 +39,10 @@ namespace Carrot::ECS {
         if(resource.isFile()) {
             rapidjson::Value modelPath{resource.getName(), doc.GetAllocator()};
             modelData.AddMember("model_path", modelPath, doc.GetAllocator());
+        }
+
+        if(!asyncAnimatedModelHandle.isEmpty()) {
+            modelData.AddMember("raytraced", raytraced, doc.GetAllocator());
         }
 
         obj.AddMember("model", modelData, doc.GetAllocator());

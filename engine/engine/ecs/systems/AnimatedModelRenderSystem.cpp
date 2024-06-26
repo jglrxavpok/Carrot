@@ -19,15 +19,19 @@ namespace Carrot::ECS {
         renderedModels.clear();
         parallelForEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelComponent& modelComp) {
             ZoneScopedN("Per entity");
-            if(!entity.isVisible()) {
-                return;
-            }
 
             if (modelComp.asyncAnimatedModelHandle.isReady()) {
+                if(!entity.isVisible()) {
+                    modelComp.asyncAnimatedModelHandle->visible = false;
+                    return;
+                }
+                modelComp.asyncAnimatedModelHandle->visible = true;
+
                 Carrot::AnimatedInstanceData& instanceData = modelComp.asyncAnimatedModelHandle->getData();
                 instanceData.lastFrameTransform = transform.lastFrameGlobalTransform;
                 instanceData.transform = transform.toTransformMatrix();
                 instanceData.uuid = entity.getID();
+                instanceData.raytraced = modelComp.raytraced;
 
                 // TODO: instanceData.color = modelComp.color;
 
@@ -56,14 +60,19 @@ namespace Carrot::ECS {
 
     void AnimatedModelRenderSystem::reload() {
         time = 0.0;
+        // no need to reactivate raytracing nor visibility, "onFrame" will do it for us
         forEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelComponent& modelComp) {
-            // TODO: enable TLAS
+            modelComp.raytraced = modelComp.raytracedSaved;
         });
     }
 
     void AnimatedModelRenderSystem::unload() {
         forEachEntity([&](Entity& entity, TransformComponent& transform, AnimatedModelComponent& modelComp) {
-            // TODO: disable TLAS
+            if (modelComp.asyncAnimatedModelHandle.isReady()) {
+                modelComp.asyncAnimatedModelHandle->visible = false;
+            }
+            modelComp.raytracedSaved = modelComp.raytraced;
+            modelComp.raytraced = false; // deactivate instance in raytracing, to avoid shadows and reflections still showing the instance
         });
         time = 0.0;
     }

@@ -31,6 +31,9 @@ namespace Carrot::ECS {
                 if(pMeshlets) {
                     pMeshlets->enabled = false;
                 }
+                if(modelComp.tlas) {
+                    modelComp.tlas->enabled = false;
+                }
                 return;
             }
 

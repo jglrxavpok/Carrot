@@ -40,6 +40,7 @@ struct Instance {
     mat4 inLastFrameInstanceTransform;
     uint animationIndex;
     double animationTime;
+    uint8_t raytraced; // unused in skinning
 };
 
 struct Animation {

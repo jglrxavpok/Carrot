@@ -15,6 +15,12 @@ namespace Carrot::ECS {
 
         AsyncHandle asyncAnimatedModelHandle;
 
+        /// Whether to consider this instance for raytracing (shadows and reflections)
+        bool raytraced: 1 = true;
+
+        /// Saved version of 'raytraced': used when a scene is unloaded, but not deleted, so the handle is still alive.
+        bool raytracedSaved: 1 = true;
+
         explicit AnimatedModelComponent(Entity entity);
         explicit AnimatedModelComponent(const rapidjson::Value& json, Entity entity);
 

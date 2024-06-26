@@ -21,6 +21,7 @@ namespace Carrot {
         glm::mat4 lastFrameTransform{1.0f};
         alignas(16) uint32_t animationIndex = 0;
         double animationTime = 0.0;
+        bool raytraced = true;
     };
 }
 

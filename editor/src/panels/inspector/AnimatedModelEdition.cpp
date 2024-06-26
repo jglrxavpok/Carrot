@@ -127,6 +127,10 @@ namespace Peeler {
             }
         }
 
+        multiEditField(edition, "Raytraced", components,
+            +[](Carrot::ECS::AnimatedModelComponent& comp) -> bool { return comp.raytraced; },
+            +[](Carrot::ECS::AnimatedModelComponent& comp, const bool& raytraced) { comp.raytraced = raytraced; });
+
         const Carrot::Render::AnimatedModel& animatedModel = *pAnimatedModel;
         const Carrot::Model& baseModel = animatedModel.getModel();
         Carrot::Render::AnimatedModel::Handle& firstHandle = *components[0]->asyncAnimatedModelHandle.get();

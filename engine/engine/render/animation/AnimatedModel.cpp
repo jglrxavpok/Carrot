@@ -49,11 +49,14 @@ namespace Carrot::Render {
         });
 
         // copy to GPU
+        std::size_t gpuIndex = 0;
         for (int i = 0; i < handles.size(); ++i) {
-            animatedInstances.getInstance(i) = handles[i]->getData();
+            if(handles[i]->visible) {
+                animatedInstances.getInstance(gpuIndex++) = handles[i]->getData();
+            }
         }
 
         // TODO: allow for custom pass
-        animatedInstances.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer, handles.size());
+        animatedInstances.render(renderContext, Carrot::Render::PassEnum::OpaqueGBuffer, gpuIndex);
     }
 } // Carrot::Render
