@@ -50,6 +50,7 @@
 
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
+#include <core/io/FileSystemOS.h>
 
 namespace fs = std::filesystem;
 
@@ -236,6 +237,22 @@ namespace Peeler {
 
                 if(ImGui::MenuItem("Reload C#")) {
                     reloadGameAssembly();
+                }
+
+                ImGui::Separator();
+                if(ImGui::MenuItem("Open .sln")) {
+                    const std::string& projectName = getCurrentProjectName();
+                    Carrot::IO::VFS::Path slnFile { Carrot::sprintf("game://code/%s.sln", projectName.c_str()) };
+                    std::optional<std::filesystem::path> path = GetVFS().resolve(slnFile);
+                    if(path.has_value()) {
+                        if(!Carrot::IO::openFileInDefaultEditor(path.value())) {
+                            // TODO: user error notification
+                            Carrot::Log::error("Failed to open %s", Carrot::toString(path->u8string()).c_str());
+                        }
+                    } else {
+                        // TODO: user error notification
+                        Carrot::Log::error("No solution file found at %s", slnFile.toString().c_str());
+                    }
                 }
 
                 ImGui::EndMenu();

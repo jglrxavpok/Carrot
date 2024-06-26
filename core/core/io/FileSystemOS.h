@@ -10,4 +10,8 @@
 
 namespace Carrot::IO {
     std::filesystem::path getExecutablePath();
+
+    /// Opens the given filepath inside the editor configured by the user
+    /// For example, an .sln could open Rider or Visual Studio
+    bool openFileInDefaultEditor(const std::filesystem::path& filepath);
 };

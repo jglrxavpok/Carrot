@@ -35,4 +35,19 @@ namespace Carrot::IO {
         static_assert(false, "Not supported on this OS. Please fix.");
 #endif
     }
+
+    bool openFileInDefaultEditor(const std::filesystem::path& filepath) {
+#ifdef _WIN32
+        // https://stackoverflow.com/a/9115792
+        HINSTANCE result = ShellExecuteW(nullptr, nullptr, filepath.c_str(), nullptr, nullptr, SW_SHOW);
+        if((INT_PTR)result > 32) { // https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutea
+            return true;
+        } else {
+            return false;
+        }
+#else
+        static_assert(false, "Not supported on this OS. Please fix.");
+#endif
+    }
+
 };
