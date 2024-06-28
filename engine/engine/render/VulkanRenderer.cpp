@@ -310,8 +310,6 @@ void Carrot::VulkanRenderer::onSwapchainSizeChange(Window& window, int newWidth,
 
 void Carrot::VulkanRenderer::preFrame(const Render::Context& renderContext) {
     ASSERT_RENDER_THREAD();
-    updatePerDrawBuffers(renderContext);
-    //updateIndirectDrawCommands(renderContext);
 
     // TODO: thread safety
     if(beforeFrameCommands.empty())
@@ -1234,18 +1232,18 @@ void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context&
     const std::size_t alignedElementSize = Carrot::Math::alignUp(sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment);
 
     std::size_t index = 0;
-    std::vector<std::pair<std::size_t, std::span<const std::uint32_t>>> copyTargets;
-    copyTargets.reserve(renderData.perDrawOffsets.size());
+    std::vector<std::uint8_t> copyTargetsData;
+    copyTargetsData.resize(renderData.perDrawOffsets.size() * alignedElementSize);
     for(const auto& element : renderData.perDrawOffsets) {
         const std::size_t offset = index * alignedElementSize;
 
-        copyTargets.emplace_back(offset, std::span{&element, 1});
+        std::uint32_t* pData = reinterpret_cast<std::uint32_t*>(&copyTargetsData[offset]);
+        *pData = element;
         index++;
     }
 
-    // TODO: async upload
-    perDrawOffsetBuffers[frameIndex]->stageUploadWithOffsets(std::span { copyTargets });
-    perDrawBuffers[frameIndex]->stageUploadWithOffset(0ull, renderData.perDrawData.data(), renderData.perDrawData.size() * sizeof(GBufferDrawData));
+    perDrawOffsetBuffers[frameIndex]->getWholeView().uploadForFrame(std::span<const std::uint8_t> { copyTargetsData.data(), copyTargetsData.size() });
+    perDrawBuffers[frameIndex]->getWholeView().uploadForFrame(std::span<const GBufferDrawData>(renderData.perDrawData));
 }
 
 void Carrot::VulkanRenderer::createDebugSetResources() {
@@ -1485,7 +1483,10 @@ void Carrot::VulkanRenderer::queueAsyncCopy(Carrot::BufferView source, Carrot::B
 }
 
 
-void Carrot::VulkanRenderer::submitAsyncCopies(std::size_t frameIndex, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList) {
+void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& mainRenderContext, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList) {
+    ASSERT_RENDER_THREAD();
+    updatePerDrawBuffers(mainRenderContext);
+
     bool needAsyncCopies = false;
     vk::CommandBuffer cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
         AsyncCopyDesc copyDesc;
@@ -1495,7 +1496,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(std::size_t frameIndex, std::vect
         }
     });
     if(needAsyncCopies) {
-        vk::Semaphore asyncCopySemaphore = *asyncCopySemaphores[frameIndex];
+        vk::Semaphore asyncCopySemaphore = *asyncCopySemaphores[mainRenderContext.swapchainIndex];
         semaphoreList.emplace_back(vk::SemaphoreSubmitInfo {
             .semaphore = asyncCopySemaphore,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,

@@ -289,7 +289,7 @@ namespace Carrot {
 
         /// Adds SemaphoreSubmitInfo corresponding to the copy semaphores that will be signaled for this frame (ie fetched via fetchACopySemaphore)
         /// This will also reset the underlying pool (to let semaphores be reused for next frame)
-        void submitAsyncCopies(std::size_t frameIndex, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList);
+        void submitAsyncCopies(const Carrot::Render::Context& mainRenderContext, std::vector<vk::SemaphoreSubmitInfo>& semaphoreList);
 
     public:
         struct ThreadPackets {

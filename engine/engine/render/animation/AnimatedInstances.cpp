@@ -345,15 +345,17 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
     ZoneScoped;
 
     if(GetCapabilities().supportsRaytracing) {
-        for(auto& blas : raytracingBLASes) {
-            blas->setDirty();
-        }
-
+        verify(raytracingBLASes.size() == raytracingInstances.size(), "There must be as many BLASes as there are RT instances!");
         for(std::size_t i = 0; i < raytracingInstances.size(); i++) {
+            auto& blas = raytracingBLASes[i];
+
             auto& instance = raytracingInstances[i];
             instance->transform = getInstance(i).transform;
 
             instance->enabled = i < currentInstanceCount && getInstance(i).raytraced;
+            if(instance->enabled) {
+                blas->setDirty();
+            }
         }
     }
 

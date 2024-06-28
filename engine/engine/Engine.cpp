@@ -717,7 +717,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         }
 
         // copies that need to be done *before* the start of the frame
-        renderer.submitAsyncCopies(frameIndex, waitSemaphores);
+        renderer.submitAsyncCopies(mainRenderContext, waitSemaphores);
 
 
         std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};
