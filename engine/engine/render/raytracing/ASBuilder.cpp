@@ -360,7 +360,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     if(geometriesBuffer) {
-        geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer->getWholeView();
+        geometriesBufferPerFrame[renderContext.swapchainIndex] = geometriesBuffer;
     }
 
     if(instancesBuffers[lastFrameIndexForTLAS]) {
@@ -395,6 +395,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     // TODO: reduce number of command buffers (batch of 32 ?)
     // TODO: fast build
+    bool hasNewGeometry = false;
     if(buildCommands.size() < blasCount) {
         ZoneScopedN("Reallocate command buffers");
         buildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
@@ -472,6 +473,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                         .geometryFormat = blas.geometryFormat,
                 });
             }
+            hasNewGeometry = true;
         }
 
         info.mode = firstBuild[index] ? vk::BuildAccelerationStructureModeKHR::eBuild : vk::BuildAccelerationStructureModeKHR::eUpdate;
@@ -519,16 +521,13 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         }
     //}, 32);
 
-    /*if(!geometriesBuffer || geometriesBuffer->getSize() < sizeof(SceneDescription::Geometry) * allGeometries.size())*/ {
-        geometriesBuffer = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Geometry) * allGeometries.size(),
-                                                                          vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                                                          vk::MemoryPropertyFlagBits::eDeviceLocal);
-        geometriesBuffer->setDebugNames("RT Geometries");
-    }
+    if(hasNewGeometry) {
+        geometriesBuffer = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(SceneDescription::Geometry) * allGeometries.size(),
+                                                                          vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
+        geometriesBuffer->name("RT Geometries");
 
-    geometriesBuffer->stageAsyncUploadWithOffset(*geometryUploadSemaphore[renderContext.swapchainIndex], 0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
-    //geometriesBuffer->stageUploadWithOffset(0, allGeometries.data(), allGeometries.size() * sizeof(SceneDescription::Geometry));
-    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eFragmentShader, *geometryUploadSemaphore[renderContext.swapchainIndex]);
+        geometriesBuffer->view.uploadForFrame(std::span<const SceneDescription::Geometry> { allGeometries });
+    }
 
     auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
     // TODO: reuse
@@ -939,7 +938,7 @@ Carrot::BufferView Carrot::ASBuilder::getGeometriesBuffer(const Render::Context&
     if(!geometriesBuffer) {
         return Carrot::BufferView{};
     }
-    return geometriesBufferPerFrame[renderContext.swapchainIndex];
+    return geometriesBufferPerFrame[renderContext.swapchainIndex]->view;
 }
 
 Carrot::BufferView Carrot::ASBuilder::getInstancesBuffer(const Render::Context& renderContext) {

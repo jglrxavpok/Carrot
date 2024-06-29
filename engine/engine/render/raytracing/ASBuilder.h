@@ -200,9 +200,9 @@ namespace Carrot {
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
         Render::PerFrame<std::unique_ptr<Carrot::Buffer>> rtInstancesBuffers;
 
-        std::unique_ptr<Carrot::Buffer> geometriesBuffer;
+        std::shared_ptr<Carrot::BufferAllocation> geometriesBuffer;
         Carrot::Render::PerFrame<std::unique_ptr<Carrot::Buffer>> instancesBuffers;
-        Carrot::Render::PerFrame<Carrot::BufferView> geometriesBufferPerFrame;
+        Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> geometriesBufferPerFrame;
         Carrot::Render::PerFrame<Carrot::BufferView> instancesBufferPerFrame;
 
         std::size_t lastInstanceCount = 0;

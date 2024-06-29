@@ -1223,7 +1223,7 @@ void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context&
     // perDrawElementCount should accurately predict how many elements perDrawData has (same for perDrawOffsetCount)
     //  we allow more render packets being fed to the renderer than what will be recorded, for debug and iteration purposes (don't crash if we don't record packets of a certain type yet)
     verify(renderData.perDrawData.size() <= renderData.perDrawElementCount, "perDrawData.size() > perDrawElementCount.load(), this is a programming error!");
-    verify(renderData.perDrawOffsets.size() <= renderData.perDrawOffsetCount, "perDrawData.size() > perDrawElementCount.load(), this is a programming error!");
+    verify(renderData.perDrawOffsets.size() <= renderData.perDrawOffsetCount, "perDrawOffsets.size() > perDrawOffsetCount.load(), this is a programming error!");
     if(requiredStorage == 0)
         return;
 

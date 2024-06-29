@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
             .raytracingSupport = Carrot::RaytracingSupport::Supported,
             .applicationName = "Runtime",
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .enableFileWatching = false,
     };
 
     Carrot::Engine engine { config };
