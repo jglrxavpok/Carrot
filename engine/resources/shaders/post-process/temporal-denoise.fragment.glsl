@@ -27,6 +27,10 @@ layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outMomentHistoryHistoryLength;
 layout(location = 2) out vec4 outFirstSpatialDenoiseForNextFrame;
 
+layout(push_constant) uniform PushConstant {
+    float forceReprojection; // < whether to force reprojection, even if world pos is different
+} push;
+
 vec4 AdjustHDRColor(vec4 color)
 {
     /*float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
@@ -64,6 +68,9 @@ void main() {
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
     float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 2);
+    if(push.forceReprojection > 0.5) {
+        reprojected = max(reprojected, 0.5);
+    }
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
 
     vec3 minColor = vec3(100000);
@@ -82,7 +89,7 @@ void main() {
     vec3 previousFrameColorClamped = clamp(previousFrameColor.rgb, minColor, maxColor);
 
     float historyLength = momentHistoryHistoryLength.b * reprojected + 1.0;
-    float alpha = min(0.9f, 1.0f - 1.0f / historyLength);
+    float alpha = 1.0f - 1.0f / historyLength;
     const float currentWeight = (1-alpha) * currentFrameColor.a;
     const float previousWeight = alpha * previousFrameColor.a;
     const float normalization = 1.0f / (currentWeight + previousWeight);

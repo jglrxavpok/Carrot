@@ -311,6 +311,7 @@ namespace Carrot {
         VulkanDriver& driver;
         Configuration config;
 
+        std::list<DeferredCarrotBufferDestruction> deferredCarrotBufferDestructions;
         Render::ImGuiBackend imGuiBackend;
 
         /// Swapped between 0 and 1 each frame. Used to avoid modifying structures in render thread & main thread at the same time
@@ -378,7 +379,6 @@ namespace Carrot {
 
         ImGui_ImplVulkan_InitInfo imguiInitInfo;
         bool imguiIsInitialized = false;
-        std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
         std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
 
         std::unordered_map<ImageBindingKey, vk::Image> boundTextures;
@@ -405,7 +405,7 @@ namespace Carrot {
         std::shared_ptr<Carrot::Render::Texture> defaultTexture;
         std::shared_ptr<Carrot::Render::Texture> blackCubeMapTexture;
 
-        std::list<DeferredCarrotBufferDestruction> deferredCarrotBufferDestructions;
+        std::unique_ptr<Carrot::Mesh> fullscreenQuad = nullptr;
 
         Render::SemaphorePool semaphorePool;
         ThreadSafeQueue<vk::Semaphore> semaphoresQueueForCurrentFrame;

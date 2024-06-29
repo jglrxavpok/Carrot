@@ -609,6 +609,7 @@ Carrot::Engine::~Engine() {
         TracyVkDestroy(ctx);
     }
     tracyCtx.clear();
+    vkDriver.executeDeferredDestructionsNow();
 
 #if USE_LIVEPP
     lpp::LppDestroySynchronizedAgent(&lppAgent);

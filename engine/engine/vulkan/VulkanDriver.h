@@ -187,6 +187,7 @@ namespace Carrot {
         Engine& getEngine();
         VulkanRenderer& getRenderer();
 
+        void executeDeferredDestructionsNow();
         void newFrame(const Carrot::Render::Context& renderContext);
 
     public: // debug

@@ -71,6 +71,7 @@ namespace Carrot {
         vk::DeviceAddress addr = view.getDeviceAddress();
         AllocationsByStartAddress.remove(addr);
         allocator->freeStagingBuffer(this);
+        allocator = nullptr;
     }
 
     BufferAllocation::~BufferAllocation() {

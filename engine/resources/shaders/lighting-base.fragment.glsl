@@ -15,6 +15,7 @@
 #include "includes/buffers.glsl"
 #endif
 
+#extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
@@ -89,6 +90,7 @@ void main() {
         initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
 
 
+        vec3 emissiveColor = gbuffer.emissiveColor;
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
         const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
@@ -98,10 +100,10 @@ void main() {
 
         vec3 firstBounceWorldPos = vec3(0.0);
         vec3 firstBounceNormal = vec3(0.0);
-        for(int i = 0; i < SAMPLE_COUNT; i++) {
+        [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            LightingResult result = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, true);
+            LightingResult result = calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
             firstBounceWorldPos += result.position;
             firstBounceNormal += result.normal;
             globalIllumination += result.color.rgb;
@@ -114,7 +116,7 @@ void main() {
 #else
         vec3 gi;
         vec3 r;
-        LightingResult result = calculateGI(rng, worldPos, gbuffer.emissiveColor, normal, tangent, metallicRoughness, false);
+        LightingResult result = calculateGI(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, false);
         outGlobalIllumination.rgb = result.color.rgb;
         outFirstBounceViewPositions = vec4((cbo.view * vec4(result.position, 1)).xyz, 1);
         outFirstBounceViewNormals = vec4(cboNormalView * result.normal, 1.0);

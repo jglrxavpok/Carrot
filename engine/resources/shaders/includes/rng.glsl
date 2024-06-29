@@ -1,5 +1,5 @@
 struct RandomSampler {
-    uvec2 pixelPos;
+    uint pixelPos;
     uint frameCount;
     uint sampleIndex;
 };
@@ -7,7 +7,8 @@ struct RandomSampler {
 void initRNG(inout RandomSampler rng, vec2 uv, uint frameWidth, uint frameHeight, uint frameCount) {
     const vec2 screenSize = vec2(frameWidth, frameHeight);
 
-    rng.pixelPos = uvec2(uv * screenSize);
+    uvec2 pos = uvec2(uv * screenSize);
+    rng.pixelPos = pos.x + pos.y * frameWidth;
     rng.frameCount = frameCount;
     rng.sampleIndex = 0;
 }
@@ -23,7 +24,7 @@ vec2 r2Sequence(uint n) {
 float sampleNoise(inout RandomSampler rng) {
     const uint BLUE_NOISE_SIZE = 64;
     const uint NOISE_COUNT = 64;
-    const uvec2 noisePosition = rng.pixelPos + uvec2(r2Sequence(rng.sampleIndex) * uvec2(BLUE_NOISE_SIZE));
+    const uvec2 noisePosition = uvec2(r2Sequence(rng.pixelPos + rng.sampleIndex) * uvec2(BLUE_NOISE_SIZE));
     const vec2 blueNoiseUV = vec2(noisePosition % BLUE_NOISE_SIZE) / BLUE_NOISE_SIZE;
     rng.sampleIndex++;
 

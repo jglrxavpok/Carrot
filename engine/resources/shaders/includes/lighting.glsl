@@ -1,5 +1,3 @@
-#extension GL_EXT_control_flow_attributes: enable
-
 #include <includes/math.glsl>
 
 struct SurfaceIntersection {
@@ -322,7 +320,7 @@ bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
 
     // Initializes a ray query object but does not start traversal
     rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
 
     // Start traversal: return false if traversal is complete
     while(rayQueryProceedEXT(rayQuery)) {}
@@ -374,7 +372,6 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
 
     Geometry geometry = (geometries[nonuniformEXT(geometryID)]);
 
-    vec2 uvPos;
     vec3 surfaceNormal;
     vec3 surfaceTangent;
     vec3 color;
@@ -389,13 +386,13 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
             Vertex P0 = geometry.vertexBuffer.v[index0];
             Vertex P1 = geometry.vertexBuffer.v[index1];
 
-            uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
+            r.uv = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
             surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
 
             vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
             surfaceTangent = normalize(tangentWithBitangentSign.xyz);
             r.bitangentSign = int(tangentWithBitangentSign.w);
-            color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            r.surfaceColor = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
         } break;
 
         case GEOMETRY_FORMAT_PACKED: {
@@ -409,12 +406,12 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
             PackedVertex P0 = vtxBuffer.v[index0];
             PackedVertex P1 = vtxBuffer.v[index1];
 
-            uvPos = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
+            r.uv = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
             surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
             vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
             surfaceTangent = normalize(tangentWithBitangentSign.xyz);
             r.bitangentSign = int(tangentWithBitangentSign.w);
-            color = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            r.surfaceColor = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
 
         } break;
 
@@ -430,10 +427,9 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     normalMatrix = transpose(normalMatrix);
     r.hasIntersection = true;
     r.materialIndex = geometry.materialIndex;
-    r.uv = uvPos;
     r.surfaceNormal = normalize(normalMatrix * surfaceNormal);
     r.surfaceTangent = normalize(normalMatrix * surfaceTangent);
-    r.surfaceColor = color * instance.instanceColor.rgb;
+    r.surfaceColor *= instance.instanceColor.rgb;
     r.position = rayQueryGetIntersectionTEXT(rayQuery, true) * direction + startPos;
 }
 
@@ -538,6 +534,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
 
         vec3 pathContribution = vec3(0.0f);
         bool lastIsSpecular = false;
+        SurfaceIntersection intersection;
         [[dont_unroll]] for(; depth < MAX_BOUNCES; depth++) {
             rayOrigin += normal*0.001f; // avoid self intersection
 
@@ -547,10 +544,9 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
 
             const float u = sampleNoise(rng);
 
-            bool sampledSpecular = u <= metallic;
+            bool sampledSpecular = u < metallic;
             float sampledSpecularF = float(sampledSpecular);
 
-            SurfaceIntersection intersection;
             intersection.hasIntersection = false;
 
             float lightPDF = 1.0f;
@@ -614,10 +610,10 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 vec3 N = normalize(intersection.surfaceNormal);
                 vec3 B = cross(T, N) * intersection.bitangentSign;
 
-                mat3 tbn = mat3(T, B, N);
                 vec3 mappedNormal = _sample(normalMap).rgb;
 
-                mappedNormal = mappedNormal * 2 -1;
+                mappedNormal *= 2;
+                mappedNormal -= 1;
                 mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
 
                 normal = mappedNormal;
@@ -627,7 +623,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 roughness = metallicRoughness.y;
 
                 if(sampledSpecular && depth == 0) {
-                    // TODO: motion vectors?
+                    // TODO: motion vectors: probably need to be reflected off surface? => same for normal, may explain WTF below
                     r.position = rayOrigin;
                     r.normal = vec3(normal.x, normal.z, normal.y); // TODO: GP Direct (wtf?)
                     r.tangent = tangent;

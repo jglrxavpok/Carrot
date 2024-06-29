@@ -851,6 +851,20 @@ Carrot::VulkanRenderer& Carrot::VulkanDriver::getRenderer() {
     return engine->getRenderer();
 }
 
+void Carrot::VulkanDriver::executeDeferredDestructionsNow() {
+    for(auto& [swapchainIndex, list] : deferredCommandBufferDestructions) {
+        for(const auto& [pool, buffer] : list) {
+            device->freeCommandBuffers(pool, buffer);
+        }
+        list.clear();
+    }
+    deferredImageDestructions.clear();
+    deferredImageViewDestructions.clear();
+    deferredBufferDestructions.clear();
+    deferredMemoryDestructions.clear();
+    deferredAccelerationStructureDestructions.clear();
+}
+
 void Carrot::VulkanDriver::newFrame(const Carrot::Render::Context& renderContext) {
     ZoneScoped;
     std::uint32_t swapchainIndex = engine->getSwapchainImageIndexRightNow();
