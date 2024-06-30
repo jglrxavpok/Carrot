@@ -522,7 +522,9 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
     {
         vec3 lightContribution = lights.ambientColor;
         vec3 rayOrigin = worldPos;
-        vec3 incomingRay = normalize(rayOrigin - cameraPos);
+        vec3 toCamera = rayOrigin - cameraPos;
+        vec3 incomingRay = normalize(toCamera);
+        float distanceToCamera = length(toCamera);
         const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
         const uint MAX_BOUNCES = 3; /* TODO: specialization constant?*/
         float roughnessBias = 0.0f;
@@ -536,7 +538,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
         bool lastIsSpecular = false;
         SurfaceIntersection intersection;
         [[dont_unroll]] for(; depth < MAX_BOUNCES; depth++) {
-            rayOrigin += normal*0.001f; // avoid self intersection
+            rayOrigin += normal*clamp(distanceToCamera / 50, 0.001f, 1.0f); // avoid self intersection
 
             const float oldRoughness = roughness;
             roughness = min(1, oldRoughness + roughnessBias);
