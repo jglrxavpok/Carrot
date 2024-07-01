@@ -186,6 +186,7 @@ namespace Carrot::Render {
         verify(desc.templates.size() == desc.pMaterials.size(), "There must be as many templates as material handles!");
         auto& gpuInstances = perViewport[desc.pViewport].gpuClusterInstances;
         auto& groupInstances = perViewport[desc.pViewport].groupInstances;
+        groupInstances.groups.setGrowthFactor(2);
 
         std::uint32_t clusterCount = 0;
 
