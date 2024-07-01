@@ -367,8 +367,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, firstDenoisedColor, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, denoisedVarianceTexture0, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, firstBouncePositions, 1, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                    frame.renderer.bindStorageImage(*pipelinePingPong[0], frame, firstBounceNormals, 1, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    frame.renderer.bindTexture(*pipelinePingPong[0], frame, firstBouncePositions, 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    frame.renderer.bindTexture(*pipelinePingPong[0], frame, firstBounceNormals, 1, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 
                     data.gBuffer.bindInputs(*pipelinePingPong[1], frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
@@ -378,8 +378,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedResultTexture0, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, denoisedVarianceTexture1, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, firstBouncePositions, 1, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                    frame.renderer.bindStorageImage(*pipelinePingPong[1], frame, firstBounceNormals, 1, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    frame.renderer.bindTexture(*pipelinePingPong[1], frame, firstBouncePositions, 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    frame.renderer.bindTexture(*pipelinePingPong[1], frame, firstBounceNormals, 1, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 
                     data.gBuffer.bindInputs(*pipelinePingPong[2], frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
@@ -389,8 +389,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedResultTexture1, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, denoisedVarianceTexture0, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, firstBouncePositions, 1, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                    frame.renderer.bindStorageImage(*pipelinePingPong[2], frame, firstBounceNormals, 1, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    frame.renderer.bindTexture(*pipelinePingPong[2], frame, firstBouncePositions, 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    frame.renderer.bindTexture(*pipelinePingPong[2], frame, firstBounceNormals, 1, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 
                     data.gBuffer.bindInputs(*pipelinePingPong[3], frame, pass.getGraph(), 0, vk::ImageLayout::eGeneral);
@@ -400,8 +400,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedResultTexture0, 1, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                     frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, denoisedVarianceTexture1, 1, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, firstBouncePositions, 1, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                    frame.renderer.bindStorageImage(*pipelinePingPong[3], frame, firstBounceNormals, 1, 5, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    frame.renderer.bindTexture(*pipelinePingPong[3], frame, firstBouncePositions, 1, 4, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    frame.renderer.bindTexture(*pipelinePingPong[3], frame, firstBounceNormals, 1, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     struct IterationData {
                         std::uint32_t index = 0;

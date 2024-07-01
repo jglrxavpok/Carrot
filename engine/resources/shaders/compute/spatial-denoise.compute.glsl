@@ -36,7 +36,6 @@ struct ExtractedGBuffer {
     vec4 albedo;
     vec3 viewPosition;
     vec3 normal;
-    float luminanceMoment;
     uvec4 entityID;
 };
 
@@ -45,7 +44,6 @@ ExtractedGBuffer nullGBuffer() {
     r.albedo = vec4(0);
     r.viewPosition = vec3(0);
     r.normal = vec3(1);
-    r.luminanceMoment = 0.0;
     r.entityID = uvec4(0);
     return r;
 }
@@ -83,7 +81,7 @@ ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) 
         return nullGBuffer();
     }
 
-    const vec2 filterUV = coords / vec2(size);
+    const vec2 filterUV = vec2(coords) / vec2(size);
     return extractUsefulInfo(unpackGBuffer(filterUV), filterUV);
 }
 
@@ -197,13 +195,13 @@ void main() {
 
             const vec3 filterPosition = filterGBuffer.viewPosition;
             const vec3 dPosition = filterPosition - currentPosition;
-            const float distanceSquared = dot(dPosition.z, dPosition.z);
-            const float positionWeight = min(1, exp(-distanceSquared/sigmaPositions));
+            const float distanceSquared = dot(dPosition, dPosition);
+            const float positionWeight = min(1, exp(-distanceSquared * sigmaPositions));
 
             const float filterLuminance = luminance(filterPixel.rgb);
-            const float luminanceWeight = min(1, exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale));
+            const float luminanceWeight = 1.0f;//min(1, exp(-abs(filterLuminance-baseLuminance) * invLuminanceWeightScale));
 
-            const float weight = sameMeshWeight * normalWeight * positionWeight * filterWeight * luminanceWeight;
+            const float weight = normalWeight * positionWeight * filterWeight * luminanceWeight;
             finalPixel += weight * filterPixel;
             totalWeight += weight;
 

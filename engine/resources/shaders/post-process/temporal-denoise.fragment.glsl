@@ -64,12 +64,12 @@ void main() {
     prevNDC.xyz /= prevNDC.w;
 
     vec2 reprojectedUV = uv + (gbuffer.motionVector.xy / 2.0);//(prevNDC.xy + gbuffer.motionVector.xy) / 2.0 + 0.5;
-    vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, linearSampler), reprojectedUV).xyz, 1);
+    vec4 previousViewSpacePos = vec4(texture(sampler2D(previousViewPos, nearestSampler), reprojectedUV).xyz, 1);
     vec4 hPreviousWorldSpacePos = previousFrameCBO.inverseView * previousViewSpacePos;
 
-    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) * 2);
+    float reprojected = exp(-distance(hPreviousWorldSpacePos.xyz, hWorldSpacePos.xyz) / 16);
     if(push.forceReprojection > 0.5) {
-        reprojected = max(reprojected, 0.5);
+        reprojected = max(reprojected, 1.0);
     }
     vec4 momentHistoryHistoryLength = texture(sampler2D(lastFrameMomentHistoryHistoryLength, linearSampler), reprojectedUV);
 
