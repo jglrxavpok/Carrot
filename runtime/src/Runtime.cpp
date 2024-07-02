@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
             .applicationName = "Runtime",
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .enableFileWatching = false,
+            //.startInFullscreen = true,
     };
 
     Carrot::Engine engine { config };

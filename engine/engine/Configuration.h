@@ -55,6 +55,7 @@ namespace Carrot {
          * Can be costly on low-end machines
          */
         bool enableFileWatching = true;
+        bool startInFullscreen = false;
 
     };
 }

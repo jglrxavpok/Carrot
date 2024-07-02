@@ -27,7 +27,15 @@ namespace Carrot {
 
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindow = glfwCreateWindow(width, height, config.applicationName.c_str(), nullptr, nullptr);
+
+        if(config.startInFullscreen) {
+            GLFWmonitor* primary = glfwGetPrimaryMonitor();
+            const GLFWvidmode* videoMode = glfwGetVideoMode(primary);
+            glfwWindow = glfwCreateWindow(videoMode->width, videoMode->height, config.applicationName.c_str(), primary, nullptr);
+        } else {
+            glfwWindow = glfwCreateWindow(width, height, config.applicationName.c_str(), nullptr, nullptr);
+        }
+
         glfwSetWindowUserPointer(glfwWindow, this);
 
         if(config.icon16.has_value()) {
