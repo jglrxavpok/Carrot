@@ -16,6 +16,10 @@
 namespace Carrot::Render {
     Viewport::Viewport(VulkanRenderer& renderer, WindowID windowID): renderer(renderer), windowID(windowID) {
         onSwapchainImageCountChange(renderer.getSwapchainImageCount());
+        std::int32_t w, h;
+        renderer.getEngine().getWindow(windowID).getWindowSize(w, h);
+        this->width = w;
+        this->height = h;
     }
 
     Viewport::~Viewport() {
@@ -191,7 +195,7 @@ namespace Carrot::Render {
 
     std::uint32_t Viewport::getHeight() const {
         if(followSwapchainSize) {
-            return GetEngine().getWindow(windowID).getFramebufferExtent().width;
+            return GetEngine().getWindow(windowID).getFramebufferExtent().height;
         } else {
             return height;
         }

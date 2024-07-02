@@ -1145,7 +1145,7 @@ namespace Carrot::Scripting {
 
         const glm::mat4 viewMatrix = glm::inverse(transformComponent.toTransformMatrix());
         const glm::vec3 cameraPosition = transformComponent.computeFinalPosition();
-        const glm::mat4 cameraProjection = cameraComponent.makeProjectionMatrix();
+        const glm::mat4 cameraProjection = cameraComponent.makeProjectionMatrix(viewport);
         const glm::vec4 viewportRect {
             viewport.getOffset().x, viewport.getOffset().y, viewport.getSizef().x, viewport.getSizef().y
         };

@@ -15,7 +15,7 @@ namespace Carrot::ECS {
             auto viewMatrix = transform.toTransformMatrix();
             viewMatrix = glm::inverse(viewMatrix);
 
-            camera.setViewProjection(viewMatrix, cameraComponent.makeProjectionMatrix());
+            camera.setViewProjection(viewMatrix, cameraComponent.makeProjectionMatrix(*renderContext.pViewport));
         });
     }
 

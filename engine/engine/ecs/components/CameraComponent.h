@@ -69,7 +69,7 @@ namespace Carrot::ECS {
             return result;
         }
 
-        glm::mat4 makeProjectionMatrix() const;
+        glm::mat4 makeProjectionMatrix(const Carrot::Render::Viewport& viewport) const;
     };
 }
 
