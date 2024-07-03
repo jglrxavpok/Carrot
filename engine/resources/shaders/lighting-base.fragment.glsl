@@ -92,7 +92,7 @@ void main() {
 
         vec3 emissiveColor = gbuffer.emissiveColor;
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 4; // TODO: configurable sample count?
+        const int SAMPLE_COUNT = 2; // TODO: configurable sample count?
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         vec3 globalIllumination = vec3(0.0);

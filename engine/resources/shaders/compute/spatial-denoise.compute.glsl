@@ -122,13 +122,26 @@ float momentGaussianBlur(ivec2 coords) {
     return max(0.0f, momentGaussianBlurSingleAxis(coords, ivec2(1, 0)) * momentGaussianBlurSingleAxis(coords, ivec2(0, 1)));
 }
 
+float powNormals(float f) {
+    // sigma for normals is 128 with this function
+    // pow is slow and log(0) is undefined in GLSL so no exp(log(a) * b)
+
+    const float f2 = f * f;
+    const float f4 = f2 * f2;
+    const float f8 = f4 * f4;
+    const float f16 = f8 * f8;
+    const float f32 = f16 * f16;
+    const float f64 = f32 * f32;
+    return f64 * f64;
+}
+
 void main() {
     // A-Trous filter
     const ivec2 coords = ivec2(gl_GlobalInvocationID);
 
     // from SVGF
     // TODO: GP Direct
-    const float sigmaNormals = 128.0f;
+
     const float sigmaPositions = 4.0f;
     const float sigmaLuminance = 2.0f;
 
@@ -191,7 +204,7 @@ void main() {
                 continue;
             }
             const float sameMeshWeight = currentGBuffer.entityID == filterGBuffer.entityID ? 1.0f : 0.0f;
-            const float normalWeight = pow(max(0, dot(filterGBuffer.normal, currentGBuffer.normal)), sigmaNormals);
+            const float normalWeight = powNormals(max(0, dot(filterGBuffer.normal, currentGBuffer.normal)));
 
             const vec3 filterPosition = filterGBuffer.viewPosition;
             const vec3 dPosition = filterPosition - currentPosition;
