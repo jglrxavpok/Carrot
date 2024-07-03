@@ -343,10 +343,15 @@ namespace Carrot {
     }
 
     void Window::getWindowSize(std::int32_t& w, std::int32_t& h) const {
-        int width, height;
-        glfwGetWindowSize(glfwWindow, &width, &height);
-        w = width;
-        h = height;
+        if(glfwWindow != nullptr) {
+            int width, height;
+            glfwGetWindowSize(glfwWindow, &width, &height);
+            w = width;
+            h = height;
+        } else {
+            w = framebufferExtent.width;
+            h = framebufferExtent.height;
+        }
     }
 
     void Window::getPosition(std::int32_t& x, std::int32_t& y) const {
