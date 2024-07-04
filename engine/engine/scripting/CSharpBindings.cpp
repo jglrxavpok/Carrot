@@ -25,6 +25,7 @@
 #include <engine/ecs/systems/CSharpLogicSystem.h>
 
 #include <core/functional/Reflection.hpp>
+#include <engine/ecs/components/AnimatedModelComponent.h>
 
 #include <engine/io/actions/Action.hpp>
 #include <engine/io/actions/ActionSet.h>
@@ -134,6 +135,12 @@ namespace Carrot::Scripting {
         {
             mono_add_internal_call("Carrot.Physics.Collider::Raycast", RaycastCollider);
         }
+
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::SelectAnimation", SelectAnimatedModelAnimation);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationIndex", _GetAnimatedModelAnimationIndex);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationIndex", _SetAnimatedModelAnimationIndex);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationTime", _GetAnimatedModelAnimationTime);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationTime", _SetAnimatedModelAnimationTime);
 
         mono_add_internal_call("Carrot.Input.ActionSet::Create", CreateActionSet);
         mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", _ActivateActionSet);
@@ -471,6 +478,7 @@ namespace Carrot::Scripting {
         LOAD_CLASS(NavMeshComponent);
         LOAD_CLASS(CameraComponent);
         LOAD_CLASS(KinematicsComponent);
+        LOAD_CLASS_NS("Carrot.Components", AnimatedModelComponent);
 
         {
             LOAD_CLASS(NavPath);
@@ -531,6 +539,10 @@ namespace Carrot::Scripting {
             hardcodedComponents["Carrot.KinematicsComponent"] = {
                     .id = ECS::CameraComponent::getID(),
                     .clazz = KinematicsComponentClass,
+            };
+            hardcodedComponents["Carrot.Components.AnimatedModelComponent"] = {
+                    .id = ECS::AnimatedModelComponent::getID(),
+                    .clazz = AnimatedModelComponentClass,
             };
         }
 
@@ -1154,5 +1166,59 @@ namespace Carrot::Scripting {
                                cameraProjection,
                                viewportRect)
                 - cameraPosition;
+    }
+
+    float CSharpBindings::_GetAnimatedModelAnimationTime(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& handle = entity.getComponent<ECS::AnimatedModelComponent>()->asyncAnimatedModelHandle;
+        if(handle.isReady()) {
+            return handle->getData().animationTime;
+        }
+        return NAN;
+    }
+
+    void CSharpBindings::_SetAnimatedModelAnimationTime(MonoObject* comp, float newTime) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& handle = entity.getComponent<ECS::AnimatedModelComponent>()->asyncAnimatedModelHandle;
+        if(handle.isReady()) {
+            handle->getData().animationTime = newTime;
+        }
+    }
+
+    std::uint32_t CSharpBindings::_GetAnimatedModelAnimationIndex(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& handle = entity.getComponent<ECS::AnimatedModelComponent>()->asyncAnimatedModelHandle;
+        if(handle.isReady()) {
+            return handle->getData().animationIndex;
+        }
+        return 0;
+    }
+
+    void CSharpBindings::_SetAnimatedModelAnimationIndex(MonoObject* comp, std::uint32_t newValue) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& handle = entity.getComponent<ECS::AnimatedModelComponent>()->asyncAnimatedModelHandle;
+        if(handle.isReady()) {
+            handle->getData().animationIndex = newValue;
+        }
+    }
+
+    bool CSharpBindings::SelectAnimatedModelAnimation(MonoObject* comp, MonoString* animationName) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        ECS::AnimatedModelComponent& animatedModel = entity.getComponent<ECS::AnimatedModelComponent>();
+        auto& handle = animatedModel.asyncAnimatedModelHandle;
+        if(handle.isReady()) {
+            char* valueStr = mono_string_to_utf8(animationName);
+            CLEANUP(mono_free(valueStr));
+            if(const AnimationMetadata* pMetadata = handle->getParent().getModel().getAnimationMetadata(valueStr)) {
+                handle->getData().animationIndex = pMetadata->index;
+                return true;
+            }
+        }
+        return false;
     }
 }

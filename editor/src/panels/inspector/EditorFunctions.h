@@ -91,6 +91,11 @@ namespace Peeler {
         };
 
         template<>
+        struct Limits<std::string> {
+            bool multiline = false;
+        };
+
+        template<>
         struct Limits<Carrot::IO::VFS::Path> {
             bool allowDirectories = false;
             std::function<bool(const Carrot::IO::VFS::Path&)> validityChecker = [](const Carrot::IO::VFS::Path& p) { return true; };
@@ -416,6 +421,33 @@ namespace Peeler {
 
         if(modified) {
             for(std::string_view& v : values) {
+                v = sameValue;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    template<>
+    static bool editMultiple<std::string>(const char* id, std::span<std::string> values, const Helpers::Limits<std::string>& limits) {
+        std::string sameValue = std::string { values[0] };
+        for(std::size_t i = 1; i < values.size(); i++) {
+            if(values[i] != sameValue) {
+                sameValue = "<VARIOUS>";
+                break;
+            }
+        }
+
+        bool modified = false;
+        if(limits.multiline) {
+            modified = ImGui::InputTextMultiline(id, sameValue);
+        } else {
+            modified = ImGui::InputText(id, sameValue);
+        }
+
+        if(modified) {
+            for(std::string& v : values) {
                 v = sameValue;
             }
             return true;

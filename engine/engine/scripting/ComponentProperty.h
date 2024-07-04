@@ -28,6 +28,7 @@ namespace Carrot::Scripting {
         Vec3,
         Boolean,
         Entity,
+        String,
 
         UserEnum,
         UserDefined,

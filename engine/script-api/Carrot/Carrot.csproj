@@ -48,6 +48,7 @@
         <Compile Include="ComponentPropertyAttributes\InternalComponent.cs" />
         <Compile Include="ComponentPropertyAttributes\Ranges.cs" />
         <Compile Include="ComponentPropertyAttributes\Serialization.cs" />
+        <Compile Include="Components\AnimatedModelComponent.cs" />
         <Compile Include="ECS.cs" />
         <Compile Include="Entity.cs" />
         <Compile Include="Carrot.cs" />

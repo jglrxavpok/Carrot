@@ -71,6 +71,13 @@ namespace Carrot::ECS {
                     r.AddMember(serializationNameJSON, rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
                 } break;
 
+                case Scripting::ComponentType::String: {
+                    MonoString* text = reinterpret_cast<MonoString *>(property.field->get(*csComponent).toMono());
+                    char* textReadable = mono_string_to_utf8(text);
+                    CLEANUP(mono_free(textReadable));
+                    r.AddMember(serializationNameJSON, rapidjson::Value(textReadable, doc.GetAllocator()), doc.GetAllocator());
+                } break;
+
                 case Scripting::ComponentType::UserEnum: {
                     const std::string enumValueAsString = GetCSharpBindings().enumValueToString(property.field->get(*csComponent));
                     r.AddMember(serializationNameJSON, rapidjson::Value(enumValueAsString, doc.GetAllocator()), doc.GetAllocator());
@@ -169,6 +176,10 @@ namespace Carrot::ECS {
                     case Scripting::ComponentType::UserEnum: {
                         Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, serializedVersion[property.serializationName].GetString());
                         property.field->set(*csComponent, enumValue);
+                    } break;
+
+                    case Scripting::ComponentType::String: {
+                        property.field->set(*csComponent, Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(serializedVersion[property.serializationName].GetString()))));
                     } break;
 
                     case Scripting::ComponentType::UserDefined:

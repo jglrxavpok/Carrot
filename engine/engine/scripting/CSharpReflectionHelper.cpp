@@ -100,6 +100,8 @@ namespace Carrot::Scripting {
                 property.type = ComponentType::Vec2;
             } else if(std::string_view("Carrot.Vec3") == typeStr) {
                 property.type = ComponentType::Vec3;
+            } else if(std::string_view("System.String") == typeStr) {
+                property.type = ComponentType::String;
             } else {
                 parseUserType(property);
             }

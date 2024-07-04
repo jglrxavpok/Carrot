@@ -59,6 +59,7 @@ namespace Carrot::Scripting {
 
         CSClass* CameraComponentClass = nullptr;
         CSClass* KinematicsComponentClass = nullptr;
+        CSClass* AnimatedModelComponentClass = nullptr;
 
         CSClass* RaycastInfoClass = nullptr;
         CSField* RaycastInfoWorldPointField = nullptr;
@@ -243,6 +244,12 @@ namespace Carrot::Scripting {
         static MonoObject* PathFind(MonoObject* navMeshComponent, glm::vec3 a, glm::vec3 b);
 
         static glm::vec3 GetAimDirectionFromScreen(MonoObject* cameraComponent, glm::vec2 screenPosition);
+
+        static float _GetAnimatedModelAnimationTime(MonoObject* comp);
+        static void _SetAnimatedModelAnimationTime(MonoObject* comp, float newTime);
+        static std::uint32_t _GetAnimatedModelAnimationIndex(MonoObject* comp);
+        static void _SetAnimatedModelAnimationIndex(MonoObject* comp, std::uint32_t newValue);
+        static bool SelectAnimatedModelAnimation(MonoObject* comp, MonoString* animationName);
 
         /**
          * From a given component ID, returns the C# class used to represent that component type.

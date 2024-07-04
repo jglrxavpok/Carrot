@@ -116,6 +116,20 @@ namespace Peeler {
         );
     }
 
+    static void drawStringProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
+        multiEditField<Carrot::ECS::CSharpComponent, std::string>(edition, property.displayName.c_str(), components,
+            [&](Carrot::ECS::CSharpComponent& c) {
+                MonoString* text = reinterpret_cast<MonoString *>(property.field->get(c.getCSComponentObject()).toMono());
+                char* textReadable = mono_string_to_utf8(text);
+                CLEANUP(mono_free(textReadable));
+                return std::string{textReadable};
+            },
+            [&](Carrot::ECS::CSharpComponent& c, const std::string& v) {
+                property.field->set(c.getCSComponentObject(), Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(v.c_str()))));
+            }
+        );
+    }
+
     static void drawUserDefinedProperty(EditContext& edition, const Carrot::Vector<Carrot::ECS::CSharpComponent*>& components, Scripting::ComponentProperty& property) {
         ImGui::Text("%s (%s) - User defined type", property.displayName.c_str(), property.typeStr.c_str());
     }
@@ -173,6 +187,10 @@ namespace Peeler {
 
                 case Scripting::ComponentType::Entity:
                     drawEntityProperty(edition, components, property);
+                    break;
+
+                case Scripting::ComponentType::String:
+                    drawStringProperty(edition, components, property);
                     break;
 
                 case Scripting::ComponentType::UserEnum:
