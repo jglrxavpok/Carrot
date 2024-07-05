@@ -7,7 +7,7 @@ struct SurfaceIntersection {
     vec3 surfaceTangent;
     vec3 surfaceColor;
     vec2 uv;
-    int bitangentSign;
+    float bitangentSign;
     bool hasIntersection;
 };
 
@@ -248,11 +248,11 @@ vec3 sampleF(inout RandomSampler rng, float roughness, vec3 emitDirection, inout
 
 float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     #define light lights.l[lightIndex]
-    vec3 lightPosition = light.position;
+    vec3 lightPosition = light.v0;
     vec3 point2light = lightPosition-worldPos;
 
     float distance = length(point2light);
-    float attenuation = light.constantAttenuation + light.linearAttenuation * distance + light.quadraticAttenuation * distance * distance;
+    float attenuation = light.v1.x + light.v1.y * distance + light.v1.z * distance * distance;
 
     float inclinaisonFactor = 1.0;//abs(dot(normal, point2light / distance));
 
@@ -262,19 +262,19 @@ float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {
 
 float computeDirectionalLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     #define light lights.l[lightIndex]
-    vec3 lightDirection = normalize(light.direction);
+    vec3 lightDirection = normalize(light.v0);
     return max(0, dot(lightDirection, normal));
     #undef light
 }
 
 float computeSpotLight(vec3 worldPos, vec3 normal, uint lightIndex) {
     #define light lights.l[lightIndex]
-    float cutoffCosAngle = light.cutoffCosAngle;
-    float outerCosCutoffAngle = light.outerCosCutoffAngle;
+    float cutoffCosAngle = light.v2.x;
+    float outerCosCutoffAngle = light.v2.y;
 
-    vec3 lightPosition = light.position;
+    vec3 lightPosition = light.v0;
     vec3 point2light = normalize(lightPosition-worldPos);
-    vec3 lightDirection = -normalize(light.direction);
+    vec3 lightDirection = -normalize(light.v1);
     float intensity = dot(point2light, lightDirection);
     float cutoffRange = outerCosCutoffAngle - cutoffCosAngle;
     return clamp((intensity - outerCosCutoffAngle) / cutoffRange, 0, 1);
@@ -286,22 +286,17 @@ float computeSpotLight(vec3 worldPos, vec3 normal, uint lightIndex) {
 * Computes the direct contribution of the given light
 */
 vec3 computeLightContribution(uint lightIndex, vec3 worldPos, vec3 normal) {
-    #define light lights.l[lightIndex]
-    float enabledF = float(light.enabled);
+    #define light (lights.l[lightIndex])
+    uint8_t type = light.type;
+    float enabledF = float((light.flags & 1) != 0);
 
     float lightFactor = 0.0f;
-    switch(light.type) {
-        case POINT_LIGHT_TYPE:
+    if(type == POINT_LIGHT_TYPE) {
         lightFactor = computePointLight(worldPos, normal, lightIndex);
-        break;
-
-        case DIRECTIONAL_LIGHT_TYPE:
+    } else if(type == DIRECTIONAL_LIGHT_TYPE) {
         lightFactor = computeDirectionalLight(worldPos, normal, lightIndex);
-        break;
-
-        case SPOT_LIGHT_TYPE:
+    } else if(type == SPOT_LIGHT_TYPE) {
         lightFactor = computeSpotLight(worldPos, normal, lightIndex);
-        break;
     }
 
     return enabledF * light.color * lightFactor * light.intensity;
@@ -359,7 +354,8 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
         return;
     }
 
-    #define instance (instances[nonuniformEXT(instanceID)])
+    Instance instance = instances[nonuniformEXT(instanceID)];
+    r.surfaceColor = instance.instanceColor.rgb;
 
     // TODO: bounds checks?
     uint geometryID = instance.firstGeometryIndex + localGeometryID;
@@ -378,41 +374,60 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     const uint geometryFormat = geometry.geometryFormat;
     switch(geometryFormat) {
         case GEOMETRY_FORMAT_DEFAULT: {
-            uint index2 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)]);
-            uint index0 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)]);
-            uint index1 = nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)]);
+            #define index2 (nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+0)]))
+            #define index0 (nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+1)]))
+            #define index1 (nonuniformEXT(geometry.indexBuffer.i[nonuniformEXT(triangleID*3+2)]))
 
-            Vertex P2 = geometry.vertexBuffer.v[index2];
+            #define P2 (geometry.vertexBuffer.v[index2])
+            #define P0 (geometry.vertexBuffer.v[index0])
+            #define P1 (geometry.vertexBuffer.v[index1])
+            /*Vertex P2 = geometry.vertexBuffer.v[index2];
             Vertex P0 = geometry.vertexBuffer.v[index0];
-            Vertex P1 = geometry.vertexBuffer.v[index1];
+            Vertex P1 = geometry.vertexBuffer.v[index1];*/
 
             r.uv = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
             surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
 
             vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
             surfaceTangent = normalize(tangentWithBitangentSign.xyz);
-            r.bitangentSign = int(tangentWithBitangentSign.w);
-            r.surfaceColor = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            r.bitangentSign = tangentWithBitangentSign.w;
+            r.surfaceColor *= P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            #undef P0
+            #undef P1
+            #undef P2
+
+            #undef index2
+            #undef index0
+            #undef index1
         } break;
 
         case GEOMETRY_FORMAT_PACKED: {
             IndexBuffer16 idxBuffer = IndexBuffer16(uint64_t(geometry.indexBuffer));
-            uint index2 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+0)]);
-            uint index0 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+1)]);
-            uint index1 = nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+2)]);
+            #define index2 (nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+0)]))
+            #define index0 (nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+1)]))
+            #define index1 (nonuniformEXT(idxBuffer.i[nonuniformEXT(triangleID*3+2)]))
 
             PackedVertexBuffer vtxBuffer = PackedVertexBuffer(uint64_t(geometry.vertexBuffer));
-            PackedVertex P2 = vtxBuffer.v[index2];
-            PackedVertex P0 = vtxBuffer.v[index0];
-            PackedVertex P1 = vtxBuffer.v[index1];
+            //PackedVertex P2 = vtxBuffer.v[index2];
+            #define P2 (vtxBuffer.v[index2])
+            #define P0 (vtxBuffer.v[index0])
+            #define P1 (vtxBuffer.v[index1])
+            //PackedVertex P0 = vtxBuffer.v[index0];
+            //PackedVertex P1 = vtxBuffer.v[index1];
 
             r.uv = P0.uv * barycentrics.x + P1.uv * barycentrics.y + P2.uv * (1.0 - barycentrics.x - barycentrics.y);
             surfaceNormal = normalize(P0.normal * barycentrics.x + P1.normal * barycentrics.y + P2.normal * (1.0 - barycentrics.x - barycentrics.y));
             vec4 tangentWithBitangentSign = (P0.tangent * barycentrics.x + P1.tangent * barycentrics.y + P2.tangent * (1.0 - barycentrics.x - barycentrics.y));
             surfaceTangent = normalize(tangentWithBitangentSign.xyz);
-            r.bitangentSign = int(tangentWithBitangentSign.w);
-            r.surfaceColor = P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            r.bitangentSign = tangentWithBitangentSign.w;
+            r.surfaceColor *= P0.color * barycentrics.x + P1.color * barycentrics.y + P2.color * (1.0 - barycentrics.x - barycentrics.y);
+            #undef P0
+            #undef P1
+            #undef P2
 
+            #undef index2
+            #undef index0
+            #undef index1
         } break;
 
         default: {
@@ -429,12 +444,22 @@ void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float 
     r.materialIndex = geometry.materialIndex;
     r.surfaceNormal = normalize(normalMatrix * surfaceNormal);
     r.surfaceTangent = normalize(normalMatrix * surfaceTangent);
-    r.surfaceColor *= instance.instanceColor.rgb;
     r.position = rayQueryGetIntersectionTEXT(rayQuery, true) * direction + startPos;
 }
 
+vec3 getVectorToLight(uint lightIndex, vec3 worldPos) {
+    #define light (lights.l[lightIndex])
+    uint8_t type = light.type;
+    if (type == POINT_LIGHT_TYPE || type == SPOT_LIGHT_TYPE) {
+        return light.v0 - worldPos;
+    } else if(type == DIRECTIONAL_LIGHT_TYPE) {
+        return light.v0;
+    }
+    return vec3(0,0,0);
+    #undef light
+}
+
 vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 worldPos, vec3 normal, float maxDistance) {
-    #define light lights.l[i]
     vec3 lightContribution = vec3(0.0);
 
     if(activeLights.count <= 0) {
@@ -451,24 +476,13 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
     [[dont_unroll]] for (uint li = 0; li < activeLights.count; li++)
     {
         uint i = activeLights.indices[li];
-        float enabledF = float(light.enabled);
+        #define light (lights.l[i])
 
-        if(light.enabled)
+        bool enabled = (light.flags & 1) != 0;
+
+        if(enabled)
         {
-            vec3 L = vec3(0, 0, 1);
-            switch (light.type) {
-                case POINT_LIGHT_TYPE:
-                L = light.position - worldPos;
-                break;
-
-                case DIRECTIONAL_LIGHT_TYPE:
-                L = light.direction;
-                break;
-
-                case SPOT_LIGHT_TYPE:
-                L = light.position - worldPos;
-                break;
-            }
+            vec3 L = getVectorToLight(i, worldPos);
 
             // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
             float lightDistance = maxDistance;
@@ -477,12 +491,13 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
                 lightDistance = min(lightDistance, length(L));
             }
 
+            float enabledF = float(enabled);
             float visibility = float(traceShadowRay(worldPos, normalize(L), lightDistance * enabledF));
             lightContribution += enabledF * visibility * computeLightContribution(i, worldPos, normal) /* cos term already in computeLightContribution */;
         }
+        #undef light
     }
     return lightContribution;
-    #undef light
 }
 #endif
 
@@ -490,17 +505,18 @@ struct LightingResult {
     vec3 color;
     vec3 position;
     vec3 normal;
-    vec3 tangent;
 };
 
 LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     LightingResult r;
     r.position = worldPos;
     r.normal = normal;
-    r.tangent = tangent;
     vec3 finalColor = vec3(0.0);
 
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
+
+    bool hitSkybox = false;
+    vec3 beta = vec3(1.0f);
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     if (!raytracing)
@@ -514,7 +530,6 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
         r.color = lightContribution;
         r.position = worldPos;
         r.normal = normal;
-        r.tangent = tangent;
         return r;
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     }
@@ -531,7 +546,6 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
         float roughness = metallicRoughness.y;
         float metallic = metallicRoughness.x;
 
-        vec3 beta = vec3(1.0f);
         int depth = 0;
 
         vec3 pathContribution = vec3(0.0f);
@@ -618,7 +632,6 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 mappedNormal -= 1;
                 mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
 
-                normal = mappedNormal;
                 tangent = T;
                 vec2 metallicRoughness = _sample(metallicRoughness).rg;
                 metallic = metallicRoughness.x;
@@ -627,28 +640,27 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 if(sampledSpecular && depth == 0) {
                     // TODO: motion vectors: probably need to be reflected off surface? => same for normal, may explain WTF below
                     r.position = rayOrigin;
-                    r.normal = vec3(normal.x, normal.z, normal.y); // TODO: GP Direct (wtf?)
-                    r.tangent = tangent;
+                    r.normal = vec3(mappedNormal.x, mappedNormal.z, mappedNormal.y); // TODO: GP Direct (wtf?)
+                    //r.normal = reflect(mappedNormal, normal);
+                    //r.normal = mappedNormal - 2*dot(mappedNormal, normal) * normal;
                 }
+
+                normal = mappedNormal;
+
             } else {
                 vec3 uv = vec3(incomingRay.x, incomingRay.z, -incomingRay.y);
                 if(isnan(uv.x))
                 {
                     // incomingRay-> NaN ???
                     lightContribution = vec3(0, 100000, 0);
-                    r.color = lightContribution;
                     r.position = worldPos;
                     r.normal = normal;
-                    r.tangent = tangent;
-                    return r;
                 }
                 else
                 {
-                    vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
-                    lightContribution += skyboxColor * beta;
+                    hitSkybox = true;
                 }
-                r.color = lightContribution;
-                return r;
+                break;
             }
         }
 
@@ -657,15 +669,16 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
         {
             // incomingRay-> NaN ???
             lightContribution = vec3(0, 100000, 0);
-            r.color = lightContribution;
-            return r;
         }
         else
         {
+            hitSkybox = true;
+        }
+
+        if(hitSkybox) {
             vec3 skyboxColor = texture(gSkybox3D, uv).rgb;
             lightContribution += skyboxColor * beta;
         }
-
         r.color = lightContribution;
         return r;
     }

@@ -6,7 +6,7 @@ DEFINE_GBUFFER_INPUTS(0)
 
 #include <includes/gbuffer_unpack.glsl>
 
-const uint LOCAL_SIZE = 22; // computed to fit 'sharedGBufferReads' inside maxComputeSharedMemorySize for RTX 3070 & avoid device remove??
+const uint LOCAL_SIZE = 8;
 layout (local_size_x = LOCAL_SIZE) in;
 layout (local_size_y = LOCAL_SIZE) in;
 

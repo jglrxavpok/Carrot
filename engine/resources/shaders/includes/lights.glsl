@@ -1,23 +1,16 @@
 struct Light {
-    vec3 position;
-    float intensity;
-    vec3 direction;
-    uint type;
     vec3 color;
-    bool enabled;
+    uint8_t flags;
+    uint8_t type;
+    float intensity;
 
-    // point light
-    float constantAttenuation;
-    float linearAttenuation;
-    float quadraticAttenuation;
-
-    // spot light
-    float cutoffCosAngle;
-    float outerCosCutoffAngle;
+    vec3 v0; // point: position, spot: position, directional: direction
+    vec3 v1; // point: attenuation factors, spot: direction, directional: nothing
+    vec2 v2; // point: nothing, spot: cutoff angles, directional: nothing
 };
 
 #define LIGHT_BUFFER(setID, bindingID) \
-layout(set = setID, binding = bindingID) buffer Lights { \
+layout(set = setID, binding = bindingID, scalar) buffer Lights { \
     vec3 ambientColor; \
     uint count; \
     vec3 fogColor; \

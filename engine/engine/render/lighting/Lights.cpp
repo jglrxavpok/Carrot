@@ -18,6 +18,13 @@ static Carrot::RuntimeOption DebugFogConfig("Engine/Fog config", false);
 namespace Carrot::Render {
     static const std::uint32_t BindingCount = 2;
 
+    Light::Light() {
+        point.position = glm::vec3{0};
+        point.constantAttenuation = 1.0f;
+        point.linearAttenuation = 0.09f;
+        point.quadraticAttenuation = 0.032f;
+    }
+
     LightHandle::LightHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor, Lighting& system): WeakPoolHandle::WeakPoolHandle(index, std::move(destructor)), lightingSystem(system) {}
 
     void LightHandle::updateHandle(const Carrot::Render::Context& renderContext) {
@@ -27,7 +34,7 @@ namespace Carrot::Render {
 
     LightHandle::~LightHandle() {
         auto& data = lightingSystem.getLightData(*this);
-        data.enabled = false;
+        data.flags = LightFlags::None;
     }
 
     Lighting::Lighting() {
@@ -91,6 +98,7 @@ namespace Carrot::Render {
         );
         data = lightBuffer->map<Data>();
 
+        // TODO: device local buffer?
         activeLightsBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(Data) + lightBufferSize * sizeof(std::uint32_t),
                 vk::BufferUsageFlagBits::eStorageBuffer,
@@ -134,7 +142,7 @@ namespace Carrot::Render {
         for(auto& [slot, handlePtr] : lightHandles) {
             if(auto handle = handlePtr.lock()) {
                 handle->updateHandle(renderContext);
-                if(handle->light.enabled) {
+                if((handle->light.flags & LightFlags::Enabled) != LightFlags::None) {
                     activeLightsData->indices[activeCount] = slot;
                     activeCount++;
                 }

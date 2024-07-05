@@ -1,3 +1,8 @@
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
 #include "includes/lights.glsl"
 #include "includes/materials.glsl"
 #include <includes/gbuffer.glsl>
@@ -7,10 +12,6 @@
 #extension GL_EXT_ray_query : enable
 
 #extension GL_EXT_buffer_reference: enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 #extension GL_EXT_buffer_reference2 : enable
 #include "includes/buffers.glsl"
 #endif
@@ -67,27 +68,25 @@ layout(location = 2) out vec4 outFirstBounceViewNormals;
 void main() {
     vec4 outColorWorld;
 
-    vec2 uv = inUV;
-
-    float currDepth = texture(sampler2D(gDepth, nearestSampler), uv).r;
+    float currDepth = texture(sampler2D(gDepth, nearestSampler), inUV).r;
 
 
     float distanceToCamera;
     if(currDepth < 1.0) {
         RandomSampler rng;
 
-        GBuffer gbuffer = unpackGBuffer(uv);
+        GBufferSmall gbuffer = unpackGBufferTest(inUV);
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
         vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 
         // TODO: store directly in CBO
         mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
         mat3 inverseNormalView = inverse(cboNormalView);
-        vec3 normal = inverseNormalView * gbuffer.viewTBN[2];
-        vec3 tangent = inverseNormalView * gbuffer.viewTBN[0];
+        vec3 normal = inverseNormalView * gbuffer.viewN;
+        vec3 tangent = inverseNormalView * gbuffer.viewT;
         vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
 
-        initRNG(rng, uv, push.frameWidth, push.frameHeight, push.frameCount);
+        initRNG(rng, inUV, push.frameWidth, push.frameHeight, push.frameCount);
 
 
         vec3 emissiveColor = gbuffer.emissiveColor;
@@ -124,7 +123,7 @@ void main() {
 
         distanceToCamera = length(gbuffer.viewPosition);
     } else {
-        vec4 viewSpaceDir = cbo.inverseNonJitteredProjection * vec4(uv.x*2-1, uv.y*2-1, 0.0, 1);
+        vec4 viewSpaceDir = cbo.inverseNonJitteredProjection * vec4(inUV.x*2-1, inUV.y*2-1, 0.0, 1);
         vec3 worldViewDir = mat3(cbo.inverseView) * viewSpaceDir.xyz;
 
         const mat3 rot = mat3(

@@ -17,6 +17,19 @@ struct GBuffer {
     vec3 emissiveColor;
     vec3 motionVector;
 };
+struct GBufferSmall {
+    vec4 albedo;
+
+    vec3 viewPosition;
+    float metallicness;
+
+    vec3 viewT;
+    float roughness;
+
+    vec3 viewN;
+    vec3 emissiveColor;
+    vec3 motionVector;
+};
 
 void decompressTBN(vec4 compressed, bool negativeNormal, bool negativeTangent, bool negativeBitangent, out mat3 outTBN) {
     vec3 normal = compressed.xyx;

@@ -407,7 +407,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                         std::uint32_t index = 0;
                     } iterationData;
 
-                    constexpr std::size_t localSize = 22;
+                    constexpr std::size_t localSize = 8;
                     std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
                     std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
 

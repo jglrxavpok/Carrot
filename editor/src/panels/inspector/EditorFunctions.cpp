@@ -50,7 +50,8 @@ namespace Peeler {
 
     static void editLightComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::LightComponent*>& components) {
         multiEditField(edition, "Enabled", components,
-            +[](Carrot::ECS::LightComponent& c) -> Carrot::Render::bool32& { return c.lightRef->light.enabled; });
+            +[](Carrot::ECS::LightComponent& c) -> bool { return (c.lightRef->light.flags & Carrot::Render::LightFlags::Enabled) != Carrot::Render::LightFlags::None; },
+            +[](Carrot::ECS::LightComponent& c, const bool& newValue) { c.lightRef->light.flags = newValue ? Carrot::Render::LightFlags::Enabled : Carrot::Render::LightFlags::None; });
 
         multiEditEnumField(edition, "Light type", components,
             +[](Carrot::ECS::LightComponent& c) { return c.lightRef->light.type ; },
@@ -73,20 +74,20 @@ namespace Peeler {
                 switch (lightType) {
                     case Carrot::Render::LightType::Spot: {
                         multiEditField(edition, "Cutoff angle", components,
-                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.cutoffCosAngle }; },
-                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.cutoffCosAngle = v.cosRadianValue; });
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.spot.cutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.spot.cutoffCosAngle = v.cosRadianValue; });
                         multiEditField(edition, "Outer cutoff angle", components,
-                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.outerCutoffCosAngle }; },
-                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.outerCutoffCosAngle = v.cosRadianValue; });
+                            +[](Carrot::ECS::LightComponent& c) { return Helpers::CosAngleWrapper { c.lightRef->light.spot.outerCutoffCosAngle }; },
+                            +[](Carrot::ECS::LightComponent& c, const Helpers::CosAngleWrapper& v) { c.lightRef->light.spot.outerCutoffCosAngle = v.cosRadianValue; });
                     } break;
 
                     case Carrot::Render::LightType::Point: {
                         multiEditField(edition, "Constant attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.constantAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.constantAttenuation; });
                         multiEditField(edition, "Linear attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.linearAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.linearAttenuation; });
                         multiEditField(edition, "Quadratic attenuation", components,
-                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.quadraticAttenuation; });
+                            +[](Carrot::ECS::LightComponent& c) -> float& { return c.lightRef->light.point.quadraticAttenuation; });
                     } break;
 
                     default: {

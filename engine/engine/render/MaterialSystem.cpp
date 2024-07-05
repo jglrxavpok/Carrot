@@ -453,6 +453,7 @@ namespace Carrot::Render {
         materialBuffer = GetResourceAllocator().allocateDedicatedBuffer(
                 sizeof(MaterialData) * materialBufferSize,
                 vk::BufferUsageFlagBits::eStorageBuffer,
+                // TODO: device local?
                 vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
         );
         materialBuffer->name("Materials");

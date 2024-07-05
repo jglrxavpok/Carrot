@@ -29,7 +29,7 @@ namespace Peeler::ECS {
                 return;
             const float scale = 0.5f;
 
-            const auto& textureHandle = lightHandle->light.enabled ? textureHandleOn : textureHandleOff;
+            const auto& textureHandle = (lightHandle->light.flags & Carrot::Render::LightFlags::Enabled) != Carrot::Render::LightFlags::None ? textureHandleOn : textureHandleOff;
             billboardRenderer.render(transform.computeFinalPosition(), scale, *textureHandle, renderContext, lightHandle->light.color, entity.getID());
         });
     }

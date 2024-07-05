@@ -340,7 +340,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     }
 
     bool requireTLASRebuildNow = !toBuild.empty() || dirtyInstances || activeInstances > previousActiveInstances;
-    //previousActiveInstances = activeInstances;
+    previousActiveInstances = activeInstances;
 
     dirtyInstances = false;
     if(requireTLASRebuildNow) {
@@ -763,14 +763,15 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         ZoneScopedN("Create logical instances buffer");
         instancesBuffers[lastFrameIndexForTLAS] = GetResourceAllocator().allocateDedicatedBuffer(sizeof(SceneDescription::Instance) * logicalInstances.size(),
                                                                                                         vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                                                                                        vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+                                                                                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
         instancesBuffers[lastFrameIndexForTLAS]->setDebugNames(Carrot::sprintf("RT Instances frame %lu", GetRenderer().getFrameCount()));
     }
 
     {
         {
             ZoneScopedN("Logical instances upload");
-            instancesBuffers[lastFrameIndexForTLAS]->directUpload(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+            //instancesBuffers[lastFrameIndexForTLAS]->directUpload(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
+            instancesBuffers[lastFrameIndexForTLAS]->getWholeView().uploadForFrame(logicalInstances.data(), logicalInstances.size() * sizeof(SceneDescription::Instance));
         }
         {
             ZoneScopedN("RT Instances upload");

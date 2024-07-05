@@ -10,7 +10,7 @@ namespace Carrot::ECS {
     LightComponent::LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light): IdentifiableComponent<LightComponent>(std::move(entity)), lightRef(std::move(light)) {
         if(!lightRef) {
             lightRef = GetRenderer().getLighting().create();
-            lightRef->light.enabled = true;
+            lightRef->light.flags = Render::LightFlags::Enabled;
         }
     };
 
@@ -18,7 +18,7 @@ namespace Carrot::ECS {
         lightRef = GetRenderer().getLighting().create();
         auto& light = lightRef->light;
         if(json.HasMember("enabled")) {
-            light.enabled = json["enabled"].GetBool();
+            lightRef->light.flags = json["enabled"].GetBool() ? Render::LightFlags::Enabled : Render::LightFlags::None;
             light.color = Carrot::JSON::read<3, float>(json["color"]);
             light.intensity = json["intensity"].GetFloat();
 
@@ -27,14 +27,14 @@ namespace Carrot::ECS {
 
             if(json.HasMember("point_light")) {
                 auto params = json["point_light"].GetObject();
-                light.constantAttenuation = params["constant_attenuation"].GetFloat();
-                light.linearAttenuation = params["linear_attenuation"].GetFloat();
-                light.quadraticAttenuation = params["quadratic_attenuation"].GetFloat();
+                light.point.constantAttenuation = params["constant_attenuation"].GetFloat();
+                light.point.linearAttenuation = params["linear_attenuation"].GetFloat();
+                light.point.quadraticAttenuation = params["quadratic_attenuation"].GetFloat();
             }
             if(json.HasMember("spot_light")) {
                 auto params = json["spot_light"].GetObject();
-                light.cutoffCosAngle = params["cutoff_cos_angle"].GetFloat();
-                light.outerCutoffCosAngle = params["outer_cutoff_cos_angle"].GetFloat();
+                light.spot.cutoffCosAngle = params["cutoff_cos_angle"].GetFloat();
+                light.spot.outerCutoffCosAngle = params["outer_cutoff_cos_angle"].GetFloat();
             }
         }
     }
@@ -43,7 +43,7 @@ namespace Carrot::ECS {
         rapidjson::Value obj{rapidjson::kObjectType};
         if(lightRef) { // components modified programmatically may not have this ref
             const auto& light = lightRef->light;
-            obj.AddMember("enabled", static_cast<bool>(light.enabled), doc.GetAllocator());
+            obj.AddMember("enabled", static_cast<bool>((light.flags & Render::LightFlags::Enabled) != Render::LightFlags::None), doc.GetAllocator());
 
             rapidjson::Value typeKey(Render::Light::nameOf(light.type), doc.GetAllocator());
             obj.AddMember("type", typeKey, doc.GetAllocator());
@@ -54,17 +54,17 @@ namespace Carrot::ECS {
             switch(light.type) {
                 case Render::LightType::Point: {
                     rapidjson::Value params(rapidjson::kObjectType);
-                    params.AddMember("constant_attenuation", light.constantAttenuation, doc.GetAllocator());
-                    params.AddMember("linear_attenuation", light.linearAttenuation, doc.GetAllocator());
-                    params.AddMember("quadratic_attenuation", light.quadraticAttenuation, doc.GetAllocator());
+                    params.AddMember("constant_attenuation", light.point.constantAttenuation, doc.GetAllocator());
+                    params.AddMember("linear_attenuation", light.point.linearAttenuation, doc.GetAllocator());
+                    params.AddMember("quadratic_attenuation", light.point.quadraticAttenuation, doc.GetAllocator());
 
                     obj.AddMember("point_light", params, doc.GetAllocator());
                 } break;
 
                 case Render::LightType::Spot: {
                     rapidjson::Value params(rapidjson::kObjectType);
-                    params.AddMember("cutoff_cos_angle", light.cutoffCosAngle, doc.GetAllocator());
-                    params.AddMember("outer_cutoff_cos_angle", light.outerCutoffCosAngle, doc.GetAllocator());
+                    params.AddMember("cutoff_cos_angle", light.spot.cutoffCosAngle, doc.GetAllocator());
+                    params.AddMember("outer_cutoff_cos_angle", light.spot.outerCutoffCosAngle, doc.GetAllocator());
 
                     obj.AddMember("spot_light", params, doc.GetAllocator());
                 } break;

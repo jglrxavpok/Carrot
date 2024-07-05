@@ -10,34 +10,54 @@
 namespace Carrot::Render {
     using bool32 = uint32_t;
 
-    enum class LightType: std::uint32_t {
+    enum class LightType: std::uint8_t {
         Point,
         Directional,
         Spot,
     };
 
+    enum class LightFlags : std::uint8_t {
+        None = 0,
+        Enabled = 1 << 0,
+    };
+
     struct Light {
-        alignas(16) glm::vec3 position{0.0f};
+        glm::vec3 color{1.0f};
+        LightFlags flags = LightFlags::None;
+
+        LightType type = LightType::Point;
         float intensity = 1.0f;
 
-        alignas(16) glm::vec3 direction{1.0f};
-        LightType type = LightType::Point;
+        union {
+            struct PointLight {
+                glm::vec3 position;
+                float constantAttenuation;
+                float linearAttenuation;
+                float quadraticAttenuation;
+            } point;
 
-        alignas(16) glm::vec3 color{1.0f};
-        bool32 enabled = false;
+            struct SpotLight {
+                glm::vec3 position;
+                glm::vec3 direction;
+                float cutoffCosAngle;
+                float outerCutoffCosAngle;
+            } spot;
 
-        // point light
-        float constantAttenuation = 1.0f;
-        float linearAttenuation = 0.09f;
-        float quadraticAttenuation = 0.032f;
+            struct DirectionalLight {
+                glm::vec3 direction;
+            } directional;
+        };
 
-        // spot light
-        float cutoffCosAngle = glm::cos(glm::pi<float>()/7.0f);
-        float outerCutoffCosAngle = glm::cos(glm::pi<float>()/8.0f);
+        Light();
 
         static LightType fromString(std::string_view str);
         static const char* nameOf(const LightType& type);
     };
+
+    static Render::LightFlags operator&(Render::LightFlags lhs, Render::LightFlags rhs) {
+        using IntType = std::underlying_type_t<LightFlags>;
+        return static_cast<Render::LightFlags>(static_cast<IntType>(lhs) & static_cast<IntType>(rhs));
+    }
 
     class Lighting;
 
@@ -99,7 +119,7 @@ namespace Carrot::Render {
         glm::vec3 ambientColor {1.0f};
 
         struct Data {
-            alignas(alignof(glm::vec4)) glm::vec3 ambient {1.0f};
+            glm::vec3 ambient {1.0f};
             std::uint32_t lightCount;
 
             // Color of fog
@@ -109,7 +129,7 @@ namespace Carrot::Render {
             // Distance over which fog fades out
             float fogDepth = 1.0f;
 
-            alignas(alignof(glm::vec4)) Light lights[];
+            Light lights[];
         };
 
         struct ActiveLightsData {
