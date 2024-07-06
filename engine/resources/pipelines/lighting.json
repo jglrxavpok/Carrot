@@ -1,8 +1,6 @@
 {
-  "type": "lighting",
+  "type": "compute",
   "subpassIndex": 0,
-  "vertexFormat": "ScreenSpace",
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
   "depthWrite": false,
   "depthTest": false,
   "descriptorSets": [
@@ -25,6 +23,10 @@
     {
       "type": "materials",
       "setID": 4
+    },
+    {
+      "type": "autofill",
+      "setID": 5
     }
   ]
 }

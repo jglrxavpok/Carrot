@@ -327,7 +327,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                               vk::ImageLayout::eGeneral
                         );
                     }
-                    data.originalVariance = builder.read(varianceComputePass.getData().varianceOutput, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    data.originalVariance = builder.read(varianceComputePass.getData().varianceOutput, vk::ImageLayout::eGeneral);
                     data.firstBounceViewPosition = builder.read(lightingPass.getData().firstBouncePositions, vk::ImageLayout::eShaderReadOnlyOptimal);
                     data.firstBounceViewNormal = builder.read(lightingPass.getData().firstBounceNormals, vk::ImageLayout::eShaderReadOnlyOptimal);
 

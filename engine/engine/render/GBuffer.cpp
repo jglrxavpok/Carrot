@@ -104,36 +104,31 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
+                pass.rasterized = false;
                 pass.prerecordable = false; //TODO: since it depends on Lighting descriptor sets which may change, it is not 100% pre-recordable now
                 // TODO (or it should be re-recorded when changes happen)
                 resolveData.gBuffer.readFrom(graph, opaqueData, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                resolveData.globalIllumination = graph.createRenderTarget("Global Illumination",
+                resolveData.globalIllumination = graph.createStorageTarget("Global Illumination",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
-                                                                vk::AttachmentLoadOp::eClear,
-                                                                clearColor,
-                                                                vk::ImageLayout::eColorAttachmentOptimal);
+                                                                vk::ImageLayout::eGeneral);
 
-                resolveData.firstBouncePositions = graph.createRenderTarget("First bounce positions (view space)",
+                resolveData.firstBouncePositions = graph.createStorageTarget("First bounce positions (view space)",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
-                                                                vk::AttachmentLoadOp::eClear,
-                                                                clearColor,
-                                                                vk::ImageLayout::eColorAttachmentOptimal);
-                resolveData.firstBounceNormals = graph.createRenderTarget("First bounce normals (view space)",
+                                                                vk::ImageLayout::eGeneral);
+                resolveData.firstBounceNormals = graph.createStorageTarget("First bounce normals (view space)",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
-                                                                vk::AttachmentLoadOp::eClear,
-                                                                clearColor,
-                                                                vk::ImageLayout::eColorAttachmentOptimal);
+                                                                vk::ImageLayout::eGeneral);
            },
            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
                 ZoneScopedN("CPU RenderGraph lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
                 const char* shader = useRaytracingVersion ? "lighting-raytracing" : "lighting-noraytracing";
-                auto resolvePipeline = renderer.getOrCreateRenderPassSpecificPipeline(shader, pass.getRenderPass());
+                auto resolvePipeline = renderer.getOrCreatePipeline(shader,  (std::uint64_t)&pass);
 
                 struct PushConstantNoRT {
                     std::uint32_t frameCount;
@@ -156,31 +151,52 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 if(useRaytracingVersion) {
                     pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
                     block.hasTLAS = pTLAS != nullptr;
-                    renderer.pushConstantBlock<PushConstantRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+                    renderer.pushConstantBlock<PushConstantRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
                 } else {
-                    renderer.pushConstantBlock<PushConstantNoRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
+                    renderer.pushConstantBlock<PushConstantNoRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
                 }
 
                 // GBuffer inputs
                 data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
+                // outputs
+                auto& renderGraph = pass.getGraph();
+                auto& outputImage = renderGraph.getTexture(data.globalIllumination, frame.swapchainIndex);
+                renderer.bindStorageImage(*resolvePipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindStorageImage(*resolvePipeline, frame, renderGraph.getTexture(data.firstBouncePositions, frame.swapchainIndex), 5, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                renderer.bindStorageImage(*resolvePipeline, frame, renderGraph.getTexture(data.firstBounceNormals, frame.swapchainIndex), 5, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
                 if(useRaytracingVersion) {
-                    renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 5, 1, nullptr);
+                    renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
                     if(pTLAS) {
-                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *pTLAS, 5, 0);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 5, 2);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 5, 3);
+                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *pTLAS, 6, 0);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
+                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
                     } else {
-                        renderer.unbindAccelerationStructure(*resolvePipeline, frame, 5, 0);
-                        renderer.unbindBuffer(*resolvePipeline, frame, 5, 2);
-                        renderer.unbindBuffer(*resolvePipeline, frame, 5, 3);
+                        renderer.unbindAccelerationStructure(*resolvePipeline, frame, 6, 0);
+                        renderer.unbindBuffer(*resolvePipeline, frame, 6, 2);
+                        renderer.unbindBuffer(*resolvePipeline, frame, 6, 3);
                     }
                 }
 
-                resolvePipeline->bind(pass.getRenderPass(), frame, buffer);
-                auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
-                screenQuadMesh.bind(buffer);
-                screenQuadMesh.draw(buffer);
+                resolvePipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
+                const auto& extent = outputImage.getSize();
+                const std::uint8_t localSize = 8;
+                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+                buffer.dispatch(dispatchX, dispatchY, 1);
+
+                vk::MemoryBarrier2KHR memoryBarrier {
+                        .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
+                        .srcAccessMask = vk::AccessFlagBits2KHR::eShaderWrite,
+                        .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllCommands,
+                        .dstAccessMask = vk::AccessFlagBits2KHR::eShaderRead,
+                };
+                vk::DependencyInfoKHR dependencyInfo {
+                        .memoryBarrierCount = 1,
+                        .pMemoryBarriers = &memoryBarrier,
+                };
+                buffer.pipelineBarrier2KHR(dependencyInfo);
            }
     );
 }

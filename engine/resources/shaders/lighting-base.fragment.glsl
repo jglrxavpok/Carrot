@@ -21,6 +21,10 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
 
+const uint LOCAL_SIZE = 8;
+layout (local_size_x = LOCAL_SIZE) in;
+layout (local_size_y = LOCAL_SIZE) in;
+
 layout(push_constant) uniform PushConstant {
     uint frameCount;
     uint frameWidth;
@@ -43,15 +47,20 @@ MATERIAL_SYSTEM_SET(4)
 
 #include "includes/rng.glsl"
 
-#ifdef HARDWARE_SUPPORTS_RAY_TRACING
-layout(set = 5, binding = 0) uniform accelerationStructureEXT topLevelAS;
-layout(set = 5, binding = 1) uniform texture2D noiseTexture;
+layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outGlobalIlluminationImage;
+layout(rgba32f, set = 5, binding = 1) uniform writeonly image2D outFirstBounceViewPositionsImage;
+layout(rgba32f, set = 5, binding = 2) uniform writeonly image2D outFirstBounceViewNormalsImage;
 
-layout(set = 5, binding = 2, scalar) buffer Geometries {
+
+#ifdef HARDWARE_SUPPORTS_RAY_TRACING
+layout(set = 6, binding = 0) uniform accelerationStructureEXT topLevelAS;
+layout(set = 6, binding = 1) uniform texture2D noiseTexture;
+
+layout(set = 6, binding = 2, scalar) buffer Geometries {
     Geometry geometries[];
 };
 
-layout(set = 5, binding = 3, scalar) buffer RTInstances {
+layout(set = 6, binding = 3, scalar) buffer RTInstances {
     Instance instances[];
 };
 #endif
@@ -59,17 +68,25 @@ layout(set = 5, binding = 3, scalar) buffer RTInstances {
 // needs to be included after LIGHT_SET macro & RT data
 #include "includes/lighting.glsl"
 
-layout(location = 0) in vec2 inUV;
-
-layout(location = 0) out vec4 outGlobalIllumination;
-layout(location = 1) out vec4 outFirstBounceViewPositions;
-layout(location = 2) out vec4 outFirstBounceViewNormals;
-
 void main() {
     vec4 outColorWorld;
 
+    const ivec2 currentCoords = ivec2(gl_GlobalInvocationID);
+    const ivec2 outputSize = imageSize(outGlobalIlluminationImage);
+
+    if(currentCoords.x >= outputSize.x
+    || currentCoords.y >= outputSize.y) {
+        return;
+    }
+
+    const vec2 inUV = vec2(currentCoords) / vec2(outputSize);
+
+    // TODO: load directly
     float currDepth = texture(sampler2D(gDepth, nearestSampler), inUV).r;
 
+    vec4 outGlobalIllumination;
+    vec4 outFirstBounceViewPositions;
+    vec4 outFirstBounceViewNormals;
 
     float distanceToCamera;
     if(currDepth < 1.0) {
@@ -143,4 +160,7 @@ void main() {
     outGlobalIllumination.rgb = mix(outGlobalIllumination.rgb, lights.fogColor, fogFactor);
 
     outGlobalIllumination.a = 1.0;
+    imageStore(outGlobalIlluminationImage, currentCoords, outGlobalIllumination);
+    imageStore(outFirstBounceViewPositionsImage, currentCoords, outFirstBounceViewPositions);
+    imageStore(outFirstBounceViewNormalsImage, currentCoords, outFirstBounceViewNormals);
 }

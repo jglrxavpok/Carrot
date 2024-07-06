@@ -236,9 +236,6 @@ set(FRAGMENT_SHADERS
         skybox.fragment.glsl
         particles.fragment.glsl
 
-        lighting-noraytracing.fragment.glsl
-        lighting-raytracing.fragment.glsl
-
         composer-blit.fragment.glsl
         text-rendering.fragment.glsl
         gBufferSprite.fragment.glsl
@@ -269,6 +266,9 @@ set(COMPUTE_SHADERS
         compute/particles.compute.glsl
         compute/skeleton-skinning.compute.glsl
         compute/spatial-denoise.compute.glsl
+
+        compute/lighting-noraytracing.fragment.glsl
+        compute/lighting-raytracing.fragment.glsl
 
         #PARENT_SCOPE
         )

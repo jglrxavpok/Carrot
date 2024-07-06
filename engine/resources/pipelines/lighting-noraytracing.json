@@ -1,4 +1,4 @@
 {
   "_import": "lighting.json",
-  "fragmentShader": "resources/shaders/lighting-noraytracing.fragment.glsl.spv"
+  "computeShader": "resources/shaders/compute/lighting-noraytracing.fragment.glsl.spv"
 }

@@ -1,6 +1,6 @@
 {
   "_import": "lighting.json",
-  "fragmentShader": "resources/shaders/lighting-raytracing.fragment.glsl.spv",
+  "computeShader": "resources/shaders/compute/lighting-raytracing.fragment.glsl.spv",
   "descriptorSets": [
     {
       "type": "autofill",
@@ -25,6 +25,10 @@
     {
       "type": "autofill",
       "setID": 5
+    },
+    {
+      "type": "autofill",
+      "setID": 6
     }
   ]
 }
