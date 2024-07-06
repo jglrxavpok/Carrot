@@ -407,9 +407,10 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                         std::uint32_t index = 0;
                     } iterationData;
 
-                    constexpr std::size_t localSize = 8;
-                    std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
-                    std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+                    constexpr std::size_t localSizeX = 16;
+                    constexpr std::size_t localSizeY = 8;
+                    std::size_t dispatchX = (extent.width + (localSizeX-1)) / localSizeX;
+                    std::size_t dispatchY = (extent.height + (localSizeY-1)) / localSizeY;
 
                     auto performSingleIteration = [&](std::size_t pipelineIndex) {
                         vk::MemoryBarrier2KHR memoryBarrier {

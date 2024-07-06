@@ -616,11 +616,12 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                     lightContribution += (emissive*5 /* TODO: GP DIrect */ + lightAtPoint * fresnel) * beta;
 
                 #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
-                beta *= _sample(albedo).rgb + _sample(emissive).rgb;
+
+                emissive = _sample(emissive).rgb;
+                beta *= _sample(albedo).rgb + emissive;
                 beta *= intersection.surfaceColor;
 
                 rayOrigin = intersection.position;
-                emissive = _sample(emissive).rgb;
 
                 vec3 T = normalize(intersection.surfaceTangent);
                 vec3 N = normalize(intersection.surfaceNormal);

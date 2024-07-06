@@ -6,9 +6,10 @@ DEFINE_GBUFFER_INPUTS(0)
 
 #include <includes/gbuffer_unpack.glsl>
 
-const uint LOCAL_SIZE = 8;
-layout (local_size_x = LOCAL_SIZE) in;
-layout (local_size_y = LOCAL_SIZE) in;
+const uint LOCAL_SIZE_X = 16;
+const uint LOCAL_SIZE_Y = 8;
+layout (local_size_x = LOCAL_SIZE_X) in;
+layout (local_size_y = LOCAL_SIZE_Y) in;
 
 layout(rgba32f, set = 1, binding = 0) uniform readonly image2D inputImage;
 layout(rgba32f, set = 1, binding = 1) uniform readonly image2D varianceInput;
@@ -59,14 +60,14 @@ ExtractedGBuffer extractUsefulInfo(in GBuffer g, vec2 uv) {
     return e;
 }
 
-shared ExtractedGBuffer sharedGBufferReads[LOCAL_SIZE][LOCAL_SIZE];
-shared float sharedLuminanceMomentsReads[LOCAL_SIZE][LOCAL_SIZE];
+shared ExtractedGBuffer sharedGBufferReads[LOCAL_SIZE_X][LOCAL_SIZE_Y];
+shared float sharedLuminanceMomentsReads[LOCAL_SIZE_X][LOCAL_SIZE_Y];
 
 ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) {
 
     ivec2 localCoords = ivec2(gl_LocalInvocationID.xy) + coordsOffset;
-    if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE
-    && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE) {
+    if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE_X
+    && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE_Y) {
         return sharedGBufferReads[localCoords.x][localCoords.y];
     }
 
@@ -88,8 +89,8 @@ ExtractedGBuffer readGBuffer(ivec2 coordsOffset/* offset from current pixel */) 
 float readVariance(ivec2 coordsOffset/* offset from current pixel */) {
 
     ivec2 localCoords = ivec2(gl_LocalInvocationID.xy) + coordsOffset;
-    if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE
-    && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE) {
+    if(localCoords.x >= 0 && localCoords.x < LOCAL_SIZE_X
+    && localCoords.y >= 0 && localCoords.y < LOCAL_SIZE_Y) {
         return sharedLuminanceMomentsReads[localCoords.x][localCoords.y];
     }
 
@@ -180,7 +181,7 @@ void main() {
     float variance = readVariance(ivec2(0)) * totalWeight * totalWeight;
     float varianceSum = totalWeight * totalWeight;
 
-    const float invLuminanceWeightScale = 1.0f / (sigmaLuminance*sqrt(max(0.0, momentGaussianBlur(ivec2(0))))+10e-12);
+    //const float invLuminanceWeightScale = 1.0f / (sigmaLuminance*sqrt(max(0.0, momentGaussianBlur(ivec2(0))))+10e-12);
 
     for(int dy = -FILTER_RADIUS; dy <= FILTER_RADIUS; dy++) {
         const float yKernelWeight = KERNEL_WEIGHTS[dy+FILTER_RADIUS];

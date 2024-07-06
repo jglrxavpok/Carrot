@@ -19,6 +19,7 @@ namespace Carrot {
 #include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
 #include "core/memory/NakedPtr.hpp"
+#include <engine/Settings.h>
 #include "engine/render/IDTypes.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
 #include "imgui.h"
@@ -371,6 +372,8 @@ namespace Carrot {
     public:
         const Capabilities& getCapabilities() const { return capabilities; }
         const Configuration& getConfiguration() const { return config; }
+        const Settings& getSettings() const { return settings; }
+        void changeSettings(const Settings& newSettings);
 
     public: // async stuff
         /// co_awaits the next engine frame. Used for coroutines.
@@ -416,6 +419,7 @@ namespace Carrot {
 
         Configuration config;
         Capabilities capabilities;
+        Settings settings;
         Window mainWindow;
         double currentTime = 0.0;
         double mouseX = 0.0;

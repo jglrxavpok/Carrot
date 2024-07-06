@@ -89,6 +89,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 Carrot::Engine* Carrot::Engine::instance = nullptr;
 static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
 static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);
+static Carrot::RuntimeOption showSettingsDebug("Engine/Show Settings", false);
 
 static std::unordered_set<int> activeJoysticks{};
 
@@ -436,6 +437,18 @@ void Carrot::Engine::run() {
             Carrot::IO::debugDrawActions();
         }
 
+        if(showSettingsDebug) {
+            // if this gets more complicated than a few values -> move to function or other file to reduce clutter
+            if(ImGui::Begin("Settings")) {
+                int limit = settings.fpsLimit;
+                ImGui::SliderInt("FPS limit", &limit, 0, 500);
+                if(limit >= 0) {
+                    settings.fpsLimit = limit;
+                }
+            }
+            ImGui::End();
+        }
+
         auto tickStartTime = std::chrono::steady_clock::now();
         Time::updateTime();
         {
@@ -468,6 +481,14 @@ void Carrot::Engine::run() {
 
         nextFrameAwaiter.cleanup();
 
+        if(settings.fpsLimit != 0) {
+            auto entireFrameTime = std::chrono::steady_clock::now() - frameStartTime;
+            auto current = std::chrono::duration<float>(entireFrameTime);
+            auto target = std::chrono::duration<float>(1.0f / settings.fpsLimit);
+            if(current < target) {
+                std::this_thread::sleep_for(target - current);
+            }
+        }
         currentFrame = (currentFrame+1) % MAX_FRAMES_IN_FLIGHT;
 
         FrameMark;
@@ -1520,6 +1541,11 @@ Carrot::VR::Session& Carrot::Engine::getVRSession() {
     verify(config.runInVR, "Cannot access VR Session if not running in VR");
     verify(vrSession, "VR session is null");
     return *vrSession;
+}
+
+void Carrot::Engine::changeSettings(const Settings& newSettings) {
+    // may need fancier application in the future, for now a single float so easy
+    settings = newSettings;
 }
 
 Carrot::Async::Task<> Carrot::Engine::cowaitNextFrame() {
