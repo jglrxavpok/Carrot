@@ -22,7 +22,7 @@ void main() {
 
     Material material = materials[instanceDrawData.materialIndex];
     uint albedoTexture = nonuniformEXT(material.albedo);
-    vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), uv);
+    vec4 texColor = texture(sampler2D(textures[albedoTexture], linearSampler), vec2(uv.x, 1-uv.y)); // TODO: GP Direct
     if(texColor.a < 0.01) {
         discard;
     }
