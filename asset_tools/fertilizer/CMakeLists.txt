@@ -10,7 +10,7 @@ add_library(fertilizer-lib
 target_include_directories(fertilizer-lib PUBLIC ./)
 
 add_core_includes(fertilizer-lib)
-target_link_libraries(fertilizer-lib PUBLIC Vulkan::Vulkan CarrotCore meshoptimizer)
+target_link_libraries(fertilizer-lib PUBLIC CarrotCore meshoptimizer)
 
 add_executable(fertilizer
         main.cpp

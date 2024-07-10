@@ -7,6 +7,8 @@
 #include <vulkan/vulkan_core.h>
 
 #include <stb_image.h>
+#include <core/Macros.h>
+#include <core/render/ImageFormats.h>
 
 namespace Fertilizer {
     ConversionResult compressTexture(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
@@ -48,7 +50,7 @@ namespace Fertilizer {
         createInfo.numLayers = 1;
         createInfo.numFaces = 1;
         createInfo.isArray = KTX_FALSE;
-        createInfo.generateMipmaps = KTX_FALSE;
+        createInfo.generateMipmaps = KTX_TRUE;
 
         result = ktxTexture2_Create(&createInfo,
                                     KTX_TEXTURE_CREATE_ALLOC_STORAGE,
@@ -96,6 +98,13 @@ namespace Fertilizer {
                 .errorMessage = ktxErrorString(result),
             };
         }
+
+        std::uint8_t mipCount = Carrot::ImageFormats::computeMipCount(createInfo.baseWidth, createInfo.baseWidth, createInfo.baseDepth, static_cast<VkFormat>(createInfo.vkFormat));
+        for(std::uint8_t mip = 1; mip < mipCount; mip++) {
+            //TODO;
+        }
+
+        // TODO: create mips
 
         ktxTexture_WriteToNamedFile(ktxTexture(texture), outputFile.string().c_str());
         ktxTexture_Destroy(ktxTexture(texture));

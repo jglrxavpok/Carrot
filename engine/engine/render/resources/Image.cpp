@@ -7,29 +7,30 @@
 #include <ktx.h>
 
 #include "Image.h"
-#include "engine/render/resources/Buffer.h"
+
+#include <core/render/ImageFormats.h>
+#include <engine/render/resources/Buffer.h>
 #include "stb_image.h"
-#include "core/io/Logging.hpp"
-#include "core/io/FileFormats.h"
-#include "engine/utils/Profiling.h"
-#include "core/async/Executors.h"
-#include "core/async/Coroutines.hpp"
-#include "engine/task/TaskScheduler.h"
-#include "engine/Engine.h"
-#include "engine/render/resources/ResourceAllocator.h"
+#include <core/io/Logging.hpp>
+#include <core/io/FileFormats.h>
+#include <engine/utils/Profiling.h>
+#include <core/async/Coroutines.hpp>
+#include <engine/task/TaskScheduler.h>
+#include <engine/Engine.h>
+#include <engine/render/resources/ResourceAllocator.h>
 
 /*static*/ Carrot::Async::SpinLock Carrot::Image::AliveImagesAccess{};
 /*static*/ std::unordered_set<const Carrot::Image*> Carrot::Image::AliveImages{};
 
 Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::ImageUsageFlags usage, vk::Format format,
-                     std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount):
-        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), usage(usage), format(format), imageData(true) {
+                     std::set<std::uint32_t> families, vk::ImageCreateFlags flags, vk::ImageType imageType, std::uint32_t layerCount, std::uint32_t mipCount):
+        Carrot::DebugNameable(), driver(driver), size(extent), layerCount(layerCount), mipCount(mipCount), usage(usage), format(format), imageData(true) {
     vk::ImageCreateInfo createInfo{
         .flags = flags,
         .imageType = imageType,
         .format = format,
         .extent = extent,
-        .mipLevels = 1,
+        .mipLevels = mipCount,
         .arrayLayers = layerCount,
         .samples = vk::SampleCountFlagBits::e1,
         .usage = usage,
@@ -68,8 +69,8 @@ Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Extent3D extent, vk::Imag
     AliveImages.insert(this);
 }
 
-Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount)
-: driver(driver), imageData(false), format(format), layerCount(layerCount), size(extent) {
+Carrot::Image::Image(Carrot::VulkanDriver& driver, vk::Image toView, vk::Extent3D extent, vk::Format format, std::uint32_t layerCount, std::uint32_t mipCount)
+: driver(driver), imageData(false), format(format), layerCount(layerCount), mipCount(mipCount), size(extent) {
     imageData.asView.vkImage = toView;
 }
 
@@ -95,6 +96,41 @@ const vk::Image& Carrot::Image::getVulkanImage() const {
     }
 }
 
+void Carrot::Image::stageUpload(Carrot::BufferView textureData, std::uint32_t layer, std::uint32_t layerCount, std::uint32_t startMip, std::uint32_t mipCount) {
+    verify(startMip < mipCount, "Start mip must be < mipCount");
+    verify(startMip+mipCount <= mipCount, "Mip range must be fully inside [0; mipCount]");
+    // prepare image for transfer
+    transitionLayout(format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    // copy from staging buffer to image
+    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
+        Carrot::Vector<vk::BufferImageCopy> regions;
+        regions.resize(mipCount);
+        std::uint32_t mipOffset = 0;
+        for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {
+            std::uint32_t mipLevel = mipIndex + startMip;
+            vk::BufferImageCopy region = {
+                    .bufferOffset = textureData.getStart() + mipOffset,
+                    .bufferRowLength = 0,
+                    .bufferImageHeight = 0,
+                    .imageSubresource = {
+                            .aspectMask = vk::ImageAspectFlagBits::eColor,
+                            .mipLevel = mipLevel,
+                            .baseArrayLayer = layer,
+                            .layerCount = layerCount,
+                    },
+                    .imageExtent = size,
+            };
+            regions[mipIndex] = region;
+            mipOffset += computeMipDataSize(mipLevel);
+        }
+        commands.copyBufferToImage(textureData.getVulkanBuffer(), getVulkanImage(),
+                                   vk::ImageLayout::eTransferDstOptimal, regions.size(), regions.data());
+    });
+
+    // prepare image for shader reads
+    transitionLayout(format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+}
+
 void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_t layerCount) {
     verify(usage & vk::ImageUsageFlagBits::eTransferDst, "Cannot transfer to this image!");
     // create buffer holding data
@@ -109,28 +145,7 @@ void Carrot::Image::stageUpload(std::span<uint8_t> data, uint32_t layer, uint32_
     // fill buffer
     stagingBuffer.directUpload(data.data(), data.size());
 
-    // prepare image for transfer
-    transitionLayout(format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-    // copy from staging buffer to image
-    driver.performSingleTimeTransferCommands([&](vk::CommandBuffer &commands) {
-        vk::BufferImageCopy region = {
-                .bufferOffset = 0,
-                .bufferRowLength = 0,
-                .bufferImageHeight = 0,
-                .imageSubresource = {
-                        .aspectMask = vk::ImageAspectFlagBits::eColor,
-                        .mipLevel = 0,
-                        .baseArrayLayer = layer,
-                        .layerCount = layerCount,
-                },
-                .imageExtent = size,
-        };
-        commands.copyBufferToImage(stagingBuffer.getVulkanBuffer(), getVulkanImage(),
-                                   vk::ImageLayout::eTransferDstOptimal, region);
-    });
-
-    // prepare image for shader reads
-    transitionLayout(format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    stageUpload(stagingBuffer.getWholeView(), layer, layerCount, 0, 1);
 }
 
 std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource) {
@@ -254,16 +269,8 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                     }
                 }
 
-                // TODO: Carrot only supports mip0 for now
-                ktx_size_t offset;
-                result = ktxTexture_GetImageOffset(ktxTexture(texture), 0, 0, 0, &offset);
-                if(result != ktx_error_code_e::KTX_SUCCESS) {
-                    throw std::runtime_error(resource.getName() + ", ktxTexture_GetImageOffset error is " +
-                                             ktxErrorString(result));
-                }
-
-                std::uint8_t* pixelData = ktxTexture_GetData(ktxTexture(texture)) + offset;
-
+                ktxTexture* pTexture = ktxTexture(texture);
+                std::uint32_t mipCount = pTexture->numLevels;
                 auto image = std::make_unique<Carrot::Image>(device,
                                                              vk::Extent3D {
                                                                      .width = texture->baseWidth,
@@ -271,12 +278,45 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                                                                      .depth = texture->baseDepth,
                                                              },
                                                              vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
-                                                             vkFormat);
+                                                             vkFormat,
+                                                             std::set<uint32_t>{},
+                                                             static_cast<vk::ImageCreateFlags>(0),
+                                                             vk::ImageType::e2D, // for now
+                                                             1, // layer count, for now
+                                                             mipCount
+                                                             );
 
-                image->stageUpload(std::span<std::uint8_t>{pixelData, static_cast<std::size_t>(texture->dataSize) });
+                std::size_t totalSize = 0;
+                for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {
+                    std::size_t expectedMipSize = image->computeMipDataSize(mipIndex);
+                    std::size_t ktxImageSize = ktxTexture_GetImageSize(pTexture, mipIndex);
+                    verify(ktxImageSize == expectedMipSize, "mip size in ktx and expected by engine are different! Probably a programming error");
+                    totalSize += expectedMipSize;
+                }
+
+                Carrot::BufferAllocation stagingData = GetResourceAllocator().allocateStagingBuffer(totalSize);
+                std::uint8_t* pImageData = stagingData.view.map<std::uint8_t>();
+                std::size_t mipOffset = 0;
+                for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {
+                    ktx_size_t offset;
+                    result = ktxTexture_GetImageOffset(pTexture, mipIndex, 0, 0, &offset);
+                    if(result != ktx_error_code_e::KTX_SUCCESS) {
+                        throw std::runtime_error(resource.getName() + ", ktxTexture_GetImageOffset error is " +
+                                                 ktxErrorString(result));
+                    }
+
+                    const std::size_t mipSize = ktxTexture_GetImageSize(pTexture, mipIndex);
+                    std::uint8_t* mipPixelData = ktxTexture_GetData(pTexture) + offset;
+                    std::uint8_t* pDestination = pImageData + mipOffset;
+                    memcpy(pDestination, mipPixelData, mipSize);
+
+                    mipOffset += image->computeMipDataSize(mipIndex);
+                }
+
+                image->stageUpload(stagingData.view, 0, 1, 0, mipCount);
                 image->name(resource.getName());
 
-                ktxTexture_Destroy(ktxTexture(texture));
+                ktxTexture_Destroy(pTexture);
 
                 return image;
             }
@@ -310,7 +350,7 @@ void Carrot::Image::transition(vk::Image image, vk::CommandBuffer& commands, vk:
             .subresourceRange = {
                     .aspectMask = aspect,
                     .baseMipLevel = 0,
-                    .levelCount = 1,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
                     .baseArrayLayer = 0,
                     .layerCount = static_cast<uint32_t>(layerCount),
             }
@@ -439,8 +479,30 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
     }
 }
 
-vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspect, vk::ImageViewType viewType, std::uint32_t layerCount) {
-    return std::move(driver.createImageView(getVulkanImage(), imageFormat, aspect, viewType, layerCount));
+vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspectMask, vk::ImageViewType viewType, std::uint32_t layerCount) {
+    if(mipCount > 4) {
+        __debugbreak();
+    }
+    return driver.getLogicalDevice().createImageViewUnique({
+                                                            .image = getVulkanImage(),
+                                                            .viewType = viewType,
+                                                            .format = imageFormat,
+
+                                                            .components = {
+                                                                    .r = vk::ComponentSwizzle::eIdentity,
+                                                                    .g = vk::ComponentSwizzle::eIdentity,
+                                                                    .b = vk::ComponentSwizzle::eIdentity,
+                                                                    .a = vk::ComponentSwizzle::eIdentity,
+                                                            },
+
+                                                            .subresourceRange = {
+                                                                    .aspectMask = aspectMask,
+                                                                    .baseMipLevel = std::min(mipCount-1, 4u),
+                                                                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                                                                    .baseArrayLayer = 0,
+                                                                    .layerCount = layerCount,
+                                                            },
+                                                    }, driver.getAllocationCallbacks());
 }
 
 void Carrot::Image::setDebugNames(const std::string& name) {
@@ -544,4 +606,8 @@ vk::DeviceMemory Carrot::Image::getVkMemory() const {
 const Carrot::DeviceMemory& Carrot::Image::getMemory() const {
     verify(imageData.ownsImage, "Cannot access memory of not-owned image.")
     return imageData.asOwned.memory;
+}
+
+std::size_t Carrot::Image::computeMipDataSize(std::uint32_t mipLevel) const {
+    return ImageFormats::computeMipSize(mipLevel, size.width, size.height, size.depth, static_cast<VkFormat>(format));
 }

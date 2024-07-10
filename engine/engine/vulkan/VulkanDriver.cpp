@@ -714,29 +714,6 @@ vk::UniqueCommandPool Carrot::VulkanDriver::createComputeCommandPool() {
     return getLogicalDevice().createCommandPoolUnique(poolInfo, getAllocationCallbacks());
 }
 
-vk::UniqueImageView Carrot::VulkanDriver::createImageView(const vk::Image& image, vk::Format imageFormat, vk::ImageAspectFlags aspectMask, vk::ImageViewType viewType, uint32_t layerCount) {
-    return getLogicalDevice().createImageViewUnique({
-                                                            .image = image,
-                                                            .viewType = viewType,
-                                                            .format = imageFormat,
-
-                                                            .components = {
-                                                                    .r = vk::ComponentSwizzle::eIdentity,
-                                                                    .g = vk::ComponentSwizzle::eIdentity,
-                                                                    .b = vk::ComponentSwizzle::eIdentity,
-                                                                    .a = vk::ComponentSwizzle::eIdentity,
-                                                            },
-
-                                                            .subresourceRange = {
-                                                                    .aspectMask = aspectMask,
-                                                                    .baseMipLevel = 0,
-                                                                    .levelCount = 1,
-                                                                    .baseArrayLayer = 0,
-                                                                    .layerCount = layerCount,
-                                                            },
-                                                    }, getAllocationCallbacks());
-}
-
 std::set<std::uint32_t> Carrot::VulkanDriver::createGraphicsAndTransferFamiliesSet() {
     return {
             getQueueFamilies().graphicsFamily.value(),

@@ -130,7 +130,7 @@ namespace Carrot::Render {
         vk::ImageSubresourceRange wholeTexture {
                 .aspectMask = aspect,
                 .baseMipLevel = 0,
-                .levelCount = 1,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
                 .baseArrayLayer = 0,
                 .layerCount = image->getLayerCount(),
         };

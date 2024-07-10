@@ -54,6 +54,7 @@ namespace Carrot {
         } imageData;
 
         std::uint32_t layerCount = 1;
+        std::uint32_t mipCount = 1;
         vk::Format format = vk::Format::eUndefined;
         vk::ImageUsageFlags usage = static_cast<vk::ImageUsageFlags>(0);
 
@@ -70,12 +71,14 @@ namespace Carrot {
                        std::set<uint32_t> families = {},
                        vk::ImageCreateFlags flags = static_cast<vk::ImageCreateFlags>(0),
                        vk::ImageType type = vk::ImageType::e2D,
-                       std::uint32_t layerCount = 1);
+                       std::uint32_t layerCount = 1,
+                       std::uint32_t mipCount = 1);
 
         explicit Image(Carrot::VulkanDriver& driver, vk::Image toView,
                        vk::Extent3D extent,
                        vk::Format format,
-                       std::uint32_t layerCount = 1);
+                       std::uint32_t layerCount = 1,
+                       std::uint32_t mipCount = 1);
 
         ~Image() noexcept;
 
@@ -98,6 +101,11 @@ namespace Carrot {
         /// Stage a upload to this image, and wait for the upload to finish.
         void stageUpload(std::span<std::uint8_t> data, std::uint32_t layer = 0, std::uint32_t layerCount = 1);
 
+        /// Copies the contents of the input buffer to this image, and wait for the upload to finish.
+        /// Texture data is expected to be by mip, then by layer, then by row, then by column.
+        /// Note: mip 'startMip' is expected to be at the start of the buffer data, and mip data is expected to be tightly packed
+        void stageUpload(Carrot::BufferView textureData, std::uint32_t layer, std::uint32_t layerCount, std::uint32_t startMip, std::uint32_t mipCount);
+
         /// Transition the layout of this image from one layout to another
         void transitionLayout(vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 
@@ -113,6 +121,11 @@ namespace Carrot {
         static std::unique_ptr<Image> fromFile(Carrot::VulkanDriver& device, const Carrot::IO::Resource resource);
 
         static std::unique_ptr<Image> cubemapFromFiles(Carrot::VulkanDriver& device, std::function<std::string(Skybox::Direction)> textureSupplier);
+
+    public: // mipmap support
+        /// From this image's description, compute the size in bytes of the given mipLevel
+        std::size_t computeMipDataSize(std::uint32_t mipLevel) const;
+
 
     protected:
         void setDebugNames(const std::string& name) override;

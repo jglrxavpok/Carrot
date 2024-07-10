@@ -36,6 +36,7 @@ set(CORE-SOURCES
         ${CoreRoot}math/Sphere.cpp
         ${CoreRoot}math/Triangle.cpp
 
+        ${CoreRoot}render/ImageFormats.cpp
         ${CoreRoot}render/Skeleton.cpp
         ${CoreRoot}render/VertexTypes.cpp
 
@@ -122,7 +123,7 @@ function(add_core_includes Target)
 
 endfunction()
 
-set(ALL_CORE_LIBS ktx glm tinygltf nfd cider assimp::assimp)
+set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
