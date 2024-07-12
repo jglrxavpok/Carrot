@@ -9,7 +9,7 @@
 
 namespace Peeler::ECS {
     CameraRenderer::CameraRenderer(Carrot::ECS::World& world): Carrot::ECS::RenderSystem<Carrot::ECS::TransformComponent, Carrot::ECS::CameraComponent>(world) {
-        cameraModel = Carrot::AsyncModelResource(GetAssetServer().loadModelTask("resources/models/camera.obj"));
+        cameraModel = Carrot::AsyncModelResource(GetAssetServer().loadModelTask("resources/models/camera.gltf"));
         primaryCameraPipeline = GetRenderer().getOrCreatePipeline("gBuffer");
         secondaryCameraPipeline = GetRenderer().getOrCreatePipeline("gBufferWireframe");
     }
@@ -22,6 +22,7 @@ namespace Peeler::ECS {
         packet.useMesh(*cameraModel->getStaticMeshes()[0]);
 
         static glm::mat4 scaling = glm::scale(glm::mat4{ 1.0f }, glm::vec3 { 0.1f, 0.1f, 0.1f });
+        static glm::mat4 localRotate = glm::rotate(glm::mat4{ 1.0f }, glm::pi<float>()/2.0f, glm::vec3 { 1.0f, 0.f, 0.f });
 
         Carrot::InstanceData instanceData;
         Carrot::GBufferDrawData data;
@@ -31,7 +32,7 @@ namespace Peeler::ECS {
 
         forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transform, Carrot::ECS::CameraComponent& cameraComponent) {
             instanceData.uuid = entity.getID();
-            instanceData.transform = transform.toTransformMatrix() * scaling;
+            instanceData.transform = transform.toTransformMatrix() * scaling * localRotate;
             instanceData.lastFrameTransform = transform.lastFrameGlobalTransform * scaling;
             packet.useInstance(instanceData);
 
