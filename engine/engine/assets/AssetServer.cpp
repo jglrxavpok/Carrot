@@ -82,6 +82,10 @@ namespace Carrot {
             Carrot::Log::error("Failed to load model %s", modelPath.c_str());
             // in case file could not be opened
             from = "resources/models/simple_cube.obj";
+        } catch(AssetConversionException& e) {
+            Carrot::Log::error("Could not import '%s': %s", modelPath.c_str(), e.what());
+            // in case file could not be opened
+            from = "resources/models/simple_cube.obj";
         }
         return Carrot::Model::load(task, GetEngine(), std::move(from));
     }
@@ -143,6 +147,10 @@ namespace Carrot {
                 }
             } catch(std::runtime_error& e) {
                 Carrot::Log::error("Could not open texture '%s'", textureName.c_str());
+                // in case file could not be opened
+                from = "resources/textures/default.png";
+            } catch(AssetConversionException& e) {
+                Carrot::Log::error("Could not import '%s': %s", textureName.c_str(), e.what());
                 // in case file could not be opened
                 from = "resources/textures/default.png";
             }

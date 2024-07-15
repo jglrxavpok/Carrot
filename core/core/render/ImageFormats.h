@@ -19,4 +19,6 @@ namespace Carrot::ImageFormats {
 
 	/// Compute how many mips an image of given size and format can have at maximum
 	std::uint8_t computeMipCount(std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat);
+
+	VkExtent3D computeMipDimensions(std::uint32_t mipLevel, std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat);
 } // Carrot::ImageFormats

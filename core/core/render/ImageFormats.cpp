@@ -293,12 +293,24 @@ namespace Carrot::ImageFormats {
         const ImageFormat& format = getFormat(imageFormat);
         VkExtent3D minSize = format.blockExtent;
         std::uint8_t mipLevel = 1;
-        while(imageWidth > 1 && imageHeight > 1 && imageDepth > 1) {
+        while(imageWidth > minSize.width || imageHeight > minSize.height || imageDepth > minSize.depth) {
             imageWidth = std::max(minSize.width, imageWidth >> 1);
             imageHeight = std::max(minSize.height, imageHeight >> 1);
             imageDepth = std::max(minSize.depth, imageDepth >> 1);
             mipLevel++;
         }
         return mipLevel;
+    }
+
+    VkExtent3D computeMipDimensions(std::uint32_t mipLevel, std::uint32_t imageWidth, std::uint32_t imageHeight, std::uint32_t imageDepth, VkFormat imageFormat) {
+        const ImageFormat& format = getFormat(imageFormat);
+        VkExtent3D minSize = format.blockExtent;
+        while(mipLevel > 0) {
+            imageWidth = std::max(minSize.width, imageWidth >> 1);
+            imageHeight = std::max(minSize.height, imageHeight >> 1);
+            imageDepth = std::max(minSize.depth, imageDepth >> 1);
+            mipLevel--;
+        }
+        return VkExtent3D { imageWidth, imageHeight, imageDepth };
     }
 } // Carrot

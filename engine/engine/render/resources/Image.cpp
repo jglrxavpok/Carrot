@@ -108,6 +108,7 @@ void Carrot::Image::stageUpload(Carrot::BufferView textureData, std::uint32_t la
         std::uint32_t mipOffset = 0;
         for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {
             std::uint32_t mipLevel = mipIndex + startMip;
+            VkExtent3D mipSize = ImageFormats::computeMipDimensions(mipLevel, size.width, size.height, size.depth, static_cast<VkFormat>(format));
             vk::BufferImageCopy region = {
                     .bufferOffset = textureData.getStart() + mipOffset,
                     .bufferRowLength = 0,
@@ -118,7 +119,7 @@ void Carrot::Image::stageUpload(Carrot::BufferView textureData, std::uint32_t la
                             .baseArrayLayer = layer,
                             .layerCount = layerCount,
                     },
-                    .imageExtent = size,
+                    .imageExtent = { .width = mipSize.width, .height = mipSize.height, .depth = mipSize.depth }
             };
             regions[mipIndex] = region;
             mipOffset += computeMipDataSize(mipLevel);
@@ -480,9 +481,6 @@ void Carrot::Image::transitionLayout(vk::Format format, vk::ImageLayout oldLayou
 }
 
 vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::ImageAspectFlags aspectMask, vk::ImageViewType viewType, std::uint32_t layerCount) {
-    if(mipCount > 4) {
-        __debugbreak();
-    }
     return driver.getLogicalDevice().createImageViewUnique({
                                                             .image = getVulkanImage(),
                                                             .viewType = viewType,
@@ -497,7 +495,7 @@ vk::UniqueImageView Carrot::Image::createImageView(vk::Format imageFormat, vk::I
 
                                                             .subresourceRange = {
                                                                     .aspectMask = aspectMask,
-                                                                    .baseMipLevel = std::min(mipCount-1, 4u),
+                                                                    .baseMipLevel = 0,
                                                                     .levelCount = VK_REMAINING_MIP_LEVELS,
                                                                     .baseArrayLayer = 0,
                                                                     .layerCount = layerCount,
