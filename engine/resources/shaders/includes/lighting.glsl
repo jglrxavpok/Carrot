@@ -615,7 +615,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 if(!sampledSpecular)
                     lightContribution += (emissive*5 /* TODO: GP DIrect */ + lightAtPoint * fresnel) * beta;
 
-                #define _sample(TYPE) texture(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv)
+                #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, 0)
 
                 emissive = _sample(emissive).rgb;
                 beta *= _sample(albedo).rgb + emissive;

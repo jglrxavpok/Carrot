@@ -79,3 +79,6 @@
 [submodule "thirdparty/mimalloc"]
 	path = thirdparty/mimalloc
 	url = https://github.com/microsoft/mimalloc/
+[submodule "thirdparty/bc7enc_rdo"]
+	path = thirdparty/bc7enc_rdo
+	url = https://github.com/richgel999/bc7enc_rdo

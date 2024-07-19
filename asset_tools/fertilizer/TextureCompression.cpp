@@ -13,39 +13,58 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
+#define RGBCX_IMPLEMENTATION
+#include <array>
+#include <rgbcx.h>
+#include <core/allocators/StackAllocator.h>
+
 namespace Fertilizer {
+    static void initEncoderIfNecessary() {
+        static std::once_flag once_flag;
+        std::call_once(once_flag, []() {
+           rgbcx::init();
+        });
+    }
+
     ConversionResult compressTexture(const std::filesystem::path& inputFile, const std::filesystem::path& outputFile) {
         int w, h, srcComponentCount;
         stbi_uc* pixels = stbi_load(inputFile.string().c_str(), &w, &h, &srcComponentCount, 0);
         CLEANUP(stbi_image_free(pixels));
         std::size_t srcSize = w * h * srcComponentCount;
+        initEncoderIfNecessary();
 
+        bool canCompress = true;
         if(w % 4 != 0 || h % 4 != 0) {
-            return {
+            canCompress = false;
+            /*return {
                 .errorCode = ConversionResultError::TextureCompressionError,
                 .errorMessage = Carrot::sprintf("Texture resolution of %s is not a multiple of 4x4 (is %dx%d). This is necessary for BC compression", inputFile.u8string().c_str(), w, h),
-            };
+            };*/
         }
 
         ktxTexture2* texture;
-        ktxTextureCreateInfo createInfo;
+        ktxTextureCreateInfo createInfo {};
         KTX_error_code result;
-        ktx_uint32_t level, layer, faceSlice;
+        ktx_uint32_t layer = 0;
+        ktx_uint32_t faceSlice = 0;
 
         createInfo.glInternalformat = 0;  //Ignored as we'll create a KTX2 texture.
 
         int destComponentCount = srcComponentCount;
+        VkFormat srcFormat;
         switch(srcComponentCount) {
             case 1:
-                createInfo.vkFormat = VK_FORMAT_R8_UNORM;
+                srcFormat = VK_FORMAT_R8_UNORM;
+                canCompress = false; // TODO
                 break;
             case 2:
-                createInfo.vkFormat = VK_FORMAT_R8G8_UNORM;
+                srcFormat = VK_FORMAT_R8G8_UNORM;
+                canCompress = false; // TODO
                 break;
             case 3:
             case 4:
                 destComponentCount = 4;
-                createInfo.vkFormat = VK_FORMAT_R8G8B8A8_UNORM; // RGBA is better supported
+                srcFormat = VK_FORMAT_R8G8B8A8_UNORM; // RGBA is better supported
                 break;
             default:
                 return {
@@ -58,13 +77,19 @@ namespace Fertilizer {
         createInfo.baseDepth = 1;
         createInfo.numDimensions = 2;
 
-        const VkFormat format = static_cast<VkFormat>(createInfo.vkFormat);
-        std::uint8_t mipCount = Carrot::ImageFormats::computeMipCount(createInfo.baseWidth, createInfo.baseWidth, createInfo.baseDepth, format);
+        VkFormat targetFormat = srcFormat;
+        if(canCompress) {
+            // Assume all GPUs targeted by Carrot support BC compression (they better)
+            targetFormat = VK_FORMAT_BC3_UNORM_BLOCK;
+        }
+
+        std::uint8_t mipCount = Carrot::ImageFormats::computeMipCount(createInfo.baseWidth, createInfo.baseWidth, createInfo.baseDepth, targetFormat);
         createInfo.numLevels = mipCount;
         createInfo.numLayers = 1;
         createInfo.numFaces = 1;
         createInfo.isArray = KTX_FALSE;
         createInfo.generateMipmaps = KTX_FALSE;
+        createInfo.vkFormat = targetFormat;
 
         result = ktxTexture2_Create(&createInfo,
                                     KTX_TEXTURE_CREATE_ALLOC_STORAGE,
@@ -86,23 +111,6 @@ namespace Fertilizer {
             if(destComponentCount > 3) mip0Pixels[pixelIndex * destComponentCount + 3] = srcComponentCount > 3 ? pixels[pixelIndex * srcComponentCount + 3] : 255;
         }
 
-        level = 0;
-        layer = 0;
-        faceSlice = 0;
-        result = ktxTexture_SetImageFromMemory(ktxTexture(texture),
-                                               level, layer, faceSlice,
-                                               mip0Pixels.data(), mip0Pixels.size());
-
-        if(result != ktx_error_code_e::KTX_SUCCESS) {
-            return {
-                .errorCode = ConversionResultError::TextureCompressionError,
-                .errorMessage = ktxErrorString(result),
-            };
-        }
-
-        // Assume all GPUs targeted by Carrot support BC compression (they better)
-        VkFormat targetFormat = VK_FORMAT_BC3_UNORM_BLOCK; // TODO: support for different formats (normal maps for example)
-
         // create uncompressed mips
         using MipData = Carrot::Vector<glm::vec4>; // assume rgba for now
         Carrot::Vector<MipData> uncompressedMips;
@@ -118,14 +126,72 @@ namespace Fertilizer {
             uncompressedMips[0][index] = glm::vec4 { red / 255.0f, green / 255.0f, blue / 255.0f, alpha / 255.0f };
         }
 
+        Carrot::StackAllocator tempMipDataAllocator{ Carrot::Allocator::getDefault() };
+        auto encodeMip = [&](std::uint8_t mipLevel, VkExtent3D mipDimensions, const Carrot::Vector<std::uint8_t>& uncompressedMipPixels) {
+            ktx_error_code_e result = ktx_error_code_e::KTX_SUCCESS;
+            if(srcFormat != targetFormat) {
+                // create compressed mip
+                // for now only support BC3 (16 bytes/block)
+                Carrot::Vector<std::uint8_t> compressedMipPixels { tempMipDataAllocator };
+                const std::size_t blockSize = 16;
+                const std::size_t compressedMipByteSize = Carrot::ImageFormats::computeMipSize(mipDimensions.width, mipDimensions.height, mipDimensions.depth, targetFormat);
+                compressedMipPixels.resize(compressedMipByteSize);
+
+                std::uint32_t depthInBlocks = mipDimensions.depth;
+                std::uint32_t heightInBlocks = mipDimensions.height / 4;
+                std::uint32_t widthInBlocks = mipDimensions.width / 4;
+
+                auto encodeBC3Block = [&](std::uint32_t blockX, std::uint32_t blockY, std::uint32_t blockZ) {
+                    void* pDst = &compressedMipPixels[blockSize * (blockZ * heightInBlocks * widthInBlocks + blockY * widthInBlocks + blockX)];
+                    std::array<std::uint8_t, 4*4*4> pixels; // 4x4 blocks of RGBA data
+                    const std::uint8_t compCount = 4;
+                    for(std::uint32_t dy = 0; dy < 4; dy++) {
+                        for(std::uint32_t dx = 0; dx < 4; dx++) {
+                            std::uint32_t pixelIndex = blockX * 4 + dx + (blockY * 4 + dy) * mipDimensions.width + blockZ * mipDimensions.width * mipDimensions.height;
+                            pixels[compCount * (dx + dy*4) + 0] = uncompressedMipPixels[pixelIndex * destComponentCount + 0];
+                            pixels[compCount * (dx + dy*4) + 1] = uncompressedMipPixels[pixelIndex * destComponentCount + 1];
+                            pixels[compCount * (dx + dy*4) + 2] = uncompressedMipPixels[pixelIndex * destComponentCount + 2];
+                            pixels[compCount * (dx + dy*4) + 3] = uncompressedMipPixels[pixelIndex * destComponentCount + 3];
+                        }
+                    }
+                    rgbcx::encode_bc3(rgbcx::MAX_LEVEL, pDst, pixels.data());
+                };
+                for(std::uint32_t blockZ = 0; blockZ < depthInBlocks; blockZ++) {
+                    for(std::uint32_t blockY = 0; blockY < heightInBlocks; blockY++) {
+                        for(std::uint32_t blockX = 0; blockX < widthInBlocks; blockX++) {
+                            encodeBC3Block(blockX, blockY, blockZ);
+                        }
+                    }
+                }
+                result = ktxTexture_SetImageFromMemory(ktxTexture(texture),
+                                   mipLevel, layer, faceSlice,
+                                   compressedMipPixels.data(), compressedMipPixels.size());
+            } else {
+                result = ktxTexture_SetImageFromMemory(ktxTexture(texture),
+                                                   mipLevel, layer, faceSlice,
+                                                   uncompressedMipPixels.cdata(), uncompressedMipPixels.size());
+            }
+
+            return result;
+        };
+
+        result = encodeMip(0, VkExtent3D { createInfo.baseWidth, createInfo.baseHeight, createInfo.baseDepth }, mip0Pixels);
+        if(result != ktx_error_code_e::KTX_SUCCESS) {
+            return {
+                .errorCode = ConversionResultError::TextureCompressionError,
+                .errorMessage = ktxErrorString(result),
+            };
+        }
+
         VkExtent3D previousMipDimensions = VkExtent3D { createInfo.baseWidth, createInfo.baseHeight, createInfo.baseDepth };
         for(std::uint8_t mip = 1; mip < mipCount; mip++) {
-            Carrot::Vector<glm::vec4>& mipColors = uncompressedMips[mip];
-            Carrot::Vector<std::uint8_t> mipPixels;
-            const VkExtent3D mipDimensions = Carrot::ImageFormats::computeMipDimensions(mip, createInfo.baseWidth, createInfo.baseHeight, createInfo.baseDepth, format);
-            const std::size_t mipByteSize = Carrot::ImageFormats::computeMipSize(mipDimensions.width, mipDimensions.height, mipDimensions.depth, format);
-            mipColors.resize(mipByteSize);
-            mipPixels.resize(mipDimensions.width * mipDimensions.height * mipDimensions.depth * sizeof(std::uint8_t) * destComponentCount);
+            tempMipDataAllocator.clear();
+            Carrot::Vector<glm::vec4>& uncompressedMipColors = uncompressedMips[mip];
+            Carrot::Vector<std::uint8_t> uncompressedMipPixels;
+            const VkExtent3D mipDimensions = Carrot::ImageFormats::computeMipDimensions(mip, createInfo.baseWidth, createInfo.baseHeight, createInfo.baseDepth, srcFormat);
+            const std::size_t uncompressedMipByteSize = Carrot::ImageFormats::computeMipSize(mipDimensions.width, mipDimensions.height, mipDimensions.depth, srcFormat);
+            uncompressedMipColors.resize(uncompressedMipByteSize);
+            uncompressedMipPixels.resize(mipDimensions.width * mipDimensions.height * mipDimensions.depth * sizeof(std::uint8_t) * destComponentCount);
 
             const glm::vec3 sizeFactor {
                 static_cast<float>(previousMipDimensions.width) / mipDimensions.width,
@@ -163,21 +229,17 @@ namespace Fertilizer {
                         // per pixel average of pixels in mip above
                         glm::vec4 color = averageColor(x, y, z);
                         const std::uint32_t index = z * mipDimensions.height * mipDimensions.width + y * mipDimensions.width + x;
-                        mipColors[index] = color;
-                        mipPixels[index * destComponentCount + 0] = color.r * 255;
-                        if(destComponentCount > 1) mipPixels[index * destComponentCount + 1] = color.g * 255;
-                        if(destComponentCount > 2) mipPixels[index * destComponentCount + 2] = color.b * 255;
-                        if(destComponentCount > 3) mipPixels[index * destComponentCount + 3] = color.a * 255;
+                        uncompressedMipColors[index] = color;
+                        uncompressedMipPixels[index * destComponentCount + 0] = color.r * 255;
+                        if(destComponentCount > 1) uncompressedMipPixels[index * destComponentCount + 1] = color.g * 255;
+                        if(destComponentCount > 2) uncompressedMipPixels[index * destComponentCount + 2] = color.b * 255;
+                        if(destComponentCount > 3) uncompressedMipPixels[index * destComponentCount + 3] = color.a * 255;
                     }
                 }
             }
 
-            // create compressed mip
-            //TODO; // TODO: use target format
+            result = encodeMip(mip, mipDimensions, uncompressedMipPixels);
 
-            result = ktxTexture_SetImageFromMemory(ktxTexture(texture),
-                                               mip, layer, faceSlice,
-                                               mipPixels.data(), mipPixels.size());
             if(result != ktx_error_code_e::KTX_SUCCESS) {
                 return {
                     .errorCode = ConversionResultError::TextureCompressionError,

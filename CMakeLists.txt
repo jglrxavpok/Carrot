@@ -138,6 +138,7 @@ set(OPENXR_SDK_BUILD_DIR ${CMAKE_BINARY_DIR}/thirdparty/OpenXR-SDK-Source)
 add_subdirectory(thirdparty/OpenXR-Hpp)
 
 add_subdirectory(thirdparty/mimalloc)
+add_subdirectory(thirdparty/bc7enc_rdo)
 
 function(add_includes Target)
     add_core_includes(${Target})

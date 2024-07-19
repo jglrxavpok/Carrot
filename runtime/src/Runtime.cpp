@@ -46,10 +46,13 @@ int main(int argc, char** argv) {
             .applicationName = "Runtime",
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .enableFileWatching = false,
-            //.startInFullscreen = true,
+            .startInFullscreen = true,
     };
 
     Carrot::Engine engine { config };
+    Carrot::Settings settings = engine.getSettings();
+    settings.fpsLimit = 30;
+    engine.changeSettings(settings);
     engine.run();
 
     return 0;
