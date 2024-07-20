@@ -15,8 +15,8 @@ namespace Carrot::Math {
         center.y = hCenter.y / hCenter.w;
         center.z = hCenter.z / hCenter.w;
 
-        // TODO: GP Direct (frustum culling)
         /*radius = glm::length(glm::vec3 { (transform * glm::vec4{ radius, 0, 0, 0 }).xyz });*/
+        // formula below works better with frustum culling apparently?
         glm::vec3 squaredScale {
             glm::length2(glm::vec3(transform[0])),
             glm::length2(glm::vec3(transform[1])),

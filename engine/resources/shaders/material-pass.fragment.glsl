@@ -17,9 +17,6 @@
 #include "includes/gbuffer_output.glsl"
 #include "includes/materials.glsl"
 
-// TODO: GP Direct only
-#include <includes/number-print.glsl>
-
 DEFINE_GBUFFER_INPUTS(0)
 MATERIAL_SYSTEM_SET(1)
 layout(r64ui, set = 2, binding = 0) uniform u64image2D visibilityBuffer;
@@ -110,56 +107,6 @@ vec3 interpolate3D(in Interpolator interlopator, vec3 a, vec3 b, vec3 c) {
     return numerator * interlopator.invDivider;
 }
 
-
-vec4 colors[] = {
-vec4(0,0,0,1),
-vec4(189.0f / 255.0f, 236.0f / 255.0f, 182.0f / 255.0f, 1.0f),
-vec4(108.0f / 255.0f, 112.0f / 255.0f,  89.0f / 255.0f, 1.0f),
-vec4(203.0f / 255.0f, 208.0f / 255.0f, 204.0f / 255.0f, 1.0f),
-vec4(250.0f / 255.0f, 210.0f / 255.0f,  01.0f / 255.0f, 1.0f),
-vec4(220.0f / 255.0f, 156.0f / 255.0f,   0.0f / 255.0f, 1.0f),
-vec4( 42.0f / 255.0f, 100.0f / 255.0f, 120.0f / 255.0f, 1.0f),
-vec4(120.0f / 255.0f, 133.0f / 255.0f, 139.0f / 255.0f, 1.0f),
-vec4(121.0f / 255.0f,  85.0f / 255.0f,  61.0f / 255.0f, 1.0f),
-vec4(157.0f / 255.0f, 145.0f / 255.0f,  01.0f / 255.0f, 1.0f),
-vec4(166.0f / 255.0f,  94.0f / 255.0f,  46.0f / 255.0f, 1.0f),
-vec4(203.0f / 255.0f,  40.0f / 255.0f,  33.0f / 255.0f, 1.0f),
-vec4(243.0f / 255.0f, 159.0f / 255.0f,  24.0f / 255.0f, 1.0f),
-vec4(250.0f / 255.0f, 210.0f / 255.0f,  01.0f / 255.0f, 1.0f),
-vec4(114.0f / 255.0f,  20.0f / 255.0f,  34.0f / 255.0f, 1.0f),
-vec4( 64.0f / 255.0f,  58.0f / 255.0f,  58.0f / 255.0f, 1.0f),
-vec4(157.0f / 255.0f, 161.0f / 255.0f, 170.0f / 255.0f, 1.0f),
-vec4(164.0f / 255.0f, 125.0f / 255.0f, 144.0f / 255.0f, 1.0f),
-vec4(248.0f / 255.0f,   0.0f / 255.0f,   0.0f / 255.0f, 1.0f),
-vec4(120.0f / 255.0f,  31.0f / 255.0f,  25.0f / 255.0f, 1.0f),
-vec4( 51.0f / 255.0f,  47.0f / 255.0f,  44.0f / 255.0f, 1.0f),
-vec4(180.0f / 255.0f,  76.0f / 255.0f,  67.0f / 255.0f, 1.0f),
-vec4(125.0f / 255.0f, 132.0f / 255.0f, 113.0f / 255.0f, 1.0f),
-vec4(161.0f / 255.0f,  35.0f / 255.0f,  18.0f / 255.0f, 1.0f),
-vec4(142.0f / 255.0f,  64.0f / 255.0f,  42.0f / 255.0f, 1.0f),
-vec4(130.0f / 255.0f, 137.0f / 255.0f, 143.0f / 255.0f, 1.0f),
-};
-
-vec4 triangleIndexToFloat(uint64_t index) {
-    if(index == 0) {
-        return colors[0];
-    }
-    return colors[uint8_t(index % 25ul + 1)];
-}
-
-vec4 debugColor(uint triangleIndex, uint instanceIndex, uint clusterID) {
-    vec2 uv = screenUV;
-    uvec2 visibilityBufferImageSize = imageSize(visibilityBuffer);
-    vec2 startPosition = floor(uv * 100) / 100.0f;
-    vec2 fontSize = vec2(4, 5) / visibilityBufferImageSize;
-    uint lod = clusters[clusterID].lod;
-
-    float digit = PrintValue(uv, startPosition, fontSize, lod, 2, 0);
-    const vec4 digitColor = vec4(0, 0, 0, 1);
-    const vec4 objectColor = triangleIndexToFloat(lod+1);
-    return digit * digitColor + (1 - digit) * objectColor;
-}
-
 void main() {
     uvec2 visibilityBufferImageSize = imageSize(visibilityBuffer);
     ivec2 pixelCoords = ivec2(visibilityBufferImageSize * screenUV);
@@ -209,9 +156,7 @@ void main() {
 
     GBuffer o = initGBuffer(mat4(1.0));
 
-    // TODO: GP Direct only
-    //o.albedo = vec4(texColor.rgb, texColor.a /* TODO * instanceColor.a*/);
-    o.albedo = debugColor(triangleIndex, instanceIndex, clusterID);
+    o.albedo = vec4(texColor.rgb, texColor.a /* TODO * instanceColor.a*/);
 
     vec4 hPosition = modelview * vec4(position, 1.0);
     o.viewPosition = hPosition.xyz / hPosition.w;

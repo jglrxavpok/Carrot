@@ -611,9 +611,8 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
             }
 
             if(intersection.hasIntersection) {
-                // TODO: GP Direct
                 if(!sampledSpecular)
-                    lightContribution += (emissive*5 /* TODO: GP DIrect */ + lightAtPoint * fresnel) * beta;
+                    lightContribution += (emissive*1/*TODO: configurable emissive power */ + lightAtPoint * fresnel) * beta;
 
                 #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, 0)
 

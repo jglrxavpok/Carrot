@@ -429,7 +429,6 @@ void Carrot::VulkanRenderer::bindUniformBuffer(Pipeline& pipeline, const Render:
 void Carrot::VulkanRenderer::bindBuffer(Pipeline& pipeline, const Render::Context& frame, const BufferView& view, std::uint32_t setID, std::uint32_t bindingID) {
     ZoneScoped;
     if(boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] == view) {
-        // TODO: why does this make the GPU crash? (RT + skinned models)
         return;
     }
     boundBuffers[{pipeline, frame.swapchainIndex, setID, bindingID}] = view;
