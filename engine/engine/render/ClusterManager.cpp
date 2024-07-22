@@ -294,7 +294,7 @@ namespace Carrot::Render {
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
             if(mainRenderContext.lastSwapchainIndex != static_cast<std::size_t>(-1)) {
-                //queryVisibleClustersAndActivateRTInstances(mainRenderContext.lastSwapchainIndex);
+                queryVisibleClustersAndActivateRTInstances(mainRenderContext.lastSwapchainIndex);
             }
         }
     }

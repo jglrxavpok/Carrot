@@ -198,17 +198,19 @@ namespace Carrot {
         std::vector<std::vector<TracyVkCtx>> blasBuildTracyCtx; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
         std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> rtInstancesBuffers;
 
         std::shared_ptr<Carrot::BufferAllocation> geometriesBuffer;
-        Carrot::Render::PerFrame<std::unique_ptr<Carrot::Buffer>> instancesBuffers;
+        std::shared_ptr<Carrot::BufferAllocation> instancesBuffer;
+        std::shared_ptr<Carrot::BufferAllocation> rtInstancesBuffer;
+        std::shared_ptr<Carrot::BufferAllocation> rtInstancesScratchBuffer;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> geometriesBufferPerFrame;
-        Carrot::Render::PerFrame<Carrot::BufferView> instancesBufferPerFrame;
+        Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesBufferPerFrame;
+        Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesBufferPerFrame;
+        Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesScratchBufferPerFrame;
 
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;
 
-        std::unique_ptr<Carrot::Buffer> scratchBuffer = nullptr;
         std::size_t lastScratchSize = 0;
         vk::DeviceAddress scratchBufferAddress = 0;
 

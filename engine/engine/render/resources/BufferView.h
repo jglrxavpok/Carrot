@@ -72,6 +72,9 @@ namespace Carrot {
         /// Upload to device-local memory
         void stageUpload(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
 
+        /// Upload to device-local memory, but signal the given semaphore once upload is finished
+        void stageUpload(vk::Semaphore semaphore, const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
+
         /**
          * Copies the input data into a temporary buffer, and copies that temporary buffer to GPU memory.
          * Note that this function does NOT wait for the copy to finish.

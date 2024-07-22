@@ -101,6 +101,11 @@ void Carrot::BufferView::stageUpload(const void* data, vk::DeviceSize length, vk
     getBuffer().stageUploadWithOffset(start+offset, data, length);
 }
 
+void Carrot::BufferView::stageUpload(vk::Semaphore semaphore, const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+    verify(length <= size, "Cannot upload more data than this view allows");
+    getBuffer().stageAsyncUploadWithOffset(semaphore, start+offset, data, length);
+}
+
 static Carrot::Async::SpinLock l;
 
 void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
