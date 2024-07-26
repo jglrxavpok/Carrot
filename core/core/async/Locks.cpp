@@ -111,21 +111,25 @@ namespace Carrot::Async {
     ReadLock::~ReadLock() noexcept {}
 
     void ReadLock::lock() {
+#if 0
         std::uint32_t currentReaderCount = parent.atomicValue.load();
 
         if(currentReaderCount == ReadWriteLock::WriterPresentValue) { // locked by writer
             std::uint32_t unlockValue = 0;
-            while(!parent.atomicValue.compare_exchange_weak(unlockValue, 1, std::memory_order_relaxed, std::memory_order_relaxed)) {
+            //while(!parent.atomicValue.compare_exchange_weak(unlockValue, 1, std::memory_order_relaxed, std::memory_order_relaxed)) {
+            while(!parent.atomicValue.compare_exchange_strong(unlockValue, 1)) {
                 unlockValue = 0;
                 std::this_thread::yield();
             }
         } else {
             std::uint32_t nextReaderCount = currentReaderCount +1;
 
-            while(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+           // while(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+            while(!parent.atomicValue.compare_exchange_strong(currentReaderCount, nextReaderCount)) {
                 if(currentReaderCount == ReadWriteLock::WriterPresentValue) {
                     currentReaderCount = 0;
                 } else {
+                    // what if == ReadWriteLock::WriterPresentValue after if check?
                     currentReaderCount = parent.atomicValue.load();
                 }
                 nextReaderCount = currentReaderCount + 1;
@@ -133,12 +137,16 @@ namespace Carrot::Async {
             }
         }
 
-        parent.readerCount++;
-        std::atomic_thread_fence(std::memory_order_acquire);
+        ++parent.readerCount;
+     //   std::atomic_thread_fence(std::memory_order_acquire);
+#else
+        parent.shared.lock_shared();
+#endif
     }
 
     void ReadLock::unlock() {
-        std::atomic_thread_fence(std::memory_order_acquire);
+#if 0
+        //std::atomic_thread_fence(std::memory_order_acquire);
 
         verify(parent.readerCount > 0, "Mismatched lock/unlock");
 
@@ -148,9 +156,10 @@ namespace Carrot::Async {
 
         std::uint32_t nextReaderCount = currentReaderCount -1;
 
-        parent.readerCount--;
+        --parent.readerCount;
 
-        while(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        //while(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        while(!parent.atomicValue.compare_exchange_strong(currentReaderCount, nextReaderCount)) {
             verify(currentReaderCount != ReadWriteLock::WriterPresentValue, "Lock acquired while a writer was still present?");
             currentReaderCount = parent.atomicValue.load();
             verify(currentReaderCount > 0, "Invalid reader count");
@@ -158,16 +167,21 @@ namespace Carrot::Async {
             std::this_thread::yield();
         }
 
-        std::atomic_thread_fence(std::memory_order_release);
+        //std::atomic_thread_fence(std::memory_order_release);
+#else
+        parent.shared.unlock_shared();
+#endif
     }
 
     bool ReadLock::tryLock() {
+#if 0
         std::uint32_t currentReaderCount = parent.atomicValue.load();
         std::uint32_t nextReaderCount = currentReaderCount +1;
 
         bool acquired = true;
 
-        if(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        //if(!parent.atomicValue.compare_exchange_weak(currentReaderCount, nextReaderCount, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        if(!parent.atomicValue.compare_exchange_strong(currentReaderCount, nextReaderCount)) {
             acquired = false;
         }
 
@@ -175,8 +189,11 @@ namespace Carrot::Async {
             parent.readerCount++;
         }
 
-        std::atomic_thread_fence(std::memory_order_acquire);
+        //std::atomic_thread_fence(std::memory_order_acquire);
         return acquired;
+#else
+        return parent.shared.try_lock_shared();
+#endif
     }
 
     // WriteLock
@@ -185,38 +202,53 @@ namespace Carrot::Async {
     WriteLock::~WriteLock() noexcept {}
 
     void WriteLock::lock() {
+#if 0
         std::uint32_t lockValue = 0;
-        while(!parent.atomicValue.compare_exchange_weak(lockValue, ReadWriteLock::WriterPresentValue, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        //while(!parent.atomicValue.compare_exchange_weak(lockValue, ReadWriteLock::WriterPresentValue, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        while(!parent.atomicValue.compare_exchange_strong(lockValue, ReadWriteLock::WriterPresentValue)) {
             lockValue = 0; // reset unlock value
             std::this_thread::yield();
         }
 
         verify(parent.readerCount == 0, "Acquired writer lock while reader was still present");
 
-        std::atomic_thread_fence(std::memory_order_acquire);
+        //std::atomic_thread_fence(std::memory_order_acquire);
+#else
+        parent.shared.lock();
+#endif
     }
 
     bool WriteLock::tryLock() {
+#if 0
         bool acquired = true;
 
         std::uint32_t lockValue = 0;
-        if(!parent.atomicValue.compare_exchange_weak(lockValue, ReadWriteLock::WriterPresentValue, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        //if(!parent.atomicValue.compare_exchange_weak(lockValue, ReadWriteLock::WriterPresentValue, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        if(!parent.atomicValue.compare_exchange_strong(lockValue, ReadWriteLock::WriterPresentValue)) {
             acquired = false;
         }
 
-        std::atomic_thread_fence(std::memory_order_acquire);
+//        std::atomic_thread_fence(std::memory_order_acquire);
         return acquired;
+#else
+        return parent.shared.try_lock();
+#endif
     }
 
     void WriteLock::unlock() {
-        std::atomic_thread_fence(std::memory_order_acquire);
+#if 0
+        //std::atomic_thread_fence(std::memory_order_acquire);
 
         std::uint32_t expected = ReadWriteLock::WriterPresentValue;
-        if(!parent.atomicValue.compare_exchange_weak(expected, 0, std::memory_order_relaxed, std::memory_order_relaxed)) {
-            verify(true, "Lock was not held by writer");
+        //if(!parent.atomicValue.compare_exchange_weak(expected, 0, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        if(!parent.atomicValue.compare_exchange_strong(expected, 0)) {
+            verify(false, "Lock was not held by writer");
         }
 
-        std::atomic_thread_fence(std::memory_order_release);
+        //std::atomic_thread_fence(std::memory_order_release);
+#else
+        parent.shared.unlock();
+#endif
     }
 
     // LockGuard

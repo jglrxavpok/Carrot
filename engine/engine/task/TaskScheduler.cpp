@@ -52,14 +52,14 @@ namespace Carrot {
         taskData.wantedLane = resumeOn;
         fiberHandle.yieldOnTop([this]() {
             auto task = this->taskData.shared_from_this();
-            GetTaskScheduler().taskQueues[taskData.wantedLane].push(std::move(task));
+            GetTaskScheduler().taskQueues[taskData.wantedLane].enqueue(std::move(task));
         });
     }
 
     void TaskHandle::yield() {
         fiberHandle.yieldOnTop([this]() {
             auto task = this->taskData.shared_from_this();
-            GetTaskScheduler().taskQueues[taskData.currentLane].push(std::move(task));
+            GetTaskScheduler().taskQueues[taskData.currentLane].enqueue(std::move(task));
         });
     }
 
@@ -86,7 +86,7 @@ namespace Carrot {
 
     std::size_t TaskScheduler::frameParallelWorkParallelismAmount() {
         // reduce CPU load by using less threads
-        return std::thread::hardware_concurrency()/2 - 1 /* main thread */;
+        return std::thread::hardware_concurrency() - 1 /* main thread */;
     }
 
     std::size_t TaskScheduler::assetLoadingParallelismAmount() {
@@ -122,14 +122,14 @@ namespace Carrot {
                 GetRenderer().makeCurrentThreadRenderCapable();
                 threadProc(isInFrame ? FrameParallelWork : AssetLoading);
             });
-            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sParallelTask #%d", isInFrame ? "Frame" : "AssetLoading", i+1));
+            Carrot::Threads::setName(parallelThreads[i], Carrot::sprintf("%sParallelTask #%d", isInFrame ? "Frame" : "AssetLoading", isInFrame ? i+1 : i - inFrameCount + 1));
         }
     }
 
     TaskScheduler::~TaskScheduler() {
         running = false;
         for(auto& [_, queue] : taskQueues) {
-            queue.requestStop();
+            //queue.();
         }
         for (auto& t : parallelThreads) {
             t.join();
@@ -137,12 +137,16 @@ namespace Carrot {
     }
 
     std::shared_ptr<TaskData> TaskScheduler::getOrReuseTaskData() {
+        ZoneScoped;
         std::shared_ptr<TaskData> taskData;
-        if(reusableTaskData.popSafe(taskData)) {
+        if(reusableTaskData.try_dequeue(taskData)) {
             return taskData;
         }
 
-        taskData = std::make_shared<TaskData>();
+        {
+            ZoneScopedN("allocate TaskData");
+            taskData = std::make_shared<TaskData>();
+        }
         std::string* pTracyID = new std::string{Carrot::sprintf("Fiber %ll", FiberCreatedCount++)};
         auto fiberProc = [pTracyID, pTaskKeepAlive = taskData, pTaskScheduler = this](Cider::FiberHandle& fiber) {
             {
@@ -164,7 +168,7 @@ namespace Carrot {
                     fiber.yieldOnTop([](void* pUserData) {
                         Data* pData = (Data*)pUserData;
                         auto pTask = pData->pTask;
-                        pData->pTaskScheduler->reusableTaskData.push(std::move(pTask));
+                        pData->pTaskScheduler->reusableTaskData.enqueue(std::move(pTask));
                     }, &data);
                 }
             }
@@ -177,9 +181,15 @@ namespace Carrot {
     void TaskScheduler::runSingleTask(Async::TaskLane localLane, bool allowBlocking) {
         std::shared_ptr<TaskData> toRun = nullptr;
         auto& taskQueue = taskQueues[localLane];
-        bool foundSomethingToExecute = allowBlocking
-                ? taskQueue.blockingPopSafe(toRun)
-                : taskQueue.popSafe(toRun);
+        bool foundSomethingToExecute = false;
+        if(allowBlocking) {
+            while(!taskQueue.try_dequeue(toRun)) {
+                std::this_thread::yield(); // TODO condition variable?
+            }
+            foundSomethingToExecute = true;
+        } else {
+            foundSomethingToExecute = taskQueue.try_dequeue(toRun);
+        }
         if(foundSomethingToExecute) {
             ZoneScopedN("Run task");
             ZoneText(toRun->name.c_str(), toRun->name.size());
@@ -189,7 +199,7 @@ namespace Carrot {
 
                 // handle task lane changes
                 if(toRun->wantedLane != localLane) {
-                    taskQueues[toRun->wantedLane].push(std::move(toRun));
+                    taskQueues[toRun->wantedLane].enqueue(std::move(toRun));
                 }
             } catch (const std::exception& e) {
                 // don't crash thread if a task fails
@@ -288,9 +298,13 @@ namespace Carrot {
         pNewTask->task = description.task;
 
         {
-            auto fiberProc = [pTaskKeepAlive = pNewTask, pTaskScheduler = this](Cider::FiberHandle& fiber) mutable {
-                auto pTask = pTaskKeepAlive;
-                pTaskKeepAlive = nullptr;
+            auto fiberProc = [](Cider::FiberHandle& fiber, void* ppTaskRef) {
+                TracyCZoneN(newZone, "fiberProc", true);
+
+                const char name[] = "fiberProc";
+                TracyCZoneName(newZone, name, strlen(name));
+
+                auto pTask = *static_cast<std::shared_ptr<TaskData> *>(ppTaskRef);
 
                 // fiber prolog
                 TaskHandle taskHandle { fiber, *pTask };
@@ -299,6 +313,8 @@ namespace Carrot {
                 fls->taskData = pTask.get();
 
                 ActiveTaskCount++;
+
+                TracyCZoneEnd(newZone);
 
                 if(pTask->dependency) {
                     taskHandle.wait(*pTask->dependency);
@@ -314,19 +330,22 @@ namespace Carrot {
 
                 ActiveTaskCount--;
             };
-            pNewTask->fiber->switchToWithOnTop(fiberProc); // execute prolog
+            {
+                ZoneScopedN("Fiber start");
+                pNewTask->fiber->switchToWithOnTop(fiberProc, &pNewTask); // execute prolog
+            }
 
             // if task is not waiting on something, start it
             if(!pNewTask->dependency) {
                 ZoneScopedN("Push task description to queue");
-                taskQueues[lane].push(std::move(pNewTask));
+                taskQueues[lane].enqueue(std::move(pNewTask));
             }
         }
     }
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule) {
         auto& taskData = getTaskData(toSchedule);
-        taskScheduler.taskQueues[taskData.wantedLane].push(taskData.shared_from_this());
+        taskScheduler.taskQueues[taskData.wantedLane].enqueue(taskData.shared_from_this());
     }
 
     void TaskScheduler::FiberScheduler::schedule(Cider::FiberHandle& toSchedule, Cider::Proc proc, void *userData) {

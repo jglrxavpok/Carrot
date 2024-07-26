@@ -101,6 +101,7 @@ function(add_core_includes Target)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/tribox3/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/cider/include/)
     target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/mimalloc/include/)
+    target_include_directories(${Target} PUBLIC ${ProjectRoot}thirdparty/concurrentqueue/)
 
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_SWIZZLE=1)
     target_compile_definitions(${Target} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE=1)

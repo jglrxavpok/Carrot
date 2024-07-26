@@ -24,9 +24,4 @@ struct ClusterBasedModelData {
 
 struct ClusterReadbackData {
     uint8_t visible;
-
-    // TODO: debug only to remove
-    uint8_t pad[3];
-
-    vec3 pad2;
 };

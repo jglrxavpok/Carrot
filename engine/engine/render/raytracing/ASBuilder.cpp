@@ -382,6 +382,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     ScopedMarker("buildBottomLevels");
     if(!enabled)
         return;
+
     auto& device = renderer.getLogicalDevice();
 
     // add a bottom level AS for each geometry entry
@@ -389,58 +390,83 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     if(blasCount == 0) {
         return;
     }
-    
-    const std::size_t maxCommandBuffers = 32;
-    const std::size_t elementsPerBuffer = (blasCount+blasCount-1) / maxCommandBuffers;
-    auto elementIndexToBuffer = [&](std::size_t elementIndex) {
-        return elementIndex / elementsPerBuffer;
+
+    constexpr std::size_t BucketCount = 32;
+    struct BLASBucket {
+        Cider::Mutex access;
+        vk::CommandBuffer cmds; // where to register build commands for this bucket
+
+        Carrot::Vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfos;
+        Carrot::Vector<const vk::AccelerationStructureBuildRangeInfoKHR*> pBuildRanges;
     };
+
+    // TODO: reuse memory
+    Carrot::Vector<BLASBucket> buckets;
+    Carrot::Vector<std::uint32_t> blas2Bucket;
+    Carrot::Vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfo;
+    Carrot::Vector<vk::DeviceSize> originalSizes;
+
+    buckets.resize(BucketCount);
+
+    blas2Bucket.resize(blasCount);
+    buildInfo.resize(blasCount);
+    originalSizes.resize(blasCount);
+
+    for(std::size_t blasIndex = 0; blasIndex < blasCount; blasIndex++) {
+        blas2Bucket[blasIndex] = (blasIndex / BucketCount) % BucketCount;
+    }
 
     auto& tracyCtxList = blasBuildTracyCtx[renderContext.swapchainIndex];
     auto& buildCommands = blasBuildCommands[renderContext.swapchainIndex];
     auto& compactCommands = compactBLASCommands[renderContext.swapchainIndex];
     vk::UniqueQueryPool& queryPool = queryPools[renderContext.swapchainIndex];
 
-    // TODO: reduce number of command buffers (batch of 32 ?)
-    // TODO: fast build
-    bool hasNewGeometry = false;
-    if(buildCommands.size() < blasCount) {
+    std::atomic_bool hasNewGeometry{ false };
+    if(buildCommands.size() < BucketCount) {
         ZoneScopedN("Reallocate command buffers");
         buildCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
                 .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
                 .level = vk::CommandBufferLevel::ePrimary,
-                .commandBufferCount = static_cast<std::uint32_t>(blasCount),
+                .commandBufferCount = static_cast<std::uint32_t>(BucketCount),
         });
 
-        tracyCtxList.resize(blasCount);
+        tracyCtxList.resize(BucketCount);
         for(std::size_t i = 0; i < tracyCtxList.size(); i++) {
             if(!tracyCtxList[i]) {
-               // tracyCtxList[i] = TracyVkContext(GetVulkanDriver().getPhysicalDevice(), GetVulkanDevice(), GetVulkanDriver().getComputeQueue().getQueueUnsafe(), *buildCommands[i]);
+                tracyCtxList[i] = TracyVkContext(GetVulkanDriver().getPhysicalDevice(), GetVulkanDevice(), GetVulkanDriver().getComputeQueue().getQueueUnsafe(), *buildCommands[i]);
                 const std::string name = Carrot::sprintf("Blas build swapchainIndex %d index %llu", renderContext.swapchainIndex, i);
-               // TracyVkContextName(tracyCtxList[i], name.c_str(), name.size());
+                TracyVkContextName(tracyCtxList[i], name.c_str(), name.size());
             }
         }
 
         compactCommands = GetVulkanDevice().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo {
                 .commandPool = renderer.getVulkanDriver().getThreadComputeCommandPool(),
                 .level = vk::CommandBufferLevel::ePrimary,
-                .commandBufferCount = static_cast<std::uint32_t>(blasCount),
+                .commandBufferCount = static_cast<std::uint32_t>(BucketCount),
         });
+    }
 
+    for (std::size_t bucketIndex = 0; bucketIndex < BucketCount; bucketIndex++) {
+        auto& bucket = buckets[bucketIndex];
+        bucket.cmds = *buildCommands[bucketIndex];
+        bucket.buildInfos.setGrowthFactor(2);
+        bucket.pBuildRanges.setGrowthFactor(2);
+    }
+/*TODO: queries
+       if(buildCommands.size() < blasCount) {
         vk::QueryPoolCreateInfo queryPoolCreateInfo{
                 .queryType = vk::QueryType::eAccelerationStructureCompactedSizeKHR,
-                .queryCount = static_cast<uint32_t>(blasCount),
+                .queryCount = static_cast<uint32_t>(BucketCount),
         };
 
         queryPool = GetVulkanDevice().createQueryPoolUnique(queryPoolCreateInfo, GetVulkanDriver().getAllocationCallbacks());
-    }
+    }*/
     verify(compactCommands.size() == buildCommands.size(), "Compact commands must have as many items as build commands!");
 
-    std::vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildInfo{blasCount};
 
-    vk::DeviceSize scratchSize = 0;
-    std::vector<vk::DeviceSize> originalSizes(blasCount);
+    std::atomic<vk::DeviceSize> scratchSize = 0;
 
+    // TODO: fast build for virtual geometry
     auto getBuildFlags = [](BLASHandle& blas) {
         return blas.dynamicGeometry ?
             (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate) :
@@ -462,11 +488,12 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         }
     }
 
-    if(allGeometries.capacity() < allGeometries.size() + newGeometriesCount) {
-        allGeometries.reserve(allGeometries.size() + newGeometriesCount);
-    }
+    // resize + threads + atomic increment => allGeometries is guaranteed to already have the necessary allocation
+    std::atomic_uint32_t geometryIndex = allGeometries.size();
+    allGeometries.resize(allGeometries.size() + newGeometriesCount);
 
-    for(size_t index = 0; index < blasCount; index++) {
+    //for(size_t index = 0; index < blasCount; index++) {
+    GetTaskScheduler().parallelFor(blasCount, [&](std::size_t index) {
         ZoneScopedN("Create BLAS");
         ZoneValue(index);
 
@@ -481,37 +508,22 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         info.pGeometries = blas.geometries.data();
 
         if (firstBuild[index]) {
-            std::size_t geometryIndexStart = allGeometries.size();
+            std::size_t geometryIndexStart = geometryIndex.fetch_add(blas.geometries.size());
             blas.firstGeometryIndex = geometryIndexStart;
             for (std::size_t j = 0; j < blas.geometries.size(); ++j) {
-                allGeometries.emplace_back(SceneDescription::Geometry {
+                allGeometries[j + geometryIndexStart] = (SceneDescription::Geometry {
                         .vertexBufferAddress = blas.geometries[j].geometry.triangles.vertexData.deviceAddress,
                         .indexBufferAddress = blas.geometries[j].geometry.triangles.indexData.deviceAddress,
                         .materialIndex = blas.materialSlots[j],
                         .geometryFormat = blas.geometryFormat,
                 });
             }
-            hasNewGeometry = true;
+            hasNewGeometry.store(true);
         }
-
 
         info.mode = firstBuild[index] ? vk::BuildAccelerationStructureModeKHR::eBuild : vk::BuildAccelerationStructureModeKHR::eUpdate;
         info.type = vk::AccelerationStructureTypeKHR::eBottomLevel;
         info.srcAccelerationStructure = firstBuild[index] ? nullptr : blas.as->getVulkanAS();
-    }
-
-    Async::SpinLock scratchSizeAccess;
-    // There is some weird GPU crashes happening when processing this loop out-of-order
-    // TODO: understand why
-    for(size_t index = 0; index < blasCount; index++) {
-    //GetTaskScheduler().parallelFor(blasCount, [&](std::size_t index) {
-
-        ZoneScopedN("Create BLAS");
-        ZoneValue(index);
-
-        // TODO: can probably be cached
-        auto& info = buildInfo[index];
-        auto& blas = *toBuild[index];
 
         std::vector<uint32_t> primitiveCounts(blas.buildRanges.size());
         // copy primitive counts to flat vector
@@ -527,20 +539,17 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
         };
 
+        // TODO: find a way to do this fast/batched
         blas.as = std::move(std::make_unique<AccelerationStructure>(renderer.getVulkanDriver(), createInfo));
         info.dstAccelerationStructure = blas.as->getVulkanAS();
 
-        {
-            Async::LockGuard scratchSizeGuard { scratchSizeAccess };
-            originalSizes[index] = sizeInfo.accelerationStructureSize;
-            scratchOffset[index] = scratchSize;
-            scratchSize += firstBuild[index] ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize;
-        }
+        originalSizes[index] = sizeInfo.accelerationStructureSize;
+        scratchOffset[index] = scratchSize.fetch_add(firstBuild[index] ? sizeInfo.buildScratchSize : sizeInfo.updateScratchSize);
 
-        }
-    //}, 32);
+        //}
+    }, static_cast<std::size_t>(ceil(static_cast<double>(blasCount) / BucketCount)));
 
-    if(hasNewGeometry) {
+    if(hasNewGeometry.load()) {
         geometriesBuffer = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(SceneDescription::Geometry) * allGeometries.size(),
                                                                           vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
         geometriesBuffer->name("RT Geometries");
@@ -556,52 +565,63 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     bool hasASToCompact = false;
     auto scratchAddress = device.getBufferAddress({.buffer = blasBuildScratchBuffer.getVulkanBuffer() });
-    //GetTaskScheduler().parallelFor(blasCount, [&](std::size_t index) {
-    for(std::size_t index = 0; index < blasCount; index++) {
-        ZoneScopedN("Record BLAS build command buffer");
-        ZoneValue(index);
+    GetTaskScheduler().parallelFor(BucketCount, [&](std::size_t bucketIndex) {
+    //for(std::size_t index = 0; index < blasCount; index++) {
+        ZoneScopedN("Put BLASes in bucket");
+        ZoneValue(bucketIndex);
 
-        bool compactAS = (getBuildFlags(*toBuild[index]) & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
+        BLASBucket& bucket = buckets[bucketIndex];
+        // TODO: non blocking, use fibers
+        Cider::BlockingMutexGuard g { bucket.access };
+
+        for(std::size_t blasStartIndex = bucketIndex * BucketCount; blasStartIndex < blasCount; blasStartIndex += BucketCount*BucketCount) {
+            for(std::size_t blasIndex = blasStartIndex; blasIndex < blasStartIndex + BucketCount && blasIndex < blasCount; blasIndex++) {
+                buildInfo[blasIndex].scratchData.deviceAddress = scratchAddress + scratchOffset[blasIndex];
+
+                bucket.buildInfos.emplaceBack(buildInfo[blasIndex]);
+                bucket.pBuildRanges.emplaceBack(toBuild[blasIndex]->buildRanges.data());
+            }
+        }
+
+        bool compactAS = false; // TODO: compaction (getBuildFlags(*toBuild[index]) & vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction) == vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction;
         compactAS = false;
         hasASToCompact |= compactAS;
 
-        // TODO: needs to be in different command pools
-        auto& cmds = buildCommands[index];
-        cmds->begin(vk::CommandBufferBeginInfo {
-                .pInheritanceInfo = nullptr,
-        });
-        GetVulkanDriver().setMarker(*cmds, "Begin AS build");
-
-        //TracyVkZone(tracyCtxList[index], *cmds, "Build BLAS");
-
-        cmds->resetQueryPool(*queryPool, index, 1);
-
-        buildInfo[index].scratchData.deviceAddress = scratchAddress + scratchOffset[index];
-
-        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> pBuildRanges{toBuild[index]->buildRanges.size()};
-        for(size_t i = 0; i < toBuild[index]->buildRanges.size(); i++) {
-            pBuildRanges[i] = toBuild[index]->buildRanges[i];
-        }
-
-        GetVulkanDriver().setMarker(*cmds, "Before AS build");
-        // build AS
-        cmds->buildAccelerationStructuresKHR(buildInfo[index], pBuildRanges.data());
-        GetVulkanDriver().setMarker(*cmds, "After AS build");
-        vk::MemoryBarrier barrier {
-            .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
-            .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
-        };
-        cmds->pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, static_cast<vk::DependencyFlags>(0), barrier, {}, {});
+        // TODO: compaction cmds->resetQueryPool(*queryPool, index, 1);
 
         // write compacted size
         if(compactAS) {
-            cmds->writeAccelerationStructuresPropertiesKHR(toBuild[index]->as->getVulkanAS(), vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, index);
+            // TODO: compaction cmds->writeAccelerationStructuresPropertiesKHR(toBuild[index]->as->getVulkanAS(), vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, index);
         }
 
-//TracyVkCollect(tracyCtxList[index], *cmds);
-        cmds->end();
-    //}, 32);
+    }, 1);
+    //}
+
+    for (std::size_t bucketIndex = 0; bucketIndex < BucketCount; bucketIndex++) {
+        ZoneScopedN("Record bucket");
+        BLASBucket& bucket = buckets[bucketIndex];
+        if(!bucket.buildInfos.empty()) {
+            auto& cmds = bucket.cmds;
+            cmds.begin(vk::CommandBufferBeginInfo {
+                    .pInheritanceInfo = nullptr,
+            });
+            //TracyVkZone(tracyCtxList[index], *cmds, "Build BLAS");
+
+            GetVulkanDriver().setMarker(cmds, "Begin AS build");
+
+            cmds.buildAccelerationStructuresKHR(bucket.buildInfos, bucket.pBuildRanges);
+
+            GetVulkanDriver().setMarker(cmds, "After AS build");
+            vk::MemoryBarrier barrier {
+                .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
+                .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
+            };
+            cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR, static_cast<vk::DependencyFlags>(0), barrier, {}, {});
+            cmds.end();
+            //TracyVkCollect(tracyCtxList[index], *cmds);
+        }
     }
+
 
     {
         ZoneScopedN("Submit BLAS build commands");
@@ -632,7 +652,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             .waitSemaphoreInfoCount = static_cast<std::uint32_t>(waitSemaphoreList.size()),
             .pWaitSemaphoreInfos = waitSemaphoreList.data(),
 
-            .commandBufferInfoCount = static_cast<uint32_t>(toBuild.size()),
+            .commandBufferInfoCount = static_cast<uint32_t>(commandBufferInfos.size()),
             .pCommandBufferInfos = commandBufferInfos.data(),
 
             .signalSemaphoreInfoCount = 1,

@@ -82,3 +82,6 @@
 [submodule "thirdparty/bc7enc_rdo"]
 	path = thirdparty/bc7enc_rdo
 	url = https://github.com/richgel999/bc7enc_rdo
+[submodule "thirdparty/concurrentqueue"]
+	path = thirdparty/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue

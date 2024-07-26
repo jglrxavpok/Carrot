@@ -63,6 +63,7 @@ namespace Carrot {
     }
 
     BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size, vk::DeviceSize alignment) {
+        ZoneScoped;
         auto makeDedicated = [&]() {
             BufferAllocation result { this };
             dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
@@ -85,6 +86,7 @@ namespace Carrot {
     }
 
     BufferAllocation ResourceAllocator::allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags) {
+        ZoneScoped;
         auto makeDedicated = [&]() {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
@@ -208,7 +210,7 @@ namespace Carrot {
             resultBuffer.allocation = alloc;
             resultBuffer.dedicated = false;
             resultBuffer.view = heapStorage.getWholeView().subView(offset, allocInfo.size);
-            resultBuffer.name("Unnamed suballoc");
+           // resultBuffer.name("Unnamed suballoc");
             return resultBuffer;
         } else {
             // if we reach here, no block has space available, create a dedicated buffer

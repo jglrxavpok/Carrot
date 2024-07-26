@@ -54,13 +54,10 @@ namespace Carrot {
             return; // was moved
         }
         vk::DeviceAddress addr = view.getDeviceAddress();
-        AllocationsByStartAddress.remove(addr);
-        AllocationsByStartAddress.getOrCompute(addr, [&]() {
-            return DebugData {
+        AllocationsByStartAddress.replace(addr, DebugData {
                 .name = name,
                 .size = view.getSize(),
                 .isDedicated = dedicated,
-            };
         });
     }
 

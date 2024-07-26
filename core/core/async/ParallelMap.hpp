@@ -108,6 +108,41 @@ namespace Carrot::Async {
             }
         }
 
+        /// Sets the value corresponding to the given key. If no such value exists, the node is created.
+        void replace(const KeyType& key, ValueType&& newValue) {
+            {
+                Async::LockGuard l { storageAccess.read() };
+                auto iter = storage.find(key);
+                if(iter != storage.end()) {
+                    auto& node = iter->second;
+                    Cider::BlockingMutexGuard l2 { node.nodeAccess };
+                    node.value = std::move(newValue);
+                    return;
+                }
+            }
+
+            Node* existingNode = nullptr;
+            auto& writeLock = storageAccess.write();
+            writeLock.lock();
+
+            // node might have been created by another thread
+            auto iter = storage.find(key);
+            if(iter != storage.end()) {
+                existingNode = &iter->second;
+            }
+
+            // insert empty node
+            if(!existingNode) {
+                existingNode = &storage[key];
+                existingNode->value = {};
+            }
+
+            writeLock.unlock();
+            Cider::BlockingMutexGuard l { existingNode->nodeAccess };
+
+            existingNode->value = std::move(newValue);
+        }
+
         /// Gets the value corresponding to the given key. If no such value exists, the value is created via generator.
         ValueType& getOrCompute(Cider::FiberHandle& fiberHandle, const KeyType& key, std::function<ValueType()> generator) {
             Node* existingNode = nullptr;

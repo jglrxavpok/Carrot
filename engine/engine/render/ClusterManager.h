@@ -64,9 +64,6 @@ namespace Carrot::Render {
 
     struct ClusterReadbackData {
         std::uint8_t visible;
-        std::uint8_t pad[3];
-
-        glm::vec3 pad2;
     };
 
     /**

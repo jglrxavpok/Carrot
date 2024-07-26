@@ -5,6 +5,7 @@
 #pragma once
 
 #include <atomic>
+#include <shared_mutex>
 #include <thread>
 
 /// Implementations based on Game Engine Architecture 3rd Edition.
@@ -165,6 +166,8 @@ namespace Carrot::Async {
         static constexpr std::uint32_t WriterPresentValue = 0xFFFFFF42;
         ReadLock readLock;
         WriteLock writeLock;
+
+        std::shared_mutex shared;
 
         friend class ReadLock;
         friend class WriteLock;

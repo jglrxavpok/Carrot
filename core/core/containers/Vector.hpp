@@ -360,6 +360,11 @@ namespace Carrot {
         /**
          * Pointer to first element (const version)
          */
+        TElement const* data() const;
+
+        /**
+         * Pointer to first element (const version)
+         */
         TElement const* cdata() const;
 
         operator std::span<TElement>() {

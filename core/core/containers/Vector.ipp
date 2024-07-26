@@ -355,6 +355,11 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    TElement const* Vector<TElement>::data() const {
+        return this->cdata();
+    }
+
+    VECTOR_TEMPLATE
     TElement const* Vector<TElement>::cdata() const {
         return (TElement const*)this->allocation.ptr;
     }

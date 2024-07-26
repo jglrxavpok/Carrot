@@ -649,6 +649,7 @@ namespace Carrot::Render {
             }
 
             Carrot::Buffer& readbackBuffer = ref;
+            // TODO: atomic increments in shader + header to readback data
             const ClusterReadbackData* pData = readbackBuffer.map<const ClusterReadbackData>();
             readbackBuffer.invalidateMappedRange(0, VK_WHOLE_SIZE);
 
