@@ -2,16 +2,23 @@
 // Created by jglrxavpok on 09/06/2024.
 //
 
-//#include <cstdint>
-//#include <core/utils/Profiling.h>
-//#include <mimalloc.h>
+#include <cstdint>
+#include <core/utils/Profiling.h>
+#include <mimalloc.h>
 //#include <mimalloc-new-delete.h>
-/*
-#ifdef TRACY_ENABLE
-#define OnNew(ptr, count) TracyAllocS(ptr, count, 20)
-#define OnDelete(ptr) TracyFreeS(ptr, 20)
+
+#define USE_DEFAULT_ALLOCATOR 0
+#define MEM_TRACKING 0
+
+#if MEM_TRACKING == 1 and defined(TRACY_ENABLE)
+    #define OnNew(ptr, count) TracyAllocS(ptr, count, 20)
+    #define OnDelete(ptr) TracyFreeS(ptr, 20)
+#else
+    #define OnNew(ptr, count)
+    #define OnDelete(ptr)
 #endif
 
+#if USE_DEFAULT_ALLOCATOR != 1
 void   operator delete(void* p) {
     OnDelete(p);
     mi_free(p);
@@ -88,4 +95,5 @@ void*  operator new[]( std::size_t count, std::align_val_t al, const std::nothro
     auto ptr = mi_new_aligned_nothrow(count, static_cast<std::size_t>(al));
     OnNew(ptr, count);
     return ptr;
-}*/
+}
+#endif
