@@ -1,0 +1,4 @@
+{
+  "type": "compute",
+  "computeShader": "resources/shaders/compute/clear-singleint.compute.glsl.spv"
+}

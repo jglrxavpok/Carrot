@@ -224,6 +224,15 @@ namespace Carrot {
     public:
         void deferCommandBufferDestruction(vk::CommandPool commandPool, vk::CommandBuffer commandBuffer);
 
+        /// Create a command pool for transfer operations
+        vk::UniqueCommandPool createTransferCommandPool();
+
+        /// Create a command pool for graphic operations
+        vk::UniqueCommandPool createGraphicsCommandPool();
+
+        /// Create a command pool for compute operations
+        vk::UniqueCommandPool createComputeCommandPool();
+
     public:
         static void registerUsertype(sol::state& destination);
 
@@ -312,15 +321,6 @@ namespace Carrot {
 
         /// Check the given device supports the extensions inside VULKAN_DEVICE_EXTENSIONS (constants.h)
         bool checkDeviceExtensionSupport(const vk::PhysicalDevice& logicalDevice);
-
-        /// Create the command pool for transfer operations
-        vk::UniqueCommandPool createTransferCommandPool();
-
-        /// Create the command pool for graphic operations
-        vk::UniqueCommandPool createGraphicsCommandPool();
-
-        /// Create the command pool for compute operations
-        vk::UniqueCommandPool createComputeCommandPool();
 
         void createDefaultTexture();
 

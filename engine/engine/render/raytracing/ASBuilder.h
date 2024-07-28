@@ -180,6 +180,8 @@ namespace Carrot {
         void createDescriptors();
 
     private:
+        void resetBlasBuildCommands(const Carrot::Render::Context& renderContext);
+        vk::CommandBuffer getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext);
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
         void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild);
 
@@ -196,8 +198,6 @@ namespace Carrot {
         std::vector<vk::UniqueQueryPool> queryPools{};
         std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
         std::vector<std::vector<TracyVkCtx>> blasBuildTracyCtx; // [swapchainIndex][blasIndex]
-        std::vector<std::vector<vk::UniqueCommandBuffer>> blasBuildCommands{}; // [swapchainIndex][blasIndex]
-        std::vector<std::vector<vk::UniqueCommandBuffer>> compactBLASCommands{}; // [swapchainIndex][blasIndex]
 
         std::shared_ptr<Carrot::BufferAllocation> geometriesBuffer;
         std::shared_ptr<Carrot::BufferAllocation> instancesBuffer;
@@ -207,6 +207,7 @@ namespace Carrot {
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesBufferPerFrame;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesBufferPerFrame;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesScratchBufferPerFrame;
+        Carrot::Render::PerFrame<std::unique_ptr<Carrot::Async::ParallelMap<std::thread::id, vk::UniqueCommandPool>>> blasBuildCommandPool;
 
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;

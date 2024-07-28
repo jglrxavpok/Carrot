@@ -21,7 +21,3 @@ struct ClusterBasedModelData {
     InstanceData instanceData;
     uint8_t visible;
 };
-
-struct ClusterReadbackData {
-    uint8_t visible;
-};

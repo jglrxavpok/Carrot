@@ -1677,16 +1677,3 @@ Carrot::Scripting::ScriptingEngine& Carrot::Engine::getCSScriptEngine() {
 Carrot::Scripting::CSharpBindings& Carrot::Engine::getCSBindings() {
     return *csBindings;
 }
-
-#ifdef TRACY_ENABLE
-void* operator new(std::size_t count) {
-    auto ptr = malloc(count);
-    TracyAllocS(ptr, count, 20);
-    return ptr;
-}
-
-void operator delete(void* ptr) noexcept{
-    TracyFreeS(ptr, 20);
-    free(ptr);
-}
-#endif

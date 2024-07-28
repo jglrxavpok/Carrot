@@ -33,16 +33,28 @@ namespace Carrot::Render {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
                 auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
 
-                auto clearPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
-                renderer.bindStorageImage(*clearPipeline, frame, texture, 0, 0,
+                // clear visibility buffer to reset depth
+                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
+                renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 const auto& extent = texture.getSize();
                 const std::uint8_t localSize = 32;
                 std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
                 std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
 
-                clearPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                 cmds.dispatch(dispatchX, dispatchY, 1);
+
+                // clear readback buffer to ensure visible count starts at 0 for the new frame
+                auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.json", (std::uint64_t)&pass);
+                auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.swapchainIndex);
+                if(readbackBufferOpt.hasValue()) {
+                    vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
+                    renderer.pushConstantBlock("address", *clearReadbackPipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, addr);
+
+                    clearReadbackPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    cmds.dispatch(1, 1, 1);
+                }
 
                 vk::MemoryBarrier2KHR memoryBarrier {
                         .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,

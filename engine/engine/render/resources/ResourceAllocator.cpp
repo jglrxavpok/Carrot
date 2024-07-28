@@ -64,9 +64,9 @@ namespace Carrot {
 
     BufferAllocation ResourceAllocator::allocateStagingBuffer(vk::DeviceSize size, vk::DeviceSize alignment) {
         ZoneScoped;
-        auto makeDedicated = [&]() {
+        auto makeDedicated = [&](vk::DeviceSize dedicatedSize) {
             BufferAllocation result { this };
-            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
+            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(dedicatedSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
             pBuffer->name("ResourceAllocator::allocateStagingBuffer");
             result.allocation = pBuffer.get();
@@ -87,7 +87,15 @@ namespace Carrot {
 
     BufferAllocation ResourceAllocator::allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags) {
         ZoneScoped;
-        auto makeDedicated = [&]() {
+        BufferAllocation result;
+        multiAllocateDeviceBuffer({&result, 1}, { &size, 1 }, usageFlags);
+        return result;
+    }
+
+    void ResourceAllocator::multiAllocateDeviceBuffer(std::span<BufferAllocation> output, std::span<const vk::DeviceSize> sizes, vk::BufferUsageFlags usageFlags) {
+        ZoneScoped;
+        verify(output.size() == sizes.size(), "Must be as many outputs as there are sizes");
+        auto makeDedicated = [&](vk::DeviceSize size) {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
             dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
@@ -99,7 +107,6 @@ namespace Carrot {
             return result;
         };
         VmaVirtualAllocationCreateInfo allocInfo = {0};
-        allocInfo.size = size;
 
         if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
             allocInfo.alignment = 256;
@@ -114,7 +121,10 @@ namespace Carrot {
 
         {
             Carrot::Async::LockGuard g{deviceAccess};
-            return allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
+            for(std::size_t i = 0; i < output.size(); i++) {
+                allocInfo.size = sizes[i];
+                output[i] = allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
+            }
         }
     }
 
@@ -196,9 +206,10 @@ namespace Carrot {
     BufferAllocation ResourceAllocator::allocateInHeap(const VmaVirtualAllocationCreateInfo& allocInfo,
                                                        void* virtualBlock,
                                                        Carrot::Buffer& heapStorage,
-                                                       std::function<BufferAllocation()> makeDedicated) {
+                                                       std::function<BufferAllocation(vk::DeviceSize)> makeDedicated) {
         if(allocInfo.size > HeapSize) {
-            return makeDedicated();
+            // TODO: support for multiple heaps?
+            return makeDedicated(allocInfo.size);
         }
 
         VmaVirtualBlock block = reinterpret_cast<VmaVirtualBlock>(virtualBlock);
@@ -214,7 +225,7 @@ namespace Carrot {
             return resultBuffer;
         } else {
             // if we reach here, no block has space available, create a dedicated buffer
-            return makeDedicated();
+            return makeDedicated(allocInfo.size);
         }
     }
 }

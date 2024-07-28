@@ -271,6 +271,9 @@ namespace Carrot::Render {
         if(iter == perViewport.end()) {
             return Carrot::BufferView{};
         }
+        if(iter->second.instancesPerFrame.empty()) {
+            return Carrot::BufferView{};
+        }
         auto& pAlloc = iter->second.instancesPerFrame[renderContext.swapchainIndex];
         return pAlloc ? pAlloc->view : Carrot::BufferView{};
     }
@@ -480,6 +483,10 @@ namespace Carrot::Render {
         return pPipeline;
     }
 
+    static std::size_t computeSizeOfReadbackBuffer(std::size_t clusterCount) {
+        return sizeof(ClusterReadbackData::visibleCount) + sizeof(ClusterReadbackData::visibleClusterIndices[0]) * clusterCount;
+    }
+
     Memory::OptionalRef<Carrot::Buffer> ClusterManager::getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex) {
         auto& readbackBuffersPerFrame = perViewport[pViewport].readbackBuffersPerFrame;
         if(readbackBuffersPerFrame.empty()) {
@@ -489,11 +496,13 @@ namespace Carrot::Render {
         std::unique_ptr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];
         Async::Counter& syncCounter = readbackJobsSync[frameIndex];
         syncCounter.sleepWait();
-        if(!pReadbackBuffer || pReadbackBuffer->getSize() < gpuInstances.size() * sizeof(ClusterReadbackData)) {
+
+        std::size_t requiredSize = computeSizeOfReadbackBuffer(gpuInstances.size());
+        if(!pReadbackBuffer || pReadbackBuffer->getSize() < requiredSize) {
             if(gpuInstances.empty()) {
                 return Memory::OptionalRef<Carrot::Buffer>{};
             }
-            pReadbackBuffer = GetResourceAllocator().allocateDedicatedBuffer(gpuInstances.size() * sizeof(ClusterReadbackData),
+            pReadbackBuffer = GetResourceAllocator().allocateDedicatedBuffer(requiredSize,
                 vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached);
             pReadbackBuffer->name("ClusterManager Readback");
@@ -565,48 +574,43 @@ namespace Carrot::Render {
         std::uint32_t clusterIndex,
         double currentTime,
         GroupInstances& groupInstances,
-        std::span<const ClusterInstance> clusterInstances,
-        const ClusterReadbackData* pData)
+        std::span<const ClusterInstance> clusterInstances)
     {
        // ZoneScoped;
-
-        const ClusterReadbackData& readbackData = pData[clusterIndex];
         const ClusterInstance& clusterInstance = clusterInstances[clusterIndex];
         const std::uint32_t groupInstanceID = groupInstances.perCluster[clusterIndex];
 
         if(auto pModel = models.find(clusterInstance.instanceDataIndex).lock()) {
             GroupRTData& groupRTData = groupRTDataPerModel[pModel->getSlot()];
             RTData& rtData = groupRTData.data[groupInstanceID - groupRTData.firstGroupInstanceIndex];
-            if(readbackData.visible) {
-                Cider::LockGuard g { task, rtData.mutex };
-                //Async::LockGuard g { rtData.mutex };
-                rtData.lastUpdateTime = currentTime;
+            Cider::LockGuard g { task, rtData.mutex };
+            //Async::LockGuard g { rtData.mutex };
+            rtData.lastUpdateTime = currentTime;
 
-                if(!rtData.as) {
-                    rtData.as = createGroupInstanceAS(task ,clusterInstances, groupInstances, *pModel, groupInstanceID);
-                }
-                // update instance AS transform
-                rtData.as->enabled = true;
-                rtData.as->transform = pModel->instanceData.transform;
+            if(!rtData.as) {
+                rtData.as = createGroupInstanceAS(task ,clusterInstances, groupInstances, *pModel, groupInstanceID);
             }
+            // update instance AS transform
+            rtData.as->enabled = true;
+            rtData.as->transform = pModel->instanceData.transform;
         }
     }
 
-    void ClusterManager::processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count) {
+    void ClusterManager::processReadbackData(Carrot::Render::Viewport* pViewport, const std::uint32_t* pVisibleInstances, std::size_t count) {
         Async::LockGuard l { accessLock };
         auto& clusterInstances = perViewport[pViewport].gpuClusterInstances;
         auto& groupInstances = perViewport[pViewport].groupInstances;
         double currentTime = Time::getCurrentTime();
 
         Async::Counter sync;
-        std::size_t parallelJobs = 256;
+        std::size_t parallelJobs = 32;
         std::size_t granularity = count / parallelJobs;
         auto processRange = [&](std::size_t jobIndex) {
             GetTaskScheduler().schedule(TaskDescription {
                 .name = "processSingleClusterReadbackData",
                 .task = [&, start = jobIndex * granularity](Carrot::TaskHandle& task) {
                     for(std::size_t i = start; i < start + granularity && i < count; i++) {
-                        processSingleClusterReadbackData(task, i, currentTime, groupInstances, clusterInstances, pData);
+                        processSingleClusterReadbackData(task, pVisibleInstances[i], currentTime, groupInstances, clusterInstances);
                     }
                 },
                 .joiner = &sync,
@@ -649,12 +653,11 @@ namespace Carrot::Render {
             }
 
             Carrot::Buffer& readbackBuffer = ref;
-            // TODO: atomic increments in shader + header to readback data
             const ClusterReadbackData* pData = readbackBuffer.map<const ClusterReadbackData>();
             readbackBuffer.invalidateMappedRange(0, VK_WHOLE_SIZE);
 
-            std::size_t count = static_cast<std::size_t>(perViewport[pViewport].gpuClusterInstances.size());
-            processReadbackData(pViewport, pData, count);
+            std::size_t count = pData->visibleCount;
+            processReadbackData(pViewport, pData->visibleClusterIndices, count);
         }
     }
 

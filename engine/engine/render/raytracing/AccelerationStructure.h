@@ -11,6 +11,7 @@ namespace Carrot {
         static Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> ASByStartAddress;
 
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
+        explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo, Carrot::BufferAllocation&& preAllocatedMemory);
 
         AccelerationStructure(AccelerationStructure&&) = default;
         AccelerationStructure(const AccelerationStructure&) = delete;

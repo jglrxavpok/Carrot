@@ -28,6 +28,15 @@ namespace Carrot {
          */
         BufferAllocation allocateDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags);
 
+        /**
+         * Allocates multi device buffer used for device-local storage
+         * This function locks the allocator only once, so this is faster than multiple single allocations
+         * @param output where to store the allocation results
+         * @param sizes sizes of the buffers to allocate
+         * @param usageFlags usage flag for all buffers allocated
+         */
+        void multiAllocateDeviceBuffer(std::span<BufferAllocation> output, std::span<const vk::DeviceSize> sizes, vk::BufferUsageFlags usageFlags);
+
 
         BufferView allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
         std::unique_ptr<Buffer> allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
@@ -44,7 +53,7 @@ namespace Carrot {
         BufferAllocation allocateInHeap(const VmaVirtualAllocationCreateInfo& allocInfo,
                                         void* virtualBlock,
                                         Carrot::Buffer& heapStorage,
-                                        std::function<BufferAllocation()> makeDedicated);
+                                        std::function<BufferAllocation(vk::DeviceSize)> makeDedicated);
 
         VulkanDriver& device;
 

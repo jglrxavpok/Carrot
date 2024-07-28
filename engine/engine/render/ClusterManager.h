@@ -63,7 +63,8 @@ namespace Carrot::Render {
     };
 
     struct ClusterReadbackData {
-        std::uint8_t visible;
+        std::uint32_t visibleCount;
+        std::uint32_t visibleClusterIndices[];
     };
 
     /**
@@ -164,6 +165,8 @@ namespace Carrot::Render {
          */
         Carrot::BufferView getClusterInstanceData(const Carrot::Render::Context& renderContext);
 
+        Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
+
     public:
         void beginFrame(const Carrot::Render::Context& mainRenderContext);
         void render(const Carrot::Render::Context& renderContext);
@@ -219,7 +222,6 @@ namespace Carrot::Render {
             vk::DeviceAddress address; // address to a vk::TransformMatrixKHR
         };
 
-        Memory::OptionalRef<Carrot::Buffer> getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex);
         void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
         std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(
             Carrot::TaskHandle& task,
@@ -227,14 +229,13 @@ namespace Carrot::Render {
             GroupInstances& groupInstances,
             const ClusterModel& instance,
             std::uint32_t groupID);
-        void processReadbackData(Carrot::Render::Viewport* pViewport, const ClusterReadbackData* pData, std::size_t count);
+        void processReadbackData(Carrot::Render::Viewport* pViewport, const std::uint32_t* pVisibleInstances, std::size_t count);
         void processSingleClusterReadbackData(
             Carrot::TaskHandle& task,
             std::uint32_t clusterIndex,
             double currentTime,
             GroupInstances& groupInstances,
-            std::span<const ClusterInstance> clusterInstances,
-            const ClusterReadbackData* pData);
+            std::span<const ClusterInstance> clusterInstances);
 
         std::shared_ptr<Carrot::Pipeline> getPipeline(const Carrot::Render::Context& renderContext);
 

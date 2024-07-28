@@ -9,11 +9,15 @@
 Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> Carrot::AccelerationStructure::ASByStartAddress;
 
 Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
-                                                     vk::AccelerationStructureCreateInfoKHR& createInfo) {
+                                                     vk::AccelerationStructureCreateInfoKHR& createInfo)
+: AccelerationStructure(driver, createInfo, GetResourceAllocator().allocateDeviceBuffer(createInfo.size,
+                                                         vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress)) {}
+Carrot::AccelerationStructure::AccelerationStructure(Carrot::VulkanDriver& driver,
+                                                     vk::AccelerationStructureCreateInfoKHR& createInfo,
+                                                     Carrot::BufferAllocation&& preAllocatedMemory) {
     ZoneScoped;
     // allocate buffer to store AS
-    buffer = GetResourceAllocator().allocateDeviceBuffer(createInfo.size,
-                                                         vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress);
+    buffer = std::move(preAllocatedMemory);
 
     createInfo.buffer = buffer.view.getVulkanBuffer();
     createInfo.offset = buffer.view.getStart();
