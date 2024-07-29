@@ -183,10 +183,7 @@ namespace Carrot {
         auto& taskQueue = taskQueues[localLane];
         bool foundSomethingToExecute = false;
         if(allowBlocking) {
-            while(!taskQueue.try_dequeue(toRun)) {
-                std::this_thread::yield(); // TODO condition variable?
-            }
-            foundSomethingToExecute = true;
+            foundSomethingToExecute = taskQueue.wait_dequeue_timed(toRun, 1'000'000); // with timeout to handle shutdown of game
         } else {
             foundSomethingToExecute = taskQueue.try_dequeue(toRun);
         }

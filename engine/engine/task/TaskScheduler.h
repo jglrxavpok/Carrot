@@ -15,6 +15,7 @@
 #include <cider/GrowingStack.h>
 #include <cider/scheduling/Scheduler.h>
 #include <concurrentqueue.h>
+#include <blockingconcurrentqueue.h>
 
 namespace Carrot {
     class Engine;
@@ -168,7 +169,7 @@ namespace Carrot {
         };
         FiberScheduler fiberScheduler { *this };
 
-        using TaskQueue = moodycamel::ConcurrentQueue<std::shared_ptr<TaskData>>;
+        using TaskQueue = moodycamel::BlockingConcurrentQueue<std::shared_ptr<TaskData>>;
         std::unordered_map<Async::TaskLane, TaskQueue> taskQueues;
 
         TaskQueue reusableTaskData;

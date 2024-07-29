@@ -135,11 +135,11 @@ namespace Carrot {
             });
         }
 
-        builder->dirtyBlases = true;
+        //builder->dirtyBlases = true;
     }
 
     BLASHandle::~BLASHandle() noexcept {
-        builder->dirtyBlases = true;
+        //builder->dirtyBlases = true;
     }
 
     void BLASHandle::update() {
@@ -305,7 +305,7 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
     ScopedMarker("ASBuilder::onFrame");
     Async::LockGuard l { access };
     auto purge = [](auto& pool) {
-        pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto a) { return a.second.expired(); }), pool.end());
+        pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto& a) { return a.second.expired(); }), pool.end());
     };
     purge(instances);
     purge(staticGeometries);
@@ -475,7 +475,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     auto getBuildFlags = [](BLASHandle& blas) {
         return blas.dynamicGeometry ?
             (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate) :
-            (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
+            (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
     };
 
     // allocate memory for each entry
@@ -499,8 +499,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
     //for(size_t index = 0; index < blasCount; index++) {
     GetTaskScheduler().parallelFor(blasCount, [&](std::size_t index) {
-        ZoneScopedN("Prepare BLASes");
-        ZoneValue(index);
+        ScopedMarker("Prepare BLASes");
+        //ZoneValue(index);
 
         // TODO: can probably be cached
         auto& info = buildInfo[index];
@@ -634,7 +634,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                 auto& cmds = bucket.cmds;
                 cmds = getBlasBuildCommandBuffer(renderContext);
                 cmds.begin(vk::CommandBufferBeginInfo {
-                        .pInheritanceInfo = nullptr,
+                    .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                    .pInheritanceInfo = nullptr,
                 });
                 //TracyVkZone(tracyCtxList[index], *cmds, "Build BLAS");
 
@@ -663,9 +664,11 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         std::vector<vk::CommandBufferSubmitInfo> commandBufferInfos{};
         commandBufferInfos.reserve(buckets.size());
         for(auto& bucket : buckets) {
-            commandBufferInfos.emplace_back(vk::CommandBufferSubmitInfo {
-                .commandBuffer = bucket.cmds,
-            });
+            if(!bucket.buildInfos.empty()) {
+                commandBufferInfos.emplace_back(vk::CommandBufferSubmitInfo {
+                    .commandBuffer = bucket.cmds,
+                });
+            }
         }
         Carrot::Vector<vk::SemaphoreSubmitInfo> waitSemaphoreList;
         waitSemaphoreList.setGrowthFactor(2);
