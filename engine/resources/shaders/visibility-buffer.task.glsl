@@ -48,11 +48,6 @@ layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
     uint activeClusters[];
 };
 
-layout(set = 0, binding = 6, scalar) writeonly buffer ReadbackRef {
-    uint32_t visibleCount;
-    uint32_t visibleClusterIndices[];
-} readback;
-
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
 const float cotHalfFov = 1.0f / tan(testFOV / 2.0f);
@@ -123,9 +118,6 @@ void main() {
     bool culled = cull(clusterID);
 
     if(!culled) {
-        /*uint readbackIndex = atomicAdd(readback.visibleCount, 1);
-        readback.visibleClusterIndices[nonuniformEXT(readbackIndex)] = nonuniformEXT(clusterID);*/
-
         uint index = atomicAdd(meshletCount, 1);
         OUT.clusterInstanceIDs[index] = clusterID;
     }

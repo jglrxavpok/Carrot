@@ -423,21 +423,18 @@ namespace Carrot::Render {
         const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.swapchainIndex)->getWholeView();
         if(clusterRefs) {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, clusterRefs, 0, 0);
 
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceRefs, 0, 1);
-
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceDataRefs, 0, 2);
-
+            // output image
             renderer.bindBuffer(*packet.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
-            //renderer.bindBuffer(*prePassPacket.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
-
             renderer.bindBuffer(*packet.pipeline, renderContext, activeModelsBufferView, 0, 5);
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeModelsBufferView, 0, 5);
 
-            renderer.bindBuffer(*packet.pipeline, renderContext, readbackBufferView, 0, 6);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, clusterRefs, 0, 0);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceRefs, 0, 1);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceDataRefs, 0, 2);
+            // output image
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeModelsBufferView, 0, 5);
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, readbackBufferView, 0, 6);
         }
 
