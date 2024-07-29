@@ -238,6 +238,7 @@ namespace Carrot::Render {
             std::span<const ClusterInstance> clusterInstances);
 
         std::shared_ptr<Carrot::Pipeline> getPipeline(const Carrot::Render::Context& renderContext);
+        std::shared_ptr<Carrot::Pipeline> getPrePassPipeline(const Carrot::Render::Context& renderContext);
 
         VulkanRenderer& renderer;
         Async::SpinLock accessLock;
@@ -259,6 +260,7 @@ namespace Carrot::Render {
 
             bool requireInstanceUpdate = false;
             std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;
+            std::shared_ptr<Carrot::Pipeline> prePassPipeline;
             std::shared_ptr<Carrot::Pipeline> pipeline;
             Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesPerFrame;
             Render::PerFrame<BufferAllocation> statsCPUBuffersPerFrame;

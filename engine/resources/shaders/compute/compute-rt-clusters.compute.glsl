@@ -5,21 +5,17 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_mesh_shader : require
 
 #include <includes/camera.glsl>
 #include <includes/buffers.glsl>
 #include <includes/clusters.glsl>
 #include <includes/math.glsl>
-#include <draw_data.glsl>
 #include <includes/visibility-buffer-common.glsl>
 DEFINE_CAMERA_SET(1)
 
 #include <includes/frustum.glsl>
 
 layout(local_size_x = TASK_WORKGROUP_SIZE) in;
-
-taskPayloadSharedEXT VisibilityPayload OUT;
 
 layout(push_constant) uniform PushConstant {
     uint maxCluster;
@@ -107,14 +103,7 @@ bool cull(uint clusterInstanceID) {
     }
 }
 
-shared uint meshletCount;
-
 void main() {
-    if(gl_LocalInvocationIndex == 0) {
-        meshletCount = 0;
-    }
-    barrier();
-
     uint clusterID = activeClusters[gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE];
 
     if(clusterID >= push.maxCluster) {
@@ -123,16 +112,8 @@ void main() {
     bool culled = cull(clusterID);
 
     if(!culled) {
-        /*uint readbackIndex = atomicAdd(readback.visibleCount, 1);
-        readback.visibleClusterIndices[nonuniformEXT(readbackIndex)] = nonuniformEXT(clusterID);*/
-
-        uint index = atomicAdd(meshletCount, 1);
-        OUT.clusterInstanceIDs[index] = clusterID;
-    }
-
-    barrier();
-
-    if(gl_LocalInvocationIndex == 0) {
-        EmitMeshTasksEXT(meshletCount, 1, 1);
+        uint readbackIndex = atomicAdd(readback.visibleCount, 1);
+        readback.visibleClusterIndices[nonuniformEXT(readbackIndex)] = nonuniformEXT(clusterID);
+        // TODO
     }
 }

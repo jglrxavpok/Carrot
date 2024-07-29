@@ -146,6 +146,9 @@ namespace Carrot::Render {
 
         auto& renderer = renderContext.renderer;
 
+        const bool isCompute = packetType == PacketType::Compute;
+        const vk::PipelineBindPoint bindPoint = isCompute ? vk::PipelineBindPoint::eCompute : vk::PipelineBindPoint::eGraphics;
+
         const bool skipPipelineBind = previousPacket != nullptr
                 && previousPacket->pipeline == pipeline;
         std::vector<std::uint32_t> dynamicOffsets;
@@ -153,9 +156,9 @@ namespace Carrot::Render {
             dynamicOffsets.push_back(renderer.uploadPerDrawData(std::span{ (GBufferDrawData*)perDrawData.data(), perDrawData.size_bytes() / sizeof(GBufferDrawData) }));
         if(!skipPipelineBind) {
             ZoneScopedN("Change pipeline");
-            pipeline->bind(pass, renderContext, cmds, vk::PipelineBindPoint::eGraphics, dynamicOffsets);
+            pipeline->bind(pass, renderContext, cmds, bindPoint, dynamicOffsets);
         } else {
-            pipeline->bindOnlyDescriptorSets(renderContext, cmds, vk::PipelineBindPoint::eGraphics, dynamicOffsets);
+            pipeline->bindOnlyDescriptorSets(renderContext, cmds, bindPoint, dynamicOffsets);
         }
         {
             ZoneScopedN("Add push constants");
@@ -166,7 +169,7 @@ namespace Carrot::Render {
             }
         }
 
-        {
+        if(!isCompute) {
             ZoneScopedN("Change viewport");
             if(previousPacket == nullptr || previousPacket->viewportExtents != viewportExtents) {
                 if(viewportExtents.has_value()) {
@@ -183,7 +186,8 @@ namespace Carrot::Render {
                 }
             }
         }
-        {
+
+        if(!isCompute) {
             ZoneScopedN("Change scissor");
             if(previousPacket == nullptr || previousPacket->scissor != scissor) {
                 if(scissor.has_value()) {
@@ -210,15 +214,17 @@ namespace Carrot::Render {
             instanceBuffer.directUpload(instancingDataBuffer.data(), instancingDataBuffer.size());
         }
 
-        if(vertexBuffer) {
-            if(instanceBuffer) {
-                cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer(), instanceBuffer.getVulkanBuffer() }, { vertexBuffer.getStart(), instanceBuffer.getStart() });
+        if(!isCompute) {
+            if(vertexBuffer) {
+                if(instanceBuffer) {
+                    cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer(), instanceBuffer.getVulkanBuffer() }, { vertexBuffer.getStart(), instanceBuffer.getStart() });
+                } else {
+                    cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer() }, { vertexBuffer.getStart() });
+                }
             } else {
-                cmds.bindVertexBuffers(0, { vertexBuffer.getVulkanBuffer() }, { vertexBuffer.getStart() });
-            }
-        } else {
-            if(instanceBuffer) {
-                cmds.bindVertexBuffers(0, instanceBuffer.getVulkanBuffer(), instanceBuffer.getStart());
+                if(instanceBuffer) {
+                    cmds.bindVertexBuffers(0, instanceBuffer.getVulkanBuffer(), instanceBuffer.getStart());
+                }
             }
         }
 
@@ -252,16 +258,9 @@ namespace Carrot::Render {
             } break;
 
             case PacketType::Compute: {
-                Carrot::Vector<vk::DispatchIndirectCommand> unindexedDispatchCommands { tempAllocator };
-                unindexedDispatchCommands.ensureReserve(commands.size());
                 for(const auto& cmd : commands) {
-                    unindexedDispatchCommands.pushBack(cmd.compute);
+                    cmds.dispatch(cmd.compute.x, cmd.compute.y, cmd.compute.z);
                 }
-
-                Carrot::BufferView unindexedDispatchCommandBuffer = renderer.getSingleFrameHostBuffer(unindexedDispatchCommands.size() * sizeof(vk::DispatchIndirectCommand));
-                unindexedDispatchCommandBuffer.directUpload(std::span<const vk::DispatchIndirectCommand>{ unindexedDispatchCommands });
-
-                cmds.drawIndirect(unindexedDispatchCommandBuffer.getVulkanBuffer(), unindexedDispatchCommandBuffer.getStart(), unindexedDispatchCommands.size(), sizeof(vk::DispatchIndirectCommand));
                 break;
             }
 

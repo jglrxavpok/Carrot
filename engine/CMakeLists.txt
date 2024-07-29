@@ -262,6 +262,7 @@ set(COMPUTE_SHADERS
         compute/animation-skinning.compute.glsl
         compute/clear-visibility-buffer.compute.glsl
         compute/clear-singleint.compute.glsl
+        compute/compute-rt-clusters.compute.glsl
         compute/copy-variance.compute.glsl
         compute/firefly-rejection.compute.glsl
         compute/particles.compute.glsl

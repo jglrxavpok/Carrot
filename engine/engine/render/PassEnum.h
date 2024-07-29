@@ -34,6 +34,7 @@ namespace Carrot::Render {
 
     namespace PassEnum {
         MAKE_PASS_NAME(Undefined)
+        MAKE_PASS_NAME(PrePassVisibilityBuffer)
         MAKE_PASS_NAME(VisibilityBuffer)
         MAKE_PASS_NAME(OpaqueGBuffer)
         MAKE_PASS_NAME(TransparentGBuffer)

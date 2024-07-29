@@ -22,29 +22,12 @@ namespace Carrot::Render {
     };
 
     const VisibilityBuffer::VisibilityPassData& VisibilityBuffer::addVisibilityBufferPasses(Render::GraphBuilder& graph, const Render::PassData::GBuffer& gBufferData, const Render::TextureSize& framebufferSize) {
-        // Add the hardware rasterization pass
-        auto& rasterizePass = graph.addPass<VisibilityBufferRasterizationData>("rasterize visibility buffer",
-            [this, &gBufferData, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
-                // Declare the visibility buffer texture
-                data.visibilityBuffer = builder.createStorageTarget("visibility buffer", vk::Format::eR64Uint, framebufferSize, vk::ImageLayout::eGeneral);
+        struct Empty {};
+        auto& prePass = graph.addPass<Empty>("pre pass visibility buffer",
+            [this](Render::GraphBuilder& builder, Render::Pass<Empty>& pass, Empty data) {
+                pass.rasterized = false;
             },
-            [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
-                ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
-                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
-
-                // clear visibility buffer to reset depth
-                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
-                renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
-                                          vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                const auto& extent = texture.getSize();
-                const std::uint8_t localSize = 32;
-                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
-                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
-
-                clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
-                cmds.dispatch(dispatchX, dispatchY, 1);
-
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const Empty& data, vk::CommandBuffer& cmds) {
                 // clear readback buffer to ensure visible count starts at 0 for the new frame
                 auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.json", (std::uint64_t)&pass);
                 auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.swapchainIndex);
@@ -68,13 +51,44 @@ namespace Carrot::Render {
                 };
                 cmds.pipelineBarrier2KHR(dependencyInfo);
 
-                // Record all render packets (~= draw commands) with the tag "VisibilityBuffer"
+                // Record all render packets (~= draw commands) with the tag "PrePassVisibilityBuffer" then "VisibilityBuffer"
+                {
+                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Pre pass visibility buffer");
+                    frame.renderer.recordPassPackets(Render::PassEnum::PrePassVisibilityBuffer, {}, frame, cmds);
+                }
+            });
+
+        // Add the hardware rasterization pass
+        auto& rasterizePass = graph.addPass<VisibilityBufferRasterizationData>("rasterize visibility buffer",
+            [this, &gBufferData, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
+                // Declare the visibility buffer texture
+                data.visibilityBuffer = builder.createStorageTarget("visibility buffer", vk::Format::eR64Uint, framebufferSize, vk::ImageLayout::eGeneral);
+            },
+            [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
+                ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
+                auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+
+                // clear visibility buffer to reset depth
+                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
+                renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
+                                          vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                const auto& extent = texture.getSize();
+                const std::uint8_t localSize = 32;
+                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+
+                clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                cmds.dispatch(dispatchX, dispatchY, 1);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
                 auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)frame.pViewport);
                 renderer.bindStorageImage(*pipeline, frame, texture, 0, 3,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
+                {
+                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Visibility buffer");
+                    frame.renderer.recordPassPackets(Render::PassEnum::VisibilityBuffer, pass.getRenderPass(), frame, cmds);
+                }
             }
         );
 

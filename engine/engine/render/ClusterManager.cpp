@@ -361,7 +361,9 @@ namespace Carrot::Render {
 
         // draw all instances that match with the given render context
         auto& packet = renderer.makeRenderPacket(PassEnum::VisibilityBuffer, Render::PacketType::Mesh, renderContext);
+        auto& prePassPacket = renderer.makeRenderPacket(PassEnum::PrePassVisibilityBuffer, Render::PacketType::Compute, renderContext);
         packet.pipeline = getPipeline(renderContext);
+        prePassPacket.pipeline = getPrePassPipeline(renderContext);
 
         if(requireClusterUpdate) {
             clusterGPUVisibleArray = std::make_shared<BufferAllocation>(std::move(GetResourceAllocator().allocateDeviceBuffer(sizeof(Cluster) * gpuClusters.size(), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)));
@@ -421,16 +423,27 @@ namespace Carrot::Render {
         const Carrot::BufferView readbackBufferView = getReadbackBuffer(renderContext.pViewport, renderContext.swapchainIndex)->getWholeView();
         if(clusterRefs) {
             renderer.bindBuffer(*packet.pipeline, renderContext, clusterRefs, 0, 0);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, clusterRefs, 0, 0);
+
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceRefs, 0, 1);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceRefs, 0, 1);
+
             renderer.bindBuffer(*packet.pipeline, renderContext, instanceDataRefs, 0, 2);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceDataRefs, 0, 2);
+
             renderer.bindBuffer(*packet.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
+            //renderer.bindBuffer(*prePassPacket.pipeline, renderContext, statsCPUBuffer.view, 0, 4);
+
             renderer.bindBuffer(*packet.pipeline, renderContext, activeModelsBufferView, 0, 5);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeModelsBufferView, 0, 5);
+
             renderer.bindBuffer(*packet.pipeline, renderContext, readbackBufferView, 0, 6);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, readbackBufferView, 0, 6);
         }
 
 
-        {
-            auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
+        auto addPushConstant = [&](Render::Packet& thePacket, vk::ShaderStageFlagBits stage) {
+            auto& pushConstant = thePacket.addPushConstant("push", stage);
             using Flags = std::uint8_t;
             constexpr std::uint8_t Flags_None = 0;
             constexpr std::uint8_t Flags_OutputTriangleCount = 1;
@@ -453,7 +466,9 @@ namespace Carrot::Render {
                 data.flags |= Flags_OutputTriangleCount;
             }
             pushConstant.setData(std::move(data));
-        }
+        };
+        addPushConstant(prePassPacket, vk::ShaderStageFlagBits::eCompute);
+        addPushConstant(packet, vk::ShaderStageFlagBits::eMeshEXT);
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
         const int groupSize = 32;
@@ -461,6 +476,12 @@ namespace Carrot::Render {
         drawCommand.drawMeshTasks.groupCountY = 1;
         drawCommand.drawMeshTasks.groupCountZ = 1;
         renderer.render(packet);
+
+        Render::PacketCommand& prePassDrawCommand = prePassPacket.commands.emplace_back();
+        prePassDrawCommand.compute.x = activeInstances.size() / groupSize;
+        prePassDrawCommand.compute.y = 1;
+        prePassDrawCommand.compute.z = 1;
+        renderer.render(prePassPacket);
     }
 
     void ClusterManager::onSwapchainSizeChange(Window& window, int newWidth, int newHeight) {
@@ -479,6 +500,14 @@ namespace Carrot::Render {
         auto& pPipeline = perViewport[renderContext.pViewport].pipeline;
         if(!pPipeline) {
             pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)renderContext.pViewport);
+        }
+        return pPipeline;
+    }
+
+    std::shared_ptr<Carrot::Pipeline> ClusterManager::getPrePassPipeline(const Carrot::Render::Context& renderContext) {
+        auto& pPipeline = perViewport[renderContext.pViewport].prePassPipeline;
+        if(!pPipeline) {
+            pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/compute-rt-clusters.json", (std::uint64_t)renderContext.pViewport);
         }
         return pPipeline;
     }
@@ -577,12 +606,17 @@ namespace Carrot::Render {
         std::span<const ClusterInstance> clusterInstances)
     {
        // ZoneScoped;
+        // TODO: per group instead of per cluster
+        // TODO: precompute group AS sizes
         const ClusterInstance& clusterInstance = clusterInstances[clusterIndex];
         const std::uint32_t groupInstanceID = groupInstances.perCluster[clusterIndex];
 
         if(auto pModel = models.find(clusterInstance.instanceDataIndex).lock()) {
             GroupRTData& groupRTData = groupRTDataPerModel[pModel->getSlot()];
             RTData& rtData = groupRTData.data[groupInstanceID - groupRTData.firstGroupInstanceIndex];
+            if(rtData.lastUpdateTime == currentTime) {
+                return;
+            }
             Cider::LockGuard g { task, rtData.mutex };
             //Async::LockGuard g { rtData.mutex };
             rtData.lastUpdateTime = currentTime;
