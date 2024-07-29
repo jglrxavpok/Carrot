@@ -280,6 +280,13 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
     return ptr;
 }
 
+std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
+    if(!enabled)
+        return nullptr;
+    Async::LockGuard l { access };
+    return instances.create(correspondingGeometry, this);
+}
+
 void Carrot::ASBuilder::createSemaphores() {
     std::size_t imageCount = GetEngine().getSwapchainImageCount();
     preCompactBLASSemaphore.resize(imageCount);
@@ -767,13 +774,6 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
 Carrot::BufferView Carrot::ASBuilder::getIdentityMatrixBufferView() const {
     return identityMatrixForBLASes.view;
-}
-
-std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
-    if(!enabled)
-        return nullptr;
-    Async::LockGuard l { access };
-    return instances.create(correspondingGeometry, this);
 }
 
 void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update) {
