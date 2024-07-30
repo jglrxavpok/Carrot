@@ -140,7 +140,7 @@ namespace Carrot::Async {
         ++parent.readerCount;
      //   std::atomic_thread_fence(std::memory_order_acquire);
 #else
-        parent.shared.lock_shared();
+        parent.sharedMutex.lock_shared();
 #endif
     }
 
@@ -169,7 +169,7 @@ namespace Carrot::Async {
 
         //std::atomic_thread_fence(std::memory_order_release);
 #else
-        parent.shared.unlock_shared();
+        parent.sharedMutex.unlock_shared();
 #endif
     }
 
@@ -192,8 +192,27 @@ namespace Carrot::Async {
         //std::atomic_thread_fence(std::memory_order_acquire);
         return acquired;
 #else
-        return parent.shared.try_lock_shared();
+        return parent.sharedMutex.try_lock_shared();
 #endif
+    }
+
+    void ReadLock::lockUpgradable() {
+        parent.upgradeMutex.lock();
+    }
+
+    bool ReadLock::tryLockUpgradable() {
+        return parent.upgradeMutex.try_lock();
+    }
+
+    void ReadLock::unlockUpgradable() {
+        parent.upgradeMutex.unlock();
+    }
+
+    Async::WriteLock& ReadLock::upgradeToWriter() {
+        lockUpgradable();
+        unlock();
+        parent.sharedMutex.lock();
+        return parent.writeLock;
     }
 
     // WriteLock
@@ -214,7 +233,8 @@ namespace Carrot::Async {
 
         //std::atomic_thread_fence(std::memory_order_acquire);
 #else
-        parent.shared.lock();
+        parent.readLock.lockUpgradable();
+        parent.sharedMutex.lock();
 #endif
     }
 
@@ -231,7 +251,15 @@ namespace Carrot::Async {
 //        std::atomic_thread_fence(std::memory_order_acquire);
         return acquired;
 #else
-        return parent.shared.try_lock();
+        bool upgradeAcquired = parent.readLock.tryLockUpgradable();
+        if(!upgradeAcquired) {
+            return false;
+        }
+        bool writerAcquired = parent.sharedMutex.try_lock();
+        if(!writerAcquired) {
+            parent.readLock.unlockUpgradable();
+        }
+        return writerAcquired;
 #endif
     }
 
@@ -247,7 +275,8 @@ namespace Carrot::Async {
 
         //std::atomic_thread_fence(std::memory_order_release);
 #else
-        parent.shared.unlock();
+        parent.sharedMutex.unlock();
+        parent.readLock.unlockUpgradable();
 #endif
     }
 

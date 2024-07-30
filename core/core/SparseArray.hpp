@@ -28,6 +28,16 @@ namespace Carrot {
             elementCount = size;
         }
 
+        void iterate(const std::function<void(T&)>& forEach) {
+            for(auto& bank : banks) {
+                for(auto& optValue : bank.data) {
+                    if(optValue.has_value()) {
+                        forEach(optValue.value());
+                    }
+                }
+            }
+        }
+
         /**
          * Returns true iif index is inside the bounds of this array AND the slot at 'index' is empty
          */

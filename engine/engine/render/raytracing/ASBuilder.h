@@ -3,6 +3,8 @@
 //
 
 #pragma once
+#include <core/SparseArray.hpp>
+
 #include "engine/Engine.h"
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
@@ -40,20 +42,18 @@ namespace Carrot {
         ClusterCompressed = 1, // Carrot::PackedVertex
     };
 
-    class BLASHandle: public WeakPoolHandle {
+    class BLASHandle: public std::enable_shared_from_this<BLASHandle> {
     public:
         bool dynamicGeometry = false;
 
-        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
-                   const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<glm::mat4>& transforms,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
                    ASBuilder* builder);
 
         // Version of BLASHandle that does not hold its transform data but only refers to data already somewhere in memory
-        BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
-                   const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+        BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                    const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transformAddresses,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
@@ -68,7 +68,7 @@ namespace Carrot {
         /// (one semaphore per swapchain image)
         void bindSemaphores(const Render::PerFrame<vk::Semaphore>& semaphores);
 
-        virtual ~BLASHandle() noexcept override;
+        virtual ~BLASHandle() noexcept;
 
     private:
         void innerInit(std::span<const vk::DeviceAddress/*vk::TransformMatrixKHR*/> transformAddresses);
@@ -93,11 +93,9 @@ namespace Carrot {
         friend class InstanceHandle;
     };
 
-    class InstanceHandle: public WeakPoolHandle {
+    class InstanceHandle {
     public:
-        InstanceHandle(std::uint32_t index,
-                       std::function<void(WeakPoolHandle*)> destructor,
-                       std::weak_ptr<BLASHandle> geometry,
+        InstanceHandle(std::weak_ptr<BLASHandle> geometry,
                        ASBuilder* builder);
 
         bool isBuilt() const { return built; }
@@ -105,7 +103,7 @@ namespace Carrot {
         bool isUsable() { return enabled && !geometry.expired() && geometry.lock()->as; }
         void update();
 
-        virtual ~InstanceHandle() noexcept override;
+        virtual ~InstanceHandle() noexcept;
 
     public:
         glm::mat4 transform{1.0f};
@@ -126,6 +124,75 @@ namespace Carrot {
         ASBuilder* builder = nullptr;
 
         friend class ASBuilder;
+    };
+
+    template<typename T>
+    class ASStorage {
+        constexpr static std::size_t Granularity = 2048;
+        const std::shared_ptr<T> nullEntry = nullptr;
+    public:
+        using Slot = std::unique_ptr<std::weak_ptr<T>>;
+        using Reservation = std::weak_ptr<T>*;
+
+        ASStorage() = default;
+
+        /**
+         * Gets an estimate of the current storage size.
+         * This is an estimate because the storage size can change right after returning from this call.
+         * This is also the estimation of the underlying storage, so it almost always bigger than the actual number of elements
+         * (overhead is dependent on Granularity value)
+         */
+        std::size_t getStorageSize() const {
+            Async::LockGuard g { rwlock.read() };
+            return slots.size();
+        }
+
+        Reservation reserveSlot() {
+            // TODO: free list
+            Async::ReadLock& readLock = rwlock.read();
+            readLock.lock();
+            std::uint32_t newID = nextID++;
+            if(newID < slots.size()) { // inside a bank that was already allocated
+                auto& ptr = slots[newID];
+                ptr = std::make_unique<std::weak_ptr<T>>(nullEntry);
+                readLock.unlock();
+                return ptr.get();
+            } else {
+                readLock.unlock();
+                // need to allocate a new bank
+
+                Async::WriteLock& writeLock = rwlock.write();//readLock.upgradeToWriter();
+                writeLock.lock();
+                std::size_t requiredSize = (newID / Granularity +1) * Granularity;
+                if(requiredSize > slots.size()) { // another thread could have come here and already increased the storage size
+                    slots.resize(requiredSize);
+                }
+                auto& ptr = slots[newID];
+                ptr = std::make_unique<std::weak_ptr<T>>(nullEntry);
+                writeLock.unlock();
+
+                return ptr.get();
+            }
+        }
+
+        void iterate(const std::function<void(std::shared_ptr<T>)>& forEach) {
+            Async::LockGuard g { rwlock.read() };
+            slots.iterate([&forEach](Slot& s) {
+                if(!s) {
+                    return;
+                }
+
+                if(auto v = s->lock()) {
+                    forEach(v);
+                }
+            });
+        }
+
+
+    private:
+        mutable Async::ReadWriteLock rwlock;
+        SparseArray<Slot, Granularity> slots;
+        std::atomic_int32_t nextID { 0 };
     };
 
     /// Helpers to build Acceleration Structures for raytracing
@@ -215,8 +282,8 @@ namespace Carrot {
         std::size_t lastScratchSize = 0;
         vk::DeviceAddress scratchBufferAddress = 0;
 
-        WeakPool<BLASHandle> staticGeometries;
-        WeakPool<InstanceHandle> instances;
+        ASStorage<BLASHandle> staticGeometries;
+        ASStorage<InstanceHandle> instances;
 
         Render::PerFrame<std::shared_ptr<AccelerationStructure>> tlasPerFrame;
         std::shared_ptr<AccelerationStructure> currentTLAS;

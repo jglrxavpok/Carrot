@@ -19,13 +19,11 @@ namespace Carrot {
     static constexpr glm::mat4 IdentityMatrix = glm::identity<glm::mat4>();
     static constexpr std::size_t BLASBuildBucketCount = 32;
 
-    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
-                           const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+    BLASHandle::BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<glm::mat4>& transforms,
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
                            ASBuilder* builder):
-    WeakPoolHandle(index, std::move(destructor)),
     meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat) {
         ZoneScoped;
 
@@ -76,13 +74,11 @@ namespace Carrot {
         innerInit(transformAddresses);
     }
 
-    BLASHandle::BLASHandle(std::uint32_t index, std::function<void(WeakPoolHandle*)> destructor,
-                           const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
+    BLASHandle::BLASHandle(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                            const std::vector<vk::DeviceAddress>& transforms,
                            const std::vector<std::uint32_t>& materialSlots,
                            BLASGeometryFormat geometryFormat,
                            ASBuilder* builder):
-    WeakPoolHandle(index, std::move(destructor)),
     meshes(meshes), materialSlots(materialSlots), builder(builder), geometryFormat(geometryFormat) {
         innerInit(transforms);
     }
@@ -161,9 +157,8 @@ namespace Carrot {
         return boundSemaphores[swapchainIndex];
     }
 
-    InstanceHandle::InstanceHandle(std::uint32_t index, std::function<void(WeakPoolHandle *)> destructor,
-                                   std::weak_ptr<BLASHandle> geometry, ASBuilder* builder):
-            WeakPoolHandle(index, destructor), geometry(geometry), builder(builder) {
+    InstanceHandle::InstanceHandle(std::weak_ptr<BLASHandle> geometry, ASBuilder* builder):
+            geometry(geometry), builder(builder) {
         builder->dirtyInstances = true;
     }
 
@@ -249,16 +244,16 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
     if(!enabled)
         return nullptr;
 
-    access.lock();
-    WeakPool<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
-    access.unlock();
+    //access.lock();
+    ASStorage<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
+    //access.unlock();
     {
         ZoneScopedN("Create BLASHandle");
-        std::shared_ptr<BLASHandle> ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
-                    staticGeometries.freeSlot(element->getSlot());
-        }, meshes, transformAddresses, materials, geometryFormat, this);
+        std::shared_ptr<BLASHandle> ptr = std::make_shared<BLASHandle>(/*slot.index, [this](WeakPoolHandle* element) {
+                  //  staticGeometries.freeSlot(element->getSlot());
+        },*/ meshes, transformAddresses, materials, geometryFormat, this);
         //std::shared_ptr<BLASHandle> ptr = nullptr;
-        slot.ptr = ptr;
+        *slot = ptr;
         return ptr;
     }
 }
@@ -270,21 +265,23 @@ std::shared_ptr<Carrot::BLASHandle> Carrot::ASBuilder::addBottomLevel(const std:
     ZoneScoped;
     if(!enabled)
         return nullptr;
-    access.lock();
-    WeakPool<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
-    access.unlock();
-    auto ptr = std::make_shared<BLASHandle>(slot.index, [this](WeakPoolHandle* element) {
-                staticGeometries.freeSlot(element->getSlot());
-    }, meshes, transforms, materials, geometryFormat, this);
-    slot.ptr = ptr;
+    //access.lock();
+    ASStorage<BLASHandle>::Reservation slot = staticGeometries.reserveSlot();
+    //access.unlock();
+    auto ptr = std::make_shared<BLASHandle>(/*slot.index, [this](WeakPoolHandle* element) {
+              //  staticGeometries.freeSlot(element->getSlot());
+    },*/ meshes, transforms, materials, geometryFormat, this);
+    *slot = ptr;
     return ptr;
 }
 
 std::shared_ptr<Carrot::InstanceHandle> Carrot::ASBuilder::addInstance(std::weak_ptr<Carrot::BLASHandle> correspondingGeometry) {
     if(!enabled)
         return nullptr;
-    Async::LockGuard l { access };
-    return instances.create(correspondingGeometry, this);
+    ASStorage<InstanceHandle>::Reservation slot = instances.reserveSlot();
+    auto ptr = std::make_shared<InstanceHandle>(correspondingGeometry, this);;
+    *slot = ptr;
+    return ptr;
 }
 
 void Carrot::ASBuilder::createSemaphores() {
@@ -310,22 +307,14 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
         return;
     }
     ScopedMarker("ASBuilder::onFrame");
-    Async::LockGuard l { access };
-    auto purge = [](auto& pool) {
-        pool.erase(std::find_if(WHOLE_CONTAINER(pool), [](auto& a) { return a.second.expired(); }), pool.end());
-    };
-    purge(instances);
-    purge(staticGeometries);
 
     std::vector<std::shared_ptr<BLASHandle>> toBuild;
-    for(auto& [slot, valuePtr] : staticGeometries) {
-        if(auto value = valuePtr.lock()) {
-            if(!value->isBuilt() || dirtyBlases) {
-                toBuild.push_back(value);
-                value->built = false;
-            }
+    staticGeometries.iterate([&](std::shared_ptr<BLASHandle> pValue) {
+        if(!pValue->isBuilt() || dirtyBlases) {
+            toBuild.push_back(pValue->shared_from_this());
+            pValue->built = false;
         }
-    }
+    });
 
     builtBLASThisFrame = false;
     if(dirtyBlases) {
@@ -341,14 +330,12 @@ void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
 
     std::size_t activeInstances = 0;
 
-    for(auto& [slot, valuePtr] : instances) {
-        if(auto value = valuePtr.lock()) {
-            if(value->isUsable()) {
-                value->update();
-                activeInstances++;
-            }
+    instances.iterate([&](std::shared_ptr<InstanceHandle> value) {
+        if(value->isUsable()) {
+            value->update();
+            activeInstances++;
         }
-    }
+    });
 
     bool requireTLASRebuildNow = !toBuild.empty() || dirtyInstances || activeInstances > previousActiveInstances;
     previousActiveInstances = activeInstances;
@@ -788,25 +775,23 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     std::vector<vk::AccelerationStructureInstanceKHR> vkInstances{};
     std::vector<SceneDescription::Instance> logicalInstances {};
-    vkInstances.reserve(instances.size());
-    logicalInstances.reserve(instances.size());
+    vkInstances.reserve(instances.getStorageSize());
+    logicalInstances.reserve(instances.getStorageSize());
 
     {
         ZoneScopedN("Convert to vulkan instances");
-        for(const auto& [slot, v] : instances) {
-            if(auto instance = v.lock()) {
-                if(instance->isUsable()) {
-                    if(auto pGeometry = instance->geometry.lock()) {
-                        vkInstances.push_back(instance->instance);
+        instances.iterate([&](std::shared_ptr<InstanceHandle> instance) {
+            if(instance->isUsable()) {
+                if(auto pGeometry = instance->geometry.lock()) {
+                    vkInstances.push_back(instance->instance);
 
-                        logicalInstances.emplace_back(SceneDescription::Instance {
-                            .instanceColor = instance->instanceColor,
-                            .firstGeometryIndex = pGeometry->firstGeometryIndex,
-                        });
-                    }
+                    logicalInstances.emplace_back(SceneDescription::Instance {
+                        .instanceColor = instance->instanceColor,
+                        .firstGeometryIndex = pGeometry->firstGeometryIndex,
+                    });
                 }
             }
-        }
+        });
         vkInstances.shrink_to_fit();
     }
 

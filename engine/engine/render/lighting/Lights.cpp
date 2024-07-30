@@ -131,7 +131,7 @@ namespace Carrot::Render {
             }
         }
 
-        lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
+        lightHandles.erase(std::find_if(WHOLE_CONTAINER(lightHandles), [](auto& handlePtr) { return handlePtr.second.expired(); }), lightHandles.end());
         data->lightCount = lightBufferSize;
         data->ambient = ambientColor;
         data->fogColor = fogColor;

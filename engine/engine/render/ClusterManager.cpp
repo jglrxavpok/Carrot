@@ -557,8 +557,8 @@ namespace Carrot::Render {
                 {
                     ScopedMarker("Allocs");
                     meshes.reserve(groupInstance.group.clusters.size());
-                    transformAddresses.reserve(meshes.size());
-                    materialIndices.reserve(meshes.size());
+                    transformAddresses.reserve(meshes.capacity());
+                    materialIndices.reserve(meshes.capacity());
                 }
 
                 {
@@ -581,7 +581,6 @@ namespace Carrot::Render {
                     return nullptr;
                 }
 
-                // TODO: this assign makes everything crash???
                 correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed);
             }
 
@@ -591,7 +590,6 @@ namespace Carrot::Render {
         {
             ScopedMarker("Add instance");
             return asBuilder.addInstance(blas);
-           // return nullptr;
         }
     }
 
