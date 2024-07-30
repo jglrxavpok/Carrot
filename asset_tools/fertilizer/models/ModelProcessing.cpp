@@ -604,7 +604,7 @@ namespace Fertilizer {
         return vertexRemap;
     }
 
-    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const Carrot::Math::Sphere& clusterBounds, float clusterError, std::uint32_t groupIndex) {
+    static void appendMeshlets(LoadedPrimitive& primitive, std::span<std::uint32_t> indexBuffer, const Carrot::Math::Sphere& clusterBounds, float clusterError, std::uint32_t* pUniqueGroupIndex) {
         constexpr std::size_t maxVertices = 64;
         constexpr std::size_t maxTriangles = 128;
         const float coneWeight = 0.0f; // for occlusion culling, currently unused
@@ -652,7 +652,7 @@ namespace Fertilizer {
 
             carrotMeshlet.indexOffset = indexOffset + meshoptMeshlet.triangle_offset;
             carrotMeshlet.indexCount = meshoptMeshlet.triangle_count*3;
-            carrotMeshlet.groupIndex = groupIndex;
+            carrotMeshlet.groupIndex = (*pUniqueGroupIndex)++;
 
             carrotMeshlet.boundingSphere = clusterBounds;
             carrotMeshlet.clusterError = clusterError;
@@ -671,7 +671,7 @@ namespace Fertilizer {
         // tell meshoptimizer to generate meshlets
         auto& indexBuffer = primitive.indices;
         std::size_t previousMeshletsStart = 0;
-        std::uint32_t meshletGroupIndex = 0;
+        std::uint32_t uniqueGroupIndex = 0;
         {
             glm::vec3 min { +INFINITY, +INFINITY, +INFINITY };
             glm::vec3 max { -INFINITY, -INFINITY, -INFINITY };
@@ -685,7 +685,7 @@ namespace Fertilizer {
 
             Carrot::Math::Sphere lod0Bounds;
             lod0Bounds.loadFromAABB(min, max);
-            appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f, meshletGroupIndex++);
+            appendMeshlets(primitive, indexBuffer, lod0Bounds, 0.0f, &uniqueGroupIndex);
         }
 
         Carrot::KDTree<VertexWrapper> kdtree { Carrot::MallocAllocator::instance };
@@ -746,6 +746,7 @@ namespace Fertilizer {
             const std::size_t newMeshletStart = primitive.meshlets.size();
             Carrot::UserNotifications::getInstance().setBody(notificationID, Carrot::sprintf("Generating LOD %d - Simplify cluster groups", lod+1));
             for(std::size_t groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
+                const std::uint32_t currentGroupIndex = uniqueGroupIndex++;
                 const auto& group = groups[groupIndex];
                 Carrot::UserNotifications::getInstance().setProgress(notificationID, groupIndex/static_cast<float>(groups.size()));
                 groupVertexIndices.clear();
@@ -760,7 +761,8 @@ namespace Fertilizer {
                 // add cluster vertices to this group
                 // and remove clusters from clusters to merge
                 for(const auto& meshletIndex : group.meshlets) {
-                    const auto& meshlet = previousLevelMeshlets[meshletIndex];
+                    auto& meshlet = previousLevelMeshlets[meshletIndex];
+                    meshlet.groupIndex = currentGroupIndex;
 
                     std::size_t start = groupVertexIndices.size();
                     groupVertexIndices.ensureReserve(start + meshlet.indexCount);
@@ -856,7 +858,8 @@ namespace Fertilizer {
                         previousLevelMeshlets[meshletIndex].parentBoundingSphere = simplifiedClusterBounds;
                     }
 
-                    appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError, meshletGroupIndex++);
+                    // group index is replaced on next iteration of loop (if there is one) to group the meshlets together based on partitionning
+                    appendMeshlets(primitive, simplifiedIndexBuffer, simplifiedClusterBounds, meshSpaceError, &uniqueGroupIndex);
                 }
             }
 
@@ -864,6 +867,20 @@ namespace Fertilizer {
                 primitive.meshlets[i].lod = lod + 1;
             }
             previousMeshletsStart = newMeshletStart;
+        }
+
+        // reindex groups inside glTF to ensure contiguous indices:
+        const std::uint32_t uninitValue = std::numeric_limits<std::uint32_t>::max();
+        Carrot::Vector<std::uint32_t> groupRemap;
+        groupRemap.resize(uniqueGroupIndex);
+        groupRemap.fill(uninitValue);
+        std::uint32_t nextIndex = 0;
+        for(auto& meshlet : primitive.meshlets) {
+            std::uint32_t& remapValue = groupRemap[meshlet.groupIndex];
+            if(remapValue == uninitValue) {
+                remapValue = nextIndex++;
+            }
+            meshlet.groupIndex = remapValue;
         }
     }
 
