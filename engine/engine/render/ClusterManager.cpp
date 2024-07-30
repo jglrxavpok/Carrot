@@ -101,6 +101,23 @@ namespace Carrot::Render {
         std::vector<ClusterIndex> indices;
         std::vector<vk::TransformMatrixKHR> transforms;
         transforms.reserve(desc.meshlets.size());
+
+        std::uint32_t maxIndex = 0;
+        for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
+            const Meshlet& meshlet = desc.meshlets[i];
+            std::uint32_t globalGroupIndex = firstGroupIndex + meshlet.groupIndex;
+            maxIndex = std::max(maxIndex, globalGroupIndex+1);
+        }
+        if(templateClusterGroups.size() < maxIndex) {
+            templateClusterGroups.ensureReserve(maxIndex);
+            templateClusterGroups.resize(maxIndex);
+        }
+        for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
+            const Meshlet& meshlet = desc.meshlets[i];
+            std::uint32_t globalGroupIndex = firstGroupIndex + meshlet.groupIndex;
+            templateClusterGroups[globalGroupIndex].clusters.ensureReserve(4);
+        }
+
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             Meshlet& meshlet = desc.meshlets[i];
             Cluster& cluster = gpuClusters[i + firstClusterIndex];
@@ -131,12 +148,6 @@ namespace Carrot::Render {
             }
 
             std::uint32_t globalGroupIndex = firstGroupIndex + meshlet.groupIndex;
-            if(templateClusterGroups.size() <= globalGroupIndex) {
-                templateClusterGroups.resize(globalGroupIndex+1);
-
-                templateClusterGroups[globalGroupIndex].clusters.ensureReserve(4); // expect most groups to contain 4 clusters
-            }
-
             templateClusterGroups[globalGroupIndex].clusters.pushBack(firstClusterIndex + i);
         }
 
@@ -216,16 +227,30 @@ namespace Carrot::Render {
             for(std::size_t i = 0; i < pTemplate->clusters.size(); i++) {
                 std::size_t clusterInstanceID = firstInstanceID + clusterIndex;
                 auto& gpuInstance = gpuInstances[clusterInstanceID];
-                gpuInstance.materialIndex = desc.pMaterials[templateIndex]->getSlot();
                 gpuInstance.clusterID = pTemplate->firstCluster + i;
 
                 const std::uint32_t groupID = groupsFromClusters[gpuInstance.clusterID];
 
-                auto [iter, isNew] = groupInstanceIDsForThisTemplate.try_emplace(groupID);
-                if(isNew) {
+                auto [iter, wasNew] = groupInstanceIDsForThisTemplate.try_emplace(groupID);
+                if(wasNew) {
                     iter->second = localGroupInstanceID++;
-                    groupInstances.groups.resize(firstGroupInstanceID + localGroupInstanceID);
                 }
+                clusterIndex++;
+            }
+        }
+        clusterIndex = 0;
+        groupInstances.groups.resize(firstGroupInstanceID + localGroupInstanceID);
+        for(const auto& pTemplate : desc.templates) {
+            auto& groupInstanceIDsForThisTemplate = groupInstanceIDs[pTemplate.get()];
+            for(std::size_t i = 0; i < pTemplate->clusters.size(); i++) {
+                std::size_t clusterInstanceID = firstInstanceID + clusterIndex;
+                auto& gpuInstance = gpuInstances[clusterInstanceID];
+                gpuInstance.materialIndex = desc.pMaterials[templateIndex]->getSlot();
+
+                const std::uint32_t groupID = groupsFromClusters[gpuInstance.clusterID];
+
+                auto iter = groupInstanceIDsForThisTemplate.find(groupID);
+                verify(iter != groupInstanceIDsForThisTemplate.end(), "Programming error: groupID should already be mapped");
                 std::uint32_t groupInstanceID = firstGroupInstanceID + iter->second;
                 groupInstances.groups[groupInstanceID].group.clusters.pushBack(clusterInstanceID);
                 groupInstances.groups[groupInstanceID].templateID = groupID;

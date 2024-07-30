@@ -133,7 +133,7 @@ namespace Carrot {
     VECTOR_TEMPLATE
     void Vector<TElement>::ensureReserve(std::size_t reserveSize) {
         if(reserveSize > capacity()) {
-            setCapacity(reserveSize);
+            grow(reserveSize);
         }
     }
 
