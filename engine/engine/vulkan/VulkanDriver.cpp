@@ -81,6 +81,8 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
 
 static std::atomic<bool> breakOnVulkanError = false;
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -197,8 +199,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
     ZoneScoped;
 
     vk::DynamicLoader dl;
-    auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(dl);
 
     createInstance();
     setupDebugMessenger();

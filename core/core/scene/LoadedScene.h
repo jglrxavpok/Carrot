@@ -11,6 +11,9 @@
 #include <core/render/VertexTypes.h>
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
+#include <core/containers/Vector.hpp>
+#include <core/containers/Pair.hpp>
+#include <core/render/VkAccelerationStructureHeader.h>
 #include <glm/glm.hpp>
 
 namespace Carrot {
@@ -116,6 +119,17 @@ namespace Carrot::Render {
     };
 
     /**
+     * Represents an already built BLAS for a given mesh + transform combo
+     */
+    struct PrecomputedBLAS {
+        /// Compatibility information and sizes
+        Carrot::VkAccelerationStructureHeader header;
+
+        /// Actual bytes of the BLAS
+        Carrot::Vector<std::uint8_t> blasBytes;
+    };
+
+    /**
      * Represents a scene loaded from a model file. Abstracted from the model file,
      *  but should be close to Carrot-ready format
      */
@@ -125,6 +139,10 @@ namespace Carrot::Render {
         std::vector<LoadedMaterial> materials;
         std::vector<LoadedPrimitive> primitives;
         std::unique_ptr<Carrot::Render::Skeleton> nodeHierarchy;
+
+        using PrecomputeBLASes = std::unordered_map<Carrot::Pair<std::uint32_t, std::uint32_t>, PrecomputedBLAS>;
+
+        std::unordered_map<NodeKey, PrecomputeBLASes> precomputedBLASes;
 
         // [primitiveIndex][bone name] -> boneIndex
         std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;

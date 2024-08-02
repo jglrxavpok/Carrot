@@ -20,7 +20,9 @@ namespace Carrot::Render {
 
     constexpr const char* const SUPPORTED_EXTENSIONS[] = {
             KHR_TEXTURE_BASISU_EXTENSION_NAME,
-            GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME
+            GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME,
+            GLTFLoader::CARROT_PRECOMPUTED_MESHLETS_BLAS_EXTENSION_NAME,
+            GLTFLoader::CARROT_NODE_KEY_EXTENSION_NAME,
     };
 
     struct PrimitiveInformation {
@@ -192,15 +194,18 @@ namespace Carrot::Render {
         return -1;
     }
 
-    template<typename T>
-    static T readFromAccessor(std::size_t index, const tinygltf::Accessor& accessor, const tinygltf::Model& model) {
+    static void* pointerFromAccessor(std::size_t index, const tinygltf::Accessor& accessor, const tinygltf::Model& model) {
         ZoneScoped;
         const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
         const tinygltf::Buffer& sourceBuffer = model.buffers[bufferView.buffer];
         const std::size_t stride = computeStride(bufferView, accessor);
-        const void* pSource = sourceBuffer.data.data() + bufferView.byteOffset + accessor.byteOffset + index * stride;
+        return (void*)(sourceBuffer.data.data() + bufferView.byteOffset + accessor.byteOffset + index * stride);
+    }
 
-        return *((const T*)pSource);
+    template<typename T>
+    static T readFromAccessor(std::size_t index, const tinygltf::Accessor& accessor, const tinygltf::Model& model) {
+        ZoneScoped;
+        return *((const T*)pointerFromAccessor(index, accessor, model));
     }
 
     static void loadVertices(LoadedPrimitive& loadedPrimitive, const tinygltf::Model& model, const tinygltf::Primitive& primitive, PrimitiveInformation& info) {
@@ -534,6 +539,32 @@ namespace Carrot::Render {
             }
         }
 
+        auto precomputedBLASesExt = model.extensions.find(CARROT_PRECOMPUTED_MESHLETS_BLAS_EXTENSION_NAME);
+        if(precomputedBLASesExt != model.extensions.end()) {
+            for(const auto& [key, value] : precomputedBLASesExt->second.Get<tinygltf::Value::Object>()) {
+                const NodeKey nodeKey { static_cast<std::uint32_t>(strtoull(key.c_str(), nullptr, 10)) };
+                auto& nodeBLASes = result.precomputedBLASes[nodeKey];
+
+                for(const auto& [meshKey, meshValue] : value.Get<tinygltf::Value::Object>()) {
+                    const std::uint32_t meshIndex = static_cast<std::uint32_t>(strtoull(meshKey.c_str(), nullptr, 10));
+
+                    for(const auto& [groupKey, groupValue] : meshValue.Get<tinygltf::Value::Object>()) {
+                        const std::uint32_t groupIndex = static_cast<std::uint32_t>(strtoull(groupKey.c_str(), nullptr, 10));
+
+                        Pair<std::uint32_t, std::uint32_t> blasKey { meshIndex, groupIndex };
+                        auto& blas = nodeBLASes[blasKey];
+                        int accessorIndex = groupValue.GetNumberAsInt();
+                        const tinygltf::Accessor& accessor = model.accessors[accessorIndex];
+                        verify(accessor.count >= sizeof(Carrot::VkAccelerationStructureHeader), "not enough data for precomputed BLAS");
+                        void* pData = pointerFromAccessor(0, accessor, model);
+                        blas.header = *static_cast<Carrot::VkAccelerationStructureHeader*>(pData);
+                        blas.blasBytes.resize(blas.header.accelerationStructureSerializedSize - sizeof(Carrot::VkAccelerationStructureHeader));
+                        memcpy(blas.blasBytes.data(), (std::uint8_t*)pData + sizeof(Carrot::VkAccelerationStructureHeader), blas.blasBytes.size());
+                    }
+                }
+            }
+        }
+
         NodeMapping nodeMapping;
         result.nodeHierarchy = std::make_unique<Carrot::Render::Skeleton>(glm::mat4{1.0f});
         result.nodeHierarchy->hierarchy.bone.transform = result.nodeHierarchy->hierarchy.bone.originalTransform = glTFSpaceToCarrotSpace;
@@ -774,6 +805,12 @@ namespace Carrot::Render {
         newNode.bone.originalTransform = transform;
         newNode.bone.transform = transform;
         nodeMapping[&newNode] = nodeIndex;
+
+        auto nodeKeyExtension = node.extensions.find(CARROT_NODE_KEY_EXTENSION_NAME);
+        if(nodeKeyExtension != node.extensions.end()) {
+            auto& obj = nodeKeyExtension->second.Get<tinygltf::Value::Object>();
+            newNode.nodeKey.value = obj.at("value").GetNumberAsInt();
+        }
 
         if(node.mesh != -1) {
             newNode.meshIndices = std::vector<std::size_t>{};

@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <core/data/Hashes.h>
 #include <glm/glm.hpp>
 
 namespace Carrot {
@@ -27,9 +28,17 @@ namespace Carrot::Render {
         BoneName name = "NON-INITIALIZED??"; //! name used to identify this bone
     };
 
+    // struct for type safety
+    struct NodeKey {
+        std::uint32_t value = 0;
+
+        auto operator<=>(const NodeKey &) const = default;
+    };
+
     class SkeletonTreeNode {
     public:
         Bone bone{};
+        NodeKey nodeKey; //< key used for maps inside LoadedScene
         std::optional<std::vector<std::size_t>> meshIndices;
         SkeletonTreeNode* pParent = nullptr;
 
@@ -96,3 +105,12 @@ namespace Carrot::Render {
         friend class Carrot::Model;
     };
 }
+
+template<>
+struct std::hash<Carrot::Render::NodeKey> {
+    std::size_t operator()(const Carrot::Render::NodeKey& key) const {
+        std::size_t h = 0;
+        Carrot::hash_combine(h, key.value);
+        return h;
+    }
+};

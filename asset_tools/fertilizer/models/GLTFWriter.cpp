@@ -491,6 +491,7 @@ namespace Fertilizer {
                     newChild.bone.name = Carrot::sprintf("%s-mesh%llu", node.bone.name.c_str(), meshIndex);
                     newChild.meshIndices = std::vector<std::size_t>{};
                     newChild.meshIndices.value().push_back(node.meshIndices.value()[meshIndex]);
+                    newChild.nodeKey = node.nodeKey;
                 }
 
                 node.meshIndices.value().resize(1);
@@ -511,6 +512,13 @@ namespace Fertilizer {
             model.nodes.emplace_back(); // cannot keep a reference, will be invalidated by recursive exportNode calls
 
 #define currentNode (model.nodes[currentNodeIndex])
+            {
+                auto& nodeKeyExtension = currentNode.extensions[Carrot::Render::GLTFLoader::CARROT_NODE_KEY_EXTENSION_NAME];
+                tinygltf::Value::Object nodeKeyValue;
+                nodeKeyValue["value"] = tinygltf::Value { static_cast<int>(node.nodeKey.value) };
+                nodeKeyExtension = tinygltf::Value { std::move(nodeKeyValue) };
+            }
+
             currentNode.name = node.bone.name;
 
             if(!isDefaultTransform(nodeTransform)) {
@@ -859,12 +867,65 @@ namespace Fertilizer {
         model.bufferViews[animationBufferViewIndex].byteLength = animationData.size();
     }
 
+    static void writePrecomputedBLASes(const std::string& modelName, Payload& payload, const Carrot::Render::LoadedScene& scene) {
+        tinygltf::Model& glTF = payload.glTFModel;
+
+        if(scene.precomputedBLASes.empty()) {
+            return;
+        }
+
+        int blasBufferIndex = glTF.buffers.size();
+        int blasBufferViewIndex = glTF.bufferViews.size();
+        auto& blasBuffer = glTF.buffers.emplace_back();
+        auto& blasBufferView = glTF.bufferViews.emplace_back();
+        blasBufferView.buffer = blasBufferIndex;
+        blasBuffer.name = "precomputed-blases";
+        blasBuffer.uri = modelName + "-precomputed-blases.bin";
+
+        glTF.extensionsUsed.emplace_back(Carrot::Render::GLTFLoader::CARROT_PRECOMPUTED_MESHLETS_BLAS_EXTENSION_NAME);
+        tinygltf::Value::Object precomputedBLASesJSON;
+        for(const auto& [nodeKey, precomputedBLASesForNode] : scene.precomputedBLASes) {
+            auto& entry = precomputedBLASesJSON[Carrot::sprintf("%u", nodeKey.value)];
+            if(!entry.IsObject()) {
+                entry = tinygltf::Value { tinygltf::Value::Object{} };
+            }
+
+            for(const auto& [keyPair, precomputedBLAS] : precomputedBLASesForNode) {
+                auto& perMesh = entry.Get<tinygltf::Value::Object>()[Carrot::sprintf("%u", keyPair.first)];
+                if(!perMesh.IsObject()) {
+                    perMesh = tinygltf::Value { tinygltf::Value::Object{} };
+                }
+
+                auto& perGroup = perMesh.Get<tinygltf::Value::Object>()[Carrot::sprintf("%u", keyPair.second)];
+                int accessorIndex = glTF.accessors.size();
+                tinygltf::Accessor& accessor = glTF.accessors.emplace_back();
+                accessor.bufferView = blasBufferViewIndex;
+                accessor.type = TINYGLTF_TYPE_SCALAR;
+                accessor.componentType = TINYGLTF_COMPONENT_TYPE_BYTE;
+
+                accessor.byteOffset = blasBuffer.data.size();
+                accessor.count = precomputedBLAS.blasBytes.size() + sizeof(precomputedBLAS.header);
+                blasBuffer.data.resize(blasBuffer.data.size() + accessor.count);
+
+                memcpy(blasBuffer.data.data() + accessor.byteOffset, &precomputedBLAS.header, sizeof(precomputedBLAS.header));
+                memcpy(blasBuffer.data.data() + accessor.byteOffset + sizeof(precomputedBLAS.header), precomputedBLAS.blasBytes.data(), precomputedBLAS.blasBytes.size());
+
+                perGroup = tinygltf::Value{ accessorIndex };
+            }
+        }
+
+        blasBufferView.byteLength = blasBuffer.data.size();
+
+        glTF.extensions[Carrot::Render::GLTFLoader::CARROT_PRECOMPUTED_MESHLETS_BLAS_EXTENSION_NAME] = tinygltf::Value { std::move(precomputedBLASesJSON) };
+    }
+
     tinygltf::Model writeAsGLTF(const std::string& modelName, const Carrot::Render::LoadedScene& scene) {
         tinygltf::Model model;
 
         model.asset.generator = "Fertilizer v1";
         model.asset.version = "2.0";
         model.extensionsUsed.emplace_back(Carrot::Render::GLTFLoader::CARROT_MESHLETS_EXTENSION_NAME);
+        model.extensionsUsed.emplace_back(Carrot::Render::GLTFLoader::CARROT_NODE_KEY_EXTENSION_NAME);
 
         Payload payload {
                 .glTFModel = model,
@@ -877,6 +938,7 @@ namespace Fertilizer {
         writeSkins(modelName, payload, scene); // needs to be after writeNodes to know the node IDs of joints
         writeMeshes(modelName, payload, scene); // needs to be after writeSkins to know the joint IDs
         writeAnimations(modelName, payload, scene);
+        writePrecomputedBLASes(modelName, payload, scene);
 
         return std::move(model);
     }

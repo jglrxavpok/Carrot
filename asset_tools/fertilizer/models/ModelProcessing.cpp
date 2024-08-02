@@ -26,8 +26,10 @@
 #include <metis.h>
 #include <robin_hood.h>
 #include <core/math/Sphere.h>
+#include <core/render/VkAccelerationStructureHeader.h>
 #include <core/scene/AssimpLoader.h>
 #include <glm/gtx/norm.hpp>
+#include <gpu_assistance/VulkanHelper.h>
 
 #include "assimp/Importer.hpp"
 
@@ -660,6 +662,164 @@ namespace Fertilizer {
     }
 
     /**
+     * From a primitive with meshlets, pregenerate BLASes for the groups of meshlets inside the primitive
+     * Note: these BLASes may be valid only for a given driver version :c
+     */
+    static void prebuildGroupBLASes(VulkanHelper& vkHelper, LoadedScene& scene, NodeKey nodeKey, std::size_t primitiveIndex, const glm::mat4& instanceTransform) {
+        LoadedPrimitive& primitive = scene.primitives[primitiveIndex];
+        std::uint32_t groupCount = 0;
+        for(const auto& meshlet : primitive.meshlets) {
+            groupCount = std::max(groupCount, meshlet.groupIndex+1);
+        }
+
+        Carrot::Vector<MeshletGroup> rebuiltGroups;
+        rebuiltGroups.resize(groupCount);
+        for(std::size_t i = 0; i < primitive.meshlets.size(); i++) {
+            const Meshlet& meshlet = primitive.meshlets[i];
+            rebuiltGroups[meshlet.groupIndex].meshlets.push_back(i);
+        }
+
+        // maybe this could be done directly inside generateClusterHierarchy, but speed is not the most important thing for the asset pipeline
+        // (but needs to stay reasonable)
+        Carrot::StackAllocator allocator { Carrot::Allocator::getDefault() };
+        for(std::size_t groupIndex = 0; groupIndex < groupCount; groupIndex++) {
+            const MeshletGroup& group = rebuiltGroups[groupIndex];
+            allocator.clear();
+
+            if(group.meshlets.empty()) {
+                continue;
+            }
+
+            // generate the mesh that will be used to generate the BLAS
+            // (that is: the concatenation of the meshlets composing the group)
+
+            Carrot::Vector<glm::vec3> verticesCPU{ allocator };
+            Carrot::Vector<std::uint16_t> indicesCPU{ allocator };
+            for(const auto& meshletIndex : group.meshlets) {
+                const auto& meshlet = primitive.meshlets[meshletIndex];
+
+                const std::size_t firstVertexIndex = verticesCPU.size();
+                verticesCPU.resize(firstVertexIndex + meshlet.vertexCount);
+
+                const std::size_t firstIndexIndex = indicesCPU.size();
+                indicesCPU.resize(firstIndexIndex + meshlet.indexCount);
+
+                for(std::size_t index = 0; index < meshlet.vertexCount; index++) {
+                    verticesCPU[index + firstVertexIndex] = glm::vec3 { primitive.vertices[primitive.meshletVertexIndices[index + meshlet.vertexOffset]].pos.xyz };
+                }
+                for(std::size_t index = 0; index < meshlet.indexCount; index++) {
+                    indicesCPU[index + firstIndexIndex] = static_cast<std::uint16_t>(primitive.meshletIndices[index + meshlet.indexOffset]);
+                }
+            }
+
+            GPUBuffer vertices = vkHelper.newHostVisibleBuffer(verticesCPU.size() * sizeof(glm::vec3), vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+            GPUBuffer indices = vkHelper.newHostVisibleBuffer(indicesCPU.size() * sizeof(std::uint16_t), vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+            void* pGPUVertices = vkHelper.getDevice().mapMemory(*vertices.vkMemory, 0, VK_WHOLE_SIZE, {}, vkHelper.getDispatcher());
+            memcpy(pGPUVertices, verticesCPU.data(), verticesCPU.size() * sizeof(glm::vec3));
+            void* pGPUIndices = vkHelper.getDevice().mapMemory(*indices.vkMemory, 0, VK_WHOLE_SIZE, {}, vkHelper.getDispatcher());
+            memcpy(pGPUIndices, indicesCPU.data(), indicesCPU.size() * sizeof(std::uint16_t));
+            vk::DeviceAddress verticesAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo { .buffer = *vertices.vkBuffer }, vkHelper.getDispatcher());
+            vk::DeviceAddress indicesAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo { .buffer = *indices.vkBuffer }, vkHelper.getDispatcher());
+
+            // compute storage size of BLAS
+            GPUBuffer rtTransform = vkHelper.newHostVisibleBuffer(sizeof(vk::TransformMatrixKHR), vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR);
+            vk::TransformMatrixKHR* pRTTransform = static_cast<vk::TransformMatrixKHR *>(vkHelper.getDevice().mapMemory(*rtTransform.vkMemory, 0, VK_WHOLE_SIZE, {}, vkHelper.getDispatcher()));
+            *pRTTransform = VulkanHelper::glmToRTTransformMatrix(instanceTransform);
+            vk::DeviceAddress rtTransformAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo { .buffer = *rtTransform.vkBuffer }, vkHelper.getDispatcher());
+
+            vk::AccelerationStructureGeometryKHR geometry {
+                .geometryType = vk::GeometryTypeKHR::eTriangles,
+                .flags = vk::GeometryFlagBitsKHR::eOpaque,
+            };
+            geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
+                .vertexFormat = vk::Format::eR32G32B32Sfloat,
+                .vertexData = verticesAddress,
+                .vertexStride = sizeof(glm::vec3),
+                .maxVertex = static_cast<std::uint32_t>(verticesCPU.size()-1),
+                .indexType = vk::IndexType::eUint16,
+                .indexData = indicesAddress,
+                .transformData = rtTransformAddress,
+            };
+            vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
+                .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+                .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+                .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
+                .geometryCount = 1,
+                .pGeometries = &geometry,
+            };
+            std::uint32_t maxPrimitiveCount = indicesCPU.size() / 3;
+
+            vk::AccelerationStructureBuildSizesInfoKHR sizeInfo = vkHelper.getDevice().getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eHostOrDevice, buildInfo, maxPrimitiveCount, vkHelper.getDispatcher());
+
+            GPUBuffer scratchBuffer = vkHelper.newDeviceLocalBuffer(sizeInfo.buildScratchSize, vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer);
+            vk::DeviceAddress scratchBufferAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo {
+                .buffer = *scratchBuffer.vkBuffer,
+            }, vkHelper.getDispatcher());
+
+            // create and build BLAS
+            vk::DeviceSize asSize = sizeInfo.accelerationStructureSize;
+            GPUBuffer asBuffer = vkHelper.newHostVisibleBuffer(asSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR);
+            vk::AccelerationStructureCreateInfoKHR createInfo {
+                .buffer = *asBuffer.vkBuffer,
+                .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+            };
+            auto as = vkHelper.getDevice().createAccelerationStructureKHRUnique(createInfo, nullptr, vkHelper.getDispatcher());
+            vk::AccelerationStructureBuildRangeInfoKHR buildRange {
+                .primitiveCount = maxPrimitiveCount,
+            };
+
+            buildInfo.scratchData = scratchBufferAddress;
+            buildInfo.dstAccelerationStructure = *as;
+
+            auto queryPool = vkHelper.getDevice().createQueryPoolUnique(vk::QueryPoolCreateInfo {
+                .queryType = vk::QueryType::eAccelerationStructureSerializationSizeKHR,
+                .queryCount = 1,
+            }, nullptr, vkHelper.getDispatcher());
+            vkHelper.getDevice().resetQueryPool(*queryPool, 0, 1, vkHelper.getDispatcher());
+            vkHelper.executeCommands([&](vk::CommandBuffer cmds) {
+                cmds.buildAccelerationStructuresKHR(buildInfo, &buildRange, vkHelper.getDispatcher());
+                vk::MemoryBarrier barrier {
+                    .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
+                    .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
+                };
+                cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0), barrier, {}, {}, vkHelper.getDispatcher());
+                // TODO: compact
+                cmds.writeAccelerationStructuresPropertiesKHR(1, &as.get(), vk::QueryType::eAccelerationStructureSerializationSizeKHR, *queryPool, 0, vkHelper.getDispatcher());
+            });
+
+            auto queryResult = vkHelper.getDevice().getQueryPoolResult<std::uint64_t>(*queryPool, 0, 1, sizeof(std::uint64_t), vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::e64, vkHelper.getDispatcher());
+            verify(queryResult.result == vk::Result::eSuccess, "Failed to get query result");
+            const std::uint64_t serializedSize = queryResult.value;
+
+            // copy BLAS to cpu buffer
+            GPUBuffer serializedASStorageBuffer = vkHelper.newHostVisibleBuffer(serializedSize, vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress);
+            vk::DeviceAddress serializedASStorageBufferAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo {
+                .buffer = *serializedASStorageBuffer.vkBuffer,
+            }, vkHelper.getDispatcher());
+            vk::CopyAccelerationStructureToMemoryInfoKHR copyOp {
+                .src = *as,
+                .dst = serializedASStorageBufferAddress,
+                .mode = vk::CopyAccelerationStructureModeKHR::eSerialize,
+            };
+            vkHelper.executeCommands([&](vk::CommandBuffer cmds) {
+                cmds.copyAccelerationStructureToMemoryKHR(copyOp, vkHelper.getDispatcher());
+            });
+
+            void* serializedASPtr = vkHelper.getDevice().mapMemory(*serializedASStorageBuffer.vkMemory, 0, VK_WHOLE_SIZE, {}, vkHelper.getDispatcher());
+            Carrot::VkAccelerationStructureHeader* pHeader = static_cast<Carrot::VkAccelerationStructureHeader*>(serializedASPtr);
+
+            // TODO: compress blas bytes?
+
+            // copy cpu buffer to storage
+            // key = nodeIndex + meshIndex + groupIndex
+            PrecomputedBLAS& precomputedBLAS = scene.precomputedBLASes[nodeKey][Carrot::Pair(static_cast<std::uint32_t>(primitiveIndex), static_cast<std::uint32_t>(groupIndex))];
+            precomputedBLAS.header = *pHeader;
+            precomputedBLAS.blasBytes.resize(serializedSize-sizeof(Carrot::VkAccelerationStructureHeader));
+            memcpy(precomputedBLAS.blasBytes.data(), pHeader+1, precomputedBLAS.blasBytes.size());
+        }
+    }
+
+    /**
      * From this primitive's vertex & index buffer, generate meshlets/clusters
      */
     static void generateClusterHierarchy(LoadedPrimitive& primitive, float simplifyScale) {
@@ -916,6 +1076,25 @@ namespace Fertilizer {
                 generateClusterHierarchy(primitive, simplifyScale);
             }
         }
+
+        // iterate over nodes, for processes that require the transform of the mesh and/or to handle instances of the same mesh
+        // also assigns the nodeKey used to link nodes to data inside the scene
+        VulkanHelper vkHelper;
+        std::uint32_t nodeKeyValue = 0;
+        std::function<void(Carrot::Render::SkeletonTreeNode&, glm::mat4)> iterateOverNodes = [&](Carrot::Render::SkeletonTreeNode& node, const glm::mat4& nodeTransform) {
+            node.nodeKey.value = nodeKeyValue++;
+            glm::mat4 transform = nodeTransform * node.bone.originalTransform;
+            if(node.meshIndices.has_value()) {
+                for(const std::size_t meshIndex : node.meshIndices.value()) {
+                    prebuildGroupBLASes(vkHelper, scene, node.nodeKey, meshIndex, transform);
+                }
+            }
+
+            for(auto& child : node.getChildren()) {
+                iterateOverNodes(child, transform);
+            }
+        };
+        iterateOverNodes(scene.nodeHierarchy->hierarchy, glm::mat4{ 1.0f });
     }
 
     static void processGLTFModel(const std::string& modelName, tinygltf::Model& model) {

@@ -1,6 +1,7 @@
 add_library(fertilizer-lib
         Fertilizer.cpp
 
+        gpu_assistance/VulkanHelper.cpp
         models/ModelProcessing.cpp
         models/GLTFWriter.cpp
         models/MikkTSpaceInterface.cpp

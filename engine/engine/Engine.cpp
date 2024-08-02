@@ -84,8 +84,6 @@
 
 #include "vr/VRInterface.h"
 
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
-
 Carrot::Engine* Carrot::Engine::instance = nullptr;
 static Carrot::RuntimeOption showFPS("Engine/Show FPS", false);
 static Carrot::RuntimeOption showInputDebug("Engine/Show Inputs", false);

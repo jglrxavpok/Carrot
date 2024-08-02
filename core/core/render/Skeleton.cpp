@@ -35,6 +35,7 @@ namespace Carrot::Render {
         std::function<void(SkeletonTreeNode&, const SkeletonTreeNode&)> clone = [&](SkeletonTreeNode& destination, const SkeletonTreeNode& source) {
             destination.bone = source.bone;
             destination.meshIndices = source.meshIndices;
+            destination.nodeKey = source.nodeKey;
             for(const SkeletonTreeNode& sourceChild : source.getChildren()) {
                 SkeletonTreeNode& destinationChild = destination.newChild();
                 clone(destinationChild, sourceChild);
