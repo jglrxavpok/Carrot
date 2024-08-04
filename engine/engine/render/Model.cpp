@@ -48,6 +48,8 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
     Render::SceneLoader sceneLoader;
     Render::LoadedScene scene = std::move(sceneLoader.load(file));
 
+    precomputedBLASes = std::move(scene.precomputedBLASes);
+
     // TODO: make different pipelines based on loaded materials
     opaqueMeshesPipeline = engine.getRenderer().getOrCreatePipeline("gBuffer");
 
@@ -179,7 +181,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                     auto& drawDataList = isMaterialTransparent ? staticTransparentDrawData : staticOpaqueDrawData;
                     auto& instanceDataList = isMaterialTransparent ? staticTransparentInstanceData : staticOpaqueInstanceData;
 
-                    staticMeshes[material.getSlot()].emplace_back(mesh, transform, sphere, drawCommands.size(), meshIndex);
+                    staticMeshes[material.getSlot()].emplace_back(mesh, transform, sphere, drawCommands.size(), meshIndex, node.nodeKey);
 
 
 
@@ -486,6 +488,10 @@ std::shared_ptr<Carrot::Render::ClustersTemplate> Carrot::Model::lazyLoadMeshlet
         auto& mgr = GetRenderer().getMeshletManager();
         return mgr.addGeometry(desc);
     });
+}
+
+const Carrot::Render::LoadedScene::PrecomputedBLASes& Carrot::Model::getPrecomputedBLASes(const Render::NodeKey& nodeKey) const {
+    return precomputedBLASes.at(nodeKey);
 }
 
 bool Carrot::Model::hasSkeleton() const {

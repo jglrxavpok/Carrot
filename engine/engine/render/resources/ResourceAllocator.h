@@ -31,6 +31,16 @@ namespace Carrot {
         /**
          * Allocates multi device buffer used for device-local storage
          * This function locks the allocator only once, so this is faster than multiple single allocations
+         * @param stride must not be 0, this is the distance in bytes between the start of two output BufferAllocation, and the start of two 'size' values
+         * @param outputs where to store the allocation results
+         * @param sizes sizes of the buffers to allocate
+         * @param usageFlags usage flag for all buffers allocated
+         */
+        void multiAllocateDeviceBuffer(std::size_t count, std::size_t stride, BufferAllocation* outputs, const vk::DeviceSize* sizes, vk::BufferUsageFlags usageFlags);
+
+        /**
+         * Allocates multi device buffer used for device-local storage
+         * This function locks the allocator only once, so this is faster than multiple single allocations
          * @param output where to store the allocation results
          * @param sizes sizes of the buffers to allocate
          * @param usageFlags usage flag for all buffers allocated

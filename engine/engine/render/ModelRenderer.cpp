@@ -312,6 +312,7 @@ namespace Carrot::Render {
                 instanceDesc.pViewport = renderContext.pViewport;
                 std::vector<std::shared_ptr<ClustersTemplate>> templates;
                 std::vector<std::shared_ptr<MaterialHandle>> materials;
+                std::vector<std::unordered_map<std::uint32_t, const PrecomputedBLAS*>> precomputedBLASes;
 
                 for(const auto& bucket : buckets) {
                     if(!bucket.virtualizedGeometry) {
@@ -321,10 +322,21 @@ namespace Carrot::Render {
                     for(const auto& meshInfo : bucket.meshes) {
                         materials.push_back(meshInfo.materialTextures);
                         templates.push_back(model.lazyLoadMeshletTemplate(meshInfo.meshAndTransform.staticMeshIndex, meshInfo.meshAndTransform.transform));
+
+                        std::unordered_map<std::uint32_t, const PrecomputedBLAS*> precomputedBLASesForThisMesh;
+                        auto& precomputedBLASesForNode = model.getPrecomputedBLASes(meshInfo.meshAndTransform.nodeKey);
+                        for(const auto& [blasKey, precomputedBlas] : precomputedBLASesForNode) {
+                            if(blasKey.first == meshInfo.meshAndTransform.staticMeshIndex) {
+                                precomputedBLASesForThisMesh[blasKey.second] = &precomputedBlas;
+                            }
+                        }
+                        precomputedBLASes.push_back(std::move(precomputedBLASesForThisMesh));
                     }
                 }
                 instanceDesc.templates = templates;
                 instanceDesc.pMaterials = materials;
+                instanceDesc.precomputedBLASes = precomputedBLASes;
+
                 auto clusterInstance = meshletManager.addModel(instanceDesc);
                 storage.clusterModelsPerViewport[renderContext.pViewport] = clusterInstance;
             }

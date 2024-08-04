@@ -92,6 +92,46 @@ namespace Carrot {
         return result;
     }
 
+    void ResourceAllocator::multiAllocateDeviceBuffer(std::size_t count, std::size_t stride, BufferAllocation* outputs, const vk::DeviceSize* sizes, vk::BufferUsageFlags usageFlags) {
+        ZoneScoped;
+        verify(stride != 0, "Stride must not be 0");
+        auto makeDedicated = [&](vk::DeviceSize size) {
+            BufferAllocation result { this };
+            auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
+            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
+            auto& pBuffer = dedicatedDeviceBuffers.back();
+            pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
+            result.allocation = pBuffer.get();
+            result.dedicated = true;
+            result.view = pBuffer->getWholeView();
+            return result;
+        };
+        VmaVirtualAllocationCreateInfo allocInfo = {0};
+
+        if(usageFlags & vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR) {
+            allocInfo.alignment = 256;
+        } else if(usageFlags & vk::BufferUsageFlagBits::eUniformBuffer) {
+            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minUniformBufferOffsetAlignment;
+        } else if(usageFlags & (vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eStorageBuffer)) {
+            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
+        } else if(usageFlags & (vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)) {
+            // TODO: which value is valid?
+            allocInfo.alignment = GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment;
+        }
+
+        {
+            Carrot::Async::LockGuard g{deviceAccess};
+            for(std::size_t i = 0; i < count; i++) {
+                std::byte* outputPtr = reinterpret_cast<std::byte*>(outputs) + stride * i;
+                const std::byte* sizePtr = reinterpret_cast<const std::byte*>(sizes) + stride * i;
+                BufferAllocation* output = reinterpret_cast<BufferAllocation*>(outputPtr);
+                const vk::DeviceSize size = *reinterpret_cast<const vk::DeviceSize*>(sizePtr);
+                allocInfo.size = size;
+                *output = allocateInHeap(allocInfo, deviceVirtualBlock, *deviceHeap, makeDedicated);
+            }
+        }
+    }
+
     void ResourceAllocator::multiAllocateDeviceBuffer(std::span<BufferAllocation> output, std::span<const vk::DeviceSize> sizes, vk::BufferUsageFlags usageFlags) {
         ZoneScoped;
         verify(output.size() == sizes.size(), "Must be as many outputs as there are sizes");

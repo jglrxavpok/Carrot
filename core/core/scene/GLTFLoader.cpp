@@ -557,9 +557,8 @@ namespace Carrot::Render {
                         const tinygltf::Accessor& accessor = model.accessors[accessorIndex];
                         verify(accessor.count >= sizeof(Carrot::VkAccelerationStructureHeader), "not enough data for precomputed BLAS");
                         void* pData = pointerFromAccessor(0, accessor, model);
-                        blas.header = *static_cast<Carrot::VkAccelerationStructureHeader*>(pData);
-                        blas.blasBytes.resize(blas.header.accelerationStructureSerializedSize - sizeof(Carrot::VkAccelerationStructureHeader));
-                        memcpy(blas.blasBytes.data(), (std::uint8_t*)pData + sizeof(Carrot::VkAccelerationStructureHeader), blas.blasBytes.size());
+                        blas.blasBytes.resize(accessor.count);
+                        memcpy(blas.blasBytes.data(), pData, blas.blasBytes.size());
                     }
                 }
             }

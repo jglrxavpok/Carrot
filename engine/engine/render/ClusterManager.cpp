@@ -34,6 +34,7 @@ namespace Carrot::Render {
 
     ClustersTemplate::ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                        ClusterManager& manager,
+                                       std::size_t firstGroupIndex,
                                        std::size_t firstCluster, std::span<const Cluster> clusters,
                                        Carrot::BufferAllocation&& vertexData,
                                        Carrot::BufferAllocation&& indexData,
@@ -41,6 +42,7 @@ namespace Carrot::Render {
                                        )
                                        : WeakPoolHandle(index, destructor)
                                        , manager(manager)
+                                       , firstGroupIndex(firstGroupIndex)
                                        , firstCluster(firstCluster)
                                        , clusters(clusters.begin(), clusters.end())
                                        , vertexData(std::move(vertexData))
@@ -183,7 +185,7 @@ namespace Carrot::Render {
 
         requireClusterUpdate = true;
         std::shared_ptr<ClustersTemplate> pTemplate = geometries.create(std::ref(*this),
-                                 firstClusterIndex, std::span{ gpuClusters.data() + firstClusterIndex, desc.meshlets.size() },
+                                 firstGroupIndex, firstClusterIndex, std::span{ gpuClusters.data() + firstClusterIndex, desc.meshlets.size() },
                                  std::move(vertexData), std::move(indexData), std::move(rtTransformData));
         for(std::size_t i = 0; i < desc.meshlets.size(); i++) {
             templatesFromClusters[i + firstClusterIndex] = pTemplate->getSlot();
@@ -240,6 +242,7 @@ namespace Carrot::Render {
         }
         clusterIndex = 0;
         groupInstances.groups.resize(firstGroupInstanceID + localGroupInstanceID);
+        groupInstances.precomputedBLASes.resize(groupInstances.groups.size());
         for(const auto& pTemplate : desc.templates) {
             auto& groupInstanceIDsForThisTemplate = groupInstanceIDs[pTemplate.get()];
             for(std::size_t i = 0; i < pTemplate->clusters.size(); i++) {
@@ -255,6 +258,16 @@ namespace Carrot::Render {
                 groupInstances.groups[groupInstanceID].group.clusters.pushBack(clusterInstanceID);
                 groupInstances.groups[groupInstanceID].templateID = groupID;
                 groupInstances.perCluster[clusterInstanceID] = groupInstanceID;
+
+                // find back the original group index for this meshlet (index from the LoadedPrimitive)
+                // and add a pointer to the pre computed BLAS for the corresponding group
+                const std::size_t meshletGroupIndex = groupID - pTemplate->firstGroupIndex;
+                auto iterBLAS = desc.precomputedBLASes[templateIndex].find(meshletGroupIndex);
+                if(iterBLAS != desc.precomputedBLASes[templateIndex].end()) {
+                    groupInstances.precomputedBLASes[groupInstanceID] = iterBLAS->second;
+                } else {
+                    groupInstances.precomputedBLASes[groupInstanceID] = nullptr;
+                }
 
                 clusterIndex++;
 
@@ -411,6 +424,7 @@ namespace Carrot::Render {
         BufferView activeModelsBufferView;
         activeInstancesAllocator.clear();
         Vector<std::uint32_t> activeInstances { activeInstancesAllocator };
+        activeInstances.setGrowthFactor(1.5f);
         if(instanceDataGPUVisibleArray) {
             ClusterBasedModelData* pModelData = instanceDataGPUVisibleArray->view.map<ClusterBasedModelData>();
 
@@ -574,7 +588,6 @@ namespace Carrot::Render {
             if(!correspondingBLAS.blas) {
                 ScopedMarker("Create corresponding BLAS");
                 const GroupInstance& groupInstance = groupInstances.groups[groupInstanceID];
-
                 std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
                 std::vector<vk::DeviceAddress> transformAddresses;
                 std::vector<std::uint32_t> materialIndices;
@@ -606,7 +619,8 @@ namespace Carrot::Render {
                     return nullptr;
                 }
 
-                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed);
+                const PrecomputedBLAS* pPrecomputedBLAS = groupInstances.precomputedBLASes[groupInstanceID];
+                correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed, pPrecomputedBLAS);
             }
 
             blas = correspondingBLAS.blas;

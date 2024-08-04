@@ -50,6 +50,7 @@ namespace Carrot {
                    const std::vector<glm::mat4>& transforms,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
+                   const Render::PrecomputedBLAS* pPrecomputedBLAS,
                    ASBuilder* builder);
 
         // Version of BLASHandle that does not hold its transform data but only refers to data already somewhere in memory
@@ -57,6 +58,7 @@ namespace Carrot {
                    const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transformAddresses,
                    const std::vector<std::uint32_t>& materialSlots,
                    BLASGeometryFormat geometryFormat,
+                   const Render::PrecomputedBLAS* pPrecomputedBLAS,
                    ASBuilder* builder);
 
         bool isBuilt() const { return built; }
@@ -79,6 +81,7 @@ namespace Carrot {
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};
 
+        const Render::PrecomputedBLAS* pPrecomputedBLAS = nullptr;
         std::unique_ptr<AccelerationStructure> as = nullptr;
         Carrot::BufferAllocation transformData;
         std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
@@ -95,12 +98,12 @@ namespace Carrot {
 
     class InstanceHandle {
     public:
-        InstanceHandle(std::weak_ptr<BLASHandle> geometry,
+        InstanceHandle(std::shared_ptr<BLASHandle> geometry,
                        ASBuilder* builder);
 
         bool isBuilt() const { return built; }
         bool hasBeenModified() const { return modified; }
-        bool isUsable() { return enabled && !geometry.expired() && geometry.lock()->as; }
+        bool isUsable() { return enabled && geometry; }
         void update();
 
         virtual ~InstanceHandle() noexcept;
@@ -117,7 +120,7 @@ namespace Carrot {
     private:
         glm::mat4 oldTransform{1.0f};
         vk::AccelerationStructureInstanceKHR instance;
-        std::weak_ptr<BLASHandle> geometry;
+        std::shared_ptr<BLASHandle> geometry;
 
         bool modified = false;
         bool built = false;
@@ -201,18 +204,20 @@ namespace Carrot {
     public:
         explicit ASBuilder(VulkanRenderer& renderer);
 
-        std::shared_ptr<InstanceHandle> addInstance(std::weak_ptr<BLASHandle> correspondingGeometry);
+        std::shared_ptr<InstanceHandle> addInstance(std::shared_ptr<BLASHandle> correspondingGeometry);
 
         std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                    const std::vector<glm::mat4>& transforms,
                                                    const std::vector<std::uint32_t>& materialSlots,
-                                                   BLASGeometryFormat geometryFormat);
+                                                   BLASGeometryFormat geometryFormat,
+                                                   const Render::PrecomputedBLAS* pPrecomputedBLAS = nullptr);
 
         /// Version of addBottomLevel which does not have ownership over transform data
         std::shared_ptr<BLASHandle> addBottomLevel(const std::vector<std::shared_ptr<Carrot::Mesh>>& meshes,
                                                    const std::vector<vk::DeviceAddress/*vk::TransformMatrixKHR*/>& transforms,
                                                    const std::vector<std::uint32_t>& materialSlots,
-                                                   BLASGeometryFormat geometryFormat);
+                                                   BLASGeometryFormat geometryFormat,
+                                                   const Render::PrecomputedBLAS* pPrecomputedBLAS = nullptr);
 
         void startFrame();
         void waitForCompletion(vk::CommandBuffer& cmds);
@@ -249,6 +254,7 @@ namespace Carrot {
     private:
         void resetBlasBuildCommands(const Carrot::Render::Context& renderContext);
         vk::CommandBuffer getBlasBuildCommandBuffer(const Carrot::Render::Context& renderContext);
+        void preallocateBlasBuildCommandBuffers(const std::thread::id& threadID);
         void buildTopLevelAS(const Carrot::Render::Context& renderContext, bool update);
         void buildBottomLevels(const Carrot::Render::Context& renderContext, const std::vector<std::shared_ptr<BLASHandle>>& toBuild);
 
@@ -256,9 +262,12 @@ namespace Carrot {
         BufferView getIdentityMatrixBufferView() const;
 
     private:
+        static constexpr std::size_t BLASBuildBucketCount = 16;
+
         VulkanRenderer& renderer;
         Async::SpinLock access;
         bool enabled = false;
+        bool preallocatedBuildCommandBuffers = false;
 
     private: // reuse between builds
         std::vector<vk::UniqueCommandBuffer> tlasBuildCommands{};
@@ -275,6 +284,8 @@ namespace Carrot {
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesBufferPerFrame;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesScratchBufferPerFrame;
         Carrot::Render::PerFrame<std::unique_ptr<Carrot::Async::ParallelMap<std::thread::id, vk::UniqueCommandPool>>> blasBuildCommandPool;
+        Carrot::Render::PerFrame<std::array<BufferAllocation, 2>> prebuiltBLASStorages; // to avoid buffers being reused while GPU still reads from it (one staging, one device)
+        Carrot::Render::PerFrame<vk::UniqueSemaphore> serializedCopySemaphore;
 
         std::size_t lastInstanceCount = 0;
         vk::DeviceAddress instanceBufferAddress = 0;

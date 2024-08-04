@@ -9,6 +9,7 @@
 #include <core/utils/WeakPool.hpp>
 #include <engine/render/InstanceData.h>
 #include <core/render/Meshlet.h>
+#include <core/scene/LoadedScene.h>
 #include <engine/render/resources/Vertex.h>
 #include <engine/render/resources/BufferAllocation.h>
 #include <engine/render/resources/PerFrame.h>
@@ -71,6 +72,7 @@ namespace Carrot::Render {
      * Handle to a set of meshlets
      */
     struct ClustersTemplate: public WeakPoolHandle {
+        const std::size_t firstGroupIndex;
         const std::size_t firstCluster;
         const std::vector<Cluster> clusters;
         const Carrot::BufferAllocation vertexData;
@@ -79,6 +81,7 @@ namespace Carrot::Render {
 
         explicit ClustersTemplate(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                   ClusterManager& manager,
+                                  std::size_t firstGroupIndex,
                                   std::size_t firstCluster, std::span<const Cluster> clusters,
                                   Carrot::BufferAllocation&& vertexData,
                                   Carrot::BufferAllocation&& indexData,
@@ -137,6 +140,7 @@ namespace Carrot::Render {
         Viewport* pViewport = nullptr;
         std::span<std::shared_ptr<ClustersTemplate>> templates;
         std::span<std::shared_ptr<MaterialHandle>> pMaterials; // one per template
+        std::span<std::unordered_map<std::uint32_t, const PrecomputedBLAS*>> precomputedBLASes; // one per template, then one per groupID
     };
 
     /**
@@ -212,6 +216,7 @@ namespace Carrot::Render {
             Carrot::Vector<std::uint32_t> perCluster;
 
             Carrot::Vector<GroupInstance> groups;
+            Carrot::Vector<const PrecomputedBLAS*> precomputedBLASes;
 
             Carrot::Vector<BLASHolder> blases; // as many as there are elements inside 'groups'
         };

@@ -5,6 +5,8 @@
 #include <core/allocators/MallocAllocator.h>
 #include <cstdlib>
 
+#include "LowLevelMemoryAllocations.h"
+
 namespace Carrot {
     /*static*/ MallocAllocator MallocAllocator::instance{};
 
@@ -20,11 +22,7 @@ namespace Carrot {
     }
 
     MemoryBlock MallocAllocator::allocate(std::size_t size, std::size_t alignment) {
-#ifdef WIN32
-        void* ptr = _aligned_malloc(size, alignment);
-#else
-        void* ptr = std::aligned_alloc(size, alignment);
-#endif
+        void* ptr = Carrot::alloc(size, alignment);
         return {
             .ptr = ptr,
             .size = size
@@ -32,11 +30,7 @@ namespace Carrot {
     }
 
     void MallocAllocator::deallocate(const MemoryBlock& block) {
-#ifdef WIN32
-        _aligned_free(block.ptr);
-#else
-        free(block.ptr);
-#endif
+        Carrot::free(block.ptr);
     }
 
 }

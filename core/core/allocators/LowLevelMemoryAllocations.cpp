@@ -6,6 +6,7 @@
 #include <core/utils/Profiling.h>
 #include <mimalloc.h>
 //#include <mimalloc-new-delete.h>
+#include <core/allocators/LowLevelMemoryAllocations.h>
 
 #define USE_DEFAULT_ALLOCATOR 0
 #define MEM_TRACKING 0
@@ -95,5 +96,36 @@ void*  operator new[]( std::size_t count, std::align_val_t al, const std::nothro
     auto ptr = mi_new_aligned_nothrow(count, static_cast<std::size_t>(al));
     OnNew(ptr, count);
     return ptr;
+}
+
+// implementation of LowLevelMemoryAllocations.h functions
+void* Carrot::alloc(std::size_t size, std::size_t alignment) {
+    auto ptr = mi_new_aligned(size, alignment);
+    OnNew(ptr, size);
+    return ptr;
+}
+
+void Carrot::free(void* p) {
+    OnDelete(p);
+    mi_free(p);
+}
+#else
+void* Carrot::alloc(std::size_t size, std::size_t alignment) {
+#ifdef WIN32
+    auto ptr = _aligned_malloc(size, alignment);
+#else
+    void* ptr = std::aligned_alloc(size, alignment);
+#endif
+    OnNew(ptr, size);
+    return ptr;
+}
+
+void Carrot::free(void* p) {
+    OnDelete(p);
+#ifdef WIN32
+    _aligned_free(p);
+#else
+    free(p);
+#endif
 }
 #endif

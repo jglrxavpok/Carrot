@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <core/math/Sphere.h>
+#include <core/render/Skeleton.h>
 #include <engine/render/resources/Mesh.h>
 
 namespace Carrot {
@@ -16,5 +17,6 @@ namespace Carrot {
 
         std::size_t meshIndex = 0;
         std::size_t staticMeshIndex = 0;
+        Render::NodeKey nodeKey;
     };
 }

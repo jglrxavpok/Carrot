@@ -16,6 +16,7 @@
 #include <cider/scheduling/Scheduler.h>
 #include <concurrentqueue.h>
 #include <blockingconcurrentqueue.h>
+#include <core/containers/Vector.hpp>
 
 namespace Carrot {
     class Engine;
@@ -110,6 +111,8 @@ namespace Carrot {
          * @param granularity how many tasks at once per thread
          */
         void parallelFor(std::size_t count, const std::function<void(std::size_t)>& forEach, std::size_t granularity);
+
+        Carrot::Vector<std::thread::id> getParallelThreadIDs() const;
 
     public: // scheduling
         /// Schedule a task for execution. The task will be executed as soon as possible on the given lane.

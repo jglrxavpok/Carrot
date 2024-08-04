@@ -122,11 +122,13 @@ namespace Carrot::Render {
      * Represents an already built BLAS for a given mesh + transform combo
      */
     struct PrecomputedBLAS {
-        /// Compatibility information and sizes
-        Carrot::VkAccelerationStructureHeader header;
-
         /// Actual bytes of the BLAS
         Carrot::Vector<std::uint8_t> blasBytes;
+
+        /// Compatibility information and sizes
+        const Carrot::VkAccelerationStructureHeader& getHeader() const {
+           return *reinterpret_cast<const Carrot::VkAccelerationStructureHeader*>(blasBytes.data());
+        }
     };
 
     /**
@@ -140,9 +142,10 @@ namespace Carrot::Render {
         std::vector<LoadedPrimitive> primitives;
         std::unique_ptr<Carrot::Render::Skeleton> nodeHierarchy;
 
-        using PrecomputeBLASes = std::unordered_map<Carrot::Pair<std::uint32_t, std::uint32_t>, PrecomputedBLAS>;
+        // [primitiveIndex][groupIndex]
+        using PrecomputedBLASes = std::unordered_map<Carrot::Pair<std::uint32_t, std::uint32_t>, PrecomputedBLAS>;
 
-        std::unordered_map<NodeKey, PrecomputeBLASes> precomputedBLASes;
+        std::unordered_map<NodeKey, PrecomputedBLASes> precomputedBLASes;
 
         // [primitiveIndex][bone name] -> boneIndex
         std::unordered_map<int, std::unordered_map<std::string, std::uint32_t>> boneMapping;

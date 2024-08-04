@@ -7,6 +7,9 @@
 #include <cstdint>
 
 namespace Carrot {
+    /**
+     * Header, as defined by Vulkan, of serialized acceleration structures
+     */
     struct VkAccelerationStructureHeader {
         char driverUUID[16 /*VK_UUID_SIZE*/];
         char compatibilityData[16 /*VK_UUID_SIZE*/];

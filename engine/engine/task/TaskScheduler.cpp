@@ -273,6 +273,15 @@ namespace Carrot {
         }
     }
 
+    Carrot::Vector<std::thread::id> TaskScheduler::getParallelThreadIDs() const {
+        Carrot::Vector<std::thread::id> result;
+        result.resize(parallelThreads.size());
+        for(std::size_t i = 0; i < result.size(); i++) {
+            result[i] = parallelThreads[i].get_id();
+        }
+        return result;
+    }
+
     void TaskScheduler::schedule(TaskDescription&& description, const Async::TaskLane& lane) {
         ZoneScoped;
         verify(lane == TaskScheduler::FrameParallelWork

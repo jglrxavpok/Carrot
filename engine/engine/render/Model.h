@@ -12,6 +12,8 @@
 #include <core/render/Skeleton.h>
 #include <core/render/Animation.h>
 #include <core/math/Sphere.h>
+#include <core/scene/LoadedScene.h>
+
 #include "engine/render/MaterialSystem.h"
 #include "engine/render/PassEnum.h"
 #include "engine/render/InstanceData.h"
@@ -76,6 +78,7 @@ namespace Carrot {
         std::shared_ptr<BLASHandle> getSkinnedBLAS();
 
         std::shared_ptr<Render::ClustersTemplate> lazyLoadMeshletTemplate(std::size_t staticMeshIndex, const glm::mat4& transform);
+        const Render::LoadedScene::PrecomputedBLASes& getPrecomputedBLASes(const Render::NodeKey& nodeKey) const;
 
     public:
         bool hasSkeleton() const;
@@ -149,6 +152,7 @@ namespace Carrot {
         // indexed by mesh's static mesh index
         Async::SpinLock meshletsLoading;
         Async::ParallelMap<std::size_t, std::shared_ptr<Render::ClustersTemplate>> meshletsPerStaticMesh;
+        std::unordered_map<Render::NodeKey, Render::LoadedScene::PrecomputedBLASes> precomputedBLASes;
 
         // TODO: move animations somewhere else?
         std::unique_ptr<Render::Skeleton> skeleton;

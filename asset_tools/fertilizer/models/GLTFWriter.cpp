@@ -904,11 +904,10 @@ namespace Fertilizer {
                 accessor.componentType = TINYGLTF_COMPONENT_TYPE_BYTE;
 
                 accessor.byteOffset = blasBuffer.data.size();
-                accessor.count = precomputedBLAS.blasBytes.size() + sizeof(precomputedBLAS.header);
+                accessor.count = precomputedBLAS.blasBytes.size();
                 blasBuffer.data.resize(blasBuffer.data.size() + accessor.count);
 
-                memcpy(blasBuffer.data.data() + accessor.byteOffset, &precomputedBLAS.header, sizeof(precomputedBLAS.header));
-                memcpy(blasBuffer.data.data() + accessor.byteOffset + sizeof(precomputedBLAS.header), precomputedBLAS.blasBytes.data(), precomputedBLAS.blasBytes.size());
+                memcpy(blasBuffer.data.data() + accessor.byteOffset, precomputedBLAS.blasBytes.data(), precomputedBLAS.blasBytes.size());
 
                 perGroup = tinygltf::Value{ accessorIndex };
             }

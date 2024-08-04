@@ -761,6 +761,7 @@ namespace Fertilizer {
             GPUBuffer asBuffer = vkHelper.newHostVisibleBuffer(asSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR);
             vk::AccelerationStructureCreateInfoKHR createInfo {
                 .buffer = *asBuffer.vkBuffer,
+                .size = asSize,
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
             };
             auto as = vkHelper.getDevice().createAccelerationStructureKHRUnique(createInfo, nullptr, vkHelper.getDispatcher());
@@ -782,8 +783,8 @@ namespace Fertilizer {
                     .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
                     .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
                 };
-                cmds.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0), barrier, {}, {}, vkHelper.getDispatcher());
-                // TODO: compact
+            });
+            vkHelper.executeCommands([&](vk::CommandBuffer cmds) {
                 cmds.writeAccelerationStructuresPropertiesKHR(1, &as.get(), vk::QueryType::eAccelerationStructureSerializationSizeKHR, *queryPool, 0, vkHelper.getDispatcher());
             });
 
@@ -806,16 +807,13 @@ namespace Fertilizer {
             });
 
             void* serializedASPtr = vkHelper.getDevice().mapMemory(*serializedASStorageBuffer.vkMemory, 0, VK_WHOLE_SIZE, {}, vkHelper.getDispatcher());
-            Carrot::VkAccelerationStructureHeader* pHeader = static_cast<Carrot::VkAccelerationStructureHeader*>(serializedASPtr);
-
             // TODO: compress blas bytes?
 
             // copy cpu buffer to storage
             // key = nodeIndex + meshIndex + groupIndex
             PrecomputedBLAS& precomputedBLAS = scene.precomputedBLASes[nodeKey][Carrot::Pair(static_cast<std::uint32_t>(primitiveIndex), static_cast<std::uint32_t>(groupIndex))];
-            precomputedBLAS.header = *pHeader;
-            precomputedBLAS.blasBytes.resize(serializedSize-sizeof(Carrot::VkAccelerationStructureHeader));
-            memcpy(precomputedBLAS.blasBytes.data(), pHeader+1, precomputedBLAS.blasBytes.size());
+            precomputedBLAS.blasBytes.resize(serializedSize);
+            memcpy(precomputedBLAS.blasBytes.data(), serializedASPtr, precomputedBLAS.blasBytes.size());
         }
     }
 
