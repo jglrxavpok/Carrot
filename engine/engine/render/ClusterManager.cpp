@@ -294,6 +294,33 @@ namespace Carrot::Render {
         rtDataMap.firstGroupInstanceIndex = minGroupInstanceID;
         rtDataMap.data.resize(maxGroupInstanceID +1 - minGroupInstanceID); // create RTData for this group if does not already exist
 
+        auto& activeGroupBytes = rtDataMap.activeGroupBytes;
+        auto& activeGroupOffsets = rtDataMap.activeGroupOffsets;
+        activeGroupBytes.setGrowthFactor(1.5f);
+        activeGroupOffsets.setGrowthFactor(1.5f);
+        for(std::size_t groupInstanceID = minGroupInstanceID; groupInstanceID <= maxGroupInstanceID; groupInstanceID++) {
+            GroupInstance& groupInstance = groupInstances.groups[groupInstanceID];
+            const auto& clustersOfGroup = groupInstance.group.clusters;
+            groupInstance.modelSlot = pModel->getSlot();
+            if(!clustersOfGroup.empty()) {
+                // sizeof(ActiveGroup) with clustersOfGroup inside
+                const std::size_t groupByteSize = clustersOfGroup.size() * sizeof(std::uint32_t) + sizeof(std::uint8_t)*4 + sizeof(std::uint32_t);
+                activeGroupBytes.ensureReserve(activeGroupBytes.size() + groupByteSize);
+
+                const std::uint64_t offset = activeGroupBytes.size();
+                activeGroupBytes.resize(activeGroupBytes.size() + groupByteSize);
+                ActiveGroup& groupData = *reinterpret_cast<ActiveGroup*>(activeGroupBytes.data() + offset);
+                groupData.groupIndex = groupInstanceID;
+                groupData.clusterInstanceCount = clustersOfGroup.size();
+                for(std::size_t clusterIndex = 0; clusterIndex < clustersOfGroup.size(); clusterIndex++) {
+                    groupData.clusterInstances[clusterIndex] = clustersOfGroup[clusterIndex];
+                }
+                activeGroupOffsets.emplaceBack(offset);
+            }
+        }
+
+        // TODO: minimize vectors?
+
         groupInstances.blases.resize(groupInstances.groups.size());
 
         return pModel;
@@ -335,7 +362,7 @@ namespace Carrot::Render {
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
             if(mainRenderContext.lastSwapchainIndex != static_cast<std::size_t>(-1)) {
-                queryVisibleClustersAndActivateRTInstances(mainRenderContext.lastSwapchainIndex);
+                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.lastSwapchainIndex);
             }
         }
     }
@@ -422,12 +449,23 @@ namespace Carrot::Render {
         }
 
         BufferView activeModelsBufferView;
+        BufferView activeGroupsBufferView;
+        BufferView activeGroupOffsetsBufferView;
         activeInstancesAllocator.clear();
-        Vector<std::uint32_t> activeInstances { activeInstancesAllocator };
+
+        // TODO: allocators that remember the size from frame to frame
+        Vector<std::uint64_t, Carrot::NoConstructorVectorTraits> activeGroupOffsets { activeInstancesAllocator };
+        Vector<std::uint32_t, Carrot::NoConstructorVectorTraits> activeInstances { activeInstancesAllocator };
+        activeGroupOffsets.setGrowthFactor(1.5f);
         activeInstances.setGrowthFactor(1.5f);
+
+        std::unordered_set<std::uint32_t> activeGroups;
+        Carrot::Vector<std::uint8_t, Carrot::NoConstructorVectorTraits> activeGroupBytes { activeInstancesAllocator };
+        activeGroupBytes.setGrowthFactor(1.5f);
         if(instanceDataGPUVisibleArray) {
             ClusterBasedModelData* pModelData = instanceDataGPUVisibleArray->view.map<ClusterBasedModelData>();
 
+            auto& groupInstances = perViewport[renderContext.pViewport].groupInstances;
             for(auto& [slot, pModel] : models) {
                 if(auto pLockedModel = pModel.lock()) {
                     if(pLockedModel->pViewport != renderContext.pViewport) {
@@ -441,11 +479,27 @@ namespace Carrot::Render {
                     for(std::size_t instanceIndex = pLockedModel->firstInstance; instanceIndex < endInstance; instanceIndex++) {
                         activeInstances.pushBack(instanceIndex);
                     }
+
+                    GroupRTData& rtData = groupRTDataPerModel.at(slot);
+                    const std::size_t offset = activeGroupBytes.size();
+                    activeGroupBytes.ensureReserve(offset + rtData.activeGroupBytes.size());
+                    activeGroupBytes.resize(offset + rtData.activeGroupBytes.size());
+                    memcpy(activeGroupBytes.data() + offset, rtData.activeGroupBytes.data(), rtData.activeGroupBytes.size());
+
+                    for(const std::uint64_t originalOffset : rtData.activeGroupOffsets) {
+                        activeGroupOffsets.emplaceBack(originalOffset + offset);
+                    }
                 }
             }
 
             activeModelsBufferView = renderer.getSingleFrameHostBuffer(activeInstances.size() * sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeModelsBufferView.directUpload(std::span<const std::uint32_t>(activeInstances));
+
+            activeGroupsBufferView = renderer.getSingleFrameHostBuffer(activeGroupBytes.size(), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeGroupsBufferView.directUpload(std::span<const std::uint8_t>(activeGroupBytes));
+
+            activeGroupOffsetsBufferView = renderer.getSingleFrameHostBuffer(activeGroupOffsets.size() * sizeof(std::uint64_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeGroupOffsetsBufferView.directUpload(std::span<const std::uint64_t>(activeGroupOffsets));
         }
 
         clusterDataPerFrame[renderContext.swapchainIndex] = clusterGPUVisibleArray; // keep ref to avoid allocation going back to heap while still in use
@@ -473,13 +527,12 @@ namespace Carrot::Render {
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceRefs, 0, 1);
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, instanceDataRefs, 0, 2);
             // output image
-            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeModelsBufferView, 0, 5);
+            renderer.bindBuffer(*prePassPacket.pipeline, renderContext, activeGroupOffsetsBufferView, 0, 5);
             renderer.bindBuffer(*prePassPacket.pipeline, renderContext, readbackBufferView, 0, 6);
         }
 
-
-        auto addPushConstant = [&](Render::Packet& thePacket, vk::ShaderStageFlagBits stage) {
-            auto& pushConstant = thePacket.addPushConstant("push", stage);
+        {
+            auto& pushConstant = packet.addPushConstant("push", vk::ShaderStageFlagBits::eMeshEXT);
             using Flags = std::uint8_t;
             constexpr std::uint8_t Flags_None = 0;
             constexpr std::uint8_t Flags_OutputTriangleCount = 1;
@@ -502,9 +555,35 @@ namespace Carrot::Render {
                 data.flags |= Flags_OutputTriangleCount;
             }
             pushConstant.setData(std::move(data));
-        };
-        addPushConstant(prePassPacket, vk::ShaderStageFlagBits::eCompute);
-        addPushConstant(packet, vk::ShaderStageFlagBits::eMeshEXT);
+        }
+        {
+            auto& pushConstant = prePassPacket.addPushConstant("push", vk::ShaderStageFlagBits::eCompute);
+            using Flags = std::uint8_t;
+            constexpr std::uint8_t Flags_None = 0;
+            constexpr std::uint8_t Flags_OutputTriangleCount = 1;
+            struct PushConstantData {
+                std::uint32_t maxClusterID;
+                std::uint32_t lodSelectionMode;
+                float lodErrorThreshold;
+                std::uint32_t forcedLOD;
+                float screenHeight;
+                Flags flags;
+                vk::DeviceAddress groupDataAddress;
+            };
+            PushConstantData data{};
+            //data.maxClusterID = gpuInstances.size();
+            data.maxClusterID = activeGroupOffsets.size();
+            data.lodSelectionMode = lodSelectionMode;
+            data.lodErrorThreshold = errorThreshold;
+            data.forcedLOD = globalLOD;
+            data.screenHeight = renderContext.pViewport->getHeight();
+            data.flags = Flags_None;
+            if(ShowLODOverride && showTriangleCount) {
+                data.flags |= Flags_OutputTriangleCount;
+            }
+            data.groupDataAddress = activeGroupsBufferView.getDeviceAddress();
+            pushConstant.setData(std::move(data));
+        }
 
         Render::PacketCommand& drawCommand = packet.commands.emplace_back();
         const int groupSize = 32;
@@ -514,7 +593,7 @@ namespace Carrot::Render {
         renderer.render(packet);
 
         Render::PacketCommand& prePassDrawCommand = prePassPacket.commands.emplace_back();
-        prePassDrawCommand.compute.x = activeInstances.size() / groupSize;
+        prePassDrawCommand.compute.x = activeGroupOffsets.size() / groupSize;
         prePassDrawCommand.compute.y = 1;
         prePassDrawCommand.compute.z = 1;
         renderer.render(prePassPacket);
@@ -549,7 +628,7 @@ namespace Carrot::Render {
     }
 
     static std::size_t computeSizeOfReadbackBuffer(std::size_t clusterCount) {
-        return sizeof(ClusterReadbackData::visibleCount) + sizeof(ClusterReadbackData::visibleClusterIndices[0]) * clusterCount;
+        return sizeof(ClusterReadbackData::visibleCount) + sizeof(ClusterReadbackData::visibleGroupInstanceIndices[0]) * clusterCount;
     }
 
     Memory::OptionalRef<Carrot::Buffer> ClusterManager::getReadbackBuffer(Carrot::Render::Viewport* pViewport, std::size_t frameIndex) {
@@ -632,27 +711,17 @@ namespace Carrot::Render {
         }
     }
 
-    void ClusterManager::processSingleClusterReadbackData(
+    void ClusterManager::processSingleGroupReadbackData(
         Carrot::TaskHandle& task,
-        std::uint32_t clusterIndex,
+        std::uint32_t groupInstanceID,
         double currentTime,
         GroupInstances& groupInstances,
         std::span<const ClusterInstance> clusterInstances)
     {
-       // ZoneScoped;
-        // TODO: per group instead of per cluster
-        // TODO: precompute group AS sizes
-        const ClusterInstance& clusterInstance = clusterInstances[clusterIndex];
-        const std::uint32_t groupInstanceID = groupInstances.perCluster[clusterIndex];
-
-        if(auto pModel = models.find(clusterInstance.instanceDataIndex).lock()) {
+        const std::uint32_t modelSlot = groupInstances.groups[groupInstanceID].modelSlot;
+        if(auto pModel = models.find(modelSlot).lock()) {
             GroupRTData& groupRTData = groupRTDataPerModel[pModel->getSlot()];
             RTData& rtData = groupRTData.data[groupInstanceID - groupRTData.firstGroupInstanceIndex];
-            if(rtData.lastUpdateTime == currentTime) {
-                return;
-            }
-            Cider::LockGuard g { task, rtData.mutex };
-            //Async::LockGuard g { rtData.mutex };
             rtData.lastUpdateTime = currentTime;
 
             if(!rtData.as) {
@@ -678,7 +747,7 @@ namespace Carrot::Render {
                 .name = "processSingleClusterReadbackData",
                 .task = [&, start = jobIndex * granularity](Carrot::TaskHandle& task) {
                     for(std::size_t i = start; i < start + granularity && i < count; i++) {
-                        processSingleClusterReadbackData(task, pVisibleInstances[i], currentTime, groupInstances, clusterInstances);
+                        processSingleGroupReadbackData(task, pVisibleInstances[i], currentTime, groupInstances, clusterInstances);
                     }
                 },
                 .joiner = &sync,
@@ -694,8 +763,8 @@ namespace Carrot::Render {
         }
     }
 
-    /// Readbacks culled instances from the GPU, and prepares acceleration structures for raytracing, based on which clusters are culled or not
-    void ClusterManager::queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex) {
+    /// Readbacks culled instances from the GPU, and prepares acceleration structures for raytracing, based on which groups are culled or not
+    void ClusterManager::queryVisibleGroupsAndActivateRTInstances(std::size_t lastFrameIndex) {
         static bool allowReadback = false;
         if(ImGui::Begin("debug readback")) {
             ImGui::Checkbox("go", &allowReadback);
@@ -725,7 +794,7 @@ namespace Carrot::Render {
             readbackBuffer.invalidateMappedRange(0, VK_WHOLE_SIZE);
 
             std::size_t count = pData->visibleCount;
-            processReadbackData(pViewport, pData->visibleClusterIndices, count);
+            processReadbackData(pViewport, pData->visibleGroupInstanceIndices, count);
         }
     }
 

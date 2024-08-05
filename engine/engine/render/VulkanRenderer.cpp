@@ -748,8 +748,6 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
         mustBeDoneByNextFrameCounter.busyWait();
     }
 
-    clusterManager->beginFrame(renderContext);
-
     // TODO: implement via asset reload system
     // reloaded shaders -> pipeline recreation -> need to rebind descriptor
     if(GetAssetServer().TMLhasReloadedShaders()) {
@@ -781,6 +779,8 @@ void Carrot::VulkanRenderer::beginFrame(const Carrot::Render::Context& renderCon
     if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F9) == GLFW_PRESS) {
         driver.breakOnNextVulkanError();
     }
+
+    clusterManager->beginFrame(renderContext);
 }
 
 struct PacketKey {
@@ -1761,7 +1761,13 @@ void Carrot::VulkanRenderer::blink() {
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameHostBuffer(vk::DeviceSize bytes, vk::DeviceSize alignment) {
+    ASSERT_NOT_RENDER_THREAD();
     return singleFrameAllocator.allocate(bytes, alignment);
+}
+
+Carrot::BufferView Carrot::VulkanRenderer::getSingleFrameHostBufferOnRenderThread(vk::DeviceSize bytes, vk::DeviceSize alignment) {
+    ASSERT_RENDER_THREAD();
+    return singleFrameAllocator.allocateForFrame(recordingRenderContext.swapchainIndex, bytes, alignment);
 }
 
 Carrot::BufferView Carrot::VulkanRenderer::getInstanceBuffer(vk::DeviceSize bytes) {

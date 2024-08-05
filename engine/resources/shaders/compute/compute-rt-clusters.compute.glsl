@@ -2,6 +2,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : require
@@ -24,6 +25,8 @@ layout(push_constant) uniform PushConstant {
     uint forcedLOD; // lod to force
 
     float screenHeight;
+
+    uint64_t groupDataAddress;
 } push;
 
 layout(set = 0, binding = 0, scalar) buffer ClusterRef {
@@ -40,14 +43,23 @@ layout(set = 0, binding = 2, std430) buffer ModelDataRef {
 
 // slot 3 used by output image
 // slot 4 is stats buffer
-layout(set = 0, binding = 5, scalar) buffer ActiveClusters {
-    uint activeClusters[];
+layout(set = 0, binding = 5, scalar) buffer ActiveGroupOffsets {
+    uint64_t activeGroupOffsets[];
 };
 
 layout(set = 0, binding = 6, scalar) writeonly buffer ReadbackRef {
     uint32_t visibleCount;
-    uint32_t visibleClusterIndices[];
+    uint32_t visibleGroupInstanceIndices[];
 } readback;
+
+layout(buffer_reference, scalar) buffer ActiveGroup {
+    uint32_t groupIndex;
+    uint8_t clusterCount;
+    uint8_t pad0;
+    uint8_t pad1;
+    uint8_t pad2;
+    uint32_t clusterInstances[];
+};
 
 // assume a fixed resolution and fov
 const float testFOV = M_PI_OVER_2;
@@ -67,8 +79,6 @@ float projectErrorToScreen(vec4 transformedSphere) {
 }
 
 bool cull(uint clusterInstanceID) {
-    // TODO: occlusion culling
-    // TODO: backface culling
     uint clusterID = instances[clusterInstanceID].clusterID;
     uint modelDataIndex = instances[clusterInstanceID].instanceDataIndex;
 
@@ -80,14 +90,6 @@ bool cull(uint clusterInstanceID) {
         const mat4 model = modelData[modelDataIndex].instanceData.transform * mat4(clusters[clusterID].transform);
         const mat4 modelview = cbo.view * model;
 
-        // frustum check
-        {
-            const vec4 worldSphere = transformSphere(clusters[clusterID].boundingSphere, model);
-            // frustum check, need groupBounds in world space
-            if(!frustumCheck(cbo.frustumPlanes, worldSphere.xyz, worldSphere.w)) {
-                return true;
-            }
-        }
         vec4 projectedBounds = vec4(clusters[clusterID].boundingSphere.xyz, max(clusters[clusterID].error, 10e-10f));
         projectedBounds = transformSphere(projectedBounds, modelview);
 
@@ -104,16 +106,19 @@ bool cull(uint clusterInstanceID) {
 }
 
 void main() {
-    uint clusterID = activeClusters[gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE];
-
-    if(clusterID >= push.maxCluster) {
+    uint groupIndex = gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE;
+    if(groupIndex >= push.maxCluster) {
         return;
     }
-    bool culled = cull(clusterID);
 
-    if(!culled) {
-        uint readbackIndex = atomicAdd(readback.visibleCount, 1);
-        readback.visibleClusterIndices[nonuniformEXT(readbackIndex)] = nonuniformEXT(clusterID);
-        // TODO
+    ActiveGroup group = ActiveGroup(push.groupDataAddress + activeGroupOffsets[groupIndex]);
+    for(uint clusterIndex = 0; clusterIndex < group.clusterCount; clusterIndex++) {
+        uint clusterID = group.clusterInstances[clusterIndex];
+        bool culled = cull(clusterID);
+        if(!culled) {
+            uint readbackIndex = atomicAdd(readback.visibleCount, 1);
+            readback.visibleGroupInstanceIndices[nonuniformEXT(readbackIndex)] = group.groupIndex;
+            return;
+        }
     }
 }

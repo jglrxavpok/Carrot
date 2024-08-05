@@ -65,7 +65,7 @@ namespace Carrot::Render {
 
     struct ClusterReadbackData {
         std::uint32_t visibleCount;
-        std::uint32_t visibleClusterIndices[];
+        std::uint32_t visibleGroupInstanceIndices[];
     };
 
     /**
@@ -202,6 +202,7 @@ namespace Carrot::Render {
 
         struct GroupInstance {
             ClusterGroup group;
+            std::uint32_t modelSlot; // index of the model which contains this group instance
             std::uint32_t templateID; // index of the template corresponding to this instance, inside groupInstancesPerViewport[current viewport]
         };
 
@@ -227,7 +228,7 @@ namespace Carrot::Render {
             vk::DeviceAddress address; // address to a vk::TransformMatrixKHR
         };
 
-        void queryVisibleClustersAndActivateRTInstances(std::size_t lastFrameIndex);
+        void queryVisibleGroupsAndActivateRTInstances(std::size_t lastFrameIndex);
         std::shared_ptr<Carrot::InstanceHandle> createGroupInstanceAS(
             Carrot::TaskHandle& task,
             std::span<const ClusterInstance> clusterInstances,
@@ -235,7 +236,7 @@ namespace Carrot::Render {
             const ClusterModel& instance,
             std::uint32_t groupID);
         void processReadbackData(Carrot::Render::Viewport* pViewport, const std::uint32_t* pVisibleInstances, std::size_t count);
-        void processSingleClusterReadbackData(
+        void processSingleGroupReadbackData(
             Carrot::TaskHandle& task,
             std::uint32_t clusterIndex,
             double currentTime,
@@ -273,10 +274,24 @@ namespace Carrot::Render {
 
         std::unordered_map<Carrot::Render::Viewport*, PerViewport> perViewport;
 
+        // sent as-is to the GPU
+        // represents an instance of a group
+        struct ActiveGroup {
+            std::uint32_t groupIndex; // index of this group instance
+            // padding seems necessary for reads to work properly in compute shader?
+            std::uint8_t clusterInstanceCount;
+            std::uint8_t pad0;
+            std::uint8_t pad1;
+            std::uint8_t pad2;
+            std::uint32_t clusterInstances[]; // contains indices of the cluster instances contained inside this group
+        };
 
         struct GroupRTData {
             std::uint32_t firstGroupInstanceIndex; // offset inside "groupInstancesPerViewport[current viewport]" of the group at data[0]
             Carrot::Vector<RTData> data;
+
+            Carrot::Vector<std::uint8_t> activeGroupBytes; // bytes of ActiveGroup instances for this model, precomputed to fast copy to GPU each frame
+            Carrot::Vector<std::uint64_t> activeGroupOffsets; // offsets of each group inside 'activeGroupBytes'
 
             void resetForNewFrame();
         };

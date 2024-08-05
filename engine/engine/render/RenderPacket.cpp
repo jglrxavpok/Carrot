@@ -238,7 +238,7 @@ namespace Carrot::Render {
                     indexedDrawCommands.pushBack(cmd.drawIndexedInstanced);
                 }
 
-                Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameHostBuffer(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand));
+                Carrot::BufferView indexedDrawCommandBuffer = renderer.getSingleFrameHostBufferOnRenderThread(indexedDrawCommands.size() * sizeof(vk::DrawIndexedIndirectCommand), 4 /* required by Vulkan spec */);
                 indexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndexedIndirectCommand>{ indexedDrawCommands });
 
                 cmds.drawIndexedIndirect(indexedDrawCommandBuffer.getVulkanBuffer(), indexedDrawCommandBuffer.getStart(), indexedDrawCommands.size(), sizeof(vk::DrawIndexedIndirectCommand));
@@ -251,7 +251,7 @@ namespace Carrot::Render {
                     unindexedDrawCommands.pushBack(cmd.drawUnindexedInstanced);
                 }
 
-                Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameHostBuffer(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand));
+                Carrot::BufferView unindexedDrawCommandBuffer = renderer.getSingleFrameHostBufferOnRenderThread(unindexedDrawCommands.size() * sizeof(vk::DrawIndirectCommand), 4 /* required by Vulkan spec */);
                 unindexedDrawCommandBuffer.directUpload(std::span<const vk::DrawIndirectCommand>{ unindexedDrawCommands });
 
                 cmds.drawIndirect(unindexedDrawCommandBuffer.getVulkanBuffer(), unindexedDrawCommandBuffer.getStart(), unindexedDrawCommands.size(), sizeof(vk::DrawIndirectCommand));
@@ -271,7 +271,7 @@ namespace Carrot::Render {
                     drawMeshTasks.pushBack(cmd.drawMeshTasks);
                 }
 
-                Carrot::BufferView meshDrawCommandBuffer = renderer.getSingleFrameHostBuffer(drawMeshTasks.size() * sizeof(vk::DrawMeshTasksIndirectCommandEXT));
+                Carrot::BufferView meshDrawCommandBuffer = renderer.getSingleFrameHostBufferOnRenderThread(drawMeshTasks.size() * sizeof(vk::DrawMeshTasksIndirectCommandEXT), 4 /* required by Vulkan spec */);
                 meshDrawCommandBuffer.directUpload(std::span<const vk::DrawMeshTasksIndirectCommandEXT>{ drawMeshTasks });
 
                 cmds.drawMeshTasksIndirectEXT(meshDrawCommandBuffer.getVulkanBuffer(),

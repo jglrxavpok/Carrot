@@ -10,14 +10,35 @@
 #include <initializer_list>
 
 namespace Carrot {
+    struct DefaultVectorTraits {
+        /// Should Vector call the constructor and destructors on resizes?
+        /// Setting this to false is only allowed for trivially constructible types
+        constexpr static bool CallConstructorAndDestructorOnResize = true;
+    };
+
+    template<typename TTrait>
+    concept IsValidVectorTraits = requires()
+    {
+        { TTrait::CallConstructorAndDestructorOnResize } -> std::convertible_to<bool>;
+    };
+
+    struct NoConstructorVectorTraits
+    {
+        constexpr static bool CallConstructorAndDestructorOnResize = false;
+    };
+
+    static_assert(IsValidVectorTraits<NoConstructorVectorTraits>);
+
     /**
      * \brief Contiguous array of elements, which can be dynamically resized.
      * \tparam TElement type of element to store
      */
-    template<typename TElement>
+    template<typename TElement, typename VectorTraits = DefaultVectorTraits>
+        requires IsValidVectorTraits<VectorTraits>
     class Vector {
     public:
         static_assert(sizeof(TElement) > 0, "Special handling would need to be added to support 0-length elements inside Vector");
+        static_assert(std::is_trivial_v<TElement> || VectorTraits::CallConstructorAndDestructorOnResize, "CallConstructorAndDestructorOnResize=false is only allowed for trivial types");
 
         /**
          * \brief Creates an empty Vector and sets its corresponding allocator.

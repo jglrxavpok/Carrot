@@ -269,6 +269,7 @@ namespace Carrot {
     public:
         /// Returns a portion of buffer that can be used for the current frame
         Carrot::BufferView getSingleFrameHostBuffer(vk::DeviceSize size, vk::DeviceSize alignment = 1);
+        Carrot::BufferView getSingleFrameHostBufferOnRenderThread(vk::DeviceSize size, vk::DeviceSize alignment = 1);
         Carrot::BufferView getInstanceBuffer(vk::DeviceSize size);
         const Carrot::BufferView getNullBufferInfo() const;
 
