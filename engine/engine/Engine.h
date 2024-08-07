@@ -230,6 +230,8 @@ namespace Carrot {
         std::uint32_t getSwapchainImageIndexRightNow() { return swapchainImageIndexRightNow; }
         VR::Session& getVRSession();
 
+        TracyVkCtx createTracyContext(const std::string_view& name);
+
     public:
         const Render::FrameResource& fillInDefaultPipeline(Render::GraphBuilder& graphBuilder, Carrot::Render::Eye eye, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> transparentCallback, const Render::TextureSize& framebufferSize = {});
         const Render::FrameResource& fillGraphBuilder(Render::GraphBuilder& mainGraph, Render::Eye eye = Render::Eye::NoVR, const Render::TextureSize& framebufferSize = {});

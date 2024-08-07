@@ -66,7 +66,7 @@ namespace Carrot {
         ZoneScoped;
         auto makeDedicated = [&](vk::DeviceSize dedicatedSize) {
             BufferAllocation result { this };
-            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(dedicatedSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
+            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(dedicatedSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().graphicsFamily.value(), GetVulkanDriver().getQueueFamilies().computeFamily.value(), GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
             pBuffer->name("ResourceAllocator::allocateStagingBuffer");
             result.allocation = pBuffer.get();
@@ -98,7 +98,7 @@ namespace Carrot {
         auto makeDedicated = [&](vk::DeviceSize size) {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
-            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
+            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value(), driverQueueFamilies.transferFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
             pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
             result.allocation = pBuffer.get();

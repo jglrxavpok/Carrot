@@ -77,6 +77,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
         VK_EXT_MESH_SHADER_EXTENSION_NAME,
         VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
+        VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -442,8 +443,7 @@ Carrot::QueueFamilies Carrot::VulkanDriver::findQueueFamilies(vk::PhysicalDevice
             families.transferFamily = index;
         }
 
-        // TODO: check if not graphics => async compute queue
-        if(family.queueFlags & vk::QueueFlagBits::eCompute) {
+        if(family.queueFlags & vk::QueueFlagBits::eCompute && !(family.queueFlags & vk::QueueFlagBits::eGraphics)) {
             families.computeFamily = index;
         }
 
@@ -1266,6 +1266,10 @@ void Carrot::VulkanDriver::waitGraphics() {
 
 void Carrot::VulkanDriver::waitTransfer() {
     GetVulkanDriver().getTransferQueue().waitIdle();
+}
+
+void Carrot::VulkanDriver::waitCompute() {
+    GetVulkanDriver().getComputeQueue().waitIdle();
 }
 
 void Carrot::VulkanDriver::waitDeviceIdle() {

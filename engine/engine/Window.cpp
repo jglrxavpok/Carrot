@@ -88,6 +88,7 @@ namespace Carrot {
             imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
             for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
                 imageAvailableSemaphores[i] = engine.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, engine.getVulkanDriver().getAllocationCallbacks());
+                DebugNameable::nameSingle("Swapchain image available", *imageAvailableSemaphores[i]);
             }
         }
 

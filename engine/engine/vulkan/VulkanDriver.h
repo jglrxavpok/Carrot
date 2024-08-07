@@ -136,6 +136,12 @@ namespace Carrot {
         template<typename CommandBufferConsumer>
         void performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags2 waitDstFlags = static_cast<vk::PipelineStageFlagBits2>(0), vk::Semaphore signalSemaphore = {});
 
+        /// Performs a compute operation on the compute queue.
+        /// \tparam CommandBufferConsumer function describing the operation. Takes a single vk::CommandBuffer& argument, and returns void.
+        /// \param consumer function describing the operation
+        template<typename CommandBufferConsumer>
+        void performSingleTimeComputeCommands(CommandBufferConsumer consumer, bool waitFor = true, vk::Semaphore waitSemaphore = {}, vk::PipelineStageFlags2 waitDstFlags = static_cast<vk::PipelineStageFlagBits2>(0), vk::Semaphore signalSemaphore = {});
+
         template<typename CommandBufferConsumer>
         vk::CommandBuffer recordStandaloneGraphicsBuffer(const CommandBufferConsumer& consumer);
 
@@ -347,6 +353,7 @@ namespace Carrot {
         // used by performSingleTimeCommands
         static void waitGraphics();
         static void waitTransfer();
+        static void waitCompute();
 
     private: // memory inspection support
         vk::PhysicalDeviceMemoryProperties baseProperties{};

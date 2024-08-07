@@ -370,6 +370,7 @@ namespace Carrot::Render {
     static std::uint64_t triangleCount = 0;
 
     void ClusterManager::render(const Carrot::Render::Context& renderContext) {
+        ScopedMarker("ClusterManager::render");
         static int globalLOD = 0;
         static int lodSelectionMode = 0;
         static float errorThreshold = 1.0f;
@@ -477,7 +478,7 @@ namespace Carrot::Render {
                     activeInstances.ensureReserve(activeInstances.size() + pLockedModel->instanceCount);
                     const std::size_t endInstance = pLockedModel->firstInstance + pLockedModel->instanceCount;
                     for(std::size_t instanceIndex = pLockedModel->firstInstance; instanceIndex < endInstance; instanceIndex++) {
-                        activeInstances.pushBack(instanceIndex);
+                        activeInstances.pushBack(instanceIndex); // TODO: precompute & batch copy
                     }
 
                     GroupRTData& rtData = groupRTDataPerModel.at(slot);
@@ -656,7 +657,6 @@ namespace Carrot::Render {
     }
 
     std::shared_ptr<Carrot::InstanceHandle> ClusterManager::createGroupInstanceAS(TaskHandle& task, std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& modelInstance, std::uint32_t groupInstanceID) {
-        ZoneScoped;
         auto& asBuilder = GetRenderer().getASBuilder();
 
         // will need synchronisation if done on multiple threads in the future

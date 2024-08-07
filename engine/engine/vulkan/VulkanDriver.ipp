@@ -104,3 +104,8 @@ template<typename CommandBufferConsumer>
 void Carrot::VulkanDriver::performSingleTimeGraphicsCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore) {
     performSingleTimeCommands(getThreadGraphicsCommandPool(), [&](const vk::SubmitInfo2& info, const vk::Fence& fence) { submitGraphics(info, fence); }, waitGraphics, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
 }
+
+template<typename CommandBufferConsumer>
+void Carrot::VulkanDriver::performSingleTimeComputeCommands(CommandBufferConsumer consumer, bool waitFor, vk::Semaphore waitSemaphore, vk::PipelineStageFlags2 waitDstFlags, vk::Semaphore signalSemaphore) {
+    performSingleTimeCommands(getThreadComputeCommandPool(), [&](const vk::SubmitInfo2& info, const vk::Fence& fence) { submitCompute(info, fence); }, waitCompute, waitFor, waitSemaphore, waitDstFlags, signalSemaphore, consumer);
+}

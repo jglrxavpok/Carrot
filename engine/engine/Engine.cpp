@@ -741,11 +741,17 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
 
 
         std::vector<vk::SemaphoreSubmitInfo> signalSemaphores {};
-        signalSemaphores.reserve(1);
+        signalSemaphores.reserve(2);
         signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
             .semaphore = *renderFinishedSemaphore[frameIndex],
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
+        signalSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
+            .semaphore = renderer.getASBuilder().getTlasBuildTimelineSemaphore(),
+            .value = renderer.getASBuilder().getTlasBuildTimelineSemaphoreSignalValue(mainRenderContext),
+            .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
+        });
+
 
         for(auto [stage, semaphore] : additionalWaitSemaphores) {
             vk::PipelineStageFlags2 mask;
@@ -1104,6 +1110,7 @@ void Carrot::Engine::createSynchronizationObjects() {
 
     for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         renderFinishedSemaphore[i] = getLogicalDevice().createSemaphoreUnique(semaphoreInfo, vkDriver.getAllocationCallbacks());
+        DebugNameable::nameSingle("Render finished", *renderFinishedSemaphore[i]);
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
 }
@@ -1296,21 +1303,22 @@ void Carrot::Engine::onScroll(Window& which, double xScroll, double yScroll) {
     }
 }
 
+TracyVkCtx Carrot::Engine::createTracyContext(const std::string_view& name) {
+    PFN_vkResetQueryPool ptr_vkResetQueryPool = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetQueryPool;
+    PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceCalibrateableTimeDomainsKHR;
+    PFN_vkGetCalibratedTimestampsKHR ptr_vkGetCalibratedTimestampsEXT = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetCalibratedTimestampsKHR;
+
+    TracyVkCtx tracyCtx = TracyVkContextHostCalibrated(vkDriver.getPhysicalDevice(), getLogicalDevice(), ptr_vkResetQueryPool, ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, ptr_vkGetCalibratedTimestampsEXT);
+    TracyVkContextName(tracyCtx, name.data(), name.size());
+    return tracyCtx;
+}
+
 void Carrot::Engine::createTracyContexts() {
-    vk::DynamicLoader dl;
     tracyCtx = std::vector<TracyVkCtx>{ getSwapchainImageCount(), nullptr };
-    PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT = dl.getProcAddress<PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT>("vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
-    PFN_vkGetCalibratedTimestampsEXT ptr_vkGetCalibratedTimestampsEXT = dl.getProcAddress<PFN_vkGetCalibratedTimestampsEXT>("vkGetCalibratedTimestampsEXT");
+
 
     for(size_t i = 0; i < getSwapchainImageCount(); i++) {
-        //tracyCtx.emplace_back(std::move(std::make_unique<TracyVulkanContext>(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), getQueueFamilies().graphicsFamily.value())));
-        if(ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT != nullptr && ptr_vkGetCalibratedTimestampsEXT != nullptr) {
-            tracyCtx[i] = TracyVkContextCalibrated(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), mainCommandBuffers[i], ptr_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT, ptr_vkGetCalibratedTimestampsEXT);
-        } else {
-            tracyCtx[i] = TracyVkContext(vkDriver.getPhysicalDevice(), getLogicalDevice(), getGraphicsQueue().getQueueUnsafe(), mainCommandBuffers[i]);
-        }
-        const std::string name = Carrot::sprintf("Main swapchainIndex %d", i);
-        TracyVkContextName(tracyCtx[i], name.c_str(), name.size());
+        tracyCtx[i] = createTracyContext(Carrot::sprintf("Main swapchainIndex %d", i));
     }
 }
 

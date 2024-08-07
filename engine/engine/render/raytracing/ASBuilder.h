@@ -103,7 +103,7 @@ namespace Carrot {
 
         bool isBuilt() const { return built; }
         bool hasBeenModified() const { return modified; }
-        bool isUsable() { return enabled && geometry; }
+        bool isUsable() { return enabled && geometry && geometry->isBuilt(); }
         void update();
 
         virtual ~InstanceHandle() noexcept;
@@ -203,6 +203,7 @@ namespace Carrot {
     class ASBuilder: public SwapchainAware {
     public:
         explicit ASBuilder(VulkanRenderer& renderer);
+        ~ASBuilder();
 
         std::shared_ptr<InstanceHandle> addInstance(std::shared_ptr<BLASHandle> correspondingGeometry);
 
@@ -244,6 +245,9 @@ namespace Carrot {
 
         static vk::TransformMatrixKHR glmToRTTransformMatrix(const glm::mat4& mat);
 
+        vk::Semaphore getTlasBuildTimelineSemaphore() const;
+        std::uint64_t getTlasBuildTimelineSemaphoreSignalValue(const Render::Context& renderContext) const;
+
     private:
         void createGraveyard();
         void createSemaphores();
@@ -270,10 +274,10 @@ namespace Carrot {
         bool preallocatedBuildCommandBuffers = false;
 
     private: // reuse between builds
-        std::vector<vk::UniqueCommandBuffer> tlasBuildCommands{};
+        Carrot::Render::PerFrame<vk::UniqueCommandBuffer> tlasBuildCommands{};
         std::vector<vk::UniqueQueryPool> queryPools{};
         std::vector<std::vector<std::unique_ptr<Carrot::AccelerationStructure>>> asGraveyard; // used to store BLAS that get immediatly compacted, but need to stay alive for a few frames
-        std::vector<std::vector<TracyVkCtx>> blasBuildTracyCtx; // [swapchainIndex][blasIndex]
+        Carrot::Render::PerFrame<TracyVkCtx> tlasBuildTracyCtx; // [swapchainIndex]
 
         std::shared_ptr<Carrot::BufferAllocation> geometriesBuffer;
         std::shared_ptr<Carrot::BufferAllocation> instancesBuffer;
@@ -283,15 +287,27 @@ namespace Carrot {
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instancesBufferPerFrame;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesBufferPerFrame;
         Carrot::Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> rtInstancesScratchBufferPerFrame;
-        Carrot::Render::PerFrame<std::unique_ptr<Carrot::Async::ParallelMap<std::thread::id, vk::UniqueCommandPool>>> blasBuildCommandPool;
+
+        // BLAS build buckets will record commands on different threads, so we need a different pool & Tracy context per thread
+        struct PerThreadCommandObjects {
+            vk::UniqueCommandPool commandPool; //< where to allocate command buffers from for a given thread
+            TracyVkCtx tracyCtx;
+
+            PerThreadCommandObjects() = default;
+            PerThreadCommandObjects(PerThreadCommandObjects&&) = default;
+            PerThreadCommandObjects& operator=(PerThreadCommandObjects&&) = default;
+            ~PerThreadCommandObjects();
+        };
+        Carrot::Render::PerFrame<std::unique_ptr<Carrot::Async::ParallelMap<std::thread::id, PerThreadCommandObjects>>> blasBuildCommandObjects;
+        Carrot::Render::PerFrame<std::array<TracyVkCtx, BLASBuildBucketCount>> blasBuildTracyContextes;
         Carrot::Render::PerFrame<std::array<BufferAllocation, 2>> prebuiltBLASStorages; // to avoid buffers being reused while GPU still reads from it (one staging, one device)
         Carrot::Render::PerFrame<vk::UniqueSemaphore> serializedCopySemaphore;
 
-        std::size_t lastInstanceCount = 0;
-        vk::DeviceAddress instanceBufferAddress = 0;
+        vk::UniqueSemaphore tlasBuildTimelineSemaphore;
+        std::uint64_t tlasBuildTimelineSemaphoreWaitValue = 0;
+        Carrot::Render::PerFrame<std::uint64_t> tlasBuildTimelineSemaphoreWaitValuesForRenderThread;
 
-        std::size_t lastScratchSize = 0;
-        vk::DeviceAddress scratchBufferAddress = 0;
+        std::size_t lastInstanceCount = 0;
 
         ASStorage<BLASHandle> staticGeometries;
         ASStorage<InstanceHandle> instances;

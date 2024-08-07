@@ -53,6 +53,9 @@ namespace Carrot {
         if(!view) {
             return; // was moved
         }
+        if(dedicated) {
+            ((Carrot::Buffer*)allocation)->name(name);
+        }
         vk::DeviceAddress addr = view.getDeviceAddress();
         AllocationsByStartAddress.replace(addr, DebugData {
                 .name = name,
