@@ -106,6 +106,7 @@ namespace Carrot::Render {
         bool enabled = false;
         std::uint32_t firstInstance; // index of first instance, points to a ClusterInstance (instances are expected to be contiguous)
         std::uint32_t instanceCount; // count of ClusterInstances related to this model
+        Carrot::Vector<std::uint32_t> clustersInstanceVector; // just the list from firstInstance to firstInstance+instanceCount, used to quickly fill activeInstances during rendering
 
         explicit ClusterModel(std::size_t index, std::function<void(WeakPoolHandle*)> destructor,
                                   ClusterManager& manager,

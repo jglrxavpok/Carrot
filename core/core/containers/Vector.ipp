@@ -376,6 +376,11 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    std::int64_t Vector<TElement, Traits>::bytes_size() const {
+        return this->allocation.size;
+    }
+
+    VECTOR_TEMPLATE
     std::size_t Vector<TElement, Traits>::capacity() const {
         return this->allocation.size / sizeof(TElement);
     }

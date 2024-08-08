@@ -402,6 +402,12 @@ namespace Carrot {
          */
         std::int64_t size() const;
 
+        /*
+         * How many bytes are inside this vector?
+         * Basically size() * sizeof(TElement)
+         */
+        std::int64_t bytes_size() const;
+
         /**
          * Is this vector empty? (ie size == 0)
          */

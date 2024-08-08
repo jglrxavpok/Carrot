@@ -71,7 +71,10 @@ namespace Carrot::Render {
                                        , firstInstance(firstInstance)
                                        , instanceCount(instanceCount)
                                        {
-
+        clustersInstanceVector.resize(instanceCount);
+        for(std::size_t instanceIndex = firstInstance; instanceIndex < firstInstance + instanceCount; instanceIndex++) {
+            clustersInstanceVector[instanceIndex - firstInstance] = instanceIndex;
+        }
     }
 
     std::shared_ptr<ClusterModel> ClusterModel::clone() {
@@ -455,6 +458,7 @@ namespace Carrot::Render {
         activeInstancesAllocator.clear();
 
         // TODO: allocators that remember the size from frame to frame
+        // TODO: maybe this could be cached?
         Vector<std::uint64_t, Carrot::NoConstructorVectorTraits> activeGroupOffsets { activeInstancesAllocator };
         Vector<std::uint32_t, Carrot::NoConstructorVectorTraits> activeInstances { activeInstancesAllocator };
         activeGroupOffsets.setGrowthFactor(1.5f);
@@ -466,7 +470,6 @@ namespace Carrot::Render {
         if(instanceDataGPUVisibleArray) {
             ClusterBasedModelData* pModelData = instanceDataGPUVisibleArray->view.map<ClusterBasedModelData>();
 
-            auto& groupInstances = perViewport[renderContext.pViewport].groupInstances;
             for(auto& [slot, pModel] : models) {
                 if(auto pLockedModel = pModel.lock()) {
                     if(pLockedModel->pViewport != renderContext.pViewport) {
@@ -475,17 +478,16 @@ namespace Carrot::Render {
                     pModelData[slot].visible = pLockedModel->enabled;
                     pModelData[slot].instanceData = pLockedModel->instanceData;
 
-                    activeInstances.ensureReserve(activeInstances.size() + pLockedModel->instanceCount);
-                    const std::size_t endInstance = pLockedModel->firstInstance + pLockedModel->instanceCount;
-                    for(std::size_t instanceIndex = pLockedModel->firstInstance; instanceIndex < endInstance; instanceIndex++) {
-                        activeInstances.pushBack(instanceIndex); // TODO: precompute & batch copy
-                    }
+                    std::size_t activeInstancesOffset = activeInstances.size();
+                    activeInstances.ensureReserve(activeInstancesOffset + pLockedModel->instanceCount);
+                    activeInstances.resize(activeInstancesOffset + pLockedModel->instanceCount);
+                    memcpy(activeInstances.data() + activeInstancesOffset, pLockedModel->clustersInstanceVector.data(), pLockedModel->clustersInstanceVector.bytes_size());
 
                     GroupRTData& rtData = groupRTDataPerModel.at(slot);
                     const std::size_t offset = activeGroupBytes.size();
                     activeGroupBytes.ensureReserve(offset + rtData.activeGroupBytes.size());
                     activeGroupBytes.resize(offset + rtData.activeGroupBytes.size());
-                    memcpy(activeGroupBytes.data() + offset, rtData.activeGroupBytes.data(), rtData.activeGroupBytes.size());
+                    memcpy(activeGroupBytes.data() + offset, rtData.activeGroupBytes.data(), rtData.activeGroupBytes.bytes_size());
 
                     for(const std::uint64_t originalOffset : rtData.activeGroupOffsets) {
                         activeGroupOffsets.emplaceBack(originalOffset + offset);
@@ -493,13 +495,13 @@ namespace Carrot::Render {
                 }
             }
 
-            activeModelsBufferView = renderer.getSingleFrameHostBuffer(activeInstances.size() * sizeof(std::uint32_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeModelsBufferView = renderer.getSingleFrameHostBuffer(activeInstances.bytes_size(), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeModelsBufferView.directUpload(std::span<const std::uint32_t>(activeInstances));
 
-            activeGroupsBufferView = renderer.getSingleFrameHostBuffer(activeGroupBytes.size(), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeGroupsBufferView = renderer.getSingleFrameHostBuffer(activeGroupBytes.bytes_size(), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeGroupsBufferView.directUpload(std::span<const std::uint8_t>(activeGroupBytes));
 
-            activeGroupOffsetsBufferView = renderer.getSingleFrameHostBuffer(activeGroupOffsets.size() * sizeof(std::uint64_t), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
+            activeGroupOffsetsBufferView = renderer.getSingleFrameHostBuffer(activeGroupOffsets.bytes_size(), GetVulkanDriver().getPhysicalDeviceLimits().minStorageBufferOffsetAlignment);
             activeGroupOffsetsBufferView.directUpload(std::span<const std::uint64_t>(activeGroupOffsets));
         }
 
