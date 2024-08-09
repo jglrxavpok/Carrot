@@ -365,7 +365,7 @@ namespace Carrot::Render {
 
         if(GetEngine().getCapabilities().supportsRaytracing) {
             if(mainRenderContext.lastSwapchainIndex != static_cast<std::size_t>(-1)) {
-                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.lastSwapchainIndex);
+                queryVisibleGroupsAndActivateRTInstances(mainRenderContext.swapchainIndex); // TODO: which frame index should be used?
             }
         }
     }
