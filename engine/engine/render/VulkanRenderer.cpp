@@ -1241,8 +1241,8 @@ void Carrot::VulkanRenderer::updatePerDrawBuffers(const Carrot::Render::Context&
         index++;
     }
 
-    perDrawOffsetBuffers[frameIndex]->getWholeView().uploadForFrame(std::span<const std::uint8_t> { copyTargetsData.data(), copyTargetsData.size() });
-    perDrawBuffers[frameIndex]->getWholeView().uploadForFrame(std::span<const GBufferDrawData>(renderData.perDrawData));
+    perDrawOffsetBuffers[frameIndex]->getWholeView().uploadForFrameOnRenderThread(std::span<const std::uint8_t> { copyTargetsData.data(), copyTargetsData.size() });
+    perDrawBuffers[frameIndex]->getWholeView().uploadForFrameOnRenderThread(std::span<const GBufferDrawData>(renderData.perDrawData));
 }
 
 void Carrot::VulkanRenderer::createDebugSetResources() {

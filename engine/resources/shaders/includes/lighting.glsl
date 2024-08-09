@@ -305,40 +305,36 @@ vec3 computeLightContribution(uint lightIndex, vec3 worldPos, vec3 normal) {
 
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-bool traceShadowRay(vec3 startPos, vec3 direction, float maxDistance) {
+rayQueryEXT rayQuery;
+
+void initRayQuery(vec3 startPos, vec3 direction, float maxDistance, float tMin) {
+    // Initializes a ray query object but does not start traversal
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
+}
+
+bool traceShadowRay() {
     if(!push.hasTLAS) {
         return true;
     }
 
-    // Ray Query for shadow
-    float tMin      = 0.1f;
-
-    // Initializes a ray query object but does not start traversal
-    rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
-
-    // Start traversal: return false if traversal is complete
-    while(rayQueryProceedEXT(rayQuery)) {}
+    rayQueryProceedEXT(rayQuery);
 
     // Returns type of committed (true) intersection
     return rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT;
 }
 
-void traceRay(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float maxDistance) {
+void traceRayWithSurfaceInfo(inout SurfaceIntersection r, vec3 startPos, vec3 direction, float maxDistance) {
     r.hasIntersection = false;
     if(!push.hasTLAS) {
         return;
     }
 
-    // Ray Query for shadow
     float tMin      = 0.00001f;
 
     // Initializes a ray query object but does not start traversal
-    rayQueryEXT rayQuery;
-    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
+    initRayQuery(startPos, direction, maxDistance, tMin);
 
-    // Start traversal: return false if traversal is complete
-    while(rayQueryProceedEXT(rayQuery)) {}
+    rayQueryProceedEXT(rayQuery);
 
     // Returns type of committed (true) intersection
     if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
@@ -482,7 +478,8 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
 
         if(enabled)
         {
-            vec3 L = getVectorToLight(i, worldPos);
+            const vec3 L = getVectorToLight(i, worldPos);
+            const float enabledF = float(enabled);
 
             // from https://github.com/nvpro-samples/vk_raytracing_tutorial_KHR/tree/master/ray_tracing_rayquery
             float lightDistance = maxDistance;
@@ -491,9 +488,14 @@ vec3 computeDirectLighting(inout RandomSampler rng, inout float lightPDF, vec3 w
                 lightDistance = min(lightDistance, length(L));
             }
 
-            float enabledF = float(enabled);
-            float visibility = float(traceShadowRay(worldPos, normalize(L), lightDistance * enabledF));
-            lightContribution += enabledF * visibility * computeLightContribution(i, worldPos, normal) /* cos term already in computeLightContribution */;
+            // Init ray query before light contribution to hide latency
+            // Ray Query for shadow
+            float tMin      = 0.1f;
+            initRayQuery(worldPos, normalize(L), lightDistance * enabledF, tMin);
+            const vec3 singleLightContribution = computeLightContribution(i, worldPos, normal) /* cos term already in computeLightContribution */;
+            const float visibility = float(traceShadowRay());
+
+            lightContribution += enabledF * visibility * singleLightContribution;
         }
         #undef light
     }
@@ -541,7 +543,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
         vec3 incomingRay = normalize(toCamera);
         float distanceToCamera = length(toCamera);
         const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
-        const uint MAX_BOUNCES = 3; /* TODO: specialization constant?*/
+        const uint MAX_BOUNCES = 2; /* TODO: specialization constant?*/
         float roughnessBias = 0.0f;
         float roughness = metallicRoughness.y;
         float metallic = metallicRoughness.x;
@@ -589,10 +591,12 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 lightWeight *= powerHeuristic(1, lightPDF, 1, scatteringPDF);
             }
 
+            const float smoothness = 1.0f - roughness;
+            const float tMax = 300.0f * pow(smoothness * 0.9 + 0.1, 4);
             if(sampledSpecular) {
                 // sample specular reflection
                 vec3 reflectedRay = reflect(incomingRay, normal);
-                traceRay(intersection, rayOrigin, reflectedRay, MAX_LIGHT_DISTANCE);
+                traceRayWithSurfaceInfo(intersection, rayOrigin, reflectedRay, tMax);
                 incomingRay = reflectedRay;
             } else {
                 vec3 direction;
@@ -606,7 +610,7 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 vec3 worldSpaceDirection = tbn * normalize(-direction);
                 beta *= f * abs(dot(worldSpaceDirection, N)) / pdf;
 
-                traceRay(intersection, rayOrigin, worldSpaceDirection, MAX_LIGHT_DISTANCE);
+                traceRayWithSurfaceInfo(intersection, rayOrigin, worldSpaceDirection, tMax);
                 incomingRay = worldSpaceDirection;
             }
 
@@ -614,7 +618,19 @@ LightingResult calculateGI(inout RandomSampler rng, vec3 worldPos, vec3 emissive
                 if(!sampledSpecular)
                     lightContribution += (emissive*1/*TODO: configurable emissive power */ + lightAtPoint * fresnel) * beta;
 
-                #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, 0)
+                // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
+                float mip = max(log2(3840.0 / push.frameWidth), 0.0);
+                vec2 f;
+                float viewDistance = length(worldPos - rayOrigin);
+                float hitDistance = length(intersection.position - rayOrigin);
+                f.x = viewDistance; // ray origin
+                f.y = hitDistance; // ray length
+                f = clamp(f / tMax, 0, 1);
+                f = sqrt(f);
+                mip += f.x * 10.0f;
+                mip += f.y * 10.0f;
+
+                #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, floor(mip))
 
                 emissive = _sample(emissive).rgb;
                 beta *= _sample(albedo).rgb + emissive;

@@ -108,17 +108,6 @@ namespace Carrot::Async {
         /// Releases this lock.
         virtual void unlock() override;
 
-
-        void lockUpgradable();
-
-        /// Attempts to lock an upgradable lock from an already held read lock
-        bool tryLockUpgradable();
-
-        void unlockUpgradable();
-
-        /// Locks an write lock from an already held read lock
-        WriteLock& upgradeToWriter();
-
     private:
         ReadLock(ReadWriteLock& parent);
 
@@ -181,7 +170,6 @@ namespace Carrot::Async {
 
         // https://stackoverflow.com/questions/34993983/upgrading-read-lock-to-write-lock-without-releasing-the-first-in-c11
         std::shared_mutex sharedMutex;
-        std::mutex upgradeMutex;
 
         friend class ReadLock;
         friend class WriteLock;

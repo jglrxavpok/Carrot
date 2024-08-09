@@ -116,6 +116,14 @@ void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length,
     GetRenderer().queueAsyncCopy(staging, this->subView(offset, length));
 }
 
+void Carrot::BufferView::uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
+    verify(length-offset <= size, "Cannot upload more data than this view allows");
+    Carrot::BufferView staging = GetRenderer().getSingleFrameHostBufferOnRenderThread(length);
+    staging.directUpload(data, length, 0);
+
+    GetRenderer().queueAsyncCopy(staging, this->subView(offset, length));
+}
+
 void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {
     verify(destination.size >= size, "copying too much data");
     GetVulkanDriver().performSingleTimeTransferCommands([&](vk::CommandBuffer &stagingCommands) {

@@ -82,7 +82,7 @@ namespace Carrot::Async {
         }
         std::unique_lock<Async::BasicLock> lk{ counterLock.read() };
         sleepCondition.wait(lk, [&] {
-            return isIdle();
+            return internalCounter == 0;
         });
     }
 

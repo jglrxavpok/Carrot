@@ -181,9 +181,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                 resolvePipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
                 const auto& extent = outputImage.getSize();
-                const std::uint8_t localSize = 8;
-                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
-                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+                const std::uint8_t localSizeX = 32;
+                const std::uint8_t localSizeY = 32;
+                std::size_t dispatchX = (extent.width + (localSizeX-1)) / localSizeX;
+                std::size_t dispatchY = (extent.height + (localSizeY-1)) / localSizeY;
                 buffer.dispatch(dispatchX, dispatchY, 1);
 
                 vk::MemoryBarrier2KHR memoryBarrier {

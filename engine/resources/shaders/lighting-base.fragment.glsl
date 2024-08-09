@@ -21,9 +21,10 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_scalar_block_layout : enable
 
-const uint LOCAL_SIZE = 8;
-layout (local_size_x = LOCAL_SIZE) in;
-layout (local_size_y = LOCAL_SIZE) in;
+const uint LOCAL_SIZE_X = 32;
+const uint LOCAL_SIZE_Y = 32;
+layout (local_size_x = LOCAL_SIZE_X) in;
+layout (local_size_y = LOCAL_SIZE_Y) in;
 
 layout(push_constant) uniform PushConstant {
     uint frameCount;
@@ -56,11 +57,11 @@ layout(rgba32f, set = 5, binding = 2) uniform writeonly image2D outFirstBounceVi
 layout(set = 6, binding = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set = 6, binding = 1) uniform texture2D noiseTexture;
 
-layout(set = 6, binding = 2, scalar) buffer Geometries {
+layout(set = 6, binding = 2, scalar) readonly buffer Geometries {
     Geometry geometries[];
 };
 
-layout(set = 6, binding = 3, scalar) buffer RTInstances {
+layout(set = 6, binding = 3, scalar) readonly buffer RTInstances {
     Instance instances[];
 };
 #endif

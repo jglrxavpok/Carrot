@@ -149,6 +149,6 @@ namespace Carrot::ECS {
             }, counter);
         }
 
-        counter.busyWait();
+        counter.sleepWait();
     }
 }

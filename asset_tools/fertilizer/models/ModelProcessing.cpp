@@ -690,18 +690,26 @@ namespace Fertilizer {
                 continue;
             }
 
-            // generate the mesh that will be used to generate the BLAS
+            // generate the meshes that will be used to generate the BLAS
             // (that is: the concatenation of the meshlets composing the group)
+            // the runtime expects one mesh per cluster, otherwise the lighting shader may access invalid memory
 
             Carrot::Vector<glm::vec3> verticesCPU{ allocator };
             Carrot::Vector<std::uint16_t> indicesCPU{ allocator };
-            for(const auto& meshletIndex : group.meshlets) {
+            Carrot::Vector<std::size_t> firstVertices { allocator };
+            Carrot::Vector<std::size_t> firstIndices { allocator };
+            firstVertices.resize(group.meshlets.size());
+            firstIndices.resize(group.meshlets.size());
+            for(std::size_t groupMeshletIndex = 0; groupMeshletIndex < group.meshlets.size(); groupMeshletIndex++) {
+                const auto& meshletIndex = group.meshlets[groupMeshletIndex];
                 const auto& meshlet = primitive.meshlets[meshletIndex];
 
                 const std::size_t firstVertexIndex = verticesCPU.size();
+                firstVertices[groupMeshletIndex] = firstVertexIndex;
                 verticesCPU.resize(firstVertexIndex + meshlet.vertexCount);
 
                 const std::size_t firstIndexIndex = indicesCPU.size();
+                firstIndices[groupMeshletIndex] = firstIndexIndex;
                 indicesCPU.resize(firstIndexIndex + meshlet.indexCount);
 
                 for(std::size_t index = 0; index < meshlet.vertexCount; index++) {
@@ -727,29 +735,42 @@ namespace Fertilizer {
             *pRTTransform = VulkanHelper::glmToRTTransformMatrix(instanceTransform);
             vk::DeviceAddress rtTransformAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo { .buffer = *rtTransform.vkBuffer }, vkHelper.getDispatcher());
 
-            vk::AccelerationStructureGeometryKHR geometry {
-                .geometryType = vk::GeometryTypeKHR::eTriangles,
-                .flags = vk::GeometryFlagBitsKHR::eOpaque,
-            };
-            geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
-                .vertexFormat = vk::Format::eR32G32B32Sfloat,
-                .vertexData = verticesAddress,
-                .vertexStride = sizeof(glm::vec3),
-                .maxVertex = static_cast<std::uint32_t>(verticesCPU.size()-1),
-                .indexType = vk::IndexType::eUint16,
-                .indexData = indicesAddress,
-                .transformData = rtTransformAddress,
-            };
+            Carrot::Vector<vk::AccelerationStructureGeometryKHR> geometries { allocator };
+            Carrot::Vector<std::uint32_t> maxPrimitiveCounts { allocator };
+            Carrot::Vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges { allocator };
+            geometries.resize(group.meshlets.size());
+            maxPrimitiveCounts.resize(group.meshlets.size());
+            buildRanges.resize(group.meshlets.size());
+            for(std::size_t groupMeshletIndex = 0; groupMeshletIndex < group.meshlets.size(); groupMeshletIndex++) {
+                const auto& meshletIndex = group.meshlets[groupMeshletIndex];
+                const auto& meshlet = primitive.meshlets[meshletIndex];
+                vk::AccelerationStructureGeometryKHR& geometry = geometries[groupMeshletIndex];
+                geometry.geometryType = vk::GeometryTypeKHR::eTriangles;
+                geometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+
+                geometry.geometry = vk::AccelerationStructureGeometryTrianglesDataKHR {
+                    .vertexFormat = vk::Format::eR32G32B32Sfloat,
+                    .vertexData = verticesAddress + sizeof(glm::vec3) * firstVertices[groupMeshletIndex],
+                    .vertexStride = sizeof(glm::vec3),
+                    .maxVertex = meshlet.vertexCount-1,
+                    .indexType = vk::IndexType::eUint16,
+                    .indexData = indicesAddress + sizeof(std::uint16_t) * firstIndices[groupMeshletIndex],
+                    .transformData = rtTransformAddress,
+                };
+
+                maxPrimitiveCounts[groupMeshletIndex] = meshlet.indexCount / 3;
+                buildRanges[groupMeshletIndex].primitiveCount = maxPrimitiveCounts[groupMeshletIndex];
+            }
+
             vk::AccelerationStructureBuildGeometryInfoKHR buildInfo {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
                 .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
                 .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
-                .geometryCount = 1,
-                .pGeometries = &geometry,
+                .geometryCount = static_cast<std::uint32_t>(geometries.size()),
+                .pGeometries = geometries.data(),
             };
-            std::uint32_t maxPrimitiveCount = indicesCPU.size() / 3;
 
-            vk::AccelerationStructureBuildSizesInfoKHR sizeInfo = vkHelper.getDevice().getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eHostOrDevice, buildInfo, maxPrimitiveCount, vkHelper.getDispatcher());
+            vk::AccelerationStructureBuildSizesInfoKHR sizeInfo = vkHelper.getDevice().getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eHostOrDevice, buildInfo, maxPrimitiveCounts, vkHelper.getDispatcher());
 
             GPUBuffer scratchBuffer = vkHelper.newDeviceLocalBuffer(sizeInfo.buildScratchSize, vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer);
             vk::DeviceAddress scratchBufferAddress = vkHelper.getDevice().getBufferAddress(vk::BufferDeviceAddressInfo {
@@ -765,9 +786,6 @@ namespace Fertilizer {
                 .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
             };
             auto as = vkHelper.getDevice().createAccelerationStructureKHRUnique(createInfo, nullptr, vkHelper.getDispatcher());
-            vk::AccelerationStructureBuildRangeInfoKHR buildRange {
-                .primitiveCount = maxPrimitiveCount,
-            };
 
             buildInfo.scratchData = scratchBufferAddress;
             buildInfo.dstAccelerationStructure = *as;
@@ -778,11 +796,7 @@ namespace Fertilizer {
             }, nullptr, vkHelper.getDispatcher());
             vkHelper.getDevice().resetQueryPool(*queryPool, 0, 1, vkHelper.getDispatcher());
             vkHelper.executeCommands([&](vk::CommandBuffer cmds) {
-                cmds.buildAccelerationStructuresKHR(buildInfo, &buildRange, vkHelper.getDispatcher());
-                vk::MemoryBarrier barrier {
-                    .srcAccessMask = vk::AccessFlagBits::eAccelerationStructureWriteKHR,
-                    .dstAccessMask = vk::AccessFlagBits::eAccelerationStructureReadKHR,
-                };
+                cmds.buildAccelerationStructuresKHR(buildInfo, buildRanges.cdata(), vkHelper.getDispatcher());
             });
             vkHelper.executeCommands([&](vk::CommandBuffer cmds) {
                 cmds.writeAccelerationStructuresPropertiesKHR(1, &as.get(), vk::QueryType::eAccelerationStructureSerializationSizeKHR, *queryPool, 0, vkHelper.getDispatcher());

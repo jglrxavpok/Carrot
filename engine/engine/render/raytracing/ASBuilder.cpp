@@ -918,7 +918,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
     ZoneValue(update ? 1 : 0);
 
     auto& device = renderer.getLogicalDevice();
-    const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastBuild | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
+    const vk::BuildAccelerationStructureFlagsKHR flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowUpdate;
 
     std::vector<vk::AccelerationStructureInstanceKHR> vkInstances{};
     std::vector<SceneDescription::Instance> logicalInstances {};

@@ -196,25 +196,6 @@ namespace Carrot::Async {
 #endif
     }
 
-    void ReadLock::lockUpgradable() {
-        parent.upgradeMutex.lock();
-    }
-
-    bool ReadLock::tryLockUpgradable() {
-        return parent.upgradeMutex.try_lock();
-    }
-
-    void ReadLock::unlockUpgradable() {
-        parent.upgradeMutex.unlock();
-    }
-
-    Async::WriteLock& ReadLock::upgradeToWriter() {
-        lockUpgradable();
-        unlock();
-        parent.sharedMutex.lock();
-        return parent.writeLock;
-    }
-
     // WriteLock
 
     WriteLock::WriteLock(ReadWriteLock& parent): parent(parent) {}
@@ -233,7 +214,6 @@ namespace Carrot::Async {
 
         //std::atomic_thread_fence(std::memory_order_acquire);
 #else
-        parent.readLock.lockUpgradable();
         parent.sharedMutex.lock();
 #endif
     }
@@ -251,14 +231,7 @@ namespace Carrot::Async {
 //        std::atomic_thread_fence(std::memory_order_acquire);
         return acquired;
 #else
-        bool upgradeAcquired = parent.readLock.tryLockUpgradable();
-        if(!upgradeAcquired) {
-            return false;
-        }
         bool writerAcquired = parent.sharedMutex.try_lock();
-        if(!writerAcquired) {
-            parent.readLock.unlockUpgradable();
-        }
         return writerAcquired;
 #endif
     }
@@ -276,7 +249,6 @@ namespace Carrot::Async {
         //std::atomic_thread_fence(std::memory_order_release);
 #else
         parent.sharedMutex.unlock();
-        parent.readLock.unlockUpgradable();
 #endif
     }
 

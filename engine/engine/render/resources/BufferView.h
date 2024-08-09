@@ -85,6 +85,7 @@ namespace Carrot {
          * @param offset offset, in bytes, of where to copy data inside this buffer view
          */
         void uploadForFrame(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
+        void uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset = 0);
 
         void copyToAndWait(Carrot::BufferView destination) const;
         void copyTo(vk::Semaphore& signalSemaphore, Carrot::BufferView destination) const;
@@ -111,6 +112,11 @@ namespace Carrot {
         template<typename T>
         void uploadForFrame(const std::span<const T>& data) {
             uploadForFrame(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
+        }
+
+        template<typename T>
+        void uploadForFrameOnRenderThread(const std::span<const T>& data) {
+            uploadForFrameOnRenderThread(data.data(), static_cast<vk::DeviceSize>(data.size() * sizeof(T)));
         }
 
         /// Copies the contents of this buffer to the given memory
