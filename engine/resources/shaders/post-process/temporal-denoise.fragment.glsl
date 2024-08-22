@@ -53,7 +53,7 @@ void main() {
         moments.y = moments.x * moments.x;
 
         outMomentHistoryHistoryLength = vec4(moments, 1.0f, 1.0f);
-        outFirstSpatialDenoiseForNextFrame = vec4(0.0);
+        outFirstSpatialDenoiseForNextFrame = outColor;
         return;
     }
 

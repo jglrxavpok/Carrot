@@ -52,9 +52,9 @@ ExtractedGBuffer nullGBuffer() {
 ExtractedGBuffer extractUsefulInfo(in GBuffer g, vec2 uv) {
     ExtractedGBuffer e;
     e.albedo = g.albedo;
-    e.viewPosition = texture(sampler2D(firstBounceViewPositions, gNearestSampler), uv).xyz;
+    e.viewPosition = texture(sampler2D(firstBounceViewPositions, gLinearSampler), uv).xyz;
     //e.viewPosition = g.viewPosition;
-    e.normal = texture(sampler2D(firstBounceViewNormals, gNearestSampler), uv).xyz;
+    e.normal = texture(sampler2D(firstBounceViewNormals, gLinearSampler), uv).xyz;
     //e.normal = g.viewTBN[2];
     e.entityID = g.entityID;
     return e;
@@ -133,7 +133,8 @@ float powNormals(float f) {
     const float f16 = f8 * f8;
     const float f32 = f16 * f16;
     const float f64 = f32 * f32;
-    return f64 * f64;
+    return f32;
+    //return f64*f64;
 }
 
 void main() {
