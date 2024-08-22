@@ -150,12 +150,18 @@ namespace Carrot {
             return slots.size();
         }
 
+        /**
+        * This is the meat of the slot allocation
+        */
         Reservation reserveSlot() {
-            // TODO: free list
+            // TODO: free list: this implementation does not reuse slots
             Async::ReadLock& readLock = rwlock.read();
             readLock.lock();
+
+            // get the new index
             std::uint32_t newID = nextID++;
             if(newID < slots.size()) { // inside a bank that was already allocated
+                // the bank was already allocated so it is safe to access *separate* slots
                 auto& ptr = slots[newID];
                 ptr = std::make_unique<std::weak_ptr<T>>(nullEntry);
                 readLock.unlock();
@@ -164,11 +170,12 @@ namespace Carrot {
                 readLock.unlock();
                 // need to allocate a new bank
 
-                Async::WriteLock& writeLock = rwlock.write();//readLock.upgradeToWriter();
+                // make sure we are the only thread modifying the structure
+                Async::WriteLock& writeLock = rwlock.write();
                 writeLock.lock();
                 std::size_t requiredSize = (newID / Granularity +1) * Granularity;
                 if(requiredSize > slots.size()) { // another thread could have come here and already increased the storage size
-                    slots.resize(requiredSize);
+                    slots.resize(requiredSize); // create the new banks
                 }
                 auto& ptr = slots[newID];
                 ptr = std::make_unique<std::weak_ptr<T>>(nullEntry);

@@ -188,13 +188,8 @@ namespace Carrot::Render {
 
         /// Raytracing-related data, per cluster
         struct RTData {
-            //Async::SpinLock mutex;
-            Cider::Mutex mutex;
-
             double lastUpdateTime = 0.0;
             std::shared_ptr<Carrot::InstanceHandle> as;
-
-            std::uint32_t lastUpdateFrame;
         };
 
         struct ClusterGroup {
@@ -209,8 +204,6 @@ namespace Carrot::Render {
 
         struct BLASHolder {
             std::shared_ptr<BLASHandle> blas;
-            //Async::SpinLock lock;
-            Cider::Mutex lock;
         };
 
         struct GroupInstances {
@@ -304,7 +297,6 @@ namespace Carrot::Render {
 
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> clusterDataPerFrame;
         Render::PerFrame<std::shared_ptr<Carrot::BufferAllocation>> instanceDataPerFrame;
-        Render::PerFrame<Async::Counter> readbackJobsSync;
 
         Carrot::StackAllocator activeInstancesAllocator { Carrot::Allocator::getDefault() };
     };

@@ -459,6 +459,7 @@ namespace Carrot::Render {
 
         // TODO: allocators that remember the size from frame to frame
         // TODO: maybe this could be cached?
+        // TODO: should be moved inside "if(requireInstanceUpdate)"
         Vector<std::uint64_t, Carrot::NoConstructorVectorTraits> activeGroupOffsets { activeInstancesAllocator };
         Vector<std::uint32_t, Carrot::NoConstructorVectorTraits> activeInstances { activeInstancesAllocator };
         activeGroupOffsets.setGrowthFactor(1.5f);
@@ -561,29 +562,21 @@ namespace Carrot::Render {
         }
         {
             auto& pushConstant = prePassPacket.addPushConstant("push", vk::ShaderStageFlagBits::eCompute);
-            using Flags = std::uint8_t;
-            constexpr std::uint8_t Flags_None = 0;
-            constexpr std::uint8_t Flags_OutputTriangleCount = 1;
             struct PushConstantData {
-                std::uint32_t maxClusterID;
+                std::uint32_t maxGroupID;
                 std::uint32_t lodSelectionMode;
                 float lodErrorThreshold;
                 std::uint32_t forcedLOD;
                 float screenHeight;
-                Flags flags;
                 vk::DeviceAddress groupDataAddress;
             };
             PushConstantData data{};
-            //data.maxClusterID = gpuInstances.size();
-            data.maxClusterID = activeGroupOffsets.size();
+            data.maxGroupID = activeGroupOffsets.size();
             data.lodSelectionMode = lodSelectionMode;
             data.lodErrorThreshold = errorThreshold;
             data.forcedLOD = globalLOD;
             data.screenHeight = renderContext.pViewport->getHeight();
-            data.flags = Flags_None;
-            if(ShowLODOverride && showTriangleCount) {
-                data.flags |= Flags_OutputTriangleCount;
-            }
+            // the shader will directly reinterpret the bytes of the buffer
             data.groupDataAddress = activeGroupsBufferView.getDeviceAddress();
             pushConstant.setData(std::move(data));
         }
@@ -610,8 +603,6 @@ namespace Carrot::Render {
         clusterDataPerFrame.resize(newCount);
         perViewport.clear();
         instanceDataPerFrame.resize(newCount);
-
-        readbackJobsSync.resize(newCount);
     }
 
     std::shared_ptr<Carrot::Pipeline> ClusterManager::getPipeline(const Carrot::Render::Context& renderContext) {
@@ -641,8 +632,6 @@ namespace Carrot::Render {
         }
         auto& gpuInstances = perViewport[pViewport].gpuClusterInstances;
         std::unique_ptr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];
-        Async::Counter& syncCounter = readbackJobsSync[frameIndex];
-        syncCounter.sleepWait();
 
         std::size_t requiredSize = computeSizeOfReadbackBuffer(gpuInstances.size());
         if(!pReadbackBuffer || pReadbackBuffer->getSize() < requiredSize) {
@@ -661,34 +650,27 @@ namespace Carrot::Render {
     std::shared_ptr<Carrot::InstanceHandle> ClusterManager::createGroupInstanceAS(TaskHandle& task, std::span<const ClusterInstance> clusterInstances, GroupInstances& groupInstances, const ClusterModel& modelInstance, std::uint32_t groupInstanceID) {
         auto& asBuilder = GetRenderer().getASBuilder();
 
-        // will need synchronisation if done on multiple threads in the future
         BLASHolder& correspondingBLAS = groupInstances.blases[groupInstanceID];
         std::shared_ptr<BLASHandle> blas;
         {
-            Cider::LockGuard g { task, correspondingBLAS.lock };
+            // if no BLAS exists for this group
+            // can happen if instance was deleted, but the group is appropriate again
             if(!correspondingBLAS.blas) {
-                ScopedMarker("Create corresponding BLAS");
                 const GroupInstance& groupInstance = groupInstances.groups[groupInstanceID];
                 std::vector<std::shared_ptr<Carrot::Mesh>> meshes;
                 std::vector<vk::DeviceAddress> transformAddresses;
                 std::vector<std::uint32_t> materialIndices;
 
                 {
-                    ScopedMarker("Allocs");
                     meshes.reserve(groupInstance.group.clusters.size());
                     transformAddresses.reserve(meshes.capacity());
                     materialIndices.reserve(meshes.capacity());
                 }
 
                 {
-                    ScopedMarker("Filling vectors");
                     for(std::uint32_t clusterInstanceID : groupInstance.group.clusters) {
                         const ClusterInstance& clusterInstance = clusterInstances[clusterInstanceID];
                         if(auto pTemplate = geometries.find(templatesFromClusters[clusterInstance.clusterID]).lock()) {
-                            const Cluster& cluster = gpuClusters[clusterInstance.clusterID];
-                            const BufferView vertexBuffer = pTemplate->vertexData.view.subViewFromAddress(cluster.vertexBufferAddress, cluster.vertexCount * sizeof(ClusterVertex));
-                            const BufferView indexBuffer = pTemplate->indexData.view.subViewFromAddress(cluster.indexBufferAddress, cluster.triangleCount * 3 * sizeof(ClusterIndex));
-
                             meshes.emplace_back(clusterMeshes[clusterInstance.clusterID]);
                             transformAddresses.emplace_back(clusterTransforms[clusterInstance.clusterID].address);
                             materialIndices.emplace_back(clusterInstance.materialIndex);
@@ -700,6 +682,8 @@ namespace Carrot::Render {
                     return nullptr;
                 }
 
+                // add the BLAS corresponding to this group
+                // give a precomputed blas to skip building if the precomputed blas is compatible with current GPU and driver
                 const PrecomputedBLAS* pPrecomputedBLAS = groupInstances.precomputedBLASes[groupInstanceID];
                 correspondingBLAS.blas = asBuilder.addBottomLevel(meshes, transformAddresses, materialIndices, BLASGeometryFormat::ClusterCompressed, pPrecomputedBLAS);
             }
@@ -707,10 +691,7 @@ namespace Carrot::Render {
             blas = correspondingBLAS.blas;
         }
 
-        {
-            ScopedMarker("Add instance");
-            return asBuilder.addInstance(blas);
-        }
+        return asBuilder.addInstance(blas);
     }
 
     void ClusterManager::processSingleGroupReadbackData(
@@ -736,11 +717,12 @@ namespace Carrot::Render {
     }
 
     void ClusterManager::processReadbackData(Carrot::Render::Viewport* pViewport, const std::uint32_t* pVisibleInstances, std::size_t count) {
-        Async::LockGuard l { accessLock };
+        Async::LockGuard l { accessLock }; // make sure no one is trying to add clusters or models while we process the readback buffer
         auto& clusterInstances = perViewport[pViewport].gpuClusterInstances;
         auto& groupInstances = perViewport[pViewport].groupInstances;
         double currentTime = Time::getCurrentTime();
 
+        // there are a LOT of data to process, and each group is independent from one another, so do everything in parallel
         Async::Counter sync;
         std::size_t parallelJobs = 32;
         std::size_t granularity = count / parallelJobs;
@@ -760,6 +742,7 @@ namespace Carrot::Render {
             processRange(jobIndex);
         }
 
+        // main thread will help
         while(!sync.isIdle()) {
             GetTaskScheduler().stealJobAndRun(TaskScheduler::FrameParallelWork);
         }

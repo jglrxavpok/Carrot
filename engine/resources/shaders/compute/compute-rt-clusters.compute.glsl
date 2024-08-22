@@ -16,10 +16,10 @@ DEFINE_CAMERA_SET(1)
 
 #include <includes/frustum.glsl>
 
-layout(local_size_x = TASK_WORKGROUP_SIZE) in;
+layout(local_size_x = 32) in;
 
 layout(push_constant) uniform PushConstant {
-    uint maxCluster;
+    uint maxGroupID;
     uint lodSelectionMode; // 0= screen size based, 1= force specific LOD
     float lodErrorThreshold; // screen size threshold
     uint forcedLOD; // lod to force
@@ -107,7 +107,7 @@ bool cull(uint clusterInstanceID) {
 
 void main() {
     uint groupIndex = gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE;
-    if(groupIndex >= push.maxCluster) {
+    if(groupIndex >= push.maxGroupID) {
         return;
     }
 
