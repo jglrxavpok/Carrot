@@ -225,6 +225,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
                                                                           .addressModeW = vk::SamplerAddressMode::eRepeat,
                                                                           .anisotropyEnable = true,
                                                                           .maxAnisotropy = 16.0f,
+                                                                          .maxLod = VK_LOD_CLAMP_NONE,
                                                                           .unnormalizedCoordinates = false,
                                                                   }, getAllocationCallbacks());
 
@@ -237,6 +238,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
                                                                          .addressModeW = vk::SamplerAddressMode::eRepeat,
                                                                          .anisotropyEnable = true,
                                                                          .maxAnisotropy = 16.0f,
+                                                                         .maxLod = VK_LOD_CLAMP_NONE,
                                                                          .unnormalizedCoordinates = false,
                                                                  }, getAllocationCallbacks());
 
