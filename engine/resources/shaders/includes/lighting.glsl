@@ -332,9 +332,10 @@ void traceRayWithSurfaceInfo(inout SurfaceIntersection r, vec3 startPos, vec3 di
     float tMin      = 0.00001f;
 
     // Initializes a ray query object but does not start traversal
-    initRayQuery(startPos, direction, maxDistance, tMin);
+    //initRayQuery(startPos, direction, maxDistance, tMin);
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsOpaqueEXT, 0xFF, startPos, tMin, direction, maxDistance);
 
-    rayQueryProceedEXT(rayQuery);
+    while(rayQueryProceedEXT(rayQuery)){}
 
     // Returns type of committed (true) intersection
     if(rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
