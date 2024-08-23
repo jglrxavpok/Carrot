@@ -750,16 +750,6 @@ namespace Carrot::Render {
 
     /// Readbacks culled instances from the GPU, and prepares acceleration structures for raytracing, based on which groups are culled or not
     void ClusterManager::queryVisibleGroupsAndActivateRTInstances(std::size_t lastFrameIndex) {
-        static bool allowReadback = false;
-        if(ImGui::Begin("debug readback")) {
-            ImGui::Checkbox("go", &allowReadback);
-        }
-        ImGui::End();
-
-        if(!allowReadback) {
-            return;
-        }
-
         // reset state
         for(auto& [slot, pModel] : models) {
             if(auto pLockedModel = pModel.lock()) {

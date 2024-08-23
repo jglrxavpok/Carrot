@@ -469,9 +469,6 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         return;
     }
 
-    // TODO: remove
-    Carrot::Log::info("BLAS count: %llu", blasCount);
-
     resetBlasBuildCommands(renderContext);
 
     for(auto& storagePerBucket : prebuiltBLASStorages[renderContext.swapchainIndex]) {
