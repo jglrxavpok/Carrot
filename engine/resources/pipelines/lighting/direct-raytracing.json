@@ -1,6 +1,6 @@
 {
-  "_import": "lighting.json",
-  "computeShader": "resources/shaders/compute/direct-lighting-raytracing.fragment.glsl.spv",
+  "_import": "direct-lighting.json",
+  "computeShader": "resources/shaders/lighting/direct-raytracing.fragment.glsl.spv",
   "descriptorSets": [
     {
       "type": "autofill",

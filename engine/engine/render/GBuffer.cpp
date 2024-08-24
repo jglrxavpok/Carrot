@@ -109,16 +109,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 // TODO (or it should be re-recorded when changes happen)
                 resolveData.gBuffer.readFrom(graph, opaqueData, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                resolveData.globalIllumination = graph.createStorageTarget("Global Illumination",
+                resolveData.directLighting = graph.createStorageTarget("Direct Lighting",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
-
-                resolveData.firstBouncePositions = graph.createStorageTarget("First bounce positions (view space)",
-                                                                vk::Format::eR32G32B32A32Sfloat,
-                                                                framebufferSize,
-                                                                vk::ImageLayout::eGeneral);
-                resolveData.firstBounceNormals = graph.createStorageTarget("First bounce normals (view space)",
+                resolveData.ambientOcclusion = graph.createStorageTarget("Ambient Occlusion",
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
@@ -127,9 +122,14 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                 ZoneScopedN("CPU RenderGraph lighting");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
                 bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
-                const char* shader = useRaytracingVersion ? "lighting-raytracing" : "lighting-noraytracing";
-                auto resolvePipeline = renderer.getOrCreatePipeline(shader,  (std::uint64_t)&pass);
 
+                const char* directLightingShader = useRaytracingVersion ? "lighting/direct-raytracing" : "lighting/direct-noraytracing";
+                auto directLightingPipeline = renderer.getOrCreatePipeline(directLightingShader,  (std::uint64_t)&pass);
+
+                const char* aoShader = useRaytracingVersion ? "lighting/ao-raytracing" : "lighting/ao-noraytracing";
+                auto aoPipeline = renderer.getOrCreatePipeline(aoShader,  (std::uint64_t)&pass);
+
+                // used for randomness
                 struct PushConstantNoRT {
                     std::uint32_t frameCount;
                     std::uint32_t frameWidth;
@@ -147,44 +147,54 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     block.frameWidth = framebufferSize.width;
                     block.frameHeight = framebufferSize.height;
                 }
-                Carrot::AccelerationStructure* pTLAS = nullptr;
-                if(useRaytracingVersion) {
-                    pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
-                    block.hasTLAS = pTLAS != nullptr;
-                    renderer.pushConstantBlock<PushConstantRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
-                } else {
-                    renderer.pushConstantBlock<PushConstantNoRT>("push", *resolvePipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
-                }
 
-                // GBuffer inputs
-                data.gBuffer.bindInputs(*resolvePipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-                // outputs
-                auto& renderGraph = pass.getGraph();
-                auto& outputImage = renderGraph.getTexture(data.globalIllumination, frame.swapchainIndex);
-                renderer.bindStorageImage(*resolvePipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                renderer.bindStorageImage(*resolvePipeline, frame, renderGraph.getTexture(data.firstBouncePositions, frame.swapchainIndex), 5, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                renderer.bindStorageImage(*resolvePipeline, frame, renderGraph.getTexture(data.firstBounceNormals, frame.swapchainIndex), 5, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-
-                if(useRaytracingVersion) {
-                    renderer.bindTexture(*resolvePipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
-                    if(pTLAS) {
-                        renderer.bindAccelerationStructure(*resolvePipeline, frame, *pTLAS, 6, 0);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
-                        renderer.bindBuffer(*resolvePipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo) {
+                    Carrot::AccelerationStructure* pTLAS = nullptr;
+                    if(useRaytracingVersion) {
+                        pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                        block.hasTLAS = pTLAS != nullptr;
+                        renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
                     } else {
-                        renderer.unbindAccelerationStructure(*resolvePipeline, frame, 6, 0);
-                        renderer.unbindBuffer(*resolvePipeline, frame, 6, 2);
-                        renderer.unbindBuffer(*resolvePipeline, frame, 6, 3);
+                        renderer.pushConstantBlock<PushConstantNoRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
                     }
-                }
 
-                resolvePipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
-                const auto& extent = outputImage.getSize();
+                    // GBuffer inputs
+                    data.gBuffer.bindInputs(pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+                    // outputs
+                    auto& renderGraph = pass.getGraph();
+                    auto& outputImage = renderGraph.getTexture(output, frame.swapchainIndex);
+                    renderer.bindStorageImage(pipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+                    if(useRaytracingVersion) {
+                        renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
+                        if(pTLAS) {
+                            renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
+                            if(needSceneInfo) {
+                                renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
+                                renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                            }
+                        } else {
+                            renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);
+                            if(needSceneInfo) {
+                                renderer.unbindBuffer(pipeline, frame, 6, 2);
+                                renderer.unbindBuffer(pipeline, frame, 6, 3);
+                            }
+                        }
+                    }
+                };
+
                 const std::uint8_t localSizeX = 32;
                 const std::uint8_t localSizeY = 32;
-                std::size_t dispatchX = (extent.width + (localSizeX-1)) / localSizeX;
-                std::size_t dispatchY = (extent.height + (localSizeY-1)) / localSizeY;
+                std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
+                std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
+
+                setupPipeline(data.directLighting, *directLightingPipeline, false);
+                directLightingPipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
+                buffer.dispatch(dispatchX, dispatchY, 1);
+
+                setupPipeline(data.ambientOcclusion, *aoPipeline, false);
+                aoPipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
                 buffer.dispatch(dispatchX, dispatchY, 1);
 
                 vk::MemoryBarrier2KHR memoryBarrier {

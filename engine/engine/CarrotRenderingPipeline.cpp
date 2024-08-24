@@ -145,6 +145,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         return temporalAccumulationPass;
     };
 
+    // TODO: move to lighting pass?
+#if 0
     auto denoise = [&](const Render::PassData::Lighting& input) -> DenoisingResult {
         if(!GetCapabilities().supportsRaytracing) {
             // no-op
@@ -447,13 +449,12 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         result.denoiseResult = spatialDenoise.getData().denoisedPingPong[(spatialDenoise.getData().iterationCount) % 2];
         return result;
     };
-
-    auto denoisedGI = denoise(lightingPass.getData());
+#endif
 
     struct LightingMerge {
         Carrot::Render::PassData::GBuffer gBuffer;
-        Render::FrameResource noisyLighting; // for debug
-        Render::FrameResource lighting;
+        Render::FrameResource directLighting;
+        Render::FrameResource ambientOcclusion;
         Render::FrameResource visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST + 1];
         Render::FrameResource mergeResult;
     };
@@ -461,9 +462,10 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, lightingPass, denoisedGI, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+            [this, lightingPass, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.lighting = builder.read(denoisedGI.denoiseResult, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.directLighting = builder.read(lightingPass.getData().directLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.ambientOcclusion = builder.read(lightingPass.getData().ambientOcclusion, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
@@ -500,7 +502,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 renderer.pushConstantBlock("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, block);
 
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.lighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.directLighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.ambientOcclusion, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
@@ -560,7 +563,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             }
     );
 
-    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, lightingPass.getData().firstBouncePositions, framebufferSize,
+
+    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, lightingPass.getData().gBuffer.positions, framebufferSize,
         true);
 
     return finalTAA.getData().denoisedResult;

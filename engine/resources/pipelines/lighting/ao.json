@@ -1,6 +1,8 @@
 {
-  "_import": "lighting.json",
-  "computeShader": "resources/shaders/compute/direct-lighting-raytracing.fragment.glsl.spv",
+  "type": "compute",
+  "subpassIndex": 0,
+  "depthWrite": false,
+  "depthTest": false,
   "descriptorSets": [
     {
       "type": "autofill",
@@ -25,10 +27,6 @@
     {
       "type": "autofill",
       "setID": 5
-    },
-    {
-      "type": "autofill",
-      "setID": 6
     }
   ]
 }

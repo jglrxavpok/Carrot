@@ -275,7 +275,10 @@ namespace Carrot::Render {
         ditheringTexture = GetRenderer().getOrCreateTexture("dithering.png");
         ditheringTextureHandle = createTextureHandle(ditheringTexture);
         for(int i = 0; i < BlueNoiseTextureCount; i++) {
-            blueNoiseTextures[i] = GetRenderer().getOrCreateTexture(Carrot::sprintf("FreeBlueNoiseTextures/64/LDR_RGBA_%d.png", i));
+            //blueNoiseTextures[i] = GetRenderer().getOrCreateTexture(Carrot::sprintf("FreeBlueNoiseTextures/64/LDR_RGBA_%d.png", i));
+            // go through Carrot::Render::Texture constructor directly to ensure no compression is applied
+            // TODO: expose flags to getOrCreateTexture
+            blueNoiseTextures[i] = std::make_shared<Carrot::Render::Texture>(GetVulkanDriver(), Carrot::sprintf("resources/textures/FreeBlueNoiseTextures/64/LDR_RGBA_%d.png", i));
             blueNoiseTextureHandles[i] = createTextureHandle(blueNoiseTextures[i]);
             globalTextures.blueNoises[i] = blueNoiseTextureHandles[i]->getSlot();
         }

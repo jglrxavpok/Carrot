@@ -135,10 +135,12 @@ namespace Carrot::Render {
         };
 
         struct Lighting {
+            // inputs
             GBuffer gBuffer;
-            FrameResource globalIllumination;
-            FrameResource firstBouncePositions;
-            FrameResource firstBounceNormals;
+
+            // outputs
+            FrameResource directLighting; //< also contains shadows
+            FrameResource ambientOcclusion;
         };
 
         struct PostProcessing {

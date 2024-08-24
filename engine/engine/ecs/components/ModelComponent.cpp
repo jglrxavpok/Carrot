@@ -79,10 +79,6 @@ namespace Carrot::ECS {
         if(!GetCapabilities().supportsRaytracing) {
             return;
         }
-        // TODO: recreating nanite rt stuff
-        if(true) {
-            return;
-        }
         if(tlasIsWaitingForModel && asyncModel.isReady()) {
             Async::LockGuard l{ tlasAccess };
             if(tlasIsWaitingForModel) {
