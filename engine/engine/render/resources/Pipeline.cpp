@@ -74,11 +74,13 @@ Carrot::Pipeline::Pipeline(Carrot::VulkanDriver& driver, const PipelineDescripti
             .pData = commonPipelineTemplate.specializationData.data(),
     };
 
-    reloadShaders();
+    reloadShaders(false);
 }
 
-void Carrot::Pipeline::reloadShaders() {
-    WaitDeviceIdle();
+void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
+    if(needDeviceWait) {
+        WaitDeviceIdle();
+    }
     vkPipelines.clear(); // flush existing pipelines
     stages->reload();
 
@@ -408,7 +410,7 @@ void Carrot::Pipeline::createComputeTemplate() {
 
 bool Carrot::Pipeline::checkForReloadableShaders() {
     if(stages->shouldReload()) {
-        reloadShaders();
+        reloadShaders(true);
         return true;
     }
     return false;

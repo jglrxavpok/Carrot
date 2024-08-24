@@ -340,9 +340,6 @@ namespace Carrot {
         Carrot::BufferAllocation identityMatrixForBLASes;
 
     private:
-        std::vector<vk::BufferMemoryBarrier2KHR> bottomLevelBarriers;
-        std::vector<vk::BufferMemoryBarrier2KHR> topLevelBarriers;
-
         friend class BLASHandle;
         friend class InstanceHandle;
     };

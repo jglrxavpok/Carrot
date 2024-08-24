@@ -133,7 +133,7 @@ namespace Carrot {
 
         vk::Pipeline& getOrCreatePipelineForRenderPass(vk::RenderPass pass) const;
 
-        void reloadShaders();
+        void reloadShaders(bool needDeviceWait);
 
         void createGraphicsTemplate();
         void createComputeTemplate();

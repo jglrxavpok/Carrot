@@ -1022,6 +1022,12 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         } else {
             verify(renderContext.frameCount > 0, "Updating on first frame??");
             tlasValueToWait = renderContext.frameCount-1;
+
+            ZoneScopedN("Render thread dependency");
+            renderer.waitForRenderToComplete(); // this creates a dependency between render thread and main thread
+            // due to timing, it is possible that the TLAS build is submitted before anything about the previous frame has been submitted,
+            // and (weirdly) this can create deadlocks when trying to present the frame.
+            // This happens almost 100% when reloading shaders, for some reason.
         }
 
         // Allocate scratch memory
@@ -1089,39 +1095,17 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
 
     GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[renderContext.swapchainIndex]);
 
-    bottomLevelBarriers.clear();
-    const BufferView& tlasBufferView = currentTLAS->getBuffer().view;
-    topLevelBarriers.push_back(vk::BufferMemoryBarrier2KHR {
-            .srcStageMask = vk::PipelineStageFlagBits2KHR::eAccelerationStructureBuildKHR,
-            .srcAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureWriteKHR,
-            .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllGraphics,
-            .dstAccessMask = vk::AccessFlagBits2KHR::eAccelerationStructureReadKHR,
-
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-
-            .buffer = tlasBufferView.getVulkanBuffer(),
-            .offset = tlasBufferView.getStart(),
-            .size = tlasBufferView.getSize(),
-    });
-
     prevPrimitiveCount = vkInstances.size();
 }
 
 void Carrot::ASBuilder::startFrame() {
     if(!enabled)
         return;
-    topLevelBarriers.clear();
 }
 
 void Carrot::ASBuilder::waitForCompletion(vk::CommandBuffer& cmds) {
     if(!enabled)
         return;
-    vk::DependencyInfoKHR dependency {
-            .bufferMemoryBarrierCount = static_cast<uint32_t>(topLevelBarriers.size()),
-            .pBufferMemoryBarriers = topLevelBarriers.data(),
-    };
-    cmds.pipelineBarrier2KHR(dependency);
 }
 
 Carrot::AccelerationStructure* Carrot::ASBuilder::getTopLevelAS(const Carrot::Render::Context& renderContext) {
