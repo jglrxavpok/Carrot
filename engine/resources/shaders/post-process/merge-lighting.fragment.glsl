@@ -90,8 +90,8 @@ void main() {
 
     vec3 finalOpaqueColor;
     if(currDepth < 1.0) {
-        //finalOpaqueColor = albedoColor.rgb * lightingColor.rgb;
-        finalOpaqueColor = ao.rrr;
+        finalOpaqueColor = albedoColor.rgb * lightingColor.rgb;
+        //finalOpaqueColor = ao.rrr;
     } else {
         finalOpaqueColor = lightingColor.rgb;
     }

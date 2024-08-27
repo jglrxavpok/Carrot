@@ -1,6 +1,7 @@
 struct RandomSampler {
     uint pixelPos;
     uint frameCount;
+    uint sampleIndex;
 };
 
 void initRNG(inout RandomSampler rng, vec2 uv, uint frameWidth, uint frameHeight, uint frameCount) {
@@ -9,6 +10,7 @@ void initRNG(inout RandomSampler rng, vec2 uv, uint frameWidth, uint frameHeight
     uvec2 pos = uvec2(uv * screenSize);
     rng.pixelPos = pos.x + pos.y * frameWidth;
     rng.frameCount = frameCount;
+    rng.sampleIndex = 0;
 }
 
 // from http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
@@ -25,9 +27,11 @@ float sampleNoise(inout RandomSampler rng) {
     const vec2 blueNoiseUV = r2Sequence(rng.pixelPos);
 
     const uint components = 4;
-    const uint coordinate = rng.frameCount % components;
-    const uint blueNoiseIndex = (rng.frameCount / components) % NOISE_COUNT;
+    const uint timeCoordinate = rng.sampleIndex + rng.frameCount;
+    const uint coordinate = timeCoordinate % components;
+    const uint blueNoiseIndex = (timeCoordinate / components) % NOISE_COUNT;
     const uint textureIndex = globalTextures.blueNoises[blueNoiseIndex];
     float r = texture(sampler2D(textures[textureIndex], nearestSampler), blueNoiseUV)[coordinate];
+    rng.sampleIndex++;
     return r;
 }

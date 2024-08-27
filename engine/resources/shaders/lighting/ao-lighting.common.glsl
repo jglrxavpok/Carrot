@@ -33,7 +33,7 @@ vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
     );
 }
 
-float calculateAO(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
+float calculateAO(inout RandomSampler rng, vec3 worldPos, vec3 normal, vec3 tangent, bool raytracing) {
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     if (!raytracing)
     {

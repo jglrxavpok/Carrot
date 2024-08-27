@@ -114,7 +114,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
                 resolveData.ambientOcclusion = graph.createStorageTarget("Ambient Occlusion",
-                                                                vk::Format::eR32G32B32A32Sfloat,
+                                                                vk::Format::eR8Unorm,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
            },

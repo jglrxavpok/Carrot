@@ -62,7 +62,7 @@ void main() {
     if(currDepth < 1.0) {
         RandomSampler rng;
 
-        GBufferSmall gbuffer = unpackGBufferTest(inUV);
+        GBufferSmall gbuffer = unpackGBufferLightTest(inUV);
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
         vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 
@@ -71,12 +71,9 @@ void main() {
         mat3 inverseNormalView = inverse(cboNormalView);
         vec3 normal = inverseNormalView * gbuffer.viewN;
         vec3 tangent = inverseNormalView * gbuffer.viewT;
-        vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
 
         initRNG(rng, inUV, push.frameWidth, push.frameHeight, push.frameCount);
 
-
-        vec3 emissiveColor = gbuffer.emissiveColor;
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
         const int SAMPLE_COUNT = 4;
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
@@ -85,7 +82,7 @@ void main() {
         [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            outAO += calculateAO(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
+            outAO += calculateAO(rng, worldPos, normal, tangent, true);
         }
         outAO *= INV_SAMPLE_COUNT;
 #endif

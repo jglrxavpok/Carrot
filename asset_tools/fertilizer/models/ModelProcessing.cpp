@@ -105,6 +105,7 @@ namespace Fertilizer {
         glm::vec3 pos;
         glm::vec2 uv;
         glm::vec3 color;
+        glm::vec3 normal;
         glm::i8vec4 boneIDs;
         glm::vec4 boneWeights;
 
@@ -116,6 +117,7 @@ namespace Fertilizer {
             std::size_t h = std::hash<glm::vec3>{}(k.pos);
             Carrot::hash_combine(h, std::hash<glm::vec2>{}(k.uv));
             Carrot::hash_combine(h, std::hash<glm::vec3>{}(k.color));
+            Carrot::hash_combine(h, std::hash<glm::vec3>{}(k.normal));
             Carrot::hash_combine(h, std::hash<glm::i8vec4>{}(k.boneIDs));
             Carrot::hash_combine(h, std::hash<glm::vec4>{}(k.boneWeights));
             return h;
@@ -151,6 +153,7 @@ namespace Fertilizer {
                 .pos = duplicatedVertex.vertex.pos.xyz,
                 .uv = duplicatedVertex.vertex.uv,
                 .color = duplicatedVertex.vertex.color,
+                .normal = duplicatedVertex.vertex.normal,
                 .boneIDs = duplicatedVertex.vertex.boneIDs,
                 .boneWeights = duplicatedVertex.vertex.boneWeights,
             };
@@ -220,7 +223,7 @@ namespace Fertilizer {
 
             a.normal = glm::normalize(glm::cross(ab, ac));
             b.normal = glm::normalize(glm::cross(bc, -ab));
-            c.normal = glm::normalize(glm::cross(ac, -bc));
+            c.normal = glm::normalize(glm::cross(-ac, -bc));
         }
     }
 
