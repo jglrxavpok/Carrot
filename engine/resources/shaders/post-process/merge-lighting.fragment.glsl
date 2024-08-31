@@ -38,7 +38,7 @@ void main() {
     vec4 albedoColor = g.albedo;
     vec4 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv);
     float ao = texture(sampler2D(aoLighting, gLinearSampler), uv).r;
-    lightingColor.rgb *= ao;
+    lightingColor.rgb *= ao*ao;
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 
@@ -67,6 +67,8 @@ void main() {
             outColor = vec4(g.viewTBN[0], 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_LIGHTING) {
             outColor = vec4(lightingColor.rgb, 1.0);
+        } else if(debug.gBufferType == DEBUG_GBUFFER_MOTION) {
+            outColor = vec4(g.motionVector.rgb, 1.0);
         } else if(debug.gBufferType == DEBUG_GBUFFER_ENTITYID) {
             outColor = vec4(g.entityID) / 255.0f;
         } else if(debug.gBufferType >= DEBUG_VISIBILITY_BUFFER_FIRST && debug.gBufferType <= DEBUG_VISIBILITY_BUFFER_LAST) {

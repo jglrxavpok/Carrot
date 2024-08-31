@@ -272,10 +272,13 @@ set(COMPUTE_SHADERS
         compute/lighting-noraytracing.fragment.glsl
         compute/lighting-raytracing.fragment.glsl
 
-        lighting/ao-noraytracing.fragment.glsl
-        lighting/ao-raytracing.fragment.glsl
-        lighting/direct-noraytracing.fragment.glsl
-        lighting/direct-raytracing.fragment.glsl
+        lighting/ao-noraytracing.compute.glsl
+        lighting/ao-raytracing.compute.glsl
+        lighting/denoise-ao.compute.glsl
+
+        lighting/direct-noraytracing.compute.glsl
+        lighting/direct-raytracing.compute.glsl
+        lighting/temporal-denoise.compute.glsl
 
         #PARENT_SCOPE
         )

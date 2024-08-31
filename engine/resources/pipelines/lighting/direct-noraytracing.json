@@ -1,4 +1,4 @@
 {
   "_import": "direct-lighting.json",
-  "computeShader": "resources/shaders/lighting/direct-noraytracing.fragment.glsl.spv"
+  "computeShader": "resources/shaders/lighting/direct-noraytracing.compute.glsl.spv"
 }

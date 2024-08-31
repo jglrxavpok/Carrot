@@ -101,7 +101,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
 
-    return graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
+    auto& lightingPass = graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
                 pass.rasterized = false;
@@ -113,103 +113,228 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
-                resolveData.ambientOcclusion = graph.createStorageTarget("Ambient Occlusion",
+                resolveData.ambientOcclusionNoisy = graph.createStorageTarget("Ambient Occlusion (noisy)",
                                                                 vk::Format::eR8Unorm,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
+                resolveData.ambientOcclusionSamples = graph.createStorageTarget("Ambient Occlusion (temporal supersampling)",
+                                                                vk::Format::eR8Unorm,
+                                                                framebufferSize,
+                                                                vk::ImageLayout::eGeneral);
+                resolveData.ambientOcclusionHistoryLength = graph.createStorageTarget("Ambient Occlusion (temporal history length)",
+                                                                vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::ImageLayout::eGeneral);
+                resolveData.ambientOcclusion[0] = graph.createStorageTarget("Ambient Occlusion (0)",
+                                                                vk::Format::eR8Unorm,
+                                                                framebufferSize,
+                                                                vk::ImageLayout::eGeneral);
+                resolveData.ambientOcclusion[1] = graph.createStorageTarget("Ambient Occlusion (1)",
+                                                                vk::Format::eR8Unorm,
+                                                                framebufferSize,
+                                                                vk::ImageLayout::eGeneral);
+                resolveData.iterationCount = 3;
            },
-           [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& buffer) {
-                ZoneScopedN("CPU RenderGraph lighting");
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "lighting");
-                bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
+           [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& cmds) {
+               ZoneScopedN("CPU RenderGraph lighting");
+               TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "lighting");
+               bool useRaytracingVersion = GetCapabilities().supportsRaytracing;
 
-                const char* directLightingShader = useRaytracingVersion ? "lighting/direct-raytracing" : "lighting/direct-noraytracing";
-                auto directLightingPipeline = renderer.getOrCreatePipeline(directLightingShader,  (std::uint64_t)&pass);
+               const char* directLightingShader = useRaytracingVersion ? "lighting/direct-raytracing" : "lighting/direct-noraytracing";
+               auto directLightingPipeline = renderer.getOrCreatePipeline(directLightingShader,  (std::uint64_t)&pass);
 
-                const char* aoShader = useRaytracingVersion ? "lighting/ao-raytracing" : "lighting/ao-noraytracing";
-                auto aoPipeline = renderer.getOrCreatePipeline(aoShader,  (std::uint64_t)&pass);
+               const char* aoShader = useRaytracingVersion ? "lighting/ao-raytracing" : "lighting/ao-noraytracing";
+               auto aoPipeline = renderer.getOrCreatePipeline(aoShader,  (std::uint64_t)&pass);
 
-                // used for randomness
-                struct PushConstantNoRT {
-                    std::uint32_t frameCount;
-                    std::uint32_t frameWidth;
-                    std::uint32_t frameHeight;
-                };
-                struct PushConstantRT: PushConstantNoRT {
-                    bool hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
-                } block;
+               // used for randomness
+               struct PushConstantNoRT {
+                   std::uint32_t frameCount;
+                   std::uint32_t frameWidth;
+                   std::uint32_t frameHeight;
+               };
+               struct PushConstantRT: PushConstantNoRT {
+                   bool hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
+               } block;
 
-                block.frameCount = renderer.getFrameCount();
-                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
-                    block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
-                    block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
-                } else {
-                    block.frameWidth = framebufferSize.width;
-                    block.frameHeight = framebufferSize.height;
-                }
+               block.frameCount = renderer.getFrameCount();
+               if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                   block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
+                   block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
+               } else {
+                   block.frameWidth = framebufferSize.width;
+                   block.frameHeight = framebufferSize.height;
+               }
 
-                auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo) {
-                    Carrot::AccelerationStructure* pTLAS = nullptr;
-                    if(useRaytracingVersion) {
-                        pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
-                        block.hasTLAS = pTLAS != nullptr;
-                        renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
-                    } else {
-                        renderer.pushConstantBlock<PushConstantNoRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, buffer, block);
-                    }
+               auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo) {
+                   Carrot::AccelerationStructure* pTLAS = nullptr;
+                   if(useRaytracingVersion) {
+                       pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                       block.hasTLAS = pTLAS != nullptr;
+                       renderer.pushConstantBlock<PushConstantRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                   } else {
+                       renderer.pushConstantBlock<PushConstantNoRT>("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+                   }
 
-                    // GBuffer inputs
-                    data.gBuffer.bindInputs(pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                   // GBuffer inputs
+                   data.gBuffer.bindInputs(pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
-                    // outputs
-                    auto& renderGraph = pass.getGraph();
-                    auto& outputImage = renderGraph.getTexture(output, frame.swapchainIndex);
-                    renderer.bindStorageImage(pipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                   // outputs
+                   auto& renderGraph = pass.getGraph();
+                   auto& outputImage = renderGraph.getTexture(output, frame.swapchainIndex);
+                   renderer.bindStorageImage(pipeline, frame, outputImage, 5, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-                    if(useRaytracingVersion) {
-                        renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
-                        if(pTLAS) {
-                            renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
-                            if(needSceneInfo) {
-                                renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
-                                renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
-                            }
-                        } else {
-                            renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);
-                            if(needSceneInfo) {
-                                renderer.unbindBuffer(pipeline, frame, 6, 2);
-                                renderer.unbindBuffer(pipeline, frame, 6, 3);
-                            }
-                        }
-                    }
-                };
+                   if(useRaytracingVersion) {
+                       renderer.bindTexture(pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
+                       if(pTLAS) {
+                           renderer.bindAccelerationStructure(pipeline, frame, *pTLAS, 6, 0);
+                           if(needSceneInfo) {
+                               renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
+                               renderer.bindBuffer(pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                           }
+                       } else {
+                           renderer.unbindAccelerationStructure(pipeline, frame, 6, 0);
+                           if(needSceneInfo) {
+                               renderer.unbindBuffer(pipeline, frame, 6, 2);
+                               renderer.unbindBuffer(pipeline, frame, 6, 3);
+                           }
+                       }
+                   }
+               };
 
-                const std::uint8_t localSizeX = 32;
-                const std::uint8_t localSizeY = 32;
-                std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
-                std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
 
-                setupPipeline(data.directLighting, *directLightingPipeline, false);
-                directLightingPipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
-                buffer.dispatch(dispatchX, dispatchY, 1);
+               {
+                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "RT passes");
+                   const std::uint8_t localSizeX = 32;
+                   const std::uint8_t localSizeY = 32;
+                   std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
+                   std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
+                   setupPipeline(data.directLighting, *directLightingPipeline, false);
+                   directLightingPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                   cmds.dispatch(dispatchX, dispatchY, 1);
 
-                setupPipeline(data.ambientOcclusion, *aoPipeline, false);
-                aoPipeline->bind({}, frame, buffer, vk::PipelineBindPoint::eCompute);
-                buffer.dispatch(dispatchX, dispatchY, 1);
+                   setupPipeline(data.ambientOcclusionNoisy, *aoPipeline, false);
+                   aoPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                   cmds.dispatch(dispatchX, dispatchY, 1);
+               }
 
-                vk::MemoryBarrier2KHR memoryBarrier {
-                        .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
-                        .srcAccessMask = vk::AccessFlagBits2KHR::eShaderWrite,
-                        .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllCommands,
-                        .dstAccessMask = vk::AccessFlagBits2KHR::eShaderRead,
-                };
-                vk::DependencyInfoKHR dependencyInfo {
-                        .memoryBarrierCount = 1,
-                        .pMemoryBarriers = &memoryBarrier,
-                };
-                buffer.pipelineBarrier2KHR(dependencyInfo);
+               vk::MemoryBarrier2KHR memoryBarrier {
+                       .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
+                       .srcAccessMask = vk::AccessFlagBits2KHR::eShaderWrite,
+                       .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllCommands,
+                       .dstAccessMask = vk::AccessFlagBits2KHR::eShaderRead,
+               };
+               vk::DependencyInfoKHR dependencyInfo {
+                       .memoryBarrierCount = 1,
+                       .pMemoryBarriers = &memoryBarrier,
+               };
+               {
+                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier before denoising");
+                   cmds.pipelineBarrier2KHR(dependencyInfo);
+               }
+
+               auto temporalDenoise = renderer.getOrCreatePipeline("lighting/temporal-denoise", (std::uint64_t)&pass + 0);
+               auto aoDenoisePipelines = std::array {
+                   renderer.getOrCreatePipeline("lighting/denoise-ao", (std::uint64_t)&pass + 0),
+                   renderer.getOrCreatePipeline("lighting/denoise-ao", (std::uint64_t)&pass + 1),
+                   renderer.getOrCreatePipeline("lighting/denoise-ao", (std::uint64_t)&pass + 2),
+               };
+
+               std::array pAOImages = std::array {
+                   &pass.getGraph().getTexture(data.ambientOcclusion[0], frame.swapchainIndex),
+                   &pass.getGraph().getTexture(data.ambientOcclusion[1], frame.swapchainIndex)
+               };
+
+               data.gBuffer.bindInputs(*temporalDenoise, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+               renderer.bindStorageImage(*temporalDenoise, frame, pass.getGraph().getTexture(data.ambientOcclusionNoisy, frame.swapchainIndex), 2, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoise, frame, pass.getGraph().getTexture(data.ambientOcclusion[(data.iterationCount+1)%2], frame.lastSwapchainIndex), 2, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoise, frame, pass.getGraph().getTexture(data.ambientOcclusionSamples, frame.swapchainIndex), 2, 2, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoise, frame, pass.getGraph().getTexture(data.ambientOcclusionHistoryLength, frame.swapchainIndex), 2, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*temporalDenoise, frame, pass.getGraph().getTexture(data.ambientOcclusionHistoryLength, frame.lastSwapchainIndex), 2, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindTexture(*temporalDenoise, frame, pass.getGraph().getTexture(data.gBuffer.positions, frame.lastSwapchainIndex), 2, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+               renderer.bindUniformBuffer(*temporalDenoise, frame, frame.pViewport->getCameraUniformBuffer(frame), 1, 0);
+               renderer.bindUniformBuffer(*temporalDenoise, frame, frame.pViewport->getCameraUniformBuffer(frame.lastFrame()), 1, 1);
+
+
+               data.gBuffer.bindInputs(*aoDenoisePipelines[0], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+               data.gBuffer.bindInputs(*aoDenoisePipelines[1], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+               renderer.bindStorageImage(*aoDenoisePipelines[0], frame, pass.getGraph().getTexture(data.ambientOcclusionSamples, frame.swapchainIndex), 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*aoDenoisePipelines[0], frame, *pAOImages[0], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+               renderer.bindStorageImage(*aoDenoisePipelines[1], frame, *pAOImages[1], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*aoDenoisePipelines[1], frame, *pAOImages[0], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+               renderer.bindStorageImage(*aoDenoisePipelines[1], frame, *pAOImages[0], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+               renderer.bindStorageImage(*aoDenoisePipelines[1], frame, *pAOImages[1], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+               {
+                   const std::size_t localSizeX = 16;
+                   const std::size_t localSizeY = 8;
+                   std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
+                   std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
+
+                   TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoising passes");
+
+                   struct Block {
+                       std::uint32_t iterationIndex;
+                   } denoiseBlock;
+
+                   // first iteration
+                   {
+                       temporalDenoise->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       cmds.dispatch(dispatchX, dispatchY, 1);
+                   }
+                   {
+                       denoiseBlock.iterationIndex = 0;
+                       renderer.pushConstantBlock("push", *aoDenoisePipelines[0], frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
+                       aoDenoisePipelines[0]->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       cmds.dispatch(dispatchX, dispatchY, 1);
+                   }
+
+                   for(std::uint8_t i = 0; i < data.iterationCount-1; i++) {
+                       auto& pipeline = *aoDenoisePipelines[i % 2 +1];
+                       denoiseBlock.iterationIndex = i;
+                       renderer.pushConstantBlock("push", pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, denoiseBlock);
+                       pipeline.bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                       cmds.dispatch(dispatchX, dispatchY, 1);
+                   }
+
+                   vk::MemoryBarrier2KHR memoryBarrier {
+                       .srcStageMask = vk::PipelineStageFlagBits2KHR::eComputeShader,
+                       .srcAccessMask = vk::AccessFlagBits2KHR::eShaderWrite,
+                       .dstStageMask = vk::PipelineStageFlagBits2KHR::eAllCommands,
+                       .dstAccessMask = vk::AccessFlagBits2KHR::eShaderRead,
+                   };
+                   vk::DependencyInfoKHR dependencyInfo {
+                           .memoryBarrierCount = 1,
+                           .pMemoryBarriers = &memoryBarrier,
+                   };
+                   {
+                       TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Barrier between a-trous filter iterations");
+                       cmds.pipelineBarrier2KHR(dependencyInfo);
+                   }
+               }
            }
     );
+
+    lightingPass.setSwapchainRecreation([&](const CompiledPass& pass, const PassData::Lighting& data) {
+        GetVulkanDriver().performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
+            for(int i = 0; i < GetEngine().getSwapchainImageCount(); i++) {
+                auto& texture = pass.getGraph().getTexture(data.ambientOcclusionHistoryLength, i);
+                cmds.clearColorImage(texture.getVulkanImage(), vk::ImageLayout::eGeneral, vk::ClearColorValue{std::array {0.0f, 0.0f, 0.0f, 0.0f} },
+                    vk::ImageSubresourceRange {
+                        .aspectMask = vk::ImageAspectFlagBits::eColor,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                    });
+            }
+        });
+    });
+
+    return lightingPass;
 }
 
 void Carrot::Render::PassData::GBuffer::readFrom(Render::GraphBuilder& graph, const GBuffer& other, vk::ImageLayout wantedLayout) {

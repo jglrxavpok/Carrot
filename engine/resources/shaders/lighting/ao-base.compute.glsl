@@ -131,7 +131,7 @@ void main() {
         initRNG(rng, inUV, push.frameWidth, push.frameHeight, push.frameCount);
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 4;
+        const int SAMPLE_COUNT = 1;
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         vec3 T = tangent;

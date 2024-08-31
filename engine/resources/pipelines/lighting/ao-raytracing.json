@@ -1,6 +1,6 @@
 {
   "_import": "direct-lighting.json",
-  "computeShader": "resources/shaders/lighting/ao-raytracing.fragment.glsl.spv",
+  "computeShader": "resources/shaders/lighting/ao-raytracing.compute.glsl.spv",
   "descriptorSets": [
     {
       "type": "autofill",

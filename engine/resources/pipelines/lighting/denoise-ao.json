@@ -1,0 +1,17 @@
+{
+  "type": "compute",
+  "subpassIndex": 0,
+  "depthWrite": false,
+  "depthTest": false,
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    }
+  ],
+  "computeShader": "resources/shaders/lighting/denoise-ao.compute.glsl.spv"
+}

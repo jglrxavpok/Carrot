@@ -1,0 +1,21 @@
+{
+  "type": "compute",
+  "subpassIndex": 0,
+  "depthWrite": false,
+  "depthTest": false,
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "camera",
+      "setID": 1
+    },
+    {
+      "type": "autofill",
+      "setID": 2
+    }
+  ],
+  "computeShader": "resources/shaders/lighting/temporal-denoise.compute.glsl.spv"
+}
