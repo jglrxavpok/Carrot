@@ -56,6 +56,8 @@ namespace Carrot::Render {
 
     private:
         void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
+        void debugDraw(const Render::Context& context);
+        void drawResource(const Render::Context& context);
 
         Carrot::VulkanDriver& driver;
         std::list<std::pair<std::string, std::unique_ptr<Render::CompiledPass>>> passes;
@@ -65,6 +67,7 @@ namespace Carrot::Render {
         // for imgui debug
         void* nodesContext = nullptr;
         const FrameResource* hoveredResource = nullptr;
+        const FrameResource* clickedResource = nullptr;
 
         friend class GraphBuilder;
     };
