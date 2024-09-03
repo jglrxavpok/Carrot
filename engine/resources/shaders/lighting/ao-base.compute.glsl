@@ -91,7 +91,7 @@ float calculateAO(inout RandomSampler rng, vec3 worldPos, mat3 tbn, bool raytrac
         vec3 directionTangentSpace = cosineSampleHemisphere(rng);
         vec3 direction = tbn * directionTangentSpace;
         float tMin = 0.001f;
-        float tMax = 0.10f; // 10cm
+        float tMax = 0.02f; // 2cm
         initRayQuery(worldPos, direction, tMax, tMin);
         bool noIntersection = traceShadowRay();
         return noIntersection ? 1.0f : 0.0f;
