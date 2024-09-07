@@ -38,13 +38,48 @@ vec3 reinhard(vec3 v) {
     return changeLuminance(v, targetLuminance);
 }
 
+// https://gist.github.com/SpineyPete/ebf9619f009318536c6da48209894fed
+vec3 Tonemap_Aces(vec3 color) {
+
+    // ACES filmic tonemapper with highlight desaturation ("crosstalk").
+    // Based on the curve fit by Krzysztof Narkowicz.
+    // https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+
+    const float slope = 12.0f; // higher values = slower rise.
+
+    // Store grayscale as an extra channel.
+    vec4 x = vec4(
+    // RGB
+    color.r, color.g, color.b,
+    // Luminosity
+    (color.r * 0.299) + (color.g * 0.587) + (color.b * 0.114)
+    );
+
+    // ACES Tonemapper
+    const float a = 2.51f;
+    const float b = 0.03f;
+    const float c = 2.43f;
+    const float d = 0.59f;
+    const float e = 0.14f;
+
+    vec4 tonemap = clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+    float t = x.a;
+
+    t = t * t / (slope + t);
+
+    // Return after desaturation step.
+    return mix(tonemap.rgb, tonemap.aaa, t);
+}
+
 void main() {
     vec4 fragmentColor = texture(sampler2D(inputImage, linearSampler), uv);
 
     vec3 rgb = fragmentColor.rgb;
     vec3 xyz = rgb2xyz(rgb);
     vec3 reinhard = reinhard(xyz);
+    vec3 aces = Tonemap_Aces(rgb);
 
     //outColor = fragmentColor;
-    outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
+    //outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
+    outColor = vec4(aces, fragmentColor.a);
 }

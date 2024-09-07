@@ -103,30 +103,6 @@ float ggxG1(vec3 wo, vec3 wh, float alphax, float alphay) {
     return 1 / (1 + ggxLambda(wo, alphax, alphay));
 }
 
-vec2 concentricSampleDisk(inout RandomSampler rng) {
-    vec2 u = vec2(sampleNoise(rng), sampleNoise(rng)) * 2.0 - 1.0;
-    if(u.x == 0 && u.y == 0)
-        return vec2(0.0);
-
-    float theta = 0.0f;
-    float r = 0.0f;
-
-    if(abs(u.x) >= abs(u.y)) {
-        r = u.x;
-        theta = M_PI_OVER_4 * (u.y / u.x);
-    } else {
-        r = u.y;
-        theta = M_PI_OVER_2 - M_PI_OVER_4 * (u.x / u.y);
-    }
-    return r * vec2(cos(theta), sin(theta));
-}
-
-vec3 cosineSampleHemisphere(inout RandomSampler rng) {
-    vec2 d = concentricSampleDisk(rng);
-    float z = sqrt(max(0, 1 - dot(d, d)));
-    return vec3(d.x, d.y, z);
-}
-
 vec3 schlickFresnel(vec3 f0, float lDotH) {
     return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - lDotH, 5.0f);
 }
@@ -144,14 +120,6 @@ vec3 computeF(vec3 wo, vec3 wi, float alphax, float alphay) {
 
     wh = normalize(wh);
     return vec3(ggxD(wh, alphax, alphay) * ggxG(wo, wi, alphax, alphay) / (4 * cosThetaI * cosThetaO));
-}
-
-vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
-    return vec3(
-    sinTheta * cos(phi),
-    sinTheta * sin(phi),
-    cosTheta
-    );
 }
 
 vec3 sampleWH(inout RandomSampler rng, vec3 wo, float alphax, float alphay) {

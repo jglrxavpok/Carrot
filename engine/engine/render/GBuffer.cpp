@@ -134,6 +134,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
                 resolveData.iterationCount = 3;
+
+                resolveData.reflectionsNoisy = graph.createStorageTarget("Reflections (noisy)",
+                                                                vk::Format::eR32G32B32A32Sfloat,
+                                                                framebufferSize,
+                                                                vk::ImageLayout::eGeneral);
            },
            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& cmds) {
                ZoneScopedN("CPU RenderGraph lighting");
@@ -145,6 +150,9 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                const char* aoShader = useRaytracingVersion ? "lighting/ao-raytracing" : "lighting/ao-noraytracing";
                auto aoPipeline = renderer.getOrCreatePipeline(aoShader,  (std::uint64_t)&pass);
+
+               const char* reflectionsShader = useRaytracingVersion ? "lighting/reflections-raytracing" : "lighting/reflections-noraytracing";
+               auto reflectionsPipeline = renderer.getOrCreatePipeline(reflectionsShader,  (std::uint64_t)&pass);
 
                // used for randomness
                struct PushConstantNoRT {
@@ -214,6 +222,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
                    setupPipeline(data.ambientOcclusionNoisy, *aoPipeline, false);
                    aoPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                   cmds.dispatch(dispatchX, dispatchY, 1);
+
+                   setupPipeline(data.reflectionsNoisy, *reflectionsPipeline, true);
+                   reflectionsPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                    cmds.dispatch(dispatchX, dispatchY, 1);
                }
 

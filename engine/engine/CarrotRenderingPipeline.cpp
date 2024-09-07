@@ -455,6 +455,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
         Carrot::Render::PassData::GBuffer gBuffer;
         Render::FrameResource directLighting;
         Render::FrameResource ambientOcclusion;
+        Render::FrameResource reflections;
         Render::FrameResource visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST + 1];
         Render::FrameResource mergeResult;
     };
@@ -466,6 +467,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.directLighting = builder.read(lightingPass.getData().directLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.ambientOcclusion = builder.read(lightingPass.getData().ambientOcclusion[(lightingPass.getData().iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.reflections = builder.read(lightingPass.getData().reflectionsNoisy, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
@@ -504,10 +506,11 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                 data.gBuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.directLighting, frame.swapchainIndex), 1, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                 renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.ambientOcclusion, frame.swapchainIndex), 1, 1, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
+                renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.reflections, frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
-                    renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.visibilityBufferDebug[debugIndex], frame.swapchainIndex), 1, 2, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, debugIndex, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    renderer.bindTexture(*pipeline, frame, pass.getGraph().getTexture(data.visibilityBufferDebug[debugIndex], frame.swapchainIndex), 1, 3, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, debugIndex, vk::ImageLayout::eShaderReadOnlyOptimal);
                 }
 
                 pipeline->bind(pass.getRenderPass(), frame, buffer);

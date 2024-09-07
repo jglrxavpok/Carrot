@@ -1,4 +1,8 @@
+#extension GL_EXT_buffer_reference : enable
+#extension GL_EXT_scalar_block_layout : enable
+
 #include <includes/math.glsl>
+#include "includes/buffers.glsl"
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable
@@ -6,6 +10,14 @@
 
 layout(set = 6, binding = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set = 6, binding = 1) uniform texture2D noiseTexture;
+
+layout(set = 6, binding = 2, scalar) readonly buffer Geometries {
+    Geometry geometries[];
+};
+
+layout(set = 6, binding = 3, scalar) readonly buffer RTInstances {
+    Instance instances[];
+};
 #endif
 
 float computePointLight(vec3 worldPos, vec3 normal, uint lightIndex) {

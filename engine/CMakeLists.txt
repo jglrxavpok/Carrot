@@ -278,6 +278,8 @@ set(COMPUTE_SHADERS
 
         lighting/direct-noraytracing.compute.glsl
         lighting/direct-raytracing.compute.glsl
+        lighting/reflections-noraytracing.compute.glsl
+        lighting/reflections-raytracing.compute.glsl
         lighting/temporal-denoise.compute.glsl
 
         #PARENT_SCOPE

@@ -52,4 +52,12 @@ float getSignedDistanceToPlane(vec3 planeNormal, float planeDistanceFromOrigin, 
     return dot(planeNormal, point) + planeDistanceFromOrigin;
 }
 
+vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
+    return vec3(
+    sinTheta * cos(phi),
+    sinTheta * sin(phi),
+    cosTheta
+    );
+}
+
 #endif // _MATH_GLSL

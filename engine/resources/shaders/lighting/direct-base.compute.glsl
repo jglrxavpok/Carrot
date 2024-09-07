@@ -124,6 +124,8 @@ void main() {
         outDirectLighting.rgb = calculateDirectLighting(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, false);
 #endif
 
+        outDirectLighting.rgb += lights.ambientColor;
+
         distanceToCamera = length(gbuffer.viewPosition);
     } else {
         vec4 viewSpaceDir = cbo.inverseNonJitteredProjection * vec4(inUV.x*2-1, inUV.y*2-1, 0.0, 1);

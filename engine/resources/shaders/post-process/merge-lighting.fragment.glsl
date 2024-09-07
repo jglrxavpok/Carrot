@@ -11,7 +11,8 @@ DEFINE_GBUFFER_INPUTS(0)
 
 layout(set = 1, binding = 0) uniform texture2D directLighting;
 layout(set = 1, binding = 1) uniform texture2D aoLighting;
-layout(set = 1, binding = 2) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
+layout(set = 1, binding = 2) uniform texture2D reflections;
+layout(set = 1, binding = 3) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -36,9 +37,9 @@ bool earlyExits(uint debugMode) {
 void main() {
     GBuffer g = unpackGBuffer(uv);
     vec4 albedoColor = g.albedo;
-    vec4 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv);
+    vec3 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv).rgb;
+    vec3 reflectionsColor = texture(sampler2D(reflections, gLinearSampler), uv).rgb;
     float ao = texture(sampler2D(aoLighting, gLinearSampler), uv).r;
-    lightingColor.rgb *= ao*ao;
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;
 
@@ -92,8 +93,9 @@ void main() {
 
     vec3 finalOpaqueColor;
     if(currDepth < 1.0) {
-        finalOpaqueColor = albedoColor.rgb * lightingColor.rgb;
-        //finalOpaqueColor = ao.rrr;
+        finalOpaqueColor = albedoColor.rgb * mix(lightingColor, reflectionsColor, g.metallicness);
+        finalOpaqueColor *= ao*ao;
+        finalOpaqueColor += g.emissiveColor;
     } else {
         finalOpaqueColor = lightingColor.rgb;
     }

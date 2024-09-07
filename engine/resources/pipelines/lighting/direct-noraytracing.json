@@ -1,4 +1,4 @@
 {
-  "_import": "direct-lighting.json",
+  "_import": "direct.json",
   "computeShader": "resources/shaders/lighting/direct-noraytracing.compute.glsl.spv"
 }

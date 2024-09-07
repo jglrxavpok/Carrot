@@ -141,6 +141,7 @@ namespace Carrot::Render {
             // outputs
             FrameResource directLighting; //< also contains shadows
             std::uint8_t iterationCount = 0;
+            FrameResource reflectionsNoisy; // noisy output
             FrameResource ambientOcclusionNoisy; // noisy output
             FrameResource ambientOcclusionSamples; // temporal supersampling
             FrameResource ambientOcclusionHistoryLength; // temporal supersampling
