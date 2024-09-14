@@ -14,6 +14,7 @@ namespace Fertilizer {
         UnsupportedOutputType,
         TextureCompressionError,
         ModelCompressionError,
+        EnvironmentMapError,
     };
 
     struct ConversionResult {

@@ -93,7 +93,7 @@ void main() {
 
     vec3 finalOpaqueColor;
     if(currDepth < 1.0) {
-        finalOpaqueColor = albedoColor.rgb * mix(lightingColor, reflectionsColor, g.metallicness);
+        finalOpaqueColor = mix(albedoColor.rgb * lightingColor, reflectionsColor, g.metallicness);
         finalOpaqueColor *= ao*ao;
         finalOpaqueColor += g.emissiveColor;
     } else {

@@ -5,6 +5,7 @@ add_library(fertilizer-lib
         models/ModelProcessing.cpp
         models/GLTFWriter.cpp
         models/MikkTSpaceInterface.cpp
+        EnvironmentMapProcessing.cpp
         TextureCompression.cpp
 
 

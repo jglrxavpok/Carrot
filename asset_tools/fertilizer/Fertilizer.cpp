@@ -4,6 +4,7 @@
 
 #include <Fertilizer.h>
 #include <TextureCompression.h>
+#include <EnvironmentMapProcessing.h>
 #include <models/ModelProcessing.h>
 #include <iostream>
 #include <unordered_map>
@@ -26,7 +27,6 @@ namespace Fertilizer {
             { ".bmp", { ".ktx2",  compressTexture } },
             { ".psd", { ".ktx2",  compressTexture } },
             { ".gif", { ".ktx2",  compressTexture } },
-            { ".hdr", { ".ktx2",  compressTexture } },
             { ".pic", { ".ktx2",  compressTexture } },
             { ".pnm", { ".ktx2",  compressTexture } },
 
@@ -34,6 +34,8 @@ namespace Fertilizer {
             { ".glb", { ".gltf", processGLTF } },
             { ".obj", { ".gltf", processAssimp } },
             { ".fbx", { ".gltf", processAssimp } },
+
+        { ".hdr", { ".ktx2",  processEnvironmentMap } },
     };
 
     bool isSupportedFormat(const fspath& input) {

@@ -68,6 +68,8 @@ vec3 calculateDirectLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissi
         const vec3 rayOrigin = worldPos; // avoid self intersection
 
         float lightPDF = 1.0f;
+
+        // TODO: glTF BRDF !
         vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, rayOrigin, normal, MAX_LIGHT_DISTANCE);
         return lightAtPoint * lightPDF;
     }

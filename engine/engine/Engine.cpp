@@ -1475,9 +1475,15 @@ void Carrot::Engine::setSkybox(Carrot::Skybox::Type type) {
         ZoneScopedN("Prepare skybox texture & mesh");
         {
             ZoneScopedN("Load skybox cubemap");
-            loadedSkyboxTexture = std::make_unique<Render::Texture>(Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
-                return Skybox::getTexturePath(type, dir);
-            }));
+            if(type == Carrot::Skybox::Type::Meadow) {
+                WaitDeviceIdle();
+                loadedSkyboxTexture = assetServer.blockingLoadTexture("resources/textures/environment_maps/meadow_8k.hdr");
+
+            } else {
+                loadedSkyboxTexture = std::make_unique<Render::Texture>(Image::cubemapFromFiles(vkDriver, [type](Skybox::Direction dir) {
+                    return Skybox::getTexturePath(type, dir);
+                }));
+            }
             loadedSkyboxTexture->name("Current loaded skybox");
         }
 

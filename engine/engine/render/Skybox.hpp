@@ -11,6 +11,7 @@ namespace Carrot::Skybox {
     enum class Type {
         None,
         Forest,
+        Meadow,
     };
 
     enum class Direction {
@@ -63,6 +64,9 @@ namespace Carrot::Skybox {
             case Type::Forest:
                 return "Forest";
 
+            case Type::Meadow:
+                return "Meadow";
+
             default:
                 TODO
         }
@@ -74,6 +78,9 @@ namespace Carrot::Skybox {
             return true;
         } else if(name == "Forest") {
             outSkyboxType = Type::Forest;
+            return true;
+        } else if(name == "Meadow") {
+            outSkyboxType = Type::Meadow;
             return true;
         }
         return false;

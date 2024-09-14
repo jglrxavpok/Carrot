@@ -272,6 +272,13 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
 
                 ktxTexture* pTexture = ktxTexture(texture);
                 std::uint32_t mipCount = pTexture->numLevels;
+                vk::ImageType imageType = vk::ImageType::e2D;
+                std::uint32_t faceCount = pTexture->numFaces;
+                vk::ImageCreateFlags flags = static_cast<vk::ImageCreateFlags>(0);
+                verify(faceCount == 1 || faceCount == 6, "Carrot currently only supports 2D or cubemap textures.");
+                if(faceCount == 6) {
+                    flags |= vk::ImageCreateFlagBits::eCubeCompatible;
+                }
                 auto image = std::make_unique<Carrot::Image>(device,
                                                              vk::Extent3D {
                                                                      .width = texture->baseWidth,
@@ -281,9 +288,9 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                                                              vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled/*TODO: customizable*/,
                                                              vkFormat,
                                                              std::set<uint32_t>{},
-                                                             static_cast<vk::ImageCreateFlags>(0),
-                                                             vk::ImageType::e2D, // for now
-                                                             1, // layer count, for now
+                                                             flags,
+                                                             imageType,
+                                                             pTexture->numFaces * pTexture->numLayers,
                                                              mipCount
                                                              );
 
@@ -294,27 +301,30 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
                     verify(ktxImageSize == expectedMipSize, "mip size in ktx and expected by engine are different! Probably a programming error");
                     totalSize += expectedMipSize;
                 }
+                totalSize *= faceCount;
 
                 Carrot::BufferAllocation stagingData = GetResourceAllocator().allocateStagingBuffer(totalSize);
                 std::uint8_t* pImageData = stagingData.view.map<std::uint8_t>();
-                std::size_t mipOffset = 0;
+                std::size_t destinationOffset = 0;
                 for(std::uint32_t mipIndex = 0; mipIndex < mipCount; mipIndex++) {
-                    ktx_size_t offset;
-                    result = ktxTexture_GetImageOffset(pTexture, mipIndex, 0, 0, &offset);
-                    if(result != ktx_error_code_e::KTX_SUCCESS) {
-                        throw std::runtime_error(resource.getName() + ", ktxTexture_GetImageOffset error is " +
-                                                 ktxErrorString(result));
+                    for(std::uint32_t faceIndex = 0; faceIndex < faceCount; faceIndex++) {
+                        ktx_size_t offset;
+                        result = ktxTexture_GetImageOffset(pTexture, mipIndex, 0, faceIndex, &offset);
+                        if(result != ktx_error_code_e::KTX_SUCCESS) {
+                            throw std::runtime_error(resource.getName() + ", ktxTexture_GetImageOffset error is " +
+                                                     ktxErrorString(result));
+                        }
+
+                        const std::size_t mipSize = ktxTexture_GetImageSize(pTexture, mipIndex);
+                        std::uint8_t* mipPixelData = ktxTexture_GetData(pTexture) + offset;
+                        std::uint8_t* pDestination = pImageData + destinationOffset;
+                        memcpy(pDestination, mipPixelData, mipSize);
+
+                        destinationOffset += image->computeMipDataSize(mipIndex);
                     }
-
-                    const std::size_t mipSize = ktxTexture_GetImageSize(pTexture, mipIndex);
-                    std::uint8_t* mipPixelData = ktxTexture_GetData(pTexture) + offset;
-                    std::uint8_t* pDestination = pImageData + mipOffset;
-                    memcpy(pDestination, mipPixelData, mipSize);
-
-                    mipOffset += image->computeMipDataSize(mipIndex);
                 }
 
-                image->stageUpload(stagingData.view, 0, 1, 0, mipCount);
+                image->stageUpload(stagingData.view, 0, faceCount, 0, mipCount);
                 image->name(resource.getName());
 
                 ktxTexture_Destroy(pTexture);

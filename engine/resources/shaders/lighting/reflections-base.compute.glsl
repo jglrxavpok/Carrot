@@ -188,7 +188,63 @@ float sampleLambertianF_NoPI(inout RandomSampler rng, float roughness, vec3 emit
     return 1.0f;
 }
 
-vec3 calculateReflections(inout RandomSampler rng, float roughness, vec3 worldPos, vec3 normal, mat3 TBN, mat3 invTBN, bool raytracing) {
+struct PbrInputs {
+    vec3 V;
+    vec3 L;
+    vec3 N;
+    vec3 H;
+    float NdotH;
+    float NdotL;
+    float HdotL;
+    float HdotV;
+    float NdotV;
+};
+
+// D and G functions based on https://github.com/SaschaWillems/Vulkan-glTF-PBR
+// Under MIT license
+float D(float alpha, in PbrInputs pbr) {
+    float roughnessSq = alpha * alpha;
+    float f = (pbr.NdotH * roughnessSq - pbr.NdotH) * pbr.NdotH + 1.0;
+    return roughnessSq / (M_PI * f * f);
+}
+
+float G(float alpha, in PbrInputs pbr) {
+
+    float NdotL = pbr.NdotL;
+    float NdotV = pbr.NdotV;
+    float r = alpha;
+
+    float attenuationL = 2.0 * NdotL / (NdotL + sqrt(r * r + (1.0 - r * r) * (NdotL * NdotL)));
+    float attenuationV = 2.0 * NdotV / (NdotV + sqrt(r * r + (1.0 - r * r) * (NdotV * NdotV)));
+    return attenuationL * attenuationV;
+}
+
+// from https://learnopengl.com/PBR/IBL/Specular-IBL
+vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
+{
+    float a = roughness*roughness;
+
+    float phi = 2.0 * M_PI * Xi.x;
+
+    float cosTheta = sqrt(max(0.0, (1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y)));
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta*cosTheta));
+
+    // from spherical coordinates to cartesian coordinates
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+
+    // from tangent-space vector to world-space sample vector
+    vec3 up        = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent   = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+
+    vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
+}
+
+vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, float roughness, vec3 worldPos, vec3 normal, mat3 TBN, mat3 invTBN, bool raytracing) {
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     vec3 toCamera = worldPos - cameraPos;
@@ -197,17 +253,24 @@ vec3 calculateReflections(inout RandomSampler rng, float roughness, vec3 worldPo
     vec3 perfectReflection = reflect(incomingRay, normal);
     float probabilityFactor;
     vec3 direction;
-    if(roughness >= 0.01f) { // maybe a subgroup operation would be better?
+    bool perfectMirror = false;
+    if(roughness >= 10e-4f) { // maybe a subgroup operation would be better?
         // mix between perfect reflection and perfect diffusion
         // probably not physically accurate, but dump enough for me to understand
         vec3 lambertianDirection;
         float pdf;
-        float f = sampleLambertianF_NoPI(rng, roughness, invTBN * incomingRay, lambertianDirection, pdf);
-        probabilityFactor = f / (pdf * roughness);
-        direction = mix(perfectReflection, TBN * lambertianDirection, roughness);
+       vec3 microfacetNormal = ImportanceSampleGGX(vec2(sampleNoise(rng), sampleNoise(rng)), normal, roughness);
+        direction = reflect(incomingRay, microfacetNormal);
+
+        float NdotL = dot(normal, direction);
+        if(NdotL <= 0.0) {
+            return vec3(0.0);
+        }
+        probabilityFactor = NdotL;
     } else {
-        probabilityFactor = 1.0f;
+        perfectMirror = true;
         direction = perfectReflection;
+        probabilityFactor = 1.0f;
     }
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
@@ -233,6 +296,37 @@ vec3 calculateReflections(inout RandomSampler rng, float roughness, vec3 worldPo
         const vec3 rayOrigin = worldPos;
 
         intersection.hasIntersection = false;
+
+        // loosely based on https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#metal-brdf-and-dielectric-brdf
+        vec3 f_diffuse = vec3(0.0f);
+        vec3 f_specular = vec3(0.0f);
+
+        vec3 V = normalize(cameraPos - worldPos);
+        vec3 L = normalize(direction);
+        vec3 N = normalize(normal);
+        //N.y *= -1;
+        vec3 H = normalize(L+V);
+        float VdotH = dot(V, H);
+
+        vec3 c_diff = mix(albedo, vec3(0), metallic);
+        vec3 f0 = mix(vec3(0.04), albedo, metallic);
+        float alpha = roughness * roughness;
+        vec3 F = f0 + (1 - f0) * pow(1 - abs(VdotH), 5);
+
+        PbrInputs pbr;
+        pbr.V = V;
+        pbr.L = L;
+        pbr.N = N;
+        pbr.H = H;
+        pbr.NdotH = dot(N, H);
+        pbr.NdotL = dot(N, L);
+        pbr.HdotL = dot(H, L);
+        pbr.HdotV = VdotH;
+        pbr.NdotV = dot(N, V);
+        f_diffuse = (1 - F) * M_INV_PI * c_diff;
+        // no D term: SaschaWillems' PBR renderer does not use it for its BRDF LUT generation
+        // nor does https://github.com/diharaw/hybrid-rendering ?
+        f_specular = F *  G(alpha, pbr) / (4 * abs(pbr.NdotV) * abs(pbr.NdotL));
 
         traceRayWithSurfaceInfo(intersection, rayOrigin, direction, tMax);
         if(intersection.hasIntersection) {
@@ -266,10 +360,11 @@ vec3 calculateReflections(inout RandomSampler rng, float roughness, vec3 worldPo
                 mappedNormal -= 1;
                 mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
             }
-
             float lightPDF = 1.0f;
             vec3 lighting = computeDirectLightingFromLights(rng, lightPDF, intersection.position, -mappedNormal/* looks correct but not sure why */, tMax);
-            return intersection.surfaceColor * albedo * lighting + emissive + lights.ambientColor;
+
+            vec3 lightColor = (intersection.surfaceColor * albedo * lighting + emissive + lights.ambientColor/*TODO: replace with IBL?*/);
+            return lightColor * (f_diffuse + f_specular) * probabilityFactor;
         } else {
             vec3 worldViewDir = direction;
 
@@ -280,7 +375,7 @@ vec3 calculateReflections(inout RandomSampler rng, float roughness, vec3 worldPo
             );
             vec3 skyboxRGB = texture(gSkybox3D, (rot) * worldViewDir).rgb;
 
-            return skyboxRGB.rgb;
+            return skyboxRGB.rgb * (f_diffuse + f_specular) * probabilityFactor;
         }
     }
     #endif
@@ -307,7 +402,7 @@ void main() {
     if(currDepth < 1.0) {
         RandomSampler rng;
 
-        GBuffer gbuffer = unpackGBufferLight(inUV);
+        GBuffer gbuffer = unpackGBuffer(inUV);
         if(gbuffer.metallicness <= 0.001f) {
             imageStore(outDirectLightingImage, currentCoords, vec4(0.0));
             return;
@@ -319,26 +414,26 @@ void main() {
         mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
         mat3 inverseNormalView = inverse(cboNormalView);
         vec3 normal = inverseNormalView * gbuffer.viewTBN[2];
-        vec3 tangent = gbuffer.viewTBN[0];
-        vec3 bitangent = gbuffer.viewTBN[1];
+        vec3 tangent = inverseNormalView * gbuffer.viewTBN[0];
+        vec3 bitangent = inverseNormalView * gbuffer.viewTBN[1];
 
         initRNG(rng, inUV, push.frameWidth, push.frameHeight, push.frameCount);
 
-        mat3 invTBN = inverse(mat3(tangent, bitangent, normal));
-        mat3 TBN = transpose(invTBN);
+        mat3 TBN = transpose(inverse(mat3(tangent, bitangent, normal)));
+        mat3 invTBN = inverse(TBN);
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 2; // TODO: more than one sample
+        const int SAMPLE_COUNT = 32; // TODO: more than one sample
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            outReflections.rgb += calculateReflections(rng, gbuffer.roughness, worldPos, normal, TBN, invTBN, true);
+            outReflections.rgb += calculateReflections(rng, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, true);
         }
         outReflections.rgb *= INV_SAMPLE_COUNT;
 #else
-        outReflections.rgb = calculateReflections(rng, gbuffer.roughness, worldPos, normal, TBN, invTBN, false);
+        outReflections.rgb = calculateReflections(rng, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, false);
 #endif
     } else {
         outReflections = vec4(0.0);

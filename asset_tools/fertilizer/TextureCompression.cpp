@@ -250,7 +250,7 @@ namespace Fertilizer {
             previousMipDimensions = mipDimensions;
         }
 
-        ktxTexture_WriteToNamedFile(ktxTexture(texture), outputFile.string().c_str());
+        result = ktxTexture_WriteToNamedFile(ktxTexture(texture), outputFile.string().c_str());
         ktxTexture_Destroy(ktxTexture(texture));
 
         return result == ktx_error_code_e::KTX_SUCCESS

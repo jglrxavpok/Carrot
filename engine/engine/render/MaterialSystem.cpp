@@ -141,7 +141,7 @@ namespace Carrot::Render {
         data->baseColor = baseColor;
         data->emissiveColor = emissiveColor;
         data->emissive = getSlot(emissive, materialSystem.blackTextureHandle);
-        data->metallicRoughnessFactor = glm::vec2 { roughnessFactor, metallicFactor };
+        data->metallicRoughnessFactor = glm::vec2 { metallicFactor, roughnessFactor };
         data->albedo = getSlot(albedo, materialSystem.whiteTextureHandle);
         data->normalMap = getSlot(normalMap, materialSystem.flatNormalTextureHandle);
 

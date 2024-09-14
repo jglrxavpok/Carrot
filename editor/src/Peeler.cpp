@@ -403,6 +403,7 @@ namespace Peeler {
             };
             option(Carrot::Skybox::Type::None);
             option(Carrot::Skybox::Type::Forest);
+            option(Carrot::Skybox::Type::Meadow);
 
             ImGui::EndCombo();
         }
