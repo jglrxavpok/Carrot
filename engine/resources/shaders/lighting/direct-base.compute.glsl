@@ -6,6 +6,7 @@
 #include "includes/lights.glsl"
 #include "includes/materials.glsl"
 #include <includes/gbuffer.glsl>
+#include <lighting/brdf.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_nonuniform_qualifier : enable
@@ -43,7 +44,7 @@ layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightin
 // needs to be included after LIGHT_SET macro & RT data
 #include <lighting/base.common.glsl>
 
-vec3 calculateDirectLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
+vec3 calculateDirectLighting(inout RandomSampler rng, vec3 albedo, vec3 worldPos, vec3 emissive, vec3 normal, vec3 tangent, vec2 metallicRoughness, bool raytracing) {
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
@@ -68,9 +69,18 @@ vec3 calculateDirectLighting(inout RandomSampler rng, vec3 worldPos, vec3 emissi
         const vec3 rayOrigin = worldPos; // avoid self intersection
 
         float lightPDF = 1.0f;
+        vec3 V = -incomingRay;
+        vec3 N = normalize(normal);
 
-        // TODO: glTF BRDF !
-        vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, rayOrigin, normal, MAX_LIGHT_DISTANCE);
+        PbrInputs pbr;
+        pbr.alpha = metallicRoughness.y * metallicRoughness.y;
+        pbr.metallic = metallicRoughness.x;
+        pbr.baseColor = albedo;
+        pbr.V = V;
+        pbr.N = N;
+        pbr.NdotV = dot(N, V);
+
+        vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, rayOrigin, MAX_LIGHT_DISTANCE);
         return lightAtPoint * lightPDF;
     }
     #endif
@@ -97,15 +107,16 @@ void main() {
     if(currDepth < 1.0) {
         RandomSampler rng;
 
-        GBufferSmall gbuffer = unpackGBufferTest(inUV);
+        GBuffer gbuffer = unpackGBuffer(inUV);
+        vec3 albedo = gbuffer.albedo.rgb;
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
         vec3 worldPos = hWorldPos.xyz / hWorldPos.w;
 
         // TODO: store directly in CBO
         mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
         mat3 inverseNormalView = inverse(cboNormalView);
-        vec3 normal = inverseNormalView * gbuffer.viewN;
-        vec3 tangent = inverseNormalView * gbuffer.viewT;
+        vec3 normal = inverseNormalView * gbuffer.viewTBN[2];
+        vec3 tangent = inverseNormalView * gbuffer.viewTBN[0];
         vec2 metallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
 
         initRNG(rng, inUV, push.frameWidth, push.frameHeight, push.frameCount);
@@ -119,11 +130,11 @@ void main() {
         [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            outDirectLighting.rgb += calculateDirectLighting(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
+            outDirectLighting.rgb += calculateDirectLighting(rng, albedo, worldPos, emissiveColor, normal, tangent, metallicRoughness, true);
         }
         outDirectLighting.rgb *= INV_SAMPLE_COUNT;
 #else
-        outDirectLighting.rgb = calculateDirectLighting(rng, worldPos, emissiveColor, normal, tangent, metallicRoughness, false);
+        outDirectLighting.rgb = calculateDirectLighting(rng, albedo, worldPos, emissiveColor, normal, tangent, metallicRoughness, false);
 #endif
 
         outDirectLighting.rgb += lights.ambientColor;

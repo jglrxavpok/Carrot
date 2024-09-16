@@ -1,6 +1,7 @@
 #extension GL_EXT_buffer_reference : enable
 #extension GL_EXT_scalar_block_layout : enable
 
+#include <lighting/brdf.glsl>
 #include <includes/math.glsl>
 #include "includes/buffers.glsl"
 
@@ -109,7 +110,7 @@ vec3 getVectorToLight(uint lightIndex, vec3 worldPos) {
     #undef light
 }
 
-vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightPDF, vec3 worldPos, vec3 normal, float maxDistance) {
+vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightPDF, inout PbrInputs pbr, vec3 worldPos, float maxDistance) {
     vec3 lightContribution = vec3(0.0);
 
     if(activeLights.count <= 0) {
@@ -123,6 +124,7 @@ vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightP
     //    i = activeLights.indices[i];
     //    lightPDF = 1.0 / pdfInv;
     lightPDF = 1.0;
+    vec3 normal = pbr.N;
 
     [[dont_unroll]] for (uint li = 0; li < activeLights.count; li++)
     {
@@ -150,7 +152,24 @@ vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightP
             const vec3 singleLightContribution = computeLightContribution(i, worldPos, normal) /* cos term already in computeLightContribution */;
             const float visibility = float(traceShadowRay());
 
-            lightContribution += enabledF * visibility * singleLightContribution;
+            pbr.L = normalize(L);
+            pbr.H = normalize(pbr.L+pbr.V);
+
+            float NdotL = dot(pbr.N, pbr.L);
+            if(NdotL <= 0) {
+                continue;
+            }
+
+            pbr.NdotH = dot(pbr.N, pbr.H);
+            pbr.NdotL = NdotL;
+            pbr.HdotL = dot(pbr.H, pbr.L);
+            pbr.HdotV = dot(pbr.H, pbr.V);
+
+            vec3 brdf = glTF_BRDF_WithoutImportanceSampling(pbr);
+            if(isnan(brdf.x))
+                return vec3(10,0,0);
+
+            lightContribution += brdf * enabledF * visibility * singleLightContribution;
         }
         #undef light
     }

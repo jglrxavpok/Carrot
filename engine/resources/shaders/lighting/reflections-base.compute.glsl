@@ -3,8 +3,9 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
-#include "includes/lights.glsl"
-#include "includes/materials.glsl"
+#include <lighting/brdf.glsl>
+#include <includes/lights.glsl>
+#include <includes/materials.glsl>
 #include <includes/gbuffer.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
@@ -171,106 +172,28 @@ void traceRayWithSurfaceInfo(inout SurfaceIntersection r, vec3 startPos, vec3 di
 }
 #endif
 
-float computeLambertian_PDF_NoPI(vec3 wo, vec3 wi) {
-    if (wo.z * wi.z < 0) {
-        return 0.0f;
-    }
-
-    return abs(wi.z);
-}
-
-float sampleLambertianF_NoPI(inout RandomSampler rng, float roughness, vec3 emitDirection, inout vec3 incidentDirection, inout float pdf) {
-    incidentDirection = cosineSampleHemisphere(rng);
-    float woDotN = emitDirection.z;
-    if(woDotN < 0) incidentDirection.z *= -1.0;
-    pdf = computeLambertian_PDF_NoPI(emitDirection, incidentDirection);
-
-    return 1.0f;
-}
-
-struct PbrInputs {
-    vec3 V;
-    vec3 L;
-    vec3 N;
-    vec3 H;
-    float NdotH;
-    float NdotL;
-    float HdotL;
-    float HdotV;
-    float NdotV;
-};
-
-// D and G functions based on https://github.com/SaschaWillems/Vulkan-glTF-PBR
-// Under MIT license
-float D(float alpha, in PbrInputs pbr) {
-    float roughnessSq = alpha * alpha;
-    float f = (pbr.NdotH * roughnessSq - pbr.NdotH) * pbr.NdotH + 1.0;
-    return roughnessSq / (M_PI * f * f);
-}
-
-float G(float alpha, in PbrInputs pbr) {
-
-    float NdotL = pbr.NdotL;
-    float NdotV = pbr.NdotV;
-    float r = alpha;
-
-    float attenuationL = 2.0 * NdotL / (NdotL + sqrt(r * r + (1.0 - r * r) * (NdotL * NdotL)));
-    float attenuationV = 2.0 * NdotV / (NdotV + sqrt(r * r + (1.0 - r * r) * (NdotV * NdotV)));
-    return attenuationL * attenuationV;
-}
-
-// from https://learnopengl.com/PBR/IBL/Specular-IBL
-vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
-{
-    float a = roughness*roughness;
-
-    float phi = 2.0 * M_PI * Xi.x;
-
-    float cosTheta = sqrt(max(0.0, (1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y)));
-    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta*cosTheta));
-
-    // from spherical coordinates to cartesian coordinates
-    vec3 H;
-    H.x = cos(phi) * sinTheta;
-    H.y = sin(phi) * sinTheta;
-    H.z = cosTheta;
-
-    // from tangent-space vector to world-space sample vector
-    vec3 up        = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    vec3 tangent   = normalize(cross(up, N));
-    vec3 bitangent = cross(N, tangent);
-
-    vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-    return normalize(sampleVec);
-}
-
 vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, float roughness, vec3 worldPos, vec3 normal, mat3 TBN, mat3 invTBN, bool raytracing) {
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     vec3 toCamera = worldPos - cameraPos;
     vec3 incomingRay = normalize(toCamera);
 
-    vec3 perfectReflection = reflect(incomingRay, normal);
-    float probabilityFactor;
+    float inclinaisonFactor;
     vec3 direction;
-    bool perfectMirror = false;
     if(roughness >= 10e-4f) { // maybe a subgroup operation would be better?
-        // mix between perfect reflection and perfect diffusion
-        // probably not physically accurate, but dump enough for me to understand
         vec3 lambertianDirection;
         float pdf;
-       vec3 microfacetNormal = ImportanceSampleGGX(vec2(sampleNoise(rng), sampleNoise(rng)), normal, roughness);
+        vec3 microfacetNormal = importanceSample_GGX(vec2(sampleNoise(rng), sampleNoise(rng)), roughness, normal);
         direction = reflect(incomingRay, microfacetNormal);
 
         float NdotL = dot(normal, direction);
         if(NdotL <= 0.0) {
-            return vec3(0.0);
+            return vec3(0);
         }
-        probabilityFactor = NdotL;
+        inclinaisonFactor = NdotL;
     } else {
-        perfectMirror = true;
-        direction = perfectReflection;
-        probabilityFactor = 1.0f;
+        direction = reflect(incomingRay, normal);
+        inclinaisonFactor = 1.0f;
     }
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
@@ -297,23 +220,15 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
 
         intersection.hasIntersection = false;
 
-        // loosely based on https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#metal-brdf-and-dielectric-brdf
-        vec3 f_diffuse = vec3(0.0f);
-        vec3 f_specular = vec3(0.0f);
-
-        vec3 V = normalize(cameraPos - worldPos);
+        vec3 V = -incomingRay;
         vec3 L = normalize(direction);
         vec3 N = normalize(normal);
-        //N.y *= -1;
         vec3 H = normalize(L+V);
-        float VdotH = dot(V, H);
-
-        vec3 c_diff = mix(albedo, vec3(0), metallic);
-        vec3 f0 = mix(vec3(0.04), albedo, metallic);
-        float alpha = roughness * roughness;
-        vec3 F = f0 + (1 - f0) * pow(1 - abs(VdotH), 5);
 
         PbrInputs pbr;
+        pbr.alpha = roughness * roughness;
+        pbr.metallic = metallic;
+        pbr.baseColor = albedo;
         pbr.V = V;
         pbr.L = L;
         pbr.N = N;
@@ -321,12 +236,9 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
         pbr.NdotH = dot(N, H);
         pbr.NdotL = dot(N, L);
         pbr.HdotL = dot(H, L);
-        pbr.HdotV = VdotH;
+        pbr.HdotV = dot(H, V);
         pbr.NdotV = dot(N, V);
-        f_diffuse = (1 - F) * M_INV_PI * c_diff;
-        // no D term: SaschaWillems' PBR renderer does not use it for its BRDF LUT generation
-        // nor does https://github.com/diharaw/hybrid-rendering ?
-        f_specular = F *  G(alpha, pbr) / (4 * abs(pbr.NdotV) * abs(pbr.NdotL));
+        vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
 
         traceRayWithSurfaceInfo(intersection, rayOrigin, direction, tMax);
         if(intersection.hasIntersection) {
@@ -361,10 +273,19 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
                 mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
             }
             float lightPDF = 1.0f;
-            vec3 lighting = computeDirectLightingFromLights(rng, lightPDF, intersection.position, -mappedNormal/* looks correct but not sure why */, tMax);
 
-            vec3 lightColor = (intersection.surfaceColor * albedo * lighting + emissive + lights.ambientColor/*TODO: replace with IBL?*/);
-            return lightColor * (f_diffuse + f_specular) * probabilityFactor;
+            PbrInputs pbrInputsAtPoint;
+            pbrInputsAtPoint.alpha = 1.0f; // TODO: fetch from material
+            pbrInputsAtPoint.baseColor = intersection.surfaceColor * albedo;
+            pbrInputsAtPoint.metallic = 0.0f; // TODO: fetch from material
+            pbrInputsAtPoint.V = -direction;
+            pbrInputsAtPoint.N = -mappedNormal; // looks correct but not sure why
+            pbrInputsAtPoint.NdotV = dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N);
+
+            vec3 lighting = computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
+
+            vec3 lightColor = (lighting + emissive + lights.ambientColor/*TODO: replace with IBL?*/);
+            return lightColor * brdf * inclinaisonFactor;
         } else {
             vec3 worldViewDir = direction;
 
@@ -375,7 +296,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             );
             vec3 skyboxRGB = texture(gSkybox3D, (rot) * worldViewDir).rgb;
 
-            return skyboxRGB.rgb * (f_diffuse + f_specular) * probabilityFactor;
+            return skyboxRGB.rgb * brdf * inclinaisonFactor;
         }
     }
     #endif
