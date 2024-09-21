@@ -65,8 +65,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
     auto makeTAAPass = [&](std::string_view name, const Render::FrameResource& toAntiAlias, const Render::PassData::GBuffer& gBuffer,
         const Render::FrameResource& viewPositions,
-        const Render::TextureSize& textureSize,
-        bool forceReprojection) -> Render::Pass<TemporalAccumulation>& {
+        const Render::TextureSize& textureSize) -> Render::Pass<TemporalAccumulation>& {
         auto& temporalAccumulationPass = mainGraph.addPass<TemporalAccumulation>(
                 "temporal anti aliasing - " + std::string(name),
                 [this, toAntiAlias, framebufferSize, textureSize, gBuffer, viewPositions](Render::GraphBuilder& builder, Render::Pass<TemporalAccumulation>& pass, TemporalAccumulation& data) {
@@ -86,7 +85,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                                   vk::Format::eR32G32B32A32Sfloat,
                                                                                   data.denoisedResult.size,
                                                                                   vk::AttachmentLoadOp::eClear,
-                                                                                  vk::ClearColorValue(std::array{0,0,0,0}),
+                                                                                  vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,1.0f}),
                                                                                   vk::ImageLayout::eGeneral // TODO: color attachment?
                     );
 
@@ -97,9 +96,10 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                                                                                vk::ClearColorValue(std::array{0,0,0,0}),
                                                                                vk::ImageLayout::eGeneral
                     );
+                    GetVulkanDriver().getTextureRepository().getUsages(data.momentsHistoryHistoryLength.rootID) |= vk::ImageUsageFlagBits::eSampled;
                     GetVulkanDriver().getTextureRepository().getUsages(data.firstSpatialDenoiseColor.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 },
-                [this, forceReprojection](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
+                [this](const Render::CompiledPass& pass, const Render::Context& frame, const TemporalAccumulation& data, vk::CommandBuffer& buffer) {
                     ZoneScopedN("CPU RenderGraph temporal-denoise");
                     TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], buffer, "temporal-denoise");
                     auto pipeline = renderer.getOrCreateRenderPassSpecificPipeline("post-process/temporal-denoise", pass.getRenderPass());
@@ -114,7 +114,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                         }
                         renderer.bindTexture(*pipeline, frame, *lastFrameTexture, 0, bindingIndex, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, layout);
                     };
-                    bindLastFrameTexture(data.firstSpatialDenoiseColor, 1, vk::ImageLayout::eGeneral);
+                    bindLastFrameTexture(data.denoisedResult, 1, vk::ImageLayout::eGeneral);
 
                     Render::Texture& viewPosTexture = pass.getGraph().getTexture(data.viewPositions, frame.swapchainIndex);
                     renderer.bindTexture(*pipeline, frame, viewPosTexture, 0, 2, nullptr);
@@ -129,12 +129,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     renderer.bindUniformBuffer(*pipeline, frame, frame.pViewport->getCameraUniformBuffer(frame.lastFrame()), 1, 1);
 
                     data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-                    struct PushConstantTAA {
-                        float forceReprojection;
-                    } pushConstant;
-                    pushConstant.forceReprojection = forceReprojection ? 1.0f : 0.0f;
-                    renderer.pushConstantBlock<PushConstantTAA>("push", *pipeline, frame, vk::ShaderStageFlagBits::eFragment, buffer, pushConstant);
 
                     pipeline->bind(pass.getRenderPass(), frame, buffer);
                     auto& screenQuadMesh = frame.renderer.getFullscreenQuad();
@@ -567,8 +561,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     );
 
 
-    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, lightingPass.getData().gBuffer.positions, framebufferSize,
-        true);
+    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, lightingPass.getData().gBuffer.positions, framebufferSize);
 
     return finalTAA.getData().denoisedResult;
 }
