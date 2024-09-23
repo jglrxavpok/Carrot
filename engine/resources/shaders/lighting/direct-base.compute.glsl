@@ -78,7 +78,7 @@ vec3 calculateDirectLighting(inout RandomSampler rng, vec3 albedo, vec3 worldPos
         pbr.baseColor = albedo;
         pbr.V = V;
         pbr.N = N;
-        pbr.NdotV = dot(N, V);
+        pbr.NdotV = abs(dot(N, V));
 
         vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, rayOrigin, MAX_LIGHT_DISTANCE);
         return lightAtPoint * lightPDF;

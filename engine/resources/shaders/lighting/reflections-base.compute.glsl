@@ -187,10 +187,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
         direction = reflect(incomingRay, microfacetNormal);
 
         float NdotL = dot(normal, direction);
-        if(NdotL <= 0.0) {
-            return vec3(0);
-        }
-        inclinaisonFactor = NdotL;
+        inclinaisonFactor = 1.0f;
     } else {
         direction = reflect(incomingRay, normal);
         inclinaisonFactor = 1.0f;
@@ -237,7 +234,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
         pbr.NdotL = dot(N, L);
         pbr.HdotL = dot(H, L);
         pbr.HdotV = dot(H, V);
-        pbr.NdotV = dot(N, V);
+        pbr.NdotV = abs(dot(N, V));
         vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
 
         traceRayWithSurfaceInfo(intersection, rayOrigin, direction, tMax);
@@ -280,7 +277,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             pbrInputsAtPoint.metallic = 0.0f; // TODO: fetch from material
             pbrInputsAtPoint.V = -direction;
             pbrInputsAtPoint.N = -mappedNormal; // looks correct but not sure why
-            pbrInputsAtPoint.NdotV = dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N);
+            pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
 
             vec3 lighting = computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
 
@@ -320,7 +317,7 @@ void main() {
     vec4 outReflections = vec4(0.0);
 
     float distanceToCamera;
-    if(currDepth < 1.0) {
+    if(currDepth < 1.0f) {
         RandomSampler rng;
 
         GBuffer gbuffer = unpackGBuffer(inUV);
