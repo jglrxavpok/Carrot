@@ -341,7 +341,7 @@ void main() {
         mat3 invTBN = inverse(TBN);
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-        const int SAMPLE_COUNT = 32; // TODO: more than one sample
+        const int SAMPLE_COUNT = 4;
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
 
         [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
