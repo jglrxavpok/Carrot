@@ -55,6 +55,9 @@ namespace Carrot::Render {
         void onSwapchainSizeChange(Window& window, int newWidth, int newHeight) override;
 
     private:
+        // Draws a source resource to the destination texture
+        void drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds);
+
         void drawPassNodes(const Render::Context& context, Render::CompiledPass* pass, std::uint32_t passIndex);
         void debugDraw(const Render::Context& context);
         void drawResource(const Render::Context& context);
@@ -68,6 +71,9 @@ namespace Carrot::Render {
         void* nodesContext = nullptr;
         const FrameResource* hoveredResource = nullptr;
         const FrameResource* clickedResource = nullptr;
+
+        std::unique_ptr<Carrot::Render::Texture> hoveredResourceViewer;
+        std::unique_ptr<Carrot::Render::Texture> clickedResourceViewer;
 
         friend class GraphBuilder;
     };

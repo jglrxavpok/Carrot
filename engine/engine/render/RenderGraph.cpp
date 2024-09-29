@@ -22,6 +22,9 @@ namespace ed = ax::NodeEditor;
 namespace Carrot::Render {
     static RuntimeOption DebugRenderGraphs("Debug/Render Graphs", false);
 
+    // flags forced on all resources created by RenderGraph
+    constexpr vk::ImageUsageFlags ForcedFlags = vk::ImageUsageFlagBits::eSampled;
+
     GraphBuilder::GraphBuilder(VulkanDriver& driver, Window& window): window(window) {
         swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
         swapchainImage.imageOrigin = ImageOrigin::SurfaceSwapchain;
@@ -346,11 +349,14 @@ namespace Carrot::Render {
             bool keepOpen = true;
             if(ImGui::Begin("Resource", &keepOpen)) {
                 auto& texture = GetVulkanDriver().getTextureRepository().get(*clickedResource, context.swapchainIndex);
-                float aspectRatio = texture.getSize().width / (float) texture.getSize().height;
                 ImGui::Text("%s", clickedResource->name.c_str());
                 ImGui::Text("%s (%s) (%u x %u x %u)", clickedResource->id.toString().c_str(), clickedResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                 float h = ImGui::GetContentRegionAvail().y;
-                ImGui::Image(texture.getImguiID(clickedResource->format), ImVec2(aspectRatio * h, h));
+
+                if(clickedResourceViewer) {
+                    float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
+                    ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+                }
             }
             ImGui::End();
 
@@ -365,10 +371,15 @@ namespace Carrot::Render {
 
         ImGui::BeginTooltip();
         auto& texture = GetVulkanDriver().getTextureRepository().get(*hoveredResource, context.swapchainIndex);
-        float aspectRatio = texture.getSize().width / (float) texture.getSize().height;
         ImGui::Text("%s", hoveredResource->name.c_str());
         ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
-        ImGui::Image(texture.getImguiID(hoveredResource->format), ImVec2(aspectRatio * 512.0f, 512.0f));
+
+        if(hoveredResourceViewer) {
+            const float h = 512.0f;
+            float aspectRatio = hoveredResourceViewer->getSize().width / (float) hoveredResourceViewer->getSize().height;
+            ImGui::Image(hoveredResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+        }
+
         ImGui::EndTooltip();
     }
 
@@ -393,16 +404,56 @@ namespace Carrot::Render {
                     debugDraw(context);
                     ed::End();
                     ed::EnableShortcuts(false);
-
-                    drawResource(context);
                 }
             }
             ImGui::End();
+
+            if(graphToDebug == this) {
+                drawResource(context);
+            }
 
             if(!isOpen) {
                 DebugRenderGraphs.setValue(false);
             }
         }
+    }
+
+    void Graph::drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds) {
+        auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-viewer.json");
+        pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
+
+        if(!destinationTexture) {
+            destinationTexture = std::make_unique<Texture>(driver, vk::Extent3D {
+                1024,1024,1
+            }, vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+            vk::Format::eR8G8B8A8Unorm);
+        }
+
+        auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
+
+        context.renderer.bindTexture(*pipeline, context, inputImage, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+        context.renderer.bindSampler(*pipeline, context, driver.getLinearSampler(), 0, 1);
+        context.renderer.bindSampler(*pipeline, context, driver.getNearestSampler(), 0, 2);
+        context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+        // transition destination resource to a writeable format
+        destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+
+        // transition source resource to a sampling format
+        if(sourceResource.layout != vk::ImageLayout::eGeneral)
+            inputImage.getImage().transitionLayoutInline(cmds, sourceResource.layout, vk::ImageLayout::eGeneral); // TODO: aspect?
+
+        // copy/transform
+        std::size_t groupCountX = (destinationTexture->getSize().width+31) / 32;
+        std::size_t groupCountY = (destinationTexture->getSize().height+31) / 32;
+        cmds.dispatch(groupCountX, groupCountY, 1);
+
+        // transition source resource back to its expected format
+        if(sourceResource.layout != vk::ImageLayout::eGeneral)
+            inputImage.getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, sourceResource.layout); // TODO: aspect?
+
+        // transition destination resource into sampling format
+        destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 
     void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
@@ -414,12 +465,60 @@ namespace Carrot::Render {
             std::string passName = "Execute pass ";
             GetVulkanDriver().setFormattedMarker(cmds, "Pass %s", pass->getName().data());
 
+            if(hoveredResource || clickedResource) {
+                auto isAnInput = [&](const FrameResource& resource) {
+                    for(const auto& o : pass->getInputs()) {
+                        if(o.id == resource.id) {
+                            return true;
+                        }
+                    }
+
+                    for(const auto& o : pass->getInputOutputs()) {
+                        if(o.id == resource.id) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                if(hoveredResource && isAnInput(*hoveredResource)) {
+                    drawViewer(data, *hoveredResource, hoveredResourceViewer, cmds);
+                }
+                if(clickedResource && isAnInput(*clickedResource)) {
+                    drawViewer(data, *clickedResource, clickedResourceViewer, cmds);
+                }
+            }
+
             passName += pass->getName();
             id += pass->getName();
             id += " ";
             ZoneScopedN("Execute pass");
 #endif
             pass->execute(data, cmds);
+
+            if(hoveredResource || clickedResource) {
+                auto isAnOutput = [&](const FrameResource& resource) {
+                    for(const auto& o : pass->getOutputs()) {
+                        if(o.id == resource.id) {
+                            return true;
+                        }
+                    }
+
+                    for(const auto& o : pass->getInputOutputs()) {
+                        if(o.id == resource.id) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                if(hoveredResource && isAnOutput(*hoveredResource)) {
+                    drawViewer(data, *hoveredResource, hoveredResourceViewer, cmds);
+                }
+                if(clickedResource && isAnOutput(*clickedResource)) {
+                    drawViewer(data, *clickedResource, clickedResourceViewer, cmds);
+                }
+            }
         }
     }
 
@@ -432,11 +531,15 @@ namespace Carrot::Render {
     }
 
     Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
-        return driver.getTextureRepository().create(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID), viewportSize);
+        return driver.getTextureRepository().create(resource, frameIndex,
+            driver.getTextureRepository().getUsages(resource.rootID) | ForcedFlags,
+            viewportSize);
     }
 
     Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
-        return driver.getTextureRepository().getOrCreate(resource, frameIndex, driver.getTextureRepository().getUsages(resource.rootID), viewportSize);
+        return driver.getTextureRepository().getOrCreate(resource, frameIndex,
+            driver.getTextureRepository().getUsages(resource.rootID) | ForcedFlags,
+            viewportSize);
     }
 
     void Graph::onSwapchainImageCountChange(size_t newCount) {

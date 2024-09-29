@@ -264,6 +264,7 @@ set(COMPUTE_SHADERS
         compute/clear-singleint.compute.glsl
         compute/compute-rt-clusters.compute.glsl
         compute/copy-variance.compute.glsl
+        compute/debug-view.compute.glsl
         compute/firefly-rejection.compute.glsl
         compute/particles.compute.glsl
         compute/skeleton-skinning.compute.glsl
