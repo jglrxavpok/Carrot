@@ -26,7 +26,7 @@ namespace sol {
 namespace Carrot {
     namespace Render {
         class Texture;
-        class TextureRepository;
+        class ResourceRepository;
         struct Context;
         enum class Eye;
     };
@@ -177,7 +177,7 @@ namespace Carrot {
 
         vk::Format getDepthFormat() { return depthFormat; };
 
-        Render::TextureRepository& getTextureRepository() { return *textureRepository; };
+        Render::ResourceRepository& getResourceRepository() { return *resourceRepository; };
 
         const Configuration& getConfiguration() { return config; }
 
@@ -292,7 +292,7 @@ namespace Carrot {
 
         vk::UniqueDescriptorSetLayout emptyDescriptorSetLayout{};
 
-        std::unique_ptr<Render::TextureRepository> textureRepository = nullptr;
+        std::unique_ptr<Render::ResourceRepository> resourceRepository = nullptr;
 
         Async::SpinLock deferredDestroysLock;
         std::unordered_map<std::uint32_t, std::vector<DeferredCommandBufferDestruction>> deferredCommandBufferDestructions;

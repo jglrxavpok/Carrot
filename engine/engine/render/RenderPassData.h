@@ -57,6 +57,12 @@ namespace Carrot::Render {
         Created, // image is created by the engine
     };
 
+    enum class ResourceType {
+        RenderTarget,
+        StorageImage,
+        StorageBuffer
+    };
+
     class FrameResource: public std::enable_shared_from_this<FrameResource> {
     public:
         FrameResource() {
@@ -69,7 +75,9 @@ namespace Carrot::Render {
             parentID = toCopy.parentID;
             id = toCopy.id;
             size = toCopy.size;
+            bufferSize = toCopy.bufferSize;
             format = toCopy.format;
+            type = toCopy.type;
             imageOrigin = toCopy.imageOrigin;
             pOriginWindow = toCopy.pOriginWindow;
             owner = toCopy.owner;
@@ -82,7 +90,9 @@ namespace Carrot::Render {
             rootID = parent->rootID;
             parentID = parent->id;
             size = parent->size;
+            bufferSize = parent->bufferSize;
             format = parent->format;
+            type = parent->type;
             imageOrigin = parent->imageOrigin;
             pOriginWindow = parent->pOriginWindow;
             owner = parent->owner;
@@ -94,7 +104,9 @@ namespace Carrot::Render {
         void updateLayout(vk::ImageLayout newLayout);
 
         TextureSize size;
+        vk::DeviceSize bufferSize = 0;
         vk::Format format = vk::Format::eUndefined;
+        ResourceType type = ResourceType::RenderTarget;
         ImageOrigin imageOrigin = ImageOrigin::Created;
         Window* pOriginWindow = nullptr; //< if image origin is SurfaceSwapchain, points to the window the swapchain is from
         Carrot::UUID id;
@@ -146,6 +158,8 @@ namespace Carrot::Render {
             FrameResource ambientOcclusionSamples; // temporal supersampling
             FrameResource ambientOcclusionHistoryLength; // temporal supersampling
             std::array<FrameResource, 2> ambientOcclusion; // ping-pongs for denoising, use iterationCount % 2 for the index
+
+            FrameResource worldSpaceGIProbesHashMap;
         };
 
         struct PostProcessing {

@@ -139,6 +139,11 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 vk::Format::eR32G32B32A32Sfloat,
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
+
+                std::size_t probeCountPerBucket = 32;
+                std::size_t bucketCount = 1024;
+                std::size_t sizeofProbe = 32; // TODO
+                resolveData.worldSpaceGIProbesHashMap = graph.createBuffer("GI probes hashmap", probeCountPerBucket * bucketCount * sizeofProbe, vk::BufferUsageFlagBits::eStorageBuffer, false);
            },
            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& cmds) {
                ZoneScopedN("CPU RenderGraph lighting");

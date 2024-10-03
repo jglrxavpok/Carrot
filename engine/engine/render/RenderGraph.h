@@ -35,6 +35,11 @@ namespace Carrot::Render {
         [[nodiscard]] Render::Texture& getTexture(const FrameResource& resource, size_t frameIndex) const;
         [[nodiscard]] Render::Texture& getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize);
 
+        [[nodiscard]] BufferAllocation& createBuffer(const FrameResource& resource, size_t frameIndex);
+        [[nodiscard]] BufferAllocation& getBuffer(const Carrot::UUID& resourceID, size_t frameIndex) const;
+        [[nodiscard]] BufferAllocation& getBuffer(const FrameResource& resource, size_t frameIndex) const;
+        [[nodiscard]] BufferAllocation& getOrCreateBuffer(const FrameResource& resource, size_t frameIndex);
+
         VulkanDriver& getVulkanDriver() { return driver; }
 
     public:
@@ -118,6 +123,13 @@ namespace Carrot::Render {
         FrameResource& write(const FrameResource& toWrite, vk::AttachmentLoadOp loadOp, vk::ImageLayout layout, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor);
         FrameResource& createRenderTarget(std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         FrameResource& createTarget(bool isStorageImage, std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp, vk::ClearValue clearValue = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f}), vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
+
+        /// Creates a buffer for this pass. The buffer is guaranteed to always be filled with 0 on the first frame.
+        /// @param name Name of the buffer (for debug)
+        /// @param size Size in bytes of the buffer
+        /// @param clearEachFrame Should clear the buffer to 0 each frame?
+        /// @return resource handle to the buffer
+        FrameResource& createBuffer(std::string name, vk::DeviceSize size, vk::BufferUsageFlags usages, bool clearEachFrame);
         FrameResource& createStorageTarget(std::string name, vk::Format format, TextureSize size, vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(FrameResource& toPresent);
 

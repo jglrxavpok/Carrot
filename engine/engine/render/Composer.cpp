@@ -13,7 +13,7 @@
 namespace Carrot::Render {
     PassData::ComposerRegion& Composer::add(const FrameResource& toDraw, float left, float right, float top, float bottom, float z) {
         // graph containing composer pass can be initialised after the 'toDraw' texture has been created
-        driver.getTextureRepository().getUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        driver.getResourceRepository().getTextureUsages(toDraw.rootID) |= vk::ImageUsageFlagBits::eSampled;
 
         auto& r = regions.emplace_back();
         r.toDraw = toDraw;

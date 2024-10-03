@@ -103,7 +103,7 @@ namespace Carrot::Render {
                                                                    vk::ClearColorValue(std::array{0,0,0,1}),
                                                                    vk::ImageLayout::eGeneral
                    );
-                   GetEngine().getVulkanDriver().getTextureRepository().getUsages(data.postProcessed.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                   GetEngine().getVulkanDriver().getResourceRepository().getTextureUsages(data.postProcessed.rootID) |= vk::ImageUsageFlagBits::eSampled;
                },
                [this, pipelineName = Carrot::sprintf("post-process/visibility-buffer-debug/%s", shaderNameSuffix.c_str())]
                (const Render::CompiledPass& pass, const Render::Context& frame, const PassData::PostProcessing& data, vk::CommandBuffer& cmds) {

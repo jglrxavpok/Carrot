@@ -142,7 +142,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
 
     if(config.runInVR) {
         vrSession = vrInterface->createSession();
-        vkDriver.getTextureRepository().setXRSession(vrSession.get());
+        vkDriver.getResourceRepository().setXRSession(vrSession.get());
     }
 
     if(config.runInVR) {

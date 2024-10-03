@@ -147,11 +147,11 @@ void Carrot::Render::PassBase::addInput(Carrot::Render::FrameResource& resource,
 }
 
 void Carrot::Render::PassBase::addOutput(Carrot::Render::FrameResource& resource, vk::AttachmentLoadOp loadOp,
-                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool isStorageOnly) {
+                                         vk::ClearValue clearValue, vk::ImageAspectFlags aspect, vk::ImageLayout layout, bool isCreatedInThisPass, bool clearBufferEachFrame) {
     outputs.emplace_back(resource, loadOp, clearValue, aspect);
     outputs.back().resource.updateLayout(layout);
     outputs.back().isCreatedInThisPass = isCreatedInThisPass;
-    outputs.back().isStorageOnly = isStorageOnly;
+    outputs.back().clearBufferEachFrame = clearBufferEachFrame;
     resource.updateLayout(layout);
     finalLayouts[resource.id] = layout;
 }
@@ -186,7 +186,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
     std::vector<vk::ClearValue> clearValues;
     for(const auto& output : outputs) {
-        if(output.isStorageOnly) {
+        if(output.resource.type != ResourceType::RenderTarget) {
             continue;
         }
         auto initialLayout = vk::ImageLayout::eUndefined;
@@ -292,16 +292,19 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < driver.getSwapchainImageCount(); ++i) {
                 auto& frameImageViews = attachmentImageViews[i];
 
-                // TODO: inputs
                 for (const auto& output : outputs) {
-                    auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
+                    if(output.resource.type == ResourceType::StorageBuffer) {
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i));
+                    } else {
+                        auto& texture = graph.getOrCreateTexture(output.resource, i, viewportSize);
 
-                    if(!output.isStorageOnly) {
-                        frameImageViews.push_back(texture.getView(output.aspect));
+                        if(output.resource.type == ResourceType::RenderTarget) {
+                            frameImageViews.push_back(texture.getView(output.aspect));
+                        }
+
+                        maxWidth = std::max(texture.getSize().width, maxWidth);
+                        maxHeight = std::max(texture.getSize().height, maxHeight);
                     }
-
-                    maxWidth = std::max(texture.getSize().width, maxWidth);
-                    maxHeight = std::max(texture.getSize().height, maxHeight);
                 }
 
                 Carrot::Log::info("Creating framebuffer of size %lux%lu (pass %s)", maxWidth, maxHeight, pass.getName().data());
@@ -330,7 +333,12 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
-                    DISCARD(graph.getOrCreateTexture(output.resource, i, viewportSize)); // force create textures
+                    // force create resources
+                    if(output.resource.type == ResourceType::StorageBuffer) {
+                        DISCARD(graph.getOrCreateBuffer(output.resource, i));
+                    } else {
+                        DISCARD(graph.getOrCreateTexture(output.resource, i, viewportSize));
+                    }
                 }
             }
             // no render pass = no render size
@@ -379,7 +387,7 @@ void Carrot::Render::CompiledPass::onSwapchainSizeChange(Window& window, int new
             .width = static_cast<std::uint32_t>(newWidth),
             .height = static_cast<std::uint32_t>(newHeight),
     };
-    getVulkanDriver().getTextureRepository().removeBelongingTo(passID);
+    getVulkanDriver().getResourceRepository().removeBelongingTo(passID);
     createFramebuffers();
     if(!commandBuffers.empty()) {
         getVulkanDriver().getLogicalDevice().resetCommandPool(*commandPool);

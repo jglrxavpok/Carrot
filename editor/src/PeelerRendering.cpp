@@ -20,9 +20,9 @@ namespace Peeler {
                                          GetRenderer().recordTransparentGBufferPass(pass.getRenderPass(), frame, cmds);
                                      });
 
-        engine.getVulkanDriver().getTextureRepository().getUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
+        engine.getVulkanDriver().getResourceRepository().getTextureUsages(gameTexture.rootID) |= vk::ImageUsageFlagBits::eSampled;
         const auto& gbufferPass = graphBuilder.getPassData<PassData::GBuffer>("gbuffer").value();
-        engine.getVulkanDriver().getTextureRepository().getUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+        engine.getVulkanDriver().getResourceRepository().getTextureUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
 
         gameTexture = addOutlinePass(graphBuilder, resolvePassResult);
 

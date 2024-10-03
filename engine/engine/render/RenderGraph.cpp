@@ -24,6 +24,7 @@ namespace Carrot::Render {
 
     // flags forced on all resources created by RenderGraph
     constexpr vk::ImageUsageFlags ForcedFlags = vk::ImageUsageFlagBits::eSampled;
+    constexpr vk::BufferUsageFlags ForcedBufferFlags = vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
     GraphBuilder::GraphBuilder(VulkanDriver& driver, Window& window): window(window) {
         swapchainImage.format = GetVulkanDriver().getSwapchainImageFormat();
@@ -39,22 +40,23 @@ namespace Carrot::Render {
 
     FrameResource& GraphBuilder::read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
         assert(currentPass);
+        verify(toRead.type != ResourceType::StorageBuffer, "todo");
         resources.emplace_back(&toRead);
         currentPass->addInput(resources.back(), expectedLayout, aspect);
         switch(expectedLayout) {
             case vk::ImageLayout::eTransferSrcOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
                 break;
 
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
 
 
             default:
-                GetVulkanDriver().getTextureRepository().getUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
         }
         return resources.back();
@@ -69,16 +71,17 @@ namespace Carrot::Render {
         if(toWrite.owner != this) {
           //  TODO?
         }
+        verify(toWrite.type != ResourceType::StorageBuffer, "todo");
         switch(layout) {
             case vk::ImageLayout::eTransferDstOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
                 break;
 
             case vk::ImageLayout::eDepthStencilAttachmentOptimal:
             case vk::ImageLayout::eDepthAttachmentOptimal:
             case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
             case vk::ImageLayout::eDepthReadOnlyOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 break;
 
             default:
@@ -103,18 +106,34 @@ namespace Carrot::Render {
         return createTarget(true, name, format, size, vk::AttachmentLoadOp::eDontCare, {}, layout);
     }
 
+    FrameResource& GraphBuilder::createBuffer(std::string name, vk::DeviceSize size, vk::BufferUsageFlags usages, bool clearEachFrame) {
+        auto& r = resources.emplace_back();
+        r.name = std::move(name);
+        r.owner = this;
+        r.type = ResourceType::StorageBuffer;
+        r.bufferSize = size;
+        r.imageOrigin = ImageOrigin::Created;
+
+        GetVulkanDriver().getResourceRepository().getBufferUsages(r.rootID) |= usages;
+        GetVulkanDriver().getResourceRepository().setCreatorID(r.rootID, currentPass->passID);
+
+        currentPass->addOutput(r, {}, {}, {}, {}, true, clearEachFrame);
+        return r;
+    }
+
     FrameResource& GraphBuilder::createTarget(bool isStorageImage, std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
                                                     vk::ClearValue clearValue, vk::ImageLayout layout) {
         auto& r = resources.emplace_back();
         r.name = std::move(name);
         r.owner = this;
         r.format = format;
+        r.type = isStorageImage ? ResourceType::StorageImage : ResourceType::RenderTarget;
         r.size = size;
         r.imageOrigin = ImageOrigin::Created;
         r.updateLayout(layout);
         currentPass->finalLayouts[r.id] = layout;
 
-        GetVulkanDriver().getTextureRepository().setCreatorID(r.rootID, currentPass->passID);
+        GetVulkanDriver().getResourceRepository().setCreatorID(r.rootID, currentPass->passID);
 
         auto aspect = static_cast<vk::ImageAspectFlags>(0);
 
@@ -122,18 +141,18 @@ namespace Carrot::Render {
             case vk::ImageLayout::eStencilAttachmentOptimal:
             case vk::ImageLayout::eDepthAttachmentOptimal:
             case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 aspect |= vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
                 break;
 
             case vk::ImageLayout::eGeneral:
-                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
-                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 
             case vk::ImageLayout::eColorAttachmentOptimal:
-                GetVulkanDriver().getTextureRepository().getUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
+                GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 
@@ -143,7 +162,7 @@ namespace Carrot::Render {
                 break;
         }
 
-        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true, isStorageImage);
+        currentPass->addOutput(r, loadOp, clearValue, aspect, layout, true, false);
         return r;
     }
 
@@ -348,14 +367,18 @@ namespace Carrot::Render {
         if(clickedResource != nullptr) {
             bool keepOpen = true;
             if(ImGui::Begin("Resource", &keepOpen)) {
-                auto& texture = GetVulkanDriver().getTextureRepository().get(*clickedResource, context.swapchainIndex);
                 ImGui::Text("%s", clickedResource->name.c_str());
-                ImGui::Text("%s (%s) (%u x %u x %u)", clickedResource->id.toString().c_str(), clickedResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
-                float h = ImGui::GetContentRegionAvail().y;
+                if(clickedResource->type == ResourceType::StorageBuffer) {
+                    ImGui::Text("Buffer, nothing to show.");
+                } else {
+                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResource, context.swapchainIndex);
+                    ImGui::Text("%s (%s) (%u x %u x %u)", clickedResource->id.toString().c_str(), clickedResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
+                    float h = ImGui::GetContentRegionAvail().y;
 
-                if(clickedResourceViewer) {
-                    float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
-                    ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+                    if(clickedResourceViewer) {
+                        float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
+                        ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+                    }
                 }
             }
             ImGui::End();
@@ -370,16 +393,19 @@ namespace Carrot::Render {
         }
 
         ImGui::BeginTooltip();
-        auto& texture = GetVulkanDriver().getTextureRepository().get(*hoveredResource, context.swapchainIndex);
         ImGui::Text("%s", hoveredResource->name.c_str());
-        ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
+        if(hoveredResource->type == ResourceType::StorageBuffer) {
+            ImGui::Text("Buffer, nothing to show.");
+        } else {
+            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResource, context.swapchainIndex);
+            ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
 
-        if(hoveredResourceViewer) {
-            const float h = 512.0f;
-            float aspectRatio = hoveredResourceViewer->getSize().width / (float) hoveredResourceViewer->getSize().height;
-            ImGui::Image(hoveredResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+            if(hoveredResourceViewer) {
+                const float h = 512.0f;
+                float aspectRatio = hoveredResourceViewer->getSize().width / (float) hoveredResourceViewer->getSize().height;
+                ImGui::Image(hoveredResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
+            }
         }
-
         ImGui::EndTooltip();
     }
 
@@ -419,6 +445,9 @@ namespace Carrot::Render {
     }
 
     void Graph::drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds) {
+        if(sourceResource.type == ResourceType::StorageBuffer) {
+            return; // maybe in the future we can do something
+        }
         auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-viewer.json");
         pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
 
@@ -523,23 +552,41 @@ namespace Carrot::Render {
     }
 
     Texture& Graph::getTexture(const FrameResource& resource, size_t frameIndex) const {
-        return driver.getTextureRepository().get(resource, frameIndex);
+        return driver.getResourceRepository().getTexture(resource, frameIndex);
     }
 
     Texture& Graph::getTexture(const Carrot::UUID& resourceID, size_t frameIndex) const {
-        return driver.getTextureRepository().get(resourceID, frameIndex);
+        return driver.getResourceRepository().getTexture(resourceID, frameIndex);
     }
 
     Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
-        return driver.getTextureRepository().create(resource, frameIndex,
-            driver.getTextureRepository().getUsages(resource.rootID) | ForcedFlags,
+        return driver.getResourceRepository().createTexture(resource, frameIndex,
+            driver.getResourceRepository().getTextureUsages(resource.rootID) | ForcedFlags,
             viewportSize);
     }
 
     Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
-        return driver.getTextureRepository().getOrCreate(resource, frameIndex,
-            driver.getTextureRepository().getUsages(resource.rootID) | ForcedFlags,
+        return driver.getResourceRepository().getOrCreateTexture(resource, frameIndex,
+            driver.getResourceRepository().getTextureUsages(resource.rootID) | ForcedFlags,
             viewportSize);
+    }
+
+    BufferAllocation& Graph::getBuffer(const FrameResource& resource, size_t frameIndex) const {
+        return driver.getResourceRepository().getBuffer(resource, frameIndex);
+    }
+
+    BufferAllocation& Graph::getBuffer(const Carrot::UUID& resourceID, size_t frameIndex) const {
+        return driver.getResourceRepository().getBuffer(resourceID, frameIndex);
+    }
+
+    BufferAllocation& Graph::createBuffer(const FrameResource& resource, size_t frameIndex) {
+        return driver.getResourceRepository().createBuffer(resource, frameIndex,
+            driver.getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags);
+    }
+
+    BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex) {
+        return driver.getResourceRepository().getOrCreateBuffer(resource, frameIndex,
+            driver.getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags);
     }
 
     void Graph::onSwapchainImageCountChange(size_t newCount) {

@@ -14,18 +14,24 @@ namespace Carrot::VR {
 }
 
 namespace Carrot::Render {
-    class TextureRepository {
+    class ResourceRepository {
     public:
-        TextureRepository(VulkanDriver& driver): driver(driver) {}
+        ResourceRepository(VulkanDriver& driver): driver(driver) {}
 
     public:
-        Texture& create(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
-        Texture& get(const FrameResource& texture, size_t swapchainIndex);
-        Texture& get(const Carrot::UUID& id, size_t swapchainIndex);
-        Texture::Ref getRef(const FrameResource& texture, size_t swapchainIndex);
-        Texture::Ref getRef(const Carrot::UUID& id, size_t swapchainIndex);
-        Texture& getOrCreate(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
-        vk::ImageUsageFlags& getUsages(const Carrot::UUID& id);
+        Texture& createTexture(const FrameResource& texture, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+        Texture& getTexture(const FrameResource& texture, size_t swapchainIndex);
+        Texture& getTexture(const Carrot::UUID& id, size_t swapchainIndex);
+        Texture::Ref getTextureRef(const FrameResource& texture, size_t swapchainIndex);
+        Texture::Ref getTextureRef(const Carrot::UUID& id, size_t swapchainIndex);
+        Texture& getOrCreateTexture(const FrameResource& id, size_t swapchainIndex, vk::ImageUsageFlags textureUsages, const vk::Extent2D& viewportSize);
+        vk::ImageUsageFlags& getTextureUsages(const Carrot::UUID& id);
+
+        BufferAllocation& createBuffer(const FrameResource& texture, size_t swapchainIndex, vk::BufferUsageFlags usages);
+        BufferAllocation& getBuffer(const FrameResource& texture, size_t swapchainIndex);
+        BufferAllocation& getBuffer(const Carrot::UUID& id, size_t swapchainIndex);
+        BufferAllocation& getOrCreateBuffer(const FrameResource& id, size_t swapchainIndex, vk::BufferUsageFlags usages);
+        vk::BufferUsageFlags& getBufferUsages(const Carrot::UUID& id);
 
         /// Which render pass is the creator of the texture with the given ID? Throws if no texture corresponds. Returns Carrot::UUID::null() if no creator has been set.
         Carrot::UUID getCreatorID(const Carrot::UUID& id) const;
@@ -44,8 +50,10 @@ namespace Carrot::Render {
     private:
         VulkanDriver& driver;
         std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;
-        std::unordered_map<Carrot::UUID, Carrot::UUID> textureOwners;
-        std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> usages;
+        std::unordered_map<Carrot::UUID, Carrot::BufferAllocation> buffers;
+        std::unordered_map<Carrot::UUID, Carrot::UUID> resourceOwners;
+        std::unordered_map<Carrot::UUID, vk::ImageUsageFlags> textureUsages;
+        std::unordered_map<Carrot::UUID, vk::BufferUsageFlags> bufferUsages;
 
         VR::Session* vrSession = nullptr;
 

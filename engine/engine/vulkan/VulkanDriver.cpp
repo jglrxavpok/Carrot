@@ -250,7 +250,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
         .bindingCount = 0,
     });
 
-    textureRepository = std::make_unique<Render::TextureRepository>(*this);
+    resourceRepository = std::make_unique<Render::ResourceRepository>(*this);
 }
 
 bool Carrot::VulkanDriver::checkValidationLayerSupport() {
