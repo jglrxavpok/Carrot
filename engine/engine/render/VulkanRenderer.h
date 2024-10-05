@@ -231,6 +231,9 @@ namespace Carrot {
         template<typename ConstantBlock>
         void pushConstantBlock(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, const ConstantBlock& block);
 
+        template<typename... ConstantTypes>
+        void pushConstants(std::string_view pushName, const Carrot::Pipeline& pipeline, const Carrot::Render::Context& context, vk::ShaderStageFlags stageFlags, vk::CommandBuffer& cmds, ConstantTypes&&... args);
+
         void blit(Carrot::Render::Texture& source, Carrot::Render::Texture& destination, vk::CommandBuffer& cmds, vk::Offset3D srcOffset = {}, vk::Offset3D dstOffset = {});
 
         void fullscreenBlit(const vk::RenderPass& pass, const Carrot::Render::Context& frame, Carrot::Render::Texture& textureToBlit, Carrot::Render::Texture& targetTexture, vk::CommandBuffer& cmds);
@@ -380,7 +383,7 @@ namespace Carrot {
 
         ImGui_ImplVulkan_InitInfo imguiInitInfo;
         bool imguiIsInitialized = false;
-        std::list<std::unique_ptr<std::uint8_t[]>> pushConstants;
+        std::list<std::unique_ptr<std::uint8_t[]>> pushConstantList;
 
         std::unordered_map<ImageBindingKey, vk::Image> boundTextures;
         std::unordered_map<ImageBindingKey, vk::Image> boundStorageImages;

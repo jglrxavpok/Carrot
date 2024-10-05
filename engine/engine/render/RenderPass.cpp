@@ -88,6 +88,13 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
             tex.assumeLayout(transition.from);
             tex.transitionInline(cmds, transition.to, transition.aspect);
         }
+
+        for(std::size_t i = 0; i < outputs.size(); i++) {
+            if(needBufferClearEachFrame[i]) {
+                auto& buffer = graph.getBuffer(outputs[i], renderContext.swapchainIndex);
+                cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+            }
+        }
     }
 }
 
@@ -242,6 +249,26 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
     vk::Extent2D viewportSize = window.getFramebufferExtent();
     std::unique_ptr<CompiledPass> result = nullptr;
+
+    auto resetBuffers = [outputs = outputs, &graph, &driver]() {
+        Carrot::Vector<FrameResource> buffers;
+        for(const auto& output : outputs) {
+            if(output.resource.type != ResourceType::StorageBuffer) {
+                continue;
+            }
+
+            buffers.emplaceBack(output.resource);
+        }
+
+        if(!buffers.empty()) {
+            driver.performSingleTimeComputeCommands([&](vk::CommandBuffer& cmds) {
+                for(const auto& b : buffers) {
+                    auto& buffer = graph.getBuffer(b, 0/*buffers are reused across frames*/);
+                    cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+                }
+            });
+        }
+    };
     if(rasterized) {
         vk::SubpassDescription mainSubpass{
                 .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
@@ -281,7 +308,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         });
         DebugNameable::nameSingle(this->name, *renderPass);
 
-        auto init = [outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
+        auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
             auto& graph = pass.getGraph();
             auto& driver = pass.getVulkanDriver();
             std::vector<std::vector<vk::ImageView>> attachmentImageViews(driver.getSwapchainImageCount()); // [frameIndex][attachmentIndex], one per swapchain image
@@ -322,6 +349,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                 framebuffers[i] = std::move(driver.getLogicalDevice().createFramebufferUnique(framebufferInfo,
                                                                                               driver.getAllocationCallbacks()));
             }
+            resetBuffers();
             renderSize.width = maxWidth;
             renderSize.height = maxHeight;
             return framebuffers;
@@ -329,7 +357,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
         result = std::make_unique<CompiledPass>(graph, name, viewportSize, std::move(renderPass), clearValues,
                                          generateCallback(), std::move(prePassTransitions), init, generateSwapchainCallback(), prerecordable, passID);
     } else {
-        auto init = [outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
+        auto init = [resetBuffers, outputs = outputs](CompiledPass& pass, const vk::Extent2D& viewportSize, vk::Extent2D& renderSize) {
             for (int i = 0; i < pass.getVulkanDriver().getSwapchainImageCount(); ++i) {
                 auto& graph = pass.getGraph();
                 for (const auto& output : outputs) {
@@ -341,6 +369,7 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
                     }
                 }
             }
+            resetBuffers();
             // no render pass = no render size
             renderSize.width = 0;
             renderSize.height = 0;
@@ -356,17 +385,18 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 void Carrot::Render::CompiledPass::setInputsOutputsForDebug(const std::list<Input>& _inputs, const std::list<Output>& _outputs) {
     inputs.reserve(_inputs.size());
     outputs.reserve(_outputs.size());
+    needBufferClearEachFrame.reserve(_outputs.size());
 
     for(const auto& input : _inputs) {
         inputs.emplace_back(input.resource);
     }
     for(const auto& output : _outputs) {
         outputs.emplace_back(output.resource);
-    }
-    for(const auto& output : _outputs) {
+
         if(!output.isCreatedInThisPass) {
             inouts.emplace_back(output.resource);
         }
+        needBufferClearEachFrame.emplace_back(output.clearBufferEachFrame);
     }
 }
 

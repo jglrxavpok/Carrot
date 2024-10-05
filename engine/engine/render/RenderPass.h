@@ -139,6 +139,7 @@ namespace Carrot::Render {
         // kept for debug
         std::vector<FrameResource> inputs;
         std::vector<FrameResource> outputs;
+        std::vector<bool> needBufferClearEachFrame;
         std::vector<FrameResource> inouts; // inputs used as read-write
 
     private: // Pre-recording

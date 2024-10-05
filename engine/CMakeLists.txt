@@ -264,7 +264,8 @@ set(COMPUTE_SHADERS
         compute/clear-singleint.compute.glsl
         compute/compute-rt-clusters.compute.glsl
         compute/copy-variance.compute.glsl
-        compute/debug-view.compute.glsl
+        compute/debug-texture-view.compute.glsl
+        compute/debug-buffer-view.compute.glsl
         compute/firefly-rejection.compute.glsl
         compute/particles.compute.glsl
         compute/skeleton-skinning.compute.glsl
@@ -376,7 +377,8 @@ set(THIRDPARTY-SOURCES
 
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
-        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV ${LUA_LIBRARIES} OpenEXR::OpenEXR Jolt
+        Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV ${LUA_LIBRARIES} Jolt
+        OpenEXR::OpenEXR
         OpenXR::headers
         OpenXR::openxr_loader
         ${ADDITIONAL_LIBS})

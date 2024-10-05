@@ -6,5 +6,5 @@
       "setID": 0
     }
   ],
-  "computeShader": "resources/shaders/compute/debug-view.compute.glsl.spv"
+  "computeShader": "resources/shaders/compute/debug-buffer-view.compute.glsl.spv"
 }

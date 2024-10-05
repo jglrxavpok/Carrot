@@ -332,7 +332,7 @@ void Carrot::VulkanRenderer::postFrame() {
         });
         afterFrameCommands.clear();
     }
-    pushConstants.clear();
+    pushConstantList.clear();
 }
 
 void Carrot::VulkanRenderer::beforeFrameCommand(const CommandBufferConsumer& command) {

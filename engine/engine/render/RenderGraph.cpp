@@ -262,9 +262,9 @@ namespace Carrot::Render {
 
         auto handlePinMouseInteraction = [&](const FrameResource& o) {
             if(ImGui::IsItemHovered()) {
-                hoveredResource = &o;
+                hoveredResourceForMain = &o;
                 if(ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                    clickedResource = &o;
+                    clickedResourceForMain = &o;
                 }
             }
         };
@@ -364,47 +364,49 @@ namespace Carrot::Render {
     }
 
     void Graph::drawResource(const Render::Context& context) {
-        if(clickedResource != nullptr) {
+        if(clickedResourceForMain != nullptr) {
             bool keepOpen = true;
             if(ImGui::Begin("Resource", &keepOpen)) {
-                ImGui::Text("%s", clickedResource->name.c_str());
-                if(clickedResource->type == ResourceType::StorageBuffer) {
-                    ImGui::Text("Buffer, nothing to show.");
+                ImGui::Text("%s", clickedResourceForMain->name.c_str());
+                if(clickedResourceForMain->type != ResourceType::StorageBuffer) {
+                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.swapchainIndex);
+                    ImGui::Text("%s (%s) (%u x %u x %u)", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                 } else {
-                    auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResource, context.swapchainIndex);
-                    ImGui::Text("%s (%s) (%u x %u x %u)", clickedResource->id.toString().c_str(), clickedResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
-                    float h = ImGui::GetContentRegionAvail().y;
+                    auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.swapchainIndex);
+                    ImGui::Text("%s (%s) %llu bytes", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
+                }
+                float h = ImGui::GetContentRegionAvail().y;
 
-                    if(clickedResourceViewer) {
-                        float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
-                        ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
-                    }
+                if(clickedResourceViewer) {
+                    float aspectRatio = clickedResourceViewer->getSize().width / (float) clickedResourceViewer->getSize().height;
+                    ImGui::Image(clickedResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
                 }
             }
             ImGui::End();
 
             if(!keepOpen) {
-                clickedResource = nullptr;
+                clickedResourceForMain = nullptr;
             }
         }
 
-        if(hoveredResource == nullptr) {
+        if(hoveredResourceForMain == nullptr) {
             return;
         }
 
         ImGui::BeginTooltip();
-        ImGui::Text("%s", hoveredResource->name.c_str());
-        if(hoveredResource->type == ResourceType::StorageBuffer) {
-            ImGui::Text("Buffer, nothing to show.");
+        ImGui::Text("%s", hoveredResourceForMain->name.c_str());
+        if(hoveredResourceForMain->type != ResourceType::StorageBuffer) {
+            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.swapchainIndex);
+            ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
         } else {
-            auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResource, context.swapchainIndex);
-            ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResource->id.toString().c_str(), hoveredResource->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
+            auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.swapchainIndex);
+            ImGui::Text("%s (%s) %llu bytes", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
+        }
 
-            if(hoveredResourceViewer) {
-                const float h = 512.0f;
-                float aspectRatio = hoveredResourceViewer->getSize().width / (float) hoveredResourceViewer->getSize().height;
-                ImGui::Image(hoveredResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
-            }
+        if(hoveredResourceViewer) {
+            const float h = 512.0f;
+            float aspectRatio = hoveredResourceViewer->getSize().width / (float) hoveredResourceViewer->getSize().height;
+            ImGui::Image(hoveredResourceViewer->getImguiID(), ImVec2(aspectRatio * h, h));
         }
         ImGui::EndTooltip();
     }
@@ -425,7 +427,7 @@ namespace Carrot::Render {
                     ed::SetCurrentEditor((ed::EditorContext*)nodesContext);
                     ed::EnableShortcuts(true);
 
-                    hoveredResource = nullptr;
+                    hoveredResourceForMain = nullptr;
                     ed::Begin("Render graph debug");
                     debugDraw(context);
                     ed::End();
@@ -445,12 +447,6 @@ namespace Carrot::Render {
     }
 
     void Graph::drawViewer(const Render::Context& context, const Render::FrameResource& sourceResource, std::unique_ptr<Texture>& destinationTexture, vk::CommandBuffer cmds) {
-        if(sourceResource.type == ResourceType::StorageBuffer) {
-            return; // maybe in the future we can do something
-        }
-        auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-viewer.json");
-        pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
-
         if(!destinationTexture) {
             destinationTexture = std::make_unique<Texture>(driver, vk::Extent3D {
                 1024,1024,1
@@ -458,35 +454,69 @@ namespace Carrot::Render {
             vk::Format::eR8G8B8A8Unorm);
         }
 
-        auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
+        bool isBuffer = sourceResource.type == ResourceType::StorageBuffer;
 
-        context.renderer.bindTexture(*pipeline, context, inputImage, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-        context.renderer.bindSampler(*pipeline, context, driver.getLinearSampler(), 0, 1);
-        context.renderer.bindSampler(*pipeline, context, driver.getNearestSampler(), 0, 2);
-        context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+        if(isBuffer) {
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.json");
 
-        // transition destination resource to a writeable format
-        destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+            auto& buffer = getBuffer(sourceResource, context.swapchainIndex);
 
-        // transition source resource to a sampling format
-        if(sourceResource.layout != vk::ImageLayout::eGeneral)
-            inputImage.getImage().transitionLayoutInline(cmds, sourceResource.layout, vk::ImageLayout::eGeneral); // TODO: aspect?
+            context.renderer.pushConstants("push", *pipeline, context, vk::ShaderStageFlagBits::eCompute, cmds,
+                static_cast<std::uint64_t>(buffer.view.getDeviceAddress()), static_cast<std::uint32_t>(buffer.view.getSize()));
+            pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
 
-        // copy/transform
-        std::size_t groupCountX = (destinationTexture->getSize().width+31) / 32;
-        std::size_t groupCountY = (destinationTexture->getSize().height+31) / 32;
-        cmds.dispatch(groupCountX, groupCountY, 1);
+            context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
-        // transition source resource back to its expected format
-        if(sourceResource.layout != vk::ImageLayout::eGeneral)
-            inputImage.getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, sourceResource.layout); // TODO: aspect?
+            // transition destination resource to a writeable format
+            destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
-        // transition destination resource into sampling format
-        destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
+            // copy/transform
+            std::size_t groupCountX = (destinationTexture->getSize().width+31) / 32;
+            std::size_t groupCountY = (destinationTexture->getSize().height+31) / 32;
+            cmds.dispatch(groupCountX, groupCountY, 1);
+
+            // transition destination resource into sampling format
+            destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        } else {
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.json");
+
+            pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
+
+
+            auto& inputImage = getTexture(sourceResource, context.swapchainIndex);
+
+            context.renderer.bindTexture(*pipeline, context, inputImage, 0, 0, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+            context.renderer.bindSampler(*pipeline, context, driver.getLinearSampler(), 0, 1);
+            context.renderer.bindSampler(*pipeline, context, driver.getNearestSampler(), 0, 2);
+            context.renderer.bindStorageImage(*pipeline, context, *destinationTexture, 0, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+
+            // transition destination resource to a writeable format
+            destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
+
+            // transition source resource to a sampling format
+            if(sourceResource.layout != vk::ImageLayout::eGeneral)
+                inputImage.getImage().transitionLayoutInline(cmds, sourceResource.layout, vk::ImageLayout::eGeneral); // TODO: aspect?
+
+            // copy/transform
+            std::size_t groupCountX = (destinationTexture->getSize().width+31) / 32;
+            std::size_t groupCountY = (destinationTexture->getSize().height+31) / 32;
+            cmds.dispatch(groupCountX, groupCountY, 1);
+
+            // transition source resource back to its expected format
+            if(sourceResource.layout != vk::ImageLayout::eGeneral)
+                inputImage.getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, sourceResource.layout); // TODO: aspect?
+
+            // transition destination resource into sampling format
+            destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
+        }
     }
 
     void Graph::execute(const Render::Context& data, vk::CommandBuffer& cmds) {
         ZoneScoped;
+
+        clickedResourceForRender = clickedResourceForMain;
+        hoveredResourceForRender = hoveredResourceForMain;
 
         std::string id = "";
         for(auto* pass : sortedPasses) {
@@ -494,7 +524,7 @@ namespace Carrot::Render {
             std::string passName = "Execute pass ";
             GetVulkanDriver().setFormattedMarker(cmds, "Pass %s", pass->getName().data());
 
-            if(hoveredResource || clickedResource) {
+            if(hoveredResourceForRender || clickedResourceForRender) {
                 auto isAnInput = [&](const FrameResource& resource) {
                     for(const auto& o : pass->getInputs()) {
                         if(o.id == resource.id) {
@@ -510,11 +540,11 @@ namespace Carrot::Render {
                     return false;
                 };
 
-                if(hoveredResource && isAnInput(*hoveredResource)) {
-                    drawViewer(data, *hoveredResource, hoveredResourceViewer, cmds);
+                if(hoveredResourceForRender && isAnInput(*hoveredResourceForRender)) {
+                    drawViewer(data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
                 }
-                if(clickedResource && isAnInput(*clickedResource)) {
-                    drawViewer(data, *clickedResource, clickedResourceViewer, cmds);
+                if(clickedResourceForRender && isAnInput(*clickedResourceForRender)) {
+                    drawViewer(data, *clickedResourceForRender, clickedResourceViewer, cmds);
                 }
             }
 
@@ -525,7 +555,7 @@ namespace Carrot::Render {
 #endif
             pass->execute(data, cmds);
 
-            if(hoveredResource || clickedResource) {
+            if(hoveredResourceForRender || clickedResourceForRender) {
                 auto isAnOutput = [&](const FrameResource& resource) {
                     for(const auto& o : pass->getOutputs()) {
                         if(o.id == resource.id) {
@@ -541,11 +571,11 @@ namespace Carrot::Render {
                     return false;
                 };
 
-                if(hoveredResource && isAnOutput(*hoveredResource)) {
-                    drawViewer(data, *hoveredResource, hoveredResourceViewer, cmds);
+                if(hoveredResourceForRender && isAnOutput(*hoveredResourceForRender)) {
+                    drawViewer(data, *hoveredResourceForRender, hoveredResourceViewer, cmds);
                 }
-                if(clickedResource && isAnOutput(*clickedResource)) {
-                    drawViewer(data, *clickedResource, clickedResourceViewer, cmds);
+                if(clickedResourceForRender && isAnOutput(*clickedResourceForRender)) {
+                    drawViewer(data, *clickedResourceForRender, clickedResourceViewer, cmds);
                 }
             }
         }

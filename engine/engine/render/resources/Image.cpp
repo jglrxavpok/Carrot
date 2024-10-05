@@ -2,8 +2,11 @@
 // Created by jglrxavpok on 28/11/2020.
 //
 
+//#define EXR_SUPPORT
+#ifdef EXR_SUPPORT
 #include <OpenEXRConfig.h>
 #include <ImfRgbaFile.h>
+#endif
 #include <ktx.h>
 
 #include "Image.h"
@@ -186,6 +189,7 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
 
         // support for images not supported by stbi will go here
         if(format == IO::FileFormat::EXR) {
+#ifdef EXR_SUPPORT
             using namespace OPENEXR_IMF_NAMESPACE;
             using namespace IMATH_NAMESPACE;
 
@@ -231,6 +235,9 @@ std::unique_ptr<Carrot::Image> Carrot::Image::fromFile(Carrot::VulkanDriver& dev
             image->name(resource.getName());
 
             return std::move(image);
+#else
+            throw std::runtime_error("EXR not supported (disabled at compilation)");
+#endif
         } else if(format == IO::FileFormat::KTX2) {
             ktxTexture2* texture;
             KTX_error_code result;

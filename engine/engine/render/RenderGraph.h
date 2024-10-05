@@ -74,8 +74,10 @@ namespace Carrot::Render {
 
         // for imgui debug
         void* nodesContext = nullptr;
-        const FrameResource* hoveredResource = nullptr;
-        const FrameResource* clickedResource = nullptr;
+        const FrameResource* hoveredResourceForMain = nullptr;
+        const FrameResource* clickedResourceForMain = nullptr;
+        const FrameResource* hoveredResourceForRender = nullptr;
+        const FrameResource* clickedResourceForRender = nullptr;
 
         std::unique_ptr<Carrot::Render::Texture> hoveredResourceViewer;
         std::unique_ptr<Carrot::Render::Texture> clickedResourceViewer;
