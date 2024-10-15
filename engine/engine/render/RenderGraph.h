@@ -135,6 +135,8 @@ namespace Carrot::Render {
         FrameResource& createStorageTarget(std::string name, vk::Format format, TextureSize size, vk::ImageLayout layout = vk::ImageLayout::eColorAttachmentOptimal);
         void present(FrameResource& toPresent);
 
+        void reuseBufferAcrossFrames(const FrameResource& toReuse, std::size_t historyLength);
+
         template<typename Type>
         std::optional<Type> getPassData(std::string_view passName) const {
             for(const auto& [name, passData] : passesData) {

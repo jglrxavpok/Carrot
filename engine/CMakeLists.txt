@@ -274,6 +274,12 @@ set(COMPUTE_SHADERS
         compute/lighting-noraytracing.fragment.glsl
         compute/lighting-raytracing.fragment.glsl
 
+        lighting/gi/clear-grid.compute.glsl
+        lighting/gi/debug-gi.compute.glsl
+        lighting/gi/decay-cells.compute.glsl
+        lighting/gi/reuse-gi.compute.glsl
+        lighting/gi/update-cells.compute.glsl
+
         lighting/ao-noraytracing.compute.glsl
         lighting/ao-raytracing.compute.glsl
         lighting/denoise-ao.compute.glsl

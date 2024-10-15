@@ -7,6 +7,7 @@
 #include "includes/materials.glsl"
 #include <includes/gbuffer.glsl>
 #include <lighting/brdf.glsl>
+#include <lighting/gi/gi-interface.include.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_nonuniform_qualifier : enable
@@ -137,7 +138,16 @@ void main() {
         outDirectLighting.rgb = calculateDirectLighting(rng, albedo, worldPos, emissiveColor, normal, tangent, metallicRoughness, false);
 #endif
 
-        outDirectLighting.rgb += lights.ambientColor;
+        GIInputs giInputs;
+        giInputs.hitPosition = worldPos;
+
+        const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
+        giInputs.cameraPosition = cameraPos;
+        giInputs.incomingRay = normalize(worldPos - cameraPos);
+        giInputs.frameIndex = push.frameCount;
+        vec3 gi = GetOrComputeRayResult(giInputs);
+
+        outDirectLighting.rgb += gi;
 
         distanceToCamera = length(gbuffer.viewPosition);
     } else {

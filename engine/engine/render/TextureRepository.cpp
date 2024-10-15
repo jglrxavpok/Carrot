@@ -95,11 +95,26 @@ namespace Carrot::Render {
         return alloc;
     }
 
-    BufferAllocation& ResourceRepository::createBuffer(const FrameResource& texture, size_t swapchainIndex, vk::BufferUsageFlags usages) {
+    void ResourceRepository::BufferChain::resize(const FrameResource& buffer, vk::BufferUsageFlags usages, std::size_t historyLength) {
+        std::size_t bufferCount = historyLength+1;
+        buffers.resize(bufferCount);
+        for (int i = 0; i < bufferCount; ++i) {
+            buffers[i] = std::move(makeBufferAlloc(buffer, usages));
+        }
+    }
+
+    Carrot::BufferAllocation& ResourceRepository::BufferChain::get(std::size_t swapchainIndex) {
+        return buffers[swapchainIndex % buffers.size()];
+    }
+
+    ResourceRepository::BufferChain& ResourceRepository::createBuffer(const FrameResource& texture, vk::BufferUsageFlags usages) {
         verify(texture.type == ResourceType::StorageBuffer, "Resource is not a buffer");
-        verify(buffers.contains(texture.id), "Buffer already exists");
+        verify(!buffers.contains(texture.id), "Buffer already exists");
         auto& ref = buffers[texture.rootID];
-        ref = makeBufferAlloc(texture, usages);
+
+        auto historyLengthIter = bufferReuseHistoryLengths.find(texture.id);
+        std::size_t historyLength = historyLengthIter == bufferReuseHistoryLengths.end() ? 0 : historyLengthIter->second;
+        ref.resize(texture, usages, historyLength);
         return ref;
     }
 
@@ -108,15 +123,14 @@ namespace Carrot::Render {
     }
 
     BufferAllocation& ResourceRepository::getBuffer(const Carrot::UUID& id, size_t swapchainIndex) {
-        return buffers.at(id);
+        return buffers.at(id).get(swapchainIndex);
     }
 
     BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, size_t swapchainIndex, vk::BufferUsageFlags usages) {
-        auto [iter, wasNew] = buffers.try_emplace(id.rootID);
-        if(wasNew) {
-            iter->second = makeBufferAlloc(id, usages);
+        if(!buffers.contains(id.rootID)) {
+            createBuffer(id, usages);
         }
-        return iter->second;
+        return buffers[id.rootID].get(swapchainIndex);
     }
 
 
@@ -126,6 +140,10 @@ namespace Carrot::Render {
 
     vk::BufferUsageFlags& ResourceRepository::getBufferUsages(const UUID& id) {
         return bufferUsages[id];
+    }
+
+    void ResourceRepository::setBufferReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength) {
+        bufferReuseHistoryLengths[id] = historyLength;
     }
 
     void ResourceRepository::setCreatorID(const Carrot::UUID& resourceID, const Carrot::UUID& creatorID) {

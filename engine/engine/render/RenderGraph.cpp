@@ -40,24 +40,25 @@ namespace Carrot::Render {
 
     FrameResource& GraphBuilder::read(const FrameResource& toRead, vk::ImageLayout expectedLayout, vk::ImageAspectFlags aspect) {
         assert(currentPass);
-        verify(toRead.type != ResourceType::StorageBuffer, "todo");
         resources.emplace_back(&toRead);
         currentPass->addInput(resources.back(), expectedLayout, aspect);
-        switch(expectedLayout) {
-            case vk::ImageLayout::eTransferSrcOptimal:
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
+        if(toRead.type != ResourceType::StorageBuffer) {
+            switch(expectedLayout) {
+                case vk::ImageLayout::eTransferSrcOptimal:
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
                 break;
 
-            case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
-            case vk::ImageLayout::eDepthReadOnlyOptimal:
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+                case vk::ImageLayout::eDepthReadOnlyOptimal:
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
                 GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
 
 
-            default:
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                default:
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
                 break;
+            }
         }
         return resources.back();
     }
@@ -71,21 +72,22 @@ namespace Carrot::Render {
         if(toWrite.owner != this) {
           //  TODO?
         }
-        verify(toWrite.type != ResourceType::StorageBuffer, "todo");
-        switch(layout) {
-            case vk::ImageLayout::eTransferDstOptimal:
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
-                break;
+        if(toWrite.type != ResourceType::StorageBuffer) {
+            switch(layout) {
+                case vk::ImageLayout::eTransferDstOptimal:
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eTransferDst;
+                    break;
 
-            case vk::ImageLayout::eDepthStencilAttachmentOptimal:
-            case vk::ImageLayout::eDepthAttachmentOptimal:
-            case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
-            case vk::ImageLayout::eDepthReadOnlyOptimal:
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-                break;
+                case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+                case vk::ImageLayout::eDepthAttachmentOptimal:
+                case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+                case vk::ImageLayout::eDepthReadOnlyOptimal:
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(toWrite.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
         resources.emplace_back(&toWrite);
         currentPass->addOutput(resources.back(), loadOp, clearValue, aspect, layout, false, false);
@@ -95,6 +97,10 @@ namespace Carrot::Render {
     void GraphBuilder::present(FrameResource& resourceToPresent) {
         assert(currentPass);
         currentPass->present(resourceToPresent);
+    }
+
+    void GraphBuilder::reuseBufferAcrossFrames(const FrameResource& toReuse, std::size_t historyLength) {
+        GetVulkanDriver().getResourceRepository().setBufferReuseHistoryLength(toReuse.rootID, historyLength);
     }
 
     FrameResource& GraphBuilder::createRenderTarget(std::string name, vk::Format format, TextureSize size, vk::AttachmentLoadOp loadOp,
@@ -607,11 +613,6 @@ namespace Carrot::Render {
 
     BufferAllocation& Graph::getBuffer(const Carrot::UUID& resourceID, size_t frameIndex) const {
         return driver.getResourceRepository().getBuffer(resourceID, frameIndex);
-    }
-
-    BufferAllocation& Graph::createBuffer(const FrameResource& resource, size_t frameIndex) {
-        return driver.getResourceRepository().createBuffer(resource, frameIndex,
-            driver.getResourceRepository().getBufferUsages(resource.rootID) | ForcedBufferFlags);
     }
 
     BufferAllocation& Graph::getOrCreateBuffer(const FrameResource& resource, size_t frameIndex) {

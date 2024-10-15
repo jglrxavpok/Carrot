@@ -262,9 +262,11 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
 
         if(!buffers.empty()) {
             driver.performSingleTimeComputeCommands([&](vk::CommandBuffer& cmds) {
-                for(const auto& b : buffers) {
-                    auto& buffer = graph.getBuffer(b, 0/*buffers are reused across frames*/);
-                    cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+                for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
+                    for(const auto& b : buffers) {
+                        auto& buffer = graph.getBuffer(b, i);
+                        cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+                    }
                 }
             });
         }
