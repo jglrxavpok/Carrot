@@ -251,19 +251,23 @@ std::unique_ptr<Carrot::Render::CompiledPass> Carrot::Render::PassBase::compile(
     std::unique_ptr<CompiledPass> result = nullptr;
 
     auto resetBuffers = [outputs = outputs, &graph, &driver]() {
-        Carrot::Vector<FrameResource> buffers;
+        Carrot::Vector<FrameResource> buffersToClear;
         for(const auto& output : outputs) {
             if(output.resource.type != ResourceType::StorageBuffer) {
                 continue;
             }
 
-            buffers.emplaceBack(output.resource);
+            if(output.isCreatedInThisPass) {
+                buffersToClear.emplaceBack(output.resource);
+            }
         }
 
-        if(!buffers.empty()) {
-            driver.performSingleTimeComputeCommands([&](vk::CommandBuffer& cmds) {
+        if(!buffersToClear.empty()) {
+            Carrot::Log::debug("clear buffers");
+            Carrot::Log::flush();
+            driver.performSingleTimeGraphicsCommands([&](vk::CommandBuffer& cmds) {
                 for(std::size_t i = 0; i < driver.getSwapchainImageCount(); i++) {
-                    for(const auto& b : buffers) {
+                    for(const auto& b : buffersToClear) {
                         auto& buffer = graph.getBuffer(b, i);
                         cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
                     }

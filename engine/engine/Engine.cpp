@@ -684,16 +684,15 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
         {
             GetVulkanDriver().setMarker(mainCommandBuffers[frameIndex], "render viewports");
             ZoneScopedN("Render viewports");
+
             for(auto it = viewports.rbegin(); it != viewports.rend(); it++) {
                 ZoneScopedN("Render single viewport");
                 auto& viewport = *it;
+                Carrot::Render::Context rdrContext = mainRenderContext;
+                rdrContext.pViewport = &viewport;
+                rdrContext.eye = Carrot::Render::Eye::NoVR;
                 GetVulkanDriver().setFormattedMarker(mainCommandBuffers[frameIndex], "render viewport %x", &viewport);
-                if(config.runInVR) {
-                    // each eye is done in separate render passes above this code
-                    viewport.render(newRenderContext(swapchainIndex, viewport, Render::Eye::NoVR), mainCommandBuffers[frameIndex]);
-                } else {
-                    viewport.render(newRenderContext(swapchainIndex, viewport, Render::Eye::NoVR), mainCommandBuffers[frameIndex]);
-                }
+                viewport.render(rdrContext, mainCommandBuffers[frameIndex]);
             }
         }
 

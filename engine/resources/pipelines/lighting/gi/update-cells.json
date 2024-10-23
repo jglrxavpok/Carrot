@@ -1,0 +1,10 @@
+{
+  "type": "compute",
+  "computeShader": "resources/shaders/lighting/gi/update-cells.compute.glsl.spv",
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ]
+}

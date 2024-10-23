@@ -1,5 +1,6 @@
 // Decay cells inside hash grids and clear those which have expired
 
+#define HASH_GRID_SET_ID 0
 #include "hash-grid.include.glsl"
 
 const uint LOCAL_SIZE = 256;

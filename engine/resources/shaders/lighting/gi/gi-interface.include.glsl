@@ -8,6 +8,9 @@ struct GIInputs {
 };
 
 vec3 GetOrComputeRayResult(in GIInputs giInput) {
+    #if 0
+    return vec3(0.0);
+    #else
     bool wasNew;
     HashCellKey cellDesc;
     cellDesc.hitPosition = giInput.hitPosition;
@@ -32,4 +35,5 @@ vec3 GetOrComputeRayResult(in GIInputs giInput) {
     }
 
     return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
+    #endif
 }

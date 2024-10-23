@@ -1,0 +1,10 @@
+{
+  "type": "compute",
+  "computeShader": "resources/shaders/lighting/gi/clear-grid.compute.glsl.spv",
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    }
+  ]
+}

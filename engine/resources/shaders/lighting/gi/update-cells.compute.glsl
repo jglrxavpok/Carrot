@@ -1,3 +1,4 @@
+
 #define HARDWARE_SUPPORTS_RAY_TRACING 1 // TODO
 
 // Trace rays to update world-space probes
@@ -29,6 +30,7 @@ LIGHT_SET(3)
 #extension GL_EXT_ray_query : enable
 #endif
 
+#define HASH_GRID_SET_ID 0
 #include "hash-grid.include.glsl"
 
 #include <lighting/rt.include.glsl>

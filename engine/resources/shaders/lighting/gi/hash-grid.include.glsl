@@ -1,10 +1,13 @@
 #extension GL_EXT_buffer_reference: require
 #extension GL_EXT_scalar_block_layout: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 #define PREVIOUS_FRAME 0
 #define CURRENT_FRAME 1
 
-const uint SET_ID = 1;
+#ifndef HASH_GRID_SET_ID
+#error HASH_GRID_SET_ID is not defined!
+#endif
 const uint InvalidCellIndex = 0xFFFFFFFFu;
 
 layout(buffer_reference, scalar) buffer BufferToUints {
@@ -53,12 +56,12 @@ layout(buffer_reference, scalar) buffer HashGrid {
     HashCellBuffer pCells;
 };
 
-layout(set = SET_ID, binding = 0) buffer HashGridConstants {
+layout(set = HASH_GRID_SET_ID, binding = 0, scalar) buffer HashGridConstants {
     uint cellsPerBucket;
     uint bucketCount;
 };
 
-layout(set = SET_ID, binding = 1) buffer HashGridData {
+layout(set = HASH_GRID_SET_ID, binding = 1, scalar) buffer HashGridData {
     HashGrid grids[2];
 };
 
@@ -200,4 +203,8 @@ void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key) {
         grids[mapIndex].pUpdates.v[updateIndex].cellIndex = cellIndex;
         grids[mapIndex].pUpdates.v[updateIndex].key = key;
     }
+}
+
+void hashGridResetCounters(uint mapIndex) {
+    grids[mapIndex].updateCount = 0;
 }

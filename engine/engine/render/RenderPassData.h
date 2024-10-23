@@ -146,6 +146,12 @@ namespace Carrot::Render {
             void bindInputs(Carrot::Pipeline& pipeline, const Render::Context& context, const Render::Graph& renderGraph, std::uint32_t setID, vk::ImageLayout expectedLayout) const;
         };
 
+        struct HashGridResources {
+            FrameResource hashGrid;
+            FrameResource constants;
+            FrameResource gridPointers;
+        };
+
         struct Lighting {
             // inputs
             GBuffer gBuffer;
@@ -159,7 +165,7 @@ namespace Carrot::Render {
             FrameResource ambientOcclusionHistoryLength; // temporal supersampling
             std::array<FrameResource, 2> ambientOcclusion; // ping-pongs for denoising, use iterationCount % 2 for the index
 
-            FrameResource worldSpaceGIProbesHashMap;
+            HashGridResources hashGrid;
         };
 
         struct PostProcessing {

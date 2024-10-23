@@ -3,9 +3,17 @@
 //
 
 #include "GBuffer.h"
+
+#include <core/io/Logging.hpp>
+
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/Skybox.hpp"
 #include "resources/ResourceAllocator.h"
+
+static constexpr std::uint32_t HashGridMaxUpdatesPerFrame = 1024*1024;
+static constexpr std::uint32_t HashGridCellsPerBucket = 32;
+static constexpr std::uint32_t HashGridBucketCount = 1024;
+static constexpr std::uint32_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
 struct HashGrid {
     struct HashCellKey {
@@ -34,6 +42,89 @@ struct HashGrid {
 
         vk::DeviceAddress pCells;
     };
+
+    struct Constants {
+        std::uint32_t cellsPerBucket;
+        std::uint32_t bucketCount;
+    };
+
+    struct Pointers {
+        vk::DeviceAddress grids[2]; // 0: previous frame, 1: current frame
+    };
+
+    static Carrot::Render::PassData::HashGridResources createResources(Carrot::Render::GraphBuilder& graph) {
+        Carrot::Render::PassData::HashGridResources r;
+
+        const std::size_t hashGridSize = computeSizeOf(HashGridBucketCount, HashGridCellsPerBucket, HashGridMaxUpdatesPerFrame);
+        r.hashGrid = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer, false/*we want to keep the header*/);
+        r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer, false/*filled once*/);
+        r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer, false/*filled once*/);
+
+        graph.reuseBufferAcrossFrames(r.hashGrid, 1);
+        graph.reuseBufferAcrossFrames(r.gridPointers, 1);
+        return r;
+    }
+
+    static void prepareBuffers(const Carrot::Render::Graph& graph, const Carrot::Render::PassData::HashGridResources& r) {
+        HashGrid::Header header{};
+        header.maxUpdates = HashGridMaxUpdatesPerFrame;
+        header.updateCount = 0;
+
+        // only a single one for both frame
+#if 1
+        {
+            Constants constants;
+            constants.bucketCount = HashGridBucketCount;
+            constants.cellsPerBucket = HashGridCellsPerBucket;
+            graph.getBuffer(r.constants, 0).view.uploadForFrame(&constants, sizeof(constants));
+        }
+#endif
+
+#if 1
+        for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
+            Carrot::BufferView gpuBuffer = graph.getBuffer(r.hashGrid, i).view;
+
+            std::size_t cursor = sizeof(Header);
+            header.pCells = gpuBuffer.subView(cursor, sizeof(HashGrid::HashCell) * HashGridTotalCellCount).getDeviceAddress();
+
+            cursor += sizeof(HashGrid::HashCell) * HashGridTotalCellCount;
+            header.pLastTouchedFrame = gpuBuffer.subView(cursor, sizeof(std::uint32_t) * HashGridTotalCellCount).getDeviceAddress();
+            cursor += sizeof(std::uint32_t) * HashGridTotalCellCount;
+            header.pUpdates = gpuBuffer.subView(cursor, sizeof(CellUpdate) * HashGridMaxUpdatesPerFrame).getDeviceAddress();
+
+            gpuBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
+        }
+#endif
+
+        Carrot::Log::debug("prepareBuffers: grids[0] = %llx grids[1] = %llx grids[2] = %llx", graph.getBuffer(r.gridPointers, 0).view.getDeviceAddress(), graph.getBuffer(r.gridPointers, 1).view.getDeviceAddress(), graph.getBuffer(r.gridPointers, 2).view.getDeviceAddress());
+        Pointers pointers;
+        // previous frame
+        pointers.grids[0] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
+
+        // current frame
+        pointers.grids[1] = graph.getBuffer(r.hashGrid, 0).view.getDeviceAddress();
+        graph.getBuffer(r.gridPointers, 0).view.uploadForFrame(&pointers, sizeof(pointers));
+
+        // previous frame
+        pointers.grids[0] = graph.getBuffer(r.hashGrid, 0).view.getDeviceAddress();
+
+        // current frame
+        pointers.grids[1] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
+        graph.getBuffer(r.gridPointers, 1).view.uploadForFrame(&pointers, sizeof(pointers));
+    }
+
+    static void bind(const Carrot::Render::PassData::HashGridResources& r, const Carrot::Render::Graph& graph, const Carrot::Render::Context& renderContext, Carrot::Pipeline& pipeline, std::size_t setID) {
+        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.swapchainIndex).view, setID, 0);
+        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.swapchainIndex).view, setID, 1);
+    }
+
+    static Carrot::Render::PassData::HashGridResources write(Carrot::Render::GraphBuilder& graph, const Carrot::Render::PassData::HashGridResources& r) {
+        Carrot::Render::PassData::HashGridResources out;
+        out.constants = graph.write(r.constants, {}, {}, {}, {});
+        out.gridPointers = graph.write(r.gridPointers, {}, {}, {}, {});
+        out.hashGrid = graph.write(r.hashGrid, {}, {}, {}, {});
+        return out;
+    }
 
     static std::size_t computeSizeOf(std::size_t bucketCount, std::size_t cellsPerBucket, std::size_t maxUpdates) {
         const std::size_t totalCellCount = bucketCount * cellsPerBucket;
@@ -140,11 +231,6 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
 
-    const std::size_t maxUpdatesPerFrame = 1024*1024;
-    const std::size_t cellsPerBucket = 32;
-    const std::size_t bucketCount = 1024;
-    const std::size_t totalCellCount = bucketCount*cellsPerBucket;
-
     auto& lightingPass = graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
@@ -184,9 +270,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
 
-                std::size_t hashGridSize = HashGrid::computeSizeOf(bucketCount, cellsPerBucket, maxUpdatesPerFrame);
-                resolveData.worldSpaceGIProbesHashMap = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer, false/*we want to keep the header*/);
-                graph.reuseBufferAcrossFrames(resolveData.worldSpaceGIProbesHashMap, 1);
+                resolveData.hashGrid = HashGrid::createResources(graph);
            },
            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& cmds) {
                ZoneScopedN("CPU RenderGraph lighting");
@@ -221,7 +305,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                    block.frameHeight = framebufferSize.height;
                }
 
-               auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo) {
+               auto setupPipeline = [&](const FrameResource& output, Carrot::Pipeline& pipeline, bool needSceneInfo, int hashGridSetID) {
                    Carrot::AccelerationStructure* pTLAS = nullptr;
                    if(useRaytracingVersion) {
                        pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
@@ -255,6 +339,10 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                            }
                        }
                    }
+
+                   if(hashGridSetID >= 0) {
+                       HashGrid::bind(data.hashGrid, pass.getGraph(), frame, pipeline, hashGridSetID);
+                   }
                };
 
 
@@ -264,15 +352,15 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                    const std::uint8_t localSizeY = 32;
                    std::size_t dispatchX = (block.frameWidth + (localSizeX-1)) / localSizeX;
                    std::size_t dispatchY = (block.frameHeight + (localSizeY-1)) / localSizeY;
-                   setupPipeline(data.directLighting, *directLightingPipeline, false);
+                   setupPipeline(data.directLighting, *directLightingPipeline, false, useRaytracingVersion ? 7 : 6);
                    directLightingPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                    cmds.dispatch(dispatchX, dispatchY, 1);
 
-                   setupPipeline(data.ambientOcclusionNoisy, *aoPipeline, false);
+                   setupPipeline(data.ambientOcclusionNoisy, *aoPipeline, false, -1);
                    aoPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                    cmds.dispatch(dispatchX, dispatchY, 1);
 
-                   setupPipeline(data.reflectionsNoisy, *reflectionsPipeline, true);
+                   setupPipeline(data.reflectionsNoisy, *reflectionsPipeline, true, useRaytracingVersion ? 7 : 6);
                    reflectionsPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
                    cmds.dispatch(dispatchX, dispatchY, 1);
                }
@@ -376,22 +464,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                    }
                }
            },
-           [&, totalCellCount, maxUpdatesPerFrame](const CompiledPass& pass, const PassData::Lighting& data) {
-               HashGrid::Header header{};
-               header.maxUpdates = maxUpdatesPerFrame;
-               header.updateCount = 0;
-               for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
-                   BufferView gpuBuffer = pass.getGraph().getBuffer(data.worldSpaceGIProbesHashMap, i).view;
-
-                   std::size_t cursor = 0;
-                   header.pCells = gpuBuffer.subView(cursor).getDeviceAddress();
-                   cursor += sizeof(HashGrid::HashCell) * totalCellCount;
-                   header.pLastTouchedFrame = gpuBuffer.subView(cursor).getDeviceAddress();
-                   cursor += sizeof(std::uint32_t) * totalCellCount;
-                   header.pUpdates = gpuBuffer.subView(cursor).getDeviceAddress();
-
-                   gpuBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
-               }
+           [&](const CompiledPass& pass, const PassData::Lighting& data) {
            }
     );
 
@@ -409,36 +482,52 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                     });
             }
         });
+
+        HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
     });
 
     struct GIData {
-        FrameResource hashGridBuffer;
+        PassData::HashGridResources hashGrid;
     };
 
     auto& clearGICells = graph.addPass<GIData>("clear-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-            data.hashGridBuffer = graph.write(lightingPass.getData().worldSpaceGIProbesHashMap, {}, {});
+            pass.rasterized = false;
+            data.hashGrid = HashGrid::write(graph, lightingPass.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-            //TODO;
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
+
+            frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
+
+            HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+            pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+            const std::size_t localSize = 256;
+            const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
+            cmds.dispatch(groupX, 1, 1);
         });
     auto& updateGICells = graph.addPass<GIData>("update-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-            data.hashGridBuffer = graph.write(clearGICells.getData().hashGridBuffer, {}, {});
+            pass.rasterized = false;
+            data.hashGrid = HashGrid::write(graph, clearGICells.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
            // TODO;
         });
     auto& decayGICells = graph.addPass<GIData>("decay-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-            data.hashGridBuffer = graph.write(updateGICells.getData().hashGridBuffer, {}, {});
+            pass.rasterized = false;
+            data.hashGrid = HashGrid::write(graph, updateGICells.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
             //TODO;
         });
     auto& reuseGICells = graph.addPass<GIData>("reuse-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-            data.hashGridBuffer = graph.write(decayGICells.getData().hashGridBuffer, {}, {});
+            pass.rasterized = false;
+            data.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
             //TODO;
@@ -451,7 +540,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     };
     auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
         [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
-            data.gi.hashGridBuffer = graph.read(reuseGICells.getData().hashGridBuffer, {});
+            data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
             data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {

@@ -556,17 +556,24 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .shaderDrawParameters = true,
             },
             vk::PhysicalDeviceVulkan12Features {
-                    .shaderSampledImageArrayNonUniformIndexing  = true,
-                    .shaderStorageBufferArrayNonUniformIndexing = true,
-                    .descriptorBindingPartiallyBound = true,
-                    .runtimeDescriptorArray = true,
+                .storageBuffer8BitAccess = true,
+                .uniformAndStorageBuffer8BitAccess = true,
+                .storagePushConstant8 = true,
+                .shaderBufferInt64Atomics = true,
+                .shaderSampledImageArrayNonUniformIndexing  = true,
+                .shaderStorageBufferArrayNonUniformIndexing = true,
+                .descriptorBindingPartiallyBound = true,
+                .runtimeDescriptorArray = true,
 
-                    .scalarBlockLayout = true,
-                    .hostQueryReset =  true,
-                    .bufferDeviceAddress = true,
+                .scalarBlockLayout = true,
+                .hostQueryReset =  true,
+                .bufferDeviceAddress = true,
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {
                     .nullDescriptor = true,
+            },
+            vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
+                    .shaderImageInt64Atomics = true,
             }
     };
 
