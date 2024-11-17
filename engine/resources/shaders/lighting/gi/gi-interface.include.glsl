@@ -4,13 +4,16 @@ struct GIInputs {
     vec3 hitPosition;
     vec3 cameraPosition;
     vec3 incomingRay;
+    vec3 surfaceNormal;
+    float metallic;
+    float roughness;
     uint frameIndex;
 };
 
+#define USE_GI 1
+
 vec3 GetOrComputeRayResult(in GIInputs giInput) {
-    #if 0
-    return vec3(0.0);
-    #else
+#if USE_GI
     bool wasNew;
     HashCellKey cellDesc;
     cellDesc.hitPosition = giInput.hitPosition;
@@ -20,20 +23,40 @@ vec3 GetOrComputeRayResult(in GIInputs giInput) {
 
     if(cellIndex == InvalidCellIndex) {
         // hash grid is full :(
-        return vec3(0.0);
+        return vec3(0,0,0);
     }
 
     // newly touched cell (for this frame), ask for an update
     bool firstTouch = hashGridMark(CURRENT_FRAME, cellIndex, giInput.frameIndex);
-    if(wasNew || firstTouch) {
-        hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc);
+    if(wasNew) {
+        hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc, giInput.surfaceNormal, giInput.metallic, giInput.roughness);
     }
 
     uint previousFrameCellIndex = hashGridFind(PREVIOUS_FRAME, cellDesc);
     if(previousFrameCellIndex == InvalidCellIndex) {
-        return vec3(0.0);
+        return vec3(0.0, 0, 0);
     }
 
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
-    #endif
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / hashGridReadSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+#else
+    return vec3(0.0);
+#endif
+}
+
+vec3 GetGINoUpdate(in GIInputs giInput) {
+#if USE_GI
+    bool wasNew;
+    HashCellKey cellDesc;
+    cellDesc.hitPosition = giInput.hitPosition;
+    cellDesc.direction = giInput.incomingRay;
+
+    uint previousFrameCellIndex = hashGridFind(PREVIOUS_FRAME, cellDesc);
+    if(previousFrameCellIndex == InvalidCellIndex) {
+        return vec3(0.0, 0, 0);
+    }
+
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / hashGridReadSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+#else
+    return vec3(0.0);
+#endif
 }

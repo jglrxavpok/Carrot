@@ -4,7 +4,36 @@
   "descriptorSets": [
     {
       "type": "autofill",
-      "setID": 0
+      "setID": 0,
+      "_comment": "hash grid"
+    },
+    {
+      "type": "autofill",
+      "setID": 1,
+      "_comment": "unused"
+    },
+    {
+      "type": "materials",
+      "setID": 2
+    },
+    {
+      "type": "lights",
+      "setID": 3
+    },
+    {
+      "type": "autofill",
+      "setID": 4,
+      "_comment": "unused"
+    },
+    {
+      "type": "autofill",
+      "setID": 5,
+      "_comment": "unused"
+    },
+    {
+      "type": "autofill",
+      "setID": 6,
+      "_comment": "RT"
     }
   ]
 }

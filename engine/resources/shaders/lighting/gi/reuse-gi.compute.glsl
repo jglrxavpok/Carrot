@@ -24,14 +24,14 @@ void main() {
         return;
     }
 
-    // 3. blend the two cells
+    // 3. add the two cells
     const vec3 currentValue = hashGridRead(CURRENT_FRAME, currentCellIndex);
     const vec3 previousValue = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
-    const float alpha = 0.5f;
-    const vec3 newValue = mix(previousValue, currentValue, alpha);
+    const vec3 v = currentValue + previousValue;
+    const uint sampleCount = hashGridReadSampleCount(PREVIOUS_FRAME, previousCellIndex)+1;
 
     // 4. Store new value
-    hashGridWrite(CURRENT_FRAME, currentCellIndex, newValue);
+    hashGridWrite(CURRENT_FRAME, currentCellIndex, key, v, sampleCount);
 
     // 5. increase age of cell?
 }

@@ -10,10 +10,10 @@
 #include "engine/render/Skybox.hpp"
 #include "resources/ResourceAllocator.h"
 
-static constexpr std::uint32_t HashGridMaxUpdatesPerFrame = 1024*1024;
-static constexpr std::uint32_t HashGridCellsPerBucket = 32;
-static constexpr std::uint32_t HashGridBucketCount = 1024;
-static constexpr std::uint32_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
+static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1024*1024*8;
+static constexpr std::uint64_t HashGridCellsPerBucket = 128;
+static constexpr std::uint64_t HashGridBucketCount = 1024;
+static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
 struct HashGrid {
     struct HashCellKey {
@@ -23,12 +23,16 @@ struct HashGrid {
     struct HashCell {
         HashCellKey key;
         glm::vec3 value;
+        std::uint32_t sampleCount;
         std::uint32_t hash2;
     };
 
     struct CellUpdate {
         HashCellKey key;
         std::uint32_t cellIndex;
+        glm::vec3 surfaceNormal;
+        float metallic;
+        float roughness;
     };
 
     struct Header {
@@ -56,9 +60,9 @@ struct HashGrid {
         Carrot::Render::PassData::HashGridResources r;
 
         const std::size_t hashGridSize = computeSizeOf(HashGridBucketCount, HashGridCellsPerBucket, HashGridMaxUpdatesPerFrame);
-        r.hashGrid = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer, false/*we want to keep the header*/);
-        r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer, false/*filled once*/);
-        r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer, false/*filled once*/);
+        r.hashGrid = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*we want to keep the header*/);
+        r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
+        r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
 
         graph.reuseBufferAcrossFrames(r.hashGrid, 1);
         graph.reuseBufferAcrossFrames(r.gridPointers, 1);
@@ -90,13 +94,14 @@ struct HashGrid {
             cursor += sizeof(HashGrid::HashCell) * HashGridTotalCellCount;
             header.pLastTouchedFrame = gpuBuffer.subView(cursor, sizeof(std::uint32_t) * HashGridTotalCellCount).getDeviceAddress();
             cursor += sizeof(std::uint32_t) * HashGridTotalCellCount;
+
             header.pUpdates = gpuBuffer.subView(cursor, sizeof(CellUpdate) * HashGridMaxUpdatesPerFrame).getDeviceAddress();
+            cursor += sizeof(CellUpdate) * HashGridMaxUpdatesPerFrame;
 
             gpuBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
         }
 #endif
 
-        Carrot::Log::debug("prepareBuffers: grids[0] = %llx grids[1] = %llx grids[2] = %llx", graph.getBuffer(r.gridPointers, 0).view.getDeviceAddress(), graph.getBuffer(r.gridPointers, 1).view.getDeviceAddress(), graph.getBuffer(r.gridPointers, 2).view.getDeviceAddress());
         Pointers pointers;
         // previous frame
         pointers.grids[0] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
@@ -114,8 +119,8 @@ struct HashGrid {
     }
 
     static void bind(const Carrot::Render::PassData::HashGridResources& r, const Carrot::Render::Graph& graph, const Carrot::Render::Context& renderContext, Carrot::Pipeline& pipeline, std::size_t setID) {
-        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.swapchainIndex).view, setID, 0);
-        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.swapchainIndex).view, setID, 1);
+        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.constants, renderContext.frameCount).view, setID, 0);
+        renderContext.renderer.bindBuffer(pipeline, renderContext, graph.getBuffer(r.gridPointers, renderContext.frameCount).view, setID, 1);
     }
 
     static Carrot::Render::PassData::HashGridResources write(Carrot::Render::GraphBuilder& graph, const Carrot::Render::PassData::HashGridResources& r) {
@@ -231,6 +236,30 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
     using namespace Carrot::Render;
     vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
 
+
+    struct GIData {
+        PassData::HashGridResources hashGrid;
+    };
+
+    auto& clearGICells = graph.addPass<GIData>("clear-gi",
+        [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
+            pass.rasterized = false;
+
+            data.hashGrid = HashGrid::createResources(graph);
+        },
+        [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
+
+            frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
+
+            HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+            pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+            const std::size_t localSize = 256;
+            const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
+            cmds.dispatch(groupX, 1, 1);
+        });
     auto& lightingPass = graph.addPass<Carrot::Render::PassData::Lighting>("lighting",
                                                              [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::Lighting>& pass, Carrot::Render::PassData::Lighting& resolveData)
            {
@@ -270,7 +299,7 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                                                                 framebufferSize,
                                                                 vk::ImageLayout::eGeneral);
 
-                resolveData.hashGrid = HashGrid::createResources(graph);
+                resolveData.hashGrid = HashGrid::write(graph, clearGICells.getData().hashGrid);
            },
            [framebufferSize, this](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::Lighting& data, vk::CommandBuffer& cmds) {
                ZoneScopedN("CPU RenderGraph lighting");
@@ -485,18 +514,13 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
 
         HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
     });
-
-    struct GIData {
-        PassData::HashGridResources hashGrid;
-    };
-
-    auto& clearGICells = graph.addPass<GIData>("clear-gi",
+    auto& decayGICells = graph.addPass<GIData>("decay-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
             pass.rasterized = false;
             data.hashGrid = HashGrid::write(graph, lightingPass.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
             frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
                 HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
@@ -508,43 +532,111 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
             cmds.dispatch(groupX, 1, 1);
         });
-    auto& updateGICells = graph.addPass<GIData>("update-gi",
+    auto updateGICells = graph.addPass<GIData>(Carrot::sprintf("update-gi"),
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
             pass.rasterized = false;
-            data.hashGrid = HashGrid::write(graph, clearGICells.getData().hashGrid);
+            data.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
         },
-        [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-           // TODO;
+        [this, framebufferSize](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/update-cells", (std::uint64_t)&pass);
+            // used for randomness
+            struct PushConstantNoRT {
+                std::uint32_t frameCount;
+                std::uint32_t frameWidth;
+                std::uint32_t frameHeight;
+            };
+            struct PushConstantRT: PushConstantNoRT {
+                VkBool32 hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
+            } block;
+
+            block.frameCount = renderer.getFrameCount();
+            if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
+                block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
+            } else {
+                block.frameWidth = framebufferSize.width;
+                block.frameHeight = framebufferSize.height;
+            }
+
+            bool useRaytracingVersion = true; // TODO
+            Carrot::AccelerationStructure* pTLAS = nullptr;
+            if(useRaytracingVersion) {
+                pTLAS = frame.renderer.getASBuilder().getTopLevelAS(frame);
+                block.hasTLAS = pTLAS != nullptr;
+                renderer.pushConstantBlock<PushConstantRT>("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+            } else {
+                renderer.pushConstantBlock<PushConstantNoRT>("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds, block);
+            }
+            bool needSceneInfo = true;
+            if(useRaytracingVersion) {
+               renderer.bindTexture(*pipeline, frame, *renderer.getMaterialSystem().getBlueNoiseTextures()[frame.swapchainIndex % Render::BlueNoiseTextureCount]->texture, 6, 1, nullptr);
+               if(pTLAS) {
+                   renderer.bindAccelerationStructure(*pipeline, frame, *pTLAS, 6, 0);
+                   if(needSceneInfo) {
+                       renderer.bindBuffer(*pipeline, frame, renderer.getASBuilder().getGeometriesBuffer(frame), 6, 2);
+                       renderer.bindBuffer(*pipeline, frame, renderer.getASBuilder().getInstancesBuffer(frame), 6, 3);
+                   }
+               } else {
+                   renderer.unbindAccelerationStructure(*pipeline, frame, 6, 0);
+                   if(needSceneInfo) {
+                       renderer.unbindBuffer(*pipeline, frame, 6, 2);
+                       renderer.unbindBuffer(*pipeline, frame, 6, 3);
+                   }
+               }
+            }
+
+            HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+            pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+            const std::size_t localSize = 256;
+            const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
+            cmds.dispatch(groupX, 1, 1);
         });
-    auto& decayGICells = graph.addPass<GIData>("decay-gi",
+
+    auto& reuseGICells = graph.addPass<GIData>("reuse-gi",
         [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
             pass.rasterized = false;
             data.hashGrid = HashGrid::write(graph, updateGICells.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-            //TODO;
-        });
-    auto& reuseGICells = graph.addPass<GIData>("reuse-gi",
-        [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-            pass.rasterized = false;
-            data.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
-        },
-        [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-            //TODO;
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/reuse-gi", (std::uint64_t)&pass);
+
+            frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
+
+            HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+            pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+            const std::size_t localSize = 256;
+            const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
+            cmds.dispatch(groupX, 1, 1);
         });
 
     // TODO: disableable
     struct GIDebug {
+        PassData::GBuffer gbuffer;
         GIData gi;
         FrameResource output;
     };
     auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
         [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
+            data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
             data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
             data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {
-            //TODO;
+            auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/debug-gi", (std::uint64_t)&pass);
+            auto& outputTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
+
+            HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+            frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+            data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
+            pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+            const std::size_t localSize = 32;
+            const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
+            const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;
+            cmds.dispatch(groupX, groupY, 1);
         });
 
     return lightingPass;

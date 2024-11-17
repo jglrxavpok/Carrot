@@ -21,7 +21,11 @@ struct HashCellKey {
 
 struct CellUpdate {
     HashCellKey key;
+    uint pad; // wtf
     uint cellIndex;
+    vec3 surfaceNormal;
+    float metallic;
+    float roughness;
 };
 
 struct HashDescriptor {
@@ -32,7 +36,7 @@ struct HashDescriptor {
 struct HashCell {
     HashCellKey key;
     vec3 value;
-    // TODO? uint sampleCount;
+    uint sampleCount;
     uint hash2;
 };
 
@@ -102,8 +106,8 @@ vec3 dequantizePosition(ivec3 posQuantized, float cellSize) {
     return vec3(posQuantized) * cellSize;
 }
 
-const float thetaQuantum = 0.1f;
-const float phiQuantum = 0.1f;
+const float thetaQuantum = 0.15f;
+const float phiQuantum = 0.15f;
 
 ivec2 quantizeNormal(vec3 normal) {
     // assumed already normalized
@@ -119,7 +123,7 @@ vec3 dequantizeNormal(ivec2 normalQuantized) {
 
 HashDescriptor computeDescriptor(in HashCellKey key) {
     HashDescriptor desc;
-    float cellSize = 0.1f; // TODO
+    float cellSize = 0.35f; // TODO
     ivec3 posQuantized = quantizePosition(key.hitPosition, cellSize);
     ivec2 dirQuantized = quantizeNormal(key.direction);
     desc.bucketIndex = pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))) % bucketCount;
@@ -128,9 +132,13 @@ HashDescriptor computeDescriptor(in HashCellKey key) {
 }
 
 void hashGridClear(uint mapIndex, uint cellIndex) {
+    HashCellKey nullKey;
+    nullKey.hitPosition = vec3(0.0);
+    nullKey.direction = vec3(0.0);
+    grids[mapIndex].pCells.v[cellIndex].key = nullKey;
     grids[mapIndex].pCells.v[cellIndex].value = vec3(0.0);
     grids[mapIndex].pCells.v[cellIndex].hash2 = 0;
-    // TODO? grids[mapIndex].pCells.v[cellIndex].sampleCount = 0;
+    grids[mapIndex].pCells.v[cellIndex].sampleCount = 0;
 }
 
 /// Inserts a tile inside the hash grid, returning the corresponding cell ID
@@ -148,7 +156,7 @@ uint hashGridInsert(uint mapIndex, in HashCellKey key, out bool wasNew) {
         uint previousHash = atomicCompSwap(grids[mapIndex].pCells.v[cellIndex].hash2, 0, desc.hash2);
         if(previousHash == 0) {
             wasNew = true;
-            hashGridClear(mapIndex, cellIndex);
+            //hashGridClear(mapIndex, cellIndex);
             break;
         }
         if(previousHash == desc.hash2) {
@@ -183,11 +191,18 @@ HashCellKey hashGridGetKey(uint mapIndex, uint cellIndex) {
     return grids[mapIndex].pCells.v[cellIndex].key;
 }
 
+uint hashGridReadSampleCount(uint mapIndex, uint cellIndex) {
+    return grids[mapIndex].pCells.v[cellIndex].sampleCount;
+}
+
 vec3 hashGridRead(uint mapIndex, uint cellIndex) {
     return grids[mapIndex].pCells.v[cellIndex].value;
 }
 
-void hashGridWrite(uint mapIndex, uint cellIndex, vec3 v) {
+void hashGridWrite(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 v, uint sampleCount) {
+    grids[mapIndex].pCells.v[cellIndex].key = key;
+    grids[mapIndex].pCells.v[cellIndex].hash2 = computeDescriptor(key).hash2;
+    grids[mapIndex].pCells.v[cellIndex].sampleCount = sampleCount;
     grids[mapIndex].pCells.v[cellIndex].value = v;
 }
 
@@ -197,11 +212,14 @@ bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
     return previousFrameID != frameID;
 }
 
-void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key) {
+void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 surfaceNormal, float metallic, float roughness) {
     uint updateIndex = atomicAdd(grids[mapIndex].updateCount, 1);
     if(updateIndex < grids[mapIndex].maxUpdates) {
         grids[mapIndex].pUpdates.v[updateIndex].cellIndex = cellIndex;
         grids[mapIndex].pUpdates.v[updateIndex].key = key;
+        grids[mapIndex].pUpdates.v[updateIndex].surfaceNormal = surfaceNormal;
+        grids[mapIndex].pUpdates.v[updateIndex].metallic = metallic;
+        grids[mapIndex].pUpdates.v[updateIndex].roughness = roughness;
     }
 }
 

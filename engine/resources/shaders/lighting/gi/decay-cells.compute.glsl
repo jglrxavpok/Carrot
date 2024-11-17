@@ -14,7 +14,7 @@ layout(push_constant) uniform PushConstant {
 void main() {
     uint cellIndex = gl_GlobalInvocationID.x;
 
-    if(cellIndex > maxCellIndex) {
+    if(cellIndex >= maxCellIndex) {
         return;
     }
 

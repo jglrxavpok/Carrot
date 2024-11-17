@@ -118,19 +118,19 @@ namespace Carrot::Render {
         return ref;
     }
 
-    BufferAllocation& ResourceRepository::getBuffer(const FrameResource& texture, size_t swapchainIndex) {
-        return getBuffer(texture.rootID, swapchainIndex);
+    BufferAllocation& ResourceRepository::getBuffer(const FrameResource& texture, size_t frameIndex) {
+        return getBuffer(texture.rootID, frameIndex);
     }
 
-    BufferAllocation& ResourceRepository::getBuffer(const Carrot::UUID& id, size_t swapchainIndex) {
-        return buffers.at(id).get(swapchainIndex);
+    BufferAllocation& ResourceRepository::getBuffer(const Carrot::UUID& id, size_t frameIndex) {
+        return buffers.at(id).get(frameIndex);
     }
 
-    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, size_t swapchainIndex, vk::BufferUsageFlags usages) {
+    BufferAllocation& ResourceRepository::getOrCreateBuffer(const FrameResource& id, size_t frameIndex, vk::BufferUsageFlags usages) {
         if(!buffers.contains(id.rootID)) {
             createBuffer(id, usages);
         }
-        return buffers[id.rootID].get(swapchainIndex);
+        return buffers[id.rootID].get(frameIndex);
     }
 
 

@@ -6,7 +6,6 @@
 #include "includes/lights.glsl"
 #include "includes/materials.glsl"
 #include <includes/gbuffer.glsl>
-#include <lighting/brdf.glsl>
 #include <lighting/gi/gi-interface.include.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
@@ -38,7 +37,8 @@ DEFINE_CAMERA_SET(1)
 LIGHT_SET(2)
 MATERIAL_SYSTEM_SET(4)
 
-#include "includes/rng.glsl"
+#include <lighting/brdf.glsl>
+
 
 layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightingImage;
 
@@ -145,6 +145,9 @@ void main() {
         giInputs.cameraPosition = cameraPos;
         giInputs.incomingRay = normalize(worldPos - cameraPos);
         giInputs.frameIndex = push.frameCount;
+        giInputs.surfaceNormal = normal;
+        giInputs.metallic = metallicRoughness.x;
+        giInputs.roughness = metallicRoughness.y;
         vec3 gi = GetOrComputeRayResult(giInputs);
 
         outDirectLighting.rgb += gi;

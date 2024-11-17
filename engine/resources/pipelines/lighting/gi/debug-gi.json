@@ -1,10 +1,22 @@
 {
   "type": "compute",
-  "computeShader": "resources/shaders/lighting/gi/reuse-gi.compute.glsl.spv",
+  "computeShader": "resources/shaders/lighting/gi/debug-gi.compute.glsl.spv",
   "descriptorSets": [
     {
       "type": "autofill",
       "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "autofill",
+      "setID": 2
+    },
+    {
+      "type": "camera",
+      "setID": 3
     }
   ]
 }

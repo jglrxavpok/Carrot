@@ -32,9 +32,9 @@ namespace Carrot::Render {
         vk::ImageUsageFlags& getTextureUsages(const Carrot::UUID& id);
 
         BufferChain& createBuffer(const FrameResource& texture, vk::BufferUsageFlags usages);
-        BufferAllocation& getBuffer(const FrameResource& texture, size_t swapchainIndex);
-        BufferAllocation& getBuffer(const Carrot::UUID& id, size_t swapchainIndex);
-        BufferAllocation& getOrCreateBuffer(const FrameResource& id, size_t swapchainIndex, vk::BufferUsageFlags usages);
+        BufferAllocation& getBuffer(const FrameResource& texture, size_t frameIndex);
+        BufferAllocation& getBuffer(const Carrot::UUID& id, size_t frameIndex);
+        BufferAllocation& getOrCreateBuffer(const FrameResource& id, size_t frameIndex, vk::BufferUsageFlags usages);
         vk::BufferUsageFlags& getBufferUsages(const Carrot::UUID& id);
         void setBufferReuseHistoryLength(const Carrot::UUID& id, std::size_t historyLength);
 

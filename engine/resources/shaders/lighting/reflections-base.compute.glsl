@@ -3,7 +3,6 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
-#include <lighting/brdf.glsl>
 #include <includes/lights.glsl>
 #include <includes/materials.glsl>
 #include <includes/gbuffer.glsl>
@@ -38,6 +37,7 @@ DEFINE_CAMERA_SET(1)
 LIGHT_SET(2)
 MATERIAL_SYSTEM_SET(4)
 
+#include <lighting/brdf.glsl>
 #include "includes/rng.glsl"
 
 layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightingImage;
@@ -52,20 +52,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
     vec3 toCamera = worldPos - cameraPos;
     vec3 incomingRay = normalize(toCamera);
 
-    float inclinaisonFactor;
-    vec3 direction;
-    if(roughness >= 10e-4f) { // maybe a subgroup operation would be better?
-        vec3 lambertianDirection;
-        float pdf;
-        vec3 microfacetNormal = importanceSample_GGX(vec2(sampleNoise(rng), sampleNoise(rng)), roughness, normal);
-        direction = reflect(incomingRay, microfacetNormal);
-
-        float NdotL = dot(normal, direction);
-        inclinaisonFactor = 1.0f;
-    } else {
-        direction = reflect(incomingRay, normal);
-        inclinaisonFactor = 1.0f;
-    }
+    vec3 direction = importanceSampleDirectionForReflection(rng, incomingRay, normal, roughness);
 
     #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     if (!raytracing)
@@ -104,11 +91,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
         pbr.L = L;
         pbr.N = N;
         pbr.H = H;
-        pbr.NdotH = dot(N, H);
-        pbr.NdotL = dot(N, L);
-        pbr.HdotL = dot(H, L);
-        pbr.HdotV = dot(H, V);
-        pbr.NdotV = abs(dot(N, V));
+        computeDotProducts(pbr);
         vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
 
         traceRayWithSurfaceInfo(intersection, rayOrigin, direction, tMax);
@@ -145,8 +128,9 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             }
             float lightPDF = 1.0f;
 
+            float roughness = 1.0f; // TODO: fetch from material
             PbrInputs pbrInputsAtPoint;
-            pbrInputsAtPoint.alpha = 1.0f; // TODO: fetch from material
+            pbrInputsAtPoint.alpha = roughness*roughness;
             pbrInputsAtPoint.baseColor = intersection.surfaceColor * albedo;
             pbrInputsAtPoint.metallic = 0.0f; // TODO: fetch from material
             pbrInputsAtPoint.V = -direction;
@@ -160,9 +144,13 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             giInputs.cameraPosition = cameraPos;
             giInputs.incomingRay = direction;
             giInputs.frameIndex = push.frameCount;
+            giInputs.surfaceNormal = mappedNormal;
+            giInputs.metallic = pbrInputsAtPoint.metallic;
+            giInputs.roughness = roughness;
+
             vec3 gi = GetOrComputeRayResult(giInputs);
             vec3 lightColor = (lighting + emissive + gi);
-            return lightColor * brdf * inclinaisonFactor;
+            return lightColor * brdf;
         } else {
             vec3 worldViewDir = direction;
 
@@ -173,7 +161,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             );
             vec3 skyboxRGB = texture(gSkybox3D, (rot) * worldViewDir).rgb;
 
-            return skyboxRGB.rgb * brdf * inclinaisonFactor;
+            return skyboxRGB.rgb * brdf;
         }
     }
     #endif

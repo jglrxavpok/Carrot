@@ -1,6 +1,7 @@
 #ifndef _BRDF_GLSL
 #define _BRDF_GLSL
 #include <includes/math.glsl>
+#include <includes/rng.glsl>
 
 // BRDFs based on glTF spec: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#metal-brdf-and-dielectric-brdf
 
@@ -29,10 +30,10 @@ struct PbrInputs {
     float alpha;
     float metallic;
     vec3 baseColor;
-    vec3 V;
-    vec3 L;
-    vec3 N;
-    vec3 H;
+    vec3 V; // -incoming ray
+    vec3 L; // direction to light
+    vec3 N; // surface normal
+    vec3 H; // half vector
     float NdotH;
     float NdotL;
     float HdotL;
@@ -85,5 +86,26 @@ vec3 glTF_BRDF_WithoutImportanceSampling(in PbrInputs pbr) {
     vec3 f_diffuse = (1 - F) * M_INV_PI * c_diff;
     vec3 f_specular = F * D(pbr) * G(pbr) / (4 * abs(pbr.NdotV) * abs(pbr.NdotL));
     return f_diffuse + f_specular;
+}
+
+void computeDotProducts(inout PbrInputs inputs) {
+    inputs.NdotH = dot(inputs.N, inputs.H);
+    inputs.NdotL = dot(inputs.N, inputs.L);
+    inputs.HdotL = dot(inputs.H, inputs.L);
+    inputs.HdotV = dot(inputs.H, inputs.V);
+    inputs.NdotV = abs(dot(inputs.N, inputs.V));
+}
+
+vec3 importanceSampleDirectionForReflection(in RandomSampler rng, vec3 incomingRay, vec3 normal, float roughness) {
+    vec3 direction;
+    if(roughness >= 10e-4f) { // maybe a subgroup operation would be better?
+        vec3 lambertianDirection;
+        float pdf;
+        vec3 microfacetNormal = importanceSample_GGX(vec2(sampleNoise(rng), sampleNoise(rng)), roughness, normal);
+        direction = reflect(incomingRay, microfacetNormal);
+    } else {
+        direction = reflect(incomingRay, normal);
+    }
+    return direction;
 }
 #endif // _BRDF_GLSL
