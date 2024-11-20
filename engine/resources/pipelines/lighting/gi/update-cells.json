@@ -9,8 +9,7 @@
     },
     {
       "type": "autofill",
-      "setID": 1,
-      "_comment": "unused"
+      "setID": 1
     },
     {
       "type": "materials",

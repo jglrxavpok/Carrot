@@ -38,6 +38,8 @@ LIGHT_SET(3)
 #define HASH_GRID_SET_ID 0
 #include "gi-interface.include.glsl"
 
+layout(set = 1, binding = 0) uniform samplerCube gSkybox3D;
+
 #include <lighting/rt.include.glsl>
 
 void main() {
@@ -167,7 +169,14 @@ void main() {
 
                 // todo: update beta
             } else {
-                newRadiance += beta * brdf * vec3(0.0,0,0); // TODO: sample from env map
+                const mat3 rot = mat3(
+                vec3(1.0, 0.0, 0.0),
+                vec3(0.0, 0.0, -1.0),
+                vec3(0.0, 1.0, 0.0)
+                );
+                vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
+
+                newRadiance +=  skyboxRGB.rgb * brdf;
                 break;
             }
         }

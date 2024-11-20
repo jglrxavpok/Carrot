@@ -248,6 +248,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             data.hashGrid = HashGrid::createResources(graph);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
+
             auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
 
             frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
@@ -520,6 +522,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             data.hashGrid = HashGrid::write(graph, lightingPass.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Decay GI cells");
+
             auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
             frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
@@ -538,6 +542,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             data.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
         },
         [this, framebufferSize](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Update GI cells");
+
             auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/update-cells", (std::uint64_t)&pass);
             // used for randomness
             struct PushConstantNoRT {
@@ -585,6 +591,12 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
                }
             }
 
+            Render::Texture::Ref skyboxCubeMap = GetEngine().getSkyboxCubeMap();
+            if(!skyboxCubeMap || GetEngine().getSkybox() == Carrot::Skybox::Type::None) {
+                skyboxCubeMap = renderer.getBlackCubeMapTexture();
+            }
+
+            renderer.bindTexture(*pipeline, frame, *skyboxCubeMap, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube, 0);
             HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
             pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
@@ -599,6 +611,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             data.hashGrid = HashGrid::write(graph, updateGICells.getData().hashGrid);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Reuse GI cells");
+
             auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/reuse-gi", (std::uint64_t)&pass);
 
             frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
@@ -625,6 +639,8 @@ Carrot::Render::Pass<Carrot::Render::PassData::Lighting>& Carrot::GBuffer::addLi
             data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
         },
         [this](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {
+            TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Debug GI cells");
+
             auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/debug-gi", (std::uint64_t)&pass);
             auto& outputTexture = pass.getGraph().getTexture(data.output, frame.swapchainIndex);
 

@@ -106,8 +106,8 @@ vec3 dequantizePosition(ivec3 posQuantized, float cellSize) {
     return vec3(posQuantized) * cellSize;
 }
 
-const float thetaQuantum = 0.15f;
-const float phiQuantum = 0.15f;
+const float thetaQuantum = 0.05f;
+const float phiQuantum = 0.05f;
 
 ivec2 quantizeNormal(vec3 normal) {
     // assumed already normalized
@@ -123,7 +123,7 @@ vec3 dequantizeNormal(ivec2 normalQuantized) {
 
 HashDescriptor computeDescriptor(in HashCellKey key) {
     HashDescriptor desc;
-    float cellSize = 0.35f; // TODO
+    float cellSize = 0.135f; // TODO
     ivec3 posQuantized = quantizePosition(key.hitPosition, cellSize);
     ivec2 dirQuantized = quantizeNormal(key.direction);
     desc.bucketIndex = pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))) % bucketCount;
