@@ -80,6 +80,12 @@ namespace Carrot {
         void remove(std::size_t index);
 
         /**
+         * Removes all elements which pass the given predicate.
+         * Equivalent to a for-loop and calls to remove
+         */
+        void removeIf(const std::function<bool(const TElement&)>& predicate);
+
+        /**
          * \brief Sets the size of this vector, removing or adding elements to fit the new size
          */
         void resize(std::size_t newSize);
@@ -387,6 +393,26 @@ namespace Carrot {
          * Pointer to first element (const version)
          */
         TElement const* cdata() const;
+
+        /**
+         * Reference to first element
+         */
+        TElement& front();
+
+        /**
+         * Reference to last element
+         */
+        TElement& back();
+
+        /**
+         * Reference to first element (const version)
+         */
+        TElement const& front() const;
+
+        /**
+         * Reference to last element (const version)
+         */
+        TElement const& back() const;
 
         operator std::span<TElement>() {
             return std::span(data(), size());

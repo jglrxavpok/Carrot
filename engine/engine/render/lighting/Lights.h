@@ -3,6 +3,8 @@
 //
 
 #pragma once
+#include <core/UniquePtr.hpp>
+
 #include "core/utils/WeakPool.hpp"
 #include "engine/render/RenderContext.h"
 #include <glm/glm.hpp>
@@ -141,8 +143,8 @@ namespace Carrot::Render {
         Data* data = nullptr;
         ActiveLightsData* activeLightsData = nullptr;
         std::size_t lightBufferSize = 0; // in number of lights
-        std::unique_ptr<Carrot::Buffer> lightBuffer = nullptr;
-        std::unique_ptr<Carrot::Buffer> activeLightsBuffer = nullptr;
+        UniquePtr<Carrot::Buffer> lightBuffer = nullptr;
+        UniquePtr<Carrot::Buffer> activeLightsBuffer = nullptr;
 
         // Distance at which fog starts
         float fogDistance = std::numeric_limits<float>::infinity();

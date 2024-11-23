@@ -66,7 +66,7 @@ namespace Carrot {
         ZoneScoped;
         auto makeDedicated = [&](vk::DeviceSize dedicatedSize) {
             BufferAllocation result { this };
-            dedicatedStagingBuffers.emplace_back(allocateDedicatedBuffer(dedicatedSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().graphicsFamily.value(), GetVulkanDriver().getQueueFamilies().computeFamily.value(), GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
+            dedicatedStagingBuffers.emplaceBack(allocateDedicatedBuffer(dedicatedSize, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, std::set<uint32_t>{GetVulkanDriver().getQueueFamilies().graphicsFamily.value(), GetVulkanDriver().getQueueFamilies().computeFamily.value(), GetVulkanDriver().getQueueFamilies().transferFamily.value()}));
             auto& pBuffer = dedicatedStagingBuffers.back();
             pBuffer->name("ResourceAllocator::allocateStagingBuffer");
             result.allocation = pBuffer.get();
@@ -98,7 +98,7 @@ namespace Carrot {
         auto makeDedicated = [&](vk::DeviceSize size) {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
-            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value(), driverQueueFamilies.transferFamily.value()}));
+            dedicatedDeviceBuffers.emplaceBack(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value(), driverQueueFamilies.transferFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
             pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
             result.allocation = pBuffer.get();
@@ -138,7 +138,7 @@ namespace Carrot {
         auto makeDedicated = [&](vk::DeviceSize size) {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
-            dedicatedDeviceBuffers.emplace_back(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
+            dedicatedDeviceBuffers.emplaceBack(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
             pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
             result.allocation = pBuffer.get();
@@ -169,6 +169,18 @@ namespace Carrot {
     }
 
     void ResourceAllocator::beginFrame(const Render::Context& renderContext) {
+        currentFrame = renderContext.frameCount;
+
+        // clear buffers that are no longer used
+        for(std::int64_t index = 0; index < dedicatedBufferGraveyard.size();) {
+            auto& [frameIndex, _] = dedicatedBufferGraveyard[index];
+            if(frameIndex >= currentFrame) {
+                dedicatedBufferGraveyard.remove(index);
+            } else {
+                index++;
+            }
+        }
+
         if(!ShowAllocatorDebug) {
             return;
         }
@@ -202,37 +214,47 @@ namespace Carrot {
         // TODO: proper allocation algorithm
         auto buffer = allocateDedicatedBuffer(size, usage, properties, families);
         auto result = buffer->getWholeView();
-        allocatedBuffers.emplace_back(move(buffer));
+        allocatedBuffers.emplaceBack(move(buffer));
         return result;
     }
 
-    std::unique_ptr<Buffer> ResourceAllocator::allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+    UniquePtr<Buffer> ResourceAllocator::allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                                           vk::MemoryPropertyFlags properties,
                                                                           const std::set<uint32_t>& families) {
-        auto pBuffer = std::make_unique<Buffer>(device, size, usage, properties, families);
+        auto pBuffer = makeUnique<Buffer>(Allocator::getDefault(), device, size, usage, properties, families);
         pBuffer->name("ResourceAllocator::allocateDedicatedBuffer");
         return pBuffer;
     }
 
     void ResourceAllocator::freeBufferView(BufferView& view) {
         // TODO: proper allocation algorithm
-        std::erase_if(allocatedBuffers, [&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); });
+        allocatedBuffers.removeIf([&](const auto& p) { return p->getVulkanBuffer() == view.getBuffer().getVulkanBuffer(); });
     }
 
     void ResourceAllocator::freeStagingBuffer(BufferAllocation* buffer) {
         if(buffer->dedicated) {
+            // it is possible that the buffer is deleted from the "tick"/"logic" part of the engine, but the renderer still uses it
+            //  so don't delete the buffer immediately
+            auto moveToGraveyard = [&](Vector<UniquePtr<Buffer>>& buffers) {
+                for(std::int64_t index = 0; index < buffers.size();) {
+                    auto& pBuffer = buffers[index];
+                    if(pBuffer.get() == (Carrot::Buffer*)buffer->allocation) {
+                        dedicatedBufferGraveyard.emplaceBack(Pair{ currentFrame+3, std::move(pBuffer) });
+                        buffers.remove(index);
+                    } else {
+                        index++;
+                    }
+                }
+            };
             if(buffer->staging) {
                 Carrot::Async::LockGuard g { stagingAccess };
-                std::erase_if(dedicatedStagingBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
-                    return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
-                });
+                moveToGraveyard(dedicatedStagingBuffers);
             } else {
                 Carrot::Async::LockGuard g { deviceAccess };
-                std::erase_if(dedicatedDeviceBuffers, [&](const std::unique_ptr<Carrot::Buffer>& pBuffer) {
-                    return pBuffer.get() == (Carrot::Buffer*)buffer->allocation;
-                });
+                moveToGraveyard(dedicatedDeviceBuffers);
             }
         } else {
+            // TODO: add a graveyard for virtual blocks too?
             if(buffer->staging) {
                 Carrot::Async::LockGuard g { stagingAccess };
                 vmaVirtualFree((VmaVirtualBlock) stagingVirtualBlock, (VmaVirtualAllocation) buffer->allocation);

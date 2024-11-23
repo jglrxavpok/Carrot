@@ -10,7 +10,7 @@
 #include "engine/render/Skybox.hpp"
 #include "resources/ResourceAllocator.h"
 
-static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1024*1024*8;
+static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1024*1024*16;
 static constexpr std::uint64_t HashGridCellsPerBucket = 128;
 static constexpr std::uint64_t HashGridBucketCount = 1024;
 static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
@@ -75,16 +75,13 @@ struct HashGrid {
         header.updateCount = 0;
 
         // only a single one for both frame
-#if 1
         {
-            Constants constants;
+            Constants constants{};
             constants.bucketCount = HashGridBucketCount;
             constants.cellsPerBucket = HashGridCellsPerBucket;
             graph.getBuffer(r.constants, 0).view.uploadForFrame(&constants, sizeof(constants));
         }
-#endif
 
-#if 1
         for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
             Carrot::BufferView gpuBuffer = graph.getBuffer(r.hashGrid, i).view;
 
@@ -100,9 +97,8 @@ struct HashGrid {
 
             gpuBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
         }
-#endif
 
-        Pointers pointers;
+        Pointers pointers{};
         // previous frame
         pointers.grids[0] = graph.getBuffer(r.hashGrid, 1).view.getDeviceAddress();
 

@@ -676,7 +676,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     auto& queueFamilies = GetVulkanDriver().getQueueFamilies();
     // TODO: reuse
     // TODO: VkPhysicalDeviceAccelerationStructurePropertiesKHR::minAccelerationStructureScratchOffsetAlignment
-    std::unique_ptr<Buffer> pBlasBuildScratchBuffer = scratchSize > 0
+    UniquePtr<Buffer> pBlasBuildScratchBuffer = scratchSize > 0
         ? GetResourceAllocator().allocateDedicatedBuffer(scratchSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{queueFamilies.computeFamily.value()})
         : nullptr;
     vk::DeviceAddress scratchAddress = 0x999999999999DEAD;

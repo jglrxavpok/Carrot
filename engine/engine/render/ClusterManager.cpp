@@ -631,7 +631,7 @@ namespace Carrot::Render {
             readbackBuffersPerFrame.resize(GetEngine().getSwapchainImageCount());
         }
         auto& gpuInstances = perViewport[pViewport].gpuClusterInstances;
-        std::unique_ptr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];
+        UniquePtr<Carrot::Buffer>& pReadbackBuffer = readbackBuffersPerFrame[frameIndex];
 
         std::size_t requiredSize = computeSizeOfReadbackBuffer(gpuInstances.size());
         if(!pReadbackBuffer || pReadbackBuffer->getSize() < requiredSize) {

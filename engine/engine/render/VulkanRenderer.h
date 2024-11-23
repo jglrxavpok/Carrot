@@ -343,12 +343,12 @@ namespace Carrot {
         vk::UniqueDescriptorSetLayout perDrawDescriptorSetLayout{};
         vk::UniqueDescriptorPool perDrawDescriptorPool{};
 
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> debugBuffers;
+        Render::PerFrame<UniquePtr<Carrot::Buffer>> debugBuffers;
         Render::PerFrame<vk::DescriptorSet> debugDescriptorSets;
 
         // dynamic SSBO
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawOffsetBuffers;
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> perDrawBuffers;
+        Render::PerFrame<UniquePtr<Carrot::Buffer>> perDrawOffsetBuffers;
+        Render::PerFrame<UniquePtr<Carrot::Buffer>> perDrawBuffers;
         Render::PerFrame<vk::DescriptorSet> perDrawDescriptorSets;
 
         struct {
@@ -376,7 +376,7 @@ namespace Carrot {
         std::unique_ptr<GBuffer> gBuffer = nullptr;
         std::unique_ptr<Render::VisibilityBuffer> visibilityBuffer = nullptr;
         std::unique_ptr<Render::ClusterManager> clusterManager = nullptr;
-        Render::PerFrame<std::unique_ptr<Carrot::Buffer>> forwardRenderingFrameInfo;
+        Render::PerFrame<UniquePtr<Carrot::Buffer>> forwardRenderingFrameInfo;
 
         std::list<CommandBufferConsumer> beforeFrameCommands;
         std::list<CommandBufferConsumer> afterFrameCommands;

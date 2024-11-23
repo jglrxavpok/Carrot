@@ -101,6 +101,17 @@ namespace Carrot {
     }
 
     VECTOR_TEMPLATE
+    void Vector<TElement, Traits>::removeIf(const std::function<bool(const TElement&)>& predicate) {
+        for(std::int64_t index = 0; index < this->elementCount;) {
+            if(predicate(this->get(index))) {
+                this->remove(index);
+            } else {
+                index++;
+            }
+        }
+    }
+
+    VECTOR_TEMPLATE
     void Vector<TElement, Traits>::resize(std::size_t newSize) {
         this->generationIndex++;
         if constexpr (Traits::CallConstructorAndDestructorOnResize) {
@@ -368,6 +379,26 @@ namespace Carrot {
     VECTOR_TEMPLATE
     TElement const* Vector<TElement, Traits>::cdata() const {
         return (TElement const*)this->allocation.ptr;
+    }
+
+    VECTOR_TEMPLATE
+    TElement& Vector<TElement, Traits>::front() {
+        return *this->data();
+    }
+
+    VECTOR_TEMPLATE
+    TElement& Vector<TElement, Traits>::back() {
+        return *(this->data() + (this->elementCount-1));
+    }
+
+    VECTOR_TEMPLATE
+    TElement const& Vector<TElement, Traits>::front() const {
+        return *this->data();
+    }
+
+    VECTOR_TEMPLATE
+    TElement const& Vector<TElement, Traits>::back() const {
+        return *(this->data() + (this->elementCount-1));
     }
 
     VECTOR_TEMPLATE

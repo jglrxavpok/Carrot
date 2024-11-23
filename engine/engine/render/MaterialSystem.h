@@ -9,6 +9,8 @@
 #include <queue>
 #include <vector>
 #include <unordered_set>
+#include <core/UniquePtr.hpp>
+
 #include "engine/render/RenderContext.h"
 #include "resources/Texture.h"
 #include <core/utils/WeakPool.hpp>
@@ -159,8 +161,8 @@ namespace Carrot::Render {
         WeakPool<MaterialHandle> materialHandles;
         MaterialData* materialDataPtr = nullptr;
         std::size_t materialBufferSize = 0; // in number of materials
-        std::unique_ptr<Carrot::Buffer> materialBuffer = nullptr;
-        std::unique_ptr<Carrot::Buffer> globalTexturesBuffer = nullptr;
+        UniquePtr<Carrot::Buffer> materialBuffer = nullptr;
+        UniquePtr<Carrot::Buffer> globalTexturesBuffer = nullptr;
         Async::SpinLock accessLock;
 
     private: // need to be destroyed before the corresponding WeakPoolHandle

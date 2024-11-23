@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/UniquePtr.hpp>
 #include <core/allocators/StackAllocator.h>
 #include <core/containers/Vector.hpp>
 #include <core/utils/WeakPool.hpp>
@@ -256,7 +257,7 @@ namespace Carrot::Render {
             GroupInstances groupInstances;
             Carrot::Vector<ClusterInstance> gpuClusterInstances;
 
-            Render::PerFrame<std::unique_ptr<Carrot::Buffer>> readbackBuffersPerFrame;
+            Render::PerFrame<UniquePtr<Carrot::Buffer>> readbackBuffersPerFrame;
 
             bool requireInstanceUpdate = false;
             std::shared_ptr<Carrot::BufferAllocation> instanceGPUVisibleArray;

@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <core/UniquePtr.hpp>
+#include <core/containers/Pair.hpp>
+#include <core/containers/Vector.hpp>
+
 #include "engine/vulkan/VulkanDriver.h"
 #include "BufferView.h"
 #include "Buffer.h"
@@ -49,7 +53,7 @@ namespace Carrot {
 
 
         BufferView allocateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
-        std::unique_ptr<Buffer> allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
+        UniquePtr<Buffer> allocateDedicatedBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, const std::set<uint32_t>& families = {});
 
     public:
         /**
@@ -68,12 +72,16 @@ namespace Carrot {
         VulkanDriver& device;
 
         // TODO: smarter allocation algorithm, just making it work now
-        std::vector<std::unique_ptr<Buffer>> allocatedBuffers;
+        Vector<UniquePtr<Buffer>> allocatedBuffers;
 
         Carrot::Async::SpinLock stagingAccess;
         Carrot::Async::SpinLock deviceAccess;
-        std::vector<std::unique_ptr<Buffer>> dedicatedStagingBuffers;
-        std::vector<std::unique_ptr<Buffer>> dedicatedDeviceBuffers;
+        Vector<UniquePtr<Buffer>> dedicatedStagingBuffers;
+        Vector<UniquePtr<Buffer>> dedicatedDeviceBuffers;
+
+        Vector<Pair<std::uint32_t, UniquePtr<Buffer>>> dedicatedBufferGraveyard;
+
+        std::uint32_t currentFrame = 0;
 
         std::unique_ptr<Carrot::Buffer> stagingHeap;
         std::unique_ptr<Carrot::Buffer> deviceHeap;
