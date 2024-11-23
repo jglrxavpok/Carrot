@@ -9,4 +9,10 @@ namespace Carrot {
         static UUID null = UUID(0,0,0,0);
         return null;
     }
+
+    UUIDGenerator& UUID::GetGlobalUUIDGenerator() {
+        static UUIDGenerator g;
+        return g;
+    }
+
 }

@@ -10,36 +10,33 @@
 
 namespace Carrot {
 
-    namespace {
-        struct Generator {
-            uuids::uuid_random_generator* generator;
+    struct UUIDGenerator {
+        uuids::uuid_random_generator* generator;
 
-            Generator() {
-                std::random_device rd;
-                auto seed_data = std::array<int, std::mt19937::state_size> {};
-                std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
-                std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
-                std::mt19937 engine(seq);
-                generator = new uuids::uuid_random_generator(&engine);
-            }
+        UUIDGenerator() {
+            std::random_device rd;
+            auto seed_data = std::array<int, std::mt19937::state_size> {};
+            std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+            std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+            auto* engine = new std::mt19937(seq);
+            generator = new uuids::uuid_random_generator(engine);
+        }
 
-            uuids::uuid operator()() {
-                return (*generator)();
-            }
+        uuids::uuid operator()() {
+            return (*generator)();
+        }
 
-            ~Generator() {
-                delete generator;
-            }
-        };
-    }
+        ~UUIDGenerator() {
+            delete generator;
+        }
+    };
 
     class UUID {
     public:
         static const UUID& null();
 
         explicit UUID() {
-            Generator generator;
-            uuid = generator();
+            uuid = GetGlobalUUIDGenerator()();
         }
 
         UUID(std::uint32_t data0, std::uint32_t data1, std::uint32_t data2, std::uint32_t data3) {
@@ -114,6 +111,8 @@ namespace Carrot {
         }
 
     private:
+        static UUIDGenerator& GetGlobalUUIDGenerator();
+
         uuids::uuid uuid;
     };
 
