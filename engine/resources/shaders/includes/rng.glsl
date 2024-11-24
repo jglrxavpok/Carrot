@@ -2,6 +2,10 @@
 #define _RNG_GLSL
 #include <includes/math.glsl>
 
+#ifndef MATERIAL_SYSTEM_SET
+#error rng.glsl requires materials (for blue noise textures)
+#endif
+
 struct RandomSampler {
     uint pixelPos;
     uint frameCount;
