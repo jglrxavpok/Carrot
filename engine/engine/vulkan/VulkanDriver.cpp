@@ -951,6 +951,9 @@ namespace ImageSorters {
 
         bool operator()(const Carrot::Image* a, const Carrot::Image* b) const {
             if(a->isOwned() && b->isOwned()) {
+                if(a->getMemory().getSize() == b->getMemory().getSize()) {
+                    return std::less<const Carrot::Image*>{}(a, b) == (directionMultiplier == 1);
+                }
                 return std::less<std::uint64_t>{}(a->getMemory().getSize(), b->getMemory().getSize()) == (directionMultiplier == 1);
             } else if(a->isOwned()) {
                 // a must be higher
@@ -968,11 +971,25 @@ namespace ImageSorters {
 namespace BufferSorters {
     using PairType = std::pair<vk::DeviceAddress, const Carrot::Buffer*>;
 
+    static bool sortEqualBuffers(vk::DeviceAddress a, vk::DeviceAddress b, int directionMultiplier) {
+        if(a == b) {
+            return false;
+        }
+        if(a < b) {
+            return directionMultiplier > 0;
+        }
+        return directionMultiplier < 0;
+    }
+
     struct NameSorter {
         const int directionMultiplier = 0;
 
         bool operator()(PairType a, PairType b) const {
-            return a.second->getDebugName().compare(b.second->getDebugName()) * directionMultiplier < 0;
+            auto compareResult = a.second->getDebugName().compare(b.second->getDebugName());
+            if(compareResult == 0) {
+                return sortEqualBuffers(a.first, b.first, directionMultiplier);
+            }
+            return compareResult * directionMultiplier < 0;
         }
     };
     struct StartAddressSorter {
@@ -986,6 +1003,9 @@ namespace BufferSorters {
         const int directionMultiplier = 0;
 
         bool operator()(PairType a, PairType b) const {
+            if(a.second->getSize() == b.second->getSize()) {
+                return sortEqualBuffers(a.first, b.first, directionMultiplier);
+            }
             return std::less<std::uint64_t>{}(a.second->getSize(), b.second->getSize()) == (directionMultiplier == 1);
         }
     };
