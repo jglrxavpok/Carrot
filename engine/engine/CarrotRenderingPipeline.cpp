@@ -459,8 +459,8 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
 
             [this, lightingPass, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
                 data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.directLighting = builder.read(lightingPass.getData().directLighting, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.ambientOcclusion = builder.read(lightingPass.getData().ambientOcclusion[(lightingPass.getData().iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.directLighting = builder.read(lightingPass.getData().directLighting.pingPong[(lightingPass.getData().directLighting.iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.ambientOcclusion = builder.read(lightingPass.getData().ambientOcclusion.pingPong[(lightingPass.getData().ambientOcclusion.iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.reflections = builder.read(lightingPass.getData().reflectionsNoisy, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {

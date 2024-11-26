@@ -148,6 +148,7 @@ void main() {
         giInputs.surfaceNormal = normal;
         giInputs.metallic = metallicRoughness.x;
         giInputs.roughness = metallicRoughness.y;
+        giInputs.surfaceColor = albedo;
         vec3 gi = GetOrComputeRayResult(giInputs);
 
         outDirectLighting.rgb += gi;

@@ -28,7 +28,7 @@ void main() {
     const vec3 currentValue = hashGridRead(CURRENT_FRAME, currentCellIndex);
     const vec3 previousValue = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
     const vec3 v = currentValue + previousValue;
-    const uint sampleCount = hashGridReadSampleCount(PREVIOUS_FRAME, previousCellIndex)+1;
+    const uint sampleCount = hashGridReadSampleCount(PREVIOUS_FRAME, previousCellIndex)+hashGridReadSampleCount(CURRENT_FRAME, currentCellIndex);
 
     // 4. Store new value
     hashGridWrite(CURRENT_FRAME, currentCellIndex, key, v, sampleCount);

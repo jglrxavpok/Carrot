@@ -26,6 +26,8 @@ struct CellUpdate {
     vec3 surfaceNormal;
     float metallic;
     float roughness;
+    uint pad2[3]; //wtf again
+    vec3 surfaceColor;
 };
 
 struct HashDescriptor {
@@ -212,7 +214,7 @@ bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
     return previousFrameID != frameID;
 }
 
-void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 surfaceNormal, float metallic, float roughness) {
+void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 surfaceNormal, float metallic, float roughness, vec3 surfaceColor) {
     uint updateIndex = atomicAdd(grids[mapIndex].updateCount, 1);
     if(updateIndex < grids[mapIndex].maxUpdates) {
         grids[mapIndex].pUpdates.v[updateIndex].cellIndex = cellIndex;
@@ -220,6 +222,7 @@ void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, ve
         grids[mapIndex].pUpdates.v[updateIndex].surfaceNormal = surfaceNormal;
         grids[mapIndex].pUpdates.v[updateIndex].metallic = metallic;
         grids[mapIndex].pUpdates.v[updateIndex].roughness = roughness;
+        grids[mapIndex].pUpdates.v[updateIndex].surfaceColor = surfaceColor;
     }
 }
 

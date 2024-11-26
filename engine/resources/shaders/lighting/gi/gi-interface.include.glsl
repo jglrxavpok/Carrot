@@ -6,6 +6,7 @@ struct GIInputs {
     vec3 incomingRay;
     vec3 surfaceNormal;
     float metallic;
+    vec3 surfaceColor;
     float roughness;
     uint frameIndex;
 };
@@ -29,7 +30,7 @@ vec3 GetOrComputeRayResult(in GIInputs giInput) {
     // newly touched cell (for this frame), ask for an update
     bool firstTouch = hashGridMark(CURRENT_FRAME, cellIndex, giInput.frameIndex);
     if(wasNew) {
-        hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc, giInput.surfaceNormal, giInput.metallic, giInput.roughness);
+        hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc, giInput.surfaceNormal, giInput.metallic, giInput.roughness, giInput.surfaceColor);
     }
 
     uint previousFrameCellIndex = hashGridFind(PREVIOUS_FRAME, cellDesc);

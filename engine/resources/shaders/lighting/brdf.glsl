@@ -96,7 +96,7 @@ void computeDotProducts(inout PbrInputs inputs) {
     inputs.NdotV = abs(dot(inputs.N, inputs.V));
 }
 
-vec3 importanceSampleDirectionForReflection(in RandomSampler rng, vec3 incomingRay, vec3 normal, float roughness) {
+vec3 importanceSampleDirectionForReflection(inout RandomSampler rng, vec3 incomingRay, vec3 normal, float roughness) {
     vec3 direction;
     if(roughness >= 10e-4f) { // maybe a subgroup operation would be better?
         vec3 lambertianDirection;

@@ -127,7 +127,6 @@ void main() {
     }
     else
     {
-        //outColor = reprojected * (mix(previousFrameColor, currentFrameColor, 1-alpha)) + (1.0f-reprojected) * currentFrameColor;
         vec3 outRGB = (previousFrameColorClamped.rgb * previousWeight + currentFrameColor.rgb * currentWeight) * normalization;
         outColor = vec4(outRGB, 1.0);
     }
@@ -139,7 +138,4 @@ void main() {
 
     imageStore(historyLengthImage, coords, vec4(outMoments, historyLength, 1.0f));
     imageStore(outputImage, coords, outColor);
-    //imageStore(outputImage, coords, vec4(historyLength/1000));
-    //imageStore(outputImage, coords, vec4(abs(hPreviousWorldSpacePos.x - hWorldSpacePos.x)*10));
-    //imageStore(outputImage, coords, currentFrameColor);
 }

@@ -283,6 +283,7 @@ set(COMPUTE_SHADERS
         lighting/ao-noraytracing.compute.glsl
         lighting/ao-raytracing.compute.glsl
         lighting/denoise-ao.compute.glsl
+        lighting/denoise-direct.compute.glsl
 
         lighting/direct-noraytracing.compute.glsl
         lighting/direct-raytracing.compute.glsl

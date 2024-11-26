@@ -53,26 +53,27 @@ void main() {
     CellUpdate update = grids[CURRENT_FRAME].pUpdates.v[updateIndex];
     uint cellIndex = update.cellIndex;
     #if 1
-    vec3 startPos = update.key.hitPosition;
-    vec3 incomingRay = update.key.direction; // TODO: should be *incoming* direction
-    float metallic = update.metallic;
-    float roughness = update.roughness;
-    vec3 surfaceNormal = update.surfaceNormal;
-    vec3 surfaceTangent = cross(vec3(1,0,0), update.surfaceNormal);
     uint sampleCount = hashGridReadSampleCount(CURRENT_FRAME, cellIndex);
     vec3 alreadyPresentRadiance = hashGridRead(CURRENT_FRAME, cellIndex);
 
     RandomSampler rng;
-    initRNG(rng, startPos.xy, push.frameWidth, push.frameHeight, push.frameCount);
+    initRNG(rng, vec2(cellIndex, updateIndex) / maxIndex, maxIndex, maxIndex, push.frameCount);
 
     vec3 newRadiance = vec3(0.0);
-    vec3 emissiveColor = vec3(0.0); // TODO
-    vec3 albedo = vec3(1.0); // TODO
-
-
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     // specular part
-    {
+    const int MAX_SAMPLES = 2;// TODO: not working?
+
+    for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
+        vec3 emissiveColor = vec3(0.0); // TODO
+        vec3 albedo = update.surfaceColor;
+        vec3 startPos = update.key.hitPosition;
+        vec3 incomingRay = update.key.direction;
+        float metallic = update.metallic;
+        float roughness = update.roughness;
+        vec3 surfaceNormal = update.surfaceNormal;
+        vec3 surfaceTangent = cross(vec3(1,0,0), update.surfaceNormal);
+
         vec3 beta = vec3(1.0);
 
         const int MAX_BOUNCES = 3; // TODO: spec constant
@@ -88,6 +89,7 @@ void main() {
             pbr.N = N;
             pbr.NdotV = abs(dot(N, V));
 
+            // todo: move out of loop
             {
                 newRadiance += beta * (emissiveColor + lights.ambientColor);
                 const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
@@ -158,7 +160,6 @@ void main() {
                 giInputs.metallic = pbrInputsAtPoint.metallic;
                 giInputs.roughness = roughnessAtPoint;
                 giInputs.frameIndex = push.frameCount;
-                newRadiance += beta * brdf * computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
 
                 startPos = intersection.position;
                 incomingRay = -specularDir;
@@ -167,16 +168,20 @@ void main() {
                 albedo = pbrInputsAtPoint.baseColor;
                 metallic = giInputs.metallic;
 
+                beta *= brdf * albedo.rgb;
+
+                newRadiance += beta * brdf * computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
+
                 // todo: update beta
             } else {
                 const mat3 rot = mat3(
-                vec3(1.0, 0.0, 0.0),
-                vec3(0.0, 0.0, -1.0),
-                vec3(0.0, 1.0, 0.0)
+                    vec3(1.0, 0.0, 0.0),
+                    vec3(0.0, 0.0, -1.0),
+                    vec3(0.0, 1.0, 0.0)
                 );
                 vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
 
-                newRadiance +=  skyboxRGB.rgb * brdf;
+                newRadiance +=  skyboxRGB.rgb * brdf * beta;
                 break;
             }
         }
@@ -184,6 +189,6 @@ void main() {
 #endif
 
     vec3 averagedSample = alreadyPresentRadiance+newRadiance;
-    hashGridWrite(CURRENT_FRAME, cellIndex, update.key, averagedSample, 1);
+    hashGridWrite(CURRENT_FRAME, cellIndex, update.key, averagedSample, MAX_SAMPLES+sampleCount);
     #endif
 }

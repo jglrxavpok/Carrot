@@ -148,8 +148,17 @@ namespace Carrot::Render {
 
         struct HashGridResources {
             FrameResource hashGrid;
+            FrameResource hashGridUpdates;
             FrameResource constants;
             FrameResource gridPointers;
+        };
+
+        struct Denoising {
+            std::uint8_t iterationCount = 0;
+            FrameResource noisy; // noisy output
+            FrameResource samples; // temporal supersampling
+            FrameResource historyLength; // temporal supersampling
+            std::array<FrameResource, 2> pingPong; // ping-pongs for denoising, use iterationCount % 2 for the index
         };
 
         struct Lighting {
@@ -157,13 +166,9 @@ namespace Carrot::Render {
             GBuffer gBuffer;
 
             // outputs
-            FrameResource directLighting; //< also contains shadows
-            std::uint8_t iterationCount = 0;
             FrameResource reflectionsNoisy; // noisy output
-            FrameResource ambientOcclusionNoisy; // noisy output
-            FrameResource ambientOcclusionSamples; // temporal supersampling
-            FrameResource ambientOcclusionHistoryLength; // temporal supersampling
-            std::array<FrameResource, 2> ambientOcclusion; // ping-pongs for denoising, use iterationCount % 2 for the index
+            Denoising directLighting; //< also contains shadows
+            Denoising ambientOcclusion;
 
             HashGridResources hashGrid;
         };
