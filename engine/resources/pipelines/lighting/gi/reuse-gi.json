@@ -5,6 +5,10 @@
     {
       "type": "autofill",
       "setID": 0
+    },
+    {
+      "type": "materials",
+      "setID": 1
     }
   ]
 }

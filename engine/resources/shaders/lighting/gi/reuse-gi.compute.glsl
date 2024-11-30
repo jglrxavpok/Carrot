@@ -1,11 +1,18 @@
 #define HASH_GRID_SET_ID 0
 #include "hash-grid.include.glsl"
 
+#include <includes/materials.glsl>
+MATERIAL_SYSTEM_SET(1)
+
+#include <includes/rng.glsl>
+
+const uint MAX_REUSE = 5;
 const uint LOCAL_SIZE = 256;
 layout (local_size_x = LOCAL_SIZE) in;
 
 layout(push_constant) uniform PushConstant {
     uint maxCellIndex;
+    uint frameCount;
 };
 
 void main() {
@@ -24,14 +31,19 @@ void main() {
         return;
     }
 
-    // 3. add the two cells
-    const vec3 currentValue = hashGridRead(CURRENT_FRAME, currentCellIndex);
-    const vec3 previousValue = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
-    const vec3 v = currentValue + previousValue;
-    const uint sampleCount = hashGridReadSampleCount(PREVIOUS_FRAME, previousCellIndex)+hashGridReadSampleCount(CURRENT_FRAME, currentCellIndex);
+    RandomSampler rng;
+    initRNG(rng, vec2(currentCellIndex, previousCellIndex) / maxCellIndex, maxCellIndex, maxCellIndex, frameCount);
 
-    // 4. Store new value
-    hashGridWrite(CURRENT_FRAME, currentCellIndex, key, v, sampleCount);
+    // 3. reuse samples from previous frame
+    uint reservoirCount = hashGridGetReservoirCount(CURRENT_FRAME, currentCellIndex);
+    int actualReuse = int(floor(reservoirCount * sampleNoise(rng)));
+    int offset = int(floor(sampleNoise(rng) * reservoirCount));
+    for(int i = 0; i < MAX_RESERVOIRS; i++) {
+        const int reservoirIndex = (offset + i) % MAX_RESERVOIRS;
+        const Reservoir preExistingReservoir = hashGridGetReservoir(PREVIOUS_FRAME, previousCellIndex, reservoirIndex);
+        const float u1 = sampleNoise(rng);
+        const float u2 = sampleNoise(rng);
 
-    // 5. increase age of cell?
+        hashGridCombine(CURRENT_FRAME, currentCellIndex, i, u1, u2, preExistingReservoir);
+    }
 }

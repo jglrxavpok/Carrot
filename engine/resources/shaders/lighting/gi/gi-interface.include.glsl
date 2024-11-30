@@ -38,7 +38,7 @@ vec3 GetOrComputeRayResult(in GIInputs giInput) {
         return vec3(0.0, 0, 0);
     }
 
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / hashGridReadSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
 #else
     return vec3(0.0);
 #endif
@@ -56,7 +56,7 @@ vec3 GetGINoUpdate(in GIInputs giInput) {
         return vec3(0.0, 0, 0);
     }
 
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / hashGridReadSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
 #else
     return vec3(0.0);
 #endif

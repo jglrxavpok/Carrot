@@ -52,143 +52,145 @@ void main() {
 
     CellUpdate update = grids[CURRENT_FRAME].pUpdates.v[updateIndex];
     uint cellIndex = update.cellIndex;
-    #if 1
-    uint sampleCount = hashGridReadSampleCount(CURRENT_FRAME, cellIndex);
-    vec3 alreadyPresentRadiance = hashGridRead(CURRENT_FRAME, cellIndex);
 
     RandomSampler rng;
     initRNG(rng, vec2(cellIndex, updateIndex) / maxIndex, maxIndex, maxIndex, push.frameCount);
 
-    vec3 newRadiance = vec3(0.0);
+    for(int reservoirIndex = 0; reservoirIndex < MAX_RESERVOIRS; reservoirIndex++) {
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-    // specular part
-    const int MAX_SAMPLES = 2;// TODO: not working?
+        // specular part
+        const int MAX_SAMPLES = 1;// TODO: not working?
 
-    for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
-        vec3 emissiveColor = vec3(0.0); // TODO
-        vec3 albedo = update.surfaceColor;
-        vec3 startPos = update.key.hitPosition;
-        vec3 incomingRay = update.key.direction;
-        float metallic = update.metallic;
-        float roughness = update.roughness;
-        vec3 surfaceNormal = update.surfaceNormal;
-        vec3 surfaceTangent = cross(vec3(1,0,0), update.surfaceNormal);
+        for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
+            vec3 newRadiance = vec3(0.0);
 
-        vec3 beta = vec3(1.0);
+            vec3 emissiveColor = vec3(0.0); // TODO
+            vec3 albedo = update.surfaceColor;
+            vec3 startPos = update.key.hitPosition;
+            vec3 incomingRay = update.key.direction;
+            float metallic = update.metallic;
+            float roughness = update.roughness;
+            vec3 surfaceNormal = update.surfaceNormal;
+            vec3 surfaceTangent = cross(vec3(1,0,0), update.surfaceNormal);
 
-        const int MAX_BOUNCES = 3; // TODO: spec constant
-        for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
-            // diffuse part
-            PbrInputs pbr;
-            vec3 V = -incomingRay;
-            vec3 N = normalize(surfaceNormal);
-            pbr.alpha = roughness * roughness;
-            pbr.metallic = metallic;
-            pbr.baseColor = albedo;
-            pbr.V = V;
-            pbr.N = N;
-            pbr.NdotV = abs(dot(N, V));
+            vec3 beta = vec3(1.0);
 
-            // todo: move out of loop
-            {
-                newRadiance += beta * (emissiveColor + lights.ambientColor);
-                const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
+            float weight = 1.0f;
+            const int MAX_BOUNCES = 3; // TODO: spec constant
+            for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
+                // diffuse part
+                PbrInputs pbr;
+                vec3 V = -incomingRay;
+                vec3 N = normalize(surfaceNormal);
+                pbr.alpha = roughness * roughness;
+                pbr.metallic = metallic;
+                pbr.baseColor = albedo;
+                pbr.V = V;
+                pbr.N = N;
+                pbr.NdotV = abs(dot(N, V));
 
-                float lightPDF = 1.0f;
-                vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
-                newRadiance += beta * lightAtPoint * lightPDF;
-            }
-
-            // reflective part
-            vec3 specularDir = importanceSampleDirectionForReflection(rng, incomingRay, surfaceNormal, roughness);
-            pbr.L = specularDir;
-            pbr.H = normalize(pbr.L + pbr.H);
-            computeDotProducts(pbr);
-
-            vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
-            const float tMax = 5000.0f; /* TODO: specialization constant? compute properly?*/
-
-            intersection.hasIntersection = false;
-            traceRayWithSurfaceInfo(intersection, startPos, specularDir, tMax);
-            if(intersection.hasIntersection) {
-                // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
-                float mip = 0;// TODO? max(log2(3840.0 / push.frameWidth), 0.0);
-                vec2 f;
-                float viewDistance = 0.0;// TODO: eye position? length(worldPos - rayOrigin);
-                float hitDistance = length(intersection.position - startPos);
-                f.x = viewDistance;// ray origin
-                f.y = hitDistance;// ray length
-                f = clamp(f / tMax, 0, 1);
-                f = sqrt(f);
-                mip += f.x * 10.0f;
-                mip += f.y * 10.0f;
-
-                #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, floor(mip))
-
-                vec3 albedo = _sample(albedo).rgb;
-                vec3 emissive = _sample(emissive).rgb;
-
-                // normal mapping
-                vec3 mappedNormal;
+                // todo: move out of loop
                 {
-                    vec3 T = normalize(intersection.surfaceTangent);
-                    vec3 N = normalize(intersection.surfaceNormal);
-                    vec3 B = cross(T, N) * intersection.bitangentSign;
+                    newRadiance += beta * (emissiveColor + lights.ambientColor);
+                    const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
 
-                    mappedNormal = _sample(normalMap).rgb;
-
-                    mappedNormal *= 2;
-                    mappedNormal -= 1;
-                    mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
+                    float lightPDF = 1.0f;
+                    vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
+                    newRadiance += beta * lightAtPoint * lightPDF;
                 }
-                float lightPDF = 1.0f;
 
-                float roughnessAtPoint = 1.0f; // TODO: fetch from material
-                PbrInputs pbrInputsAtPoint;
-                pbrInputsAtPoint.alpha = roughnessAtPoint * roughnessAtPoint;
-                pbrInputsAtPoint.baseColor = intersection.surfaceColor;
-                pbrInputsAtPoint.metallic = 0.0f;// TODO: fetch from material
-                pbrInputsAtPoint.V = -specularDir;
-                pbrInputsAtPoint.N = mappedNormal;// looks correct but not sure why
-                pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
+                // reflective part
+                vec3 specularDir = importanceSampleDirectionForReflection(rng, incomingRay, surfaceNormal, roughness);
+                pbr.L = specularDir;
+                pbr.H = normalize(pbr.L + pbr.H);
+                computeDotProducts(pbr);
 
-                GIInputs giInputs;
-                giInputs.hitPosition = intersection.position;
-                giInputs.cameraPosition = startPos; // is this valid?
-                giInputs.incomingRay = specularDir;
-                giInputs.surfaceNormal = mappedNormal;
-                giInputs.metallic = pbrInputsAtPoint.metallic;
-                giInputs.roughness = roughnessAtPoint;
-                giInputs.frameIndex = push.frameCount;
+    //            weight *= max(0.01,abs(dot(surfaceNormal, specularDir)));
 
-                startPos = intersection.position;
-                incomingRay = -specularDir;
-                surfaceNormal = giInputs.surfaceNormal;
-                roughness = giInputs.roughness;
-                albedo = pbrInputsAtPoint.baseColor;
-                metallic = giInputs.metallic;
+                vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
+                const float tMax = 5000.0f; /* TODO: specialization constant? compute properly?*/
 
-                beta *= brdf * albedo.rgb;
+                intersection.hasIntersection = false;
+                traceRayWithSurfaceInfo(intersection, startPos, specularDir, tMax);
+                if(intersection.hasIntersection) {
+                    // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
+                    float mip = 0;// TODO? max(log2(3840.0 / push.frameWidth), 0.0);
+                    vec2 f;
+                    float viewDistance = 0.0;// TODO: eye position? length(worldPos - rayOrigin);
+                    float hitDistance = length(intersection.position - startPos);
+                    f.x = viewDistance;// ray origin
+                    f.y = hitDistance;// ray length
+                    f = clamp(f / tMax, 0, 1);
+                    f = sqrt(f);
+                    mip += f.x * 10.0f;
+                    mip += f.y * 10.0f;
 
-                newRadiance += beta * brdf * computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
+                    #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, floor(mip))
 
-                // todo: update beta
-            } else {
-                const mat3 rot = mat3(
-                    vec3(1.0, 0.0, 0.0),
-                    vec3(0.0, 0.0, -1.0),
-                    vec3(0.0, 1.0, 0.0)
-                );
-                vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
+                    vec3 albedo = _sample(albedo).rgb;
+                    vec3 emissive = _sample(emissive).rgb;
 
-                newRadiance +=  skyboxRGB.rgb * brdf * beta;
-                break;
+                    // normal mapping
+                    vec3 mappedNormal;
+                    {
+                        vec3 T = normalize(intersection.surfaceTangent);
+                        vec3 N = normalize(intersection.surfaceNormal);
+                        vec3 B = cross(T, N) * intersection.bitangentSign;
+
+                        mappedNormal = _sample(normalMap).rgb;
+
+                        mappedNormal *= 2;
+                        mappedNormal -= 1;
+                        mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
+                    }
+                    float lightPDF = 1.0f;
+
+                    float roughnessAtPoint = 1.0f; // TODO: fetch from material
+                    PbrInputs pbrInputsAtPoint;
+                    pbrInputsAtPoint.alpha = roughnessAtPoint * roughnessAtPoint;
+                    pbrInputsAtPoint.baseColor = intersection.surfaceColor;
+                    pbrInputsAtPoint.metallic = 0.0f;// TODO: fetch from material
+                    pbrInputsAtPoint.V = -specularDir;
+                    pbrInputsAtPoint.N = mappedNormal;// looks correct but not sure why
+                    pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
+
+                    GIInputs giInputs;
+                    giInputs.hitPosition = intersection.position;
+                    giInputs.cameraPosition = startPos; // is this valid?
+                    giInputs.incomingRay = specularDir;
+                    giInputs.surfaceNormal = mappedNormal;
+                    giInputs.metallic = pbrInputsAtPoint.metallic;
+                    giInputs.roughness = roughnessAtPoint;
+                    giInputs.frameIndex = push.frameCount;
+
+                    startPos = intersection.position;
+                    incomingRay = -specularDir;
+                    surfaceNormal = giInputs.surfaceNormal;
+                    roughness = giInputs.roughness;
+                    albedo = pbrInputsAtPoint.baseColor;
+                    metallic = giInputs.metallic;
+
+                    // todo: update beta
+                    //beta *= brdf * albedo.rgb;
+
+                    newRadiance += beta * brdf * computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
+                } else {
+                    const mat3 rot = mat3(
+                        vec3(1.0, 0.0, 0.0),
+                        vec3(0.0, 0.0, -1.0),
+                        vec3(0.0, 1.0, 0.0)
+                    );
+                    vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
+
+                    newRadiance +=  skyboxRGB.rgb * brdf * beta;
+                    break;
+                }
             }
+
+            const float u = sampleNoise(rng);
+            hashGridWrite(CURRENT_FRAME, cellIndex, update.key, weight, newRadiance, u, reservoirIndex);
         }
+        hashGridFinishReservoirWrite(CURRENT_FRAME, cellIndex, reservoirIndex);
     }
 #endif
-
-    vec3 averagedSample = alreadyPresentRadiance+newRadiance;
-    hashGridWrite(CURRENT_FRAME, cellIndex, update.key, averagedSample, MAX_SAMPLES+sampleCount);
-    #endif
 }

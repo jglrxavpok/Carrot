@@ -14,8 +14,16 @@ static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1024*1024*8;
 static constexpr std::uint64_t HashGridCellsPerBucket = 128;
 static constexpr std::uint64_t HashGridBucketCount = 1024;
 static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
+static constexpr std::uint8_t MAX_RESERVOIRS = 10;
 
 struct HashGrid {
+    struct Reservoir {
+        glm::vec3 bestSample;
+        float weightSum;
+        std::uint32_t sampleCount;
+        float resamplingWeight;
+    };
+
     struct HashCellKey {
         glm::vec3 hitPosition;
         glm::vec3 direction;
@@ -23,9 +31,9 @@ struct HashGrid {
 
     struct HashCell {
         HashCellKey key;
-        glm::vec3 value;
-        std::uint32_t sampleCount;
         std::uint32_t hash2;
+        std::uint32_t reservoirCount;
+        std::array<Reservoir, MAX_RESERVOIRS> reservoirs;
     };
 
     struct CellUpdate {

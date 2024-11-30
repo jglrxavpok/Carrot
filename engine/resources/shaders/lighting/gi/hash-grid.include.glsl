@@ -2,8 +2,12 @@
 #extension GL_EXT_scalar_block_layout: require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
+#include <includes/sampling.glsl>
+
 #define PREVIOUS_FRAME 0
 #define CURRENT_FRAME 1
+
+#define MAX_RESERVOIRS 10
 
 #ifndef HASH_GRID_SET_ID
 #error HASH_GRID_SET_ID is not defined!
@@ -37,9 +41,9 @@ struct HashDescriptor {
 
 struct HashCell {
     HashCellKey key;
-    vec3 value;
-    uint sampleCount;
     uint hash2;
+    uint reservoirCount;
+    Reservoir reservoirs[MAX_RESERVOIRS];
 };
 
 layout(buffer_reference, scalar) buffer CellUpdateBuffer {
@@ -138,9 +142,12 @@ void hashGridClear(uint mapIndex, uint cellIndex) {
     nullKey.hitPosition = vec3(0.0);
     nullKey.direction = vec3(0.0);
     grids[mapIndex].pCells.v[cellIndex].key = nullKey;
-    grids[mapIndex].pCells.v[cellIndex].value = vec3(0.0);
     grids[mapIndex].pCells.v[cellIndex].hash2 = 0;
-    grids[mapIndex].pCells.v[cellIndex].sampleCount = 0;
+
+    for(int i = 0; i < MAX_RESERVOIRS; i++) {
+        clearReservoir(grids[mapIndex].pCells.v[cellIndex].reservoirs[i]);
+    }
+    grids[mapIndex].pCells.v[cellIndex].reservoirCount = 0;
 }
 
 /// Inserts a tile inside the hash grid, returning the corresponding cell ID
@@ -193,19 +200,48 @@ HashCellKey hashGridGetKey(uint mapIndex, uint cellIndex) {
     return grids[mapIndex].pCells.v[cellIndex].key;
 }
 
-uint hashGridReadSampleCount(uint mapIndex, uint cellIndex) {
-    return grids[mapIndex].pCells.v[cellIndex].sampleCount;
-}
-
 vec3 hashGridRead(uint mapIndex, uint cellIndex) {
-    return grids[mapIndex].pCells.v[cellIndex].value;
+    vec3 averageSample = vec3(0.0);
+    const uint sampleCount = grids[mapIndex].pCells.v[cellIndex].reservoirCount;
+    for(int i = 0; i < sampleCount; i++) {
+        averageSample += readFromReservoir(grids[mapIndex].pCells.v[cellIndex].reservoirs[i]);
+    }
+    return averageSample / sampleCount;
 }
 
-void hashGridWrite(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 v, uint sampleCount) {
+Reservoir hashGridGetReservoir(uint mapIndex, uint cellIndex, uint reservoirIndex) {
+    return grids[mapIndex].pCells.v[cellIndex].reservoirs[reservoirIndex];
+}
+
+uint hashGridGetReservoirCount(uint mapIndex, uint cellIndex) {
+    return grids[mapIndex].pCells.v[cellIndex].reservoirCount;
+}
+
+/**
+ * Write to a cell of the hash grid
+ * Each cell has multiple reservoirs, so the reservoirIndex needs to be specified.
+ * Furthermore, to avoid a dependency on rng, this method requires a random value (u) to be provided
+ */
+void hashGridWrite(uint mapIndex, uint cellIndex, in HashCellKey key, float weight, vec3 v, float u, uint reservoirIndex) {
+    // TODO: version without rewriting key & hash
     grids[mapIndex].pCells.v[cellIndex].key = key;
     grids[mapIndex].pCells.v[cellIndex].hash2 = computeDescriptor(key).hash2;
-    grids[mapIndex].pCells.v[cellIndex].sampleCount = sampleCount;
-    grids[mapIndex].pCells.v[cellIndex].value = v;
+    writeToReservoir(grids[mapIndex].pCells.v[cellIndex].reservoirs[reservoirIndex], v, weight, u);
+}
+
+void hashGridCombine(uint mapIndex, uint cellIndex, uint reservoirIndex, float u1, float u2, in Reservoir toCombine) {
+    grids[mapIndex].pCells.v[cellIndex].reservoirs[reservoirIndex] = combineReservoirs(grids[mapIndex].pCells.v[cellIndex].reservoirs[reservoirIndex], toCombine, u1, u2);
+}
+
+/**
+Sets up the final resampling weight of a given reservoir
+*/
+void hashGridFinishReservoirWrite(uint mapIndex, uint cellIndex, uint reservoirIndex) {
+    #define reservoir (grids[mapIndex].pCells.v[cellIndex].reservoirs[reservoirIndex])
+    reservoir.resamplingWeight = reservoir.weightSum / reservoir.sampleCount;
+
+    grids[mapIndex].pCells.v[cellIndex].reservoirCount = MAX_RESERVOIRS;//max(reservoirIndex+1, grids[mapIndex].pCells.v[cellIndex].reservoirCount);
+    #undef reservoir
 }
 
 /// Mark the tile as updated. If this returns true, the current invocation is the first one touching this cell for the current frame
@@ -217,6 +253,7 @@ bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
 void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 surfaceNormal, float metallic, float roughness, vec3 surfaceColor) {
     uint updateIndex = atomicAdd(grids[mapIndex].updateCount, 1);
     if(updateIndex < grids[mapIndex].maxUpdates) {
+        grids[mapIndex].pCells.v[cellIndex].reservoirCount = MAX_RESERVOIRS;
         grids[mapIndex].pUpdates.v[updateIndex].cellIndex = cellIndex;
         grids[mapIndex].pUpdates.v[updateIndex].key = key;
         grids[mapIndex].pUpdates.v[updateIndex].surfaceNormal = surfaceNormal;
