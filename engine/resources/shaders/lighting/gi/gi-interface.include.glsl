@@ -1,4 +1,5 @@
 #include "hash-grid.include.glsl"
+#include <includes/rng.glsl>
 
 struct GIInputs {
     vec3 hitPosition;
@@ -13,11 +14,21 @@ struct GIInputs {
 
 #define USE_GI 1
 
-vec3 GetOrComputeRayResult(in GIInputs giInput) {
+vec3 GetOrComputeRayResult(inout RandomSampler rng, in GIInputs giInput) {
 #if USE_GI
     bool wasNew;
     HashCellKey cellDesc;
-    cellDesc.hitPosition = giInput.hitPosition;
+
+    vec3 tangent;
+    vec3 bitangent;
+    computeTangents(giInput.surfaceNormal, tangent, bitangent);
+    const float jitterU = sampleNoise(rng) * 2 - 1;
+    const float jitterV = sampleNoise(rng) * 2 - 1;
+
+    float cellSize = 0.135f; // TODO: adaptive cell size
+    const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
+
+    cellDesc.hitPosition = giInput.hitPosition + jitter;
     cellDesc.direction = giInput.incomingRay;
 
     uint cellIndex = hashGridInsert(CURRENT_FRAME, cellDesc, wasNew);

@@ -6,7 +6,6 @@
 #include "includes/lights.glsl"
 #include "includes/materials.glsl"
 #include <includes/gbuffer.glsl>
-#include <lighting/gi/gi-interface.include.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_nonuniform_qualifier : enable
@@ -38,7 +37,7 @@ LIGHT_SET(2)
 MATERIAL_SYSTEM_SET(4)
 
 #include <lighting/brdf.glsl>
-
+#include <lighting/gi/gi-interface.include.glsl>
 
 layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightingImage;
 
@@ -149,7 +148,7 @@ void main() {
         giInputs.metallic = metallicRoughness.x;
         giInputs.roughness = metallicRoughness.y;
         giInputs.surfaceColor = albedo;
-        vec3 gi = GetOrComputeRayResult(giInputs);
+        vec3 gi = GetOrComputeRayResult(rng, giInputs);
 
         outDirectLighting.rgb += gi;
 

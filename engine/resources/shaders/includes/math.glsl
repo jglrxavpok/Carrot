@@ -60,4 +60,14 @@ vec3 sphericalDirection(float sinTheta, float cosTheta, float phi) {
     );
 }
 
+/**
+* Computes a tangent and a bitangent from a given normal.
+* Input is expected to be already normalized
+*/
+void computeTangents(vec3 normal, out vec3 tangent, out vec3 bitangent) {
+    vec3 toUse = abs(normal.x) > 0.5f ? vec3(0, 0, 1) : vec3(1, 0, 0); // avoid cross product with a colinear vector
+    tangent = cross(normal, toUse);
+    bitangent = cross(normal, tangent);
+}
+
 #endif // _MATH_GLSL

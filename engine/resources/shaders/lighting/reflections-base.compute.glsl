@@ -6,7 +6,6 @@
 #include <includes/lights.glsl>
 #include <includes/materials.glsl>
 #include <includes/gbuffer.glsl>
-#include <lighting/gi/gi-interface.include.glsl>
 
 #extension GL_EXT_control_flow_attributes: enable
 #extension GL_EXT_nonuniform_qualifier : enable
@@ -39,6 +38,7 @@ MATERIAL_SYSTEM_SET(4)
 
 #include <lighting/brdf.glsl>
 #include "includes/rng.glsl"
+#include <lighting/gi/gi-interface.include.glsl>
 
 layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightingImage;
 
@@ -149,7 +149,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             giInputs.roughness = roughness;
             giInputs.surfaceColor = pbrInputsAtPoint.baseColor;
 
-            vec3 gi = GetOrComputeRayResult(giInputs);
+            vec3 gi = GetOrComputeRayResult(rng, giInputs);
             vec3 lightColor = (lighting + emissive + gi);
             return lightColor * brdf;
         } else {
