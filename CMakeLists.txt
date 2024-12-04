@@ -120,7 +120,7 @@ add_subdirectory(thirdparty/glslang)
 
 FetchContent_Declare(openal-soft
         GIT_REPOSITORY      https://github.com/kcat/openal-soft.git
-        GIT_TAG             1.21.1)
+        GIT_TAG             1.24.1)
 FetchContent_MakeAvailable(openal-soft)
 
 add_subdirectory(thirdparty/cider)

@@ -11,7 +11,7 @@ namespace Carrot::Exceptions {
     public:
         explicit IrrecoverableError(const std::string& message): message("Irrecoverable error: " + message) {};
 
-        const char* what() const override {
+        const char* what() const noexcept override {
             return message.c_str();
         }
 

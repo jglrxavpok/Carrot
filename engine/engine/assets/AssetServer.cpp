@@ -23,7 +23,7 @@ namespace Carrot {
             fullMessage = Carrot::sprintf("AssetConversion failed: %s (%s)", message.c_str(), assetPath.toString().c_str());
         }
 
-        const char *what() const override {
+        const char *what() const noexcept override {
             return fullMessage.c_str();
         }
     };
