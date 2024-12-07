@@ -35,15 +35,28 @@ void main() {
     initRNG(rng, vec2(currentCellIndex, previousCellIndex) / maxCellIndex, maxCellIndex, maxCellIndex, frameCount);
 
     // 3. reuse samples from previous frame
-    uint reservoirCount = hashGridGetReservoirCount(CURRENT_FRAME, currentCellIndex);
-    int actualReuse = int(floor(reservoirCount * sampleNoise(rng)));
-    int offset = int(floor(sampleNoise(rng) * reservoirCount));
-    for(int i = 0; i < MAX_RESERVOIRS; i++) {
-        const int reservoirIndex = (offset + i) % MAX_RESERVOIRS;
-        const Reservoir preExistingReservoir = hashGridGetReservoir(PREVIOUS_FRAME, previousCellIndex, reservoirIndex);
-        const float u1 = sampleNoise(rng);
-        const float u2 = sampleNoise(rng);
+    vec3 currentSample = hashGridRead(CURRENT_FRAME, currentCellIndex);
+    vec3 previousSample = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
+    uint currentSampleCount = hashGridGetSampleCount(CURRENT_FRAME, currentCellIndex);
+    uint previousSampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousCellIndex);
+    uint totalSampleCount = min(100, currentSampleCount+previousSampleCount);
 
-        hashGridCombine(CURRENT_FRAME, currentCellIndex, i, u1, u2, preExistingReservoir);
+    vec3 combined;
+    float combinedSampleCount;
+    if(previousSampleCount == 0) {
+        combined = currentSample / currentSampleCount;
+        combinedSampleCount = currentSampleCount;
+    } else {
+        vec3 newSample = currentSample / currentSampleCount + previousSample / previousSampleCount;
+        combined = mix(newSample, currentSample / currentSampleCount, 1.0f / totalSampleCount);
     }
+
+    combined *= totalSampleCount;
+    combinedSampleCount = totalSampleCount;
+
+    if(dot(combined, combined) >= 100000*100000) {
+        combined = vec3(10000,0,0);
+    }
+    // TODO: is this sample count correct?
+    hashGridWrite(CURRENT_FRAME, currentCellIndex, key, combined, uint(combinedSampleCount));
 }

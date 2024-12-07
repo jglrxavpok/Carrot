@@ -49,7 +49,11 @@ vec3 GetOrComputeRayResult(inout RandomSampler rng, in GIInputs giInput) {
         return vec3(0.0, 0, 0);
     }
 
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
+    uint sampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+    if(sampleCount == 0) {
+        return vec3(0.0);
+    }
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / sampleCount;
 #else
     return vec3(0.0);
 #endif
@@ -67,7 +71,11 @@ vec3 GetGINoUpdate(in GIInputs giInput) {
         return vec3(0.0, 0, 0);
     }
 
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex);
+    uint sampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
+    if(sampleCount == 0) {
+        return vec3(0.0);
+    }
+    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / sampleCount;
 #else
     return vec3(0.0);
 #endif

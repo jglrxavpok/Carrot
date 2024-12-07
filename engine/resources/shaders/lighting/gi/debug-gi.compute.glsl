@@ -48,7 +48,7 @@ void main() {
     if(cellIndex == InvalidCellIndex) {
         giResult = vec4(pixel.x/4 % 2, 0, pixel.y/4 % 2, 1);
     } else {
-        giResult = vec4(hashGridRead(CURRENT_FRAME, cellIndex), 1);
+        giResult = vec4(hashGridRead(CURRENT_FRAME, cellIndex), 1) / hashGridGetSampleCount(CURRENT_FRAME, cellIndex);
     }
     imageStore(outputImage, ivec2(pixel), giResult);
 }
