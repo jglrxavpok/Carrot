@@ -9,8 +9,14 @@
   "depthTest": true,
   "alphaBlending": true,
   "cull": false,
-  "vertexShader": "resources/shaders/screenQuad-transformed.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/composer-blit.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/screenQuad-transformed.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/composer-blit.fragment.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "autofill",

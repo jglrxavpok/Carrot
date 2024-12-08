@@ -54,7 +54,7 @@ namespace Peeler {
         },
         [&](const CompiledPass& pass, const Carrot::Render::Context& renderContext, PassData::PostProcessing& data, vk::CommandBuffer& cmds) {
             auto& renderer = renderContext.renderer;
-            auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/outlines.json");
+            auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/outlines.pipeline");
             auto& texture = pass.getGraph().getTexture(data.postLighting, renderContext.swapchainIndex);
             renderer.bindTexture(*pipeline, renderContext, texture, 0, 0, renderer.getVulkanDriver().getNearestSampler());
 

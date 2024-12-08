@@ -17,5 +17,8 @@
       "setID": 2
     }
   ],
-  "computeShader": "resources/shaders/lighting/temporal-denoise.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/lighting/temporal-denoise.compute.glsl",
+    "entry_point": "main"
+  }
 }

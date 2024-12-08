@@ -6,5 +6,8 @@
       "setID": 0
     }
   ],
-  "computeShader": "resources/shaders/compute/firefly-rejection.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/compute/firefly-rejection.compute.glsl",
+    "entry_point": "main"
+  }
 }

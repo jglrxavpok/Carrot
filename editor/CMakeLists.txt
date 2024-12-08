@@ -42,16 +42,11 @@ set(ImGuizmoSources
         ../thirdparty/ImGuizmo/ImSequencer.cpp
         )
 
-set(EditorFragmentShaders
-        grid.fragment.glsl
-        outlines.fragment.glsl
+set(EditorPipelineNames
+        grid
+        outlines
         )
-
-set(EditorVertexShaders
-        grid.vertex.glsl
-        )
-
-set(EditorShaders "")
+set(EditorPipelines "")
 
 function(add_editor_defines Target)
     target_include_directories("${Target}" PUBLIC ../thirdparty/ImGuizmo)
@@ -59,14 +54,9 @@ function(add_editor_defines Target)
     target_compile_definitions("${Target}" PRIVATE "EDITOR=1") # Used by code to know whether we are inside the editor or not.
 endfunction()
 
-foreach(shader ${EditorFragmentShaders})
-    add_spirv_shader(fragment "${shader}" "${shader}.spv")
-    set(EditorShaders "${EditorShaders}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${EditorVertexShaders})
-    add_spirv_shader(vertex "${shader}" "${shader}.spv")
-    set(EditorShaders "${EditorShaders}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
+foreach(pipeline ${EditorPipelineNames})
+    add_pipeline("${pipeline}")
+    set(EditorPipelines "${EditorPipelines}" "${CMAKE_BINARY_DIR}/resources/pipelines/${pipeline}.pipeline")
 endforeach()
 
 if (MSVC)
@@ -74,7 +64,7 @@ if (MSVC)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
 
-set(EditorSources "${EditorSources}" "${EditorShaders}")
+set(EditorSources "${EditorSources}" "${EditorPipelines}")
 
 add_library(Peeler-Lib ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Lib)

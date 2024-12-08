@@ -10,5 +10,8 @@
       "setID": 1
     }
   ],
-  "computeShader": "resources/shaders/compute/spatial-denoise.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/compute/spatial-denoise.compute.glsl",
+    "entry_point": "main"
+  }
 }

@@ -1,4 +1,7 @@
 {
   "type": "compute",
-  "computeShader": "resources/shaders/compute/clear-singleint.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/compute/clear-singleint.compute.glsl",
+    "entry_point": "main"
+  }
 }

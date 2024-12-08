@@ -20,6 +20,12 @@
   ],
   "depthWrite": true,
   "depthTest": true,
-  "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/unlitGBuffer.fragment.glsl.spv"
+  "vertexShader": {
+    "file": "resources/shaders/gBuffer.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/unlitGBuffer.fragment.glsl",
+    "entry_point": "main"
+  }
 }

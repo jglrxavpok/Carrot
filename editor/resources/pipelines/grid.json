@@ -6,8 +6,14 @@
   "alphaBlending": true,
   "depthWrite": true,
   "depthTest": true,
-  "vertexShader": "resources/shaders/grid.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/grid.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/grid.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/grid.fragment.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "camera",

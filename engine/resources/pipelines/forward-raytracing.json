@@ -1,4 +1,7 @@
 {
   "_import": "forward.json",
-  "fragmentShader": "resources/shaders/forward-raytracing.fragment.glsl.spv"
+  "fragmentShader": {
+    "file": "resources/shaders/forward-raytracing.fragment.glsl",
+    "entry_point": "main"
+  }
 }

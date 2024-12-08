@@ -1,4 +1,7 @@
 {
   "_import": "reflections.json",
-  "computeShader": "resources/shaders/lighting/reflections-noraytracing.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/lighting/reflections-noraytracing.compute.glsl",
+    "entry_point": "main"
+  }
 }

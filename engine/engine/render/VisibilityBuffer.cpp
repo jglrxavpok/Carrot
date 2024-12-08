@@ -29,7 +29,7 @@ namespace Carrot::Render {
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const Empty& data, vk::CommandBuffer& cmds) {
                 // clear readback buffer to ensure visible count starts at 0 for the new frame
-                auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.json", (std::uint64_t)&pass);
+                auto clearReadbackPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-singleint.pipeline", (std::uint64_t)&pass);
                 auto readbackBufferOpt = renderer.getMeshletManager().getReadbackBuffer(frame.pViewport, frame.swapchainIndex);
                 if(readbackBufferOpt.hasValue()) {
                     vk::DeviceAddress addr = readbackBufferOpt->getWholeView().getDeviceAddress() + offsetof(ClusterReadbackData, visibleCount);
@@ -70,7 +70,7 @@ namespace Carrot::Render {
                 auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
 
                 // clear visibility buffer to reset depth
-                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.json", (std::uint64_t)&pass);
+                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.pipeline", (std::uint64_t)&pass);
                 renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 const auto& extent = texture.getSize();
@@ -82,7 +82,7 @@ namespace Carrot::Render {
                 cmds.dispatch(dispatchX, dispatchY, 1);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
-                auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)frame.pViewport);
+                auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.pipeline", (std::uint64_t)frame.pViewport);
                 renderer.bindStorageImage(*pipeline, frame, texture, 0, 3,
                                           vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 {
@@ -163,7 +163,7 @@ namespace Carrot::Render {
                     return;
                 }
 
-                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.json", (std::uint64_t)(VkRenderPass)pass.getRenderPass());
+                auto pipeline = frame.renderer.getOrCreatePipelineFullPath("resources/pipelines/material-pass.pipeline", (std::uint64_t)(VkRenderPass)pass.getRenderPass());
                 const auto& visibilityBufferTexture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 0, vk::ImageLayout::eColorAttachmentOptimal);
                 frame.renderer.getMaterialSystem().bind(frame, cmds, 1, pipeline->getPipelineLayout());

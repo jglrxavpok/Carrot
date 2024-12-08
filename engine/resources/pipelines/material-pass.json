@@ -2,8 +2,14 @@
   "type": "gbuffer",
   "subpassIndex": 0,
   "vertexFormat": "ScreenSpace",
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/material-pass.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/screenQuad.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/material-pass.fragment.glsl",
+    "entry_point": "main"
+  },
   "depthWrite": true,
   "depthTest": true,
   "descriptorSets": [

@@ -68,7 +68,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
         .layers = 1,
     });
 
-    auto pipeline = Pipeline(engine.getVulkanDriver(), "resources/pipelines/blit.json");
+    auto pipeline = Pipeline(engine.getVulkanDriver(), "resources/pipelines/blit.pipeline");
 
     auto loadingImageView = loadingImage->createImageView();
     vk::DescriptorImageInfo loadingImageInfo {

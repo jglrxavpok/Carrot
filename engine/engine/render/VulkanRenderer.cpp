@@ -31,6 +31,7 @@
 #include <core/allocators/StackAllocator.h>
 #include <engine/console/Console.h>
 #include <engine/vulkan/VulkanDefines.h>
+#include <filesystem>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 16 * 1024 * 1024; // 16MiB per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -139,7 +140,7 @@ std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreateRenderPassS
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipeline(const std::string& name, std::uint64_t instanceOffset) {
-    return getOrCreatePipelineFullPath("resources/pipelines/"+name+".json", instanceOffset);
+    return getOrCreatePipelineFullPath("resources/pipelines/"+name+".pipeline", instanceOffset);
 }
 
 std::shared_ptr<Carrot::Pipeline> Carrot::VulkanRenderer::getOrCreatePipelineFullPath(const std::string& name, std::uint64_t instanceOffset) {

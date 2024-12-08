@@ -6,5 +6,8 @@
       "setID": 0
     }
   ],
-  "computeShader": "resources/shaders/compute/debug-texture-view.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/compute/debug-texture-view.compute.glsl",
+    "entry_point": "main"
+  }
 }

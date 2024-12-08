@@ -20,6 +20,12 @@
   ],
   "depthWrite": false,
   "depthTest": false,
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/post-process/temporal-denoise.fragment.glsl.spv"
+  "vertexShader": {
+    "file": "resources/shaders/screenQuad.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/post-process/temporal-denoise.fragment.glsl",
+    "entry_point": "main"
+  }
 }

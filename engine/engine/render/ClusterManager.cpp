@@ -608,7 +608,7 @@ namespace Carrot::Render {
     std::shared_ptr<Carrot::Pipeline> ClusterManager::getPipeline(const Carrot::Render::Context& renderContext) {
         auto& pPipeline = perViewport[renderContext.pViewport].pipeline;
         if(!pPipeline) {
-            pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.json", (std::uint64_t)renderContext.pViewport);
+            pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.pipeline", (std::uint64_t)renderContext.pViewport);
         }
         return pPipeline;
     }

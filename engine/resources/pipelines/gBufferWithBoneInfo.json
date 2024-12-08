@@ -1,5 +1,0 @@
-{
-  "_import": "gBuffer.json",
-  "vertexFormat": "SkinnedVertex",
-  "vertexShader": "resources/shaders/gBufferWithBoneInfo.vertex.glsl.spv"
-}

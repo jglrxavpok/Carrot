@@ -3,6 +3,12 @@
   "vertexFormat": "SimpleVertexWithInstanceData",
   "cull": false,
   "alphaBlending": true,
-  "vertexShader": "resources/shaders/gBufferSprite.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/gBufferSprite.fragment.glsl.spv"
+  "vertexShader": {
+    "file": "resources/shaders/gBufferSprite.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/gBufferSprite.fragment.glsl",
+    "entry_point": "main"
+  }
 }

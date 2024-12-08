@@ -207,53 +207,19 @@ set(ENGINE-SOURCES
         )
 
 set(VERTEX_SHADERS
-        gBuffer.vertex.glsl
-        visibility-buffer.vertex.glsl
         screenQuad.vertex.glsl
-        skybox.vertex.glsl
-        particles.vertex.glsl
         screenQuad-transformed.vertex.glsl
-        text-rendering.vertex.glsl
-        gBufferSprite.vertex.glsl
         billboards.vertex.glsl
-        gBufferWireframe.vertex.glsl
-        gBufferWithBoneInfo.vertex.glsl
-
-        imgui.vertex.glsl
 
         #PARENT_SCOPE
         )
 
 set(FRAGMENT_SHADERS
-        gBuffer.fragment.glsl
-        gBuffer-transparent.fragment.glsl
-        gBufferBlockout.fragment.glsl
-        material-pass.fragment.glsl
-        visibility-buffer.fragment.glsl
-        unlitGBuffer.fragment.glsl
-
-        blit.fragment.glsl
-        skybox.fragment.glsl
-        particles.fragment.glsl
-
         composer-blit.fragment.glsl
-        text-rendering.fragment.glsl
-        gBufferSprite.fragment.glsl
         billboards.fragment.glsl
 
         forward-raytracing.fragment.glsl
         forward-noraytracing.fragment.glsl
-
-        imgui.fragment.glsl
-
-        post-process/temporal-denoise.fragment.glsl
-        post-process/merge-lighting.fragment.glsl
-        post-process/tone-mapping.fragment.glsl
-
-        post-process/visibility-buffer-debug/triangles.glsl
-        post-process/visibility-buffer-debug/clusters.glsl
-        post-process/visibility-buffer-debug/lods.glsl
-        post-process/visibility-buffer-debug/screen-error.glsl
 
         #PARENT_SCOPE
         )
@@ -294,76 +260,77 @@ set(COMPUTE_SHADERS
         #PARENT_SCOPE
         )
 
-set(RAYGEN_SHADERS
-        rt/raytrace.rgen
+set(PIPELINES
+        compute/clear-singleint
+        compute/clear-visibility-buffer
+        compute/compute-rt-clusters
+        compute/copy-variance
+        compute/debug-buffer-viewer
+        compute/debug-texture-viewer
+        compute/firefly-rejection
+        compute/spatial-denoise
 
-        #PARENT_SCOPE
-        )
+        lighting/gi/clear-grid
+        lighting/gi/debug-gi
+        lighting/gi/decay-cells
+        lighting/gi/reuse-gi
+        lighting/gi/update-cells
 
-set(RAYMISS_SHADERS
-        rt/raytrace.rmiss
-        rt/shadow.rmiss
+        lighting/ao
+        lighting/ao-noraytracing
+        lighting/ao-raytracing
+        lighting/denoise-ao
+        lighting/denoise-base
+        lighting/denoise-direct
+        lighting/direct
+        lighting/direct-noraytracing
+        lighting/direct-raytracing
+        lighting/reflections
+        lighting/reflections-noraytracing
+        lighting/reflections-raytracing
+        lighting/temporal-denoise
 
-        #PARENT_SCOPE
-        )
+        post-process/visibility-buffer-debug/_template
+        post-process/visibility-buffer-debug/clusters
+        post-process/visibility-buffer-debug/lods
+        post-process/visibility-buffer-debug/screen-error
+        post-process/visibility-buffer-debug/triangles
 
-set(RAYHIT_SHADERS
-        rt/raytrace.rchit
+        post-process/_post-process
+        post-process/merge-lighting
+        post-process/temporal-denoise
+        post-process/tone-mapping
 
-        #PARENT_SCOPE
-        )
-
-set(TASK_SHADERS
-        visibility-buffer.task.glsl
+        billboards
+        blit
+        composer-blit
+        forward-noraytracing
+        forward-raytracing
+        gBuffer
+        gBuffer-transparent
+        gBufferBlockout
+        gBufferLines
+        gBufferSprite
+        gBufferWireframe
+        imgui
+        lighting
+        lighting-noraytracing
+        lighting-raytracing
+        material-pass
+        particles
+        skybox
+        text-rendering
+        unlitGBuffer
+        unlitGBufferWireframe
+        visibility-buffer
 
         #PARENT_SCOPE
 )
 
-set(MESH_SHADERS
-        visibility-buffer.mesh.glsl
-
-        #PARENT_SCOPE
-)
-
-set(ENGINE-SHADERS "" PARENT_SCOPE)
-foreach(shader ${VERTEX_SHADERS})
-    add_spirv_shader(vertex "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${FRAGMENT_SHADERS})
-    add_spirv_shader(fragment "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${COMPUTE_SHADERS})
-    add_spirv_shader(compute "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${RAYGEN_SHADERS})
-    add_spirv_shader(rgen "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${RAYMISS_SHADERS})
-    add_spirv_shader(rmiss "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${RAYHIT_SHADERS})
-    add_spirv_shader(rchit "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${TASK_SHADERS})
-    add_spirv_shader(task "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
-endforeach()
-
-foreach(shader ${MESH_SHADERS})
-    add_spirv_shader(mesh "${shader}" "${shader}.spv")
-    set(ENGINE-SHADERS "${ENGINE-SHADERS}" "${CMAKE_BINARY_DIR}/resources/shaders/${shader}.spv")
+set(ENGINE-PIPELINES "" PARENT_SCOPE)
+foreach(pipeline_name ${PIPELINES})
+    add_pipeline("${pipeline_name}")
+    set(ENGINE-PIPELINES "${ENGINE-PIPELINES}" "${CMAKE_BINARY_DIR}/resources/pipelines/${pipeline_name}.pipeline")
 endforeach()
 
 set(THIRDPARTY-SOURCES
@@ -399,18 +366,18 @@ file(COPY "resources/icon128.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/icon128.ktx2" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 file(COPY "resources/splash.png" DESTINATION "${CMAKE_BINARY_DIR}/resources/")
 
-add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+add_library(Engine-Base ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base PUBLIC ${ALL_BASE_LIBS})
 add_includes(Engine-Base)
 add_dependencies(Engine-Base generate_headers) # OpenXR-Hpp header generation
 
-add_library(Engine-Base-Renderdoc ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+add_library(Engine-Base-Renderdoc ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-Base-Renderdoc PUBLIC ${ALL_BASE_LIBS})
 target_compile_definitions(Engine-Base-Renderdoc PRIVATE DEBUG_MARKERS=1)
 add_includes(Engine-Base-Renderdoc)
 add_dependencies(Engine-Base-Renderdoc generate_headers) # OpenXR-Hpp header generation
 
-add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-SHADERS} ${THIRDPARTY-SOURCES})
+add_library(Engine-ASAN ${ENGINE-SOURCES} ${ENGINE-PIPELINES} ${THIRDPARTY-SOURCES})
 target_link_libraries(Engine-ASAN PUBLIC ${ALL_BASE_LIBS})
 make_asan_target(Engine-ASAN)
 add_includes(Engine-ASAN)

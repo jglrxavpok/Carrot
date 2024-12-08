@@ -15,7 +15,16 @@
   ],
   "depthWrite": true,
   "depthTest": true,
-  "taskShader": "resources/shaders/visibility-buffer.task.glsl.spv",
-  "meshShader": "resources/shaders/visibility-buffer.mesh.glsl.spv",
-  "fragmentShader": "resources/shaders/visibility-buffer.fragment.glsl.spv"
+  "taskShader": {
+    "file": "resources/shaders/visibility-buffer.task.glsl",
+    "entry_point": "main"
+  },
+  "meshShader": {
+    "file": "resources/shaders/visibility-buffer.mesh.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/visibility-buffer.fragment.glsl",
+    "entry_point": "main"
+  }
 }

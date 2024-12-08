@@ -73,7 +73,7 @@ std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildCompute
 }
 
 std::unique_ptr<Carrot::Pipeline> Carrot::ParticleBlueprint::buildRenderingPipeline(Carrot::Engine& engine) const {
-    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles.json") };
+    Carrot::PipelineDescription desc{ Carrot::IO::Resource("resources/pipelines/particles.pipeline") };
 
     desc.type = PipelineType::Particles;
     desc.fragmentShader = Carrot::IO::Resource({(std::uint8_t*)(fragmentShaderCode.data()), fragmentShaderCode.size() * sizeof(std::uint32_t)});

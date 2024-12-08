@@ -2,8 +2,14 @@
   "type": "skybox",
   "subpassIndex": 0,
   "vertexFormat": "SimpleVertex",
-  "vertexShader": "resources/shaders/skybox.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/skybox.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/skybox.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/skybox.fragment.glsl",
+    "entry_point": "main"
+  },
   "depthWrite": false,
   "depthTest": true,
   "cull": false,

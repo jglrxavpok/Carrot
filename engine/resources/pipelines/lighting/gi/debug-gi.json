@@ -1,6 +1,9 @@
 {
   "type": "compute",
-  "computeShader": "resources/shaders/lighting/gi/debug-gi.compute.glsl.spv",
+  "computeShader": {
+    "file": "resources/shaders/lighting/gi/debug-gi.compute.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "autofill",

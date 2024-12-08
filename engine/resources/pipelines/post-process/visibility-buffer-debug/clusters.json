@@ -1,4 +1,7 @@
 {
   "_import": "_template.json",
-  "fragmentShader": "resources/shaders/post-process/visibility-buffer-debug/clusters.glsl.spv"
+  "fragmentShader": {
+    "file": "resources/shaders/post-process/visibility-buffer-debug/clusters.glsl",
+    "entry_point": "main"
+  }
 }

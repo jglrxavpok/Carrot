@@ -10,5 +10,8 @@
       "setID": 1
     }
   ],
-  "computeShader": "resources/shaders/compute/compute-rt-clusters.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/compute/compute-rt-clusters.compute.glsl",
+    "entry_point": "main"
+  }
 }

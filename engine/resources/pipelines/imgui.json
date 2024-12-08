@@ -6,8 +6,14 @@
   "depthTest": false,
   "cull": false,
   "alphaBlending": true,
-  "vertexShader": "resources/shaders/imgui.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/imgui.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/imgui.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/imgui.fragment.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "autofill",

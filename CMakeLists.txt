@@ -206,6 +206,23 @@ function(add_spirv_shader SHADER_STAGE INPUT_FILE OUTPUT_FILE)
     )
 endfunction()
 
+function(add_pipeline PIPELINE_NAME)
+    set(depfile "${CMAKE_BINARY_DIR}/resources/pipelines/${PIPELINE_NAME}.pipeline.d")
+    set(basePath "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(outputBasePath "${CMAKE_BINARY_DIR}")
+    set(inputFilePath "resources/pipelines/${PIPELINE_NAME}.json")
+    add_custom_command(
+            OUTPUT "${outputBasePath}/resources/pipelines/${PIPELINE_NAME}.pipeline"
+            COMMAND pipelinecompiler "${basePath}" "${outputBasePath}" "${inputFilePath}"
+            COMMENT "Compiling pipeline ${PIPELINE_NAME}"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            DEPENDS "${basePath}/${inputFilePath}"
+            DEPENDS pipelinecompiler
+            BYPRODUCTS "${depfile}"
+            DEPFILE "${depfile}"
+    )
+endfunction()
+
 function(prepare_assets_folder INPUT_FOLDER OUTPUT_FOLDER)
     # TODO: set(depfile "${CMAKE_BINARY_DIR}/resources/shaders/${OUTPUT_FILE}.d")
     set(basePath "${CMAKE_CURRENT_SOURCE_DIR}/")
@@ -237,14 +254,12 @@ function(copy_all_resources)
     copy_resources(textures)
     copy_resources(textures/icons)
     copy_resources(models)
-    copy_resources(pipelines)
     copy_resources(materials)
     copy_resources(sounds)
     copy_resources(musics)
     copy_resources(node_templates)
     copy_resources(particles)
     copy_resources(fonts)
-    copy_resources(shaders)
     copy_resources(maps)
     copy_resources(scenes)
     copy_resources(text)

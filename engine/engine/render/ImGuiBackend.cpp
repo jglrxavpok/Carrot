@@ -11,7 +11,7 @@
 #include <core/render/VertexTypes.h>
 
 namespace Carrot::Render {
-    constexpr const char* PipelinePath = "resources/pipelines/imgui.json";
+    constexpr const char* PipelinePath = "resources/pipelines/imgui.pipeline";
     constexpr int MaxTextures = 1024;
 
     struct PImpl {

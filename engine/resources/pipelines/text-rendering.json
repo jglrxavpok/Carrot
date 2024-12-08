@@ -10,8 +10,14 @@
     "MAX_TEXTURES": 1,
     "MAX_MATERIALS": 1
   },
-  "vertexShader": "resources/shaders/text-rendering.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/text-rendering.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/text-rendering.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/text-rendering.fragment.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "materials",

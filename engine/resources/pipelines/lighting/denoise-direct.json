@@ -1,4 +1,7 @@
 {
   "_import": "denoise-base.json",
-  "computeShader": "resources/shaders/lighting/denoise-direct.compute.glsl.spv"
+  "computeShader": {
+    "file": "resources/shaders/lighting/denoise-direct.compute.glsl",
+    "entry_point": "main"
+  }
 }

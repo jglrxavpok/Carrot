@@ -8,8 +8,14 @@
   },
   "depthWrite": false,
   "depthTest": false,
-  "vertexShader": "resources/shaders/screenQuad.vertex.glsl.spv",
-  "fragmentShader": "resources/shaders/blit.fragment.glsl.spv",
+  "vertexShader": {
+    "file": "resources/shaders/screenQuad.vertex.glsl",
+    "entry_point": "main"
+  },
+  "fragmentShader": {
+    "file": "resources/shaders/blit.fragment.glsl",
+    "entry_point": "main"
+  },
   "descriptorSets": [
     {
       "type": "autofill",

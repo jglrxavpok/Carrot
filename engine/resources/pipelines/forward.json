@@ -32,5 +32,8 @@
   ],
   "depthWrite": false,
   "depthTest": true,
-  "vertexShader": "resources/shaders/gBuffer.vertex.glsl.spv"
+  "vertexShader": {
+    "file": "resources/shaders/gBuffer.vertex.glsl",
+    "entry_point": "main"
+  }
 }
