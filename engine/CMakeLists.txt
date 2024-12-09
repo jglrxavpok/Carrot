@@ -130,6 +130,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/Viewport.cpp
         ${EngineRoot}render/ViewportBufferObject.cpp
         ${EngineRoot}render/lighting/Lights.cpp
+        ${EngineRoot}render/lighting/LightingPasses.cpp
 
         ${EngineRoot}console/Console.cpp
 

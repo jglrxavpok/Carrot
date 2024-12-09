@@ -47,7 +47,7 @@ namespace Peeler {
     }
 
     Carrot::Render::FrameResource Application::addOutlinePass(GraphBuilder& graphBuilder, const Carrot::Render::FrameResource& finalRenderedImage) {
-        const auto& lightingPass = graphBuilder.getPassData<Carrot::Render::PassData::Lighting>("lighting").value();
+        const auto& lightingPass = graphBuilder.getPassData<Carrot::Render::PassData::LightingResources>("lighting").value();
         auto& outlinePass = graphBuilder.addPass<PassData::PostProcessing>("editor-outlines", [&](GraphBuilder& graph, Pass<PassData::PostProcessing>& pass, PassData::PostProcessing& data) {
             data.postLighting = graph.read(lightingPass.gBuffer.entityID, vk::ImageLayout::eShaderReadOnlyOptimal);
             data.postProcessed = graph.write(finalRenderedImage, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eColorAttachmentOptimal);

@@ -161,7 +161,7 @@ namespace Carrot::Render {
             std::array<FrameResource, 2> pingPong; // ping-pongs for denoising, use iterationCount % 2 for the index
         };
 
-        struct Lighting {
+        struct LightingResources {
             // inputs
             GBuffer gBuffer;
 
@@ -171,6 +171,13 @@ namespace Carrot::Render {
             Denoising ambientOcclusion;
 
             HashGridResources hashGrid;
+        };
+
+        struct Lighting {
+            FrameResource ambientOcclusion;
+            FrameResource direct;
+            FrameResource gi;
+            FrameResource reflections;
         };
 
         struct PostProcessing {

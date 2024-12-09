@@ -5,9 +5,6 @@
 #pragma once
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/VulkanRenderer.h"
-#include "engine/render/resources/Mesh.h"
-#include "engine/render/raytracing/RayTracer.h"
-#include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
 
 // TODO: Delete this class and move methods to renderer
@@ -22,7 +19,6 @@ namespace Carrot {
 
     public: // Render::Graph reimpl
         Render::Pass<Carrot::Render::PassData::GBuffer>& addGBufferPass(Render::GraphBuilder& graph, std::function<void(const Carrot::Render::CompiledPass& pass, const Render::Context&, vk::CommandBuffer&)> opaqueCallback, const Render::TextureSize& framebufferSize = {});
-        Render::Pass<Carrot::Render::PassData::Lighting>& addLightingPass(const Carrot::Render::PassData::GBuffer& opaqueData, Render::GraphBuilder& graph, const Render::TextureSize& framebufferSize = {});
 
     private:
         VulkanRenderer& renderer;

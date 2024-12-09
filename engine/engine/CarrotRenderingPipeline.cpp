@@ -24,6 +24,7 @@
 #include "core/Macros.h"
 #include "engine/render/ComputePipeline.h"
 #include "render/DebugBufferObject.h"
+#include "render/lighting/LightingPasses.h"
 
 const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carrot::Render::GraphBuilder& mainGraph, Carrot::Render::Eye eye,
                                                                            std::function<void(const Carrot::Render::CompiledPass&,
@@ -47,7 +48,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     lightingFramebufferSize.width = scaleFactor * framebufferSize.width;
     lightingFramebufferSize.height = scaleFactor * framebufferSize.height;
 
-    auto& lightingPass = getGBuffer().addLightingPass(visibilityPasses.gbuffer, mainGraph, lightingFramebufferSize);
+    auto lightingData = Carrot::Render::addLightingPasses(visibilityPasses.gbuffer, mainGraph, lightingFramebufferSize);
 
     struct DenoisingResult {
         Render::FrameResource input;
@@ -457,11 +458,11 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     auto& mergeLighting = mainGraph.addPass<LightingMerge>(
             "merge-lighting",
 
-            [this, lightingPass, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
-                data.gBuffer.readFrom(builder, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.directLighting = builder.read(lightingPass.getData().directLighting.pingPong[(lightingPass.getData().directLighting.iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.ambientOcclusion = builder.read(lightingPass.getData().ambientOcclusion.pingPong[(lightingPass.getData().ambientOcclusion.iterationCount+1) % 2], vk::ImageLayout::eShaderReadOnlyOptimal);
-                data.reflections = builder.read(lightingPass.getData().reflectionsNoisy, vk::ImageLayout::eShaderReadOnlyOptimal);
+            [this, lightingData, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
+                data.gBuffer.readFrom(builder, visibilityPasses.gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.directLighting = builder.read(lightingData.direct, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.ambientOcclusion = builder.read(lightingData.ambientOcclusion, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.reflections = builder.read(lightingData.reflections, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 for(int i = DEBUG_VISIBILITY_BUFFER_FIRST; i <= DEBUG_VISIBILITY_BUFFER_LAST; i++) {
                     int debugIndex = i - DEBUG_VISIBILITY_BUFFER_FIRST;
@@ -561,7 +562,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     );
 
 
-    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, lightingPass.getData().gBuffer, lightingPass.getData().gBuffer.positions, framebufferSize);
+    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, visibilityPasses.gbuffer, visibilityPasses.gbuffer.positions, framebufferSize);
 
     return finalTAA.getData().denoisedResult;
 }

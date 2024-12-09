@@ -104,8 +104,11 @@ public:
 
         const Carrot::IO::VFS::Path gameDll = root / std::string_view{"bin"} / dllName;
 
-        verify(GetVFS().exists(gameDll), "Game DLL not found!!");
-        GetCSharpBindings().loadGameAssembly(gameDll);
+        if(!GetVFS().exists(gameDll)) {
+            Carrot::Log::error("Game DLL not found!!");
+        } else {
+            GetCSharpBindings().loadGameAssembly(gameDll);
+        }
 
         {
             openScene(description["scene"].GetString());
