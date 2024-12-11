@@ -169,6 +169,7 @@ namespace Carrot::Render {
             FrameResource reflectionsNoisy; // noisy output
             Denoising directLighting; //< also contains shadows
             Denoising ambientOcclusion;
+            Denoising gi;
 
             HashGridResources hashGrid;
         };

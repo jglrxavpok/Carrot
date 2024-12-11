@@ -295,7 +295,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         engine.getLogicalDevice().updateDescriptorSets(writes, {});
     }
 
-    auto computeStage = ShaderModule(engine.getVulkanDriver(), "resources/shaders/compute/animation-skinning.compute.glsl.spv");
+    auto computeStage = ShaderModule("resources/shaders/compute/animation-skinning.compute.glsl.spv", "main");
 
     // create the pipeline
     vk::DescriptorSetLayout setLayouts[] = {

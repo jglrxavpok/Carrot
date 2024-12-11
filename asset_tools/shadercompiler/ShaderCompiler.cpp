@@ -121,7 +121,7 @@ namespace ShaderCompiler {
 
         glslang::TShader shader(stage);
 
-        shader.setEntryPoint(entryPointName);
+        shader.setEntryPoint("main");
         shader.setSourceEntryPoint(entryPointName);
         shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
         shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);

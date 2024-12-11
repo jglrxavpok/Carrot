@@ -1,8 +1,8 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/decay-cells.compute.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/lighting/gi/gi.compute.glsl",
+    "entry_point": "decayCells"
   },
   "descriptorSets": [
     {

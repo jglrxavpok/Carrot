@@ -215,6 +215,7 @@ namespace Carrot::Render {
                      };
                     addDenoisingResources("Ambient Occlusion", vk::Format::eR8Unorm, resolveData.ambientOcclusion);
                     addDenoisingResources("Direct Lighting", vk::Format::eR32G32B32A32Sfloat, resolveData.directLighting);
+                    addDenoisingResources("GI", vk::Format::eR32G32B32A32Sfloat, resolveData.gi);
 
                     resolveData.reflectionsNoisy = graph.createStorageTarget("Reflections (noisy)",
                                                                     vk::Format::eR32G32B32A32Sfloat,
@@ -586,7 +587,7 @@ namespace Carrot::Render {
         PassData::Lighting data {
             .ambientOcclusion = lightingPass.getData().ambientOcclusion.pingPong[(lightingPass.getData().ambientOcclusion.iterationCount+1) % 2],
             .direct = lightingPass.getData().directLighting.pingPong[(lightingPass.getData().directLighting.iterationCount+1) % 2],
-            // TODO: gi
+            .gi = lightingPass.getData().gi.pingPong[(lightingPass.getData().gi.iterationCount+1) % 2],
             .reflections = lightingPass.getData().reflectionsNoisy,
         };
         return data;

@@ -185,7 +185,7 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     }
     engine.getLogicalDevice().updateDescriptorSets(writes, {});
 
-    auto computeStage = ShaderModule(engine.getVulkanDriver(), shaderResource);
+    auto computeStage = ShaderModule(shaderResource, "main");
 
     // create the pipeline
     std::vector<vk::DescriptorSetLayout> setLayouts{};

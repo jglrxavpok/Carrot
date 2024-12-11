@@ -4,40 +4,15 @@
 
 #include "ShaderStages.h"
 
-Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vector<std::string>& filenames): driver(driver) {
-    for(const auto& filename: filenames) {
-        auto stage = static_cast<vk::ShaderStageFlagBits>(0);
-        if(filename.ends_with(".vertex.glsl.spv")) {
-            stage = vk::ShaderStageFlagBits::eVertex;
-        }
-        if(filename.ends_with(".fragment.glsl.spv")) {
-            stage = vk::ShaderStageFlagBits::eFragment;
-        }
-        if(filename.ends_with(".rchit.spv")) {
-            stage = vk::ShaderStageFlagBits::eClosestHitKHR;
-        }
-        if(filename.ends_with(".rmiss.spv")) {
-            stage = vk::ShaderStageFlagBits::eMissKHR;
-        }
-        if(filename.ends_with(".rgen.spv")) {
-            stage = vk::ShaderStageFlagBits::eRaygenKHR;
-        }
-        if(filename.ends_with(".compute.spv")) {
-            stage = vk::ShaderStageFlagBits::eCompute;
-        }
-        if(filename.ends_with(".mesh.spv")) {
-            stage = vk::ShaderStageFlagBits::eMeshEXT;
-        }
-        if(filename.ends_with(".task.spv")) {
-            stage = vk::ShaderStageFlagBits::eTaskEXT;
-        }
-        stages.emplace_back(std::make_pair(stage, std::move(std::make_unique<ShaderModule>(driver, filename))));
-    }
-}
-
-Carrot::ShaderStages::ShaderStages(Carrot::VulkanDriver& driver, const std::vector<Render::ShaderSource>& resources, const std::vector<vk::ShaderStageFlagBits>& stages): driver(driver) {
+Carrot::ShaderStages::ShaderStages(
+    const Carrot::Vector<Render::ShaderSource>& resources,
+    const Carrot::Vector<vk::ShaderStageFlagBits>& stages,
+    const Carrot::Vector<std::string>& entryPoints
+    ) {
+    verify(resources.size() == stages.size(), "mismatched sizes");
+    verify(resources.size() == entryPoints.size(), "mismatched sizes");
     for(size_t i = 0; i < resources.size(); i++) {
-        this->stages.emplace_back(std::make_pair(stages[i], std::move(std::make_unique<ShaderModule>(driver, resources[i]))));
+        this->stages.emplace_back(std::make_pair(stages[i], std::move(std::make_unique<ShaderModule>(resources[i], entryPoints[i]))));
     }
 }
 
@@ -56,7 +31,7 @@ std::vector<vk::PipelineShaderStageCreateInfo> Carrot::ShaderStages::createPipel
 }
 
 vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout(std::uint32_t setID, const std::map<std::string, std::uint32_t>& constants) const {
-    auto& device = driver.getLogicalDevice();
+    auto& device = GetVulkanDriver().getLogicalDevice();
 
     std::vector<NamedBinding> bindings{};
 
@@ -73,7 +48,7 @@ vk::UniqueDescriptorSetLayout Carrot::ShaderStages::createDescriptorSetLayout(st
             .pBindings = vkBindings.data(),
     };
 
-    return device.createDescriptorSetLayoutUnique(createInfo, driver.getAllocationCallbacks());
+    return device.createDescriptorSetLayoutUnique(createInfo, GetVulkanDriver().getAllocationCallbacks());
 }
 
 const std::vector<std::pair<vk::ShaderStageFlagBits, std::unique_ptr<Carrot::ShaderModule>>>& Carrot::ShaderStages::getModuleMap() const {

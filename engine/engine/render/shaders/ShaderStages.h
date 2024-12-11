@@ -8,16 +8,15 @@
 #include "engine/vulkan/VulkanDriver.h"
 #include "ShaderModule.h"
 #include <map>
+#include <core/containers/Vector.hpp>
 
 namespace Carrot {
     class ShaderStages {
     private:
-        Carrot::VulkanDriver& driver;
         std::vector<std::pair<vk::ShaderStageFlagBits, std::unique_ptr<Carrot::ShaderModule>>> stages{};
 
     public:
-        explicit ShaderStages(Carrot::VulkanDriver& driver, const std::vector<std::string>& filenames);
-        explicit ShaderStages(Carrot::VulkanDriver& driver, const std::vector<Render::ShaderSource>& filenames, const std::vector<vk::ShaderStageFlagBits>& stages);
+        explicit ShaderStages(const Carrot::Vector<Render::ShaderSource>& filenames, const Vector<vk::ShaderStageFlagBits>& stages, const Carrot::Vector<std::string>& entryPoints);
 
     public:
         [[nodiscard]] std::vector<vk::PipelineShaderStageCreateInfo> createPipelineShaderStages(const vk::SpecializationInfo* specialization = nullptr) const;

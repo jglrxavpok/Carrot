@@ -159,32 +159,41 @@ void Carrot::Pipeline::reloadShaders(bool needDeviceWait) {
 void Carrot::Pipeline::createGraphicsTemplate() {
     if(description.meshShader) {
         verify(!description.vertexShader, "Pipelines with mesh shaders cannot use vertex shaders!");
-        std::vector<Render::ShaderSource> sources {
+        Vector sources {
             description.meshShader,
             description.fragmentShader
         };
-        std::vector<vk::ShaderStageFlagBits> stageList {
+        Vector stageList {
             vk::ShaderStageFlagBits::eMeshEXT,
             vk::ShaderStageFlagBits::eFragment
         };
+        Vector<std::string> entryPoints {
+            "main",
+            "main",
+        };
         if(description.taskShader) {
-            sources.emplace_back(description.taskShader);
-            stageList.emplace_back(vk::ShaderStageFlagBits::eTaskEXT);
+            sources.emplaceBack(description.taskShader);
+            stageList.emplaceBack(vk::ShaderStageFlagBits::eTaskEXT);
+            entryPoints.emplaceBack("main");
         }
-        stages = make_unique<Carrot::ShaderStages>(
-            driver,
+        stages = std::make_unique<Carrot::ShaderStages>(
             sources,
-            stageList
+            stageList,
+            entryPoints
         );
     } else {
-        stages = make_unique<Carrot::ShaderStages>(driver,
-                                                   std::vector<Render::ShaderSource> {
+        stages = std::make_unique<Carrot::ShaderStages>(
+                                                   Vector<Render::ShaderSource> {
                                                            description.vertexShader,
                                                            description.fragmentShader
                                                    },
-                                                   std::vector<vk::ShaderStageFlagBits> {
+                                                   Vector<vk::ShaderStageFlagBits> {
                                                            vk::ShaderStageFlagBits::eVertex,
                                                            vk::ShaderStageFlagBits::eFragment
+                                                   },
+                                                   Vector<std::string> {
+                                                        "main",
+                                                        "main",
                                                    }
         );
 
@@ -398,12 +407,15 @@ void Carrot::Pipeline::createGraphicsTemplate() {
 }
 
 void Carrot::Pipeline::createComputeTemplate() {
-    stages = make_unique<Carrot::ShaderStages>(driver,
-                                               std::vector<Render::ShaderSource> {
-                                                       description.computeShader
+    stages = std::make_unique<Carrot::ShaderStages>(
+                                               Vector<Render::ShaderSource> {
+                                                   description.computeShader
                                                },
-                                               std::vector<vk::ShaderStageFlagBits> {
-                                                       vk::ShaderStageFlagBits::eCompute
+                                               Vector<vk::ShaderStageFlagBits> {
+                                                   vk::ShaderStageFlagBits::eCompute
+                                               },
+                                               Vector<std::string> {
+                                                   "main"
                                                }
     );
 }

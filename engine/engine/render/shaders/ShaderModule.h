@@ -27,7 +27,7 @@ namespace Carrot {
         };
 
     public:
-        explicit ShaderModule(Carrot::VulkanDriver& driver, const Render::ShaderSource& source, const std::string& entryPoint = "main");
+        explicit ShaderModule(const Render::ShaderSource& source, const std::string& entryPoint = "main");
 
         [[nodiscard]] vk::PipelineShaderStageCreateInfo createPipelineShaderStage(vk::ShaderStageFlagBits stage, const vk::SpecializationInfo* specialization) const;
 
@@ -38,7 +38,6 @@ namespace Carrot {
         bool canBeHotReloaded() const;
 
     private:
-        Carrot::VulkanDriver& driver;
         vk::UniqueShaderModule vkModule{};
         std::string entryPoint = "main";
         spirv_cross::ParsedIR parsedCode{};

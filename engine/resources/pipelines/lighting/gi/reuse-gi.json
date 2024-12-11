@@ -1,8 +1,8 @@
 {
   "type": "compute",
   "computeShader": {
-    "file": "resources/shaders/lighting/gi/reuse-gi.compute.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/lighting/gi/gi.compute.glsl",
+    "entry_point": "reuseCells"
   },
   "descriptorSets": [
     {

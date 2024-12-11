@@ -15,7 +15,32 @@ layout(push_constant) uniform PushConstant {
     uint frameCount;
 };
 
-void main() {
+void clearCells() {
+    uint cellIndex = gl_GlobalInvocationID.x;
+
+    if(cellIndex == 0) {
+        hashGridResetCounters(CURRENT_FRAME);
+    }
+
+    if(cellIndex < maxCellIndex) {
+        hashGridClear(CURRENT_FRAME, cellIndex);
+    }
+}
+
+void decayCells() {
+    uint cellIndex = gl_GlobalInvocationID.x;
+
+    if(cellIndex >= maxCellIndex) {
+        return;
+    }
+
+    const uint decayTime = 30;
+    if(grids[CURRENT_FRAME].pLastTouchedFrame.v[cellIndex]+decayTime < frameCount) {
+        hashGridClear(CURRENT_FRAME, cellIndex);
+    }
+}
+
+void reuseCells() {
     const uint currentCellIndex = gl_GlobalInvocationID.x;
 
     if(currentCellIndex > maxCellIndex) {

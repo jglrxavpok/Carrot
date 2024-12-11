@@ -14,15 +14,15 @@
 
 static Carrot::Log::Category category { "Shader" };
 
-Carrot::ShaderModule::ShaderModule(Carrot::VulkanDriver& driver, const Render::ShaderSource& source, const std::string& entryPoint)
-        : driver(driver), entryPoint(entryPoint), source(source) {
+Carrot::ShaderModule::ShaderModule(const Render::ShaderSource& source, const std::string& entryPoint)
+        : entryPoint(entryPoint), source(source) {
     reload();
 }
 
 void Carrot::ShaderModule::reload() {
     Carrot::Log::info(category, "Loading shader %s", source.getName().c_str());
     auto code = source.getCode();
-    auto& device = driver.getLogicalDevice();
+    auto& device = GetVulkanDriver().getLogicalDevice();
 
     std::vector<std::uint32_t> asWords;
     asWords.resize(code.size() / sizeof(std::uint32_t));
@@ -35,7 +35,7 @@ void Carrot::ShaderModule::reload() {
     vkModule = device.createShaderModuleUnique(vk::ShaderModuleCreateInfo{
             .codeSize = static_cast<uint32_t>(code.size()),
             .pCode = reinterpret_cast<const uint32_t*>(code.data()),
-    }, driver.getAllocationCallbacks());
+    }, GetVulkanDriver().getAllocationCallbacks());
 
     source.clearModifyFlag();
 }
