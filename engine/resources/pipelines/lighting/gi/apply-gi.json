@@ -1,0 +1,29 @@
+{
+  "type": "compute",
+  "computeShader": {
+    "file": "resources/shaders/lighting/gi/apply-gi.compute.glsl",
+    "entry_point": "main"
+  },
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "autofill",
+      "setID": 2
+    },
+    {
+      "type": "camera",
+      "setID": 3
+    },
+    {
+      "type": "materials",
+      "setID": 4
+    }
+  ]
+}

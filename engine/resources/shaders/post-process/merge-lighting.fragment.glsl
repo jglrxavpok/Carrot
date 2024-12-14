@@ -12,7 +12,8 @@ DEFINE_GBUFFER_INPUTS(0)
 layout(set = 1, binding = 0) uniform texture2D directLighting;
 layout(set = 1, binding = 1) uniform texture2D aoLighting;
 layout(set = 1, binding = 2) uniform texture2D reflections;
-layout(set = 1, binding = 3) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
+layout(set = 1, binding = 3) uniform texture2D gi;
+layout(set = 1, binding = 4) uniform texture2D visibilityBufferDebug[DEBUG_VISIBILITY_BUFFER_LAST - DEBUG_VISIBILITY_BUFFER_FIRST+1];
 DEBUG_OPTIONS_SET(2)
 DEFINE_CAMERA_SET(3)
 
@@ -39,6 +40,9 @@ void main() {
     vec4 albedoColor = g.albedo;
     vec3 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv).rgb;
     vec3 reflectionsColor = texture(sampler2D(reflections, gLinearSampler), uv).rgb;
+    vec3 giColor = texture(sampler2D(gi, gLinearSampler), uv).rgb;
+    lightingColor += giColor;
+
     float ao = texture(sampler2D(aoLighting, gLinearSampler), uv).r;
 
     float currDepth = texture(sampler2D(gDepth, gLinearSampler), uv).r;

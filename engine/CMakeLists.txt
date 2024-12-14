@@ -271,6 +271,7 @@ set(PIPELINES
         compute/firefly-rejection
         compute/spatial-denoise
 
+        lighting/gi/apply-gi
         lighting/gi/clear-grid
         lighting/gi/debug-gi
         lighting/gi/decay-cells

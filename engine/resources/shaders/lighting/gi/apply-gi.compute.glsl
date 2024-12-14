@@ -4,8 +4,12 @@
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
+#include <includes/materials.glsl>
+MATERIAL_SYSTEM_SET(4)
+#include <includes/rng.glsl>
+
 #define HASH_GRID_SET_ID 0
-#include "hash-grid.include.glsl"
+#include "gi-interface.include.glsl"
 
 const uint LOCAL_SIZE = 32;
 layout (local_size_x = LOCAL_SIZE) in;
@@ -22,6 +26,7 @@ DEFINE_GBUFFER_INPUTS(2)
 DEFINE_CAMERA_SET(3)
 
 
+
 void main() {
     uvec2 pixel = gl_GlobalInvocationID.xy;
 
@@ -34,22 +39,27 @@ void main() {
     GBuffer g = unpackGBufferLight(uv);
 
     if(g.albedo.a < 0.00001f) {
-        imageStore(outputImage, ivec2(pixel), vec4(pixel.x % 2, pixel.y % 2, 0, 1));
+        imageStore(outputImage, ivec2(pixel), vec4(0, 0, 0, 0));
         return;
     }
     vec3 cameraPos = (cbo.inverseView * vec4(0,0,0,1)).xyz;
     vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1)).xyz;
     vec3 incomingRay = normalize(worldPos - cameraPos);
 
-    HashCellKey key;
-    key.hitPosition = worldPos;
-    key.direction = incomingRay;
-    uint cellIndex = hashGridFind(CURRENT_FRAME, key);
-    vec4 giResult;
-    if(cellIndex == InvalidCellIndex) {
-        giResult = vec4(pixel.x/4 % 2, 0, pixel.y/4 % 2, 1);
-    } else {
-        giResult = vec4(hashGridRead(CURRENT_FRAME, cellIndex), 1) / hashGridGetSampleCount(CURRENT_FRAME, cellIndex);
-    }
-    imageStore(outputImage, ivec2(pixel), giResult);
+    RandomSampler rng;
+    // TODO: initRNG(rng, uv, frameWidth, frameHeight, frameCount);
+    initRNG(rng, uv, 1920, 1080, 0);
+
+    GIInputs giInputs;
+    giInputs.hitPosition = worldPos;
+    giInputs.cameraPosition = cameraPos;
+    giInputs.incomingRay = incomingRay;
+    giInputs.frameIndex = 0;//TODO push.frameCount;
+    giInputs.surfaceNormal = g.viewTBN[2];
+    giInputs.metallic = g.metallicness;
+    giInputs.roughness = g.roughness;
+    giInputs.surfaceColor = g.albedo.rgb;
+
+    vec3 giResult = GetGICurrentFrame(rng, giInputs);
+    imageStore(outputImage, ivec2(pixel), vec4(giResult, 1));
 }

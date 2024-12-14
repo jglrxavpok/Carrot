@@ -463,7 +463,7 @@ namespace Carrot::Render {
         bool isBuffer = sourceResource.type == ResourceType::StorageBuffer;
 
         if(isBuffer) {
-            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.json");
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.pipeline");
 
             auto& buffer = getBuffer(sourceResource, context.swapchainIndex);
 
@@ -485,7 +485,7 @@ namespace Carrot::Render {
             destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
 
         } else {
-            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.json");
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.pipeline");
 
             pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
 

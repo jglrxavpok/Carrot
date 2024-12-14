@@ -150,8 +150,6 @@ void main() {
         giInputs.surfaceColor = albedo;
         vec3 gi = GetOrComputeRayResult(rng, giInputs);
 
-        outDirectLighting.rgb += gi;
-
         distanceToCamera = length(gbuffer.viewPosition);
     } else {
         vec4 viewSpaceDir = cbo.inverseNonJitteredProjection * vec4(inUV.x*2-1, inUV.y*2-1, 0.0, 1);

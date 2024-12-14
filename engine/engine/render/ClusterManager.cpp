@@ -616,7 +616,7 @@ namespace Carrot::Render {
     std::shared_ptr<Carrot::Pipeline> ClusterManager::getPrePassPipeline(const Carrot::Render::Context& renderContext) {
         auto& pPipeline = perViewport[renderContext.pViewport].prePassPipeline;
         if(!pPipeline) {
-            pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/compute-rt-clusters.json", (std::uint64_t)renderContext.pViewport);
+            pPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/compute-rt-clusters.pipeline", (std::uint64_t)renderContext.pViewport);
         }
         return pPipeline;
     }
