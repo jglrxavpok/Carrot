@@ -24,13 +24,11 @@
     },
     {
       "type": "autofill",
-      "setID": 4,
-      "_comment": "unused"
+      "setID": 4
     },
     {
-      "type": "autofill",
-      "setID": 5,
-      "_comment": "unused"
+      "type": "camera",
+      "setID": 5
     },
     {
       "type": "autofill",

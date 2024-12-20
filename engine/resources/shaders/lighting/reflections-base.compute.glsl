@@ -149,8 +149,8 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             giInputs.roughness = roughness;
             giInputs.surfaceColor = pbrInputsAtPoint.baseColor;
 
-            vec3 gi = GetOrComputeRayResult(rng, giInputs);
-            vec3 lightColor = (lighting + emissive);
+            vec3 gi = GetGINoUpdate(giInputs);
+            vec3 lightColor = (lighting + emissive + gi);
             return lightColor * brdf;
         } else {
             vec3 worldViewDir = direction;

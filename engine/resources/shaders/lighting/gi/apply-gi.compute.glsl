@@ -25,7 +25,9 @@ DEFINE_GBUFFER_INPUTS(2)
 #include <includes/camera.glsl>
 DEFINE_CAMERA_SET(3)
 
-
+layout(push_constant) uniform PushConstant {
+    uint frameCount;
+};
 
 void main() {
     uvec2 pixel = gl_GlobalInvocationID.xy;
@@ -47,14 +49,13 @@ void main() {
     vec3 incomingRay = normalize(worldPos - cameraPos);
 
     RandomSampler rng;
-    // TODO: initRNG(rng, uv, frameWidth, frameHeight, frameCount);
-    initRNG(rng, uv, 1920, 1080, 0);
+    initRNG(rng, uv, size.x, size.y, frameCount);
 
     GIInputs giInputs;
     giInputs.hitPosition = worldPos;
     giInputs.cameraPosition = cameraPos;
     giInputs.incomingRay = incomingRay;
-    giInputs.frameIndex = 0;//TODO push.frameCount;
+    giInputs.frameIndex = frameCount;
     giInputs.surfaceNormal = g.viewTBN[2];
     giInputs.metallic = g.metallicness;
     giInputs.roughness = g.roughness;

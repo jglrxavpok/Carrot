@@ -64,7 +64,7 @@ void reuseCells() {
     vec3 previousSample = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
     uint currentSampleCount = hashGridGetSampleCount(CURRENT_FRAME, currentCellIndex);
     uint previousSampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousCellIndex);
-    uint totalSampleCount = min(100, currentSampleCount+previousSampleCount);
+    uint totalSampleCount = min(10000, currentSampleCount+previousSampleCount);
 
     vec3 combined;
     float combinedSampleCount;

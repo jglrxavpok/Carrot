@@ -13,9 +13,9 @@
 
 namespace Carrot::Render {
 
-    static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1024*1024*16;
-    static constexpr std::uint64_t HashGridCellsPerBucket = 128;
-    static constexpr std::uint64_t HashGridBucketCount = 1024;
+    static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1;
+    static constexpr std::uint64_t HashGridCellsPerBucket = 32;
+    static constexpr std::uint64_t HashGridBucketCount = 1024*256;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
 
     struct HashGrid {
@@ -493,34 +493,46 @@ namespace Carrot::Render {
                 const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
                 cmds.dispatch(groupX, 1, 1);
             });
-        auto updateGICells = graph.addPass<GIData>(Carrot::sprintf("update-gi"),
-            [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
+
+        // used for randomness
+        struct PushConstantNoRT {
+            std::uint32_t frameCount;
+            std::uint32_t frameWidth;
+            std::uint32_t frameHeight;
+        };
+        struct PushConstantRT: PushConstantNoRT {
+            VkBool32 hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
+        };
+
+        auto preparePushConstant = [framebufferSize](PushConstantNoRT& block, const Carrot::Render::Context& frame) {
+            block.frameCount = GetRenderer().getFrameCount();
+            if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
+                block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
+                block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
+            } else {
+                block.frameWidth = framebufferSize.width;
+                block.frameHeight = framebufferSize.height;
+            }
+        };
+
+        struct GIUpdateData {
+            GIData gi;
+            PassData::GBuffer gbuffer;
+        };
+        auto updateGICells = graph.addPass<GIUpdateData>(Carrot::sprintf("update-gi"),
+            [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
-                data.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
+                data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eGeneral);
+                data.gi.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
             },
-            [framebufferSize](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+            [framebufferSize, preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Update GI cells");
 
                 auto& renderer = frame.renderer;
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/update-cells", (std::uint64_t)&pass);
-                // used for randomness
-                struct PushConstantNoRT {
-                    std::uint32_t frameCount;
-                    std::uint32_t frameWidth;
-                    std::uint32_t frameHeight;
-                };
-                struct PushConstantRT: PushConstantNoRT {
-                    VkBool32 hasTLAS = false; // used only if RT is supported by GPU. Shader compilation will strip this member in shaders where it is unused!
-                } block;
 
-                block.frameCount = renderer.getFrameCount();
-                if(framebufferSize.type == Render::TextureSize::Type::SwapchainProportional) {
-                    block.frameWidth = framebufferSize.width * frame.pViewport->getWidth();
-                    block.frameHeight = framebufferSize.height * frame.pViewport->getHeight();
-                } else {
-                    block.frameWidth = framebufferSize.width;
-                    block.frameHeight = framebufferSize.height;
-                }
+                PushConstantRT block;
+                preparePushConstant(block, frame);
 
                 bool useRaytracingVersion = true; // TODO
                 Carrot::AccelerationStructure* pTLAS = nullptr;
@@ -554,19 +566,20 @@ namespace Carrot::Render {
                     skyboxCubeMap = renderer.getBlackCubeMapTexture();
                 }
 
-                renderer.bindTexture(*pipeline, frame, *skyboxCubeMap, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::eCube, 0);
-                HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+                HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 4, vk::ImageLayout::eGeneral);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                const std::size_t localSize = 256;
-                const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
-                cmds.dispatch(groupX, 1, 1);
+                const std::size_t localSize = 32;
+                const std::size_t groupX = (block.frameWidth + localSize-1) / localSize;
+                const std::size_t groupY = (block.frameHeight + localSize-1) / localSize;
+                cmds.dispatch(groupX, groupY, 1);
             });
 
         auto& reuseGICells = graph.addPass<GIData>("reuse-gi",
             [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
                 pass.rasterized = false;
-                data.hashGrid = HashGrid::write(graph, updateGICells.getData().hashGrid);
+                data.hashGrid = HashGrid::write(graph, updateGICells.getData().gi.hashGrid);
             },
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Reuse GI cells");
@@ -624,12 +637,14 @@ namespace Carrot::Render {
                 data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
                 addDenoisingResources("gi", vk::Format::eR8G8B8A8Unorm, data.output);
             },
-            [](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
+            [preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Final GI");
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/apply-gi", (std::uint64_t)&pass);
                 auto& outputTexture = pass.getGraph().getTexture(data.output.noisy, frame.swapchainIndex);
 
+                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                    frame.renderer.getFrameCount());
                 HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);

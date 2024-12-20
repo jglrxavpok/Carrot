@@ -2,8 +2,9 @@
 
 // Trace rays to update world-space probes
 
-const uint LOCAL_SIZE = 256;
+const uint LOCAL_SIZE = 32;
 layout (local_size_x = LOCAL_SIZE) in;
+layout (local_size_y = LOCAL_SIZE) in;
 
 layout(push_constant) uniform PushConstant {
     uint frameCount;
@@ -30,6 +31,13 @@ LIGHT_SET(3)
 #include <lighting/brdf.glsl>
 #include <lighting/base.common.glsl>
 
+#include <includes/gbuffer.glsl>
+#include "includes/gbuffer_input.glsl"
+#include <includes/camera.glsl>
+DEFINE_GBUFFER_INPUTS(4)
+DEFINE_CAMERA_SET(5)
+#include "includes/gbuffer_unpack.glsl"
+
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
@@ -38,43 +46,68 @@ LIGHT_SET(3)
 #define HASH_GRID_SET_ID 0
 #include "gi-interface.include.glsl"
 
-layout(set = 1, binding = 0) uniform samplerCube gSkybox3D;
-
 #include <lighting/rt.include.glsl>
 
 void main() {
-    uint updateIndex = gl_GlobalInvocationID.x;
+    uvec2 pixel = gl_GlobalInvocationID.xy;
 
-    uint maxIndex = grids[CURRENT_FRAME].updateCount;
-    if(updateIndex >= maxIndex) {
+    uvec2 size = uvec2(push.frameWidth, push.frameHeight);
+    if(pixel.x >= size.x || pixel.y >= size.y) {
         return;
     }
 
-    CellUpdate update = grids[CURRENT_FRAME].pUpdates.v[updateIndex];
-    uint cellIndex = update.cellIndex;
+    vec2 uv = vec2(pixel) / size;
+    GBuffer gbuffer = unpackGBuffer(uv);
 
     RandomSampler rng;
-    initRNG(rng, vec2(cellIndex, updateIndex) / maxIndex, maxIndex, maxIndex, push.frameCount);
+    initRNG(rng, uv, size.x, size.y, push.frameCount);
+
+    vec3 gAlbedo = gbuffer.albedo.rgb;
+    vec3 gEmissive = gbuffer.emissiveColor.rgb;
+    vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
+    vec3 gWorldPos = hWorldPos.xyz / hWorldPos.w;
+
+    // TODO: store directly in CBO
+    mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
+    mat3 inverseNormalView = inverse(cboNormalView);
+    vec3 gNormal = inverseNormalView * gbuffer.viewTBN[2];
+    vec3 gTangent = inverseNormalView * gbuffer.viewTBN[0];
+    vec2 gMetallicRoughness = vec2(gbuffer.metallicness, gbuffer.roughness);
+
+    vec4 hCameraPos = cbo.inverseView * vec4(0,0,0,1);
+    vec3 cameraPos = hCameraPos.xyz / hCameraPos.w;
+    vec3 directionFromCamera = normalize(gWorldPos - cameraPos);
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
     // specular part
     const int MAX_SAMPLES = 1;// TODO: not working?
+    const int MAX_BOUNCES = 3; // TODO: spec constant
 
     vec3 totalRadiance = vec3(0.0);
     float totalWeight = 0.0f;
 
+    vec3 bounceRadiance[MAX_BOUNCES] = {
+        vec3(0),
+        vec3(0),
+        vec3(0),
+    };
+    uint bounceCellIndices[MAX_BOUNCES] = {
+        InvalidCellIndex,
+        InvalidCellIndex,
+        InvalidCellIndex,
+    };
+    HashCellKey bounceKeys[MAX_BOUNCES];
+
     for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
         vec3 newRadiance = vec3(0.0);
-        vec3 emissiveColor = vec3(0.0); // TODO
-        vec3 albedo = update.surfaceColor;
-        vec3 startPos = update.key.hitPosition;
-        vec3 incomingRay = update.key.direction;
-        float metallic = update.metallic;
-        float roughness = update.roughness;
-        vec3 surfaceNormal = update.surfaceNormal;
-        vec3 surfaceTangent;
-        vec3 _;
-        computeTangents(update.surfaceNormal, surfaceTangent, _);
+        vec3 emissiveColor = gEmissive;
+        vec3 albedo = gAlbedo;
+        vec3 startPos = gWorldPos;
+        vec3 incomingRay = directionFromCamera;
+        float metallic = gMetallicRoughness.x;
+        float roughness = gMetallicRoughness.y;
+        vec3 surfaceNormal = gNormal;
+        vec3 surfaceTangent = gTangent;
         if(isnan(dot(surfaceNormal, surfaceNormal))) {
             break;
         }
@@ -94,8 +127,15 @@ void main() {
         vec3 beta = vec3(1.0);
 
         float weight = 1.0f;
-        const int MAX_BOUNCES = 3; // TODO: spec constant
         for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
+            // TODO: jitter
+            bounceKeys[bounceIndex].hitPosition = startPos;
+            bounceKeys[bounceIndex].direction = incomingRay;
+            bool stopHere = false;
+            bool wasNew;
+            vec3 currentBounceRadiance = vec3(0.0);
+            bounceCellIndices[bounceIndex] = hashGridInsert(CURRENT_FRAME, bounceKeys[bounceIndex], wasNew);
+
             // diffuse part
             PbrInputs pbr;
             vec3 V = -incomingRay;
@@ -109,12 +149,12 @@ void main() {
 
             // todo: move out of loop
             {
-                newRadiance += beta * (emissiveColor + lights.ambientColor);
+                currentBounceRadiance += emissiveColor + lights.ambientColor;
                 const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
 
                 float lightPDF = 1.0f;
                 vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
-                newRadiance += beta * lightAtPoint * lightPDF;
+                currentBounceRadiance += lightAtPoint * lightPDF;
             }
 
             // reflective part
@@ -150,6 +190,7 @@ void main() {
 
                 vec3 albedo = _sample(albedo).rgb;
                 vec3 emissive = _sample(emissive).rgb;
+                vec2 metallicRoughness = _sample(metallicRoughness).xy;
 
                 // normal mapping
                 vec3 mappedNormal;
@@ -166,11 +207,11 @@ void main() {
                 }
                 float lightPDF = 1.0f;
 
-                float roughnessAtPoint = 1.0f; // TODO: fetch from material
+                float roughnessAtPoint = metallicRoughness.y;
                 PbrInputs pbrInputsAtPoint;
                 pbrInputsAtPoint.alpha = roughnessAtPoint * roughnessAtPoint;
                 pbrInputsAtPoint.baseColor = intersection.surfaceColor;
-                pbrInputsAtPoint.metallic = 0.0f;// TODO: fetch from material
+                pbrInputsAtPoint.metallic = metallicRoughness.x;
                 pbrInputsAtPoint.V = -specularDir;
                 pbrInputsAtPoint.N = mappedNormal;// looks correct but not sure why
                 pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
@@ -178,11 +219,12 @@ void main() {
                 GIInputs giInputs;
                 giInputs.hitPosition = intersection.position;
                 giInputs.cameraPosition = startPos; // is this valid?
-                giInputs.incomingRay = specularDir;
+                giInputs.incomingRay = -specularDir;
                 giInputs.surfaceNormal = mappedNormal;
                 giInputs.metallic = pbrInputsAtPoint.metallic;
                 giInputs.roughness = roughnessAtPoint;
                 giInputs.frameIndex = push.frameCount;
+                vec3 gi = GetGINoUpdate(giInputs);
 
                 startPos = intersection.position;
                 incomingRay = -specularDir;
@@ -194,7 +236,7 @@ void main() {
                 // todo: update beta
                 //beta *= brdf * albedo.rgb;
 
-                newRadiance += brdf * beta * computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax);
+                currentBounceRadiance += brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
             } else {
                 const mat3 rot = mat3(
                     vec3(1.0, 0.0, 0.0),
@@ -203,7 +245,16 @@ void main() {
                 );
                 vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
 
-                newRadiance +=  skyboxRGB.rgb * brdf * beta;
+                currentBounceRadiance +=  skyboxRGB.rgb * brdf;
+                stopHere = true;
+            }
+
+            for(int otherBounce = bounceIndex; otherBounce >= 0; otherBounce--) {
+                bounceRadiance[bounceIndex] += currentBounceRadiance;
+            }
+            newRadiance += beta * currentBounceRadiance;
+
+            if(stopHere) {
                 break;
             }
         }
@@ -214,7 +265,12 @@ void main() {
         }
     }
 
-    // TODO: total weight?
-    hashGridAdd(CURRENT_FRAME, cellIndex, update.key, totalRadiance/*/totalWeight*/, MAX_SAMPLES);
+    for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
+        uint bounceCellIndex = bounceCellIndices[bounceIndex];
+        if(bounceCellIndex == InvalidCellIndex) {
+            continue;
+        }
+        hashGridAdd(CURRENT_FRAME, bounceCellIndex, bounceKeys[bounceIndex], bounceRadiance[bounceIndex], MAX_SAMPLES);
+    }
 #endif
 }

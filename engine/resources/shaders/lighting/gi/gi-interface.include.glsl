@@ -14,7 +14,7 @@ struct GIInputs {
 
 #define USE_GI 1
 
-vec3 GetOrComputeRayResult(inout RandomSampler rng, in GIInputs giInput) {
+void launchGIRay(inout RandomSampler rng, in GIInputs giInput) {
 #if USE_GI
     bool wasNew;
     HashCellKey cellDesc;
@@ -33,29 +33,11 @@ vec3 GetOrComputeRayResult(inout RandomSampler rng, in GIInputs giInput) {
 
     uint cellIndex = hashGridInsert(CURRENT_FRAME, cellDesc, wasNew);
 
-    if(cellIndex == InvalidCellIndex) {
-        // hash grid is full :(
-        return vec3(0,0,0);
-    }
-
     // newly touched cell (for this frame), ask for an update
     bool firstTouch = hashGridMark(CURRENT_FRAME, cellIndex, giInput.frameIndex);
-    if(wasNew) {
+    /*if(wasNew)*/ { // TODO: does this still make sense?
         hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc, giInput.surfaceNormal, giInput.metallic, giInput.roughness, giInput.surfaceColor);
     }
-
-    uint previousFrameCellIndex = hashGridFind(PREVIOUS_FRAME, cellDesc);
-    if(previousFrameCellIndex == InvalidCellIndex) {
-        return vec3(0.0, 0, 0);
-    }
-
-    uint sampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousFrameCellIndex);
-    if(sampleCount == 0) {
-        return vec3(0.0);
-    }
-    return hashGridRead(PREVIOUS_FRAME, previousFrameCellIndex) / sampleCount;
-#else
-    return vec3(0.0);
 #endif
 }
 vec3 GetGICurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
