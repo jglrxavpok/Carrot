@@ -637,30 +637,37 @@ namespace Carrot::Render {
                 data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
                 addDenoisingResources("gi", vk::Format::eR8G8B8A8Unorm, data.output);
             },
-            [preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Final GI");
+            [preparePushConstant, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
+                {
+                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Final GI");
 
-                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/apply-gi", (std::uint64_t)&pass);
-                auto& outputTexture = pass.getGraph().getTexture(data.output.noisy, frame.swapchainIndex);
+                    auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/apply-gi", (std::uint64_t)&pass);
+                    auto& outputTexture = pass.getGraph().getTexture(data.output.noisy, frame.swapchainIndex);
 
-                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    frame.renderer.getFrameCount());
-                HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
-                frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                    frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                        frame.renderer.getFrameCount());
+                    HashGrid::bind(data.gi.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+                    frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                    data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
-                const std::size_t localSize = 32;
-                const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
-                const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;
-                cmds.dispatch(groupX, groupY, 1);
+                    const std::size_t localSize = 32;
+                    const std::size_t groupX = (outputTexture.getSize().width + localSize-1) / localSize;
+                    const std::size_t groupY = (outputTexture.getSize().height + localSize-1) / localSize;
+                    cmds.dispatch(groupX, groupY, 1);
+                }
+
+                {
+                    TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Denoise GI");
+                    applyDenoising(pass, frame, "lighting/denoise-direct", data.gbuffer, data.output, 2, cmds);
+                }
             });
 
         PassData::Lighting data {
             .ambientOcclusion = lightingPass.getData().ambientOcclusion.pingPong[(lightingPass.getData().ambientOcclusion.iterationCount+1) % 2],
             .direct = lightingPass.getData().directLighting.pingPong[(lightingPass.getData().directLighting.iterationCount+1) % 2],
-            //.gi = getGIResults.getData().output.pingPong[(getGIResults.getData().output.iterationCount+1) % 2],
-            .gi = getGIResults.getData().output.noisy,
+            .gi = getGIResults.getData().output.pingPong[(getGIResults.getData().output.iterationCount+1) % 2],
+            //.gi = getGIResults.getData().output.noisy,
             .reflections = lightingPass.getData().reflectionsNoisy,
         };
         return data;

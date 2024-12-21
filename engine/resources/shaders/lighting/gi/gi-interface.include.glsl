@@ -14,32 +14,6 @@ struct GIInputs {
 
 #define USE_GI 1
 
-void launchGIRay(inout RandomSampler rng, in GIInputs giInput) {
-#if USE_GI
-    bool wasNew;
-    HashCellKey cellDesc;
-
-    vec3 tangent;
-    vec3 bitangent;
-    computeTangents(giInput.surfaceNormal, tangent, bitangent);
-    const float jitterU = sampleNoise(rng) * 2 - 1;
-    const float jitterV = sampleNoise(rng) * 2 - 1;
-
-    float cellSize = 0.135f; // TODO: adaptive cell size
-    const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
-
-    cellDesc.hitPosition = giInput.hitPosition + jitter;
-    cellDesc.direction = giInput.incomingRay;
-
-    uint cellIndex = hashGridInsert(CURRENT_FRAME, cellDesc, wasNew);
-
-    // newly touched cell (for this frame), ask for an update
-    bool firstTouch = hashGridMark(CURRENT_FRAME, cellIndex, giInput.frameIndex);
-    /*if(wasNew)*/ { // TODO: does this still make sense?
-        hashGridMarkForUpdate(CURRENT_FRAME, cellIndex, cellDesc, giInput.surfaceNormal, giInput.metallic, giInput.roughness, giInput.surfaceColor);
-    }
-#endif
-}
 vec3 GetGICurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
 #if USE_GI
     HashCellKey cellDesc;

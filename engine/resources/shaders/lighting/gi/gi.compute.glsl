@@ -34,7 +34,7 @@ void decayCells() {
         return;
     }
 
-    const uint decayTime = 30;
+    const uint decayTime = 300;
     if(grids[CURRENT_FRAME].pLastTouchedFrame.v[cellIndex]+decayTime < frameCount) {
         hashGridClear(CURRENT_FRAME, cellIndex);
     }

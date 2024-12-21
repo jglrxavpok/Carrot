@@ -128,8 +128,15 @@ void main() {
 
         float weight = 1.0f;
         for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
-            // TODO: jitter
-            bounceKeys[bounceIndex].hitPosition = startPos;
+            vec3 tangent;
+            vec3 bitangent;
+            computeTangents(-incomingRay, tangent, bitangent);
+            const float jitterU = sampleNoise(rng) * 2 - 1;
+            const float jitterV = sampleNoise(rng) * 2 - 1;
+            float cellSize = 0.135f; // TODO: adaptive cell size
+            const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
+
+            bounceKeys[bounceIndex].hitPosition = startPos + jitter;
             bounceKeys[bounceIndex].direction = incomingRay;
             bool stopHere = false;
             bool wasNew;
