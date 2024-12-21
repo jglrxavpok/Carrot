@@ -387,16 +387,11 @@ add_dependencies(Engine-ASAN generate_headers) # OpenXR-Hpp header generation
 
 # Using this instead of REUSE_FROM, because REUSE_FROM seems to take forever to build/validate
 function(add_engine_precompiled_headers Target)
+    add_core_precompiled_headers(${Target})
     target_precompile_headers(${Target} PRIVATE
             <engine/vulkan/includes.h>
             <engine/vr/includes.h>
             <sol/sol.hpp>
-            <glm/glm.hpp>
-            <chrono>
-            <unordered_map>
-            <filesystem>
-            <vector>
-            <string>
             <Jolt/Jolt.h>
             )
 endfunction()

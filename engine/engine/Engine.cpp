@@ -15,15 +15,12 @@
 #include <vector>
 #include <set>
 #include <core/async/OSThreads.h>
-#include <engine/render/shaders/ShaderStages.h>
 #include "engine/constants.h"
 #include "engine/render/resources/Image.h"
 #include "engine/render/resources/SingleMesh.h"
-#include "engine/render/resources/Vertex.h"
 #include "engine/render/Camera.h"
 #include "engine/render/raytracing/RayTracer.h"
 #include "engine/render/raytracing/ASBuilder.h"
-#include "engine/render/GBuffer.h"
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/render/resources/Texture.h"
 #include "engine/CarrotGame.h"
@@ -39,10 +36,6 @@
 #include "core/io/FileSystemOS.h"
 
 #include <core/scripting/csharp/Engine.h>
-#include <core/scripting/csharp/CSAssembly.h>
-#include <core/scripting/csharp/CSClass.h>
-#include <core/scripting/csharp/CSMethod.h>
-#include <core/scripting/csharp/CSObject.h>
 #include <engine/scripting/CSharpBindings.h>
 #include <engine/ecs/components/SoundListenerComponent.h>
 #include <engine/ecs/systems/SoundListenerSystem.h>

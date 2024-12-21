@@ -186,6 +186,19 @@ function(add_includes Target)
             VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 endfunction()
 
+function(add_core_precompiled_headers Target)
+    target_precompile_headers(${Target} PRIVATE
+            "$<$<COMPILE_LANGUAGE:CXX>:<glm/glm.hpp$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<chrono$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<unordered_map$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<filesystem$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<vector$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<memory$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<algorithm$<ANGLE-R>>"
+    )
+endfunction()
+
 add_subdirectory(core)
 add_subdirectory(asset_tools)
 
@@ -217,7 +230,7 @@ function(add_pipeline PIPELINE_NAME)
             COMMENT "Compiling pipeline ${PIPELINE_NAME}"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             DEPENDS "${basePath}/${inputFilePath}"
-            DEPENDS pipelinecompiler
+            DEPENDS pipelinecompiler shadercompiler
             BYPRODUCTS "${depfile}"
             DEPFILE "${depfile}"
     )

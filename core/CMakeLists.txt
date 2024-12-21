@@ -128,6 +128,7 @@ set(ALL_CORE_LIBS Vulkan::Vulkan ktx glm tinygltf nfd cider assimp::assimp)
 add_library(CarrotCore ${CORE-SOURCES} ${CORE-THIRDPARTY-SOURCES})
 add_core_includes(CarrotCore)
 target_link_libraries(CarrotCore PUBLIC ${ALL_CORE_LIBS})
+add_core_precompiled_headers(CarrotCore)
 
 file(COPY ${MonoDLLs} DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.dll DESTINATION ${CMAKE_BINARY_DIR})
