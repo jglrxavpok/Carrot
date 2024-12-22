@@ -22,6 +22,7 @@ struct HashCellKey {
     vec3 hitPosition;
     vec3 direction;
     vec3 cameraPos;
+    float rayLength;
 };
 
 struct HashDescriptor {
@@ -121,26 +122,26 @@ vec3 dequantizeNormal(ivec2 normalQuantized) {
 
 // loosely based on https://gpuopen.com/download/publications/SA2021_WorldSpace_ReSTIR.pdf
 const float cellSizeFactor = 32.0f;
-const float minCellSize = 0.1f;
+const float minCellSize = 0.005f;
 
 uint giGetCellSizeStep(vec3 hitPosition, vec3 cameraPosition) {
-    /*float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
-    return uint(floor(log2(cellSizeStep / minCellSize )));*/
-    return 1;
+    float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
+    return uint(floor(log2(cellSizeStep / minCellSize )));
 }
 
 float giGetCellSize(vec3 hitPosition, vec3 cameraPosition) {
-    return minCellSize * exp2(giGetCellSizeStep(hitPosition, cameraPosition));
+    return minCellSize * giGetCellSizeStep(hitPosition, cameraPosition);
 }
 
 HashDescriptor computeDescriptor(in HashCellKey key) {
     HashDescriptor desc;
     uint cellSizeStep = giGetCellSizeStep(key.hitPosition, key.cameraPos);
-    float cellSize = minCellSize * exp2(cellSizeStep);
+    float cellSize = minCellSize * cellSizeStep;
     ivec3 posQuantized = quantizePosition(key.hitPosition, cellSize);
     ivec2 dirQuantized = quantizeNormal(key.direction);
-    desc.bucketIndex = pcg_hash(cellSizeStep + pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y)))))) % bucketCount;
-    desc.hash2 = xxhash32(cellSizeStep + xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y))))));
+    int lightLeakFix = key.rayLength < cellSize ? 1 : 0;
+    desc.bucketIndex = pcg_hash(lightLeakFix + pcg_hash(cellSizeStep + pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))))) % bucketCount;
+    desc.hash2 = xxhash32(lightLeakFix + xxhash32(cellSizeStep + xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y)))))));
     return desc;
 }
 
@@ -149,6 +150,7 @@ void hashGridClear(uint mapIndex, uint cellIndex) {
     nullKey.hitPosition = vec3(0.0);
     nullKey.direction = vec3(0.0);
     nullKey.cameraPos = vec3(0.0);
+    nullKey.rayLength = 0.0;
     grids[mapIndex].pCells.v[cellIndex].key = nullKey;
     grids[mapIndex].pCells.v[cellIndex].hash2 = 0;
 

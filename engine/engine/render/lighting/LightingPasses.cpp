@@ -29,6 +29,7 @@ namespace Carrot::Render {
             glm::vec3 hitPosition;
             glm::vec3 direction;
             glm::vec3 cameraPos;
+            float rayLength;
         };
 
         struct HashCell {
@@ -615,6 +616,7 @@ namespace Carrot::Render {
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
                 addDenoisingResources("gi", vk::Format::eR8G8B8A8Unorm, data.output);
+                data.output.iterationCount = 1;
             },
             [preparePushConstant, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
                 {

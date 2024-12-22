@@ -46,7 +46,6 @@ void main() {
     }
     vec3 cameraPos = (cbo.inverseView * vec4(0,0,0,1)).xyz;
     vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1)).xyz;
-    vec3 incomingRay = normalize(worldPos - cameraPos);
 
     RandomSampler rng;
     initRNG(rng, uv, size.x, size.y, frameCount);
@@ -54,7 +53,7 @@ void main() {
     GIInputs giInputs;
     giInputs.hitPosition = worldPos;
     giInputs.cameraPosition = cameraPos;
-    giInputs.incomingRay = incomingRay;
+    giInputs.startOfRay = cameraPos;
     giInputs.frameIndex = frameCount;
     giInputs.surfaceNormal = g.viewTBN[2];
     giInputs.metallic = g.metallicness;

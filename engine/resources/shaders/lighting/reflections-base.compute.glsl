@@ -142,14 +142,14 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             GIInputs giInputs;
             giInputs.hitPosition = intersection.position;
             giInputs.cameraPosition = cameraPos;
-            giInputs.incomingRay = direction;
+            giInputs.startOfRay = rayOrigin;
             giInputs.frameIndex = push.frameCount;
             giInputs.surfaceNormal = mappedNormal;
             giInputs.metallic = pbrInputsAtPoint.metallic;
             giInputs.roughness = roughness;
             giInputs.surfaceColor = pbrInputsAtPoint.baseColor;
 
-            vec3 gi = giGetNoUpdate(giInputs);
+            vec3 gi = giGetNoUpdate(rng, giInputs);
             vec3 lightColor = (lighting + emissive + gi);
             return lightColor * brdf;
         } else {

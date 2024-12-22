@@ -142,13 +142,13 @@ void main() {
 
         const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
         giInputs.cameraPosition = cameraPos;
-        giInputs.incomingRay = normalize(worldPos - cameraPos);
+        giInputs.startOfRay = cameraPos;
         giInputs.frameIndex = push.frameCount;
         giInputs.surfaceNormal = normal;
         giInputs.metallic = metallicRoughness.x;
         giInputs.roughness = metallicRoughness.y;
         giInputs.surfaceColor = albedo;
-        vec3 gi = giGetNoUpdate(giInputs);
+        vec3 gi = giGetNoUpdate(rng, giInputs);
 
         outDirectLighting.rgb += gi;
 

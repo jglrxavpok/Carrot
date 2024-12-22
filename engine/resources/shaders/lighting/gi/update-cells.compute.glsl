@@ -127,6 +127,7 @@ void main() {
         vec3 beta = vec3(1.0);
 
         float weight = 1.0f;
+        vec3 previousPos = cameraPos;
         for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
             vec3 tangent;
             vec3 bitangent;
@@ -139,6 +140,9 @@ void main() {
             bounceKeys[bounceIndex].hitPosition = startPos + jitter;
             bounceKeys[bounceIndex].direction = incomingRay;
             bounceKeys[bounceIndex].cameraPos = cameraPos;
+            bounceKeys[bounceIndex].rayLength = length(startPos - previousPos);
+
+            previousPos = startPos;
             bool stopHere = false;
             bool wasNew;
             vec3 currentBounceRadiance = vec3(0.0);
@@ -227,12 +231,12 @@ void main() {
                 GIInputs giInputs;
                 giInputs.hitPosition = intersection.position;
                 giInputs.cameraPosition = cameraPos;
-                giInputs.incomingRay = -specularDir;
+                giInputs.startOfRay = startPos;
                 giInputs.surfaceNormal = mappedNormal;
                 giInputs.metallic = pbrInputsAtPoint.metallic;
                 giInputs.roughness = roughnessAtPoint;
                 giInputs.frameIndex = push.frameCount;
-                vec3 gi = giGetNoUpdate(giInputs);
+                vec3 gi = giGetNoUpdate(rng, giInputs);
 
                 startPos = intersection.position;
                 incomingRay = -specularDir;

@@ -42,6 +42,7 @@ void main() {
     vec3 incomingRay = normalize(worldPos - cameraPos);
 
     HashCellKey key;
+    key.rayLength = distance(cameraPos, worldPos);
     key.cameraPos = cameraPos;
     key.hitPosition = worldPos;
     key.direction = incomingRay;
