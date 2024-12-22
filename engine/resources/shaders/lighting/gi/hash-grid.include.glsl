@@ -21,17 +21,7 @@ layout(buffer_reference, scalar) buffer BufferToUints {
 struct HashCellKey {
     vec3 hitPosition;
     vec3 direction;
-};
-
-struct CellUpdate {
-    HashCellKey key;
-    uint pad; // wtf
-    uint cellIndex;
-    vec3 surfaceNormal;
-    float metallic;
-    float roughness;
-    uint pad2[3]; //wtf again
-    vec3 surfaceColor;
+    vec3 cameraPos;
 };
 
 struct HashDescriptor {
@@ -46,20 +36,11 @@ struct HashCell {
     uint sampleCount;
 };
 
-layout(buffer_reference, scalar) buffer CellUpdateBuffer {
-    CellUpdate v[];
-};
-
 layout(buffer_reference, scalar) buffer HashCellBuffer {
     HashCell v[];
 };
 
 layout(buffer_reference, scalar) buffer HashGrid {
-    // update requests
-    uint updateCount;
-    uint maxUpdates;
-    CellUpdateBuffer pUpdates; // must be as many as there are total cells inside the grid
-
     // write the frame number when each cell was last touched (used to decay cells)
     BufferToUints pLastTouchedFrame; // must be as many as there are total cells inside the grid
 
@@ -138,13 +119,28 @@ vec3 dequantizeNormal(ivec2 normalQuantized) {
     return vec3(cos(phi), sin(phi), 0) * cos(normalQuantized.x * thetaQuantum);
 }
 
+// loosely based on https://gpuopen.com/download/publications/SA2021_WorldSpace_ReSTIR.pdf
+const float cellSizeFactor = 32.0f;
+const float minCellSize = 0.1f;
+
+uint giGetCellSizeStep(vec3 hitPosition, vec3 cameraPosition) {
+    /*float cellSizeStep = distance(hitPosition, cameraPosition) * cellSizeFactor;
+    return uint(floor(log2(cellSizeStep / minCellSize )));*/
+    return 1;
+}
+
+float giGetCellSize(vec3 hitPosition, vec3 cameraPosition) {
+    return minCellSize * exp2(giGetCellSizeStep(hitPosition, cameraPosition));
+}
+
 HashDescriptor computeDescriptor(in HashCellKey key) {
     HashDescriptor desc;
-    float cellSize = 0.135f; // TODO
+    uint cellSizeStep = giGetCellSizeStep(key.hitPosition, key.cameraPos);
+    float cellSize = minCellSize * exp2(cellSizeStep);
     ivec3 posQuantized = quantizePosition(key.hitPosition, cellSize);
     ivec2 dirQuantized = quantizeNormal(key.direction);
-    desc.bucketIndex = pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y))))) % bucketCount;
-    desc.hash2 = xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y)))));
+    desc.bucketIndex = pcg_hash(cellSizeStep + pcg_hash(posQuantized.x + pcg_hash(posQuantized.y + pcg_hash(posQuantized.z + pcg_hash(dirQuantized.x + pcg_hash(dirQuantized.y)))))) % bucketCount;
+    desc.hash2 = xxhash32(cellSizeStep + xxhash32(posQuantized.x + xxhash32(posQuantized.y + xxhash32(posQuantized.z + xxhash32(dirQuantized.x + xxhash32(dirQuantized.y))))));
     return desc;
 }
 
@@ -152,6 +148,7 @@ void hashGridClear(uint mapIndex, uint cellIndex) {
     HashCellKey nullKey;
     nullKey.hitPosition = vec3(0.0);
     nullKey.direction = vec3(0.0);
+    nullKey.cameraPos = vec3(0.0);
     grids[mapIndex].pCells.v[cellIndex].key = nullKey;
     grids[mapIndex].pCells.v[cellIndex].hash2 = 0;
 
@@ -249,18 +246,5 @@ bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
     return previousFrameID != frameID;
 }
 
-void hashGridMarkForUpdate(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 surfaceNormal, float metallic, float roughness, vec3 surfaceColor) {
-    uint updateIndex = atomicAdd(grids[mapIndex].updateCount, 1);
-    if(updateIndex < grids[mapIndex].maxUpdates) {
-        grids[mapIndex].pUpdates.v[updateIndex].cellIndex = cellIndex;
-        grids[mapIndex].pUpdates.v[updateIndex].key = key;
-        grids[mapIndex].pUpdates.v[updateIndex].surfaceNormal = surfaceNormal;
-        grids[mapIndex].pUpdates.v[updateIndex].metallic = metallic;
-        grids[mapIndex].pUpdates.v[updateIndex].roughness = roughness;
-        grids[mapIndex].pUpdates.v[updateIndex].surfaceColor = surfaceColor;
-    }
-}
-
 void hashGridResetCounters(uint mapIndex) {
-    grids[mapIndex].updateCount = 0;
 }

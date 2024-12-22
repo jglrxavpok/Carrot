@@ -133,11 +133,12 @@ void main() {
             computeTangents(-incomingRay, tangent, bitangent);
             const float jitterU = sampleNoise(rng) * 2 - 1;
             const float jitterV = sampleNoise(rng) * 2 - 1;
-            float cellSize = 0.135f; // TODO: adaptive cell size
+            float cellSize = giGetCellSize(startPos, cameraPos);
             const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
 
             bounceKeys[bounceIndex].hitPosition = startPos + jitter;
             bounceKeys[bounceIndex].direction = incomingRay;
+            bounceKeys[bounceIndex].cameraPos = cameraPos;
             bool stopHere = false;
             bool wasNew;
             vec3 currentBounceRadiance = vec3(0.0);
@@ -225,13 +226,13 @@ void main() {
 
                 GIInputs giInputs;
                 giInputs.hitPosition = intersection.position;
-                giInputs.cameraPosition = startPos; // is this valid?
+                giInputs.cameraPosition = cameraPos;
                 giInputs.incomingRay = -specularDir;
                 giInputs.surfaceNormal = mappedNormal;
                 giInputs.metallic = pbrInputsAtPoint.metallic;
                 giInputs.roughness = roughnessAtPoint;
                 giInputs.frameIndex = push.frameCount;
-                vec3 gi = GetGINoUpdate(giInputs);
+                vec3 gi = giGetNoUpdate(giInputs);
 
                 startPos = intersection.position;
                 incomingRay = -specularDir;
@@ -277,6 +278,7 @@ void main() {
         if(bounceCellIndex == InvalidCellIndex) {
             continue;
         }
+        hashGridMark(CURRENT_FRAME, bounceCellIndex, push.frameCount);
         hashGridAdd(CURRENT_FRAME, bounceCellIndex, bounceKeys[bounceIndex], bounceRadiance[bounceIndex], MAX_SAMPLES);
     }
 #endif

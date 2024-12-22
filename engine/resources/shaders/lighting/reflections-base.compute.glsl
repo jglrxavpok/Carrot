@@ -149,7 +149,7 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             giInputs.roughness = roughness;
             giInputs.surfaceColor = pbrInputsAtPoint.baseColor;
 
-            vec3 gi = GetGINoUpdate(giInputs);
+            vec3 gi = giGetNoUpdate(giInputs);
             vec3 lightColor = (lighting + emissive + gi);
             return lightColor * brdf;
         } else {

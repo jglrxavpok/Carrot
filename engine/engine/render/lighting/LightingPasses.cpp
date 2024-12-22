@@ -13,7 +13,6 @@
 
 namespace Carrot::Render {
 
-    static constexpr std::uint64_t HashGridMaxUpdatesPerFrame = 1;
     static constexpr std::uint64_t HashGridCellsPerBucket = 32;
     static constexpr std::uint64_t HashGridBucketCount = 1024*256;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
@@ -29,6 +28,7 @@ namespace Carrot::Render {
         struct HashCellKey {
             glm::vec3 hitPosition;
             glm::vec3 direction;
+            glm::vec3 cameraPos;
         };
 
         struct HashCell {
@@ -38,21 +38,7 @@ namespace Carrot::Render {
             std::uint32_t sampleCount;
         };
 
-        struct CellUpdate {
-            HashCellKey key;
-            std::uint32_t cellIndex;
-            glm::vec3 surfaceNormal;
-            float metallic;
-            glm::vec3 surfaceColor;
-            float roughness;
-        };
-
         struct Header {
-            // update requests
-            std::uint32_t updateCount;
-            std::uint32_t maxUpdates;
-            vk::DeviceAddress pUpdates; // must be as many as there are total cells inside the grid
-
             // write the frame number when each cell was last touched (used to decay cells)
             vk::DeviceAddress pLastTouchedFrame; // must be as many as there are total cells inside the grid
 
@@ -73,7 +59,6 @@ namespace Carrot::Render {
 
             const std::size_t hashGridSize = computeSizeOf(HashGridBucketCount, HashGridCellsPerBucket);
             r.hashGrid = graph.createBuffer("GI probes hashmap", hashGridSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*we want to keep the header*/);
-            r.hashGridUpdates = graph.createBuffer("GI probes hashmap update", sizeof(CellUpdate) * HashGridMaxUpdatesPerFrame, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
             r.constants = graph.createBuffer("GI probes constants", sizeof(Constants), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
             r.gridPointers = graph.createBuffer("GI probes grid pointers", sizeof(Pointers), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, false/*filled once*/);
 
@@ -84,8 +69,6 @@ namespace Carrot::Render {
 
         static void prepareBuffers(const Carrot::Render::Graph& graph, const Carrot::Render::PassData::HashGridResources& r) {
             HashGrid::Header header{};
-            header.maxUpdates = HashGridMaxUpdatesPerFrame;
-            header.updateCount = 0;
 
             // only a single one for both frame
             {
@@ -97,7 +80,6 @@ namespace Carrot::Render {
 
             for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
                 Carrot::BufferView gridBuffer = graph.getBuffer(r.hashGrid, i).view;
-                Carrot::BufferView updatesBuffer = graph.getBuffer(r.hashGridUpdates, i).view;
 
                 std::size_t cursor = sizeof(Header);
                 header.pCells = gridBuffer.subView(cursor, sizeof(HashGrid::HashCell) * HashGridTotalCellCount).getDeviceAddress();
@@ -105,8 +87,6 @@ namespace Carrot::Render {
                 cursor += sizeof(HashGrid::HashCell) * HashGridTotalCellCount;
                 header.pLastTouchedFrame = gridBuffer.subView(cursor, sizeof(std::uint32_t) * HashGridTotalCellCount).getDeviceAddress();
                 cursor += sizeof(std::uint32_t) * HashGridTotalCellCount;
-
-                header.pUpdates = updatesBuffer.getDeviceAddress();
 
                 gridBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
             }
@@ -137,7 +117,6 @@ namespace Carrot::Render {
             out.constants = graph.write(r.constants, {}, {}, {}, {});
             out.gridPointers = graph.write(r.gridPointers, {}, {}, {}, {});
             out.hashGrid = graph.write(r.hashGrid, {}, {}, {}, {});
-            out.hashGridUpdates = graph.write(r.hashGridUpdates, {}, {}, {}, {});
             return out;
         }
 

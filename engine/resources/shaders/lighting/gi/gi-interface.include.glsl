@@ -14,7 +14,7 @@ struct GIInputs {
 
 #define USE_GI 1
 
-vec3 GetGICurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
+vec3 giGetCurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
 #if USE_GI
     HashCellKey cellDesc;
 
@@ -24,9 +24,10 @@ vec3 GetGICurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
     const float jitterU = sampleNoise(rng) * 2 - 1;
     const float jitterV = sampleNoise(rng) * 2 - 1;
 
-    float cellSize = 0.135f; // TODO: adaptive cell size
+    float cellSize = giGetCellSize(giInput.hitPosition, giInput.cameraPosition);
     const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
 
+    cellDesc.cameraPos = giInput.cameraPosition;
     cellDesc.hitPosition = giInput.hitPosition + jitter;
     cellDesc.direction = giInput.incomingRay;
 
@@ -45,10 +46,11 @@ vec3 GetGICurrentFrame(inout RandomSampler rng, in GIInputs giInput) {
 #endif
 }
 
-vec3 GetGINoUpdate(in GIInputs giInput) {
+vec3 giGetNoUpdate(in GIInputs giInput) {
 #if USE_GI
     bool wasNew;
     HashCellKey cellDesc;
+    cellDesc.cameraPos = giInput.cameraPosition;
     cellDesc.hitPosition = giInput.hitPosition;
     cellDesc.direction = giInput.incomingRay;
 

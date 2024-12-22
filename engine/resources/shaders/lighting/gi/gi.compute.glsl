@@ -64,20 +64,26 @@ void reuseCells() {
     vec3 previousSample = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
     uint currentSampleCount = hashGridGetSampleCount(CURRENT_FRAME, currentCellIndex);
     uint previousSampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousCellIndex);
-    uint totalSampleCount = min(10000, currentSampleCount+previousSampleCount);
+    uint totalSampleCount = min(60, currentSampleCount+previousSampleCount);
 
     vec3 combined;
     float combinedSampleCount;
     if(previousSampleCount == 0) {
-        combined = currentSample / currentSampleCount;
-        combinedSampleCount = currentSampleCount;
+        if(currentSampleCount == 0) {
+            combined = vec3(0.0);
+            combinedSampleCount = 1.0f;
+        } else {
+            combined = currentSample / currentSampleCount;
+            combinedSampleCount = currentSampleCount;
+        }
     } else {
         vec3 newSample = currentSample / currentSampleCount + previousSample / previousSampleCount;
-        combined = mix(newSample, currentSample / currentSampleCount, 1.0f / totalSampleCount);
+        float alpha = max(0.05f, 1.0f / totalSampleCount);
+        combinedSampleCount = 1.0f / alpha;
+        combined = mix(newSample, currentSample / currentSampleCount, alpha);
     }
 
-    combined *= totalSampleCount;
-    combinedSampleCount = totalSampleCount;
+    combined *= combinedSampleCount;
 
     if(dot(combined, combined) >= 100000*100000) {
         combined = vec3(10000,0,0);

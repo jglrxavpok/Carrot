@@ -61,6 +61,6 @@ void main() {
     giInputs.roughness = g.roughness;
     giInputs.surfaceColor = g.albedo.rgb;
 
-    vec3 giResult = GetGICurrentFrame(rng, giInputs);
+    vec3 giResult = giGetCurrentFrame(rng, giInputs);
     imageStore(outputImage, ivec2(pixel), vec4(giResult, 1));
 }

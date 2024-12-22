@@ -148,7 +148,6 @@ namespace Carrot::Render {
 
         struct HashGridResources {
             FrameResource hashGrid;
-            FrameResource hashGridUpdates;
             FrameResource constants;
             FrameResource gridPointers;
         };
