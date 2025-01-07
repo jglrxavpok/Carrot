@@ -23,7 +23,10 @@ namespace Carrot::Render {
     static RuntimeOption DebugRenderGraphs("Debug/Render Graphs", false);
 
     // flags forced on all resources created by RenderGraph
-    constexpr vk::ImageUsageFlags ForcedFlags = vk::ImageUsageFlagBits::eSampled;
+    constexpr vk::ImageUsageFlags ForcedCommonImageFlags{};
+    constexpr vk::ImageUsageFlags ForcedRenderTargetFlags = ForcedCommonImageFlags | vk::ImageUsageFlagBits::eSampled;
+    constexpr vk::ImageUsageFlags ForcedStorageImageFlags = ForcedCommonImageFlags;
+    constexpr vk::ImageUsageFlags ForcedStorageRGBImageFlags = ForcedStorageImageFlags | vk::ImageUsageFlagBits::eSampled;
     constexpr vk::BufferUsageFlags ForcedBufferFlags = vk::BufferUsageFlagBits::eShaderDeviceAddress;
 
     GraphBuilder::GraphBuilder(VulkanDriver& driver, Window& window): window(window) {
@@ -51,12 +54,16 @@ namespace Carrot::Render {
                 case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
                 case vk::ImageLayout::eDepthReadOnlyOptimal:
                     GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-                GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    if (toRead.type != ResourceType::StorageImage) {
+                        GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    }
                 break;
 
 
                 default:
-                    GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    if (toRead.type != ResourceType::StorageImage) {
+                        GetVulkanDriver().getResourceRepository().getTextureUsages(toRead.rootID) |= vk::ImageUsageFlagBits::eSampled;
+                    }
                 break;
             }
         }
@@ -152,8 +159,10 @@ namespace Carrot::Render {
                 break;
 
             case vk::ImageLayout::eGeneral:
+                if (!isStorageImage) {
+                    GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
+                }
                 GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eStorage;
-                GetVulkanDriver().getResourceRepository().getTextureUsages(r.rootID) |= vk::ImageUsageFlagBits::eColorAttachment;
                 aspect |= vk::ImageAspectFlagBits::eColor;
                 break;
 
@@ -595,15 +604,34 @@ namespace Carrot::Render {
         return driver.getResourceRepository().getTexture(resourceID, frameIndex);
     }
 
+    static vk::ImageUsageFlags computeUsages(const FrameResource& resource) {
+        vk::ImageUsageFlags wanted = GetVulkanDriver().getResourceRepository().getTextureUsages(resource.rootID);
+        switch (resource.type) {
+            case ResourceType::RenderTarget:
+                wanted |= ForcedRenderTargetFlags;
+            break;
+            case ResourceType::StorageImage:
+                if (resource.format != vk::Format::eR64Uint) {
+                    wanted |= ForcedStorageRGBImageFlags;
+                } else {
+                    wanted |= ForcedStorageImageFlags;
+                }
+            break;
+
+            default: verify(false, "unreachable");
+        }
+        return wanted;
+    }
+
     Render::Texture& Graph::createTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
         return driver.getResourceRepository().createTexture(resource, frameIndex,
-            driver.getResourceRepository().getTextureUsages(resource.rootID) | ForcedFlags,
+            computeUsages(resource),
             viewportSize);
     }
 
     Render::Texture& Graph::getOrCreateTexture(const FrameResource& resource, size_t frameIndex, const vk::Extent2D& viewportSize) {
         return driver.getResourceRepository().getOrCreateTexture(resource, frameIndex,
-            driver.getResourceRepository().getTextureUsages(resource.rootID) | ForcedFlags,
+            computeUsages(resource),
             viewportSize);
     }
 

@@ -78,6 +78,7 @@ const std::vector<const char*> VULKAN_DEVICE_EXTENSIONS = {
         VK_EXT_MESH_SHADER_EXTENSION_NAME,
         VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
         VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+        VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME,
 };
 
 static std::atomic<bool> breakOnVulkanError = false;
@@ -526,14 +527,20 @@ void Carrot::VulkanDriver::createLogicalDevice() {
             vk::PhysicalDeviceFeatures2 {
                     .features = {
                             .independentBlend = true,
+                            .geometryShader = true, // for mesh shaders?
 
                             .multiDrawIndirect = true,
                             .drawIndirectFirstInstance = true,
                             .samplerAnisotropy = true,
+                            .shaderStorageImageWriteWithoutFormat = true,
+
                             .shaderUniformBufferArrayDynamicIndexing = true,
                             .shaderSampledImageArrayDynamicIndexing = true,
                             .shaderStorageBufferArrayDynamicIndexing = true,
                             .shaderStorageImageArrayDynamicIndexing = true,
+                            .shaderFloat64 = true,
+                            .shaderInt64 = true,
+                            .shaderInt16 = true,
                     },
             },
             vk::PhysicalDeviceMeshShaderFeaturesEXT {
@@ -553,6 +560,7 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                     .synchronization2 = true,
             },
             vk::PhysicalDeviceVulkan11Features {
+                    .storageBuffer16BitAccess = true,
                     .shaderDrawParameters = true,
             },
             vk::PhysicalDeviceVulkan12Features {
@@ -560,13 +568,15 @@ void Carrot::VulkanDriver::createLogicalDevice() {
                 .uniformAndStorageBuffer8BitAccess = true,
                 .storagePushConstant8 = true,
                 .shaderBufferInt64Atomics = true,
+                .shaderInt8 = true,
                 .shaderSampledImageArrayNonUniformIndexing  = true,
                 .shaderStorageBufferArrayNonUniformIndexing = true,
                 .descriptorBindingPartiallyBound = true,
                 .runtimeDescriptorArray = true,
 
                 .scalarBlockLayout = true,
-                .hostQueryReset =  true,
+                .hostQueryReset = true,
+                .timelineSemaphore = true,
                 .bufferDeviceAddress = true,
             },
             vk::PhysicalDeviceRobustness2FeaturesEXT {

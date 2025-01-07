@@ -41,7 +41,7 @@ void main() {
     vec3 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv).rgb;
     vec3 reflectionsColor = texture(sampler2D(reflections, gLinearSampler), uv).rgb;
     vec3 giColor = texture(sampler2D(gi, gLinearSampler), uv).rgb;
-    lightingColor += giColor;
+    //lightingColor += giColor; -> already contained in direct lighting
 
     float ao = texture(sampler2D(aoLighting, gLinearSampler), uv).r;
 

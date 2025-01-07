@@ -1162,6 +1162,8 @@ void Carrot::VulkanRenderer::createPerDrawSetResources() {
                 }
         };
 
+        DebugNameable::nameSingle("per draw", set);
+
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
     }
 }
@@ -1294,6 +1296,8 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
                 .pBufferInfo = &cameraBuffer,
         };
 
+        DebugNameable::nameSingle("debug", debugDescriptorSets[i]);
+
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(write, {});
     }
 }
@@ -1367,6 +1371,7 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForCam
                 }
         };
 
+        DebugNameable::nameSingle("camera", cameraDescriptorSets[i]);
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
     }
     return cameraDescriptorSets;
@@ -1400,6 +1405,8 @@ std::vector<vk::DescriptorSet> Carrot::VulkanRenderer::createDescriptorSetForVie
                         .pBufferInfo = &buffer,
                 }
         };
+
+        DebugNameable::nameSingle("viewport", descriptorSets[i]);
 
         getVulkanDriver().getLogicalDevice().updateDescriptorSets(writes, {});
     }

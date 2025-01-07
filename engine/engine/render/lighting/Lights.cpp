@@ -186,6 +186,10 @@ namespace Carrot::Render {
                 .descriptorSetCount = GetEngine().getSwapchainImageCount(),
                 .pSetLayouts = layouts.data(),
         });
+
+        for(auto& set : descriptorSets) {
+            DebugNameable::nameSingle("lights", set);
+        }
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
 

@@ -58,28 +58,39 @@ namespace Carrot::Render {
                 }
             });
 
+        auto& clearPass = graph.addPass<VisibilityBufferRasterizationData>("clear visibility buffer",
+            [this, &gBufferData, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
+                        // Declare the visibility buffer texture
+                        data.visibilityBuffer = builder.createStorageTarget("visibility buffer", vk::Format::eR64Uint, framebufferSize, vk::ImageLayout::eGeneral);
+                        pass.rasterized = false;
+                    },
+                    [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
+                        ZoneScopedN("CPU RenderGraph visibility buffer clear");
+                        TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "clear buffer rasterize");
+                        auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
+
+                        // clear visibility buffer to reset depth
+                        auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.pipeline", (std::uint64_t)&pass);
+                        renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
+                                                  vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
+                        const auto& extent = texture.getSize();
+                        const std::uint8_t localSize = 32;
+                        std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
+                        std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
+
+                        clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+                        cmds.dispatch(dispatchX, dispatchY, 1);
+                    });
         // Add the hardware rasterization pass
         auto& rasterizePass = graph.addPass<VisibilityBufferRasterizationData>("rasterize visibility buffer",
-            [this, &gBufferData, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
+            [this, &clearPass, framebufferSize](Render::GraphBuilder& builder, Render::Pass<VisibilityBufferRasterizationData>& pass, VisibilityBufferRasterizationData& data) {
                 // Declare the visibility buffer texture
-                data.visibilityBuffer = builder.createStorageTarget("visibility buffer", vk::Format::eR64Uint, framebufferSize, vk::ImageLayout::eGeneral);
+                data.visibilityBuffer = builder.write(clearPass.getData().visibilityBuffer, vk::AttachmentLoadOp::eLoad, vk::ImageLayout::eGeneral);
             },
             [this](const Render::CompiledPass& pass, const Render::Context& frame, const VisibilityBufferRasterizationData& data, vk::CommandBuffer& cmds) {
                 ZoneScopedN("CPU RenderGraph visibility buffer rasterize");
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "visibility buffer rasterize");
                 auto& texture = pass.getGraph().getTexture(data.visibilityBuffer, frame.swapchainIndex);
-
-                // clear visibility buffer to reset depth
-                auto clearBufferPipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/clear-visibility-buffer.pipeline", (std::uint64_t)&pass);
-                renderer.bindStorageImage(*clearBufferPipeline, frame, texture, 0, 0,
-                                          vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
-                const auto& extent = texture.getSize();
-                const std::uint8_t localSize = 32;
-                std::size_t dispatchX = (extent.width + (localSize-1)) / localSize;
-                std::size_t dispatchY = (extent.height + (localSize-1)) / localSize;
-
-                clearBufferPipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
-                cmds.dispatch(dispatchX, dispatchY, 1);
 
                 // instanceIndex must match with one used in MeshletManager to reference the proper pipeline
                 auto pipeline = renderer.getOrCreatePipelineFullPath("resources/pipelines/visibility-buffer.pipeline", (std::uint64_t)frame.pViewport);

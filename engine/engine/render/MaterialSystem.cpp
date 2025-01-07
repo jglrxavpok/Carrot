@@ -520,6 +520,9 @@ namespace Carrot::Render {
                 .descriptorSetCount = GetEngine().getSwapchainImageCount(),
                 .pSetLayouts = layouts.data(),
         });
+        for (auto& descriptorSet : descriptorSets) {
+            DebugNameable::nameSingle("materials", descriptorSet);
+        }
         descriptorNeedsUpdate = std::vector<bool>(descriptorSets.size(), true);
     }
 

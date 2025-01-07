@@ -288,6 +288,10 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                 .pSetLayouts = layouts.data(),
         });
 
+        for(auto& set : animationDescriptorSets) {
+            DebugNameable::nameSingle("model animations", set);
+        }
+
         vk::DescriptorBufferInfo bufferInfo {
                 .buffer = animationData->getVulkanBuffer(),
                 .offset = 0,

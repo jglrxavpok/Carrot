@@ -35,7 +35,7 @@ namespace Carrot {
                                               | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR
                                               ,
                                               vk::MemoryPropertyFlagBits::eDeviceLocal,
-                                              std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()});
+                                              std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value(), driverQueueFamilies.transferFamily.value()});
         deviceHeap->setDebugNames("ResourceAllocator heap for device buffers");
 
         VmaVirtualBlock stagingBlock;
