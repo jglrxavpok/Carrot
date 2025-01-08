@@ -8,6 +8,8 @@
 #include "ShaderModule.h"
 #include "core/io/IO.h"
 #include <iostream>
+#include <core/math/BasicFunctions.h>
+
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
@@ -153,6 +155,11 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
         case spirv_cross::SPIRType::Double:
             return 8 * type.vecsize;
 
+        case spirv_cross::SPIRType::UByte:
+            return 1 * type.vecsize;
+        case spirv_cross::SPIRType::UShort:
+            return 2 * type.vecsize;
+
         default:
             TODO
     }
@@ -170,16 +177,18 @@ void Carrot::ShaderModule::addPushConstants(vk::ShaderStageFlagBits stage, std::
     std::string name = pushConstant.name;
     const auto& resourceType = compiler->get_type(pushConstant.type_id);
 
+    std::size_t realSize = computeTypeSize(*compiler, compiler->get_type(resourceType.parent_type));
+
     for(const auto& r : ranges) {
-        offset = std::min(static_cast<std::uint32_t>(r.offset), offset);
-        size = std::max(static_cast<std::uint32_t>(r.offset+r.range), size);
+        offset = Carrot::Math::alignDown(std::min(static_cast<std::uint32_t>(r.offset), offset), 4u);
+        size = Carrot::Math::alignUp(std::max(static_cast<std::uint32_t>(r.offset+realSize), size), 4u);
     }
 
     if(pushConstants.contains(name)) {
         auto& existingRange = pushConstants.at(name);
         existingRange.stageFlags |= stage;
-        existingRange.offset = std::min(static_cast<std::uint32_t>(offset), existingRange.offset);
-        existingRange.size = std::max(static_cast<std::uint32_t>(size), existingRange.size);
+        existingRange.offset = Carrot::Math::alignDown(std::min(static_cast<std::uint32_t>(offset), existingRange.offset), 4u);
+        existingRange.size = Carrot::Math::alignUp(std::max(static_cast<std::uint32_t>(realSize), existingRange.size), 4u);
         return;
     }
 

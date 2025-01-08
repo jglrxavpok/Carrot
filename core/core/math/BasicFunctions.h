@@ -37,4 +37,10 @@ namespace Carrot::Math {
         verify(isPowerOf2(alignment), "alignment must be a power of 2");
         return (value + alignment - 1) & ~(alignment - 1);
     }
+
+    template<typename Scalar>
+    inline constexpr Scalar alignDown(Scalar value, Scalar alignment) {
+        verify(isPowerOf2(alignment), "alignment must be a power of 2");
+        return (value / alignment) * alignment;
+    }
 }

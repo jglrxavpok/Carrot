@@ -152,10 +152,11 @@ namespace Carrot::Render {
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
 
+                // TODO: replace with call to vkCmdFillBuffer?
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
 
-                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
+                frame.renderer.pushConstants("", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                    static_cast<std::uint32_t>(HashGridTotalCellCount));
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
@@ -252,6 +253,7 @@ namespace Carrot::Render {
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[1], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[0], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
+            // TODO: find out why spatialDenoisePipelines[2] yields a black screen (which should be the correct code?)
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[0], 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*spatialDenoisePipelines[1], frame, *pImages[1], 1, 1, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
 
