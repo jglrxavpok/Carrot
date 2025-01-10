@@ -89,11 +89,24 @@ void Carrot::Render::CompiledPass::performTransitions(const Render::Context& ren
             tex.transitionInline(cmds, transition.to, transition.aspect);
         }
 
+        Carrot::Vector<vk::BufferMemoryBarrier> bufferBarriers;
         for(std::size_t i = 0; i < outputs.size(); i++) {
             if(needBufferClearEachFrame[i]) {
-                auto& buffer = graph.getBuffer(outputs[i], renderContext.swapchainIndex);
+                auto& buffer = graph.getBuffer(outputs[i], renderContext.frameCount);
                 cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+                bufferBarriers.emplaceBack(vk::BufferMemoryBarrier {
+                    .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+                    .buffer = buffer.view.getVulkanBuffer(),
+                    .offset = buffer.view.getStart(),
+                    .size = buffer.view.getSize(),
+                });
             }
+        }
+
+        if (!bufferBarriers.empty()) {
+            cmds.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe, static_cast<vk::DependencyFlags>(0), {},
+                bufferBarriers, {});
         }
     }
 }

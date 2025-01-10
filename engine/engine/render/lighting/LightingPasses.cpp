@@ -153,6 +153,9 @@ namespace Carrot::Render {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
 
                 // TODO: replace with call to vkCmdFillBuffer?
+                auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
+ //               cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
+#if 1
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
 
                 frame.renderer.pushConstants("", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
@@ -164,6 +167,7 @@ namespace Carrot::Render {
                 const std::size_t localSize = 256;
                 const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
                 cmds.dispatch(groupX, 1, 1);
+#endif
             });
 
         auto addDenoisingResources = [&](const char* name, vk::Format format, PassData::Denoising& data) {
@@ -238,10 +242,6 @@ namespace Carrot::Render {
                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.swapchainIndex), 2, 3, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindStorageImage(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(data.historyLength, frame.lastSwapchainIndex), 2, 4, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                renderer.bindTexture(*temporalDenoisePipeline, frame, pass.getGraph().getTexture(gBuffer.positions, frame.lastSwapchainIndex), 2, 5, nullptr, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-               renderer.bindUniformBuffer(*temporalDenoisePipeline, frame, frame.pViewport->getCameraUniformBuffer(frame), 1, 0);
-               renderer.bindUniformBuffer(*temporalDenoisePipeline, frame, frame.pViewport->getCameraUniformBuffer(frame.lastFrame()), 1, 1);
-
 
                gBuffer.bindInputs(*spatialDenoisePipelines[0], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
                gBuffer.bindInputs(*spatialDenoisePipelines[1], frame, pass.getGraph(), 0, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -598,6 +598,7 @@ namespace Carrot::Render {
         };
         auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
             [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
+                pass.rasterized = false;
                 data.gbuffer.readFrom(graph, lightingPass.getData().gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
                 data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
@@ -630,6 +631,7 @@ namespace Carrot::Render {
                 data.gi.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
                 addDenoisingResources("gi", vk::Format::eR8G8B8A8Unorm, data.output);
                 data.output.iterationCount = 1;
+                pass.rasterized = false;
             },
             [preparePushConstant, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const GIFinal& data, vk::CommandBuffer& cmds) {
                 {

@@ -59,7 +59,6 @@ namespace Peeler {
             renderer.bindTexture(*pipeline, renderContext, texture, 0, 0, renderer.getVulkanDriver().getNearestSampler());
 
             auto& fullscreenMesh = renderer.getFullscreenQuad();
-            pipeline->bind(pass.getRenderPass(), renderContext, cmds);
 
             struct ConstantBlock {
                 Carrot::UUID selectedEntities[16];
@@ -75,6 +74,7 @@ namespace Peeler {
             }
 
             renderer.pushConstantBlock("selection", *pipeline, renderContext, vk::ShaderStageFlagBits::eFragment, cmds, block);
+            pipeline->bind(pass.getRenderPass(), renderContext, cmds);
             fullscreenMesh.bind(cmds);
             fullscreenMesh.draw(cmds);
         });

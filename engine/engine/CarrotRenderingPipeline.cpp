@@ -126,9 +126,6 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getNearestSampler(), 0, 6);
                     renderer.bindSampler(*pipeline, frame, renderer.getVulkanDriver().getLinearSampler(), 0, 7);
 
-                    renderer.bindUniformBuffer(*pipeline, frame, frame.pViewport->getCameraUniformBuffer(frame), 1, 0);
-                    renderer.bindUniformBuffer(*pipeline, frame, frame.pViewport->getCameraUniformBuffer(frame.lastFrame()), 1, 1);
-
                     data.gBufferInput.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     pipeline->bind(pass.getRenderPass(), frame, buffer);

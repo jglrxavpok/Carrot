@@ -135,6 +135,13 @@ void Carrot::ShaderModule::createBindingsSet(vk::ShaderStageFlagBits stage,
 }
 
 static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& type) {
+    std::uint32_t sizeMultiplier = 1;
+    sizeMultiplier *= type.vecsize;
+    for (std::uint32_t dimIndex = 0; dimIndex < type.array.size(); dimIndex++) {
+        verify(type.array_size_literal[dimIndex], "non-literal array sizes for push constant block members are not supported yet");
+        sizeMultiplier *= type.array[dimIndex];
+    }
+    verify(sizeMultiplier != 0, "logic error, one value is 0");
     switch(type.basetype) {
         case spirv_cross::SPIRType::Struct: {
             std::uint32_t size = 0;
@@ -142,23 +149,23 @@ static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, cons
                 auto& memberType = compiler.get_type(t);
                 size += computeTypeSize(compiler, memberType);
             }
-            return size;
+            return size * sizeMultiplier;
         }
 
         case spirv_cross::SPIRType::Float:
         case spirv_cross::SPIRType::UInt:
         case spirv_cross::SPIRType::Int:
-            return 4 * type.vecsize;
+            return 4 * sizeMultiplier;
 
         case spirv_cross::SPIRType::UInt64:
         case spirv_cross::SPIRType::Int64:
         case spirv_cross::SPIRType::Double:
-            return 8 * type.vecsize;
+            return 8 * sizeMultiplier;
 
         case spirv_cross::SPIRType::UByte:
-            return 1 * type.vecsize;
+            return 1 * sizeMultiplier;
         case spirv_cross::SPIRType::UShort:
-            return 2 * type.vecsize;
+            return 2 * sizeMultiplier;
 
         default:
             TODO
