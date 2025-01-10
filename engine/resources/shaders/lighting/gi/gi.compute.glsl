@@ -18,10 +18,6 @@ layout(push_constant) uniform PushConstant {
 void clearCells() {
     uint cellIndex = gl_GlobalInvocationID.x;
 
-    if(cellIndex == 0) {
-        hashGridResetCounters(CURRENT_FRAME);
-    }
-
     if(cellIndex < maxCellIndex) {
         hashGridClear(CURRENT_FRAME, cellIndex);
     }

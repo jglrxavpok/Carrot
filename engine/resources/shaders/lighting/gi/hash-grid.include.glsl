@@ -247,6 +247,3 @@ bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
     uint previousFrameID = atomicExchange(grids[mapIndex].pLastTouchedFrame.v[cellIndex], frameID);
     return previousFrameID != frameID;
 }
-
-void hashGridResetCounters(uint mapIndex) {
-}
