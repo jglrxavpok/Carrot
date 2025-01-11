@@ -16,7 +16,7 @@ layout(push_constant) uniform DrawDataPushConstant {                            
 
 
 #define DEFINE_PER_DRAW_BUFFER(setID)                                                                                   \
-layout(set = setID, binding = 0, scalar) buffer PerDrawData {                                                           \
+layout(set = setID, binding = 0, scalar) readonly buffer PerDrawData {                                                  \
     DrawData drawData[];                                                                                                \
 } perDrawData;                                                                                                          \
                                                                                                                         \

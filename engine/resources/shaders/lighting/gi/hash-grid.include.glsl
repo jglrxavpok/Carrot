@@ -145,17 +145,24 @@ HashDescriptor computeDescriptor(in HashCellKey key) {
     return desc;
 }
 
-void hashGridClear(uint mapIndex, uint cellIndex) {
+void hashGridClear(in HashCellBuffer pCells, uint cellIndex) {
     HashCellKey nullKey;
     nullKey.hitPosition = vec3(0.0);
     nullKey.direction = vec3(0.0);
     nullKey.cameraPos = vec3(0.0);
     nullKey.rayLength = 0.0;
-    grids[mapIndex].pCells.v[cellIndex].key = nullKey;
-    grids[mapIndex].pCells.v[cellIndex].hash2 = 0;
 
-    grids[mapIndex].pCells.v[cellIndex].sampleCount = 0;
-    grids[mapIndex].pCells.v[cellIndex].value = packRadiance(vec3(0));
+
+    pCells.v[cellIndex].key = nullKey;
+    pCells.v[cellIndex].hash2 = 0;
+
+    pCells.v[cellIndex].sampleCount = 0;
+    pCells.v[cellIndex].value = packRadiance(vec3(0));
+}
+
+void hashGridClear(uint mapIndex, uint cellIndex) {
+    HashCellBuffer pCells = grids[mapIndex].pCells;
+    hashGridClear(pCells, cellIndex);
 }
 
 /// Inserts a tile inside the hash grid, returning the corresponding cell ID

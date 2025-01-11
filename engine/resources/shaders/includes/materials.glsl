@@ -15,7 +15,7 @@ struct Material {
 };
 
 #define MATERIAL_SYSTEM_SET(setID)                                                                                      \
-    layout(set = setID, binding = 0, scalar) buffer MaterialBuffer { Material materials[]; };                           \
+    layout(set = setID, binding = 0, scalar) readonly buffer MaterialBuffer { Material materials[]; };                           \
     layout(set = setID, binding = 1) uniform texture2D textures[];                                                      \
     layout(set = setID, binding = 2) uniform sampler linearSampler;                                                     \
     layout(set = setID, binding = 3) uniform sampler nearestSampler;                                                    \

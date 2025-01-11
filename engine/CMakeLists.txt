@@ -207,60 +207,6 @@ set(ENGINE-SOURCES
         ${EngineRoot}vr/VRInterface.cpp
         )
 
-set(VERTEX_SHADERS
-        screenQuad.vertex.glsl
-        screenQuad-transformed.vertex.glsl
-        billboards.vertex.glsl
-
-        #PARENT_SCOPE
-        )
-
-set(FRAGMENT_SHADERS
-        composer-blit.fragment.glsl
-        billboards.fragment.glsl
-
-        forward-raytracing.fragment.glsl
-        forward-noraytracing.fragment.glsl
-
-        #PARENT_SCOPE
-        )
-
-set(COMPUTE_SHADERS
-        compute/animation-skinning.compute.glsl
-        compute/clear-visibility-buffer.compute.glsl
-        compute/clear-singleint.compute.glsl
-        compute/compute-rt-clusters.compute.glsl
-        compute/copy-variance.compute.glsl
-        compute/debug-texture-view.compute.glsl
-        compute/debug-buffer-view.compute.glsl
-        compute/firefly-rejection.compute.glsl
-        compute/particles.compute.glsl
-        compute/skeleton-skinning.compute.glsl
-        compute/spatial-denoise.compute.glsl
-
-        compute/lighting-noraytracing.fragment.glsl
-        compute/lighting-raytracing.fragment.glsl
-
-        lighting/gi/clear-grid.compute.glsl
-        lighting/gi/debug-gi.compute.glsl
-        lighting/gi/decay-cells.compute.glsl
-        lighting/gi/reuse-gi.compute.glsl
-        lighting/gi/update-cells.compute.glsl
-
-        lighting/ao-noraytracing.compute.glsl
-        lighting/ao-raytracing.compute.glsl
-        lighting/denoise-ao.compute.glsl
-        lighting/denoise-direct.compute.glsl
-
-        lighting/direct-noraytracing.compute.glsl
-        lighting/direct-raytracing.compute.glsl
-        lighting/reflections-noraytracing.compute.glsl
-        lighting/reflections-raytracing.compute.glsl
-        lighting/temporal-denoise.compute.glsl
-
-        #PARENT_SCOPE
-        )
-
 set(PIPELINES
         compute/clear-singleint
         compute/clear-visibility-buffer
@@ -272,7 +218,6 @@ set(PIPELINES
         compute/spatial-denoise
 
         lighting/gi/apply-gi
-        lighting/gi/clear-grid
         lighting/gi/debug-gi
         lighting/gi/decay-cells
         lighting/gi/reuse-gi
