@@ -665,6 +665,7 @@ namespace Carrot::Render {
             .gi = getGIResults.getData().output.pingPong[(getGIResults.getData().output.iterationCount+1) % 2],
             //.gi = getGIResults.getData().output.noisy,
             .reflections = lightingPass.getData().reflectionsNoisy,
+            .gBuffer = lightingPass.getData().gBuffer,
         };
         return data;
     }

@@ -25,22 +25,6 @@ namespace Peeler {
         engine.getVulkanDriver().getResourceRepository().getTextureUsages(gbufferPass.entityID.rootID) |= vk::ImageUsageFlagBits::eTransferSrc;
 
         gameTexture = addOutlinePass(graphBuilder, resolvePassResult);
-
-        struct TransitionData {
-            FrameResource textureToTransition;
-        };
-        graphBuilder.addPass<TransitionData>("transition for ImGui",
-            [&](GraphBuilder& graph, Pass<TransitionData>& pass, TransitionData& data) {
-                data.textureToTransition = graph.read(gameTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
-                pass.rasterized = false;
-            },
-            [this](const CompiledPass& pass, const Carrot::Render::Context& renderContext, const TransitionData& data, vk::CommandBuffer& cmds) {
-                auto& texture = pass.getGraph().getTexture(data.textureToTransition, renderContext.swapchainIndex);
-                texture.assumeLayout(vk::ImageLayout::eColorAttachmentOptimal);
-                texture.transitionInline(cmds, vk::ImageLayout::eShaderReadOnlyOptimal);
-            }
-        );
-
         gameViewport.setRenderGraph(std::move(graphBuilder.compile()));
 
         gameViewport.getCamera().setTargetAndPosition(glm::vec3(), glm::vec3(2,-5,5));

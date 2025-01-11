@@ -177,6 +177,7 @@ namespace Carrot::Render {
             FrameResource direct;
             FrameResource gi;
             FrameResource reflections;
+            GBuffer gBuffer;
         };
 
         struct PostProcessing {

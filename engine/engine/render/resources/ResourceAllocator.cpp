@@ -138,7 +138,7 @@ namespace Carrot {
         auto makeDedicated = [&](vk::DeviceSize size) {
             BufferAllocation result { this };
             auto& driverQueueFamilies = GetVulkanDriver().getQueueFamilies();
-            dedicatedDeviceBuffers.emplaceBack(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value()}));
+            dedicatedDeviceBuffers.emplaceBack(allocateDedicatedBuffer(size, usageFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, std::set{driverQueueFamilies.graphicsFamily.value(), driverQueueFamilies.computeFamily.value(), driverQueueFamilies.transferFamily.value()}));
             auto& pBuffer = dedicatedDeviceBuffers.back();
             pBuffer->name("ResourceAllocator::allocateDeviceBuffer");
             result.allocation = pBuffer.get();

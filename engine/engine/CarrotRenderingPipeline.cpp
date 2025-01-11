@@ -457,7 +457,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
             "merge-lighting",
 
             [this, lightingData, visibilityPasses, framebufferSize](Render::GraphBuilder& builder, Render::Pass<LightingMerge>& pass, LightingMerge& data) {
-                data.gBuffer.readFrom(builder, visibilityPasses.gbuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+                data.gBuffer.readFrom(builder, lightingData.gBuffer, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.directLighting = builder.read(lightingData.direct, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.ambientOcclusion = builder.read(lightingData.ambientOcclusion, vk::ImageLayout::eShaderReadOnlyOptimal);
                 data.reflections = builder.read(lightingData.reflections, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -562,7 +562,7 @@ const Carrot::Render::FrameResource& Carrot::Engine::fillInDefaultPipeline(Carro
     );
 
 
-    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, visibilityPasses.gbuffer, visibilityPasses.gbuffer.positions, framebufferSize);
+    auto& finalTAA = makeTAAPass("final", toneMapping.getData().postProcessed, mergeLighting.getData().gBuffer,  mergeLighting.getData().gBuffer.positions, framebufferSize);
 
     return finalTAA.getData().denoisedResult;
 }
