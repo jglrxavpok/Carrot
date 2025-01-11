@@ -1113,6 +1113,7 @@ void Carrot::Engine::createTimingQueryPools() {
         .queryCount = 2 * MAX_FRAMES_IN_FLIGHT,
     };
     timingQueryPool = vkDriver.getLogicalDevice().createQueryPoolUnique(createInfo, vkDriver.getAllocationCallbacks());
+    vkDriver.getLogicalDevice().resetQueryPool(*timingQueryPool, 0, createInfo.queryCount);
 
     timestampsWithAvailability.fill(1);
 }
