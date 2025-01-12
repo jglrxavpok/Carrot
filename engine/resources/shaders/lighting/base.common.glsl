@@ -120,11 +120,12 @@ vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightP
     vec3 normal = pbr.N;
 
     // Light Sampling, will require denoising of result
-    #define LIS
+    //#define LIS // TODO: reenable
 #ifdef LIS
     float pdfInv = activeLights.count;
     uint li = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
-    lightPDF = 1.0 / pdfInv;
+    //lightPDF = 1.0 / pdfInv;
+    lightPDF = 1.0;
     do {
 #else
     lightPDF = 1.0;
