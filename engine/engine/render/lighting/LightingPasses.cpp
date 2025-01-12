@@ -57,6 +57,9 @@ namespace Carrot::Render {
             vk::DeviceAddress grids[2]; // 0: previous frame, 1: current frame
         };
 
+        // offset into hash grid buffer where hash cells start
+        static constexpr std::uint32_t DataOffset = sizeof(Header);
+
         static Carrot::Render::PassData::HashGridResources createResources(Carrot::Render::GraphBuilder& graph) {
             Carrot::Render::PassData::HashGridResources r;
 
@@ -84,7 +87,7 @@ namespace Carrot::Render {
             for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
                 Carrot::BufferView gridBuffer = graph.getBuffer(r.hashGrid, i).view;
 
-                std::size_t cursor = sizeof(Header);
+                std::size_t cursor = DataOffset;
                 header.pCells = gridBuffer.subView(cursor, sizeof(HashGrid::HashCell) * HashGridTotalCellCount).getDeviceAddress();
 
                 cursor += sizeof(HashGrid::HashCell) * HashGridTotalCellCount;
@@ -152,22 +155,8 @@ namespace Carrot::Render {
             [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
 
-                // TODO: replace with call to vkCmdFillBuffer?
                 auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
- //               cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart(), buffer.view.getSize(), 0);
-#if 1
-                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/clear-grid", (std::uint64_t)&pass);
-
-                frame.renderer.pushConstants("", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    static_cast<std::uint32_t>(HashGridTotalCellCount));
-
-                HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
-
-                const std::size_t localSize = 256;
-                const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
-                cmds.dispatch(groupX, 1, 1);
-#endif
+                cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart() + HashGrid::DataOffset, buffer.view.getSize() - HashGrid::DataOffset, 0);
             });
 
         auto addDenoisingResources = [&](const char* name, vk::Format format, PassData::Denoising& data) {
