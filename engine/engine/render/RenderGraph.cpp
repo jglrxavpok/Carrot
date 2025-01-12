@@ -387,7 +387,7 @@ namespace Carrot::Render {
                     auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*clickedResourceForMain, context.swapchainIndex);
                     ImGui::Text("%s (%s) (%u x %u x %u)", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
                 } else {
-                    auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.swapchainIndex);
+                    auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*clickedResourceForMain, context.frameCount);
                     ImGui::Text("%s (%s) %llu bytes", clickedResourceForMain->id.toString().c_str(), clickedResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
                 }
                 float h = ImGui::GetContentRegionAvail().y;
@@ -414,7 +414,7 @@ namespace Carrot::Render {
             auto& texture = GetVulkanDriver().getResourceRepository().getTexture(*hoveredResourceForMain, context.swapchainIndex);
             ImGui::Text("%s (%s) (%u x %u x %u)", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), texture.getSize().width, texture.getSize().height, texture.getSize().depth);
         } else {
-            auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.swapchainIndex);
+            auto& buffer = GetVulkanDriver().getResourceRepository().getBuffer(*hoveredResourceForMain, context.frameCount);
             ImGui::Text("%s (%s) %llu bytes", hoveredResourceForMain->id.toString().c_str(), hoveredResourceForMain->parentID.toString().c_str(), buffer.view.getSize());
         }
 
@@ -472,9 +472,9 @@ namespace Carrot::Render {
         bool isBuffer = sourceResource.type == ResourceType::StorageBuffer;
 
         if(isBuffer) {
-            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.pipeline");
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-buffer-viewer.pipeline", reinterpret_cast<std::uint64_t>(destinationTexture.get()));
 
-            auto& buffer = getBuffer(sourceResource, context.swapchainIndex);
+            auto& buffer = getBuffer(sourceResource, context.frameCount);
 
             context.renderer.pushConstants("push", *pipeline, context, vk::ShaderStageFlagBits::eCompute, cmds,
                 static_cast<std::uint64_t>(buffer.view.getDeviceAddress()), static_cast<std::uint32_t>(buffer.view.getSize()));
@@ -494,7 +494,7 @@ namespace Carrot::Render {
             destinationTexture->getImage().transitionLayoutInline(cmds, vk::ImageLayout::eGeneral, vk::ImageLayout::eShaderReadOnlyOptimal);
 
         } else {
-            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.pipeline");
+            auto pipeline = context.renderer.getOrCreatePipelineFullPath("resources/pipelines/compute/debug-texture-viewer.pipeline", reinterpret_cast<std::uint64_t>(destinationTexture.get()));
 
             pipeline->bind({}, context, cmds, vk::PipelineBindPoint::eCompute);
 

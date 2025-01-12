@@ -135,6 +135,9 @@ void Carrot::ShaderModule::createBindingsSet(vk::ShaderStageFlagBits stage,
 }
 
 static std::uint64_t computeTypeSize(const spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& type) {
+    if (type.pointer) {
+        return sizeof(vk::DeviceAddress);
+    }
     std::uint32_t sizeMultiplier = 1;
     sizeMultiplier *= type.vecsize;
     for (std::uint32_t dimIndex = 0; dimIndex < type.array.size(); dimIndex++) {

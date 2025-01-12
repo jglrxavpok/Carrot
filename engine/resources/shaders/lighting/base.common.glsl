@@ -117,17 +117,20 @@ vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightP
         lightPDF = 1.0;
         return vec3(0.0);
     }
-
-    // TODO: Light Importance Sampling, will require denoising of result
-    //    float pdfInv = activeLights.count;
-    //    uint i = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
-    //    i = activeLights.indices[i];
-    //    lightPDF = 1.0 / pdfInv;
-    lightPDF = 1.0;
     vec3 normal = pbr.N;
 
-    [[dont_unroll]] for (uint li = 0; li < activeLights.count; li++)
-    {
+    // Light Sampling, will require denoising of result
+    #define LIS
+#ifdef LIS
+    float pdfInv = activeLights.count;
+    uint li = min(activeLights.count - 1, uint(floor(sampleNoise(rng) * activeLights.count)));
+    lightPDF = 1.0 / pdfInv;
+    do {
+#else
+    lightPDF = 1.0;
+
+    [[dont_unroll]] for (uint li = 0; li < activeLights.count; li++) {
+#endif
         uint i = activeLights.indices[li];
         #define light (lights.l[i])
 
@@ -172,7 +175,13 @@ vec3 computeDirectLightingFromLights(inout RandomSampler rng, inout float lightP
             lightContribution += brdf * enabledF * visibility * singleLightContribution;
         }
         #undef light
+
+#ifdef LIS
+    } while(false);
+#else
     }
+#endif
+
     return lightContribution;
 }
 #endif

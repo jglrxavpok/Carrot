@@ -15,14 +15,6 @@ layout(push_constant) uniform PushConstant {
     uint frameCount;
 };
 
-void clearCells() {
-    uint cellIndex = gl_GlobalInvocationID.x;
-
-    if(cellIndex < maxCellIndex) {
-        hashGridClear(CURRENT_FRAME, cellIndex);
-    }
-}
-
 void decayCells() {
     uint cellIndex = gl_GlobalInvocationID.x;
 

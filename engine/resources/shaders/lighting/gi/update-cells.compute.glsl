@@ -49,7 +49,9 @@ DEFINE_CAMERA_SET(5)
 #include <lighting/rt.include.glsl>
 
 void main() {
-    uvec2 pixel = gl_GlobalInvocationID.xy;
+    uvec2 pixelBlock = gl_GlobalInvocationID.xy*2;
+    ivec2 offset = ivec2(push.frameCount % 2, (push.frameCount/2) % 2);
+    ivec2 pixel = offset + ivec2(pixelBlock);
 
     uvec2 size = uvec2(push.frameWidth, push.frameHeight);
     if(pixel.x >= size.x || pixel.y >= size.y) {
@@ -165,8 +167,8 @@ void main() {
                 const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
 
                 float lightPDF = 1.0f;
-                vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
-                currentBounceRadiance += lightAtPoint * lightPDF;
+               // vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
+                //currentBounceRadiance += lightAtPoint * lightPDF;
             }
 
             // reflective part

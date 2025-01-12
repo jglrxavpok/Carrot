@@ -421,7 +421,6 @@ namespace Carrot::Render {
                 cmds.dispatch(groupX, 1, 1);
             });
 
-        // TODO: move after GI to benefit from GI results even in frames where camera moves
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)
                {
