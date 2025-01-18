@@ -132,6 +132,7 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> getBlackTexture() const { return blackTextureHandle; }
         std::shared_ptr<TextureHandle> getFlatNormalTexture() const { return flatNormalTextureHandle; }
         std::shared_ptr<TextureHandle> getDitheringTexture() const { return ditheringTextureHandle; }
+        std::shared_ptr<TextureHandle> getDefaultMetallicRoughnessTexture() const { return defaultMetallicRoughnessTextureHandle; }
         std::array<std::shared_ptr<TextureHandle>, BlueNoiseTextureCount> getBlueNoiseTextures() const { return blueNoiseTextureHandles; }
 
     private:
@@ -139,6 +140,7 @@ namespace Carrot::Render {
         Texture::Ref blackTexture = nullptr;
         Texture::Ref flatNormalTexture = nullptr;
         Texture::Ref ditheringTexture = nullptr;
+        Texture::Ref defaultMetallicRoughnessTexture = nullptr;
         std::array<Texture::Ref, BlueNoiseTextureCount> blueNoiseTextures { nullptr };
 
     private:
@@ -172,6 +174,7 @@ namespace Carrot::Render {
         std::shared_ptr<TextureHandle> blackTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> flatNormalTextureHandle = nullptr;
         std::shared_ptr<TextureHandle> ditheringTextureHandle = nullptr;
+        std::shared_ptr<TextureHandle> defaultMetallicRoughnessTextureHandle = nullptr;
         std::array<std::shared_ptr<TextureHandle>, BlueNoiseTextureCount> blueNoiseTextureHandles { nullptr };
 
     private:

@@ -106,7 +106,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                 setMaterialTexture(handle->albedo, material.albedo, materialSystem.getWhiteTexture());
                 setMaterialTexture(handle->normalMap, material.normalMap, materialSystem.getFlatNormalTexture());
                 setMaterialTexture(handle->emissive, material.emissive, materialSystem.getBlackTexture());
-                setMaterialTexture(handle->metallicRoughness, material.metallicRoughness, materialSystem.getBlackTexture());
+                setMaterialTexture(handle->metallicRoughness, material.metallicRoughness, materialSystem.getDefaultMetallicRoughnessTexture());
 
                 handle->isTransparent = material.blendMode != Render::LoadedMaterial::BlendMode::None;
                 handle->baseColor = material.baseColorFactor;

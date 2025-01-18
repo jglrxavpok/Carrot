@@ -260,9 +260,17 @@ namespace Carrot::Render {
         std::uint8_t flatNormalPixel[4] = {128, 128, 0xFF, 0xFF};
         flatNormalImage->stageUpload(std::span{flatNormalPixel, 4});
 
+        std::unique_ptr<Carrot::Image> defaultMetallicRoughnessImage = std::make_unique<Image>(GetVulkanDriver(),
+                                                                            vk::Extent3D{.width = 1, .height = 1, .depth = 1},
+                                                                            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+                                                                            vk::Format::eR8G8B8A8Unorm);
+        std::uint8_t defaultMetallicRoughnessPixel[4] = {0x00, 0xFF, 0x00, 0xFF};
+        defaultMetallicRoughnessImage->stageUpload(std::span{defaultMetallicRoughnessPixel, 4});
+
         whiteTexture = std::make_shared<Texture>(std::move(whiteImage));
         blackTexture = std::make_shared<Texture>(std::move(blackImage));
         flatNormalTexture = std::make_shared<Texture>(std::move(flatNormalImage));
+        defaultMetallicRoughnessTexture = std::make_shared<Texture>(std::move(defaultMetallicRoughnessImage));
 
         invalidTexture = GetRenderer().getOrCreateTexture("invalid_texture_reference.png");
         invalidTextureHandle = createTextureHandle(invalidTexture);
@@ -293,6 +301,7 @@ namespace Carrot::Render {
         whiteTextureHandle = createTextureHandle(whiteTexture);
         blackTextureHandle = createTextureHandle(blackTexture);
         flatNormalTextureHandle = createTextureHandle(flatNormalTexture);
+        defaultMetallicRoughnessTextureHandle = createTextureHandle(defaultMetallicRoughnessTexture);
     }
 
     void MaterialSystem::updateDescriptorSets(const Carrot::Render::Context& renderContext) {

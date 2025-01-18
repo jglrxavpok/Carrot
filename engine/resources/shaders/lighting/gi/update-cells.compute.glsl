@@ -101,6 +101,11 @@ void main() {
     HashCellKey bounceKeys[MAX_BOUNCES];
 
     for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
+        vec3 bounceTransferFactor[MAX_BOUNCES] = {
+            vec3(0),
+            vec3(0),
+            vec3(0)
+        };
         vec3 newRadiance = vec3(0.0);
         vec3 emissiveColor = gEmissive;
         vec3 albedo = gAlbedo;
@@ -177,16 +182,20 @@ void main() {
             pbr.H = normalize(pbr.L + pbr.H);
             computeDotProducts(pbr);
 
-            weight *= max(0.01,abs(dot(surfaceNormal, specularDir)));
+            const float cosNormalDirection = max(0.01,abs(dot(surfaceNormal, specularDir)));
+            weight *= cosNormalDirection;
+
 
             vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
+            bounceTransferFactor[bounceIndex] = cosNormalDirection * brdf;
             if(isnan(brdf.x)) {
                 break;
             }
-            const float tMax = 5000.0f; /* TODO: specialization constant? compute properly?*/
+
+            const float tMax = 50000.0f; /* TODO: specialization constant? compute properly?*/
 
             intersection.hasIntersection = false;
-            traceRayWithSurfaceInfo(intersection, startPos, specularDir, tMax);
+            traceRayWithSurfaceInfo(intersection, startPos + specularDir * 0.001f, specularDir, tMax);
             if(intersection.hasIntersection) {
                 // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
                 float mip = 0;// TODO? max(log2(3840.0 / push.frameWidth), 0.0);
@@ -250,7 +259,7 @@ void main() {
                 // todo: update beta
                 //beta *= brdf * albedo.rgb;
 
-                currentBounceRadiance += brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
+                currentBounceRadiance += cosNormalDirection * brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
             } else {
                 const mat3 rot = mat3(
                     vec3(1.0, 0.0, 0.0),
@@ -259,12 +268,17 @@ void main() {
                 );
                 vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
 
-                currentBounceRadiance +=  skyboxRGB.rgb * brdf;
+                currentBounceRadiance +=  cosNormalDirection * skyboxRGB.rgb * brdf;
                 stopHere = true;
             }
 
             for(int otherBounce = bounceIndex; otherBounce >= 0; otherBounce--) {
-                bounceRadiance[bounceIndex] += currentBounceRadiance;
+                vec3 f = vec3(1.0f);
+                for(int otherOtherBounce = 0; otherOtherBounce <= otherBounce; otherOtherBounce++) {
+                    f *= bounceTransferFactor[otherOtherBounce];
+                }
+                // TODO: check if transfer of energy is correct here
+                bounceRadiance[bounceIndex] += f * currentBounceRadiance;
             }
             newRadiance += beta * currentBounceRadiance;
 
