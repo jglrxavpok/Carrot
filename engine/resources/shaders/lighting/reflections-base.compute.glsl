@@ -40,13 +40,27 @@ MATERIAL_SYSTEM_SET(4)
 #include "includes/rng.glsl"
 #include <lighting/gi/gi-interface.include.glsl>
 
-layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outDirectLightingImage;
+layout(rgba32f, set = 5, binding = 0) uniform writeonly image2D outLightingImage;
+layout(rgba32f, set = 5, binding = 1) uniform writeonly image2D outFirstBouncePositions;
+layout(rgba32f, set = 5, binding = 2) uniform writeonly image2D outFirstBounceNormalsTangents;
 
 // needs to be included after LIGHT_SET macro & RT data
 #include <lighting/base.common.glsl>
 #include <lighting/rt.include.glsl>
 
-vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, float roughness, vec3 worldPos, vec3 normal, mat3 TBN, mat3 invTBN, bool raytracing) {
+vec3 calculateReflections(
+    inout RandomSampler rng,
+    inout vec3 firstBounceWorldPos,
+    inout mat2x3 firstBounceWorldNormalTangent,
+    vec3 albedo,
+    float metallic,
+    float roughness,
+    vec3 worldPos,
+    vec3 normal,
+    mat3 TBN,
+    mat3 invTBN,
+    bool raytracing
+) {
     const vec3 cameraPos = (cbo.inverseView * vec4(0, 0, 0, 1)).xyz;
 
     vec3 toCamera = worldPos - cameraPos;
@@ -96,6 +110,9 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
 
         traceRayWithSurfaceInfo(intersection, rayOrigin, direction, tMax);
         if(intersection.hasIntersection) {
+            vec3 T = normalize(intersection.surfaceTangent);
+            vec3 N = normalize(intersection.surfaceNormal);
+
             // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
             float mip = max(log2(3840.0 / push.frameWidth), 0.0);
             vec2 f;
@@ -116,8 +133,6 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
             // normal mapping
             vec3 mappedNormal;
             {
-                vec3 T = normalize(intersection.surfaceTangent);
-                vec3 N = normalize(intersection.surfaceNormal);
                 vec3 B = cross(T, N) * intersection.bitangentSign;
 
                 mappedNormal = _sample(normalMap).rgb;
@@ -151,6 +166,11 @@ vec3 calculateReflections(inout RandomSampler rng, vec3 albedo, float metallic, 
 
             vec3 gi = giGetNoUpdate(rng, giInputs);
             vec3 lightColor = (lighting + emissive + gi);
+
+            firstBounceWorldPos = intersection.position;
+            firstBounceWorldNormalTangent[0] = N;
+            firstBounceWorldNormalTangent[1] = T;
+
             return lightColor * brdf;
         } else {
             vec3 worldViewDir = direction;
@@ -172,7 +192,7 @@ void main() {
     vec4 outColorWorld;
 
     const ivec2 currentCoords = ivec2(gl_GlobalInvocationID);
-    const ivec2 outputSize = imageSize(outDirectLightingImage);
+    const ivec2 outputSize = imageSize(outLightingImage);
 
     if(currentCoords.x >= outputSize.x
     || currentCoords.y >= outputSize.y) {
@@ -184,6 +204,9 @@ void main() {
     // TODO: load directly
     float currDepth = texture(sampler2D(gDepth, nearestSampler), inUV).r;
     vec4 outReflections = vec4(0.0);
+    vec3 firstBouncePosition = vec3(0.0);
+    vec3 firstBounceViewNormal = vec3(0.0);
+    vec3 firstBounceViewTangent = vec3(0.0);
 
     float distanceToCamera;
     if(currDepth < 1.0f) {
@@ -191,7 +214,16 @@ void main() {
 
         GBuffer gbuffer = unpackGBuffer(inUV);
         if(gbuffer.metallicness <= 0.001f) {
-            imageStore(outDirectLightingImage, currentCoords, vec4(0.0));
+            imageStore(outLightingImage, currentCoords, vec4(0.0));
+            imageStore(outFirstBouncePositions, currentCoords, vec4(gbuffer.viewPosition, 1));
+
+            bool nSign = false;
+            bool tSign = false;
+            bool bSign = false;
+            vec4 outViewNormalTangent;
+            compressTBN(gbuffer.viewTBN, outViewNormalTangent, nSign, tSign, bSign);
+            imageStore(outFirstBounceNormalsTangents, currentCoords, outViewNormalTangent);
+
             return;
         }
         vec4 hWorldPos = cbo.inverseView * vec4(gbuffer.viewPosition, 1.0);
@@ -209,6 +241,8 @@ void main() {
         mat3 TBN = transpose(inverse(mat3(tangent, bitangent, normal)));
         mat3 invTBN = inverse(TBN);
 
+        vec3 firstBounceWorldPosition = worldPos;
+        mat2x3 firstBounceWorldNormalTangent = mat2x3(normal, tangent);
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
         const int SAMPLE_COUNT = 4;
         const float INV_SAMPLE_COUNT = 1.0f / SAMPLE_COUNT;
@@ -216,16 +250,28 @@ void main() {
         [[dont_unroll]] for(int i = 0; i < SAMPLE_COUNT; i++) {
             vec3 gi;
             vec3 r;
-            outReflections.rgb += calculateReflections(rng, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, true);
+            outReflections.rgb += calculateReflections(rng, firstBounceWorldPosition, firstBounceWorldNormalTangent, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, true);
         }
         outReflections.rgb *= INV_SAMPLE_COUNT;
 #else
-        outReflections.rgb = calculateReflections(rng, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, false);
+        outReflections.rgb = calculateReflections(rng, firstBounceWorldPosition, firstBounceWorldNormalTangent, gbuffer.albedo.rgb, gbuffer.metallicness, gbuffer.roughness, worldPos, normal, TBN, invTBN, false);
 #endif
+        firstBouncePosition = (cbo.view * vec4(firstBounceWorldPosition, 1)).xyz;
+        firstBounceViewNormal = cboNormalView * firstBounceWorldNormalTangent[0];
+        firstBounceViewTangent = cboNormalView * firstBounceWorldNormalTangent[1];
     } else {
         outReflections = vec4(0.0);
     }
 
     outReflections.a = 1.0;
-    imageStore(outDirectLightingImage, currentCoords, outReflections);
+    imageStore(outLightingImage, currentCoords, outReflections);
+    imageStore(outFirstBouncePositions, currentCoords, vec4(firstBouncePosition, 1));
+
+    bool nSign = false;
+    bool tSign = false;
+    bool bSign = false;
+    vec4 outViewNormalTangent;
+    vec3 bitangent = cross(firstBounceViewNormal, firstBounceViewTangent);
+    compressTBN(mat3(firstBounceViewTangent, bitangent, firstBounceViewNormal), outViewNormalTangent, nSign, tSign, bSign);
+    imageStore(outFirstBounceNormalsTangents, currentCoords, outViewNormalTangent);
 }

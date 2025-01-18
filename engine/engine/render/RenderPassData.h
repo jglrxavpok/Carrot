@@ -165,7 +165,10 @@ namespace Carrot::Render {
             GBuffer gBuffer;
 
             // outputs
-            FrameResource reflectionsNoisy; // noisy output
+            Denoising reflections;
+            FrameResource reflectionsFirstBounceViewPositions; // view position of surface after first bounce for reflections. equal to gBuffer.positions if no reflection occured for a given texel
+            FrameResource reflectionsFirstBounceViewNormalsTangents; // view normals+tangents of surface after first bounce for reflections. equal to gBuffer.viewSpaceNormalTangents if no reflection occured for a given texel
+
             Denoising directLighting; //< also contains shadows
             Denoising ambientOcclusion;
 
