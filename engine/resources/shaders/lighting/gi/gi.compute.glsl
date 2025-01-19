@@ -13,6 +13,12 @@ layout (local_size_x = LOCAL_SIZE) in;
 layout(push_constant) uniform PushConstant {
     uint maxCellIndex;
     uint frameCount;
+    uint64_t pLastTouchedFrame;
+    uint64_t pCells;
+};
+
+layout(buffer_reference, scalar) buffer BufferToUint {
+    uint v;
 };
 
 void decayCells() {
@@ -23,8 +29,8 @@ void decayCells() {
     }
 
     const uint decayTime = 300;
-    if(grids[CURRENT_FRAME].pLastTouchedFrame.v[cellIndex]+decayTime < frameCount) {
-        hashGridClear(CURRENT_FRAME, cellIndex);
+    if(BufferToUint(pLastTouchedFrame+cellIndex).v+decayTime < frameCount) {
+        hashGridClear(HashGrid(pCells), cellIndex);
     }
 }
 

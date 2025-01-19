@@ -15,6 +15,7 @@
 
 namespace Carrot::Render {
 
+    // keep in sync with hash-grid.include.glsl
     static constexpr std::uint64_t HashGridCellsPerBucket = 8;
     static constexpr std::uint64_t HashGridBucketCount = 1024*256*4;
     static constexpr std::uint64_t HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
@@ -34,20 +35,6 @@ namespace Carrot::Render {
             float rayLength;
         };
 
-        struct HashCell {
-            HashCellKey key;
-            std::uint32_t hash2;
-            glm::ivec3 value;
-            std::uint32_t sampleCount;
-        };
-
-        struct Header {
-            // write the frame number when each cell was last touched (used to decay cells)
-            vk::DeviceAddress pLastTouchedFrame; // must be as many as there are total cells inside the grid
-
-            vk::DeviceAddress pCells;
-        };
-
         struct Constants {
             std::uint32_t cellsPerBucket;
             std::uint32_t bucketCount;
@@ -58,7 +45,16 @@ namespace Carrot::Render {
         };
 
         // offset into hash grid buffer where hash cells start
-        static constexpr std::uint32_t DataOffset = sizeof(Header);
+        static constexpr std::uint32_t DataOffset = 0;
+
+        // from hash-grid.include.glsl
+        static constexpr std::uint32_t SizeOfHashCell =
+            sizeof(HashCellKey)
+            + sizeof(std::uint32_t)
+            + sizeof(glm::ivec3)
+            + sizeof(std::uint32_t)
+        ;
+        static constexpr std::uint32_t LastTouchedFrameOffset = DataOffset + SizeOfHashCell * HashGridTotalCellCount;
 
         static Carrot::Render::PassData::HashGridResources createResources(Carrot::Render::GraphBuilder& graph) {
             Carrot::Render::PassData::HashGridResources r;
@@ -74,27 +70,12 @@ namespace Carrot::Render {
         }
 
         static void prepareBuffers(const Carrot::Render::Graph& graph, const Carrot::Render::PassData::HashGridResources& r) {
-            HashGrid::Header header{};
-
             // only a single one for both frame
             {
                 Constants constants{};
                 constants.bucketCount = HashGridBucketCount;
                 constants.cellsPerBucket = HashGridCellsPerBucket;
                 graph.getBuffer(r.constants, 0).view.uploadForFrame(&constants, sizeof(constants));
-            }
-
-            for(int i = 0; i < 2/* history length: current frame and previous frame */; i++) {
-                Carrot::BufferView gridBuffer = graph.getBuffer(r.hashGrid, i).view;
-
-                std::size_t cursor = DataOffset;
-                header.pCells = gridBuffer.subView(cursor, sizeof(HashGrid::HashCell) * HashGridTotalCellCount).getDeviceAddress();
-
-                cursor += sizeof(HashGrid::HashCell) * HashGridTotalCellCount;
-                header.pLastTouchedFrame = gridBuffer.subView(cursor, sizeof(std::uint32_t) * HashGridTotalCellCount).getDeviceAddress();
-                cursor += sizeof(std::uint32_t) * HashGridTotalCellCount;
-
-                gridBuffer.uploadForFrame(std::span<const HashGrid::Header>(&header, 1));
             }
 
             Pointers pointers{};
@@ -128,10 +109,7 @@ namespace Carrot::Render {
 
         static std::size_t computeSizeOf(std::size_t bucketCount, std::size_t cellsPerBucket) {
             const std::size_t totalCellCount = bucketCount * cellsPerBucket;
-            return sizeof(Header)
-            + totalCellCount * sizeof(HashCell) // pCells buffer
-            + totalCellCount * sizeof(std::uint32_t) // pLastTouchedFrame buffer
-            ;
+            return totalCellCount * SizeOfHashCell + totalCellCount * sizeof(std::uint32_t);
         }
     };
 
@@ -156,7 +134,7 @@ namespace Carrot::Render {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
 
                 auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
-                cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart() + HashGrid::DataOffset, buffer.view.getSize() - HashGrid::DataOffset, 0);
+                cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart() + HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount, 0);
             });
 
         auto addDenoisingResources = [&](const char* name, vk::Format format, PassData::Denoising& data) {
@@ -316,8 +294,11 @@ namespace Carrot::Render {
 
                 auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
 
+                const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
+                BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
+                BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
                 frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount);
+                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
 
                 HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);

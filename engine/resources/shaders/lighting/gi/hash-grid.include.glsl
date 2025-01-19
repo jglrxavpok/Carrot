@@ -14,6 +14,11 @@
 #endif
 const uint InvalidCellIndex = 0xFFFFFFFFu;
 
+// keep in sync with LightingPasses.cpp
+const uint HashGridCellsPerBucket = 8;
+const uint HashGridBucketCount = 1024*256*4;
+const uint HashGridTotalCellCount = HashGridBucketCount*HashGridCellsPerBucket;
+
 layout(buffer_reference, scalar) buffer BufferToUints {
     uint v[];
 };
@@ -30,22 +35,13 @@ struct HashDescriptor {
     uint hash2;
 };
 
-struct HashCell {
-    HashCellKey key;
-    uint hash2;
-    ivec3 value;
-    uint sampleCount;
-};
-
-layout(buffer_reference, scalar) buffer HashCellBuffer {
-    HashCell v[];
-};
-
 layout(buffer_reference, scalar) buffer HashGrid {
-    // write the frame number when each cell was last touched (used to decay cells)
-    BufferToUints pLastTouchedFrame; // must be as many as there are total cells inside the grid
+    HashCellKey keys[HashGridTotalCellCount];
+    uint hash2[HashGridTotalCellCount];
+    ivec3 values[HashGridTotalCellCount];
+    uint sampleCounts[HashGridTotalCellCount];
 
-    HashCellBuffer pCells;
+    uint lastTouchedFrames[HashGridTotalCellCount];
 };
 
 layout(set = HASH_GRID_SET_ID, binding = 0, scalar) buffer HashGridConstants {
@@ -145,7 +141,7 @@ HashDescriptor computeDescriptor(in HashCellKey key) {
     return desc;
 }
 
-void hashGridClear(in HashCellBuffer pCells, uint cellIndex) {
+void hashGridClear(in HashGrid pCells, uint cellIndex) {
     HashCellKey nullKey;
     nullKey.hitPosition = vec3(0.0);
     nullKey.direction = vec3(0.0);
@@ -153,16 +149,15 @@ void hashGridClear(in HashCellBuffer pCells, uint cellIndex) {
     nullKey.rayLength = 0.0;
 
 
-    pCells.v[cellIndex].key = nullKey;
-    pCells.v[cellIndex].hash2 = 0;
+    pCells.keys[cellIndex] = nullKey;
+    pCells.hash2[cellIndex] = 0;
 
-    pCells.v[cellIndex].sampleCount = 0;
-    pCells.v[cellIndex].value = packRadiance(vec3(0));
+    pCells.sampleCounts[cellIndex] = 0;
+    pCells.values[cellIndex] = packRadiance(vec3(0));
 }
 
 void hashGridClear(uint mapIndex, uint cellIndex) {
-    HashCellBuffer pCells = grids[mapIndex].pCells;
-    hashGridClear(pCells, cellIndex);
+    hashGridClear(grids[mapIndex], cellIndex);
 }
 
 /// Inserts a tile inside the hash grid, returning the corresponding cell ID
@@ -177,7 +172,7 @@ uint hashGridInsert(uint mapIndex, in HashCellKey key, out bool wasNew) {
     // check if bucket already contains the cell
     for(; cellIndex < boundary; cellIndex++) {
         // either gets the cell, or adds it to the bucket
-        uint previousHash = atomicCompSwap(grids[mapIndex].pCells.v[cellIndex].hash2, 0, desc.hash2);
+        uint previousHash = atomicCompSwap(grids[mapIndex].hash2[cellIndex], 0, desc.hash2);
         if(previousHash == 0) {
             wasNew = true;
             //hashGridClear(mapIndex, cellIndex);
@@ -199,8 +194,9 @@ uint hashGridFind(uint mapIndex, in HashCellKey key) {
     uint cellIndex = desc.bucketIndex * cellsPerBucket;
     uint boundary = (desc.bucketIndex+1) * cellsPerBucket;
 
+    HashGrid pCells = grids[mapIndex];
     for(; cellIndex < boundary; cellIndex++) {
-        if(grids[mapIndex].pCells.v[cellIndex].hash2 == desc.hash2) {
+        if(pCells.hash2[cellIndex] == desc.hash2) {
             break;
         }
     }
@@ -212,28 +208,28 @@ uint hashGridFind(uint mapIndex, in HashCellKey key) {
 }
 
 HashCellKey hashGridGetKey(uint mapIndex, uint cellIndex) {
-    return grids[mapIndex].pCells.v[cellIndex].key;
+    return grids[mapIndex].keys[cellIndex];
 }
 
 vec3 hashGridRead(uint mapIndex, uint cellIndex) {
-    return unpackRadiance(grids[mapIndex].pCells.v[cellIndex].value);
+    return unpackRadiance(grids[mapIndex].values[cellIndex]);
 }
 
 uint hashGridGetSampleCount(uint mapIndex, uint cellIndex) {
-    return grids[mapIndex].pCells.v[cellIndex].sampleCount;
+    return grids[mapIndex].sampleCounts[cellIndex];
 }
 
 void hashGridAdd(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 toAdd, uint newSampleCount) {
     // TODO: version without rewriting key & hash
-    grids[mapIndex].pCells.v[cellIndex].key = key;
-    grids[mapIndex].pCells.v[cellIndex].hash2 = computeDescriptor(key).hash2;
+    grids[mapIndex].keys[cellIndex] = key;
+    grids[mapIndex].hash2[cellIndex] = computeDescriptor(key).hash2;
 
     ivec3 packedRadiance = packRadiance(toAdd);
-    atomicAdd(grids[mapIndex].pCells.v[cellIndex].value.x, packedRadiance.x);
-    atomicAdd(grids[mapIndex].pCells.v[cellIndex].value.y, packedRadiance.y);
-    atomicAdd(grids[mapIndex].pCells.v[cellIndex].value.z, packedRadiance.z);
+    atomicAdd(grids[mapIndex].values[cellIndex].x, packedRadiance.x);
+    atomicAdd(grids[mapIndex].values[cellIndex].y, packedRadiance.y);
+    atomicAdd(grids[mapIndex].values[cellIndex].z, packedRadiance.z);
 
-    atomicAdd(grids[mapIndex].pCells.v[cellIndex].sampleCount, newSampleCount);
+    atomicAdd(grids[mapIndex].sampleCounts[cellIndex], newSampleCount);
 }
 
 /**
@@ -243,14 +239,14 @@ void hashGridAdd(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 toAdd, 
  */
 void hashGridWrite(uint mapIndex, uint cellIndex, in HashCellKey key, vec3 value, uint sampleCount) {
     // TODO: version without rewriting key & hash
-    grids[mapIndex].pCells.v[cellIndex].key = key;
-    grids[mapIndex].pCells.v[cellIndex].hash2 = computeDescriptor(key).hash2;
-    grids[mapIndex].pCells.v[cellIndex].value = packRadiance(value);
-    grids[mapIndex].pCells.v[cellIndex].sampleCount = sampleCount;
+    grids[mapIndex].keys[cellIndex] = key;
+    grids[mapIndex].hash2[cellIndex] = computeDescriptor(key).hash2;
+    grids[mapIndex].values[cellIndex] = packRadiance(value);
+    grids[mapIndex].sampleCounts[cellIndex] = sampleCount;
 }
 
 /// Mark the tile as updated. If this returns true, the current invocation is the first one touching this cell for the current frame
 bool hashGridMark(uint mapIndex, uint cellIndex, uint frameID) {
-    uint previousFrameID = atomicExchange(grids[mapIndex].pLastTouchedFrame.v[cellIndex], frameID);
+    uint previousFrameID = atomicExchange(grids[mapIndex].lastTouchedFrames[cellIndex], frameID);
     return previousFrameID != frameID;
 }
