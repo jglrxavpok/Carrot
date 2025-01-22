@@ -137,6 +137,10 @@ namespace Carrot::Render {
                 cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart() + HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount, 0);
             });
 
+        clearGICells.setSwapchainRecreation([](const CompiledPass& pass, const GIData& data) {
+            HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
+        });
+
         auto addDenoisingResources = [&](const char* name, vk::Format format, PassData::Denoising& data) {
              data.noisy = graph.createStorageTarget(Carrot::sprintf("%s (noisy)", name),
                                                              format,
@@ -284,34 +288,6 @@ namespace Carrot::Render {
                }
             };
 
-        auto& decayGICells = graph.addPass<GIData>("decay-gi",
-            [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
-                pass.rasterized = false;
-                data.hashGrid = HashGrid::write(graph, clearGICells.getData().hashGrid);
-            },
-            [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Decay GI cells");
-
-                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
-
-                const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
-                BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
-                BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
-                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
-                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
-
-                HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
-                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
-
-                const std::size_t localSize = 256;
-                const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
-                cmds.dispatch(groupX, 1, 1);
-            });
-
-        decayGICells.setSwapchainRecreation([](const CompiledPass& pass, const GIData& data) {
-            HashGrid::prepareBuffers(pass.getGraph(), data.hashGrid);
-        });
-
         // used for randomness
         struct PushConstantNoRT {
             std::uint32_t frameCount;
@@ -341,7 +317,7 @@ namespace Carrot::Render {
             [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);
-                data.gi.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
+                data.gi.hashGrid = HashGrid::write(graph, clearGICells.getData().hashGrid);
             },
             [framebufferSize, preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Update GI cells");
@@ -415,6 +391,30 @@ namespace Carrot::Render {
                 cmds.dispatch(groupX, 1, 1);
             });
 
+        auto& decayGICells = graph.addPass<GIData>("decay-gi",
+            [&](GraphBuilder& graph, Pass<GIData>& pass, GIData& data) {
+                pass.rasterized = false;
+                data.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
+            },
+            [](const Render::CompiledPass& pass, const Render::Context& frame, const GIData& data, vk::CommandBuffer& cmds) {
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Decay GI cells");
+
+                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/decay-cells", (std::uint64_t)&pass);
+
+                const BufferAllocation& hashGridBuffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
+                BufferView pCells = hashGridBuffer.view.subView(HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount);
+                BufferView pLastTouchedFrame = hashGridBuffer.view.subView(HashGrid::LastTouchedFrameOffset);
+                frame.renderer.pushConstants("push", *pipeline, frame, vk::ShaderStageFlagBits::eCompute, cmds,
+                    (std::uint32_t)HashGridTotalCellCount, (std::uint32_t)frame.frameCount, pLastTouchedFrame.getDeviceAddress(), pCells.getDeviceAddress());
+
+                HashGrid::bind(data.hashGrid, pass.getGraph(), frame, *pipeline, 0);
+                pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
+
+                const std::size_t localSize = 256;
+                const std::size_t groupX = (HashGridTotalCellCount + localSize-1) / localSize;
+                cmds.dispatch(groupX, 1, 1);
+            });
+
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)
                {
@@ -438,7 +438,7 @@ namespace Carrot::Render {
                         framebufferSize,
                         vk::ImageLayout::eGeneral);
 
-                    resolveData.hashGrid = HashGrid::write(graph, reuseGICells.getData().hashGrid);
+                    resolveData.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
                },
                [framebufferSize, applyDenoising](const Render::CompiledPass& pass, const Render::Context& frame, const Carrot::Render::PassData::LightingResources& data, vk::CommandBuffer& cmds) {
                    ZoneScopedN("CPU RenderGraph lighting");

@@ -28,53 +28,73 @@ void decayCells() {
         return;
     }
 
-    const uint decayTime = 300;
+    const uint decayTime = 60;
     if(BufferToUint(pLastTouchedFrame+cellIndex).v+decayTime < frameCount) {
         hashGridClear(HashGrid(pCells), cellIndex);
     }
 }
 
 void reuseCells() {
-    const uint currentCellIndex = gl_GlobalInvocationID.x;
+    const uint previousCellIndex = gl_GlobalInvocationID.x;
 
-    if(currentCellIndex > maxCellIndex) {
+    if(previousCellIndex > maxCellIndex) {
         return;
     }
 
-    // 1. get key & value of cell at cellIndex on current frame's grid
-    HashCellKey key = hashGridGetKey(CURRENT_FRAME, currentCellIndex);
+    // 1. get key & value of cell at cellIndex on previous frame's grid
+    HashCellKey key = hashGridGetKey(PREVIOUS_FRAME, previousCellIndex);
+    if(grids[PREVIOUS_FRAME].hash2[previousCellIndex] == 0) {
+        return;
+    }
+    vec3 previousSample = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
+    uint previousSampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousCellIndex);
+    vec3 currentSample;
+    uint currentSampleCount;
 
     // 2. get corresponding cell in current frame
-    uint previousCellIndex = hashGridFind(PREVIOUS_FRAME, key);
-    if(previousCellIndex == InvalidCellIndex) {
-        return;
+    bool wasNew;
+    uint currentCellIndex = hashGridInsert(CURRENT_FRAME, key, wasNew);
+    if(wasNew) {
+        // no such cell in current frame, will just copy it
+
+        currentSample = vec3(0);
+        currentSampleCount = 0;
+        hashGridMark(CURRENT_FRAME, currentCellIndex, frameCount);
+    } else {
+        currentSample = hashGridRead(CURRENT_FRAME, currentCellIndex);
+        currentSampleCount = hashGridGetSampleCount(CURRENT_FRAME, currentCellIndex);
+    }
+
+    if(currentCellIndex == InvalidCellIndex) {
+        return; // no more room
     }
 
     RandomSampler rng;
     initRNG(rng, vec2(currentCellIndex, previousCellIndex) / maxCellIndex, maxCellIndex, maxCellIndex, frameCount);
 
     // 3. reuse samples from previous frame
-    vec3 currentSample = hashGridRead(CURRENT_FRAME, currentCellIndex);
-    vec3 previousSample = hashGridRead(PREVIOUS_FRAME, previousCellIndex);
-    uint currentSampleCount = hashGridGetSampleCount(CURRENT_FRAME, currentCellIndex);
-    uint previousSampleCount = hashGridGetSampleCount(PREVIOUS_FRAME, previousCellIndex);
-    uint totalSampleCount = min(60, currentSampleCount+previousSampleCount);
+    uint totalSampleCount = min(10000, currentSampleCount+previousSampleCount);
 
     vec3 combined;
     float combinedSampleCount;
     if(previousSampleCount == 0) {
         if(currentSampleCount == 0) {
-            combined = vec3(0.0);
-            combinedSampleCount = 1.0f;
+            combined = previousSample / previousSampleCount;
+            combinedSampleCount = previousSampleCount;
         } else {
-            combined = currentSample / currentSampleCount;
-            combinedSampleCount = currentSampleCount;
+            combined = vec3(0);
+            combinedSampleCount = 1;
         }
     } else {
-        vec3 newSample = currentSample / currentSampleCount + previousSample / previousSampleCount;
-        float alpha = max(0.05f, 1.0f / totalSampleCount);
-        combinedSampleCount = 1.0f / alpha;
-        combined = mix(newSample, currentSample / currentSampleCount, alpha);
+        if(currentSampleCount == 0) {
+            combined = previousSample / previousSampleCount;
+            combinedSampleCount = previousSampleCount;
+        } else {
+            vec3 newSample = currentSample / currentSampleCount + previousSample / previousSampleCount;
+            float alpha = max(0.05f, 1.0f / totalSampleCount);
+            combinedSampleCount = 1.0f / alpha;
+            combined = mix(newSample, currentSample / currentSampleCount, alpha);
+        }
     }
 
     combined *= combinedSampleCount;

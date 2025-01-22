@@ -10,18 +10,16 @@ DEFINE_CAMERA_SET(0)
 MATERIAL_SYSTEM_SET(1)
 DEFINE_PER_DRAW_BUFFER(2)
 
-layout(location = 0) in vec3 fragColor;
+layout(location = 0) in vec4 vColor;
 layout(location = 1) in vec2 uv;
-layout(location = 2) in vec4 instanceColor;
-layout(location = 3) in vec3 viewPosition;
-layout(location = 4) in vec3 previousFrameViewPosition;
-layout(location = 5) in vec3 _unused;
-layout(location = 6) flat in uvec4 uuid;
-layout(location = 7) in vec3 T;
-layout(location = 8) in vec3 N;
-layout(location = 9) flat in float bitangentSign;
-layout(location = 10) flat in mat4 inModelview;
-layout(location = 14) flat in int inDrawID;
+layout(location = 2) in vec3 viewPosition;
+layout(location = 3) in vec3 previousFrameViewPosition;
+layout(location = 4) flat in uvec4 uuid;
+layout(location = 5) in vec3 T;
+layout(location = 6) in vec3 N;
+layout(location = 7) flat in float bitangentSign;
+layout(location = 8) flat in mat4 inModelview;
+layout(location = 12) flat in int inDrawID;
 
 void main() {
     DrawData instanceDrawData = perDrawData.drawData[perDrawDataOffsets.offset+inDrawID];
@@ -38,8 +36,7 @@ void main() {
     vec4 texColor = ((roundedPos.x + roundedPos.y + roundedPos.z) & 1) == 0 ? color1 : color2;
 
     texColor *= material.baseColor;
-    texColor *= instanceColor;
-    texColor.rgb *= fragColor;
+    texColor *= vColor;
 
     texColor.a = 1.0;
     if(texColor.a < 0.01) {
@@ -48,7 +45,7 @@ void main() {
 
     GBuffer o = initGBuffer(inModelview);
 
-    o.albedo = vec4(texColor.rgb, texColor.a * instanceColor.a);
+    o.albedo = vec4(texColor.rgb, texColor.a);
     o.viewPosition = viewPosition;
 
     o.intProperty = IntPropertiesRayTracedLighting;
