@@ -106,6 +106,11 @@ void main() {
             vec3(0),
             vec3(0)
         };
+        vec3 bounceRadiancesInSample[MAX_BOUNCES] = {
+            vec3(0),
+            vec3(0),
+            vec3(0)
+        };
         vec3 newRadiance = vec3(0.0);
         vec3 emissiveColor = gEmissive;
         vec3 albedo = gAlbedo;
@@ -133,12 +138,12 @@ void main() {
 
         vec3 beta = vec3(1.0);
 
-        float weight = 1.0f;
         vec3 previousPos = cameraPos;
-        for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
+        int bounceIndex = 0;
+        for(; bounceIndex < MAX_BOUNCES; bounceIndex++) {
             vec3 tangent;
             vec3 bitangent;
-            computeTangents(-incomingRay, tangent, bitangent);
+            computeTangents(surfaceNormal, tangent, bitangent);
             const float jitterU = sampleNoise(rng) * 2 - 1;
             const float jitterV = sampleNoise(rng) * 2 - 1;
             float cellSize = giGetCellSize(startPos, cameraPos);
@@ -154,6 +159,9 @@ void main() {
             bool wasNew;
             vec3 currentBounceRadiance = vec3(0.0);
             bounceCellIndices[bounceIndex] = hashGridInsert(CURRENT_FRAME, bounceKeys[bounceIndex], wasNew);
+            if(bounceCellIndices[bounceIndex] == InvalidCellIndex) {
+                break;
+            }
 
             // diffuse part
             PbrInputs pbr;
@@ -182,15 +190,16 @@ void main() {
             pbr.H = normalize(pbr.L + pbr.H);
             computeDotProducts(pbr);
 
-            const float cosNormalDirection = max(0.01,abs(dot(surfaceNormal, specularDir)));
-            weight *= cosNormalDirection;
-
-
+            const float weakeningFactor = max(0.01, dot(N, specularDir));
             vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
-            bounceTransferFactor[bounceIndex] = cosNormalDirection * brdf;
             if(isnan(brdf.x)) {
                 break;
+               // brdf = vec3(0.001);
             }
+            if(isnan(weakeningFactor)) {
+                break;
+            }
+            bounceTransferFactor[bounceIndex] = vec3(weakeningFactor);
 
             const float tMax = 50000.0f; /* TODO: specialization constant? compute properly?*/
 
@@ -259,7 +268,7 @@ void main() {
                 // todo: update beta
                 //beta *= brdf * albedo.rgb;
 
-                currentBounceRadiance += cosNormalDirection * brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
+                currentBounceRadiance += brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
             } else {
                 const mat3 rot = mat3(
                     vec3(1.0, 0.0, 0.0),
@@ -268,30 +277,28 @@ void main() {
                 );
                 vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
 
-                currentBounceRadiance +=  cosNormalDirection * skyboxRGB.rgb * brdf;
+                currentBounceRadiance += brdf * skyboxRGB.rgb;
                 stopHere = true;
             }
 
-            for(int otherBounce = bounceIndex; otherBounce >= 0; otherBounce--) {
-                vec3 f = vec3(1.0f);
-                for(int otherOtherBounce = 0; otherOtherBounce <= otherBounce; otherOtherBounce++) {
-                    f *= bounceTransferFactor[otherOtherBounce];
-                }
-                // TODO: check if transfer of energy is correct here
-                bounceRadiance[bounceIndex] += f * currentBounceRadiance;
-            }
-            newRadiance += beta * currentBounceRadiance;
+            bounceRadiancesInSample[bounceIndex] = currentBounceRadiance;
 
             if(stopHere) {
                 break;
             }
-        }
 
-        if(weight > 0.001f) {
-            totalRadiance += newRadiance/* * weight*/;
-            totalWeight += weight;
+        } // for each bounce
+
+        // recompute radiance at each vertex of path
+        vec3 radianceFromNextBounce = vec3(0);
+        bounceIndex = min(bounceIndex, MAX_BOUNCES-1);
+        for(; bounceIndex >= 0; bounceIndex--) {
+            // based on rendering equation
+            vec3 radiance = bounceRadiancesInSample[bounceIndex] + bounceTransferFactor[bounceIndex] * radianceFromNextBounce;
+            bounceRadiance[bounceIndex] += radiance;
+            radianceFromNextBounce = radiance;
         }
-    }
+    } // for each sample
 
     for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
         uint bounceCellIndex = bounceCellIndices[bounceIndex];

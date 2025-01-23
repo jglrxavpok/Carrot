@@ -134,7 +134,21 @@ namespace Carrot::Render {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Clear GI cells");
 
                 auto& buffer = pass.getGraph().getBuffer(data.hashGrid.hashGrid, frame.frameCount);
+
+                // FIXME wtf
+                WaitDeviceIdle();
                 cmds.fillBuffer(buffer.view.getVulkanBuffer(), buffer.view.getStart() + HashGrid::DataOffset, HashGrid::SizeOfHashCell * HashGridTotalCellCount, 0);
+
+                cmds.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllCommands, static_cast<vk::DependencyFlags>(0),
+                    {}, {
+                        vk::BufferMemoryBarrier {
+                            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                            .dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+                            .buffer = buffer.view.getVulkanBuffer(),
+                            .offset = buffer.view.getStart() + HashGrid::DataOffset,
+                            .size = HashGrid::SizeOfHashCell * HashGridTotalCellCount,
+                        }
+                    }, {});
             });
 
         clearGICells.setSwapchainRecreation([](const CompiledPass& pass, const GIData& data) {
