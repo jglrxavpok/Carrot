@@ -51,6 +51,9 @@ void main() {
     o.intProperty = IntPropertiesRayTracedLighting;
     o.entityID = uuid;
 
+    o.metallicness = 0;
+    o.roughness = 1;
+
     vec4 clipPos = cbo.nonJitteredProjection * vec4(viewPosition, 1.0);
     vec4 previousClipPos = previousFrameCBO.nonJitteredProjection * vec4(previousFrameViewPosition, 1.0);
     o.motionVector = previousClipPos.xyz/previousClipPos.w - clipPos.xyz/clipPos.w;
