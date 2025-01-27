@@ -268,7 +268,7 @@ void main() {
                 // todo: update beta
                 //beta *= brdf * albedo.rgb;
 
-                currentBounceRadiance += brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
+                currentBounceRadiance += weakeningFactor * brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
             } else {
                 const mat3 rot = mat3(
                     vec3(1.0, 0.0, 0.0),
@@ -277,7 +277,7 @@ void main() {
                 );
                 vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
 
-                currentBounceRadiance += brdf * skyboxRGB.rgb;
+                currentBounceRadiance += weakeningFactor * brdf * skyboxRGB.rgb;
                 stopHere = true;
             }
 

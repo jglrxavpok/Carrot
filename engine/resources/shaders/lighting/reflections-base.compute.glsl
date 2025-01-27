@@ -164,7 +164,7 @@ vec3 calculateReflections(
             giInputs.roughness = roughness;
             giInputs.surfaceColor = pbrInputsAtPoint.baseColor;
 
-            vec3 gi = giGetNoUpdate(rng, giInputs);
+            vec3 gi = giGetCurrentFrame(rng, giInputs);
             vec3 lightColor = (lighting + emissive + gi);
 
             firstBounceWorldPos = intersection.position;

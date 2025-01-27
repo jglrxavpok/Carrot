@@ -148,7 +148,7 @@ void main() {
         giInputs.metallic = metallicRoughness.x;
         giInputs.roughness = metallicRoughness.y;
         giInputs.surfaceColor = albedo;
-        vec3 gi = giGetNoUpdate(rng, giInputs);
+        vec3 gi = giGetCurrentFrame(rng, giInputs);
 
         outDirectLighting.rgb += gi;
 
