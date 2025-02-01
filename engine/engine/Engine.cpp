@@ -86,7 +86,7 @@ static std::unordered_set<int> activeJoysticks{};
 
 #if USE_LIVEPP
 #include "LPP_API_x64_CPP.h"
-static lpp::LppSynchronizedAgent lppAgent;
+static std::optional<lpp::LppSynchronizedAgent> optLPPAgent;
 #endif
 
 Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
@@ -120,17 +120,21 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     changeTickRate(config.tickRate);
 
 #if USE_LIVEPP
-    std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
-    lppAgent = lpp::LppCreateSynchronizedAgent(livePPPath.wstring().c_str());
+    // TODO command line
+    if (false) {
+        std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
+        optLPPAgent = lpp::LppCreateSynchronizedAgent(nullptr, livePPPath.wstring().c_str());
 
-    // bail out in case the agent is not valid
-    if (!lpp::LppIsValidSynchronizedAgent(&lppAgent))
-    {
-        throw std::invalid_argument("Could not initialize Live++.");
+        // bail out in case the agent is not valid
+        if (!lpp::LppIsValidSynchronizedAgent(&optLPPAgent.value()))
+        {
+            throw std::invalid_argument("Could not initialize Live++.");
+        }
+
+        // enable Live++ for all loaded modules
+        const char* modulePath = lpp::LppGetCurrentModulePathANSI();
+        optLPPAgent->EnableModuleANSI(modulePath, lpp::LPP_MODULES_OPTION_NONE, nullptr, nullptr);
     }
-
-    // enable Live++ for all loaded modules
-    lppAgent.EnableModule(lpp::LppGetCurrentModulePath(), lpp::LPP_MODULES_OPTION_ALL_IMPORT_MODULES, nullptr, nullptr);
 #endif
 
     if(config.runInVR) {
@@ -348,8 +352,8 @@ void Carrot::Engine::run() {
     while(running) {
         ScopedMarker("Frame");
 #if USE_LIVEPP
-        if (lppAgent.WantsReload()) {
-            lppAgent.CompileAndReloadChanges(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
+        if (optLPPAgent.has_value() && optLPPAgent->WantsReload(lpp::LPP_RELOAD_OPTION_SYNCHRONIZE_WITH_RELOAD)) {
+            optLPPAgent->Reload(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
         }
 #endif
 
@@ -624,7 +628,10 @@ Carrot::Engine::~Engine() {
     vkDriver.executeDeferredDestructionsNow();
 
 #if USE_LIVEPP
-    lpp::LppDestroySynchronizedAgent(&lppAgent);
+    if (optLPPAgent.has_value()) {
+        lpp::LppDestroySynchronizedAgent(&optLPPAgent.value());
+        optLPPAgent.reset();
+    }
 #endif
 /*    for(size_t i = 0; i < getSwapchainImageCount(); i++) {
         TracyVkDestroy(tracyCtx[i]);

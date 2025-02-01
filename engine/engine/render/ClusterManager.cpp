@@ -265,9 +265,13 @@ namespace Carrot::Render {
                 // find back the original group index for this meshlet (index from the LoadedPrimitive)
                 // and add a pointer to the pre computed BLAS for the corresponding group
                 const std::size_t meshletGroupIndex = groupID - pTemplate->firstGroupIndex;
-                auto iterBLAS = desc.precomputedBLASes[templateIndex].find(meshletGroupIndex);
-                if(iterBLAS != desc.precomputedBLASes[templateIndex].end()) {
-                    groupInstances.precomputedBLASes[groupInstanceID] = iterBLAS->second;
+                if (templateIndex < desc.precomputedBLASes.size()) {
+                    auto iterBLAS = desc.precomputedBLASes[templateIndex].find(meshletGroupIndex);
+                    if(iterBLAS != desc.precomputedBLASes[templateIndex].end()) {
+                        groupInstances.precomputedBLASes[groupInstanceID] = iterBLAS->second;
+                    } else {
+                        groupInstances.precomputedBLASes[groupInstanceID] = nullptr;
+                    }
                 } else {
                     groupInstances.precomputedBLASes[groupInstanceID] = nullptr;
                 }

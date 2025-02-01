@@ -360,3 +360,17 @@ endif()
 
 file(COPY ${CarrotScriptDLLs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
 file(COPY ${CarrotScriptPDBs} DESTINATION "${CMAKE_BINARY_DIR}/scripting")
+
+# SteamDeck support
+if(WIN32)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_BINARY_DIR})
+    SET(CMAKE_INSTALL_DEBUG_LIBRARIES TRUE)
+    SET(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
+    include(InstallRequiredSystemLibraries)
+
+    add_custom_target(CopyRuntimeLibs
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} "${CMAKE_BINARY_DIR}"
+            )
+    add_dependencies(Engine-Base CopyRuntimeLibs)
+endif()

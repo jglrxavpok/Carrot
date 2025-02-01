@@ -122,14 +122,14 @@ Carrot::ComputePipeline::ComputePipeline(Carrot::Engine& engine, const IO::Resou
     if(storageBufferCount != 0) {
         descriptorSizes.emplace_back(vk::DescriptorPoolSize {
                 .type = vk::DescriptorType::eStorageBuffer,
-                .descriptorCount = storageBufferCount,
+                .descriptorCount = storageBufferCount*engine.getSwapchainImageCount(),
         });
     }
 
     if(storageBufferDynamicCount != 0) {
         descriptorSizes.emplace_back(vk::DescriptorPoolSize {
                 .type = vk::DescriptorType::eStorageBufferDynamic,
-                .descriptorCount = storageBufferDynamicCount,
+                .descriptorCount = storageBufferDynamicCount*engine.getSwapchainImageCount(),
         });
     }
 

@@ -1058,7 +1058,7 @@ void Carrot::VulkanRenderer::createCameraSetResources() {
 
     vk::DescriptorPoolSize poolSize {
             .type = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 2,
+            .descriptorCount = static_cast<uint32_t>(getSwapchainImageCount()) * MaxCameras *2,
     };
     cameraDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
@@ -1084,7 +1084,7 @@ void Carrot::VulkanRenderer::createViewportSetResources() {
 
     vk::DescriptorPoolSize poolSize {
             .type = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
+            .descriptorCount = static_cast<uint32_t>(getSwapchainImageCount()) * MaxViewports,
     };
     viewportDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
@@ -1117,11 +1117,11 @@ void Carrot::VulkanRenderer::createPerDrawSetResources() {
     vk::DescriptorPoolSize poolSizes[2] {
             {
                     .type = vk::DescriptorType::eStorageBuffer,
-                    .descriptorCount = 1,
+                    .descriptorCount = static_cast<uint32_t>(getSwapchainImageCount()),
             },
             {
                     .type = vk::DescriptorType::eUniformBufferDynamic,
-                    .descriptorCount = 1,
+                    .descriptorCount = static_cast<uint32_t>(getSwapchainImageCount()),
             }
     };
     perDrawDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
@@ -1262,7 +1262,7 @@ void Carrot::VulkanRenderer::createDebugSetResources() {
 
     vk::DescriptorPoolSize poolSize {
             .type = vk::DescriptorType::eUniformBuffer,
-            .descriptorCount = 1,
+            .descriptorCount = static_cast<uint32_t>(getSwapchainImageCount()),
     };
     debugDescriptorPool = getVulkanDriver().getLogicalDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
