@@ -12,7 +12,11 @@
 namespace Carrot::ECS {
     SpriteComponent::SpriteComponent(const rapidjson::Value& json, Entity entity): SpriteComponent::SpriteComponent(std::move(entity)) {
         auto obj = json.GetObject();
-        isTransparent = obj["isTransparent"].GetBool();
+        if (obj.HasMember("isTransparent")) {
+            isTransparent = obj["isTransparent"].GetBool();
+        } else {
+            isTransparent = false;
+        }
 
         if(obj.HasMember("sprite")) {
             auto spriteData = obj["sprite"].GetObject();
@@ -21,11 +25,17 @@ namespace Carrot::ECS {
                 const auto& texturePathJSON = spriteData["texturePath"];
                 std::string_view texturePath { texturePathJSON.GetString(), texturePathJSON.GetStringLength() };
                 auto textureRef = GetAssetServer().blockingLoadTexture(texturePath);
-                auto regionData = spriteData["region"].GetArray();
-                float minX = regionData[0].GetFloat();
-                float minY = regionData[1].GetFloat();
-                float maxX = regionData[2].GetFloat();
-                float maxY = regionData[3].GetFloat();
+                float minX = 0;
+                float minY = 0;
+                float maxX = 1;
+                float maxY = 1;
+                if (spriteData.HasMember("region")) {
+                    auto regionData = spriteData["region"].GetArray();
+                    minX = regionData[0].GetFloat();
+                    minY = regionData[1].GetFloat();
+                    maxX = regionData[2].GetFloat();
+                    maxY = regionData[3].GetFloat();
+                }
 
                 sprite = std::make_unique<Render::Sprite>(textureRef, Math::Rect2Df(minX, minY, maxX, maxY));
             } else {

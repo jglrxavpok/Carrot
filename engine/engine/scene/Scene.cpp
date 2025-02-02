@@ -146,11 +146,16 @@ namespace Carrot {
                 }
                 rapidjson::Value key(comp->getName(), dest.GetAllocator());
                 if(pPrefab != nullptr && comp->getComponentTypeID() != ECS::PrefabInstanceComponent::getID()) {
-                    ECS::Component& prefabComponent = pPrefab->getComponent(comp->getComponentTypeID());
-                    bool outputAnything = false;
-                    auto result = serialiseWithoutDefaultValues(*comp, prefabComponent, dest, outputAnything);
-                    if(outputAnything) {
-                        entityData.AddMember(key, result, dest.GetAllocator());
+                    auto optComponentRef = pPrefab->getComponent(comp->getComponentTypeID());
+                    if (optComponentRef.hasValue()) {
+                        ECS::Component& prefabComponent = optComponentRef;
+                        bool outputAnything = false;
+                        auto result = serialiseWithoutDefaultValues(*comp, prefabComponent, dest, outputAnything);
+                        if(outputAnything) {
+                            entityData.AddMember(key, result, dest.GetAllocator());
+                        }
+                    } else { // it is valid to add components to prefab instances which are not already inside the prefab
+                        entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
                     }
                 } else {
                     // prefab instance components are used for serialisation, don't modify them

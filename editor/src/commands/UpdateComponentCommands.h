@@ -7,6 +7,7 @@
 #include <Peeler.h>
 #include <commands/UndoStack.h>
 #include <engine/ecs/EntityTypes.h>
+#include <engine/ecs/Prefab.h>
 
 namespace Peeler {
     /**
