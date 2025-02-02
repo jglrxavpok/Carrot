@@ -105,7 +105,9 @@ namespace Carrot {
         static Carrot::Engine& getInstance() { return *instance; }
 
         /// Starts the engine. Will immediately load Vulkan resources
-        explicit Engine(Configuration config = {});
+        /// argc and argv are the arguments received by 'main'. It is valid to put 0 and nullptr, but this may prevent
+        /// users from customizing the behaviour of the engine
+        explicit Engine(int argc, char** argv, Configuration config = {});
 
         /// Launch the engine loop
         void run();

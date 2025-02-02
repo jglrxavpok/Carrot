@@ -97,7 +97,9 @@ Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
     std::filesystem::current_path(exePath.parent_path());
 }
 
-Carrot::Engine::Engine(Configuration config): mainWindow(*this, WINDOW_WIDTH, WINDOW_HEIGHT, config),
+Carrot::Engine::Engine(int argc, char** argv, Configuration config):
+settings(argc, argv),
+mainWindow(*this, WINDOW_WIDTH, WINDOW_HEIGHT, config),
 instanceSetterHack(this),
 vrInterface(config.runInVR ? std::make_unique<VR::Interface>(*this) : nullptr),
 vkDriver(mainWindow, config, this, vrInterface.get()),
@@ -120,8 +122,7 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
     changeTickRate(config.tickRate);
 
 #if USE_LIVEPP
-    // TODO command line
-    if (false) {
+    if (settings.useLivePP) {
         std::filesystem::path livePPPath = std::filesystem::current_path() / "LivePP" / "";
         optLPPAgent = lpp::LppCreateSynchronizedAgent(nullptr, livePPPath.wstring().c_str());
 

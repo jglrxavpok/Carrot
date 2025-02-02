@@ -91,6 +91,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}render/raytracing/AccelerationStructure.cpp
         ${EngineRoot}single_file_header_impls.cpp
         ${EngineRoot}LoadingScreen.cpp
+        ${EngineRoot}Settings.cpp
 
         ${EngineRoot}assets/AssetServer.cpp
 

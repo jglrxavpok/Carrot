@@ -603,24 +603,28 @@ void Carrot::VulkanDriver::createLogicalDevice() {
 #endif
 
 #ifdef AFTERMATH_ENABLE
-    initAftermath();
+    bool useAftermath = engine->getSettings().useAftermath;
+    vk::DeviceDiagnosticsConfigCreateInfoNV aftermath;
+    if (useAftermath) {
+        initAftermath();
 
-    deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
 
-    vk::DeviceDiagnosticsConfigCreateInfoNV aftermath {
-        .flags =
-                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableShaderDebugInfo |
-                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableResourceTracking |
-                vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableAutomaticCheckpoints
-    };
+        aftermath = {
+            .flags =
+                    vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableShaderDebugInfo |
+                    vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableResourceTracking |
+                    vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableAutomaticCheckpoints
+        };
 
-    aftermath.pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>();
+        aftermath.pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>();
+    }
 #endif
 
     vk::DeviceCreateInfo createInfo{
 #ifdef AFTERMATH_ENABLE
-            .pNext = &aftermath,
+            .pNext = useAftermath ? (void*)&aftermath : (void*)&deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
 #else
             .pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
 #endif
@@ -782,7 +786,9 @@ vk::Format Carrot::VulkanDriver::findDepthFormat() {
 
 Carrot::VulkanDriver::~VulkanDriver() {
 #ifdef AFTERMATH_ENABLE
-    shutdownAftermath();
+    if (engine->getSettings().useAftermath) {
+        shutdownAftermath();
+    }
 #endif
 
     mainWindow.destroySwapchainAndSurface();
@@ -1396,7 +1402,9 @@ void Carrot::VulkanDriver::onDeviceLost() {
 
 void Carrot::VulkanDriver::setMarker(vk::CommandBuffer& cmds, const std::string& markerData) {
 #ifdef AFTERMATH_ENABLE
-    setAftermathMarker(cmds, markerData);
+    if (engine->getSettings().useAftermath) {
+        setAftermathMarker(cmds, markerData);
+    }
 #endif
 }
 

@@ -8,6 +8,8 @@
 
 namespace Carrot {
     struct Settings {
+        Settings(int argc, char** argv);
+
         /**
          * Should the game be locked at a given framerate?
          * If not 0, the engine will attempt to throttle itself to lock the framerate at the given value
@@ -16,5 +18,15 @@ namespace Carrot {
          * Expressed in Hz
          */
         std::uint32_t fpsLimit = 0;
+
+        /**
+         * Enable the use of Live++ hot reloading
+         */
+        bool useLivePP = true;
+
+        /**
+         * Enable the use of Aftermath (crash reporting on Nvidia GPUs)
+         */
+        bool useAftermath = true;
     };
 }

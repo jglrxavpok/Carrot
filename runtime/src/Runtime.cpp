@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
             .startInFullscreen = true,
     };
 
-    Carrot::Engine engine { config };
+    Carrot::Engine engine { argc, argv, config };
     Carrot::Settings settings = engine.getSettings();
     settings.fpsLimit = 30;
     engine.changeSettings(settings);

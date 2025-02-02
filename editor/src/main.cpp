@@ -6,7 +6,7 @@
 #include <engine/Engine.h>
 #include "Peeler.h"
 
-int main() {
+int main(int argc, char** argv) {
     Carrot::Configuration config {
             .raytracingSupport = Carrot::RaytracingSupport::Supported,
             .runInVR = false,
@@ -15,7 +15,7 @@ int main() {
             .applicationVersion = VK_MAKE_VERSION(0,0,1),
     };
 //    try {
-        Carrot::Engine engine{config};
+        Carrot::Engine engine{argc, argv, config};
         engine.run();
 /*    } catch(const std::exception& e) {
         std::cerr << "Application died with exception:\n" << e.what() << std::endl;
