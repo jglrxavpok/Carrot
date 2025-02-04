@@ -139,6 +139,7 @@ add_subdirectory(thirdparty/OpenXR-Hpp)
 
 add_subdirectory(thirdparty/mimalloc)
 add_subdirectory(thirdparty/bc7enc_rdo)
+add_subdirectory(thirdparty/tomlplusplus)
 
 function(add_includes Target)
     add_core_includes(${Target})

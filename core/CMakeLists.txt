@@ -62,6 +62,7 @@ set(CORE-SOURCES
         ${CoreRoot}utils/ImGuiUtils.cpp
         ${CoreRoot}utils/Profiling.cpp
         ${CoreRoot}utils/stringmanip.cpp
+        ${CoreRoot}utils/TOML.cpp
         ${CoreRoot}utils/UserNotifications.cpp
         ${CoreRoot}utils/UUID.cpp
 
@@ -112,6 +113,7 @@ function(add_core_includes Target)
     target_compile_definitions("${Target}" PUBLIC USE_PIX=1)
     target_link_libraries("${Target}" PUBLIC ${MonoLibs})
     target_link_libraries("${Target}" PUBLIC mimalloc-static)
+    target_link_libraries("${Target}" PUBLIC tomlplusplus::tomlplusplus)
 
     # PIX on Windows
     target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/)

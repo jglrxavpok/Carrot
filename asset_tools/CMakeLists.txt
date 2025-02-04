@@ -1,5 +1,6 @@
 add_subdirectory(bayer_matrix_gen)
 add_subdirectory(crctable)
 add_subdirectory(fertilizer)
-add_subdirectory(shadercompiler)
 add_subdirectory(pipelinecompiler)
+add_subdirectory(sceneconverter)
+add_subdirectory(shadercompiler)
