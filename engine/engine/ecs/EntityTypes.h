@@ -185,4 +185,9 @@ namespace Carrot::ECS {
         Signature signature;
         std::vector<EntityWithComponents> matchingEntities;
     };
+
+    /**
+     * Some names of entities are not allowed, because they might clash with the scene format
+     */
+    bool isIllegalEntityName(std::string_view);
 }

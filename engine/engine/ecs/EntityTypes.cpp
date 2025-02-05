@@ -45,4 +45,11 @@ namespace Carrot::ECS {
         }
         return result;
     }
+
+    bool isIllegalEntityName(std::string_view entityName) {
+        if (entityName == ".LogicSystems" || entityName == ".RenderSystems") {
+            return true;
+        }
+        return false;
+    }
 }
