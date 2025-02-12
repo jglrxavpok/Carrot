@@ -198,6 +198,7 @@ function(add_core_precompiled_headers Target)
             "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<memory$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<algorithm$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<core/utils/Types.h$<ANGLE-R>>"
     )
 endfunction()
 
