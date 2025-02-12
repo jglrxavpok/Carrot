@@ -39,6 +39,7 @@ add_executable(
         core/Coroutines.cpp
         core/Counters.cpp
         core/CSharpScripting.cpp
+        core/Document.cpp
         core/FileWatching.cpp
         core/InlineAllocator.cpp
         core/Lookup.cpp

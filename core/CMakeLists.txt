@@ -16,6 +16,7 @@ set(CORE-SOURCES
 
         ${CoreRoot}expressions/Expressions.cpp
 
+        ${CoreRoot}io/Document.cpp
         ${CoreRoot}io/FileHandle.cpp
         ${CoreRoot}io/Files.cpp
         ${CoreRoot}io/FileSystemOS.cpp
