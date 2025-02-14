@@ -3,6 +3,7 @@
 //
 // Converts "legacy" .json scenes to next structure (folders/.toml)
 
+#include "SceneConverter.h"
 #include <rapidjson/document.h>
 #include <iostream>
 #include <fstream>
@@ -87,11 +88,10 @@ std::unique_ptr<toml::node> json2toml(const rapidjson::Value& v) {
     TODO;
 }
 
-void convert(const fs::path& scenePath, const fs::path& outputRoot) {
+void Carrot::SceneConverter::convert(const fs::path& scenePath, const fs::path& outputRoot) {
     std::cout << scenePath << std::endl;
     std::string sceneName = scenePath.stem().string();
     auto sceneFolder = outputRoot / sceneName;
-    fs::remove_all(sceneFolder);
     fs::create_directories(sceneFolder);
 
     rapidjson::Document sceneDocument;
@@ -226,24 +226,4 @@ void convert(const fs::path& scenePath, const fs::path& outputRoot) {
             out << componentTOML;
         }
     }
-}
-
-int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "Invalid usage, expected scene folder" << std::endl;
-        return 1;
-    }
-
-    fs::path sceneFolder { argv[1] };
-    for (auto file : fs::directory_iterator{ sceneFolder }) {
-        if (!file.is_regular_file()) {
-            continue;
-        }
-
-        const fs::path& scene = file.path();
-        if (scene.extension() == ".json") {
-            convert(scene, sceneFolder);
-        }
-    }
-    return 0;
 }

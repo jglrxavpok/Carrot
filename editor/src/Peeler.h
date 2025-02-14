@@ -69,7 +69,10 @@ namespace Peeler {
         void changeEntityParent(const Carrot::ECS::EntityID& entityToChange, std::optional<Carrot::ECS::Entity> newParent);
 
     private:
-        void deferredLoad();
+        Cider::GrowingStack loadStateMachineStack { 1 * 1024 * 1024 };
+        Carrot::Async::Counter loadStateMachineReady;
+        std::unique_ptr<Cider::Fiber> projectLoadStateMachine;
+        bool deferredLoad(Cider::FiberHandle& f);
 
     public:
         void markDirty();
@@ -231,7 +234,7 @@ namespace Peeler {
 
         bool hasUnsavedChanges = false;
 
-        std::vector<Carrot::IO::VFS::Path> knownScenes;
+        Carrot::Vector<Carrot::IO::VFS::Path> knownScenes;
         Carrot::IO::VFS::Path scenePath = "game://scenes/main.json";
         Carrot::UUID entityIDPickedThisFrame;
 

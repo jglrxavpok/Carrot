@@ -6,6 +6,7 @@
 
 #include <engine/Window.h>
 
+struct ImFont;
 struct ImDrawData;
 struct ImGuiViewport;
 
@@ -40,6 +41,8 @@ namespace Carrot {
 
             void onSwapchainImageCountChange(std::size_t newCount);
 
+            ImFont* getBigIconsFont();
+
         public: // called by ImGui
             void createWindowImGui(ImGuiViewport* pViewport);
             void renderExternalWindowImGui(ImDrawData* pDrawData, ImGuiRendererData& externalWindow, std::size_t swapchainIndex);
@@ -47,6 +50,7 @@ namespace Carrot {
         private:
             VulkanRenderer& renderer;
             PImpl* pImpl = nullptr;
+            ImFont* bigIconsFont = nullptr;
         };
 
     }

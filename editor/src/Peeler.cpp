@@ -54,6 +54,9 @@
 #include <engine/ecs/components/ErrorComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
 #include <core/io/FileSystemOS.h>
+#include <engine/edition/Widgets.h>
+
+#include "../../asset_tools/sceneconverter/SceneConverter.h"
 
 namespace fs = std::filesystem;
 
@@ -114,6 +117,9 @@ namespace Peeler {
 
     void Application::UIEditor(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
+        if (projectLoadStateMachine && !loadStateMachineReady.isIdle()) {
+            projectLoadStateMachine->switchTo();
+        }
         if(tryToClose) {
             openUnsavedChangesPopup([&]() {
                 requestShutdown();
@@ -339,19 +345,20 @@ namespace Peeler {
                     if(ImGui::Button("Create")) {
                         GetTaskScheduler().schedule(Carrot::TaskDescription {
                             .name = "Load new project",
-                            .task = [=](Carrot::TaskHandle&) {
-                                deferredLoad();
-                                std::filesystem::path projectFolder = projectPath;
-                                projectFolder /= projectName;
-                                std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
+                            .task = [=](Carrot::TaskHandle& h) {
+                                if (deferredLoad(h.getFiberHandle())) {
+                                    std::filesystem::path projectFolder = projectPath;
+                                    projectFolder /= projectName;
+                                    std::filesystem::path projectFile = projectFolder / Carrot::sprintf("%s.json", projectName.c_str());
 
-                                settings.currentProject = projectFile;
-                                settings.addToRecentProjects(projectFile);
-                                hasUnsavedChanges = true;
+                                    settings.currentProject = projectFile;
+                                    settings.addToRecentProjects(projectFile);
+                                    hasUnsavedChanges = true;
 
-                                wantsToLoadProject = false;
-                                GetVFS().addRoot("game", projectFolder);
-                                projectToLoad = std::filesystem::path{};
+                                    wantsToLoadProject = false;
+                                    GetVFS().addRoot("game", projectFolder);
+                                    projectToLoad = std::filesystem::path{};
+                                }
                             }
                         }, Carrot::TaskScheduler::MainLoop);
                     }
@@ -1251,9 +1258,20 @@ namespace Peeler {
 
     void Application::tick(double frameTime) {
         if(wantsToLoadProject && projectToLoad != EmptyProject) {
-            deferredLoad();
-            wantsToLoadProject = false;
-            projectToLoad = std::filesystem::path{};
+            if (loadStateMachineReady.isIdle()) {
+                loadStateMachineReady.increment();
+                projectLoadStateMachine = std::make_unique<Cider::Fiber>([this](Cider::FiberHandle& f) {
+                    if (deferredLoad(f)) {
+                        wantsToLoadProject = false;
+                        projectToLoad = std::filesystem::path{};
+                    }
+                    loadStateMachineReady.decrement();
+                }, loadStateMachineStack.asSpan());
+
+            }
+        }
+        if(!loadStateMachineReady.isIdle()) {
+            return;
         }
         if(isPlaying && requestedSingleStep) {
             if(!hasDoneSingleStep) {
@@ -1324,7 +1342,7 @@ namespace Peeler {
 
     void Application::addCurrentSceneToSceneList() {
         if(std::find(knownScenes.begin(), knownScenes.end(), scenePath) == knownScenes.end()) {
-            knownScenes.push_back(scenePath);
+            knownScenes.pushBack(scenePath);
         }
     }
 
@@ -1377,7 +1395,7 @@ namespace Peeler {
         addCurrentSceneToSceneList();
     }
 
-    void Application::deferredLoad() {
+    bool Application::deferredLoad(Cider::FiberHandle& f) {
         wantsToLoadProject = false;
         GetVFS().removeRoot("game");
         if(projectToLoad == EmptyProject) {
@@ -1389,7 +1407,7 @@ namespace Peeler {
             deselectAllEntities();
             updateWindowTitle();
             currentScene.world.freezeLogic();
-            return;
+            return true;
         }
         GetVFS().addRoot("game", std::filesystem::absolute(projectToLoad).parent_path());
         rapidjson::Document description;
@@ -1398,8 +1416,56 @@ namespace Peeler {
         } catch(std::runtime_error& e) {
             Carrot::Log::error("Failed to load project %s: %s", Carrot::toString(projectToLoad.u8string().c_str()).c_str(), e.what());
             projectToLoad = EmptyProject;
-            deferredLoad();
-            return;
+            return deferredLoad(f);
+        }
+
+        Carrot::Vector<Carrot::IO::VFS::Path> scenePaths;
+        Carrot::Vector<i64> indicesOfOutdatedScenes;
+        if (description.HasMember("scenes")) {
+            const auto scenesArray = description["scenes"].GetArray();
+            scenePaths.ensureReserve(scenesArray.Size());
+            indicesOfOutdatedScenes.ensureReserve(scenesArray.Size());
+            for (const auto& sceneElement : scenesArray) {
+                std::string_view path { sceneElement.GetString(), sceneElement.GetStringLength() };
+                if (path.ends_with(".json")) {
+                    indicesOfOutdatedScenes.pushBack(scenePaths.size());
+                }
+                scenePaths.emplaceBack(path);
+            }
+        }
+
+        bool needToSave = false;
+        if (!indicesOfOutdatedScenes.empty()) {
+            while (true) {
+                auto result = Carrot::Widgets::drawMessageBox("Outdated scenes",
+                    "You have scenes in an outdated format. Do you want to convert them to the new format?\n"
+                    "Refusing will cancel the load of your project.", Carrot::Widgets::MessageBoxIcon::Warning, Carrot::Widgets::MessageBoxButtons::Yes | Carrot::Widgets::MessageBoxButtons::No);
+                if (result.has_value()) {
+                    switch (result.value()) {
+                        case Carrot::Widgets::MessageBoxButtons::Yes:
+                            for (i64 sceneIndex : indicesOfOutdatedScenes) {
+                                Carrot::IO::VFS::Path& scenePath = scenePaths[sceneIndex];
+                                const fs::path realScenePath = GetVFS().resolve(scenePath);
+                                const fs::path sceneFolder = realScenePath.parent_path();
+                                Carrot::Log::info("Converting scene in '%s'...", Carrot::toString(realScenePath.u8string()));
+                                Carrot::SceneConverter::convert(realScenePath, sceneFolder);
+                                Carrot::Log::info("Finished!");
+
+                                fs::remove(realScenePath);
+                                scenePath = Carrot::IO::VFS::Path{ scenePath.getRoot(), scenePath.getPath().withExtension("") };
+                                needToSave = true;
+                            }
+                            break;
+
+                        case Carrot::Widgets::MessageBoxButtons::No:
+                            return false;
+
+                        default: TODO;
+                    }
+                    break;
+                }
+                f.yield();
+            }
         }
 
         auto& layersManager = GetPhysics().getCollisionLayers();
@@ -1435,12 +1501,9 @@ namespace Peeler {
 
         knownScenes.clear();
         if(description.HasMember("scenes")) {
-            for(const auto& element : description["scenes"].GetArray()) {
-                std::string_view scenePathStr = std::string_view{ element.GetString(), element.GetStringLength() };
-                knownScenes.emplace_back(scenePathStr);
-            }
+            knownScenes = scenePaths;
         } else {
-            knownScenes.push_back(scenePath);
+            knownScenes.pushBack(scenePath);
         }
         {
             openScene(description["scene"].GetString());
@@ -1478,6 +1541,11 @@ namespace Peeler {
         }
 
         updateWindowTitle();
+
+        if (needToSave) {
+            triggerSave();
+        }
+        return true;
     }
 
     void Application::saveToFile(std::filesystem::path path) {

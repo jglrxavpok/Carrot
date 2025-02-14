@@ -176,9 +176,10 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}scripting/bindings/render/resources/Texture.cpp
 
+        ${EngineRoot}edition/DragDropTypes.cpp
         ${EngineRoot}edition/EditorSettings.cpp
         ${EngineRoot}edition/FreeCameraController.cpp
-        ${EngineRoot}edition/DragDropTypes.cpp
+        ${EngineRoot}edition/Widgets.cpp
 
         ${EngineRoot}pathfinding/AStar.cpp
         ${EngineRoot}pathfinding/NavMesh.cpp

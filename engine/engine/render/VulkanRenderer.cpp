@@ -214,47 +214,6 @@ static void imguiCheckVkResult(VkResult err) {
 }
 
 void Carrot::VulkanRenderer::initImGui() {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigWindowsResizeFromEdges = true;
-    io.ConfigFlags |= GetConfiguration().runInVR ? 0 : ImGuiConfigFlags_ViewportsEnable;
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
-
-    {
-        auto& style = ImGui::GetStyle();
-        style.FrameRounding = 2.0f;
-        style.FrameBorderSize = 1.0f;
-        style.WindowBorderSize = 1.0f;
-
-        auto& colors = style.Colors;
-    }
-
-    // Setup Platform/Renderer backends
-    // TODO: move to dedicated style file
-    float baseFontSize = 14.0f; // 13.0f is the size of the default font. Change to the font size you use.
-    auto font = io.Fonts->AddFontFromFileTTF(Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Roboto-Medium.ttf")).u8string()).c_str(), baseFontSize);
-
-    // from https://github.com/juliettef/IconFontCppHeaders/tree/main/README.md
-    float iconFontSize = baseFontSize;// * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
-
-    // merge in icons from Font Awesome
-    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
-    ImFontConfig icons_config;
-    icons_config.MergeMode = true;
-    icons_config.PixelSnapH = true;
-    icons_config.GlyphMinAdvanceX = iconFontSize;
-    io.Fonts->AddFontFromFileTTF( Carrot::toString(GetVFS().resolve(IO::VFS::Path("resources/fonts/Font Awesome 5 Free-Solid-900.otf")).u8string()).c_str(),
-                                  iconFontSize, &icons_config, icons_ranges );
-
-    io.Fonts->Build();
-
     imGuiBackend.initResources();
 }
 
