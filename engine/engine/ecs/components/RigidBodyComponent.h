@@ -13,9 +13,9 @@ namespace Carrot::ECS {
 
         explicit RigidBodyComponent(Entity entity): IdentifiableComponent<RigidBodyComponent>(std::move(entity)) {}
 
-        explicit RigidBodyComponent(const rapidjson::Value& json, Entity entity);
+        explicit RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "RigidBodyComponent";

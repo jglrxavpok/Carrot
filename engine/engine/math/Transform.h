@@ -7,8 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include "rapidjson/rapidjson.h"
-#include "rapidjson/document.h"
+#include "core/io/Document.h"
 
 namespace Carrot::Math {
     /// Represents a position, non-uniform scale and rotation of an object.
@@ -29,8 +28,8 @@ namespace Carrot::Math {
         Transform operator*(const Transform& other) const;
 
     public:
-        void loadJSON(const rapidjson::Value& json);
-        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& json) const;
+        void deserialise(const Carrot::DocumentElement& doc);
+        Carrot::DocumentElement serialise() const;
 
     public:
         /// Decomposes the given 4x4 matrix and stores the result inside this transform

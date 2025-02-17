@@ -11,7 +11,7 @@ namespace Carrot::ECS {
     struct SystemTransformSwapBuffers: public LogicSystem<TransformComponent>, public Identifiable<SystemTransformSwapBuffers> {
     public:
         explicit SystemTransformSwapBuffers(World& world): LogicSystem<TransformComponent>(world) {}
-        explicit SystemTransformSwapBuffers(const rapidjson::Value& json, World& world): SystemTransformSwapBuffers(world) {}
+        explicit SystemTransformSwapBuffers(const Carrot::DocumentElement& doc, World& world): SystemTransformSwapBuffers(world) {}
 
         virtual void swapBuffers() override;
 

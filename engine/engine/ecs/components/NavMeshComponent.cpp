@@ -3,9 +3,9 @@
 namespace Carrot::ECS {
     NavMeshComponent::NavMeshComponent(Carrot::ECS::Entity entity) : Carrot::ECS::IdentifiableComponent<NavMeshComponent>(std::move(entity)) {};
 
-    NavMeshComponent::NavMeshComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity) : NavMeshComponent(std::move(entity)) {
-        if(json.HasMember("nav_mesh")) {
-            setMesh(json["nav_mesh"].GetString());
+    NavMeshComponent::NavMeshComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity) : NavMeshComponent(std::move(entity)) {
+        if(doc.contains("nav_mesh")) {
+            setMesh(Carrot::IO::Resource{ doc["nav_mesh"].getAsString() });
         }
     };
 
@@ -22,11 +22,11 @@ namespace Carrot::ECS {
         navMesh.loadFromResource(meshFile);
     }
 
-    rapidjson::Value NavMeshComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj(rapidjson::kObjectType);
+    Carrot::DocumentElement NavMeshComponent::serialise() const {
+        Carrot::DocumentElement obj;
 
         if(meshFile.isFile()) {
-            obj.AddMember("nav_mesh", rapidjson::Value{ meshFile.getName().c_str(), doc.GetAllocator()}, doc.GetAllocator());
+            obj["nav_mesh"] = meshFile.getName();
         }
 
         return obj;

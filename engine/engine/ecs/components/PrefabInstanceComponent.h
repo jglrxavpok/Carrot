@@ -8,13 +8,13 @@ namespace Carrot::ECS {
     class PrefabInstanceComponent: public Carrot::ECS::IdentifiableComponent<PrefabInstanceComponent> {
     public:
         std::shared_ptr<const Carrot::ECS::Prefab> prefab;
-        bool isRoot = false;
+        Carrot::UUID childID = Carrot::UUID::null(); //< null UUID if represents root of prefab
 
         explicit PrefabInstanceComponent(Carrot::ECS::Entity entity);
 
-        explicit PrefabInstanceComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
+        explicit PrefabInstanceComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return Carrot::Identifiable<Carrot::ECS::PrefabInstanceComponent>::getStringRepresentation();

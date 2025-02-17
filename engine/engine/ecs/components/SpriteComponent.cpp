@@ -10,31 +10,30 @@
 #include <filesystem>
 
 namespace Carrot::ECS {
-    SpriteComponent::SpriteComponent(const rapidjson::Value& json, Entity entity): SpriteComponent::SpriteComponent(std::move(entity)) {
-        auto obj = json.GetObject();
-        if (obj.HasMember("isTransparent")) {
-            isTransparent = obj["isTransparent"].GetBool();
+    SpriteComponent::SpriteComponent(const Carrot::DocumentElement& obj, Entity entity): SpriteComponent::SpriteComponent(std::move(entity)) {
+        if (obj.contains("isTransparent")) {
+            isTransparent = obj["isTransparent"].getAsBool();
         } else {
             isTransparent = false;
         }
 
-        if(obj.HasMember("sprite")) {
-            auto spriteData = obj["sprite"].GetObject();
+        if(obj.contains("sprite")) {
+            auto& spriteData = obj["sprite"];
 
-            if(spriteData.HasMember("texturePath")) {
+            if(spriteData.contains("texturePath")) {
                 const auto& texturePathJSON = spriteData["texturePath"];
-                std::string_view texturePath { texturePathJSON.GetString(), texturePathJSON.GetStringLength() };
+                std::string_view texturePath { texturePathJSON.getAsString() };
                 auto textureRef = GetAssetServer().blockingLoadTexture(texturePath);
                 float minX = 0;
                 float minY = 0;
                 float maxX = 1;
                 float maxY = 1;
-                if (spriteData.HasMember("region")) {
-                    auto regionData = spriteData["region"].GetArray();
-                    minX = regionData[0].GetFloat();
-                    minY = regionData[1].GetFloat();
-                    maxX = regionData[2].GetFloat();
-                    maxY = regionData[3].GetFloat();
+                if (spriteData.contains("region")) {
+                    auto regionData = spriteData["region"].getAsArray();
+                    minX = regionData[0].getAsDouble();
+                    minY = regionData[1].getAsDouble();
+                    maxX = regionData[2].getAsDouble();
+                    maxY = regionData[3].getAsDouble();
                 }
 
                 sprite = std::make_unique<Render::Sprite>(textureRef, Math::Rect2Df(minX, minY, maxX, maxY));
@@ -44,29 +43,28 @@ namespace Carrot::ECS {
         }
     }
 
-    rapidjson::Value SpriteComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj{rapidjson::kObjectType};
+    Carrot::DocumentElement SpriteComponent::serialise() const {
+        Carrot::DocumentElement obj;
 
-        obj.AddMember("isTransparent", isTransparent, doc.GetAllocator());
+        obj["isTransparent"] = isTransparent;
         if(sprite) {
-            rapidjson::Value spriteData(rapidjson::kObjectType);
+            Carrot::DocumentElement spriteData;
             auto& texture = sprite->getTexture();
             auto& resource = texture.getOriginatingResource();
 
-            rapidjson::Value region{rapidjson::kArrayType};
-            region.PushBack(sprite->getTextureRegion().getMinX(), doc.GetAllocator());
-            region.PushBack(sprite->getTextureRegion().getMinY(), doc.GetAllocator());
-            region.PushBack(sprite->getTextureRegion().getMaxX(), doc.GetAllocator());
-            region.PushBack(sprite->getTextureRegion().getMaxY(), doc.GetAllocator());
-            spriteData.AddMember("region", region, doc.GetAllocator());
+            Carrot::DocumentElement region{DocumentType::Array};
+            region.pushBack(sprite->getTextureRegion().getMinX());
+            region.pushBack(sprite->getTextureRegion().getMinY());
+            region.pushBack(sprite->getTextureRegion().getMaxX());
+            region.pushBack(sprite->getTextureRegion().getMaxY());
+            spriteData["region"] = region;
 
             if(resource.isFile()) {
-                rapidjson::Value texturePath{resource.getName(), doc.GetAllocator()};
-                spriteData.AddMember("texturePath", texturePath, doc.GetAllocator());
+                spriteData["texturePath"] = resource.getName();
             }
 
 
-            obj.AddMember("sprite", spriteData, doc.GetAllocator());
+            obj["sprite"] = spriteData;
         }
 
         return obj;

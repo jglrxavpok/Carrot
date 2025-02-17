@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class SystemKinematics: public LogicSystem<TransformComponent, Kinematics>, public Identifiable<SystemKinematics> {
     public:
         explicit SystemKinematics(World& world): LogicSystem<TransformComponent, Kinematics>(world) {}
-        explicit SystemKinematics(const rapidjson::Value& json, World& world): SystemKinematics(world) {}
+        explicit SystemKinematics(const Carrot::DocumentElement& doc, World& world): SystemKinematics(world) {}
 
         void tick(double dt) override;
 

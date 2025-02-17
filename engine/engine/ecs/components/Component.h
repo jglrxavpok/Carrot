@@ -31,8 +31,8 @@ namespace Carrot::ECS {
 
         virtual std::unique_ptr<Component> duplicate(const Entity& newOwner) const = 0;
 
-        virtual rapidjson::Value toJSON(rapidjson::Document& doc) const {
-            return rapidjson::Value(rapidjson::kObjectType);
+        virtual Carrot::DocumentElement serialise() const {
+            return Carrot::DocumentElement{};
         };
 
         /**
@@ -100,7 +100,7 @@ namespace Carrot::ECS {
 
         void add(const Storage::ID& id, const Storage::DeserialiseFunction& deserialiseFunc, const Storage::CreateNewFunction& createNewFunc);
 
-        [[nodiscard]] std::unique_ptr<Component> deserialise(const Storage::ID& id, const rapidjson::Value& json, const Entity& entity) const;
+        [[nodiscard]] std::unique_ptr<Component> deserialise(const Storage::ID& id, const Carrot::DocumentElement& doc, const Entity& entity) const;
         [[nodiscard]] std::unique_ptr<Component> create(const Storage::ID& id, const Entity& entity) const;
         [[nodiscard]] std::vector<std::string> getAllIDs() const;
 

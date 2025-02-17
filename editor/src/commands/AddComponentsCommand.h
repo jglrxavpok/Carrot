@@ -27,22 +27,4 @@ namespace Peeler {
         Carrot::Vector<std::string> componentNames;
     };
 
-    /**
-     * Adds components to a prefab. Applies the changes to the instances of the prefab.
-     * See AddComponentsCommand
-     */
-    class AddPrefabComponentsCommand: public ICommand {
-    public:
-        AddPrefabComponentsCommand(Application& app, std::shared_ptr<Carrot::ECS::Prefab> prefab, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs);
-
-        virtual void undo() override;
-        virtual void redo() override;
-
-    private:
-        Carrot::UniquePtr<AddComponentsCommand> pEntitiesCommand;
-        std::shared_ptr<Carrot::ECS::Prefab> prefab;
-        Carrot::Vector<Carrot::ComponentID> componentIDs;
-        Carrot::Vector<std::string> componentNames;
-    };
-
 } // Peeler

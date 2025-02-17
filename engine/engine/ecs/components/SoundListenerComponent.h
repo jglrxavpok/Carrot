@@ -10,11 +10,11 @@ namespace Carrot::ECS {
 
         explicit SoundListenerComponent(Carrot::ECS::Entity entity);
 
-        explicit SoundListenerComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
+        explicit SoundListenerComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
-            obj.AddMember("active", active, doc.GetAllocator());
+        Carrot::DocumentElement serialise() const override {
+            Carrot::DocumentElement obj;
+            obj["active"] = active;
             return obj;
         }
 

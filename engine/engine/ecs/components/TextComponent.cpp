@@ -6,14 +6,14 @@
 #include <core/utils/ImGuiUtils.hpp>
 
 namespace Carrot::ECS {
-    TextComponent::TextComponent(const rapidjson::Value& json, Entity entity): TextComponent(entity, json["font"].GetString()) {
-        setText(json["text"].GetString());
+    TextComponent::TextComponent(const Carrot::DocumentElement& doc, Entity entity): TextComponent(entity, doc["font"].getAsString()) {
+        setText(doc["text"].getAsString());
     }
 
-    rapidjson::Value TextComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj { rapidjson::kObjectType };
-        obj.AddMember("text", rapidjson::Value(text.c_str(), doc.GetAllocator()), doc.GetAllocator());
-        obj.AddMember("font", rapidjson::Value((const char*)fontPath.u8string().c_str(), doc.GetAllocator()), doc.GetAllocator());
+    Carrot::DocumentElement TextComponent::serialise() const {
+        Carrot::DocumentElement obj;
+        obj["text"] = text;
+        obj["font"] = Carrot::toString(fontPath.u8string());
         return obj;
     }
 

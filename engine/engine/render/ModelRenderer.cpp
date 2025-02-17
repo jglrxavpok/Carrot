@@ -11,7 +11,7 @@
 #include <engine/render/ClusterManager.h>
 #include <engine/render/VulkanRenderer.h>
 #include <engine/utils/Profiling.h>
-#include <core/utils/JSON.h>
+#include <core/io/DocumentHelpers.h>
 #include <core/data/Hashes.h>
 #include <robin_hood.h>
 
@@ -144,61 +144,61 @@ namespace Carrot::Render {
 
     ModelRenderer::ModelRenderer(Model& model, ModelRenderer::NoInitTag): model(model) {}
 
-    /* static */std::shared_ptr<ModelRenderer> ModelRenderer::fromJSON(const rapidjson::Value& json) {
-        std::shared_ptr<Carrot::Model> model = GetAssetServer().blockingLoadModel(json["model"].GetString());
+    /* static */std::shared_ptr<ModelRenderer> ModelRenderer::deserialise(const Carrot::DocumentElement& doc) {
+        std::shared_ptr<Carrot::Model> model = GetAssetServer().blockingLoadModel(doc["model"].getAsString());
         std::shared_ptr<ModelRenderer> renderer = std::make_unique<ModelRenderer>(*model);
 
         Render::MaterialSystem& materialSystem = GetRenderer().getMaterialSystem();
 
         // modify 'overrides' directly not to call recreateStructures for each override
-        for(const auto& overrideObj : json["overrides"].GetArray()) {
+        for(const auto& overrideObj : doc["overrides"].getAsArray()) {
             MaterialOverride override;
 
-            override.meshIndex = overrideObj["mesh_index"].GetUint64();
+            override.meshIndex = overrideObj["mesh_index"].getAsInt64();
 
-            if(overrideObj.HasMember("pipeline_name")) {
-                override.pipeline = GetRenderer().getOrCreatePipelineFullPath(overrideObj["pipeline_name"].GetString());
+            if(overrideObj.contains("pipeline_name")) {
+                override.pipeline = GetRenderer().getOrCreatePipelineFullPath(std::string{overrideObj["pipeline_name"].getAsString()});
             }
-            if(overrideObj.HasMember("material")) {
-                const auto& texturesObj = overrideObj["material"].GetObject();
+            if(overrideObj.contains("material")) {
+                const auto& texturesObj = overrideObj["material"].getAsObject();
                 override.materialTextures = materialSystem.createMaterialHandle();
 
-                if(const auto& element = texturesObj.FindMember("transparent"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->isTransparent = element->value.GetBool();
+                if(const auto& element = texturesObj.find("transparent"); element != texturesObj.end()) {
+                    override.materialTextures->isTransparent = element->second.getAsBool();
                 }
-                if(const auto& element = texturesObj.FindMember("metallicness"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->metallicFactor = element->value.GetFloat();
+                if(const auto& element = texturesObj.find("metallicness"); element != texturesObj.end()) {
+                    override.materialTextures->metallicFactor = element->second.getAsDouble();
                 }
-                if(const auto& element = texturesObj.FindMember("roughness"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->roughnessFactor = element->value.GetFloat();
+                if(const auto& element = texturesObj.find("roughness"); element != texturesObj.end()) {
+                    override.materialTextures->roughnessFactor = element->second.getAsDouble();
                 }
-                if(const auto& element = texturesObj.FindMember("base_color"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->baseColor = Carrot::JSON::read<4, float>(element->value);
+                if(const auto& element = texturesObj.find("base_color"); element != texturesObj.end()) {
+                    override.materialTextures->baseColor = Carrot::DocumentHelpers::read<4, float>(element->second);
                 }
-                if(const auto& element = texturesObj.FindMember("emissive_color"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->emissiveColor = Carrot::JSON::read<3, float>(element->value);
+                if(const auto& element = texturesObj.find("emissive_color"); element != texturesObj.end()) {
+                    override.materialTextures->emissiveColor = Carrot::DocumentHelpers::read<3, float>(element->second);
                 }
 
-                auto loadTexture = [&](const rapidjson::Value& jsonElement) {
-                    std::string_view texturePath { jsonElement.GetString(), jsonElement.GetStringLength() };
+                auto loadTexture = [&](const Carrot::DocumentElement& element) {
+                    std::string_view texturePath = element.getAsString();
 
                     return materialSystem.createTextureHandle(GetAssetServer().blockingLoadTexture(Carrot::IO::VFS::Path { texturePath }));
                 };
-                if(const auto& element = texturesObj.FindMember("albedo_texture"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->albedo = loadTexture(element->value);
+                if(const auto& element = texturesObj.find("albedo_texture"); element != texturesObj.end()) {
+                    override.materialTextures->albedo = loadTexture(element->second);
                 }
-                if(const auto& element = texturesObj.FindMember("emissive_texture"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->emissive = loadTexture(element->value);
+                if(const auto& element = texturesObj.find("emissive_texture"); element != texturesObj.end()) {
+                    override.materialTextures->emissive = loadTexture(element->second);
                 }
-                if(const auto& element = texturesObj.FindMember("normalmap_texture"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->normalMap = loadTexture(element->value);
+                if(const auto& element = texturesObj.find("normalmap_texture"); element != texturesObj.end()) {
+                    override.materialTextures->normalMap = loadTexture(element->second);
                 }
-                if(const auto& element = texturesObj.FindMember("metallic_roughness_texture"); element != texturesObj.MemberEnd()) {
-                    override.materialTextures->metallicRoughness = loadTexture(element->value);
+                if(const auto& element = texturesObj.find("metallic_roughness_texture"); element != texturesObj.end()) {
+                    override.materialTextures->metallicRoughness = loadTexture(element->second);
                 }
             }
-            if(overrideObj.HasMember("virtualized_geometry")) {
-                override.virtualizedGeometry = overrideObj["virtualized_geometry"].GetBool();
+            if(overrideObj.contains("virtualized_geometry")) {
+                override.virtualizedGeometry = overrideObj["virtualized_geometry"].getAsBool();
             }
 
             renderer->overrides.add(override);
@@ -209,30 +209,30 @@ namespace Carrot::Render {
         return renderer;
     }
 
-    rapidjson::Value ModelRenderer::toJSON(rapidjson::Document::AllocatorType& allocator) {
-        rapidjson::Value result { rapidjson::kObjectType };
+    Carrot::DocumentElement ModelRenderer::serialise() {
+        Carrot::DocumentElement result;
 
         const Carrot::IO::Resource& source = model.getOriginatingResource();
         if(!source.isFile()) {
-            return {};
+            return Carrot::DocumentElement{};
         }
 
-        rapidjson::Value overridesObj { rapidjson::kArrayType };
+        Carrot::DocumentElement overridesObj{ Carrot::DocumentType::Array };
 
         for(const MaterialOverride& override : overrides) {
-            rapidjson::Value overrideObj { rapidjson::kObjectType };
+            Carrot::DocumentElement overrideObj;
 
-            overrideObj.AddMember("mesh_index", override.meshIndex, allocator);
+            overrideObj["mesh_index"] = static_cast<i64>(override.meshIndex);
 
             if(override.pipeline) {
                 const Carrot::IO::Resource& pipelineSource = override.pipeline->getDescription().originatingResource;
                 if(pipelineSource.isFile()) {
-                    overrideObj.AddMember("pipeline_name", pipelineSource.getName(), allocator);
+                    overrideObj["pipeline_name"] = pipelineSource.getName();
                 }
             }
 
             if(override.materialTextures) {
-                rapidjson::Value materialObj{ rapidjson::kObjectType };
+                Carrot::DocumentElement materialObj;
 
                 auto storeTexture = [&](const std::string& name, std::shared_ptr<Render::TextureHandle> texture) {
                     if(!texture) {
@@ -247,28 +247,28 @@ namespace Carrot::Render {
                     if(!textureSource.isFile()) {
                         return;
                     }
-                    materialObj.AddMember(rapidjson::Value{ name.c_str(), allocator }, rapidjson::Value{ textureSource.getName().c_str(), allocator }, allocator);
+                    materialObj[name] = textureSource.getName();
                 };
                 storeTexture("albedo_texture", override.materialTextures->albedo);
                 storeTexture("emissive_texture", override.materialTextures->emissive);
                 storeTexture("metallic_roughness_texture", override.materialTextures->metallicRoughness);
                 storeTexture("normalmap_texture", override.materialTextures->normalMap);
 
-                materialObj.AddMember("base_color", Carrot::JSON::write(override.materialTextures->baseColor, allocator), allocator);
-                materialObj.AddMember("emissive_color", Carrot::JSON::write(override.materialTextures->emissiveColor, allocator), allocator);
-                materialObj.AddMember("metallicness", override.materialTextures->metallicFactor, allocator);
-                materialObj.AddMember("roughness", override.materialTextures->roughnessFactor, allocator);
-                materialObj.AddMember("transparent", override.materialTextures->isTransparent, allocator);
+                materialObj["base_color"] = Carrot::DocumentHelpers::write(override.materialTextures->baseColor);
+                materialObj["emissive_color"] = Carrot::DocumentHelpers::write(override.materialTextures->emissiveColor);
+                materialObj["metallicness"] = override.materialTextures->metallicFactor;
+                materialObj["roughness"] = override.materialTextures->roughnessFactor;
+                materialObj["transparent"] = override.materialTextures->isTransparent;
 
-                overrideObj.AddMember("material", materialObj, allocator);
+                overrideObj["material"] = materialObj;
             }
-            overrideObj.AddMember("virtualized_geometry", override.virtualizedGeometry, allocator);
+            overrideObj["virtualized_geometry"] = override.virtualizedGeometry;
 
-            overridesObj.PushBack(overrideObj, allocator);
+            overridesObj.pushBack() = overrideObj;
         }
 
-        result.AddMember("model", rapidjson::Value{ source.getName().c_str(), allocator }, allocator);
-        result.AddMember("overrides", overridesObj, allocator);
+        result["model"] = source.getName();
+        result["overrides"] = overridesObj;
         return result;
     }
 

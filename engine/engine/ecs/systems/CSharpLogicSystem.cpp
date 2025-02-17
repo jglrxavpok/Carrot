@@ -19,8 +19,8 @@ namespace Carrot::ECS {
         init(false);
     }
 
-    CSharpLogicSystem::CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className):
-        Carrot::ECS::System(world), namespaceName(namespaceName), className(className) {
+    CSharpLogicSystem::CSharpLogicSystem(const Carrot::DocumentElement& doc, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className):
+        Carrot::ECS::System(doc, world), namespaceName(namespaceName), className(className) {
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); });
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
@@ -137,9 +137,9 @@ namespace Carrot::ECS {
         return systemName.c_str();
     }
 
-    rapidjson::Value CSharpLogicSystem::toJSON(rapidjson::Document::AllocatorType& allocator) const {
+    Carrot::DocumentElement CSharpLogicSystem::serialise() const {
         // TODO
-        return System::toJSON(allocator);
+        return System::serialise();
     }
 
     Scripting::CSArray* CSharpLogicSystem::getEntityList() {

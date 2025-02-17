@@ -332,8 +332,6 @@ namespace Peeler {
                 const Carrot::IO::FileFormat fileFormat = Carrot::IO::getFileFormat(vfsPath.getPath().c_str());
                 if(Carrot::IO::isModelFormat(fileFormat)) {
                     fillModelContextPopup(vfsPath);
-                } else if(fileFormat == Carrot::IO::FileFormat::CPREFAB) {
-                    fillPrefabContextPopup(vfsPath);
                 }
                 ImGui::EndPopup();
             }

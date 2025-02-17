@@ -11,6 +11,7 @@
 #include <core/utils/JSON.h>
 #include <core/utils/JSON.h>
 #include <imgui.h>
+#include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
     struct Kinematics: public IdentifiableComponent<Kinematics> {
@@ -18,14 +19,14 @@ namespace Carrot::ECS {
 
         explicit Kinematics(Entity entity): IdentifiableComponent<Kinematics>(std::move(entity)) {};
 
-        explicit Kinematics(const rapidjson::Value& json, Entity entity): Kinematics(std::move(entity)) {
-            velocity = JSON::read<3, float>(json["velocity"]);
+        explicit Kinematics(const Carrot::DocumentElement& doc, Entity entity): Kinematics(std::move(entity)) {
+            velocity = DocumentHelpers::read<3, float>(doc["velocity"]);
         };
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
+        Carrot::DocumentElement serialise() const override {
+            Carrot::DocumentElement obj;
 
-            obj.AddMember("velocity", JSON::write(velocity, doc), doc.GetAllocator());
+            obj["velocity"] = DocumentHelpers::write(velocity);
 
             return obj;
         }

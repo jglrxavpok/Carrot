@@ -44,10 +44,6 @@
 #include <core/scripting/csharp/Engine.h>
 #include <engine/scripting/CSharpBindings.h>
 
-#include "game_specific/ecs/CharacterControllerComponent.h"
-#include "game_specific/ecs/PageComponent.h"
-#include "game_specific/ecs/CharacterControllerSystem.h"
-
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
 #include <engine/ecs/Prefab.h>
@@ -1239,12 +1235,6 @@ namespace Peeler {
             auto& systems = Carrot::ECS::getSystemLibrary();
             // CollisionShapeRenderer is not serializable
             // LightEditorRenderer is not serializable
-
-            systems.addUniquePtrBased<Game::ECS::CharacterControllerSystem>();
-
-            auto& components = Carrot::ECS::getComponentLibrary();
-            components.add<Game::ECS::CharacterControllerComponent>();
-            components.add<Game::ECS::PageComponent>();
         }
 
         settings.load();
@@ -1362,13 +1352,10 @@ namespace Peeler {
 
     void Application::openScene(const Carrot::IO::VFS::Path& path) {
         openUnsavedChangesPopup([this, path]() {
-            rapidjson::Document scene;
             scenePath = path;
             try {
-                Carrot::IO::Resource sceneData = scenePath;
-                scene.Parse(sceneData.readText());
                 currentScene.clear();
-                currentScene.deserialise(scene);
+                currentScene.deserialise(scenePath);
             } catch (std::exception& e) {
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();
@@ -1388,9 +1375,8 @@ namespace Peeler {
         rapidjson::Document sceneData;
         sceneData.SetObject();
 
-        currentScene.serialise(sceneData);
-
-        writeJSON(GetVFS().resolve(scenePath), sceneData);
+        auto outputFolder = GetVFS().resolve(scenePath);
+        currentScene.serialise(outputFolder);
 
         addCurrentSceneToSceneList();
     }

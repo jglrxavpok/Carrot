@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class AnimatedModelRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::AnimatedModelComponent>, public Identifiable<AnimatedModelRenderSystem> {
     public:
         explicit AnimatedModelRenderSystem(World& world): RenderSystem<TransformComponent, AnimatedModelComponent>(world) {}
-        explicit AnimatedModelRenderSystem(const rapidjson::Value& json, World& world);
+        explicit AnimatedModelRenderSystem(const Carrot::DocumentElement& doc, World& world);
 
         void onFrame(Carrot::Render::Context renderContext) override;
         void tick(double deltaTime) override;

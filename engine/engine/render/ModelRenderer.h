@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/io/Document.h>
 #include <rapidjson/document.h>
 #include <engine/render/MeshAndTransform.h>
 #include <engine/render/InstanceData.h>
@@ -112,8 +113,8 @@ namespace Carrot::Render {
         struct NoInitTag {};
         ModelRenderer(Model& model, NoInitTag);
 
-        static std::shared_ptr<ModelRenderer> fromJSON(const rapidjson::Value& json);
-        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator);
+        static std::shared_ptr<ModelRenderer> deserialise(const Carrot::DocumentElement& doc);
+        Carrot::DocumentElement serialise();
 
         /**
          * Deep clone of this object. You must call "recreateStructures" again before use

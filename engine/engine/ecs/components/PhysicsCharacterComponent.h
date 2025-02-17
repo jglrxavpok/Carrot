@@ -12,9 +12,9 @@ namespace Carrot::ECS {
 
         explicit PhysicsCharacterComponent(Carrot::ECS::Entity entity);
 
-        explicit PhysicsCharacterComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
+        explicit PhysicsCharacterComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "PhysicsCharacter";

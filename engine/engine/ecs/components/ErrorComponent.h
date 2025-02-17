@@ -13,13 +13,13 @@ namespace Carrot::ECS {
     class ErrorComponent: public IdentifiableComponent<ErrorComponent> {
     public:
         explicit ErrorComponent(Carrot::ECS::Entity entity);
-        ErrorComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
+        ErrorComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity);
 
         const char * const getName() const override;
 
         std::unique_ptr<Component> duplicate(const Entity &newOwner) const override;
 
-        rapidjson::Value toJSON(rapidjson::Document &doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         virtual bool isSerializable() const override;
     };

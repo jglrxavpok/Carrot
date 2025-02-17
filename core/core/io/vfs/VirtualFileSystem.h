@@ -9,8 +9,12 @@
 #include <map>
 #include "core/async/ParallelMap.hpp"
 #include "core/io/Path.h"
+#include "core/utils/Types.h"
 
 namespace Carrot::IO {
+    // TODO: Support multiple sources for the same root (for modding)
+    // TODO: Support for archived files (for pack files)
+
     /// Access to the VFS is internally synchronized
     class VirtualFileSystem {
     public:
@@ -40,6 +44,7 @@ namespace Carrot::IO {
 
             Path operator/(const NormalizedPath& subpath) const;
             Path operator/(std::string_view subpath) const;
+            Path operator/(const char* subpath) const;
 
         public:
             Path relative(const BasicPath& other) const;
@@ -76,6 +81,47 @@ namespace Carrot::IO {
             std::string root;
             NormalizedPath path;
         };
+
+        class DirectoryIteration {
+        public:
+            DirectoryIteration(const VirtualFileSystem* pVFS, std::vector<std::string> roots, const BasicPath& relativePath);
+
+            class Iterator {
+            public:
+                Iterator(const VirtualFileSystem* pVFS, const std::vector<std::string>* roots, const BasicPath* relativePath);
+
+                Iterator& operator++();
+                Path operator*() const;
+                bool operator==(const Iterator& other) const;
+                bool operator!=(const Iterator& other) const;
+                void setEnd();
+
+            private:
+                void step();
+
+                const VirtualFileSystem* pVFS = nullptr;
+                const std::vector<std::string>* pRoots;
+                const BasicPath* pRelativePath = nullptr;
+
+                i32 rootIndex = 0;
+                std::filesystem::directory_iterator currentPoint;
+            };
+
+            [[nodiscard]] Iterator begin();
+            [[nodiscard]] Iterator end();
+
+        private:
+            const VirtualFileSystem* pVFS = nullptr;
+            std::vector<std::string> roots;
+            const BasicPath relativePath;
+        };
+
+        bool isDirectory(const Path& path) const;
+
+        /// Iterates over the given directory.
+        /// If the path is generic, each root will be visited: all children of the path in root 1 will be visited, THEN children of root 2, and so on.
+        /// If the path is not generic, only files inside the root given in the path will be visited.
+        DirectoryIteration iterateOverDirectory(const Path& path) const;
 
         /// Resolves the input VFS path to a physical absolute path. Throws if the root is not valid
         std::filesystem::path resolve(const Path& path) const;

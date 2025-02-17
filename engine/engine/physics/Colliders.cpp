@@ -3,6 +3,8 @@
 //
 
 #include "Colliders.h"
+
+#include <core/io/DocumentHelpers.h>
 #include <engine/utils/Macros.h>
 #include <engine/utils/conversions.h>
 #include <core/utils/JSON.h>
@@ -48,8 +50,8 @@ namespace Carrot::Physics {
         return *this;
     }
 
-    std::unique_ptr<Collider> Collider::loadFromJSON(const rapidjson::Value& object) {
-        ColliderType colliderType = ColliderTypeNames[object["type"].GetString()];
+    std::unique_ptr<Collider> Collider::load(const Carrot::DocumentElement& object) {
+        ColliderType colliderType = ColliderTypeNames[std::string{ object["type"].getAsString() }];
 
         std::unique_ptr<CollisionShape> collisionShape;
         switch(colliderType) {
@@ -76,7 +78,7 @@ namespace Carrot::Physics {
         }
 
         Carrot::Math::Transform localTransform;
-        localTransform.loadJSON(object["transform"]);
+        localTransform.deserialise(object["transform"]);
         return std::make_unique<Collider>(std::move(collisionShape), localTransform);
     }
 
@@ -84,11 +86,11 @@ namespace Carrot::Physics {
         return shape->getType();
     }
 
-    rapidjson::Value Collider::toJSON(rapidjson::Document::AllocatorType& allocator) const {
-        rapidjson::Value data{ rapidjson::kObjectType };
-        data.AddMember("type", rapidjson::Value(ColliderTypeNames[getType()], allocator), allocator);
-        data.AddMember("transform", getLocalTransform().toJSON(allocator), allocator);
-        shape->fillJSON(data, allocator);
+    Carrot::DocumentElement Collider::serialise() const {
+        Carrot::DocumentElement data;
+        data["type"] = ColliderTypeNames[getType()];
+        data["transform"] = getLocalTransform().serialise();
+        shape->serialiseTo(data);
         return data;
     }
 
@@ -153,8 +155,8 @@ namespace Carrot::Physics {
         setHalfExtents({1,1,1});
     }
 
-    BoxCollisionShape::BoxCollisionShape(const rapidjson::Value& json): BoxCollisionShape() {
-        setHalfExtents(JSON::read<3, float>(json["half_extents"]));
+    BoxCollisionShape::BoxCollisionShape(const Carrot::DocumentElement& doc): BoxCollisionShape() {
+        setHalfExtents(DocumentHelpers::read<3, float>(doc["half_extents"]));
     }
 
     BoxCollisionShape::BoxCollisionShape(const glm::vec3& halfExtents): BoxCollisionShape() {
@@ -175,8 +177,8 @@ namespace Carrot::Physics {
         return currentHalfExtents;
     }
 
-    void BoxCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
-        object.AddMember("half_extents", JSON::write(getHalfExtents(), allocator), allocator);
+    void BoxCollisionShape::serialiseTo(Carrot::DocumentElement& target) const {
+        target["half_extents"] = DocumentHelpers::write(getHalfExtents());
     }
 
     BoxCollisionShape::~BoxCollisionShape() {
@@ -187,8 +189,8 @@ namespace Carrot::Physics {
         setRadius(1.0f);
     }
 
-    SphereCollisionShape::SphereCollisionShape(const rapidjson::Value& json): SphereCollisionShape() {
-        setRadius(json["radius"].GetFloat());
+    SphereCollisionShape::SphereCollisionShape(const Carrot::DocumentElement& doc): SphereCollisionShape() {
+        setRadius(doc["radius"].getAsDouble());
     }
 
     SphereCollisionShape::SphereCollisionShape(float radius): SphereCollisionShape() {
@@ -210,8 +212,8 @@ namespace Carrot::Physics {
         setRadius(glm::compMax(r));
     }
 
-    void SphereCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
-        object.AddMember("radius", getRadius(), allocator);
+    void SphereCollisionShape::serialiseTo(Carrot::DocumentElement& target) const {
+        target["radius"] = getRadius();
     }
 
     SphereCollisionShape::~SphereCollisionShape() {}
@@ -220,8 +222,8 @@ namespace Carrot::Physics {
         setRadiusAndHeight(1.0f, 1.0f);
     }
 
-    CapsuleCollisionShape::CapsuleCollisionShape(const rapidjson::Value& json): CapsuleCollisionShape() {
-        setRadiusAndHeight(json["radius"].GetFloat(), json["height"].GetFloat());
+    CapsuleCollisionShape::CapsuleCollisionShape(const Carrot::DocumentElement& doc): CapsuleCollisionShape() {
+        setRadiusAndHeight(doc["radius"].getAsDouble(), doc["height"].getAsDouble());
     }
 
     CapsuleCollisionShape::CapsuleCollisionShape(float radius, float height): CapsuleCollisionShape() {
@@ -255,9 +257,9 @@ namespace Carrot::Physics {
         setRadiusAndHeight(glm::max(scale.x, scale.z), scale[1]);
     }
 
-    void CapsuleCollisionShape::fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const {
-        object.AddMember("radius", getRadius(), allocator);
-        object.AddMember("height", getHeight(), allocator);
+    void CapsuleCollisionShape::serialiseTo(Carrot::DocumentElement& target) const {
+        target["radius"] = getRadius();
+        target["height"] = getHeight();
     }
 
     CapsuleCollisionShape::~CapsuleCollisionShape() {

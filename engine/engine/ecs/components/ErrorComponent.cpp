@@ -6,7 +6,7 @@
 
 namespace Carrot::ECS {
     ErrorComponent::ErrorComponent(Carrot::ECS::Entity entity): IdentifiableComponent<ErrorComponent>(std::move(entity)) {}
-    ErrorComponent::ErrorComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity): ErrorComponent(std::move(entity)) {}
+    ErrorComponent::ErrorComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity): ErrorComponent(std::move(entity)) {}
 
     const char* const ErrorComponent::getName() const {
         return Carrot::Identifiable<ErrorComponent>::getStringRepresentation();
@@ -17,9 +17,9 @@ namespace Carrot::ECS {
         return copy;
     }
 
-    rapidjson::Value ErrorComponent::toJSON(rapidjson::Document &doc) const {
+    Carrot::DocumentElement ErrorComponent::serialise() const {
         verify(false, "Error component should never be serialized!");
-        return {};
+        return Carrot::DocumentElement{};
     }
 
     bool ErrorComponent::isSerializable() const {

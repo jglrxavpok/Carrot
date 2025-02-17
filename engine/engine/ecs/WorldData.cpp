@@ -79,13 +79,13 @@ namespace Carrot::ECS {
         modelRendererLookup[vfsPath].erase(renderer->getOverrides());
     }
 
-    void WorldData::loadFromJSON(const rapidjson::Value& json) {
+    void WorldData::deserialise(const Carrot::DocumentElement& doc) {
         clear();
 
-        if(json.HasMember("model_renderers")) {
-            for(auto& [key, obj] : json["model_renderers"].GetObject()) {
-                const Carrot::UUID id = Carrot::UUID::fromString(std::string_view{ key.GetString(), key.GetStringLength() });
-                std::shared_ptr<Render::ModelRenderer> renderer = Render::ModelRenderer::fromJSON(obj);
+        if(doc.contains("model_renderers")) {
+            for(auto& [key, obj] : doc["model_renderers"].getAsObject()) {
+                const Carrot::UUID id = Carrot::UUID::fromString(key);
+                std::shared_ptr<Render::ModelRenderer> renderer = Render::ModelRenderer::deserialise(obj);
                 renderer->uuid = id;
                 if(renderer) { // can be null if not valid
                     storeModelRenderer(renderer);
@@ -94,18 +94,18 @@ namespace Carrot::ECS {
         }
     }
 
-    rapidjson::Value WorldData::toJSON(rapidjson::Document::AllocatorType& allocator) const {
-        rapidjson::Value result{ rapidjson::kObjectType };
+    Carrot::DocumentElement WorldData::serialise() const {
+        Carrot::DocumentElement result;
 
-        rapidjson::Value modelRenderersObj{ rapidjson::kObjectType };
+        Carrot::DocumentElement modelRenderersObj;
         for(const auto& [id, pRenderer] : modelRenderers) {
             if(!pRenderer) {
                 continue;
             }
-            modelRenderersObj.AddMember(rapidjson::Value{id.toString().c_str(), allocator}, pRenderer->toJSON(allocator), allocator);
+            modelRenderersObj[id.toString()] = pRenderer->serialise();
         }
 
-        result.AddMember("model_renderers", modelRenderersObj, allocator);
+        result["model_renderers"] = modelRenderersObj;
         return result;
     }
 } // Carrot::ECS

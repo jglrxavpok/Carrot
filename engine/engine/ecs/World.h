@@ -79,8 +79,8 @@ namespace Carrot::ECS {
         Entity wrap(EntityID id) const;
 
         std::vector<Entity> getAllEntities() const;
-        std::vector<Component*> getAllComponents(const Entity& ent) const;
-        std::vector<Component*> getAllComponents(const EntityID& ent) const;
+        Carrot::Vector<Component*> getAllComponents(const Entity& ent) const;
+        Carrot::Vector<Component*> getAllComponents(const EntityID& ent) const;
 
     public:
         /// Stops the processing of components (no longer calls tick), but still processes added/removed entities

@@ -15,47 +15,49 @@
 #include <imgui.h>
 #include <map>
 #include <filesystem>
+#include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
 
-    RigidBodyComponent::RigidBodyComponent(const rapidjson::Value& json, Entity entity): RigidBodyComponent(std::move(entity)) {
-        rigidbody.setBodyType(getTypeFromName(json["body_type"].GetString()));
-        rigidbody.setMass(json["mass"].GetFloat());
+    RigidBodyComponent::RigidBodyComponent(const Carrot::DocumentElement& doc, Entity entity): RigidBodyComponent(std::move(entity)) {
+        rigidbody.setBodyType(getTypeFromName(std::string{doc["body_type"].getAsString()}));
+        rigidbody.setMass(doc["mass"].getAsDouble());
 
-        if(json.HasMember("free_translation_axes")) {
-            rigidbody.setTranslationAxes(Carrot::JSON::read<3, bool>(json["free_translation_axes"]));
+        if(doc.contains("free_translation_axes")) {
+            rigidbody.setTranslationAxes(Carrot::DocumentHelpers::read<3, bool>(doc["free_translation_axes"]));
         }
-        if(json.HasMember("free_rotation_axes")) {
-            rigidbody.setRotationAxes(Carrot::JSON::read<3, bool>(json["free_rotation_axes"]));
+        if(doc.contains("free_rotation_axes")) {
+            rigidbody.setRotationAxes(Carrot::DocumentHelpers::read<3, bool>(doc["free_rotation_axes"]));
         }
-        if(json.HasMember("layer")) {
+        if(doc.contains("layer")) {
             Physics::CollisionLayerID collisionLayer;
-            if(!GetPhysics().getCollisionLayers().findByName(std::string_view { json["layer"].GetString(), json["layer"].GetStringLength() }, collisionLayer)) {
+            if(!GetPhysics().getCollisionLayers().findByName(doc["layer"].getAsString(), collisionLayer)) {
                 collisionLayer = GetPhysics().getDefaultMovingLayer();
             }
             rigidbody.setCollisionLayer(collisionLayer);
         }
 
-        for(const auto& colliderData : json["colliders"].GetArray()) {
-            rigidbody.addColliderDirectly(Physics::Collider::loadFromJSON(colliderData));
+        for(const auto& colliderData : doc["colliders"].getAsArray()) {
+            rigidbody.addColliderDirectly(Physics::Collider::load(colliderData));
         }
     }
 
-    rapidjson::Value RigidBodyComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj{ rapidjson::kObjectType };
-        rapidjson::Value bodyType { getTypeName(rigidbody.getBodyType()), doc.GetAllocator() };
-        obj.AddMember("body_type", bodyType, doc.GetAllocator());
-        obj.AddMember("mass", rigidbody.getMass(), doc.GetAllocator());
-        obj.AddMember("free_translation_axes", Carrot::JSON::write(rigidbody.getTranslationAxes(), doc), doc.GetAllocator());
-        obj.AddMember("free_rotation_axes", Carrot::JSON::write(rigidbody.getRotationAxes(), doc), doc.GetAllocator());
-        obj.AddMember("layer", rapidjson::Value(GetPhysics().getCollisionLayers().getLayer(rigidbody.getCollisionLayer()).name.c_str(), doc.GetAllocator()), doc.GetAllocator());
+    Carrot::DocumentElement RigidBodyComponent::serialise() const {
+        Carrot::DocumentElement obj;
+        Carrot::DocumentElement bodyType;
+        bodyType = getTypeName(rigidbody.getBodyType());
+        obj["body_type"] = bodyType;
+        obj["mass"] = rigidbody.getMass();
+        obj["free_translation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getTranslationAxes());
+        obj["free_rotation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getRotationAxes());
+        obj["layer"] = GetPhysics().getCollisionLayers().getLayer(rigidbody.getCollisionLayer()).name;
 
-        rapidjson::Value colliders{ rapidjson::kArrayType };
+        Carrot::DocumentElement colliders{ DocumentType::Array };
         for(const auto& collider : rigidbody.getColliders()) {
-            colliders.PushBack(collider->toJSON(doc.GetAllocator()), doc.GetAllocator());
+            colliders.pushBack() = collider->serialise();
         }
 
-        obj.AddMember("colliders", colliders, doc.GetAllocator());
+        obj["colliders"] = colliders;
         return obj;
     }
 

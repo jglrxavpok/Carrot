@@ -9,29 +9,29 @@ namespace Carrot::ECS {
 
     }
 
-    PhysicsCharacterComponent::PhysicsCharacterComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity)
+    PhysicsCharacterComponent::PhysicsCharacterComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity)
             : PhysicsCharacterComponent(std::move(entity)) {
-        if(json.HasMember("mass")) {
-            character.setMass(json["mass"].GetFloat());
+        if(doc.contains("mass")) {
+            character.setMass(doc["mass"].getAsDouble());
         }
-        if(json.HasMember("collider")) {
-            auto pCollider = Physics::Collider::loadFromJSON(json["collider"]);
+        if(doc.contains("collider")) {
+            auto pCollider = Physics::Collider::load(doc["collider"]);
             character.setCollider(std::move(*pCollider));
         }
-        if(json.HasMember("layer")) {
+        if(doc.contains("layer")) {
             Physics::CollisionLayerID collisionLayer;
-            if(!GetPhysics().getCollisionLayers().findByName(std::string_view { json["layer"].GetString(), json["layer"].GetStringLength() }, collisionLayer)) {
+            if(!GetPhysics().getCollisionLayers().findByName(doc["layer"].getAsString(), collisionLayer)) {
                 collisionLayer = GetPhysics().getDefaultMovingLayer();
             }
             character.setCollisionLayer(collisionLayer);
         }
     }
 
-    rapidjson::Value PhysicsCharacterComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value obj(rapidjson::kObjectType);
-        obj.AddMember("mass", character.getMass(), doc.GetAllocator());
-        obj.AddMember("collider", character.getCollider().toJSON(doc.GetAllocator()), doc.GetAllocator());
-        obj.AddMember("layer", rapidjson::Value(GetPhysics().getCollisionLayers().getLayer(character.getCollisionLayer()).name.c_str(), doc.GetAllocator()), doc.GetAllocator());
+    Carrot::DocumentElement PhysicsCharacterComponent::serialise() const {
+        Carrot::DocumentElement obj;
+        obj["mass"] = character.getMass();
+        obj["collider"] = character.getCollider().serialise();
+        obj["layer"] = GetPhysics().getCollisionLayers().getLayer(character.getCollisionLayer()).name;
         return obj;
     }
 

@@ -12,26 +12,25 @@
 #include <core/io/vfs/VirtualFileSystem.h>
 
 namespace Carrot::ECS {
-    LuaScriptComponent::LuaScriptComponent(const rapidjson::Value& json, Entity entity): LuaScriptComponent(entity) {
-        for(const auto& element : json["scripts"].GetArray()) {
-            const auto& scriptObject = element.GetObject();
-            IO::VFS::Path path = IO::VFS::Path(scriptObject["path"].GetString());
+    LuaScriptComponent::LuaScriptComponent(const Carrot::DocumentElement& doc, Entity entity): LuaScriptComponent(entity) {
+        for(const auto& element : doc["scripts"].getAsArray()) {
+            IO::VFS::Path path = IO::VFS::Path(element["path"].getAsString());
             Carrot::IO::Resource resource = path;
             scripts.emplace_back(path, std::make_unique<Lua::Script>(resource));
         }
     }
 
-    rapidjson::Value LuaScriptComponent::toJSON(rapidjson::Document& doc) const {
-        rapidjson::Value data{rapidjson::kObjectType};
+    Carrot::DocumentElement LuaScriptComponent::serialise() const {
+        Carrot::DocumentElement data;
 
-        rapidjson::Value paths{rapidjson::kArrayType};
+        Carrot::DocumentElement paths{DocumentType::Array};
         for(const auto& [path, script] : scripts) {
-            rapidjson::Value scriptObject{rapidjson::kObjectType};
-            scriptObject.AddMember("path", rapidjson::Value(path.toString().c_str(), doc.GetAllocator()), doc.GetAllocator());
-            paths.PushBack(scriptObject, doc.GetAllocator());
+            Carrot::DocumentElement scriptObject;
+            scriptObject["path"] = path.toString();
+            paths.pushBack() = scriptObject;
         }
 
-        data.AddMember("scripts", paths, doc.GetAllocator());
+        data["scripts"] = paths;
 
         return data;
     }

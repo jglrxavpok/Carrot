@@ -17,9 +17,9 @@ namespace Carrot::ECS {
         refresh();
     }
 
-    CSharpComponent::CSharpComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(
+    CSharpComponent::CSharpComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className) : Carrot::ECS::Component(
             std::move(entity)), namespaceName(namespaceName), className(className) {
-        serializedVersion.CopyFrom(json, serializedDoc.GetAllocator());
+        serializedVersion = doc;
         loadCallbackHandle = GetCSharpBindings().registerGameAssemblyLoadCallback([&]() { onAssemblyLoad(); }, true/*prepend*/); // prepend because we want components to reload before systems
         unloadCallbackHandle = GetCSharpBindings().registerGameAssemblyUnloadCallback([&]() { onAssemblyUnload(); });
 
@@ -33,54 +33,52 @@ namespace Carrot::ECS {
     }
 
     std::unique_ptr <Carrot::ECS::Component> CSharpComponent::duplicate(const Carrot::ECS::Entity& newOwner) const {
-        serializedVersion = toJSON(serializedDoc);
+        serializedVersion = serialise();
         auto result = std::make_unique<CSharpComponent>(serializedVersion, newOwner, namespaceName, className);
         return result;
     }
 
-    rapidjson::Value CSharpComponent::toJSON(rapidjson::Document& doc) const {
+    Carrot::DocumentElement CSharpComponent::serialise() const {
         if(!foundInAssemblies) { // copy last known state
-            rapidjson::Value r{};
-            r.CopyFrom(serializedVersion, doc.GetAllocator());
-            return r;
+            return serializedVersion;
         }
 
-        rapidjson::Value r{rapidjson::kObjectType};
+        Carrot::DocumentElement r;
 
         for(auto& property : componentProperties) {
-            rapidjson::Value serializationNameJSON(property.serializationName, doc.GetAllocator());
+            const std::string& key = property.serializationName;
             switch(property.type) {
                 case Scripting::ComponentType::Int: {
                     auto v = property.field->get(*csComponent).unbox<std::int32_t>();
-                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
+                    r[key] = i64{v};
                 } break;
 
                 case Scripting::ComponentType::Float: {
                     auto v = property.field->get(*csComponent).unbox<float>();
-                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
+                    r[key] = v;
                 } break;
 
                 case Scripting::ComponentType::Boolean: {
                     auto v = property.field->get(*csComponent).unbox<bool>();
-                    r.AddMember(serializationNameJSON, v, doc.GetAllocator());
+                    r[key] = v;
                 } break;
 
                 case Scripting::ComponentType::Entity: {
                     MonoObject* entityObj = property.field->get(*csComponent);
                     ECS::Entity entity = GetCSharpBindings().convertToEntity(entityObj);
-                    r.AddMember(serializationNameJSON, rapidjson::Value(entity.getID().toString(), doc.GetAllocator()), doc.GetAllocator());
+                    r[key] = entity.getID().toString();
                 } break;
 
                 case Scripting::ComponentType::String: {
                     MonoString* text = reinterpret_cast<MonoString *>(property.field->get(*csComponent).toMono());
                     char* textReadable = mono_string_to_utf8(text);
                     CLEANUP(mono_free(textReadable));
-                    r.AddMember(serializationNameJSON, rapidjson::Value(textReadable, doc.GetAllocator()), doc.GetAllocator());
+                    r[key] = textReadable;
                 } break;
 
                 case Scripting::ComponentType::UserEnum: {
                     const std::string enumValueAsString = GetCSharpBindings().enumValueToString(property.field->get(*csComponent));
-                    r.AddMember(serializationNameJSON, rapidjson::Value(enumValueAsString, doc.GetAllocator()), doc.GetAllocator());
+                    r[key] = enumValueAsString;
                 } break;
 
                 case Scripting::ComponentType::UserDefined:
@@ -150,36 +148,36 @@ namespace Carrot::ECS {
         componentProperties = GetCSharpBindings().findAllComponentProperties(namespaceName, className);
 
         for(auto& property : componentProperties) {
-            if(serializedVersion.HasMember(property.serializationName)) {
+            if(serializedVersion.contains(property.serializationName)) {
                 switch(property.type) {
                     case Scripting::ComponentType::Int: {
-                        std::int32_t v = serializedVersion[property.serializationName].GetInt();
+                        i32 v = static_cast<i32>(serializedVersion[property.serializationName].getAsInt64());
                         property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
                     } break;
 
                     case Scripting::ComponentType::Float: {
-                        float v = serializedVersion[property.serializationName].GetFloat();
+                        float v = static_cast<float>(serializedVersion[property.serializationName].getAsDouble());
                         property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
                     } break;
 
                     case Scripting::ComponentType::Boolean: {
-                        bool v = serializedVersion[property.serializationName].GetBool();
+                        bool v = serializedVersion[property.serializationName].getAsBool();
                         property.field->set(*csComponent, Scripting::CSObject((MonoObject*)&v));
                     } break;
 
                     case Scripting::ComponentType::Entity: {
-                        Carrot::UUID uuid = Carrot::UUID::fromString(serializedVersion[property.serializationName].GetString());
+                        Carrot::UUID uuid = Carrot::UUID::fromString(serializedVersion[property.serializationName].getAsString());
                         Entity e = getEntity().getWorld().wrap(uuid);
                         property.field->set(*csComponent, *GetCSharpBindings().entityToCSObject(e));
                     } break;
 
                     case Scripting::ComponentType::UserEnum: {
-                        Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, serializedVersion[property.serializationName].GetString());
+                        Scripting::CSObject enumValue = GetCSharpBindings().stringToEnumValue(property.typeStr, std::string { serializedVersion[property.serializationName].getAsString() });
                         property.field->set(*csComponent, enumValue);
                     } break;
 
                     case Scripting::ComponentType::String: {
-                        property.field->set(*csComponent, Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(serializedVersion[property.serializationName].GetString()))));
+                        property.field->set(*csComponent, Scripting::CSObject(reinterpret_cast<MonoObject*>(mono_string_new_wrapper(std::string{serializedVersion[property.serializationName].getAsString()}.c_str()))));
                     } break;
 
                     case Scripting::ComponentType::UserDefined:
@@ -196,7 +194,7 @@ namespace Carrot::ECS {
     }
 
     void CSharpComponent::onAssemblyUnload() {
-        serializedVersion = toJSON(serializedDoc);
+        serializedVersion = serialise();
         csComponent = nullptr;
     }
 

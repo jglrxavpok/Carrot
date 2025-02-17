@@ -40,8 +40,8 @@ namespace Carrot {
         void onFrame(const Carrot::Render::Context& renderContext);
 
     public:
-        void deserialise(const rapidjson::Value& src);
-        void serialise(rapidjson::Document& dest) const;
+        void deserialise(const Carrot::IO::VFS::Path& sceneFolder);
+        void serialise(const std::filesystem::path& sceneFolder) const;
 
     public:
         /// Unload the systems of this scene, freeing engine resources (eg lights, rigidbodies)

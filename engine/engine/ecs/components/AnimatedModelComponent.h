@@ -22,10 +22,10 @@ namespace Carrot::ECS {
         bool raytracedSaved: 1 = true;
 
         explicit AnimatedModelComponent(Entity entity);
-        explicit AnimatedModelComponent(const rapidjson::Value& json, Entity entity);
+        explicit AnimatedModelComponent(const Carrot::DocumentElement& doc, Entity entity);
 
         void queueLoad(const Carrot::IO::VFS::Path& animatedModelPath);
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override;
         std::unique_ptr<Component> duplicate(const Entity& newOwner) const override;

@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class SystemSinPosition: public LogicSystem<TransformComponent, ForceSinPosition>, public Identifiable<SystemSinPosition> {
     public:
         explicit SystemSinPosition(World& world): LogicSystem<TransformComponent, ForceSinPosition>(world) {}
-        explicit SystemSinPosition(const rapidjson::Value& json, World& world): SystemSinPosition(world) {}
+        explicit SystemSinPosition(const Carrot::DocumentElement& doc, World& world): SystemSinPosition(world) {}
 
         void tick(double dt) override;
 

@@ -199,6 +199,33 @@ namespace Carrot::IO {
         return Path{ getParentStringView() };
     }
 
+    std::string_view Path::getStem() const {
+        if(path.empty())
+            return {};
+        std::size_t startSearchIndex = path.find_last_of('/');
+        if(startSearchIndex == std::string::npos) {
+            // no separators, start from start of string
+            startSearchIndex = 0;
+        } else {
+            startSearchIndex++; // go after last separator
+        }
+        const std::size_t dotIndex = path.find_last_of('.');
+        std::string_view pathView = path;
+        if(dotIndex == std::string::npos) {
+            // no extension
+            return pathView.substr(startSearchIndex);
+        }
+        if(dotIndex < startSearchIndex) {
+            // dot before last '/'
+            return pathView.substr(startSearchIndex);
+        }
+        if(dotIndex == startSearchIndex) {
+            // hidden file
+            return pathView.substr(startSearchIndex);
+        }
+        return pathView.substr(startSearchIndex, dotIndex - startSearchIndex);
+    }
+
     std::string_view Path::getExtension() const {
         if(path.empty())
             return {};

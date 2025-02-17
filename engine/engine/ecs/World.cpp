@@ -116,7 +116,7 @@ namespace Carrot::ECS {
         return getWorld().exists(internalEntity);
     }
 
-    std::vector<Component*> Entity::getAllComponents() const {
+    Carrot::Vector<Component*> Entity::getAllComponents() const {
         return getWorld().getAllComponents(*this);
     }
 
@@ -656,15 +656,20 @@ namespace Carrot::ECS {
         return list;
     }
 
-    std::vector<Component *> World::getAllComponents(const Entity& entity) const {
+    Carrot::Vector<Component *> World::getAllComponents(const Entity& entity) const {
         return getAllComponents(entity.getID());
     }
 
 
-    std::vector<Component *> World::getAllComponents(const EntityID& entityID) const {
-        std::vector<Component*> comps;
-        for(auto& [id, comp] : entityComponents.at(entityID)) {
-            comps.push_back(comp.get());
+    Carrot::Vector<Component *> World::getAllComponents(const EntityID& entityID) const {
+        Carrot::Vector<Component*> comps;
+        auto iter = entityComponents.find(entityID);
+        if (iter == entityComponents.end()) {
+            // empty entities / non existant ID
+            return Carrot::Vector<Component*>{};
+        }
+        for(auto& [id, comp] : iter->second) {
+            comps.pushBack(comp.get());
         }
         return comps;
     }

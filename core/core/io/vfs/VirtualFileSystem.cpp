@@ -195,10 +195,119 @@ namespace Carrot::IO {
         return operator/(BasicPath(subpath));
     }
 
+    VirtualFileSystem::Path VirtualFileSystem::Path::operator/(const char* subpath) const {
+        return operator/(BasicPath(subpath));
+    }
+
     VirtualFileSystem::Path VirtualFileSystem::Path::relative(const BasicPath& other) const {
         return Path {
             root,
             path.relative(other.asString())
         };
     }
+
+
+    bool VirtualFileSystem::isDirectory(const Path& path) const {
+        auto resolved = resolve(path);
+        return std::filesystem::is_directory(resolved);
+    }
+
+    VirtualFileSystem::DirectoryIteration VirtualFileSystem::iterateOverDirectory(const Path& path) const {
+        std::vector<std::string> roots;
+        if (path.isGeneric()) {
+            roots = getRoots();
+        } else {
+            roots.emplace_back(path.getRoot());
+        }
+        return DirectoryIteration(this, std::move(roots), path.getPath());
+    }
+
+    // Iterators
+    VirtualFileSystem::DirectoryIteration::DirectoryIteration(const VirtualFileSystem* pVFS, std::vector<std::string> roots, const BasicPath& relativePath): pVFS(pVFS), roots(std::move(roots)), relativePath(relativePath) {}
+
+    VirtualFileSystem::DirectoryIteration::Iterator VirtualFileSystem::DirectoryIteration::begin() {
+        Iterator it { pVFS, &roots, &relativePath };
+        return it;
+    }
+
+    VirtualFileSystem::DirectoryIteration::Iterator VirtualFileSystem::DirectoryIteration::end() {
+        Iterator it { pVFS, &roots, &relativePath };
+        it.setEnd();
+        return it;
+    }
+
+    VirtualFileSystem::DirectoryIteration::Iterator::Iterator(const VirtualFileSystem *pVFS, const std::vector<std::string> *roots, const BasicPath *relativePath): pVFS(pVFS), pRoots(roots), pRelativePath(relativePath) {
+        step();
+    }
+
+    void VirtualFileSystem::DirectoryIteration::Iterator::step() {
+        if (rootIndex < 0) {
+            // at end, nothing to do
+            return;
+        }
+
+        // current root not initialized
+        if (currentPoint == std::filesystem::directory_iterator{}) {
+            while ((currentPoint = std::filesystem::directory_iterator{ pVFS->resolve({(*pRoots)[rootIndex], *pRelativePath}) }) == std::filesystem::directory_iterator{}) {
+                rootIndex++;
+                if (rootIndex >= pRoots->size()) {
+                    setEnd();
+                    return;
+                }
+            }
+        }
+
+        ++currentPoint;
+
+        // end of current root
+        if (currentPoint == std::filesystem::directory_iterator{}) {
+            rootIndex++;
+        }
+
+        if (rootIndex >= pRoots->size()) {
+            setEnd();
+        }
+    }
+
+    VirtualFileSystem::DirectoryIteration::Iterator& VirtualFileSystem::DirectoryIteration::Iterator::operator++() {
+        step();
+        return *this;
+    }
+
+    void VirtualFileSystem::DirectoryIteration::Iterator::setEnd() {
+        rootIndex = -1;
+    }
+
+    bool VirtualFileSystem::DirectoryIteration::Iterator::operator==(const Iterator& other) const {
+        if (pVFS != other.pVFS) {
+            return false;
+        }
+        if (rootIndex != other.rootIndex) {
+            return false;
+        }
+        if (rootIndex == -1) {
+            // both end iterators
+            return true;
+        }
+
+        return pRoots == other.pRoots &&
+            pRelativePath == other.pRelativePath &&
+            currentPoint == other.currentPoint;
+    }
+
+    bool VirtualFileSystem::DirectoryIteration::Iterator::operator!=(const Iterator& other) const {
+        return !(*this == other);
+    }
+
+    VirtualFileSystem::Path VirtualFileSystem::DirectoryIteration::Iterator::operator*() const {
+        verify(rootIndex >= 0, "Cannot derefence end iterator!");
+        if (rootIndex < 0) {
+            return {};
+        }
+
+        const std::string filename = Carrot::toString(currentPoint->path().filename().u8string());
+        return { (*pRoots)[rootIndex], *pRelativePath / BasicPath{ filename } };
+    }
+
+
 }

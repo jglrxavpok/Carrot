@@ -47,9 +47,9 @@ namespace Carrot {
 
         /// Creates an element with the given type.
         explicit DocumentElement(DocumentType type = DocumentType::Object);
-        DocumentElement(const DocumentElement&) = default;
+        DocumentElement(const DocumentElement&);
         DocumentElement(DocumentElement&&) noexcept = default;
-        DocumentElement& operator=(const DocumentElement&) = default;
+        DocumentElement& operator=(const DocumentElement&);
         DocumentElement& operator=(DocumentElement&&) noexcept = default;
 
     public:
@@ -206,6 +206,7 @@ namespace Carrot {
 
                 bool operator==(const Iterator& o) const;
                 bool operator!=(const Iterator& o) const;
+                bool isValid() const;
 
                 Iterator& operator++();
                 const ElementMap::const_iterator::value_type& operator*() const;
@@ -223,6 +224,7 @@ namespace Carrot {
             [[nodiscard]] Iterator end();
             [[nodiscard]] Iterator begin() const;
             [[nodiscard]] Iterator end() const;
+            [[nodiscard]] Iterator find(const std::string& key) const;
             i64 getSize() const;
 
         private:

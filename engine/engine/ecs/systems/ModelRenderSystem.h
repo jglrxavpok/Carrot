@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class ModelRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::ModelComponent>, public Identifiable<ModelRenderSystem> {
     public:
         explicit ModelRenderSystem(World& world): RenderSystem<TransformComponent, ModelComponent>(world) {}
-        explicit ModelRenderSystem(const rapidjson::Value& json, World& world);
+        explicit ModelRenderSystem(const Carrot::DocumentElement& doc, World& world);
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

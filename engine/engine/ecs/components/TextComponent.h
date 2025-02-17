@@ -14,14 +14,14 @@ namespace Carrot::ECS {
     public:
         explicit TextComponent(Entity entity, const std::filesystem::path& fontFile = "resources/fonts/Roboto-Medium.ttf"): IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {};
 
-        explicit TextComponent(const rapidjson::Value& json, Entity entity);
+        explicit TextComponent(const Carrot::DocumentElement& json, Entity entity);
 
     public:
         std::string_view getText() const;
         void setText(std::string_view text);
 
     public:
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "Text";

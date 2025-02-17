@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class TextRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::TextComponent>, public Identifiable<TextRenderSystem> {
     public:
         explicit TextRenderSystem(World& world): RenderSystem<TransformComponent, TextComponent>(world) {}
-        explicit TextRenderSystem(const rapidjson::Value& json, World& world): TextRenderSystem(world) {}
+        explicit TextRenderSystem(const Carrot::DocumentElement& doc, World& world): TextRenderSystem(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <string_view>
 #include <cassert>
+#include <core/containers/Vector.hpp>
 #include <core/memory/OptionalRef.h>
 #include <core/utils/UUID.h>
 #include <core/utils/Types.h>
@@ -91,7 +92,7 @@ namespace Carrot::ECS {
 
         Memory::OptionalRef<Component> getComponent(ComponentID component) const;
 
-        std::vector<Component*> getAllComponents() const;
+        Vector<Component*> getAllComponents() const;
 
         template<typename Comp>
         Entity& removeComponent();

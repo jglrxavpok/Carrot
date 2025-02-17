@@ -15,7 +15,7 @@ namespace Carrot::ECS {
     public:
         explicit CameraSystem(World& world): RenderSystem<TransformComponent, CameraComponent>(world) {}
 
-        explicit CameraSystem(const rapidjson::Value& json, World& world): CameraSystem(world) {}
+        explicit CameraSystem(const Carrot::DocumentElement& doc, World& world): CameraSystem(world) {}
 
         virtual void setupCamera(Carrot::Render::Context renderContext) override;
         virtual void onFrame(Carrot::Render::Context renderContext) override;

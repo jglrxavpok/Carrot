@@ -586,14 +586,9 @@ namespace Peeler {
         bool modified = editMultiple<TPropertyType>(id, values, limits);
 
         if(modified) {
+            verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
             if(edition.editor.inspectorType == Application::InspectorType::Entities) {
                 edition.editor.undoStack.push<UpdateComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
-            } else {
-                verify(edition.editor.inspectorType == Application::InspectorType::Assets, "Code assumes we are editing a prefab!");
-                verify(edition.editor.selectedAssetPaths.size() == 1, "Code assumes we are editing a single prefab!");
-                const Carrot::IO::VFS::Path& vfsPath = edition.editor.selectedAssetPaths[0];
-                auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
-                edition.editor.undoStack.push<UpdatePrefabComponentValues<TComponent, TPropertyType>>(Carrot::sprintf("Update %s (prefab)", id), vfsPath, values, getterFunc, setterFunc, components[0]->getComponentTypeID());
             }
             edition.hasModifications = true;
         }
@@ -671,14 +666,9 @@ namespace Peeler {
         }
 
         if(modified) {
+            verify(edition.editor.inspectorType == Application::InspectorType::Entities, "Code assumes we are editing an entity");
             if(edition.editor.inspectorType == Application::InspectorType::Entities) {
                 edition.editor.undoStack.push<UpdateComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s", id), edition.editor.selectedEntityIDs, values, getter, setter, components[0]->getComponentTypeID());
-            } else {
-                verify(edition.editor.inspectorType == Application::InspectorType::Assets, "Code assumes we are editing a prefab!");
-                verify(edition.editor.selectedAssetPaths.size() == 1, "Code assumes we are editing a single prefab!");
-                const Carrot::IO::VFS::Path& vfsPath = edition.editor.selectedAssetPaths[0];
-                auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
-                edition.editor.undoStack.push<UpdatePrefabComponentValues<TComponent, TEnum>>(Carrot::sprintf("Update %s (prefab)", id), vfsPath, values, getter, setter, components[0]->getComponentTypeID());
             }
         }
     }

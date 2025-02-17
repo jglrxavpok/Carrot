@@ -15,9 +15,9 @@ namespace Carrot::ECS {
 
         explicit LuaScriptComponent(Entity entity): IdentifiableComponent<LuaScriptComponent>(std::move(entity)) {}
 
-        explicit LuaScriptComponent(const rapidjson::Value& json, Entity entity);
+        explicit LuaScriptComponent(const Carrot::DocumentElement& doc, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "LuaScriptComponent";

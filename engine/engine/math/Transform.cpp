@@ -3,6 +3,8 @@
 //
 
 #include "Transform.h"
+
+#include <core/io/DocumentHelpers.h>
 #include <engine/utils/conversions.h>
 #include <glm/glm.hpp>
 #include <core/utils/JSON.h>
@@ -18,19 +20,19 @@ namespace Carrot::Math {
         return matrix;
     }
 
-    void Transform::loadJSON(const rapidjson::Value& json) {
-        position = JSON::read<3, float>(json["position"]);
-        scale = JSON::read<3, float>(json["scale"]);
-        auto rotVec = JSON::read<4, float>(json["rotation"]);
+    void Transform::deserialise(const Carrot::DocumentElement& doc) {
+        position = DocumentHelpers::read<3, float>(doc["position"]);
+        scale = DocumentHelpers::read<3, float>(doc["scale"]);
+        auto rotVec = DocumentHelpers::read<4, float>(doc["rotation"]);
         rotation = glm::quat { rotVec.w, rotVec.x, rotVec.y, rotVec.z };
     }
 
-    rapidjson::Value Transform::toJSON(rapidjson::Document::AllocatorType& allocator) const {
-        rapidjson::Value obj(rapidjson::kObjectType);
-        obj.AddMember("position", JSON::write<3, float>(position, allocator), allocator);
-        obj.AddMember("scale", JSON::write<3, float>(scale, allocator), allocator);
+    Carrot::DocumentElement Transform::serialise() const {
+        Carrot::DocumentElement obj;
+        obj["position"] = DocumentHelpers::write<3, float>(position);
+        obj["scale"] = DocumentHelpers::write<3, float>(scale);
         glm::vec4 rotationVec { rotation.x, rotation.y, rotation.z, rotation.w };
-        obj.AddMember("rotation", JSON::write<4, float>(rotationVec, allocator), allocator);
+        obj["rotation"] = DocumentHelpers::write<4, float>(rotationVec);
         return obj;
     }
 

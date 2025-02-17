@@ -12,6 +12,24 @@ namespace Carrot {
         reset(type);
     }
 
+    DocumentElement::DocumentElement(const DocumentElement& other) {
+        *this = other;
+    }
+
+    DocumentElement& DocumentElement::operator=(const DocumentElement& other) {
+        reset(other.type);
+        primitive = other.primitive;
+
+        string = other.string;
+        array.resize(other.array.size());
+        for (i32 i = 0; i < array.size(); i++) {
+            array[i] = std::make_unique<DocumentElement>(*other.array[i]);
+        }
+        elements = other.elements;
+        return *this;
+    }
+
+
 #pragma region SetContent
     void DocumentElement::reset(DocumentType type) {
         this->type = type;
@@ -279,6 +297,12 @@ namespace Carrot {
         return it;
     }
 
+    DocumentElement::ObjectView::Iterator DocumentElement::ObjectView::find(const std::string& key) const {
+        auto it = Iterator{this};
+        it.currentIt = doc->elements.find(key);
+        return it;
+    }
+
     i64 DocumentElement::ObjectView::getSize() const {
         return doc->elements.size();
     }
@@ -289,6 +313,10 @@ namespace Carrot {
     bool DocumentElement::ObjectView::Iterator::operator!=(const Iterator& o) const {
         return !(*this == o);
     }
+    bool DocumentElement::ObjectView::Iterator::isValid() const {
+        return currentIt != pView->doc->elements.end();
+    }
+
 
     DocumentElement::ObjectView::Iterator& DocumentElement::ObjectView::Iterator::operator++() {
         ++currentIt;

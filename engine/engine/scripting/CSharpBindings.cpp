@@ -202,8 +202,8 @@ namespace Carrot::Scripting {
 
                 systemLibrary.add(
                         id,
-                        [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](const rapidjson::Value& json, ECS::World& world) {
-                            return std::make_unique<ECS::CSharpLogicSystem>(json, world, namespaceName, className);
+                        [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](const Carrot::DocumentElement& doc, ECS::World& world) {
+                            return std::make_unique<ECS::CSharpLogicSystem>(doc, world, namespaceName, className);
                         },
                         [className = systemClass->getName(), namespaceName = systemClass->getNamespaceName()](Carrot::ECS::World& world) {
                             return std::make_unique<ECS::CSharpLogicSystem>(world, namespaceName, className);
@@ -227,8 +227,8 @@ namespace Carrot::Scripting {
 
                 componentLibrary.add(
                         id,
-                        [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](const rapidjson::Value& json, ECS::Entity entity) {
-                            return std::make_unique<ECS::CSharpComponent>(json, entity, namespaceName, className);
+                        [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](const Carrot::DocumentElement& doc, ECS::Entity entity) {
+                            return std::make_unique<ECS::CSharpComponent>(doc, entity, namespaceName, className);
                         },
                         [className = componentClass->getName(), namespaceName = componentClass->getNamespaceName()](Carrot::ECS::Entity entity) {
                             return std::make_unique<ECS::CSharpComponent>(entity, namespaceName, className);

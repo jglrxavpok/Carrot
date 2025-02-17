@@ -78,8 +78,6 @@ namespace Peeler {
         // used when systems are selected
         void drawSystem(const Carrot::Render::Context& renderContext);
 
-        void drawPrefab(const Carrot::Render::Context& renderContext, const Carrot::IO::VFS::Path& vfsPath);
-
         void editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components);
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;

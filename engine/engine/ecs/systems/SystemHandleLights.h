@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class SystemHandleLights: public RenderSystem<TransformComponent, LightComponent>, public Identifiable<SystemHandleLights> {
     public:
         explicit SystemHandleLights(World& world): RenderSystem<TransformComponent, LightComponent>(world) {}
-        explicit SystemHandleLights(const rapidjson::Value& json, World& world): SystemHandleLights(world) {}
+        explicit SystemHandleLights(const Carrot::DocumentElement& doc, World& world): SystemHandleLights(world) {}
 
         void onFrame(Carrot::Render::Context) override;
 

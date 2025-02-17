@@ -21,12 +21,8 @@ namespace Carrot {
 
     Scene& SceneManager::loadScene(const Carrot::IO::VFS::Path& path) {
         auto& scene = scenes.emplace_back();
-        rapidjson::Document sceneDoc;
         try {
-            Carrot::IO::Resource sceneData = path;
-            sceneDoc.Parse(sceneData.readText());
-
-            scene.deserialise(sceneDoc);
+            scene.deserialise(path);
         } catch (std::exception& e) {
             Carrot::Log::error("Failed to open scene: %s", e.what());
             scene.clear();
@@ -37,10 +33,7 @@ namespace Carrot {
     Scene& SceneManager::loadSceneAdditive(const Carrot::IO::VFS::Path& path, Scene& addTo) {
         rapidjson::Document sceneDoc;
         try {
-            Carrot::IO::Resource sceneData = path;
-            sceneDoc.Parse(sceneData.readText());
-
-            addTo.deserialise(sceneDoc);
+            addTo.deserialise(path);
         } catch (std::exception& e) {
             Carrot::Log::error("Failed to open scene: %s", e.what());
         }
@@ -51,11 +44,8 @@ namespace Carrot {
         rapidjson::Document sceneDoc;
         Scene& mainScene = getMainScene();
         try {
-            Carrot::IO::Resource sceneData = scenePath;
-            sceneDoc.Parse(sceneData.readText());
-
             mainScene.clear();
-            mainScene.deserialise(sceneDoc);
+            mainScene.deserialise(scenePath);
         } catch (std::exception& e) {
             Carrot::Log::error("Failed to open scene: %s", e.what());
             mainScene.clear();

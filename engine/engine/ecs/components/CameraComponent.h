@@ -25,34 +25,9 @@ namespace Carrot::ECS {
 
         explicit CameraComponent(Entity entity): IdentifiableComponent<CameraComponent>(std::move(entity)) {};
 
-        explicit CameraComponent(const rapidjson::Value& json, Entity entity): CameraComponent(std::move(entity)) {
-            isPrimary = json["primary"].GetBool();
-            isOrthographic = json["orthographic"].GetBool();
+        explicit CameraComponent(const Carrot::DocumentElement& json, Entity entity);
 
-            if(isOrthographic) {
-                orthoSize = JSON::read<3, float>(json["ortho_bounds"]);
-            } else {
-                perspectiveNear = json["z_near"].GetFloat();
-                perspectiveFar = json["z_far"].GetFloat();
-                perspectiveFov = json["fov"].GetFloat();
-            }
-        };
-
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
-
-            obj.AddMember("primary", isPrimary, doc.GetAllocator());
-            obj.AddMember("orthographic", isOrthographic, doc.GetAllocator());
-            if(isOrthographic) {
-                obj.AddMember("ortho_bounds", JSON::write(orthoSize, doc), doc.GetAllocator());
-            } else {
-                obj.AddMember("z_near", perspectiveNear, doc.GetAllocator());
-                obj.AddMember("z_far", perspectiveFar, doc.GetAllocator());
-                obj.AddMember("fov", perspectiveFov, doc.GetAllocator());
-            }
-
-            return obj;
-        }
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "Camera";

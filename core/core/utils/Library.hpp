@@ -6,6 +6,7 @@
 
 #include "Identifiable.h"
 #include <unordered_map>
+#include <core/io/Document.h>
 #include <rapidjson/document.h>
 
 namespace Carrot {
@@ -14,13 +15,13 @@ namespace Carrot {
     class Library {
     public:
         using ID = std::string;
-        using DeserialiseFunction = std::function<ContainedType(const rapidjson::Value& json, Param&&... params)>;
+        using DeserialiseFunction = std::function<ContainedType(const Carrot::DocumentElement& doc, Param&&... params)>;
         using CreateNewFunction = std::function<ContainedType(Param&&... params)>;
 
         explicit Library() = default;
 
-        ContainedType deserialise(const ID& id, const rapidjson::Value& json, Param... params) const {
-            return deserialisers.at(id)(json, std::forward<Param>(params)...);
+        ContainedType deserialise(const ID& id, const Carrot::DocumentElement& doc, Param... params) const {
+            return deserialisers.at(id)(doc, std::forward<Param>(params)...);
         }
 
         ContainedType create(const ID& id, Param... params) const {
@@ -41,8 +42,8 @@ namespace Carrot {
 
         template<typename Type> requires IsIdentifiable<Type>
         void addUniquePtrBased() {
-            return add<Type>([](const rapidjson::Value& json, Param... params) {
-                return std::make_unique<Type>(json, std::forward<Param>(params)...);
+            return add<Type>([](const Carrot::DocumentElement& doc, Param... params) {
+                return std::make_unique<Type>(doc, std::forward<Param>(params)...);
             }, [](Param... params) {
                 return std::make_unique<Type>(std::forward<Param>(params)...);
             });

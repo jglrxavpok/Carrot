@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     public:
         explicit CSharpLogicSystem(Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
 
-        explicit CSharpLogicSystem(const rapidjson::Value& json, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
+        explicit CSharpLogicSystem(const Carrot::DocumentElement& doc, Carrot::ECS::World& world, const std::string& namespaceName, const std::string& className);
 
         ~CSharpLogicSystem();
 
@@ -30,7 +30,7 @@ namespace Carrot::ECS {
     public:
         virtual std::unique_ptr<Carrot::ECS::System> duplicate(Carrot::ECS::World& newOwner) const override;
 
-        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const override;
+        Carrot::DocumentElement serialise() const override;
 
     public:
         Scripting::CSArray* getEntityList();

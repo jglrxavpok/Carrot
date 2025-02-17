@@ -201,86 +201,12 @@ namespace Peeler {
 
                 const ImVec2 size = ImVec2(ImGui::GetContentRegionAvailWidth(), ImGui::GetContentRegionAvailWidth() / aspectRatio);
                 ImGui::Image(texture->getImguiID(), size);
-            } else if(fileFormat == Carrot::IO::FileFormat::CPREFAB) {
-                drawPrefab(renderContext, assetPath);
             }
         }
     }
 
     void InspectorPanel::drawSystem(const Carrot::Render::Context& renderContext) {
         TODO;
-    }
-
-    void InspectorPanel::drawPrefab(const Carrot::Render::Context& renderContext, const Carrot::IO::VFS::Path& vfsPath) {
-        auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
-        if(!pPrefab) {
-            ImGui::TextColored(ImVec4(1,0,0,1), "No prefab at the given path.");
-            return;
-        }
-
-        if(ImGui::Button("Save")) {
-            pPrefab->save(pPrefab->getVFSPath());
-        }
-
-        Carrot::InlineAllocator<sizeof(Carrot::ECS::Component*)> inlineAlloc;
-        std::unordered_set<std::string> componentNames;
-
-        Carrot::Vector<Carrot::ComponentID> toRemoveIDs;
-        Carrot::Vector<std::string> toRemoveNames;
-
-        Carrot::Vector<const Carrot::ECS::Component*> components = pPrefab->getAllComponents();
-        componentNames.reserve(components.size());
-        for(auto& pComponent : components) {
-            Carrot::ComponentID componentID = pComponent->getComponentTypeID();
-            componentNames.insert(pComponent->getName());
-            EditContext editContext {
-                .editor = app,
-                .inspector = *this,
-                .renderContext = renderContext
-            };
-            Carrot::Vector<Carrot::ECS::Component*> componentList { inlineAlloc };
-            componentList.pushBack(const_cast<Carrot::ECS::Component*>(pComponent));
-            editComponents(editContext, componentID, componentList);
-
-            if(editContext.shouldBeRemoved) {
-                toRemoveIDs.pushBack(componentID);
-                toRemoveNames.pushBack(componentList[0]->getName());
-            }
-
-            if(editContext.hasModifications) {
-                app.markDirty();
-            }
-        }
-
-        if(!toRemoveNames.empty()) {
-            app.undoStack.push<RemovePrefabComponentsCommand>(pPrefab, toRemoveNames, toRemoveIDs);
-        }
-
-        const char* addComponentPopupID = "Add component##inspector add component prefab";
-
-        if(ImGui::Button(addComponentPopupID)) {
-            ImGui::OpenPopup(addComponentPopupID);
-        }
-
-        if(ImGui::BeginPopup(addComponentPopupID)) {
-            const auto& lib = Carrot::ECS::getComponentLibrary();
-            for(const auto& compID : lib.getAllIDs()) {
-                std::string id = compID;
-
-                if(componentNames.contains(compID)) {
-                    continue;
-                }
-
-                id += "##add component menu item inspector";
-                if(ImGui::MenuItem(id.c_str())) {
-                    // TODO: find more graceful way to find component ID
-                    auto unusedComp = lib.create(compID, app.currentScene.world.wrap(app.selectedEntityIDs[0]));
-
-                    app.undoStack.push<AddPrefabComponentsCommand>(pPrefab, Carrot::Vector{compID}, Carrot::Vector{unusedComp->getComponentTypeID()});
-                }
-            }
-            ImGui::EndPopup();
-        }
     }
 
     void InspectorPanel::editComponents(EditContext& editContext, const Carrot::ComponentID& componentID, const Carrot::Vector<Carrot::ECS::Component*>& components) {

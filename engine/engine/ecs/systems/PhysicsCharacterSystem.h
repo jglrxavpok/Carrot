@@ -16,7 +16,7 @@ namespace Carrot::ECS {
     public:
         explicit PhysicsCharacterSystem(Carrot::ECS::World& world);
 
-        explicit PhysicsCharacterSystem(const rapidjson::Value& json, Carrot::ECS::World& world)
+        explicit PhysicsCharacterSystem(const Carrot::DocumentElement& doc, Carrot::ECS::World& world)
                 : PhysicsCharacterSystem(world) {}
 
         virtual void tick(double dt) override;

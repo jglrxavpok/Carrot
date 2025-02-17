@@ -4,6 +4,8 @@
 
 #include "Scene.h"
 
+#include <core/io/Document.h>
+#include <core/io/DocumentHelpers.h>
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
 
@@ -13,6 +15,7 @@
 #include "engine/utils/Macros.h"
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
+#include <core/utils/TOML.h>
 
 namespace Carrot {
     Scene::~Scene() {
@@ -47,6 +50,8 @@ namespace Carrot {
 
     // Serialises instanceComponent, but removes all values which are the same than prefabComponent. These will be filled at load time when deserialisation happens
     static rapidjson::Value serialiseWithoutDefaultValues(ECS::Component& instanceComponent, ECS::Component& prefabComponent, rapidjson::Document& document /* TODO: use allocator instead */, bool& outputAnything) {
+        TODO;
+        /*
         auto rootInstanceJSON = instanceComponent.toJSON(document);
         auto rootPrefabJSON = prefabComponent.toJSON(document);
         rapidjson::Value result { rapidjson::kObjectType };
@@ -89,11 +94,14 @@ namespace Carrot {
         };
 
         outputAnything = diff(rootInstanceJSON, rootPrefabJSON, result, document.GetAllocator());
-        return result;
+        return result;*/
+        return {};
     }
 
     // Fill in default values missing from instanceJSON, based on prefabComponent (Inverse of serialiseWithoutDefaultValues)
     static rapidjson::Value deserialiseWithDefaultValues(ECS::Component& prefabComponent, const rapidjson::Value& instanceJSON, rapidjson::Document& fakeDoc) {
+        TODO;
+        /*
         auto& allocator = fakeDoc.GetAllocator();
         auto prefabJSON = prefabComponent.toJSON(fakeDoc);
 
@@ -125,12 +133,107 @@ namespace Carrot {
             }
         };
         diff(prefabJSON, result, allocator);
-        return result;
+        return result;*/
+        return {};
     }
 
-    void Scene::serialise(rapidjson::Document& dest) const {
-        dest.AddMember("world_data", world.getWorldData().toJSON(dest.GetAllocator()), dest.GetAllocator());
+    void Scene::serialise(const std::filesystem::path& sceneFolder) const {
+        namespace fs = std::filesystem;
 
+        fs::path backupFolder = sceneFolder;
+        backupFolder.replace_extension("backup");
+        fs::create_directories(backupFolder);
+        fs::copy(sceneFolder, backupFolder, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+
+        fs::remove_all(sceneFolder);
+        // save entity data
+        std::function<void(const ECS::Entity& entity, const fs::path& entityFolder)> saveEntityTree = [&](const ECS::Entity& entity, const fs::path& entityFolder) {
+            fs::create_directories(entityFolder);
+            {
+                Carrot::IO::FileHandle f { entityFolder / ".uuid", IO::OpenMode::NewOrExistingReadWrite };
+                std::string uuidStr = entity.getID().toString();
+                f.write(std::span{ reinterpret_cast<u8*>(uuidStr.data()), uuidStr.size() });
+            }
+            if (entity.getFlags() != 0) {
+                Carrot::IO::FileHandle f { entityFolder / ".flags", IO::OpenMode::NewOrExistingReadWrite };
+                std::string flagsStr = Carrot::ECS::flagsToString(entity.getFlags());
+                f.write(std::span{ reinterpret_cast<u8*>(flagsStr.data()), flagsStr.size() });
+            }
+
+            // TODO: check if prefab entity
+            for (const auto& pComp : entity.getAllComponents()) {
+                toml::table tomlComp;
+                tomlComp << pComp->serialise();
+                std::string filename { pComp->getName() };
+                filename += ".toml";
+                std::ofstream f { entityFolder / filename, std::ios::binary };
+                f << tomlComp;
+            }
+
+            for (const auto& child : world.getChildren(entity)) {
+                saveEntityTree(child, entityFolder / child.getName());
+            }
+        };
+
+        for (const auto& entity : world.getAllEntities()) {
+            if (entity.getParent().has_value()) {
+                continue;
+            }
+
+            saveEntityTree(entity, sceneFolder / entity.getName());
+        }
+
+        // save 'global' data
+        fs::create_directories(sceneFolder / ".LogicSystems");
+        for (const auto& pSystem : world.getLogicSystems()) {
+            if (!pSystem->shouldBeSerialized()) {
+                continue;
+            }
+            toml::table tomlComp;
+            tomlComp << pSystem->serialise();
+            std::string filename { pSystem->getName() };
+            filename += ".toml";
+            std::ofstream f { sceneFolder / ".LogicSystems" / filename, std::ios::binary };
+            f << tomlComp;
+        }
+
+        fs::create_directories(sceneFolder / ".RenderSystems");
+        for (const auto& pSystem : world.getRenderSystems()) {
+            if (!pSystem->shouldBeSerialized()) {
+                continue;
+            }
+            toml::table tomlComp;
+            tomlComp << pSystem->serialise();
+            std::string filename { pSystem->getName() };
+            filename += ".toml";
+            std::ofstream { sceneFolder / ".RenderSystems" / filename, std::ios::binary } << tomlComp;
+        }
+
+
+        {
+            toml::table tomlComp;
+            tomlComp << world.getWorldData().serialise();
+            std::ofstream { sceneFolder / "WorldData.toml", std::ios::binary } << tomlComp;
+        }
+        {
+            toml::table tomlComp;
+            Carrot::DocumentElement doc;
+            doc["name"] = Carrot::Skybox::getName(skybox);
+            tomlComp << doc;
+            std::ofstream { sceneFolder / "Skybox.toml", std::ios::binary } << tomlComp;
+        }
+        {
+            toml::table tomlComp;
+            Carrot::DocumentElement doc;
+            doc["raytracedShadows"] = lighting.raytracedShadows;
+            doc["ambient"] = Carrot::DocumentHelpers::write(lighting.ambient);
+            tomlComp << doc;
+            std::ofstream { sceneFolder / "Lighting.toml", std::ios::binary } << tomlComp;
+        }
+
+        // remove backup since saving went well
+        fs::remove_all(backupFolder);
+#if 0
         rapidjson::Value entitiesMap(rapidjson::kObjectType);
         for(auto& entity : world.getAllEntities()) {
             rapidjson::Value entityData(rapidjson::kObjectType);
@@ -164,83 +267,132 @@ namespace Carrot {
                     entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
                 }
             }
-
-            if(auto parent = entity.getParent()) {
-                rapidjson::Value parentID(parent->getID().toString(), dest.GetAllocator());
-                entityData.AddMember("parent", parentID, dest.GetAllocator());
-            }
-
-            rapidjson::Value nameKey(std::string(entity.getName()), dest.GetAllocator());
-            entityData.AddMember("name", nameKey, dest.GetAllocator());
-
-            const ECS::EntityFlags entityFlags = entity.getFlags();
-            if(entityFlags != ECS::EntityFlags::None) {
-                rapidjson::Value flagsKey(ECS::flagsToString(entityFlags), dest.GetAllocator());
-                entityData.AddMember("flags", flagsKey, dest.GetAllocator());
-            }
-
-            rapidjson::Value key(entity.getID().toString(), dest.GetAllocator());
-            entitiesMap.AddMember(key, entityData, dest.GetAllocator());
-        }
-
-        dest.AddMember("entities", entitiesMap, dest.GetAllocator());
-
-        rapidjson::Value lightingObj(rapidjson::kObjectType);
-        {
-            lightingObj.AddMember("ambient", Carrot::JSON::write(lighting.ambient, dest), dest.GetAllocator());
-            lightingObj.AddMember("raytracedShadows", lighting.raytracedShadows, dest.GetAllocator());
-        }
-
-        dest.AddMember("lighting", lightingObj, dest.GetAllocator());
-        dest.AddMember("skybox", rapidjson::Value(Carrot::Skybox::getName(skybox), dest.GetAllocator()), dest.GetAllocator());
-
-        rapidjson::Value logicSystems{ rapidjson::kObjectType };
-        for(auto& system : world.getLogicSystems()) {
-            if(system->shouldBeSerialized()) {
-                rapidjson::Value key(system->getName(), dest.GetAllocator());
-                logicSystems.AddMember(key, system->toJSON(dest.GetAllocator()), dest.GetAllocator());
-            }
-        }
-        dest.AddMember("logic_systems", logicSystems, dest.GetAllocator());
-
-        rapidjson::Value renderSystems{ rapidjson::kObjectType };
-        for(auto& system : world.getRenderSystems()) {
-            if(system->shouldBeSerialized()) {
-                rapidjson::Value key(system->getName(), dest.GetAllocator());
-                renderSystems.AddMember(key, system->toJSON(dest.GetAllocator()), dest.GetAllocator());
-            }
-        }
-        dest.AddMember("render_systems", renderSystems, dest.GetAllocator());
+#endif
     }
 
-    void Scene::deserialise(const rapidjson::Value& src) {
-        assert(src.IsObject());
-        rapidjson::Document fakeDoc; // for its allocator
+    void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder) {
+        try { // TODO: remove try catch
+            auto& vfs = GetVFS();
+            auto& componentLib = Carrot::ECS::getComponentLibrary();
+            auto& systemLib = Carrot::ECS::getSystemLibrary();
 
-        // load first, that way entities can refer to shared data
-        if(src.HasMember("world_data")) {
-            ECS::WorldData& worldData = world.getWorldData();
-            worldData.loadFromJSON(src["world_data"]);
+            rapidjson::Document fakeDoc; // for its allocator
+
+            auto loadDocumentFromVFS = [&](const Carrot::IO::VFS::Path& p) {
+                Carrot::DocumentElement doc;
+                Carrot::IO::Resource r { p };
+                toml::table toml = toml::parse(r.readText());
+                toml >> doc;
+                return doc;
+            };
+            auto loadDocument = [&](const char* relativePath) {
+                return loadDocumentFromVFS(sceneFolder / relativePath);
+            };
+
+            // load first, that way entities can refer to shared data
+            if(vfs.exists(sceneFolder / "WorldData.toml")) {
+                ECS::WorldData& worldData = world.getWorldData();
+                worldData.deserialise(loadDocument("WorldData.toml"));
+            }
+
+            if(vfs.exists(sceneFolder / "Lighting.toml")) {
+                auto src = loadDocument("Lighting.toml");
+                lighting.ambient = Carrot::DocumentHelpers::read<3, float>(src["ambient"]);
+                lighting.raytracedShadows = src["raytracedShadows"].getAsBool();
+            }
+
+            if(vfs.exists(sceneFolder / "Skybox.toml")) {
+                auto src = loadDocument("Skybox.toml");
+                std::string skyboxStr { src["name"].getAsString() };
+                if(!Carrot::Skybox::safeFromName(skyboxStr, skybox)) {
+                    Carrot::Log::error("Unknown skybox: %s", skyboxStr.c_str());
+                }
+            }
+
+            // load entities
+            for (const auto path : vfs.iterateOverDirectory(sceneFolder)) {
+                if (!vfs.isDirectory(path)) {
+                    continue;
+                }
+
+                std::string_view entityName = path.getPath().getFilename();
+                if (ECS::isIllegalEntityName(entityName)) {
+                    continue;
+                }
+
+                std::function<ECS::Entity(const IO::VFS::Path& entityFolder)> loadEntity = [&](const IO::VFS::Path& entityFolder) -> ECS::Entity {
+                    std::string_view selfName = entityFolder.getPath().getFilename();
+                    if (!vfs.exists(entityFolder / ".uuid")) {
+                        Log::error("Folder '%s' has no .uuid file, not a valid entity", entityFolder.toString().c_str());
+                        return {};
+                    }
+
+                    UUID selfID = UUID::fromString(IO::Resource { entityFolder / ".uuid" }.readText());
+                    ECS::Entity self = world.newEntityWithID(selfID, selfName);
+
+                    if (vfs.exists(entityFolder / ".flags")) {
+                        const ECS::EntityFlags flags = ECS::stringToFlags(IO::Resource{ entityFolder / ".flags"}.readText());
+                        self.setFlags(flags);
+                    }
+
+                    for (const auto childPath : vfs.iterateOverDirectory(entityFolder)) {
+                        // child entity
+                        if (vfs.isDirectory(childPath)) {
+                            std::string_view childName = childPath.getPath().getFilename();
+                            if (ECS::isIllegalEntityName(childName)) {
+                                continue;
+                            }
+
+                            ECS::Entity child = loadEntity(childPath);
+                            child.setParent(self);
+                        } else {
+                            // potentially a component
+                            if (childPath.getExtension() != ".toml") {
+                                continue;
+                            }
+
+                            // TODO: prefabs
+                            Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
+                            std::string componentName { childPath.getPath().getStem() };
+                            auto pComp = componentLib.deserialise(componentName, doc, self);
+                            self.addComponent(std::move(pComp));
+                        }
+                    }
+
+                    return self;
+                };
+
+                ECS::Entity rootEntity = loadEntity(path);
+                DISCARD(rootEntity);
+            }
+
+            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {
+                const std::string systemName { systemPath.getPath().getStem() };
+                if (systemLib.has(systemName)) {
+                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                    world.addRenderSystem(std::move(system));
+                } else {
+                    TODO; // dummy system
+                }
+            }
+
+            for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".LogicSystems")) {
+                const std::string systemName { systemPath.getPath().getStem() };
+                if (systemLib.has(systemName)) {
+                    auto system = systemLib.deserialise(systemName, loadDocumentFromVFS(systemPath), world);
+                    world.addLogicSystem(std::move(system));
+                } else {
+                    TODO; // dummy system
+                }
+            }
+        } catch (std::exception& e) {
+            Carrot::Log::error("Failed to deserialise scene: %s", e.what());
+            throw;
+        } catch (...) {
+            Carrot::Log::error("Failed to deserialise scene!!");
+            throw;
         }
-
-        const auto entityMap = src["entities"].GetObject();
-        auto& componentLib = Carrot::ECS::getComponentLibrary();
-        auto& systemLib = Carrot::ECS::getSystemLibrary();
-        for(const auto& [key, entityData] : entityMap) {
-            Carrot::UUID uuid { key.GetString() };
-            auto data = entityData.GetObject();
-            std::string name = data["name"].GetString();
-            auto entity = world.newEntityWithID(uuid, name);
-
-            if(data.HasMember("parent")) {
-                Carrot::UUID parent = data["parent"].GetString();
-                entity.setParent(world.wrap(parent));
-            }
-            if(data.HasMember("flags")) {
-                const auto& flagsJson = data["flags"];
-                const ECS::EntityFlags flags = ECS::stringToFlags(std::string(flagsJson.GetString(), flagsJson.GetStringLength()));
-                entity.setFlags(flags);
-            }
+#if 0
 
             // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
             std::shared_ptr<const ECS::Prefab> pPrefab;
@@ -288,35 +440,7 @@ namespace Carrot {
             }
         }
 
-        if(src.HasMember("lighting")) {
-            lighting.ambient = Carrot::JSON::read<3, float>(src["lighting"]["ambient"]);
-            lighting.raytracedShadows = src["lighting"]["raytracedShadows"].GetBool();
-        }
-
-        if(src.HasMember("skybox")) {
-            std::string skyboxStr = src["skybox"].GetString();
-            if(!Carrot::Skybox::safeFromName(skyboxStr, skybox)) {
-                Carrot::Log::error("Unknown skybox: %s", skyboxStr.c_str());
-            }
-        }
-
-        auto renderSystems = src["render_systems"].GetObject();
-        for(const auto& [key, data] : renderSystems) {
-            std::string systemName = key.GetString();
-            auto system = systemLib.deserialise(systemName, data, world);
-            world.addRenderSystem(std::move(system));
-        }
-
-        auto logicSystems = src["logic_systems"].GetObject();
-        for(const auto& [key, data] : logicSystems) {
-            std::string systemName = key.GetString();
-            if(systemLib.has(systemName)) {
-                auto system = systemLib.deserialise(systemName, data, world);
-                world.addLogicSystem(std::move(system));
-            } else {
-                TODO; // add dummy system
-            }
-        }
+#endif
     }
 
     void Scene::load() {

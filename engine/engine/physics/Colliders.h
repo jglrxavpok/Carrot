@@ -67,7 +67,7 @@ namespace Carrot::Physics {
         bool raycast(const glm::vec3& startPoint, const glm::vec3& direction, float maxLength, RaycastInfo& raycastInfo);
 
     public:
-        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const = 0;
+        virtual void serialiseTo(Carrot::DocumentElement& target) const = 0;
 
     protected:
         /// Used to tell the owning collider to remove & re-add itself to a rigidbody.
@@ -90,7 +90,7 @@ namespace Carrot::Physics {
 
     class BoxCollisionShape: public CollisionShape {
     public:
-        explicit BoxCollisionShape(const rapidjson::Value& json);
+        explicit BoxCollisionShape(const Carrot::DocumentElement& json);
         explicit BoxCollisionShape(const glm::vec3& halfExtents);
         explicit BoxCollisionShape(const BoxCollisionShape&) = delete;
 
@@ -101,7 +101,7 @@ namespace Carrot::Physics {
             return ColliderType::Box;
         }
 
-        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const override;
+        virtual void serialiseTo(Carrot::DocumentElement& target) const override;
 
         virtual std::unique_ptr<CollisionShape> duplicate() const override {
             return std::make_unique<BoxCollisionShape>(getHalfExtents());
@@ -122,7 +122,7 @@ namespace Carrot::Physics {
 
     class SphereCollisionShape: public CollisionShape {
     public:
-        explicit SphereCollisionShape(const rapidjson::Value& json);
+        explicit SphereCollisionShape(const Carrot::DocumentElement& json);
         explicit SphereCollisionShape(float radius);
         explicit SphereCollisionShape(const SphereCollisionShape&) = delete;
 
@@ -133,7 +133,7 @@ namespace Carrot::Physics {
             return ColliderType::Sphere;
         }
 
-        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const override;
+        virtual void serialiseTo(Carrot::DocumentElement& target) const override;
 
         virtual std::unique_ptr<CollisionShape> duplicate() const override {
             return std::make_unique<SphereCollisionShape>(getRadius());
@@ -155,7 +155,7 @@ namespace Carrot::Physics {
 
     class CapsuleCollisionShape: public CollisionShape {
     public:
-        explicit CapsuleCollisionShape(const rapidjson::Value& json);
+        explicit CapsuleCollisionShape(const Carrot::DocumentElement& json);
         explicit CapsuleCollisionShape(float radius, float height);
         explicit CapsuleCollisionShape(const CapsuleCollisionShape&) = delete;
 
@@ -166,7 +166,7 @@ namespace Carrot::Physics {
             return ColliderType::Capsule;
         }
 
-        virtual void fillJSON(rapidjson::Value& object, rapidjson::Document::AllocatorType& allocator) const override;
+        virtual void serialiseTo(Carrot::DocumentElement& target) const override;
 
         virtual std::unique_ptr<CollisionShape> duplicate() const override {
             return std::make_unique<CapsuleCollisionShape>(getRadius(), getHeight());
@@ -194,7 +194,7 @@ namespace Carrot::Physics {
 
     class Collider {
     public:
-        static std::unique_ptr<Collider> loadFromJSON(const rapidjson::Value& object);
+        static std::unique_ptr<Collider> load(const Carrot::DocumentElement& object);
 
         explicit Collider(std::unique_ptr<CollisionShape>&& shape, const Carrot::Math::Transform& localTransform);
         Collider(const Collider&) = delete;
@@ -210,7 +210,7 @@ namespace Carrot::Physics {
     public:
         void setLocalTransform(const Carrot::Math::Transform& transform);
         Carrot::Math::Transform getLocalTransform() const;
-        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const;
+        Carrot::DocumentElement serialise() const;
 
     private:
         void addToBody(RigidBody& body);

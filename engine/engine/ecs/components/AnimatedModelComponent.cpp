@@ -8,13 +8,13 @@
 namespace Carrot::ECS {
     AnimatedModelComponent::AnimatedModelComponent(Entity entity): IdentifiableComponent<AnimatedModelComponent>(std::move(entity)) {}
 
-    AnimatedModelComponent::AnimatedModelComponent(const rapidjson::Value& json, Entity entity): AnimatedModelComponent(std::move(entity)) {
-        auto& modelJSON = json["model"];
-        auto& modelPathJSON = modelJSON["model_path"];
-        const std::string modelPath = std::string{ modelPathJSON.GetString(), modelPathJSON.GetStringLength() };
+    AnimatedModelComponent::AnimatedModelComponent(const Carrot::DocumentElement& doc, Entity entity): AnimatedModelComponent(std::move(entity)) {
+        auto modelJSON = doc["model"].getAsObject();
+        auto& modelPathJSON = doc["model"]["model_path"];
+        const std::string modelPath { modelPathJSON.getAsString() };
         queueLoad(Carrot::IO::VFS::Path { modelPath });
-        if(auto pRaytracedIter = modelJSON.FindMember("raytraced"); pRaytracedIter != modelJSON.MemberEnd()) {
-            raytraced = pRaytracedIter->value.GetBool();
+        if(auto pRaytracedIter = modelJSON.find("raytraced"); pRaytracedIter != modelJSON.end()) {
+            raytraced = pRaytracedIter->second.getAsBool();
         }
     }
 
@@ -29,23 +29,22 @@ namespace Carrot::ECS {
         asyncAnimatedModelHandle = AsyncHandle(GetAssetServer().loadAnimatedModelInstanceTask(animatedModelPath));
     }
 
-    rapidjson::Value AnimatedModelComponent::toJSON(rapidjson::Document& doc) const {
+    Carrot::DocumentElement AnimatedModelComponent::serialise() const {
         asyncAnimatedModelHandle.forceWait();
-        rapidjson::Value obj{rapidjson::kObjectType};
+        Carrot::DocumentElement obj;
 
-        rapidjson::Value modelData(rapidjson::kObjectType);
+        Carrot::DocumentElement modelData;
         const auto& resource = waitLoadAndGetOriginatingResource();
 
         if(resource.isFile()) {
-            rapidjson::Value modelPath{resource.getName(), doc.GetAllocator()};
-            modelData.AddMember("model_path", modelPath, doc.GetAllocator());
+            modelData["model_path"] = resource.getName();
         }
 
         if(!asyncAnimatedModelHandle.isEmpty()) {
-            modelData.AddMember("raytraced", raytraced, doc.GetAllocator());
+            modelData["raytraced"] = raytraced;
         }
 
-        obj.AddMember("model", modelData, doc.GetAllocator());
+        obj["model"] = modelData;
         return obj;
     }
 

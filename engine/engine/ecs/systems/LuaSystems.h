@@ -10,7 +10,7 @@ namespace Carrot::ECS {
     class LuaUpdateSystem: public LogicSystem<Carrot::ECS::LuaScriptComponent>, public Identifiable<LuaUpdateSystem> {
     public:
         explicit LuaUpdateSystem(World& world): LogicSystem<Carrot::ECS::LuaScriptComponent>(world) {}
-        explicit LuaUpdateSystem(const rapidjson::Value& json, World& world): LuaUpdateSystem(world) {}
+        explicit LuaUpdateSystem(const Carrot::DocumentElement& doc, World& world): LuaUpdateSystem(world) {}
 
         void tick(double dt) override;
 
@@ -34,7 +34,7 @@ namespace Carrot::ECS {
     class LuaRenderSystem: public RenderSystem<Carrot::ECS::LuaScriptComponent>, public Identifiable<LuaRenderSystem> {
     public:
         explicit LuaRenderSystem(World& world): RenderSystem<Carrot::ECS::LuaScriptComponent>(world) {}
-        explicit LuaRenderSystem(const rapidjson::Value& json, World& world): LuaRenderSystem(world) {}
+        explicit LuaRenderSystem(const Carrot::DocumentElement& doc, World& world): LuaRenderSystem(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

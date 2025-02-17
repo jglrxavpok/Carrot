@@ -11,11 +11,11 @@ namespace Carrot::ECS {
     public:
         explicit CSharpComponent(Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className);
 
-        explicit CSharpComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className);
+        explicit CSharpComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity, const std::string& namespaceName, const std::string& className);
 
         ~CSharpComponent();
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override;
 
@@ -62,7 +62,6 @@ namespace Carrot::ECS {
         Scripting::CSharpBindings::Callbacks::Handle loadCallbackHandle;
         Scripting::CSharpBindings::Callbacks::Handle unloadCallbackHandle;
 
-        mutable rapidjson::Document serializedDoc{rapidjson::kObjectType};
-        mutable rapidjson::Value serializedVersion{rapidjson::kObjectType}; // always keep the serialized version in case we can't load the component from C#
+        mutable Carrot::DocumentElement serializedVersion; // always keep the serialized version in case we can't load the component from C#
     };
 }

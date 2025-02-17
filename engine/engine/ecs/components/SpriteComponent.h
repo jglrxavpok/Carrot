@@ -13,9 +13,9 @@ namespace Carrot::ECS {
 
         explicit SpriteComponent(Entity entity): IdentifiableComponent<SpriteComponent>(std::move(entity)) {}
 
-        explicit SpriteComponent(const rapidjson::Value& json, Entity entity);
+        explicit SpriteComponent(const Carrot::DocumentElement& doc, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "SpriteComponent";

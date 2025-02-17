@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class RigidBodySystem: public LogicSystem<TransformComponent, Carrot::ECS::RigidBodyComponent>, public Identifiable<RigidBodySystem> {
     public:
         explicit RigidBodySystem(World& world);
-        explicit RigidBodySystem(const rapidjson::Value& json, World& world): RigidBodySystem(world) {}
+        explicit RigidBodySystem(const Carrot::DocumentElement& doc, World& world): RigidBodySystem(world) {}
 
         void tick(double dt) override;
 

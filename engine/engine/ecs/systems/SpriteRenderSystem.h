@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class SpriteRenderSystem: public RenderSystem<TransformComponent, Carrot::ECS::SpriteComponent>, public Identifiable<SpriteRenderSystem> {
     public:
         explicit SpriteRenderSystem(World& world): RenderSystem<TransformComponent, SpriteComponent>(world) {}
-        explicit SpriteRenderSystem(const rapidjson::Value& json, World& world): SpriteRenderSystem(world) {}
+        explicit SpriteRenderSystem(const Carrot::DocumentElement& doc, World& world): SpriteRenderSystem(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

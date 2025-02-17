@@ -25,7 +25,7 @@ namespace Carrot::ECS {
     class System {
     public:
         explicit System(World& world);
-        explicit System(const rapidjson::Value& json, World& world): System(world) {};
+        explicit System(const Carrot::DocumentElement& doc, World& world): System(world) {};
 
         [[nodiscard]] const Signature& getSignature() const;
         std::span<const Entity> getEntities() const;
@@ -66,8 +66,8 @@ namespace Carrot::ECS {
 
         virtual std::unique_ptr<System> duplicate(World& newOwner) const = 0;
 
-        virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const {
-            return rapidjson::Value(rapidjson::kObjectType);
+        virtual Carrot::DocumentElement serialise() const {
+            return Carrot::DocumentElement{};
         };
 
         /// Is this system supposed to be serialized? This can be used for debug systems that are only present if the code says so.

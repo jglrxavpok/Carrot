@@ -25,8 +25,8 @@ namespace Carrot::ECS {
         // TODO: handle lua scripts?
     }
 
-    std::unique_ptr<Component> ComponentLibrary::deserialise(const std::string& id, const rapidjson::Value& json, const Entity& entity) const {
-        return storage.deserialise(id, json, entity);
+    std::unique_ptr<Component> ComponentLibrary::deserialise(const std::string& id, const Carrot::DocumentElement& doc, const Entity& entity) const {
+        return storage.deserialise(id, doc, entity);
     }
 
     std::unique_ptr<Component> ComponentLibrary::create(const Storage::ID& id, const Entity& entity) const {

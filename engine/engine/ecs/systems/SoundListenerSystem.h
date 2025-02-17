@@ -14,7 +14,7 @@ namespace Carrot::ECS {
     public:
         explicit SoundListenerSystem(Carrot::ECS::World& world);
 
-        explicit SoundListenerSystem(const rapidjson::Value& json, Carrot::ECS::World& world) : SoundListenerSystem(
+        explicit SoundListenerSystem(const Carrot::DocumentElement& doc, Carrot::ECS::World& world) : SoundListenerSystem(
                 world) {}
 
         virtual void tick(double dt) override;

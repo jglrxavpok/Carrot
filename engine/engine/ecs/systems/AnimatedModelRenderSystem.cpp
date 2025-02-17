@@ -10,7 +10,7 @@
 #include <engine/render/RenderPacket.h>
 
 namespace Carrot::ECS {
-    AnimatedModelRenderSystem::AnimatedModelRenderSystem(const rapidjson::Value& json, World& world): RenderSystem<TransformComponent, AnimatedModelComponent>(world) {
+    AnimatedModelRenderSystem::AnimatedModelRenderSystem(const Carrot::DocumentElement& doc, World& world): RenderSystem<TransformComponent, AnimatedModelComponent>(world) {
 
     }
 

@@ -45,31 +45,4 @@ namespace Peeler {
         }
     }
 
-    AddPrefabComponentsCommand::AddPrefabComponentsCommand(Application& app, std::shared_ptr<Carrot::ECS::Prefab> prefab, std::span<std::string> componentNames, std::span<Carrot::ComponentID> componentIDs)
-    : ICommand(app, "Add entity components")
-    , prefab(prefab)
-    , componentNames(componentNames)
-    , componentIDs(componentIDs) {
-        verify(componentIDs.size() == componentNames.size(), "Must be as many names as ids");
-        Carrot::Vector<Carrot::ECS::EntityID> affectedEntities;
-        affectedEntities.setGrowthFactor(2);
-        prefab->forEachInstance(app.currentScene.world, [&](Carrot::ECS::Entity e) {
-            affectedEntities.pushBack(e.getID());
-        });
-        pEntitiesCommand = Carrot::makeUnique<AddComponentsCommand>(Carrot::Allocator::getDefault(), app, affectedEntities, componentNames, componentIDs);
-    }
-
-    void AddPrefabComponentsCommand::undo() {
-        pEntitiesCommand->undo();
-        for(const auto& compID : componentIDs) {
-            prefab->removeComponent(compID);
-        }
-    }
-
-    void AddPrefabComponentsCommand::redo() {
-        for(std::int64_t i = 0; i < componentIDs.size(); i++) {
-            prefab->addComponent(componentNames[i]);
-        }
-        pEntitiesCommand->redo();
-    }
 } // Peeler

@@ -12,7 +12,7 @@ namespace Carrot::ECS {
     class BillboardSystem: public RenderSystem<TransformComponent, Carrot::ECS::BillboardComponent>, public Identifiable<BillboardSystem> {
     public:
         explicit BillboardSystem(World& world): RenderSystem<TransformComponent, BillboardComponent>(world) {}
-        explicit BillboardSystem(const rapidjson::Value& json, World& world): BillboardSystem(world) {}
+        explicit BillboardSystem(const Carrot::DocumentElement& doc, World& world): BillboardSystem(world) {}
 
         void onFrame(Carrot::Render::Context renderContext) override;
 

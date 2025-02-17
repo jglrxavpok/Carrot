@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <core/io/Document.h>
 #include <rapidjson/document.h>
 #include <engine/render/ModelRenderer.h>
 
@@ -47,8 +48,8 @@ namespace Carrot::ECS {
          * Loads this structure from the provided JSON.
          * Previous data is deleted
          */
-        void loadFromJSON(const rapidjson::Value& json);
-        rapidjson::Value toJSON(rapidjson::Document::AllocatorType& allocator) const;
+        void deserialise(const Carrot::DocumentElement& doc);
+        Carrot::DocumentElement serialise() const;
 
     private:
         std::unordered_map<Carrot::UUID, std::shared_ptr<Carrot::Render::ModelRenderer>> modelRenderers;

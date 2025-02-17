@@ -18,12 +18,12 @@ namespace Carrot::ECS {
         return localTransform.toTransformMatrix();
     }
 
-    TransformComponent::TransformComponent(const rapidjson::Value& json, Entity entity): TransformComponent(std::move(entity)) {
-        localTransform.loadJSON(json);
+    TransformComponent::TransformComponent(const Carrot::DocumentElement& doc, Entity entity): TransformComponent(std::move(entity)) {
+        localTransform.deserialise(doc);
     };
 
-    rapidjson::Value TransformComponent::toJSON(rapidjson::Document& doc) const {
-        return localTransform.toJSON(doc.GetAllocator());
+    Carrot::DocumentElement TransformComponent::serialise() const {
+        return localTransform.serialise();
     }
 
     void TransformComponent::setGlobalTransform(const Carrot::Math::Transform& newTransform) {

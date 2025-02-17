@@ -12,9 +12,9 @@ namespace Carrot::ECS {
 
         explicit NavMeshComponent(Carrot::ECS::Entity entity);
 
-        explicit NavMeshComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity);
+        explicit NavMeshComponent(const Carrot::DocumentElement& json, Carrot::ECS::Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         void setMesh(const Carrot::IO::Resource& file);
 

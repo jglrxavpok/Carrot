@@ -74,6 +74,11 @@ namespace Carrot::IO {
         Path getParent() const;
 
         /**
+         * Returns a string_view representing the stem inside the path, which is the filename without the extension
+         */
+        std::string_view getStem() const;
+
+        /**
          * Returns a string_view representing the extension inside the path (with the dot), extracted from the last dot
          * present after the last separator, to the end of the path.
          * @return

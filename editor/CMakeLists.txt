@@ -29,9 +29,6 @@ set(EditorSources
         ${EditorRoot}ecs/systems/CollisionShapeRenderer.cpp
         ${EditorRoot}ecs/systems/LightEditorRenderer.cpp
 
-
-        ${EditorRoot}game_specific/ecs/CharacterControllerComponent.cpp
-        ${EditorRoot}game_specific/ecs/CharacterControllerSystem.cpp
         )
 
 set(ImGuizmoSources

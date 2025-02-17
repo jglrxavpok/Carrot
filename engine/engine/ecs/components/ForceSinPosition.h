@@ -10,6 +10,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <core/utils/JSON.h>
 #include <imgui.h>
+#include <core/io/DocumentHelpers.h>
 
 namespace Carrot::ECS {
     // TODO: still interesting??
@@ -21,20 +22,20 @@ namespace Carrot::ECS {
 
         explicit ForceSinPosition(Entity entity): IdentifiableComponent<ForceSinPosition>(std::move(entity)) {};
 
-        explicit ForceSinPosition(const rapidjson::Value& json, Entity entity): ForceSinPosition(std::move(entity)) {
-            angularFrequency = JSON::read<3, float>(json["angularFrequency"]);
-            amplitude = JSON::read<3, float>(json["amplitude"]);
-            angularOffset = JSON::read<3, float>(json["angularOffset"]);
-            centerPosition = JSON::read<3, float>(json["centerPosition"]);
+        explicit ForceSinPosition(const Carrot::DocumentElement& doc, Entity entity): ForceSinPosition(std::move(entity)) {
+            angularFrequency = DocumentHelpers::read<3, float>(doc["angularFrequency"]);
+            amplitude = DocumentHelpers::read<3, float>(doc["amplitude"]);
+            angularOffset = DocumentHelpers::read<3, float>(doc["angularOffset"]);
+            centerPosition = DocumentHelpers::read<3, float>(doc["centerPosition"]);
         };
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
+        Carrot::DocumentElement serialise() const override {
+            Carrot::DocumentElement obj;
 
-            obj.AddMember("angularFrequency", JSON::write<3, float>(angularFrequency, doc), doc.GetAllocator());
-            obj.AddMember("amplitude", JSON::write<3, float>(amplitude, doc), doc.GetAllocator());
-            obj.AddMember("angularOffset", JSON::write<3, float>(angularOffset, doc), doc.GetAllocator());
-            obj.AddMember("centerPosition", JSON::write<3, float>(centerPosition, doc), doc.GetAllocator());
+            obj["angularFrequency"] = DocumentHelpers::write<3, float>(angularFrequency);
+            obj["amplitude"] = DocumentHelpers::write<3, float>(amplitude);
+            obj["angularOffset"] = DocumentHelpers::write<3, float>(angularOffset);
+            obj["centerPosition"] = DocumentHelpers::write<3, float>(centerPosition);
 
             return obj;
         }

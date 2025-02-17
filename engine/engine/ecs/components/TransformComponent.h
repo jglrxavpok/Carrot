@@ -19,9 +19,9 @@ namespace Carrot::ECS {
 
         explicit TransformComponent(Entity entity): IdentifiableComponent<TransformComponent>(std::move(entity)) {};
 
-        explicit TransformComponent(const rapidjson::Value& json, Entity entity);
+        explicit TransformComponent(const Carrot::DocumentElement& doc, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         [[nodiscard]] glm::mat4 toTransformMatrix() const;
 

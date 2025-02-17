@@ -14,9 +14,9 @@ namespace Carrot::ECS {
 
         explicit LightComponent(Entity entity, std::shared_ptr<Render::LightHandle> light = nullptr);
 
-        explicit LightComponent(const rapidjson::Value& json, Entity entity);
+        explicit LightComponent(const Carrot::DocumentElement& doc, Entity entity);
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override;
+        Carrot::DocumentElement serialise() const override;
 
         const char *const getName() const override {
             return "LightComponent";

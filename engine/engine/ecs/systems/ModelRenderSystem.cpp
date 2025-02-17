@@ -11,7 +11,7 @@
 #include <engine/render/ClusterManager.h>
 
 namespace Carrot::ECS {
-    ModelRenderSystem::ModelRenderSystem(const rapidjson::Value& json, World& world): RenderSystem<TransformComponent, ModelComponent>(world) {
+    ModelRenderSystem::ModelRenderSystem(const Carrot::DocumentElement& doc, World& world): RenderSystem<TransformComponent, ModelComponent>(world) {
 
     }
 

@@ -11,12 +11,12 @@ namespace Carrot::ECS {
     public:
         explicit BillboardComponent(Carrot::ECS::Entity entity);
 
-        explicit BillboardComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity) : BillboardComponent(
+        explicit BillboardComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity) : BillboardComponent(
                 std::move(entity)) {
         };
 
-        rapidjson::Value toJSON(rapidjson::Document& doc) const override {
-            rapidjson::Value obj(rapidjson::kObjectType);
+        Carrot::DocumentElement serialise() const override {
+            Carrot::DocumentElement obj;
             return obj;
         }
 

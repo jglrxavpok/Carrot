@@ -7,29 +7,29 @@
 namespace Carrot::ECS {
     PrefabInstanceComponent::PrefabInstanceComponent(Carrot::ECS::Entity entity): Carrot::ECS::IdentifiableComponent<PrefabInstanceComponent>(std::move(entity)) {}
 
-    PrefabInstanceComponent::PrefabInstanceComponent(const rapidjson::Value& json, Carrot::ECS::Entity entity): PrefabInstanceComponent(std::move(entity)) {
-        if(json.HasMember("prefab_path")) {
-            auto& pathObj = json["prefab_path"];
-            Carrot::IO::VFS::Path vfsPath = std::string_view { pathObj.GetString(), pathObj.GetStringLength() };
+    PrefabInstanceComponent::PrefabInstanceComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity): PrefabInstanceComponent(std::move(entity)) {
+        if(doc.contains("prefab_path")) {
+            auto& pathObj = doc["prefab_path"];
+            Carrot::IO::VFS::Path vfsPath { pathObj.getAsString() };
             prefab = GetAssetServer().blockingLoadPrefab(vfsPath);
-            isRoot = json["is_root"].GetBool();
+            childID = Carrot::UUID::fromString(doc["child_id"].getAsString());
         }
     }
 
-    rapidjson::Value PrefabInstanceComponent::toJSON(rapidjson::Document& doc) const {
+    Carrot::DocumentElement PrefabInstanceComponent::serialise() const {
         if(prefab) {
-            rapidjson::Value obj { rapidjson::kObjectType };
-            obj.AddMember("prefab_path", rapidjson::Value { prefab->getVFSPath().toString(), doc.GetAllocator() }, doc.GetAllocator());
-            obj.AddMember("is_root", isRoot, doc.GetAllocator());
+            Carrot::DocumentElement obj;
+            obj["prefab_path"] = prefab->getVFSPath().toString();
+            obj["child_id"] = childID.toString();
             return obj;
         } else {
-            return {};
+            return Carrot::DocumentElement{};
         }
     }
 
     std::unique_ptr<Carrot::ECS::Component> PrefabInstanceComponent::duplicate(const Carrot::ECS::Entity& newOwner) const {
         auto result = std::make_unique<PrefabInstanceComponent>(newOwner);
-        result->isRoot = isRoot;
+        result->childID = childID;
         result->prefab = prefab;
         return result;
     }
