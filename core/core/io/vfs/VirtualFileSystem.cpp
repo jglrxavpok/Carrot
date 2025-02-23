@@ -255,6 +255,7 @@ namespace Carrot::IO {
                     return;
                 }
             }
+            return;
         }
 
         ++currentPoint;

@@ -49,41 +49,37 @@ namespace Carrot {
     }
 
     // Serialises instanceComponent, but removes all values which are the same than prefabComponent. These will be filled at load time when deserialisation happens
-    static rapidjson::Value serialiseWithoutDefaultValues(ECS::Component& instanceComponent, ECS::Component& prefabComponent, rapidjson::Document& document /* TODO: use allocator instead */, bool& outputAnything) {
-        TODO;
-        /*
-        auto rootInstanceJSON = instanceComponent.toJSON(document);
-        auto rootPrefabJSON = prefabComponent.toJSON(document);
-        rapidjson::Value result { rapidjson::kObjectType };
+    static Carrot::DocumentElement serialiseWithoutDefaultValues(ECS::Component& instanceComponent, ECS::Component& prefabComponent, bool& outputAnything) {
+        auto rootInstanceJSON = instanceComponent.serialise();
+        auto rootPrefabJSON = prefabComponent.serialise();
+        Carrot::DocumentElement result;
 
         // returns true iif a member was added to 'output' (to skip over nested objects which have the same value as the prefab)
-        std::function<bool(const rapidjson::Value& instanceJSON, const rapidjson::Value& prefabJSON, rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator)>
-        diff = [&diff](const rapidjson::Value& instanceJSON, const rapidjson::Value& prefabJSON, rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator) -> bool {
-            auto copy = [&](const rapidjson::Value& v) {
-                return rapidjson::Value{ v, allocator };
-            };
+        std::function<bool(const Carrot::DocumentElement&, const Carrot::DocumentElement&, Carrot::DocumentElement&)>
+        diff = [&diff](const Carrot::DocumentElement& instanceData, const Carrot::DocumentElement& prefabJSON, Carrot::DocumentElement& output) -> bool {
             bool addedToOutput = false;
+            auto instanceAsObject = instanceData.getAsObject();
             // go over each member, and remove it if it has the same value as the prefab (this becomes recursive for objects)
-            for(auto it = instanceJSON.MemberBegin(); it != instanceJSON.MemberEnd(); ++it) {
-                auto prefabIter = prefabJSON.FindMember(it->name);
+            for(auto it = instanceAsObject.begin(); it != instanceAsObject.end(); ++it) {
+                auto prefabIter = instanceAsObject.find(it->first);
 
                 auto addNoModification = [&]() {
                     addedToOutput = true;
-                    output.AddMember(copy(it->name), copy(it->value), allocator);
+                    output[it->first] = it->second;
                 };
-                if(prefabIter == prefabJSON.MemberEnd()) {
+                if(prefabIter == instanceAsObject.end()) {
                     addNoModification();
                     continue; // no such value in prefab, keep it
                 }
 
-                auto& instanceMember = it->value;
-                auto& prefabMember = prefabIter->value;
-                if(instanceMember.IsObject() && prefabMember.IsObject()) {
+                auto& instanceMember = it->second;
+                auto& prefabMember = prefabIter->second;
+                if(instanceMember.isObject() && prefabMember.isObject()) {
                     // deep modification
-                    rapidjson::Value resultMember { rapidjson::kObjectType };
-                    bool different = diff(instanceMember, prefabMember, resultMember, allocator);
+                    Carrot::DocumentElement resultMember;
+                    bool different = diff(instanceMember, prefabMember, resultMember);
                     if(different) {
-                        output.AddMember(copy(it->name), resultMember, allocator);
+                        output[it->first] = resultMember;
                         addedToOutput = true;
                     }
                 } else if(instanceMember != prefabMember) {
@@ -93,48 +89,51 @@ namespace Carrot {
             return addedToOutput;
         };
 
-        outputAnything = diff(rootInstanceJSON, rootPrefabJSON, result, document.GetAllocator());
-        return result;*/
-        return {};
+        outputAnything = diff(rootInstanceJSON, rootPrefabJSON, result);
+        return result;
     }
 
-    // Fill in default values missing from instanceJSON, based on prefabComponent (Inverse of serialiseWithoutDefaultValues)
-    static rapidjson::Value deserialiseWithDefaultValues(ECS::Component& prefabComponent, const rapidjson::Value& instanceJSON, rapidjson::Document& fakeDoc) {
-        TODO;
-        /*
-        auto& allocator = fakeDoc.GetAllocator();
-        auto prefabJSON = prefabComponent.toJSON(fakeDoc);
+    // Fill in default values missing from instanceData, based on prefabComponent (Inverse of serialiseWithoutDefaultValues)
+    static Carrot::DocumentElement deserialiseWithDefaultValues(ECS::Component& prefabComponent, const Carrot::DocumentElement& instanceData) {
+        auto prefabJSON = prefabComponent.serialise();
 
         // start by copying values of instance
-        rapidjson::Value result { instanceJSON, allocator };
+        Carrot::DocumentElement result = instanceData;
 
-        std::function<void(const rapidjson::Value& prefabJSON, rapidjson::Value& result, rapidjson::Document::AllocatorType& allocator)>
-        diff = [&diff](const rapidjson::Value& prefabJSON, rapidjson::Value& result, rapidjson::Document::AllocatorType& allocator) {
-            auto copy = [&](const rapidjson::Value& v) {
-                return rapidjson::Value{ v, allocator };
-            };
+        std::function<void(const Carrot::DocumentElement&, Carrot::DocumentElement&)>
+        diff = [&diff](const Carrot::DocumentElement& prefabData, Carrot::DocumentElement& result) {
+            auto objectView = prefabData.getAsObject();
 
             // go over all members of prefab JSON, to see if it is missing from the result object
-            for(auto prefabIt = prefabJSON.MemberBegin(); prefabIt != prefabJSON.MemberEnd(); ++prefabIt) {
-                const auto& name = prefabIt->name;
-                auto it = result.FindMember(name);
-                auto& prefabValue = it->value;
+            for(auto prefabIt = objectView.begin(); prefabIt != objectView.end(); ++prefabIt) {
+                const auto& name = prefabIt->first;
+                auto resultAsObject = result.getAsObject();
+                auto it = resultAsObject.find(name);
+                const auto& prefabValue = prefabIt->second;
 
-                if(it != result.MemberEnd()) { // instance already has a value for this entry, might need to merge contents of prefab
-                    auto& instanceValue = it->value;
-                    if(instanceValue.IsObject() && prefabValue.IsObject()) {
+                if(it != resultAsObject.end()) { // instance already has a value for this entry, might need to merge contents of prefab
+                    auto& instanceValue = result[name];
+                    if(instanceValue.isObject() && prefabValue.isObject()) {
                         // recursive
-                        diff(prefabValue, instanceValue, allocator);
+                        diff(prefabValue, instanceValue);
                     }
                     // if not objects, leave it as-is (instance has an override)
                 } else { // instance does not have a value for this entry, add it
-                    result.AddMember(copy(name), copy(prefabIt->value), allocator);
+                    result[name] = prefabValue;
                 }
             }
         };
-        diff(prefabJSON, result, allocator);
-        return result;*/
-        return {};
+        diff(prefabJSON, result);
+        return result;
+    }
+
+    bool Scene::isValidSceneFolder(const Carrot::IO::VFS::Path& sceneFolder) {
+        auto& vfs = GetVFS();
+        if (!vfs.isDirectory(sceneFolder)) {
+            return false;
+        }
+
+        return vfs.exists(sceneFolder / "WorldData.toml");
     }
 
     void Scene::serialise(const std::filesystem::path& sceneFolder) const {
@@ -143,11 +142,15 @@ namespace Carrot {
         fs::path backupFolder = sceneFolder;
         backupFolder.replace_extension("backup");
         fs::create_directories(backupFolder);
-        fs::copy(sceneFolder, backupFolder, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+        if (fs::exists(sceneFolder)) {
+            fs::copy(sceneFolder, backupFolder, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 
-        fs::remove_all(sceneFolder);
+            fs::remove_all(sceneFolder);
+        } else {
+            fs::create_directories(sceneFolder);
+        }
         // save entity data
-        std::function<void(const ECS::Entity& entity, const fs::path& entityFolder)> saveEntityTree = [&](const ECS::Entity& entity, const fs::path& entityFolder) {
+        std::function<void(const ECS::Entity& entity, const fs::path& entityFolder)> saveEntityTree = [&](ECS::Entity entity, const fs::path& entityFolder) {
             fs::create_directories(entityFolder);
             {
                 Carrot::IO::FileHandle f { entityFolder / ".uuid", IO::OpenMode::NewOrExistingReadWrite };
@@ -160,10 +163,35 @@ namespace Carrot {
                 f.write(std::span{ reinterpret_cast<u8*>(flagsStr.data()), flagsStr.size() });
             }
 
+            auto prefabInstanceComponent = entity.getComponent<ECS::PrefabInstanceComponent>();
+            std::shared_ptr<const ECS::Prefab> pPrefab = prefabInstanceComponent.hasValue() ? prefabInstanceComponent.asPtr()->prefab : nullptr;
+
             // TODO: check if prefab entity
             for (const auto& pComp : entity.getAllComponents()) {
+                if (!pComp->isSerializable()) {
+                    continue;
+                }
+
                 toml::table tomlComp;
-                tomlComp << pComp->serialise();
+
+                if(pPrefab != nullptr && pComp->getComponentTypeID() != ECS::PrefabInstanceComponent::getID()) {
+                    auto optComponentRef = pPrefab->getComponent(prefabInstanceComponent->childID, pComp->getComponentTypeID());
+                    if (optComponentRef.hasValue()) {
+                        ECS::Component& prefabComponent = optComponentRef;
+                        bool outputAnything = false;
+                        auto result = serialiseWithoutDefaultValues(*pComp, prefabComponent, outputAnything);
+                        if(outputAnything) {
+                            tomlComp << result;
+                        }
+                    } else { // it is valid to add components to prefab instances which are not already inside the prefab
+                        tomlComp << pComp->serialise();
+                    }
+                } else {
+                    // prefab instance components are used for serialisation, don't modify them
+                    // or if there is no prefab, no need to modify anything
+
+                    tomlComp << pComp->serialise();
+                }
                 std::string filename { pComp->getName() };
                 filename += ".toml";
                 std::ofstream f { entityFolder / filename, std::ios::binary };
@@ -233,41 +261,6 @@ namespace Carrot {
 
         // remove backup since saving went well
         fs::remove_all(backupFolder);
-#if 0
-        rapidjson::Value entitiesMap(rapidjson::kObjectType);
-        for(auto& entity : world.getAllEntities()) {
-            rapidjson::Value entityData(rapidjson::kObjectType);
-            entityData.SetObject();
-            auto components = world.getAllComponents(entity);
-
-            auto prefabCompRef = entity.getComponent<ECS::PrefabInstanceComponent>();
-            std::shared_ptr<const ECS::Prefab> pPrefab = prefabCompRef.hasValue() ? prefabCompRef->prefab : nullptr;
-
-            for(const auto& comp : components) {
-                if(!comp->isSerializable()) {
-                    continue;
-                }
-                rapidjson::Value key(comp->getName(), dest.GetAllocator());
-                if(pPrefab != nullptr && comp->getComponentTypeID() != ECS::PrefabInstanceComponent::getID()) {
-                    auto optComponentRef = pPrefab->getComponent(comp->getComponentTypeID());
-                    if (optComponentRef.hasValue()) {
-                        ECS::Component& prefabComponent = optComponentRef;
-                        bool outputAnything = false;
-                        auto result = serialiseWithoutDefaultValues(*comp, prefabComponent, dest, outputAnything);
-                        if(outputAnything) {
-                            entityData.AddMember(key, result, dest.GetAllocator());
-                        }
-                    } else { // it is valid to add components to prefab instances which are not already inside the prefab
-                        entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
-                    }
-                } else {
-                    // prefab instance components are used for serialisation, don't modify them
-                    // or if there is no prefab, no need to modify anything
-
-                    entityData.AddMember(key, comp->toJSON(dest), dest.GetAllocator());
-                }
-            }
-#endif
     }
 
     void Scene::deserialise(const Carrot::IO::VFS::Path& sceneFolder) {
@@ -335,6 +328,34 @@ namespace Carrot {
                         self.setFlags(flags);
                     }
 
+                    // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
+                    std::shared_ptr<const ECS::Prefab> pPrefab;
+                    Carrot::UUID prefabChildID = Carrot::UUID::null();
+                    std::string prefabInstanceFilename { ECS::PrefabInstanceComponent::getStringRepresentation() };
+                    prefabInstanceFilename += ".toml";
+
+                    if (vfs.exists(entityFolder / prefabInstanceFilename)) {
+                        const auto& prefabInstanceData = loadDocumentFromVFS(entityFolder / prefabInstanceFilename);
+                        auto component = componentLib.deserialise(ECS::PrefabInstanceComponent::getStringRepresentation(), prefabInstanceData, self);
+                        self.addComponent(std::move(component));
+
+                        auto prefabInstanceComp = self.getComponent<ECS::PrefabInstanceComponent>();
+                        pPrefab = prefabInstanceComp->prefab;
+                        prefabChildID = prefabInstanceComp->childID;
+
+                        if(pPrefab) {
+                            // add all components which are not saved inside instance, because they are exactly the same as the prefab's
+                            for(const ECS::Component* pComponent : pPrefab->getAllComponents(prefabChildID)) {
+                                std::string filename = pComponent->getName();
+                                filename += ".toml";
+
+                                if(!vfs.exists(entityFolder / filename)) { // no instance overrides, copy prefab's component
+                                    self.addComponent(pComponent->duplicate(self));
+                                }
+                            }
+                        }
+                    }
+
                     for (const auto childPath : vfs.iterateOverDirectory(entityFolder)) {
                         // child entity
                         if (vfs.isDirectory(childPath)) {
@@ -351,11 +372,30 @@ namespace Carrot {
                                 continue;
                             }
 
-                            // TODO: prefabs
-                            Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
                             std::string componentName { childPath.getPath().getStem() };
-                            auto pComp = componentLib.deserialise(componentName, doc, self);
-                            self.addComponent(std::move(pComp));
+                            if(componentName == ECS::PrefabInstanceComponent::getStringRepresentation()) {
+                                continue;
+                            }
+                            Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
+                            if(pPrefab != nullptr) {
+                                Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
+                                if(prefabComponent.hasValue()) {
+                                    // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
+                                    auto component = componentLib.deserialise(
+                                        componentName,
+                                        deserialiseWithDefaultValues(prefabComponent.asRef(), doc),
+                                        self);
+                                    self.addComponent(std::move(component));
+                                } else {
+                                    // not part of prefab, load directly
+                                    auto component = componentLib.deserialise(componentName, doc, self);
+                                    self.addComponent(std::move(component));
+                                }
+                            } else {
+                                // no prefab for this entity, load directly
+                                auto component = componentLib.deserialise(componentName, doc, self);
+                                self.addComponent(std::move(component));
+                            }
                         }
                     }
 
@@ -393,25 +433,6 @@ namespace Carrot {
             throw;
         }
 #if 0
-
-            // start by checking if this entity is a prefab instance, because this impacts how deserialisation will work
-            std::shared_ptr<const ECS::Prefab> pPrefab;
-            const auto& prefabInstanceJSON = data.FindMember(ECS::PrefabInstanceComponent::getStringRepresentation());
-            if(prefabInstanceJSON != data.MemberEnd()) {
-                auto component = componentLib.deserialise(ECS::PrefabInstanceComponent::getStringRepresentation(), prefabInstanceJSON->value, entity);
-                entity.addComponent(std::move(component));
-
-                pPrefab = entity.getComponent<ECS::PrefabInstanceComponent>()->prefab;
-
-                if(pPrefab) {
-                    // add all components which are not saved inside instance, because they are exactly the same as the prefab's
-                    for(const ECS::Component* pComponent : pPrefab->getAllComponents()) {
-                        if(!data.HasMember(pComponent->getName())) { // no instance overrides, copy prefab's component
-                            entity.addComponent(pComponent->duplicate(entity));
-                        }
-                    }
-                }
-            }
 
             for(const auto& [componentNameKey, componentDataKey] : data) {
                 std::string componentName = componentNameKey.GetString();

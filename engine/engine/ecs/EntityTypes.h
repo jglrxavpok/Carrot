@@ -94,6 +94,8 @@ namespace Carrot::ECS {
 
         Vector<Component*> getAllComponents() const;
 
+        std::vector<Entity> getChildren(ShouldRecurse recursion = ShouldRecurse::Recursion) const;
+
         template<typename Comp>
         Entity& removeComponent();
 

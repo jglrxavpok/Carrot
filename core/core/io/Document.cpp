@@ -220,6 +220,38 @@ namespace Carrot {
             return elements.size();
         }
     }
+
+    bool DocumentElement::operator==(const DocumentElement& other) const {
+        if (type != other.type) {
+            return false;
+        }
+        switch (type) {
+            case DocumentType::Bool:
+                return primitive.b == other.primitive.b;
+            case DocumentType::String:
+                return string == other.string;
+            case DocumentType::Int64:
+                return primitive.i == other.primitive.i;
+            case DocumentType::Double:
+                return primitive.d == other.primitive.d;
+            case DocumentType::Array:
+                if (array.size() != other.array.size()) {
+                    return false;
+                }
+                for (i64 i = 0; i < array.size(); i++) {
+                    if ((*this)[i] != other[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            case DocumentType::Object:
+                return elements == other.elements;
+        }
+        return false;
+    }
+    bool DocumentElement::operator!=(const DocumentElement& other) const {
+        return !(*this == other);
+    }
 #pragma endregion Introspection
 
 #pragma region Views

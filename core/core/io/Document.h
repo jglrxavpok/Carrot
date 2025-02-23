@@ -162,6 +162,9 @@ namespace Carrot {
         /// Otherwise, throws.
         i64 getSubElementCount() const;
 
+        bool operator==(const DocumentElement&) const;
+        bool operator!=(const DocumentElement&) const;
+
     public:
         /// View of the sub-elements of a given element.
         /// Intended for usage in for each

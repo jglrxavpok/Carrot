@@ -330,8 +330,11 @@ namespace Peeler {
 
             if(ImGui::BeginPopupContextWindow()) {
                 const Carrot::IO::FileFormat fileFormat = Carrot::IO::getFileFormat(vfsPath.getPath().c_str());
+                const bool isSceneFolder = Carrot::Scene::isValidSceneFolder(vfsPath);
                 if(Carrot::IO::isModelFormat(fileFormat)) {
                     fillModelContextPopup(vfsPath);
+                } else if (isSceneFolder) {
+                    fillPrefabContextPopup(vfsPath);
                 }
                 ImGui::EndPopup();
             }
@@ -385,7 +388,7 @@ namespace Peeler {
     }
 
     void ResourcePanel::fillPrefabContextPopup(const Carrot::IO::VFS::Path& vfsPath) {
-        if(ImGui::MenuItem("Add to scene")) {
+        if(ImGui::MenuItem("Add to scene as prefab")) {
             auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
             if(pPrefab) {
                 pPrefab->instantiate(app.currentScene.world);

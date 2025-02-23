@@ -120,6 +120,10 @@ namespace Carrot::ECS {
         return getWorld().getAllComponents(*this);
     }
 
+    std::vector<Entity> Entity::getChildren(ShouldRecurse recursion) const {
+        return getWorld().getChildren(*this, recursion);
+    }
+
     Memory::OptionalRef<Component> Entity::getComponent(ComponentID component) const {
         return getWorld().getComponent(*this, component);
     }

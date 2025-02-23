@@ -10,8 +10,11 @@
 #include <engine/Engine.h>
 
 #include "components/PrefabInstanceComponent.h"
+#include "components/TransformComponent.h"
 
 namespace Carrot::ECS {
+    static UUID PrefabRootUUID = UUID::null();
+
     /*static*/ std::shared_ptr<Prefab> Prefab::makePrefab() {
         return std::shared_ptr<Prefab>(new Prefab);
     }
@@ -19,20 +22,30 @@ namespace Carrot::ECS {
     void Prefab::load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset) {
         path = prefabAsset;
         internalScene.deserialise(prefabAsset);
+        internalScene.world.tick(0.0f); // ensure entities are properly added
     }
 
     /// Gets the given component inside this prefab, if it exists
     Memory::OptionalRef<Component> Prefab::getComponent(const Carrot::ECS::EntityID& childID, const ComponentID& componentID) const {
+        if (childID == PrefabRootUUID) { // scene root
+            return {};
+        }
         return internalScene.world.getComponent(childID, componentID);
     }
 
     Memory::OptionalRef<Component> Prefab::getComponentByName(const Carrot::ECS::EntityID& childID, std::string_view componentName) const {
-        TODO;
-/*        for(const auto& [_, pComp] : components) {
+        if (childID == PrefabRootUUID) { // scene root
+            return {};
+        }
+        Entity e = internalScene.world.wrap(childID);
+        if (!e.exists()) {
+            return {};
+        }
+        for(const auto& pComp : e.getAllComponents()) {
             if(componentName == pComp->getName()) {
                 return *pComp;
             }
-        }*/
+        }
         return {};
     }
 
@@ -44,7 +57,7 @@ namespace Carrot::ECS {
     /// Save to disk. Can fail if the target path is not writtable.
     bool Prefab::save(const Carrot::IO::VFS::Path& prefabAsset) {
         this->path = prefabAsset;
-        TODO; // save internal scene
+        internalScene.serialise(GetVFS().resolve(prefabAsset));
 
         GetAssetServer().storePrefab(*this);
         return true;
@@ -52,7 +65,45 @@ namespace Carrot::ECS {
 
     /// Initializes this prefab with a copy of the contents of the given entity.
     void Prefab::createFromEntity(const Carrot::ECS::Entity& entity) {
-        TODO;
+        internalScene.clear();
+
+        // systems are stored to warn user if prefab is used in a context where these systems are not present
+        for (const System* pSystem : entity.getWorld().getRenderSystems()) {
+            if (!pSystem->shouldBeSerialized()) {
+                continue;
+            }
+
+            internalScene.world.addRenderSystem(pSystem->duplicate(internalScene.world));
+        }
+        for (const System* pSystem : entity.getWorld().getLogicSystems()) {
+            if (!pSystem->shouldBeSerialized()) {
+                continue;
+            }
+
+            internalScene.world.addLogicSystem(pSystem->duplicate(internalScene.world));
+        }
+
+        std::function<void(const Entity&, const EntityID&)> copyRecursively = [&](const Entity& toCopy, const EntityID& parentID) {
+            Entity copy = internalScene.world.newEntity(toCopy.getName());
+            copy.setFlags(toCopy.getFlags());
+            for (const Component* pComp : toCopy.getAllComponents()) {
+                if (!pComp->isSerializable()) {
+                    continue;
+                }
+
+                copy.addComponent(pComp->duplicate(copy));
+            }
+
+            if (parentID != PrefabRootUUID) {
+                copy.setParent(internalScene.world.wrap(parentID));
+            }
+
+            for (const auto& child : toCopy.getChildren(ShouldRecurse::NoRecursion)) {
+                copyRecursively(child, copy.getID());
+            }
+        };
+        copyRecursively(entity, PrefabRootUUID);
+        internalScene.world.tick(0.0f); // ensure entities are properly added
     }
 
     /// Instantiate a copy of this prefab in the given world
@@ -60,29 +111,41 @@ namespace Carrot::ECS {
         verify(!path.isEmpty(), "Cannot instantiate a prefab which has no path (required because added to entities for edition & serialisation)");
         std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
 
-        TODO;
-        /*
-        std::function<Entity(const Prefab&, bool)> recurseInstantiate = [&](const Prefab& prefab, bool isRoot) -> Entity {
-            Entity instantiated = prefab.instantiateOnlyThis(world);
-            remap[prefab.getEntityID()] = instantiated.getID(); // clone will get a new id, so keep a mapping
-            instantiated.addComponent<PrefabInstanceComponent>();
-            PrefabInstanceComponent& component = instantiated.getComponent<PrefabInstanceComponent>();
-            component.prefab = prefab.shared_from_this();
-            component.isRoot = isRoot;
+        Entity rootEntity = world.newEntity(path.getPath().getFilename());
+        rootEntity.addComponent<PrefabInstanceComponent>();
+        rootEntity.addComponent<TransformComponent>();
+        PrefabInstanceComponent& component = rootEntity.getComponent<PrefabInstanceComponent>();
+        component.prefab = shared_from_this();
+        component.childID = PrefabRootUUID;
 
-            for(const auto& [childID, pChild] : prefab.children) {
-                verify(childID == pChild->getEntityID(), "Child ID and prefab entity ID do not match, this is a programming error!");
-                Entity clonedChild = recurseInstantiate(*pChild, false);
-                clonedChild.setParent(instantiated);
+        for (const auto& e : internalScene.world.getAllEntities()) {
+            Entity cloned = world.newEntity(e.getName());
+            remap[e.getID()] = cloned.getID();
+
+            for (const Component* pComp : e.getAllComponents()) {
+                if (!pComp->isSerializable()) {
+                    continue;
+                }
+
+                cloned.addComponent(pComp->duplicate(cloned));
             }
 
-            return instantiated;
-        };
+            cloned.addComponent<PrefabInstanceComponent>();
+            PrefabInstanceComponent& component = cloned.getComponent<PrefabInstanceComponent>();
+            component.prefab = shared_from_this();
+            component.childID = e.getID();
+        }
+        for (const auto& e : internalScene.world.getAllEntities()) {
+            auto optParent = e.getParent();
+            if (optParent.has_value()) {
+                world.wrap(remap[e.getID()]).setParent(world.wrap(remap[optParent.value().getID()]));
+            } else {
+                world.wrap(remap[e.getID()]).setParent(rootEntity);
+            }
+        }
 
-        Entity result = recurseInstantiate(*this, true);
-        world.repairLinks(result, remap); // apply prefab->clone mapping to components referencing entities
-        return result;*/
-        return {};
+        world.repairLinks(rootEntity, remap); // apply prefab->clone mapping to components referencing entities
+        return rootEntity;
     }
 
     const Carrot::IO::VFS::Path& Prefab::getVFSPath() const {
