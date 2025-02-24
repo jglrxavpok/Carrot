@@ -16,6 +16,7 @@
 #include "engine/Engine.h"
 #include "engine/render/VulkanRenderer.h"
 #include <core/utils/TOML.h>
+#include <engine/ecs/components/ErrorComponent.h>
 
 namespace Carrot {
     Scene::~Scene() {
@@ -56,18 +57,19 @@ namespace Carrot {
 
         // returns true iif a member was added to 'output' (to skip over nested objects which have the same value as the prefab)
         std::function<bool(const Carrot::DocumentElement&, const Carrot::DocumentElement&, Carrot::DocumentElement&)>
-        diff = [&diff](const Carrot::DocumentElement& instanceData, const Carrot::DocumentElement& prefabJSON, Carrot::DocumentElement& output) -> bool {
+        diff = [&diff](const Carrot::DocumentElement& instanceData, const Carrot::DocumentElement& prefabData, Carrot::DocumentElement& output) -> bool {
             bool addedToOutput = false;
             auto instanceAsObject = instanceData.getAsObject();
+            auto prefabAsObject = prefabData.getAsObject();
             // go over each member, and remove it if it has the same value as the prefab (this becomes recursive for objects)
             for(auto it = instanceAsObject.begin(); it != instanceAsObject.end(); ++it) {
-                auto prefabIter = instanceAsObject.find(it->first);
+                auto prefabIter = prefabAsObject.find(it->first);
 
                 auto addNoModification = [&]() {
                     addedToOutput = true;
                     output[it->first] = it->second;
                 };
-                if(prefabIter == instanceAsObject.end()) {
+                if(prefabIter == prefabAsObject.end()) {
                     addNoModification();
                     continue; // no such value in prefab, keep it
                 }
@@ -198,7 +200,7 @@ namespace Carrot {
                 f << tomlComp;
             }
 
-            for (const auto& child : world.getChildren(entity)) {
+            for (const auto& child : world.getChildren(entity, ShouldRecurse::NoRecursion)) {
                 saveEntityTree(child, entityFolder / child.getName());
             }
         };
@@ -303,6 +305,7 @@ namespace Carrot {
             }
 
             // load entities
+            std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID> remap;
             for (const auto path : vfs.iterateOverDirectory(sceneFolder)) {
                 if (!vfs.isDirectory(path)) {
                     continue;
@@ -334,6 +337,7 @@ namespace Carrot {
                     std::string prefabInstanceFilename { ECS::PrefabInstanceComponent::getStringRepresentation() };
                     prefabInstanceFilename += ".toml";
 
+                    std::optional<std::unordered_set<ECS::EntityID>> expectedPrefabChildren;
                     if (vfs.exists(entityFolder / prefabInstanceFilename)) {
                         const auto& prefabInstanceData = loadDocumentFromVFS(entityFolder / prefabInstanceFilename);
                         auto component = componentLib.deserialise(ECS::PrefabInstanceComponent::getStringRepresentation(), prefabInstanceData, self);
@@ -353,6 +357,8 @@ namespace Carrot {
                                     self.addComponent(pComponent->duplicate(self));
                                 }
                             }
+
+                            expectedPrefabChildren = pPrefab->getChildrenIDs(prefabChildID);
                         }
                     }
 
@@ -378,18 +384,24 @@ namespace Carrot {
                             }
                             Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
                             if(pPrefab != nullptr) {
-                                Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
-                                if(prefabComponent.hasValue()) {
-                                    // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
-                                    auto component = componentLib.deserialise(
-                                        componentName,
-                                        deserialiseWithDefaultValues(prefabComponent.asRef(), doc),
-                                        self);
-                                    self.addComponent(std::move(component));
+                                if (!pPrefab->hasChildWithID(prefabChildID)) {
+                                    auto pErrorComponent = std::make_unique<ECS::ErrorComponent>(self);
+                                    pErrorComponent->message = Carrot::sprintf("Prefab '%s' has no child with UUID %s", pPrefab->getVFSPath().toString().c_str(), prefabChildID.toString().c_str());
+                                    self.addComponent(std::move(pErrorComponent));
                                 } else {
-                                    // not part of prefab, load directly
-                                    auto component = componentLib.deserialise(componentName, doc, self);
-                                    self.addComponent(std::move(component));
+                                    Memory::OptionalRef<Carrot::ECS::Component> prefabComponent = pPrefab->getComponentByName(prefabChildID, componentName);
+                                    if(prefabComponent.hasValue()) {
+                                        // there is a prefab for this entity, and the prefab has the component, fill in default values if missing:
+                                        auto component = componentLib.deserialise(
+                                            componentName,
+                                            deserialiseWithDefaultValues(prefabComponent.asRef(), doc),
+                                            self);
+                                        self.addComponent(std::move(component));
+                                    } else {
+                                        // not part of prefab, load directly
+                                        auto component = componentLib.deserialise(componentName, doc, self);
+                                        self.addComponent(std::move(component));
+                                    }
                                 }
                             } else {
                                 // no prefab for this entity, load directly
@@ -399,11 +411,37 @@ namespace Carrot {
                         }
                     }
 
+                    if (expectedPrefabChildren.has_value()) {
+                        // remove children that no longer exist
+                        for (auto& child : self.getChildren(ShouldRecurse::NoRecursion)) {
+                            auto prefabRef = child.getComponent<ECS::PrefabInstanceComponent>();
+                            // prefab instances are not forbidden to add children to the hierarchy of the instance which were not present in original prefab
+                            if (!prefabRef.hasValue()) {
+                                continue;
+                            }
+
+                            if (!expectedPrefabChildren->contains(prefabRef->childID)) {
+                                child.remove();
+                            } else {
+                                expectedPrefabChildren->erase(prefabRef->childID);
+                            }
+                        }
+
+                        // add missing children
+                        for (auto& childID : expectedPrefabChildren.value()) {
+                            ECS::Entity subtree = pPrefab->instantiateSubTree(world, childID, remap);
+                            subtree.setParent(self);
+                        }
+                    }
+
                     return self;
                 };
 
                 ECS::Entity rootEntity = loadEntity(path);
                 DISCARD(rootEntity);
+            }
+            if (!remap.empty()) {
+                world.repairLinks(remap);
             }
 
             for (const auto systemPath : vfs.iterateOverDirectory(sceneFolder / ".RenderSystems")) {

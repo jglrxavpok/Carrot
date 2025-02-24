@@ -13,16 +13,41 @@
 #include "components/TransformComponent.h"
 
 namespace Carrot::ECS {
-    static UUID PrefabRootUUID = UUID::null();
-
     /*static*/ std::shared_ptr<Prefab> Prefab::makePrefab() {
         return std::shared_ptr<Prefab>(new Prefab);
+    }
+
+    std::unordered_set<Carrot::ECS::EntityID> Prefab::getChildrenIDs(const EntityID& prefabChildID) const {
+        std::unordered_set<Carrot::ECS::EntityID> result;
+        if (prefabChildID == PrefabRootUUID) { // scene root
+            for (const auto& e : internalScene.world.getAllEntities()) {
+                if (e.getParent().has_value()) {
+                    continue;
+                }
+
+                result.insert(e.getID());
+            }
+        } else {
+            Entity subtree = internalScene.world.wrap(prefabChildID);
+            for (const auto& child : subtree.getChildren(ShouldRecurse::NoRecursion)) {
+                result.insert(child.getID());
+            }
+        }
+
+        return result;
     }
 
     void Prefab::load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset) {
         path = prefabAsset;
         internalScene.deserialise(prefabAsset);
         internalScene.world.tick(0.0f); // ensure entities are properly added
+    }
+
+    bool Prefab::hasChildWithID(const Carrot::ECS::EntityID& childID) const {
+        if (childID == PrefabRootUUID) {
+            return true;
+        }
+        return internalScene.world.exists(childID);
     }
 
     /// Gets the given component inside this prefab, if it exists
@@ -106,6 +131,36 @@ namespace Carrot::ECS {
         internalScene.world.tick(0.0f); // ensure entities are properly added
     }
 
+    Entity Prefab::instantiateSubTree(World& world, const Carrot::ECS::EntityID& startingPoint, std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap) const {
+        Entity startEntity = internalScene.world.wrap(startingPoint);
+        if (!startEntity.exists()) {
+            return world.wrap(Carrot::UUID::null());
+        }
+
+        Entity cloned = world.newEntity(startEntity.getName());
+        cloned.setFlags(startEntity.getFlags());
+        remap[startEntity.getID()] = cloned.getID();
+
+        for (const Component* pComp : startEntity.getAllComponents()) {
+            if (!pComp->isSerializable()) {
+                continue;
+            }
+
+            cloned.addComponent(pComp->duplicate(cloned));
+        }
+
+        cloned.addComponent<PrefabInstanceComponent>();
+        PrefabInstanceComponent& component = cloned.getComponent<PrefabInstanceComponent>();
+        component.prefab = shared_from_this();
+        component.childID = startEntity.getID();
+
+        for (const auto& child : startEntity.getChildren(ShouldRecurse::NoRecursion)) {
+            Entity clonedChild = instantiateSubTree(world, child.getID(), remap);
+            clonedChild.setParent(cloned);
+        }
+        return cloned;
+    }
+
     /// Instantiate a copy of this prefab in the given world
     Entity Prefab::instantiate(World& world) const {
         verify(!path.isEmpty(), "Cannot instantiate a prefab which has no path (required because added to entities for edition & serialisation)");
@@ -120,6 +175,7 @@ namespace Carrot::ECS {
 
         for (const auto& e : internalScene.world.getAllEntities()) {
             Entity cloned = world.newEntity(e.getName());
+            cloned.setFlags(e.getFlags());
             remap[e.getID()] = cloned.getID();
 
             for (const Component* pComp : e.getAllComponents()) {

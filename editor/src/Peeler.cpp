@@ -1378,6 +1378,9 @@ namespace Peeler {
         auto outputFolder = GetVFS().resolve(scenePath);
         currentScene.serialise(outputFolder);
 
+        // force other scenes to reload the instances of this prefab
+        GetAssetServer().removePrefab(scenePath);
+
         addCurrentSceneToSceneList();
     }
 

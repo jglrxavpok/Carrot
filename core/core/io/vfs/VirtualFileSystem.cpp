@@ -248,7 +248,8 @@ namespace Carrot::IO {
 
         // current root not initialized
         if (currentPoint == std::filesystem::directory_iterator{}) {
-            while ((currentPoint = std::filesystem::directory_iterator{ pVFS->resolve({(*pRoots)[rootIndex], *pRelativePath}) }) == std::filesystem::directory_iterator{}) {
+            std::error_code ec;
+            while ((currentPoint = std::filesystem::directory_iterator{ pVFS->resolve({(*pRoots)[rootIndex], *pRelativePath}), ec }) == std::filesystem::directory_iterator{} || ec) {
                 rootIndex++;
                 if (rootIndex >= pRoots->size()) {
                     setEnd();

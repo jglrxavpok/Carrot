@@ -12,6 +12,8 @@ namespace Carrot::ECS {
     /// This component is not serialized
     class ErrorComponent: public IdentifiableComponent<ErrorComponent> {
     public:
+        std::string message;
+
         explicit ErrorComponent(Carrot::ECS::Entity entity);
         ErrorComponent(const Carrot::DocumentElement& doc, Carrot::ECS::Entity entity);
 

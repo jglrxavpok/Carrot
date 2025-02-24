@@ -37,7 +37,14 @@ namespace Carrot::ECS {
 /// These default values will be used to fill the entity's component upon load.
 class Prefab: public std::enable_shared_from_this<Prefab> {
 public:
+    inline static UUID PrefabRootUUID = UUID::null();
     static std::shared_ptr<Prefab> makePrefab();
+
+    /// IDs of children of given part of the hierarchy (not recursive)
+    /// 'childID' is the UUID of the entity inside the scene/prefab that you want to reference
+    std::unordered_set<Carrot::ECS::EntityID> getChildrenIDs(const EntityID& prefabChildID) const;
+
+    bool hasChildWithID(const Carrot::ECS::EntityID& childID) const;
 
     /// Gets the given component inside this prefab, if it exists
     /// 'childID' is the UUID of the entity inside the scene/prefab that you want to reference
@@ -57,6 +64,9 @@ public:
 
     /// Initializes this prefab with a copy of the contents of the given entity.
     void createFromEntity(const Carrot::ECS::Entity& entity);
+
+    /// Instantiate a part of the hierarchy of this prefab in the given world
+    Entity instantiateSubTree(World& world, const Carrot::ECS::EntityID& startingPoint, std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap) const;
 
     /// Instantiate a copy of this prefab in the given world
     Entity instantiate(World& world) const;

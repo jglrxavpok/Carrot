@@ -76,6 +76,7 @@ namespace Carrot {
         /// This is meant to populate the asset server when a new prefab is created from the editor, so that further calls to loadPrefab find the new prefab.
         /// If a prefab already existed with the VFS path of the prefab, it will be overriden inside the asset server
         void storePrefab(ECS::Prefab& prefab);
+        void removePrefab(const Carrot::IO::VFS::Path& path);
 
     public:
         std::int64_t getCurrentlyLoadingCount() const;

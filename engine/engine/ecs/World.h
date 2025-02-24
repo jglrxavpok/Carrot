@@ -161,6 +161,10 @@ namespace Carrot::ECS {
         /// Gets the first entity with the given name
         std::optional<Entity> findEntityByName(std::string_view name) const;
 
+        /// Go through all entities, and change the components references to entities based on 'remap'.
+        /// Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
+        void repairLinks(const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);
+
         /// Go through the entire hierarchy starting from 'root', and change the components references to entities based on 'remap'.
         /// Used when duplicating entities to ensure components of duplicated entities don't reference the original entities.
         void repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remap);

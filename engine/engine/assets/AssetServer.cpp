@@ -257,6 +257,10 @@ namespace Carrot {
         }));
     }
 
+    void AssetServer::removePrefab(const Carrot::IO::VFS::Path& path) {
+        prefabs.remove(path.toString());
+    }
+
     void AssetServer::indexAssets() {
         // TODO
     }

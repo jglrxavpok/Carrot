@@ -218,6 +218,22 @@ namespace Carrot::ECS {
         }
     }
 
+    void World::repairLinks(const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remapMap) {
+        auto remap = [&](const Carrot::ECS::EntityID& id) {
+            auto iter = remapMap.find(id);
+            if(iter == remapMap.end()) {
+                return id;
+            }
+            return iter->second;
+        };
+
+        for (auto& [_, components] : entityComponents) {
+            for (auto& [_, pComponent] : components) {
+                pComponent->repairLinks(remap);
+            }
+        };
+    }
+
     void World::repairLinks(const Carrot::ECS::Entity& root, const std::unordered_map<Carrot::ECS::EntityID, Carrot::ECS::EntityID>& remapMap) {
         auto remap = [&](const Carrot::ECS::EntityID& id) {
             auto iter = remapMap.find(id);
@@ -265,14 +281,26 @@ namespace Carrot::ECS {
             }
 
             for(const auto& toRemove : entitiesToRemove) {
-                auto position = find(entities.begin(), entities.end(), toRemove);
-                if(position != entities.end()) { // clear components
-                    entityComponents.erase(entityComponents.find(toRemove));
-                    entities.erase(position);
+                auto parentIt = entityParents.find(toRemove);
+                if (parentIt != entityParents.end()) {
+                    auto parentsChildrenIter = entityChildren.find(parentIt->second);
+                    if (parentsChildrenIter != entityChildren.end()) {
+                        erase(parentsChildrenIter->second, toRemove);
+                    }
+                    entityParents.erase(parentIt);
                 }
 
+                for(i32 index = static_cast<i32>(entities.size())-1; index >= 0; --index) { // clear components
+                    if (entities[index] != toRemove) {
+                        continue;
+                    }
+                    auto it = entityComponents.find(toRemove);
+                    if (it != entityComponents.end()) {
+                        entityComponents.erase(it);
+                    }
+                    entities.erase(entities.begin() + index);
+                }
 
-                setParent(wrap(toRemove), {});
                 entityChildren.erase(toRemove);
                 entityNames.erase(toRemove);
             }
@@ -649,7 +677,7 @@ namespace Carrot::ECS {
     }
 
     bool World::exists(EntityID ent) const {
-        return entityNames.find(ent) != entityNames.end();
+        return entityNames.contains(ent);
     }
 
     std::vector<Entity> World::getAllEntities() const {
