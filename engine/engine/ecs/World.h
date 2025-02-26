@@ -109,6 +109,9 @@ namespace Carrot::ECS {
         template<class LogicSystemType>
         LogicSystemType* getLogicSystem();
 
+        System* getRenderSystem(std::string_view name);
+        System* getLogicSystem(std::string_view name);
+
         /// Removes the given RenderSystem. Does nothing if it was not inside this world
         template<class RenderSystemType>
         void removeRenderSystem();

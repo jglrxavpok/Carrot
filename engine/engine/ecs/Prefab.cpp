@@ -78,6 +78,12 @@ namespace Carrot::ECS {
         return internalScene.world.getAllComponents(childID);
     }
 
+    std::vector<const System*> Prefab::getBaseSceneLogicSystems() const {
+        return internalScene.world.getLogicSystems();
+    }
+    std::vector<const System*> Prefab::getBaseSceneRenderSystems() const {
+        return internalScene.world.getRenderSystems();
+    }
 
     /// Save to disk. Can fail if the target path is not writtable.
     bool Prefab::save(const Carrot::IO::VFS::Path& prefabAsset) {

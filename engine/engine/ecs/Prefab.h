@@ -58,6 +58,9 @@ public:
     /// Gets all components of this prefab. Pointers returned should not be kept.
     Vector<Component*> getAllComponents(const Carrot::ECS::EntityID& childID) const;
 
+    std::vector<const System*> getBaseSceneLogicSystems() const;
+    std::vector<const System*> getBaseSceneRenderSystems() const;
+
     /// Save to disk. Can fail if the target path is not writtable.
     /// Modifies the VFS path kept internally to refer to this prefab
     bool save(const Carrot::IO::VFS::Path& prefabAsset);

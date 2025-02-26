@@ -825,6 +825,24 @@ namespace Carrot::ECS {
         logicSystems.push_back(std::move(system));
     }
 
+    System* World::getRenderSystem(std::string_view name) {
+        for (auto& pSystem : renderSystems) {
+            if (pSystem->getName() == name) {
+                return pSystem.get();
+            }
+        }
+        return nullptr;
+    }
+
+    System* World::getLogicSystem(std::string_view name) {
+        for (auto& pSystem : logicSystems) {
+            if (pSystem->getName() == name) {
+                return pSystem.get();
+            }
+        }
+        return nullptr;
+    }
+
     void World::removeLogicSystem(System* system) {
         Carrot::removeIf(logicSystems, [&](auto& ptr) {
             return ptr.get() == system;

@@ -5,8 +5,10 @@ set(EditorSources
         ${EditorRoot}PeelerRendering.cpp
         ${EditorRoot}GridRenderer.cpp
         ${EditorRoot}InspectorWidgets.cpp
+        ${EditorRoot}EntityWarnings.cpp
 
         ${EditorRoot}commands/AddComponentsCommand.cpp
+        ${EditorRoot}commands/ModifySystemsCommands.cpp
         ${EditorRoot}commands/RemoveComponentsCommand.cpp
         ${EditorRoot}commands/RenameEntities.cpp
         ${EditorRoot}commands/UndoStack.cpp

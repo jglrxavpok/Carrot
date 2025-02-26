@@ -46,6 +46,7 @@
 
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
+#include <commands/ModifySystemsCommands.h>
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/ErrorComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
@@ -419,7 +420,7 @@ namespace Peeler {
         auto drawSystems = [&](
                 const char* title,
                 const std::vector<Carrot::ECS::System*>& systems,
-                std::function<void(std::unique_ptr<Carrot::ECS::System>&&)> add,
+                std::function<void(const std::string&)> add,
                 std::function<void(Carrot::ECS::System*)> remove
             ) {
             Carrot::ECS::System* toRemove = nullptr;
@@ -452,7 +453,7 @@ namespace Peeler {
                     auto& systemLib = Carrot::ECS::getSystemLibrary();
                     for(const auto& systemName : systemLib.getAllIDs()) {
                         if(ImGui::MenuItem(systemName.c_str())) {
-                            add(systemLib.create(systemName, currentScene.world));
+                            add(systemName);
                         }
                     }
 
@@ -466,27 +467,23 @@ namespace Peeler {
             }
         };
         drawSystems("Render Systems", currentScene.world.getRenderSystems(),
-            [&](std::unique_ptr<Carrot::ECS::System>&& ptr) {
-                std::string nameToMatch = ptr->getName();
-                for(const auto& s : currentScene.world.getRenderSystems()) {
-                    if(nameToMatch == s->getName()) {
-                        return;
-                    }
+            [&](const std::string& name) {
+                if (!currentScene.world.getRenderSystem(name)) {
+                    undoStack.push<AddSystemCommand>(name, true);
                 }
-                currentScene.world.addRenderSystem(std::move(ptr));
             },
-            [&](Carrot::ECS::System* ptr) { currentScene.world.removeRenderSystem(ptr); });
+            [&](Carrot::ECS::System* ptr) {
+                undoStack.push<RemoveSystemCommand>(ptr->getName(), true);
+            });
         drawSystems("Logic Systems", currentScene.world.getLogicSystems(),
-            [&](std::unique_ptr<Carrot::ECS::System>&& ptr) {
-                std::string nameToMatch = ptr->getName();
-                for(const auto& s : currentScene.world.getLogicSystems()) {
-                    if(nameToMatch == s->getName()) {
-                        return;
-                    }
+            [&](const std::string& name) {
+                if (!currentScene.world.getLogicSystem(name)) {
+                    undoStack.push<AddSystemCommand>(name, false);
                 }
-                currentScene.world.addLogicSystem(std::move(ptr));
             },
-            [&](Carrot::ECS::System* ptr) { currentScene.world.removeLogicSystem(ptr); });
+            [&](Carrot::ECS::System* ptr) {
+                undoStack.push<RemoveSystemCommand>(ptr->getName(), false);
+            });
     }
 
     void Application::UIStatusBar(const Carrot::Render::Context& renderContext) {
@@ -555,8 +552,9 @@ namespace Peeler {
         }
 
         ImGuiTableFlags flags = 0;
-        ImGui::BeginTable("EntityList##UIWorldHierarchy", 2, flags);
+        ImGui::BeginTable("EntityList##UIWorldHierarchy", 3, flags);
         ImGui::TableSetupColumn("Entity", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Warnings", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
         std::function<void(Carrot::ECS::Entity&, bool)> showEntityTree = [&] (Carrot::ECS::Entity& entity, bool recursivelySelect) {
@@ -636,8 +634,17 @@ namespace Peeler {
                 return dragging;
             };
 
-            auto drawSettingsColumn = [&]() {
+            auto drawWarningsColumn = [&]() {
                 ImGui::TableSetColumnIndex(1);
+
+                std::string id = "##warnings";
+                id += std::to_string(entity.getID().hash());
+
+                drawEntityWarnings(entity, id.c_str());
+            };
+
+            auto drawSettingsColumn = [&]() {
+                ImGui::TableSetColumnIndex(2);
 
                 std::string id = "##change entity visibility";
                 id += std::to_string(entity.getID().hash());
@@ -670,6 +677,7 @@ namespace Peeler {
                     selectEntity(entity.getID(), additive);
                 }
 
+                drawWarningsColumn();
                 drawSettingsColumn();
 
                 if(showChildren) {
@@ -692,6 +700,7 @@ namespace Peeler {
                     selectEntity(entity.getID(), additive);
                 }
 
+                drawWarningsColumn();
                 drawSettingsColumn();
             }
         };

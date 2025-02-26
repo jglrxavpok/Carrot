@@ -88,6 +88,7 @@ namespace Peeler {
         void UISceneProperties(const Carrot::Render::Context& renderContext);
         void UIStatusBar(const Carrot::Render::Context& renderContext);
 
+        void drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID);
         void drawScenesMenu();
         void drawSettingsMenu();
         void drawNewSceneWindow();
