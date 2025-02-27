@@ -25,7 +25,6 @@ namespace Tools {
             openRecentItemName = ICON_FA_FOLDER_OPEN "  Open Recent##" + settings.getName();
             saveItemName = ICON_FA_SAVE "  Save##" + settings.getName();
             saveAsItemName = ICON_FA_SAVE "  Save as...##" + settings.getName();
-            cantSavePopupName = "Can't save##" + settings.getName();
         }
 
         void drawProjectMenu() {
@@ -100,7 +99,6 @@ namespace Tools {
             if(cantSavePopup) {
                 tryingToOpenFile = false;
                 fileToOpen = EmptyProject;
-                ImGui::OpenPopup(cantSavePopupName.c_str());
             }
             if(tryingToOpenFile) {
                 openUnsavedChangesPopup([&]() {
@@ -113,9 +111,9 @@ namespace Tools {
                                         });
             }
 
+            bool isOpen = true;
             if(unsavedChangePopupIsOpen) {
                 ImGui::OpenPopup(popupName.c_str());
-                bool isOpen = true;
                 if(ImGui::BeginPopupModal(popupName.c_str(), &isOpen)) {
                     ImGui::Text("You currently have unsaved changes!");
                     ImGui::Text("Do you still want to continue?");
@@ -146,20 +144,10 @@ namespace Tools {
                 if(!isOpen) {
                     unsavedChangePopupIsOpen = false;
                 }
+            }
 
-                isOpen = true;
-                if(ImGui::BeginPopupModal(cantSavePopupName.c_str(), &isOpen)) {
-                    drawCantSavePopup();
-                    if(ImGui::Button("OK##cantsavepopup ok")) {
-                        cantSavePopup = false;
-                        unsavedChangePopupIsOpen = false;
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-                if(!isOpen) {
-                    unsavedChangePopupIsOpen = false;
-                }
+            if (cantSavePopup) {
+                cantSavePopup = drawCantSavePopup();
             }
         }
 
@@ -216,8 +204,8 @@ namespace Tools {
         virtual bool showUnsavedChangesPopup() = 0;
         virtual bool canSave() const { return true; };
 
-        virtual void drawCantSavePopup() {
-            ImGui::Text("Cannot save right now.");
+        virtual bool drawCantSavePopup() {
+            return true;
         }
 
         virtual ~ProjectMenuHolder() = default;
@@ -265,7 +253,6 @@ namespace Tools {
         std::string openRecentItemName;
         std::string saveItemName;
         std::string saveAsItemName;
-        std::string cantSavePopupName;
 
         std::filesystem::path fileToOpen = EmptyProject;
         std::filesystem::path currentFile = EmptyProject;

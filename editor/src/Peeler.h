@@ -25,6 +25,12 @@ namespace Peeler {
     extern Application* Instance;
 
     class Application: public Carrot::CarrotGame, public Tools::ProjectMenuHolder {
+        struct ErrorReport {
+            std::unordered_map<Carrot::ECS::EntityID, Carrot::Vector<std::string>> errorMessagesPerEntity;
+
+            bool hasErrors() const;
+        };
+
     public:
 
         explicit Application(Carrot::Engine& engine);
@@ -53,6 +59,7 @@ namespace Peeler {
         void newScene(const Carrot::IO::VFS::Path& path);
         void openScene(const Carrot::IO::VFS::Path& path);
         void saveCurrentScene();
+        void checkErrors();
 
     public: // project management
         void performLoad(std::filesystem::path path) override;
@@ -62,7 +69,7 @@ namespace Peeler {
         bool showUnsavedChangesPopup() override;
         bool canSave() const override;
 
-        void drawCantSavePopup() override;
+        bool drawCantSavePopup() override;
 
     public:
         Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
@@ -88,6 +95,7 @@ namespace Peeler {
         void UISceneProperties(const Carrot::Render::Context& renderContext);
         void UIStatusBar(const Carrot::Render::Context& renderContext);
 
+        void drawEntityErrors(const ErrorReport& report, Carrot::ECS::Entity entity, const char* uniqueWidgetID);
         void drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID);
         void drawScenesMenu();
         void drawSettingsMenu();
@@ -241,6 +249,7 @@ namespace Peeler {
 
     public:
         Carrot::Scene& currentScene;
+        ErrorReport errorReport;
 
     private:
         Carrot::Scene savedScene;

@@ -21,7 +21,8 @@ namespace Carrot::Widgets {
             {MessageBoxButtons::Cancel, ICON_FA_BAN "  Cancel"},
         };
         std::optional<MessageBoxButtons> result;
-        ImGui::OpenPopup(title);
+        if (!ImGui::IsPopupOpen(title))
+            ImGui::OpenPopup(title);
         ImGui::SetNextWindowSize(ImVec2(500, 120), ImGuiCond_Always/*todo: appearing/once*/);
         if (ImGui::BeginPopupModal(title)) {
             {

@@ -8,6 +8,36 @@
 #include <engine/ecs/components/PrefabInstanceComponent.h>
 
 namespace Peeler {
+    void Application::drawEntityErrors(const ErrorReport& report, Carrot::ECS::Entity entity, const char* uniqueWidgetID) {
+        auto iter = report.errorMessagesPerEntity.find(entity.getID());
+        if (iter == report.errorMessagesPerEntity.end()) {
+            return;
+        }
+        ImGui::PushID(uniqueWidgetID);
+        CLEANUP(ImGui::PopID());
+
+        const char* icon = ICON_FA_EXCLAMATION_CIRCLE;
+        const char* popupID = "Errors";
+
+        const Carrot::Vector<std::string>& errors = iter->second;
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0000FF);
+        if(ImGui::SmallButton(icon)) {
+            ImGui::OpenPopup(popupID);
+        }
+        ImGui::PopStyleColor(1);
+
+        if (ImGui::BeginPopup(popupID)) {
+            for (i32 errorIndex = 0; errorIndex < errors.size(); ++errorIndex) {
+                if (errorIndex != 0) {
+                    ImGui::Separator();
+                }
+
+                ImGui::TextUnformatted(errors[errorIndex].c_str());
+            }
+            ImGui::EndPopup();
+        }
+    }
+
     void Application::drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID) {
         struct Warning {
             std::string message;
@@ -89,9 +119,12 @@ namespace Peeler {
         }
         const char* icon = ICON_FA_EXCLAMATION_TRIANGLE;
         const char* popupID = "Warnings";
+
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);
         if(ImGui::SmallButton(icon)) {
             ImGui::OpenPopup(popupID);
         }
+        ImGui::PopStyleColor(1);
 
         if (ImGui::BeginPopup(popupID)) {
             for (i32 warningIndex = 0; warningIndex < warnings.size(); ++warningIndex) {

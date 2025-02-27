@@ -47,6 +47,7 @@
 #include "layers/GizmosLayer.h"
 #include <IconsFontAwesome5.h>
 #include <commands/ModifySystemsCommands.h>
+#include <core/allocators/StackAllocator.h>
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/components/ErrorComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
@@ -273,6 +274,8 @@ namespace Peeler {
                 ImGui::ShowDemoWindow();
             }
         }
+
+        checkErrors();
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -552,8 +555,9 @@ namespace Peeler {
         }
 
         ImGuiTableFlags flags = 0;
-        ImGui::BeginTable("EntityList##UIWorldHierarchy", 3, flags);
+        ImGui::BeginTable("EntityList##UIWorldHierarchy", 4, flags);
         ImGui::TableSetupColumn("Entity", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Errors", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Warnings", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Visibility", ImGuiTableColumnFlags_WidthFixed);
 
@@ -634,8 +638,17 @@ namespace Peeler {
                 return dragging;
             };
 
-            auto drawWarningsColumn = [&]() {
+            auto drawErrorsColumn = [&]() {
                 ImGui::TableSetColumnIndex(1);
+
+                std::string id = "##errors";
+                id += std::to_string(entity.getID().hash());
+
+                drawEntityErrors(errorReport, entity, id.c_str());
+            };
+
+            auto drawWarningsColumn = [&]() {
+                ImGui::TableSetColumnIndex(2);
 
                 std::string id = "##warnings";
                 id += std::to_string(entity.getID().hash());
@@ -644,7 +657,7 @@ namespace Peeler {
             };
 
             auto drawSettingsColumn = [&]() {
-                ImGui::TableSetColumnIndex(2);
+                ImGui::TableSetColumnIndex(3);
 
                 std::string id = "##change entity visibility";
                 id += std::to_string(entity.getID().hash());
@@ -677,6 +690,7 @@ namespace Peeler {
                     selectEntity(entity.getID(), additive);
                 }
 
+                drawErrorsColumn();
                 drawWarningsColumn();
                 drawSettingsColumn();
 
@@ -700,6 +714,7 @@ namespace Peeler {
                     selectEntity(entity.getID(), additive);
                 }
 
+                drawErrorsColumn();
                 drawWarningsColumn();
                 drawSettingsColumn();
             }
@@ -1393,6 +1408,63 @@ namespace Peeler {
         addCurrentSceneToSceneList();
     }
 
+    bool Application::ErrorReport::hasErrors() const {
+        return !errorMessagesPerEntity.empty();
+    }
+
+    static Carrot::StackAllocator entityListAllocator{ Carrot::Allocator::getDefault() }; // to avoid reallocating each frame, reuse memory
+
+    void Application::checkErrors() {
+        errorReport.errorMessagesPerEntity.clear();
+        entityListAllocator.clear();
+
+        struct EntityList: Carrot::Vector<Carrot::ECS::EntityID> {
+            EntityList(): Vector(entityListAllocator) {}
+        };
+
+        struct DuplicateNameChecker {
+            void addName(const Carrot::ECS::EntityID& entityID, const std::string& name) {
+                name2entities[Carrot::toLowerCase(name)].pushBack(entityID);
+            }
+
+            void finalise(ErrorReport& report) {
+                std::erase_if(name2entities, [](const auto& pair) {
+                    return pair.second.size() == 1;
+                });
+
+                for (const auto& [_, entityIDs] : name2entities) {
+                    for (const auto& entityID : entityIDs) {
+                        report.errorMessagesPerEntity[entityID].pushBack("This entity has the same name as another at the same level of hierarchy.\nScene cannot be saved in this state!");
+                    }
+                }
+            }
+
+            std::unordered_map<std::string, EntityList> name2entities;
+        };
+
+        // check that there are no two entities with the same name at the same hierarchy level
+        std::function<void(Carrot::ECS::Entity)> recursiveCheck = [&](Carrot::ECS::Entity entity) {
+            auto directChildren = entity.getChildren(Carrot::ShouldRecurse::NoRecursion);
+            DuplicateNameChecker checker;
+            for (Carrot::ECS::Entity& child : directChildren) {
+                checker.addName(child.getID(), child.getName());
+                recursiveCheck(child);
+            }
+            checker.finalise(errorReport);
+        };
+
+        DuplicateNameChecker rootChecker;
+        for (auto& entity : currentScene.world.getAllEntities()) {
+            if (entity.getParent().has_value()) {
+                continue;
+            }
+
+            rootChecker.addName(entity.getID(), entity.getName());
+            recursiveCheck(entity);
+        }
+        rootChecker.finalise(errorReport);
+    }
+
     bool Application::deferredLoad(Cider::FiberHandle& f) {
         wantsToLoadProject = false;
         GetVFS().removeRoot("game");
@@ -1650,7 +1722,7 @@ namespace Peeler {
     }
 
     bool Application::canSave() const {
-        return !isPlaying;
+        return !isPlaying && !errorReport.hasErrors();
     }
 
     void Application::onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) {
@@ -1780,9 +1852,13 @@ namespace Peeler {
         }
     }
 
-    void Application::drawCantSavePopup() {
-        ImGui::Text("Cannot save while game is running.");
-        ImGui::Text("Please stop the game before saving.");
+    bool Application::drawCantSavePopup() {
+        if (isPlaying) {
+            return Carrot::Widgets::drawMessageBox("Cannot save", "Game is running", Carrot::Widgets::MessageBoxIcon::Info, Carrot::Widgets::MessageBoxButtons::Ok) != Carrot::Widgets::MessageBoxButtons::Ok;
+        } else if (errorReport.hasErrors()) {
+            return Carrot::Widgets::drawMessageBox("Cannot save", "Scene has errors!", Carrot::Widgets::MessageBoxIcon::Error, Carrot::Widgets::MessageBoxButtons::Ok) != Carrot::Widgets::MessageBoxButtons::Ok;
+        }
+        return true;
     }
 
     void Application::markDirty() {
