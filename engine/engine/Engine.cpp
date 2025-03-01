@@ -1264,10 +1264,6 @@ void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action
         Console::instance().toggleVisibility();
     }
 
-    if(key == GLFW_KEY_F2 && action == GLFW_PRESS) {
-        takeScreenshot();
-    }
-
     if(which != mainWindow) {
         return;
     }

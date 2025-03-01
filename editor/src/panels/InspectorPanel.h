@@ -31,6 +31,7 @@ namespace Peeler {
 
     class InspectorPanel: public EditorPanel {
     public:
+        static const char* ImGuiWindowID;
         explicit InspectorPanel(Application& app);
 
     public:
@@ -51,6 +52,9 @@ namespace Peeler {
 
     public:
         virtual void draw(const Carrot::Render::Context &renderContext) override final;
+
+        // sets focus to the name input text field
+        void focusNameInput();
 
     public: // widgets
         /**
@@ -82,6 +86,8 @@ namespace Peeler {
 
         std::unordered_map<Carrot::ComponentID, ComponentEditor> editionFunctions;
         std::unordered_map<Carrot::ComponentID, std::string> displayNames;
+        bool wantsToFocusNameInput = false;
+
         friend class Application;
     };
 

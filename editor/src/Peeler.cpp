@@ -87,6 +87,9 @@ namespace Peeler {
                     this->triggerSave();
                 }
             }
+            if(glfwGetKey(GetEngine().getMainWindow().getGLFWPointer(), GLFW_KEY_F2) == GLFW_PRESS) {
+                inspectorPanel.focusNameInput();
+            }
         }
         if(renderContext.pViewport == &gameViewport) {
             ZoneScopedN("Game viewport");
@@ -303,7 +306,7 @@ namespace Peeler {
         }
         ImGui::End();
 
-        if(ImGui::Begin(ICON_FA_WRENCH "  Inspector")) {
+        if(ImGui::Begin(InspectorPanel::ImGuiWindowID)) {
             inspectorPanel.draw(renderContext);
         }
         ImGui::End();

@@ -19,6 +19,8 @@
 #include <panels/inspector/EditorFunctions.h>
 
 namespace Peeler {
+    const char* InspectorPanel::ImGuiWindowID = ICON_FA_WRENCH "  Inspector";
+
     InspectorPanel::InspectorPanel(Application& app): EditorPanel(app) {
         registerEditionFunctions(*this);
         registerDisplayNames(*this);
@@ -63,6 +65,11 @@ namespace Peeler {
 
             default: TODO;
         }
+    }
+
+    void InspectorPanel::focusNameInput() {
+        wantsToFocusNameInput = true;
+        ImGui::SetWindowFocus(ImGuiWindowID);
     }
 
     void InspectorPanel::drawEntities(const Carrot::Render::Context& renderContext) {
@@ -128,7 +135,15 @@ namespace Peeler {
             }
         }
 
-        if(ImGui::InputText("Entity name##entity name field inspector", displayedName, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        const char* nameFieldID = "Entity name##entity name field inspector";
+        if (wantsToFocusNameInput) {
+            ImGui::SetKeyboardFocusHere();
+            wantsToFocusNameInput = false;
+            if (auto* pState = ImGui::GetInputTextState(ImGui::GetID(nameFieldID))) {
+                pState->SelectAll();
+            }
+        }
+        if(ImGui::InputText(nameFieldID, displayedName, ImGuiInputTextFlags_EnterReturnsTrue)) {
             // multi-rename
             app.undoStack.push<RenameEntitiesCommand>(app.selectedEntityIDs, displayedName);
         }
