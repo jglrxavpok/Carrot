@@ -9,16 +9,16 @@
 
 namespace Peeler {
 
-    class AddSystemCommand: public ICommand {
+    class AddSystemsCommand: public ICommand {
     public:
-        AddSystemCommand(Application& app, std::string systemName, bool isRender);
+        AddSystemsCommand(Application& app, Carrot::Vector<std::string> systemNames, bool areRenderSystems);
 
         void undo() override;
         void redo() override;
 
     private:
-        std::string systemName;
-        bool isRenderSystem = false;
+        Carrot::Vector<std::string> systemNames;
+        bool areRenderSystems = false;
     };
 
     class RemoveSystemCommand: public ICommand {

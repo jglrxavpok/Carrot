@@ -93,9 +93,7 @@ namespace Peeler {
                         message += '\n';
                     }
                     warnings.emplaceBack(message, [&systemsLib, this, missingLogicSystems]() {
-                        for (const auto& systemName : missingLogicSystems) {
-                            undoStack.push<AddSystemCommand>(systemName, false);
-                        }
+                        undoStack.push<AddSystemsCommand>(missingLogicSystems, false);
                     });
                 }
                 if (!missingRenderSystems.empty()) {
@@ -106,9 +104,7 @@ namespace Peeler {
                         message += '\n';
                     }
                     warnings.emplaceBack(message, [&systemsLib, this, missingRenderSystems]() {
-                        for (const auto& systemName : missingRenderSystems) {
-                            undoStack.push<AddSystemCommand>(systemName, true);
-                        }
+                        undoStack.push<AddSystemsCommand>(missingRenderSystems, true);
                     });
                 }
             }

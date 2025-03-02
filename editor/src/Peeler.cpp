@@ -475,7 +475,7 @@ namespace Peeler {
         drawSystems("Render Systems", currentScene.world.getRenderSystems(),
             [&](const std::string& name) {
                 if (!currentScene.world.getRenderSystem(name)) {
-                    undoStack.push<AddSystemCommand>(name, true);
+                    undoStack.push<AddSystemsCommand>(Carrot::Vector{name}, true);
                 }
             },
             [&](Carrot::ECS::System* ptr) {
@@ -484,7 +484,7 @@ namespace Peeler {
         drawSystems("Logic Systems", currentScene.world.getLogicSystems(),
             [&](const std::string& name) {
                 if (!currentScene.world.getLogicSystem(name)) {
-                    undoStack.push<AddSystemCommand>(name, false);
+                    undoStack.push<AddSystemsCommand>(Carrot::Vector{name}, false);
                 }
             },
             [&](Carrot::ECS::System* ptr) {
@@ -1383,6 +1383,7 @@ namespace Peeler {
             try {
                 currentScene.clear();
                 currentScene.deserialise(scenePath);
+                undoStack.clear();
             } catch (std::exception& e) {
                 Carrot::Log::error("Failed to open scene: %s", e.what());
                 currentScene.clear();

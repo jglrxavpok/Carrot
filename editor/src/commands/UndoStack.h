@@ -57,6 +57,11 @@ namespace Peeler {
          */
         void debugDraw();
 
+        /**
+         * Removes the entire contents of the undo stack
+         */
+        void clear();
+
     private:
         void internalPush(Carrot::UniquePtr<ICommand> command);
 

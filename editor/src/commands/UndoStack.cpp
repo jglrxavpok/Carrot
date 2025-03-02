@@ -63,4 +63,10 @@ namespace Peeler {
         }
         ImGui::End();
     }
+
+    void UndoStack::clear() {
+        cursor = 0;
+        stack.clear();
+    }
+
 } // Peeler
