@@ -33,11 +33,6 @@ namespace Carrot {
             return static_cast<std::int32_t>(instanceIndex * vertexCountPerInstance + meshOffsets[meshID]);
         }
 
-        /**
-         * Buffer containing all vertices for all instances after skinning
-         */
-        Buffer& getFullySkinnedBuffer() { return *fullySkinnedUnitVertices; };
-
         vk::Semaphore& getSkinningSemaphore(std::size_t frameIndex) { return *skinningSemaphores[frameIndex]; };
 
         void render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass);
@@ -45,25 +40,24 @@ namespace Carrot {
 
 #pragma region RenderingUpdate
         vk::Semaphore& onFrame(std::size_t frameIndex);
-
-        void recordGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands, std::size_t instanceCount);
 #pragma endregion RenderingUpdate
 
     private:
         void forEachMesh(const std::function<void(std::uint32_t meshIndex, std::uint32_t materialSlot, std::shared_ptr<Mesh>& mesh)>& action);
 
     private:
+        constexpr static std::size_t BufferingCount = 2;
         std::size_t maxInstanceCount = 0;
         std::size_t currentInstanceCount = 0;
         Carrot::Engine& engine;
         std::shared_ptr<Model> model = nullptr;
-        std::unique_ptr<Buffer> fullySkinnedUnitVertices = nullptr;
+        std::array<BufferAllocation, BufferingCount> fullySkinnedVertexBuffers;
         std::unique_ptr<Buffer> flatVertices = nullptr;
         std::map<MeshID, std::shared_ptr<Buffer>> indirectBuffers{};
         AnimatedInstanceData* animatedInstances = nullptr;
         std::unique_ptr<Buffer> instanceBuffer = nullptr;
-        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes;
-        std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances;
+        std::vector<std::shared_ptr<BLASHandle>> raytracingBLASes; // size is instanceCount * BufferingCount, access via [instanceIndex*2+frameIndexModBufferingCount]
+        std::vector<std::shared_ptr<InstanceHandle>> raytracingInstances; // size is instanceCount * BufferingCount, access via [instanceIndex*2+frameIndexModBufferingCount]
 
         std::unordered_map<MeshID, size_t> meshOffsets{};
         std::size_t vertexCountPerInstance = 0;

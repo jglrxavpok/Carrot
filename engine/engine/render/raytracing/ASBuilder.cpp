@@ -154,7 +154,7 @@ namespace Carrot {
         if(boundSemaphores.empty()) {
             return {};
         }
-        return boundSemaphores[swapchainIndex];
+        return boundSemaphores[swapchainIndex % boundSemaphores.size()];
     }
 
     InstanceHandle::InstanceHandle(std::shared_ptr<BLASHandle> geometry, ASBuilder* builder):
@@ -817,7 +817,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
 
         for(auto& blas : toBuild) {
             // TODO: deduplicate semaphores inside list? Is it even useful?
-            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.swapchainIndex);
+            vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameCount);
             if(boundSemaphore != VK_NULL_HANDLE) {
                 vk::SemaphoreSubmitInfo& submitInfo = waitSemaphoreList.emplaceBack();
                 submitInfo.semaphore = boundSemaphore;

@@ -923,6 +923,10 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     hasBlinked = true;
     renderThreadReady.increment(); // render thread has started working
     renderThreadKickoff.decrement(); // tell render thread to start working
+
+
+    // staying commented here in case there is a need to debug race conditions again
+//    waitForRenderToComplete();
 }
 
 void Carrot::VulkanRenderer::recordImGuiPass(vk::CommandBuffer& cmds, vk::RenderPass renderPass, const Carrot::Render::Context& renderContext) {
