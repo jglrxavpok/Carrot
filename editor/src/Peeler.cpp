@@ -521,8 +521,8 @@ namespace Peeler {
                             ImGui::Text("Time elapsed: %d s", timeElapsedInSeconds);
                             ImGui::Separator();
                         }
-                        ImGui::End();
                     }
+                    ImGui::End();
                 }
                 ImGui::EndMenuBar();
             }
