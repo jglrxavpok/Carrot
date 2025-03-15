@@ -28,8 +28,8 @@ void decayCells() {
         return;
     }
 
-    const uint decayTime = 60;
-    if(BufferToUint(pLastTouchedFrame+cellIndex).v+decayTime < frameCount) {
+    const uint decayTime = 10;
+    if(BufferToUint(pLastTouchedFrame+cellIndex*4).v+decayTime < frameCount) {
         hashGridClear(HashGrid(pCells), cellIndex);
     }
 }

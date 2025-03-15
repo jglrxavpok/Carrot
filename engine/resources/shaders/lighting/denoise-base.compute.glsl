@@ -107,7 +107,7 @@ float powNormals(float f) {
 void main() {
     const ivec2 coords = ivec2(gl_GlobalInvocationID);
 
-    const float sigmaPositions = 256.0f;
+    const float sigmaPositions = 32.0f;
     const float sigmaLuminance = 2.0f;
 
     const ivec2 size = imageSize(outputImage);

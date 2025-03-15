@@ -2,7 +2,10 @@
   "type": "compute",
   "computeShader": {
     "file": "resources/shaders/lighting/gi/update-cells.compute.glsl",
-    "entry_point": "main"
+    "entry_point": "traceRays"
+  },
+  "constants": {
+    "LOCAL_SIZE": 32
   },
   "descriptorSets": [
     {

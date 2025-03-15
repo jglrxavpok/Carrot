@@ -7,11 +7,28 @@
 #define HASH_GRID_SET_ID 0
 #include "hash-grid.include.glsl"
 
+layout(push_constant) uniform PushConstant {
+    uint frameCount;
+    uint frameWidth;
+    uint frameHeight;
+} push;
+
 const uint LOCAL_SIZE = 32;
 layout (local_size_x = LOCAL_SIZE) in;
 layout (local_size_y = LOCAL_SIZE) in;
 
 layout(set = 1, binding = 0) uniform writeonly image2D outputImage;
+
+struct ScreenProbe {
+    ivec3 radiance;
+    uint sampleCount;
+    vec3 worldPos;
+    vec3 normal;
+};
+
+layout(set = 1, binding = 1, scalar) buffer ScreenProbes {
+    ScreenProbe[] probes;
+};
 
 #include <includes/gbuffer.glsl>
 #include <includes/gbuffer_input.glsl>
@@ -21,6 +38,7 @@ DEFINE_GBUFFER_INPUTS(2)
 #include <includes/camera.glsl>
 DEFINE_CAMERA_SET(3)
 
+const uint ScreenProbeSize = 8;
 
 void main() {
     uvec2 pixel = gl_GlobalInvocationID.xy;
@@ -30,28 +48,9 @@ void main() {
         return;
     }
 
-    vec2 uv = vec2(pixel) / size;
-    GBuffer g = unpackGBufferLight(uv);
-
-    if(g.albedo.a < 0.00001f) {
-        imageStore(outputImage, ivec2(pixel), vec4(pixel.x % 2, pixel.y % 2, 0, 1));
-        return;
-    }
-    vec3 cameraPos = (cbo.inverseView * vec4(0,0,0,1)).xyz;
-    vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1)).xyz;
-    vec3 incomingRay = normalize(worldPos - cameraPos);
-
-    HashCellKey key;
-    key.rayLength = distance(cameraPos, worldPos);
-    key.cameraPos = cameraPos;
-    key.hitPosition = worldPos;
-    key.direction = incomingRay;
-    uint cellIndex = hashGridFind(CURRENT_FRAME, key);
-    vec4 giResult;
-    if(cellIndex == InvalidCellIndex) {
-        giResult = vec4(pixel.x/4 % 2, 0, pixel.y/4 % 2, 1);
-    } else {
-        giResult = vec4(hashGridRead(CURRENT_FRAME, cellIndex), 1) / hashGridGetSampleCount(CURRENT_FRAME, cellIndex);
-    }
-    imageStore(outputImage, ivec2(pixel), giResult);
+    uvec2 probePosition = pixel / ScreenProbeSize + uvec2(push.frameCount*0);
+    const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
+    uint probeIndex = probePosition.x + probePosition.y * probesPerWidth;
+    ScreenProbe probe = probes[probeIndex];
+    imageStore(outputImage, ivec2(pixel), vec4(unpackRadiance(probe.radiance) / probe.sampleCount, 1));
 }

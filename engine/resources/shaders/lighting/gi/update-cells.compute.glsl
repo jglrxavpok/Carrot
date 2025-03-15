@@ -2,9 +2,10 @@
 
 // Trace rays to update world-space probes
 
-const uint LOCAL_SIZE = 32;
-layout (local_size_x = LOCAL_SIZE) in;
-layout (local_size_y = LOCAL_SIZE) in;
+layout(constant_id = 0) const uint LocalSize = 32;
+const uint ScreenProbeSize = 8;
+layout (local_size_x_id = 0) in;
+layout (local_size_y_id = 0) in;
 
 layout(push_constant) uniform PushConstant {
     uint frameCount;
@@ -48,10 +49,151 @@ DEFINE_CAMERA_SET(5)
 
 #include <lighting/rt.include.glsl>
 
-void main() {
-    uvec2 pixelBlock = gl_GlobalInvocationID.xy*2;
-    ivec2 offset = ivec2(push.frameCount % 2, (push.frameCount/2) % 2);
-    ivec2 pixel = offset + ivec2(pixelBlock);
+struct ScreenProbe {
+    ivec3 radiance;
+    uint sampleCount;
+    vec3 worldPos;
+    vec3 normal;
+};
+
+// position, in screen space of the pixel that will spawn the rays used to fill the GI grid
+struct SpawnedRay {
+    ivec2 screenPixelPos;
+    uint probeIndex;
+};
+
+layout(set = 1, binding = 0, scalar) buffer ScreenProbes {
+    ScreenProbe[] probes;
+};
+layout(set = 1, binding = 1, scalar) readonly buffer PreviousFrameScreenProbes {
+    ScreenProbe[] previousFrameProbes;
+};
+
+layout(set = 1, binding = 2, scalar) buffer SpawnedRays {
+    uint spawnedRayCount;
+    SpawnedRay[] spawnedRays;
+};
+
+uint packHalf(float f) {
+    return packHalf2x16(vec2(f, 0));
+}
+
+// implementation based on AMD GI-1.0 paper
+shared uint reprojectionScore;
+
+const float probeCellSize = 1.0f;
+
+uint getReprojectedProbeIndex(vec2 uv, vec2 motionVector) {
+    //return 0xFFFFu;
+    const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
+
+    // reproject temporally, and check if pixel is reusable
+    const vec2 reprojectedUV = uv + motionVector/2;
+    const bool reprojectionInBounds = reprojectedUV.x >= 0.0f && reprojectedUV.x < 1.0f && reprojectedUV.y >= 0.0f && reprojectedUV.y < 1.0f;
+    if(reprojectionInBounds) {
+        const vec2 size = vec2(push.frameWidth, push.frameHeight);
+        const ivec2 reprojectedPixel = ivec2(reprojectedUV * size);
+        const uint reprojectedProbeIndex = reprojectedPixel.x / ScreenProbeSize + reprojectedPixel.y / ScreenProbeSize * probesPerWidth;
+        return reprojectedProbeIndex;
+    }
+
+    return 0xFFFFu;
+}
+
+// KERNEL
+void spawnScreenProbes() {
+    reprojectionScore = (packHalf(65504.0f) << 16)/*score*/ | 0xFFFFu/*lane ID*/;
+    barrier();
+
+    // a single workgroup covers an entire tile, but there are as many groups as there are tiles.
+    // this means the global invocation ID is pixel coords
+    const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
+    const uint probeIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * probesPerWidth;
+    const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy) + ivec2(push.frameCount*0)/*push constant alignment*/;
+    const vec2 size = vec2(push.frameWidth, push.frameHeight);
+    const vec2 uv = (vec2(pixel) + vec2(0.5)) / size;
+    const GBuffer gbuffer = unpackGBuffer(uv);
+    const ScreenProbe probe = probes[probeIndex];
+
+    const mat3 cboNormalView = transpose(inverse(mat3(cbo.view)));
+    const mat3 inverseNormalView = inverse(cboNormalView);
+    const vec4 hWorldPosCurrentPixel = (cbo.inverseView * vec4(gbuffer.viewPosition, 1));
+    const vec3 worldPosCurrentPixel = hWorldPosCurrentPixel.xyz / hWorldPosCurrentPixel.w;
+    const vec3 normalCurrentPixel = inverseNormalView * gbuffer.viewTBN[2];
+
+    // check if not sky
+    if(gbuffer.albedo.a >= 0.001f) {
+        const uint reprojectedProbeIndex = getReprojectedProbeIndex(uv, gbuffer.motionVector.xy);
+        if(reprojectedProbeIndex != 0xFFFFu) {
+            const ScreenProbe reprojectedProbe = previousFrameProbes[reprojectedProbeIndex];
+
+            const vec3 dPos = reprojectedProbe.worldPos - worldPosCurrentPixel;
+            const float planeDist = abs(dot(dPos, normalCurrentPixel));
+            const float normalCheck = dot(normalCurrentPixel, reprojectedProbe.normal);
+            if(planeDist < probeCellSize && normalCheck > 0.95) {
+                const float dist = length(dPos);
+                const uint probeScore = (packHalf(dist) << 16) | gl_LocalInvocationIndex;
+                atomicMin(reprojectionScore, probeScore);
+            }
+        }
+
+        // store score of best-matching pixel for this tile
+    }
+
+    barrier(); // at this point reprojectionScore contains the ID of the best matching pixel
+    if(gl_LocalInvocationIndex != 0) {
+        return;
+    }
+    uint reusedPixel = reprojectionScore & 0xFFFFu;
+    ivec2 startPixel;
+    if(reusedPixel == 0xFFFFu) {
+        // no reuse
+        startPixel = pixel;
+        probes[probeIndex].worldPos = worldPosCurrentPixel;
+        probes[probeIndex].normal = normalCurrentPixel;
+        probes[probeIndex].radiance = ivec3(0);
+        probes[probeIndex].sampleCount = 0;
+    } else {
+        // reuse
+        const ivec2 screenTileStart = ivec2(gl_WorkGroupID.xy * uvec2(ScreenProbeSize));
+        const uint localPixel = reprojectionScore & 0xFFFFu;
+        const ivec2 posInTile = ivec2(localPixel % ScreenProbeSize, localPixel / ScreenProbeSize);
+        const ivec2 reprojectedPixelPos = screenTileStart + posInTile;
+        startPixel = reprojectedPixelPos;
+        const vec2 reprojectedUV = (vec2(reprojectedPixelPos) + vec2(0.5)) / size;
+        const GBuffer reprojectedGBuffer = unpackGBuffer(reprojectedUV);
+
+        const uint reprojectedProbeIndex = getReprojectedProbeIndex(reprojectedUV, reprojectedGBuffer.motionVector.xy);
+        const ScreenProbe reprojectedProbe = previousFrameProbes[reprojectedProbeIndex];
+
+        probes[probeIndex].radiance = reprojectedProbe.radiance;
+        probes[probeIndex].sampleCount = reprojectedProbe.sampleCount;
+        probes[probeIndex].worldPos = (cbo.inverseView * vec4(reprojectedGBuffer.viewPosition, 1)).xyz;
+        probes[probeIndex].normal = inverseNormalView * reprojectedGBuffer.viewTBN[2];
+    }
+
+    const uint MAX_RAYS_PER_PROBE = 5;
+    uint spawnedRayIndex = atomicAdd(spawnedRayCount, MAX_RAYS_PER_PROBE);
+    for(int i = 0; i < MAX_RAYS_PER_PROBE; i++) {
+        spawnedRays[spawnedRayIndex+i].probeIndex = probeIndex;
+        spawnedRays[spawnedRayIndex+i].screenPixelPos = startPixel;
+    }
+}
+
+// KERNEL
+void reorderSpawnedRays() {
+    // TODO
+}
+
+// KERNEL
+void traceRays() {
+    uint rayIndex = gl_GlobalInvocationID.x;
+
+    if(rayIndex >= spawnedRayCount) {
+        return;
+    }
+    ivec2 pixel = spawnedRays[rayIndex].screenPixelPos;
+    uint probeIndex = spawnedRays[rayIndex].probeIndex;
 
     uvec2 size = uvec2(push.frameWidth, push.frameHeight);
     if(pixel.x >= size.x || pixel.y >= size.y) {
@@ -62,7 +204,7 @@ void main() {
     GBuffer gbuffer = unpackGBuffer(uv);
 
     RandomSampler rng;
-    initRNG(rng, uv, size.x, size.y, push.frameCount);
+    initRNG(rng, uv, size.x, size.y, push.frameCount + rayIndex);
 
     vec3 gAlbedo = gbuffer.albedo.rgb;
     vec3 gEmissive = gbuffer.emissiveColor.rgb;
@@ -81,232 +223,107 @@ void main() {
     vec3 directionFromCamera = normalize(gWorldPos - cameraPos);
 
 #ifdef HARDWARE_SUPPORTS_RAY_TRACING
-    // specular part
-    const int MAX_SAMPLES = 1;// TODO: not working?
-    const int MAX_BOUNCES = 3; // TODO: spec constant
+    vec3 rayDir = cosineSampleHemisphere(rng);
+    rayDir = inverseNormalView * gbuffer.viewTBN * rayDir;
 
-    vec3 totalRadiance = vec3(0.0);
-    float totalWeight = 0.0f;
+    vec3 brdf = vec3(1 / M_PI);
 
-    vec3 bounceRadiance[MAX_BOUNCES] = {
-        vec3(0),
-        vec3(0),
-        vec3(0),
-    };
-    uint bounceCellIndices[MAX_BOUNCES] = {
-        InvalidCellIndex,
-        InvalidCellIndex,
-        InvalidCellIndex,
-    };
-    HashCellKey bounceKeys[MAX_BOUNCES];
+    intersection.hasIntersection = false;
+    const float tMax = 50000.0f; /* TODO: specialization constant? compute properly?*/
+    vec3 startPos = gWorldPos; // todo remove
+    traceRayWithSurfaceInfo(intersection, startPos + rayDir * 0.001f, rayDir, tMax);
+    vec3 radiance = vec3(0);
+    if(intersection.hasIntersection) {
+        // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
+        float mip = max(log2(3840.0 / push.frameWidth), 0.0);
+        vec2 f;
+        float viewDistance = 0.0;// TODO: eye position? length(worldPos - rayOrigin);
+        float hitDistance = length(intersection.position - startPos);
+        f.x = viewDistance;// ray origin
+        f.y = hitDistance;// ray length
+        f = clamp(f / tMax, 0, 1);
+        f = sqrt(f);
+        mip += f.x * 10.0f;
+        mip += f.y * 10.0f;
 
-    for(int sampleIndex = 0; sampleIndex < MAX_SAMPLES; sampleIndex++) {
-        vec3 bounceTransferFactor[MAX_BOUNCES] = {
-            vec3(0),
-            vec3(0),
-            vec3(0)
-        };
-        vec3 bounceRadiancesInSample[MAX_BOUNCES] = {
-            vec3(0),
-            vec3(0),
-            vec3(0)
-        };
-        vec3 newRadiance = vec3(0.0);
-        vec3 emissiveColor = gEmissive;
-        vec3 albedo = gAlbedo;
-        vec3 startPos = gWorldPos;
-        vec3 incomingRay = directionFromCamera;
-        float metallic = gMetallicRoughness.x;
-        float roughness = gMetallicRoughness.y;
-        vec3 surfaceNormal = gNormal;
-        vec3 surfaceTangent = gTangent;
-        if(isnan(dot(surfaceNormal, surfaceNormal))) {
-            break;
+        #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, floor(mip))
+
+
+        vec3 albedo = _sample(albedo).rgb;
+        vec3 emissive = _sample(emissive).rgb;
+        vec2 metallicRoughness = _sample(metallicRoughness).xy;
+
+        // normal mapping
+        vec3 mappedNormal;
+        {
+            vec3 T = normalize(intersection.surfaceTangent);
+            vec3 N = normalize(intersection.surfaceNormal);
+            vec3 B = cross(T, N) * intersection.bitangentSign;
+
+            mappedNormal = _sample(normalMap).rgb;
+
+            mappedNormal *= 2;
+            mappedNormal -= 1;
+            mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
         }
-        if(isnan(dot(surfaceTangent, surfaceTangent))) {
-            break;
+        float lightPDF = 1.0f;
+
+        float roughnessAtPoint = metallicRoughness.y;
+        PbrInputs pbrInputsAtPoint;
+        pbrInputsAtPoint.alpha = roughnessAtPoint * roughnessAtPoint;
+        pbrInputsAtPoint.baseColor = intersection.surfaceColor;
+        pbrInputsAtPoint.metallic = metallicRoughness.x;
+        pbrInputsAtPoint.V = -rayDir;
+        pbrInputsAtPoint.N = mappedNormal;// looks correct but not sure why
+        pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
+
+        GIInputs giInputs;
+        giInputs.hitPosition = intersection.position;
+        giInputs.cameraPosition = cameraPos;
+        giInputs.startOfRay = startPos;
+        giInputs.surfaceNormal = mappedNormal;
+        giInputs.metallic = pbrInputsAtPoint.metallic;
+        giInputs.roughness = roughnessAtPoint;
+        giInputs.frameIndex = push.frameCount;
+        vec3 gi = giGetNoUpdate(rng, giInputs);
+
+        radiance += /*weakeningFactor * */brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi + emissive);
+
+        vec3 tangent;
+        vec3 bitangent;
+        computeTangents(mappedNormal, tangent, bitangent);
+        const float jitterU = sampleNoise(rng) * 2 - 1;
+        const float jitterV = sampleNoise(rng) * 2 - 1;
+        float cellSize = giGetCellSize(intersection.position, cameraPos);
+        const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
+
+        HashCellKey key;
+        key.hitPosition = intersection.position + jitter;
+        key.direction = -rayDir;
+        key.cameraPos = cameraPos;
+        key.rayLength = length(intersection.position - startPos);
+        bool wasNew;
+        uint index = hashGridInsert(CURRENT_FRAME, key, wasNew);
+        if(index != InvalidCellIndex) {
+            hashGridAdd(CURRENT_FRAME, index, key, radiance, 1);
+            hashGridMark(CURRENT_FRAME, index, push.frameCount);
         }
-        if(isnan(dot(roughness, roughness))) {
-            break;
-        }
-        if(isnan(dot(metallic, metallic))) {
-            break;
-        }
-        if(isnan(dot(incomingRay, incomingRay))) {
-            break;
-        }
+    } else {
+        const mat3 rot = mat3(
+            vec3(1.0, 0.0, 0.0),
+            vec3(0.0, 0.0, -1.0),
+            vec3(0.0, 1.0, 0.0)
+        );
+        vec3 skyboxRGB = texture(gSkybox3D, (rot) * rayDir).rgb;
 
-        vec3 beta = vec3(1.0);
-
-        vec3 previousPos = cameraPos;
-        int bounceIndex = 0;
-        for(; bounceIndex < MAX_BOUNCES; bounceIndex++) {
-            vec3 tangent;
-            vec3 bitangent;
-            computeTangents(surfaceNormal, tangent, bitangent);
-            const float jitterU = sampleNoise(rng) * 2 - 1;
-            const float jitterV = sampleNoise(rng) * 2 - 1;
-            float cellSize = giGetCellSize(startPos, cameraPos);
-            const vec3 jitter = (tangent * jitterU + bitangent * jitterV) * cellSize;
-
-            bounceKeys[bounceIndex].hitPosition = startPos + jitter;
-            bounceKeys[bounceIndex].direction = incomingRay;
-            bounceKeys[bounceIndex].cameraPos = cameraPos;
-            bounceKeys[bounceIndex].rayLength = length(startPos - previousPos);
-
-            previousPos = startPos;
-            bool stopHere = false;
-            bool wasNew;
-            vec3 currentBounceRadiance = vec3(0.0);
-            bounceCellIndices[bounceIndex] = hashGridInsert(CURRENT_FRAME, bounceKeys[bounceIndex], wasNew);
-            if(bounceCellIndices[bounceIndex] == InvalidCellIndex) {
-                break;
-            }
-
-            // diffuse part
-            PbrInputs pbr;
-            vec3 V = -incomingRay;
-            vec3 N = normalize(surfaceNormal);
-            pbr.alpha = roughness * roughness;
-            pbr.metallic = metallic;
-            pbr.baseColor = albedo;
-            pbr.V = V;
-            pbr.N = N;
-            pbr.NdotV = abs(dot(N, V));
-
-            // todo: move out of loop
-            {
-                currentBounceRadiance += emissiveColor + lights.ambientColor;
-                const float MAX_LIGHT_DISTANCE = 5000.0f; /* TODO: specialization constant? compute properly?*/
-
-                float lightPDF = 1.0f;
-               // vec3 lightAtPoint = computeDirectLightingFromLights(/*inout*/rng, /*inout*/lightPDF, pbr, startPos, MAX_LIGHT_DISTANCE);
-                //currentBounceRadiance += lightAtPoint * lightPDF;
-            }
-
-            // reflective part
-            vec3 specularDir = importanceSampleDirectionForReflection(rng, incomingRay, surfaceNormal, roughness);
-            pbr.L = specularDir;
-            pbr.H = normalize(pbr.L + pbr.H);
-            computeDotProducts(pbr);
-
-            const float weakeningFactor = max(0.01, dot(N, specularDir));
-            vec3 brdf = glTF_BRDF_WithImportanceSampling(pbr);
-            if(isnan(brdf.x)) {
-                break;
-               // brdf = vec3(0.001);
-            }
-            if(isnan(weakeningFactor)) {
-                break;
-            }
-            bounceTransferFactor[bounceIndex] = vec3(weakeningFactor);
-
-            const float tMax = 50000.0f; /* TODO: specialization constant? compute properly?*/
-
-            intersection.hasIntersection = false;
-            traceRayWithSurfaceInfo(intersection, startPos + specularDir * 0.001f, specularDir, tMax);
-            if(intersection.hasIntersection) {
-                // from "Raytraced reflections in 'Wolfenstein: Young Blood'":
-                float mip = 0;// TODO? max(log2(3840.0 / push.frameWidth), 0.0);
-                vec2 f;
-                float viewDistance = 0.0;// TODO: eye position? length(worldPos - rayOrigin);
-                float hitDistance = length(intersection.position - startPos);
-                f.x = viewDistance;// ray origin
-                f.y = hitDistance;// ray length
-                f = clamp(f / tMax, 0, 1);
-                f = sqrt(f);
-                mip += f.x * 10.0f;
-                mip += f.y * 10.0f;
-
-                #define _sample(TYPE) textureLod(sampler2D(textures[materials[intersection.materialIndex].TYPE], linearSampler), intersection.uv, floor(mip))
-
-                vec3 albedo = _sample(albedo).rgb;
-                vec3 emissive = _sample(emissive).rgb;
-                vec2 metallicRoughness = _sample(metallicRoughness).xy;
-
-                // normal mapping
-                vec3 mappedNormal;
-                {
-                    vec3 T = normalize(intersection.surfaceTangent);
-                    vec3 N = normalize(intersection.surfaceNormal);
-                    vec3 B = cross(T, N) * intersection.bitangentSign;
-
-                    mappedNormal = _sample(normalMap).rgb;
-
-                    mappedNormal *= 2;
-                    mappedNormal -= 1;
-                    mappedNormal = normalize(T * mappedNormal.x + B * mappedNormal.y + N * mappedNormal.z);
-                }
-                float lightPDF = 1.0f;
-
-                float roughnessAtPoint = metallicRoughness.y;
-                PbrInputs pbrInputsAtPoint;
-                pbrInputsAtPoint.alpha = roughnessAtPoint * roughnessAtPoint;
-                pbrInputsAtPoint.baseColor = intersection.surfaceColor;
-                pbrInputsAtPoint.metallic = metallicRoughness.x;
-                pbrInputsAtPoint.V = -specularDir;
-                pbrInputsAtPoint.N = mappedNormal;// looks correct but not sure why
-                pbrInputsAtPoint.NdotV = abs(dot(pbrInputsAtPoint.V, pbrInputsAtPoint.N));
-
-                GIInputs giInputs;
-                giInputs.hitPosition = intersection.position;
-                giInputs.cameraPosition = cameraPos;
-                giInputs.startOfRay = startPos;
-                giInputs.surfaceNormal = mappedNormal;
-                giInputs.metallic = pbrInputsAtPoint.metallic;
-                giInputs.roughness = roughnessAtPoint;
-                giInputs.frameIndex = push.frameCount;
-                vec3 gi = giGetNoUpdate(rng, giInputs);
-
-                startPos = intersection.position;
-                incomingRay = -specularDir;
-                surfaceNormal = giInputs.surfaceNormal;
-                roughness = giInputs.roughness;
-                albedo = pbrInputsAtPoint.baseColor;
-                metallic = giInputs.metallic;
-
-                // todo: update beta
-                //beta *= brdf * albedo.rgb;
-
-                currentBounceRadiance += weakeningFactor * brdf * (computeDirectLightingFromLights(rng, lightPDF, pbrInputsAtPoint, intersection.position, tMax) + gi);
-            } else {
-                const mat3 rot = mat3(
-                    vec3(1.0, 0.0, 0.0),
-                    vec3(0.0, 0.0, -1.0),
-                    vec3(0.0, 1.0, 0.0)
-                );
-                vec3 skyboxRGB = texture(gSkybox3D, (rot) * specularDir).rgb;
-
-                currentBounceRadiance += weakeningFactor * brdf * skyboxRGB.rgb;
-                stopHere = true;
-            }
-
-            bounceRadiancesInSample[bounceIndex] = currentBounceRadiance;
-
-            if(stopHere) {
-                break;
-            }
-
-        } // for each bounce
-
-        // recompute radiance at each vertex of path
-        vec3 radianceFromNextBounce = vec3(0);
-        bounceIndex = min(bounceIndex, MAX_BOUNCES-1);
-        for(; bounceIndex >= 0; bounceIndex--) {
-            // based on rendering equation
-            vec3 radiance = bounceRadiancesInSample[bounceIndex] + bounceTransferFactor[bounceIndex] * radianceFromNextBounce;
-            bounceRadiance[bounceIndex] += radiance;
-            radianceFromNextBounce = radiance;
-        }
-    } // for each sample
-
-    for(int bounceIndex = 0; bounceIndex < MAX_BOUNCES; bounceIndex++) {
-        uint bounceCellIndex = bounceCellIndices[bounceIndex];
-        if(bounceCellIndex == InvalidCellIndex) {
-            continue;
-        }
-        hashGridMark(CURRENT_FRAME, bounceCellIndex, push.frameCount);
-        hashGridAdd(CURRENT_FRAME, bounceCellIndex, bounceKeys[bounceIndex], bounceRadiance[bounceIndex], MAX_SAMPLES);
+        radiance += /*weakeningFactor * */brdf * skyboxRGB.rgb;
     }
+
+    // write to screen probe
+    ivec3 added = packRadiance(radiance);
+    atomicAdd(probes[probeIndex].radiance.x, added.x);
+    atomicAdd(probes[probeIndex].radiance.y, added.y);
+    atomicAdd(probes[probeIndex].radiance.z, added.z);
+    atomicAdd(probes[probeIndex].sampleCount, 1);
 #endif
 }

@@ -82,5 +82,5 @@ void main() {
     //outColor = vec4(xyz2rgb(reinhard), fragmentColor.a);
     outColor = vec4(aces, fragmentColor.a);
 
-    outColor.rgb = pow(outColor.rgb, vec3(1.0 / 2.2));
+//    outColor.rgb = pow(outColor.rgb, vec3(1.0 / 2.2));
 }

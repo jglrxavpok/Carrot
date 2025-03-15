@@ -1,0 +1,42 @@
+{
+  "type": "compute",
+  "computeShader": {
+    "file": "resources/shaders/lighting/gi/update-cells.compute.glsl",
+    "entry_point": "spawnScreenProbes"
+  },
+  "constants": {
+    "LocalSize": 8
+  },
+  "descriptorSets": [
+    {
+      "type": "autofill",
+      "setID": 0,
+      "_comment": "hash grid"
+    },
+    {
+      "type": "autofill",
+      "setID": 1
+    },
+    {
+      "type": "materials",
+      "setID": 2
+    },
+    {
+      "type": "lights",
+      "setID": 3
+    },
+    {
+      "type": "autofill",
+      "setID": 4
+    },
+    {
+      "type": "camera",
+      "setID": 5
+    },
+    {
+      "type": "autofill",
+      "setID": 6,
+      "_comment": "RT"
+    }
+  ]
+}

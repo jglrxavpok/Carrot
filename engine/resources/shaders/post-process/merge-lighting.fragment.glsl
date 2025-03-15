@@ -40,8 +40,6 @@ void main() {
     vec4 albedoColor = g.albedo;
     vec3 lightingColor = texture(sampler2D(directLighting, gLinearSampler), uv).rgb;
     vec3 reflectionsColor = texture(sampler2D(reflections, gLinearSampler), uv).rgb;
-    vec3 giColor = texture(sampler2D(gi, gLinearSampler), uv).rgb;
-    //lightingColor += giColor; -> already contained in direct lighting
 
     float ao = texture(sampler2D(aoLighting, gLinearSampler), uv).r;
 
@@ -97,6 +95,8 @@ void main() {
 
     vec3 finalOpaqueColor;
     if(currDepth < 1.0) {
+        vec3 giColor = texture(sampler2D(gi, gLinearSampler), uv).rgb;
+        lightingColor += giColor;
         finalOpaqueColor = mix(albedoColor.rgb * lightingColor, reflectionsColor, g.metallicness);
         finalOpaqueColor *= ao*ao;
         finalOpaqueColor += g.emissiveColor;

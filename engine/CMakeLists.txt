@@ -225,8 +225,8 @@ set(PIPELINES
         lighting/gi/apply-gi
         lighting/gi/debug-gi
         lighting/gi/decay-cells
-        lighting/gi/reuse-gi
-        lighting/gi/update-cells
+        lighting/gi/spawn-screen-probes
+        lighting/gi/trace-rays
 
         lighting/ao
         lighting/ao-noraytracing

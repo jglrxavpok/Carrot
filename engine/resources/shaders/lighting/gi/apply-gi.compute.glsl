@@ -17,6 +17,17 @@ layout (local_size_y = LOCAL_SIZE) in;
 
 layout(set = 1, binding = 0) uniform writeonly image2D outputImage;
 
+struct ScreenProbe {
+    ivec3 radiance;
+    uint sampleCount;
+    vec3 worldPos;
+    vec3 normal;
+};
+
+layout(set = 1, binding = 1, scalar) buffer ScreenProbes {
+    ScreenProbe[] probes;
+};
+
 #include <includes/gbuffer.glsl>
 #include <includes/gbuffer_input.glsl>
 DEFINE_GBUFFER_INPUTS(2)
@@ -27,7 +38,29 @@ DEFINE_CAMERA_SET(3)
 
 layout(push_constant) uniform PushConstant {
     uint frameCount;
+    uint frameWidth;
+    uint frameHeight;
+} push;
+
+const int FILTER_RADIUS = 2;
+const float KERNEL_WEIGHTS[FILTER_RADIUS*2+1] = {
+    1.0f/16.0f,
+    1.0f/4.0f,
+    3.0f/8.0f,
+    1.0f/4.0f,
+    1.0f/16.0f,
 };
+const uint ScreenProbeSize = 8;
+
+uint getProbeIndex(uvec2 probePosition) {
+    const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
+    return probePosition.x + probePosition.y * probesPerWidth;
+}
+
+vec3 readProbe(uvec2 probePos) {
+    const ScreenProbe probe = probes[getProbeIndex(probePos)];
+    return unpackRadiance(probe.radiance) / probe.sampleCount;
+}
 
 void main() {
     uvec2 pixel = gl_GlobalInvocationID.xy;
@@ -37,29 +70,27 @@ void main() {
         return;
     }
 
-    vec2 uv = vec2(pixel) / size;
-    GBuffer g = unpackGBufferLight(uv);
+    vec3 average = vec3(0,0,0);
+    const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
 
-    if(g.albedo.a < 0.00001f) {
-        imageStore(outputImage, ivec2(pixel), vec4(0, 0, 0, 0));
-        return;
-    }
-    vec3 cameraPos = (cbo.inverseView * vec4(0,0,0,1)).xyz;
-    vec3 worldPos = (cbo.inverseView * vec4(g.viewPosition, 1)).xyz;
+    // bilinear interpolation
+    pixel -= uvec2(ScreenProbeSize/2);
+    const uvec2 probePositionTopLeft = uvec2(pixel) / ScreenProbeSize + uvec2(push.frameCount*0);
+    const uvec2 probePositionTopRight = probePositionTopLeft + uvec2(1, 0);
+    const uvec2 probePositionBottomLeft = probePositionTopLeft + uvec2(0, 1);
+    const uvec2 probePositionBottomRight = probePositionTopLeft + uvec2(1, 1);
+    const float w11 = (probePositionTopRight.x*ScreenProbeSize - pixel.x)*(probePositionTopRight.y*ScreenProbeSize - pixel.y);
+    const float w12 = (probePositionTopRight.x*ScreenProbeSize - pixel.x)*(pixel.y - probePositionBottomRight.y*ScreenProbeSize);
+    const float w21 = (pixel.x - probePositionTopLeft.x*ScreenProbeSize)*(probePositionTopRight.y*ScreenProbeSize - pixel.y);
+    const float w22 = (pixel.x - probePositionTopLeft.x*ScreenProbeSize)*(pixel.y - probePositionBottomRight.y*ScreenProbeSize);
+    average += readProbe(probePositionBottomLeft) * w11;
+    average += readProbe(probePositionBottomRight) * w21;
+    average += readProbe(probePositionTopLeft) * w12;
+    average += readProbe(probePositionTopRight) * w22;
 
-    RandomSampler rng;
-    initRNG(rng, uv, size.x, size.y, frameCount);
+    const float denominator = (probePositionTopRight.x*ScreenProbeSize - probePositionTopLeft.x*ScreenProbeSize) * (probePositionTopRight.y*ScreenProbeSize - probePositionBottomRight.y*ScreenProbeSize);
+    const float invDenominator = 1.0f / denominator;
+    average *= invDenominator;
 
-    GIInputs giInputs;
-    giInputs.hitPosition = worldPos;
-    giInputs.cameraPosition = cameraPos;
-    giInputs.startOfRay = cameraPos;
-    giInputs.frameIndex = frameCount;
-    giInputs.surfaceNormal = g.viewTBN[2];
-    giInputs.metallic = g.metallicness;
-    giInputs.roughness = g.roughness;
-    giInputs.surfaceColor = g.albedo.rgb;
-
-    vec3 giResult = giGetCurrentFrame(rng, giInputs);
-    imageStore(outputImage, ivec2(pixel), vec4(giResult, 1));
+    imageStore(outputImage, ivec2(pixel), vec4(average, 1));
 }
