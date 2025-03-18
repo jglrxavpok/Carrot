@@ -96,6 +96,7 @@ namespace Carrot::Physics {
         {
             BodyAccessRead toCopyBody{toCopy.bodyID};
             creationSettings = toCopyBody->GetBodyCreationSettings();
+            bodyShapeRef = toCopy.bodyShapeRef;
             bodyTemplate = toCopy.bodyTemplate;
         }
         createBody(creationSettings);
@@ -110,6 +111,7 @@ namespace Carrot::Physics {
         dofConstraint = toMove.dofConstraint;
         toMove.dofConstraint = nullptr;
 
+        bodyShapeRef = toMove.bodyShapeRef;
         bodyType = toMove.bodyType;
         bodyTemplate = std::move(toMove.bodyTemplate);
         BodyAccessWrite body{bodyID};
@@ -414,7 +416,6 @@ namespace Carrot::Physics {
             GetPhysics().destroyRigidbody(bodyID);
         }
         if(bodyShapeRef) {
-            bodyShapeRef->Release();
             bodyShapeRef = {};
         }
     }
