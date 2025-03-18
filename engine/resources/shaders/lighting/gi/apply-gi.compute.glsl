@@ -1,4 +1,5 @@
 // Removes all cells from the grid, to start a new frame
+#include <lighting/gi/types.glsl>
 
 #extension GL_EXT_debug_printf : enable
 #extension GL_EXT_buffer_reference2 : enable
@@ -16,13 +17,6 @@ layout (local_size_x = LOCAL_SIZE) in;
 layout (local_size_y = LOCAL_SIZE) in;
 
 layout(set = 1, binding = 0) uniform writeonly image2D outputImage;
-
-struct ScreenProbe {
-    ivec3 radiance;
-    uint sampleCount;
-    vec3 worldPos;
-    vec3 normal;
-};
 
 layout(set = 1, binding = 1, scalar) buffer ScreenProbes {
     ScreenProbe[] probes;

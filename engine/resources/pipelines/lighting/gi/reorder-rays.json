@@ -2,7 +2,7 @@
   "type": "compute",
   "computeShader": {
     "file": "resources/shaders/lighting/gi/update-cells.compute.glsl",
-    "entry_point": "traceRays"
+    "entry_point": "reorderSpawnedRays"
   },
   "constants": {
     "LocalSizeX": 32,

@@ -5,7 +5,8 @@
     "entry_point": "spawnScreenProbes"
   },
   "constants": {
-    "LocalSize": 8
+    "LocalSizeX": 8,
+    "LocalSizeY": 8
   },
   "descriptorSets": [
     {

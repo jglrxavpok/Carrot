@@ -361,19 +361,30 @@ namespace Carrot::Render {
         struct GIUpdateData {
             GIData gi;
             FrameResource screenProbes;
+            FrameResource spawnedProbes;
+            FrameResource emptyProbes;
+            FrameResource reprojectedProbes;
             FrameResource spawnedRays;
             PassData::GBuffer gbuffer;
+
+            void writeProbeData(Render::GraphBuilder& graph, const GIUpdateData& other) {
+                screenProbes = graph.write(other.screenProbes, {}, {});
+                spawnedProbes = graph.write(other.spawnedProbes, {}, {});
+                emptyProbes = graph.write(other.emptyProbes, {}, {});
+                reprojectedProbes = graph.write(other.reprojectedProbes, {}, {});
+                spawnedRays = graph.write(other.spawnedRays, {}, {});
+            }
         };
 
         static constexpr i32 ProbeScreenSize = 8; // how many pixels a screen probe covers in one direction
         struct ScreenProbe {
-            glm::ivec3 storedRadiance;
-            u32 sampleCount;
+            glm::ivec3 radiance;
             glm::vec3 worldPos;
             glm::vec3 normal;
+            glm::ivec2 bestPixel;
+            u32 sampleCount;
         };
         struct SpawnedRay {
-            glm::ivec2 screenPixelPos;
             std::uint32_t probeIndex;
         };
 
@@ -420,6 +431,16 @@ namespace Carrot::Render {
         };
 
         static constexpr i32 MaxRaysPerProbe = 20;
+
+        auto bindGIRayBuffers = [](Carrot::Pipeline& pipeline, const GIUpdateData& data, const Render::Graph& graph, const Render::Context& context) {
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameCount).view, 1, 0);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.screenProbes, context.frameCount-1).view, 1, 1);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedProbes, context.frameCount).view, 1, 2);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.emptyProbes, context.frameCount).view, 1, 3);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.reprojectedProbes, context.frameCount).view, 1, 4);
+            context.renderer.bindBuffer(pipeline, context, graph.getBuffer(data.spawnedRays, context.frameCount).view, 1, 5);
+        };
+
         auto spawnScreenProbes = graph.addPass<GIUpdateData>("spawn-screen-probes",
             [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 // TODO: buffers with size based on size of framebuffer?
@@ -429,13 +450,17 @@ namespace Carrot::Render {
                 const i32 probesCountX = (w+ProbeScreenSize-1) / ProbeScreenSize;
                 const i32 probesCountY = (h+ProbeScreenSize-1) / ProbeScreenSize;
                 data.gi.hashGrid = HashGrid::write(graph, decayGICells.getData().hashGrid);
-                data.screenProbes = graph.createBuffer("screen-probes", probesCountX * probesCountY * sizeof(ScreenProbe), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
-                data.spawnedRays = graph.createBuffer("spawned-rays", sizeof(std::uint32_t) + probesCountX * probesCountY * MaxRaysPerProbe * sizeof(SpawnedRay), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                const i32 probeCount = probesCountX * probesCountY;
+                data.screenProbes = graph.createBuffer("screen-probes", probeCount * sizeof(ScreenProbe), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.spawnedProbes = graph.createBuffer("spawned-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.emptyProbes = graph.createBuffer("empty-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.reprojectedProbes = graph.createBuffer("reprojected-probes", sizeof(u32) + probeCount * sizeof(u32), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
+                data.spawnedRays = graph.createBuffer("spawned-rays", sizeof(u32) + probeCount * MaxRaysPerProbe * sizeof(SpawnedRay), vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, true);
                 graph.reuseBufferAcrossFrames(data.screenProbes, 1); // need previous frame
 
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);
             },
-            [preparePushConstant, bindBaseGIUpdateInputs](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
+            [preparePushConstant, bindBaseGIUpdateInputs, bindGIRayBuffers](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Spawn GI screen probes");
 
                 if (frame.frameCount == 0) {
@@ -446,9 +471,7 @@ namespace Carrot::Render {
 
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, data, pass.getGraph(), frame, *pipeline, cmds);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameCount).view, 1, 0);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameCount-1).view, 1, 1);
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedRays, frame.frameCount).view, 1, 2);
+                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t groupX = (block.frameWidth+ProbeScreenSize-1)/ProbeScreenSize;
@@ -456,33 +479,36 @@ namespace Carrot::Render {
                 cmds.dispatch(groupX, groupY, 1);
             });
 
-        auto traceGIRays = graph.addPass<GIUpdateData>(Carrot::sprintf("trace-gi-rays"),
+        auto addDispatchPass = [&](const Render::Pass<GIUpdateData>& previous, const std::string& pipelineName, i64 countMultiplier) {
+            return graph.addPass<GIUpdateData>(Carrot::sprintf("gi-%s", pipelineName.c_str()),
             [&](GraphBuilder& graph, Pass<GIUpdateData>& pass, GIUpdateData& data) {
                 pass.rasterized = false;
-                data.spawnedRays = graph.write(spawnScreenProbes.getData().spawnedRays, {}, {});
-                data.screenProbes = graph.write(spawnScreenProbes.getData().screenProbes, {}, {});
+                data.writeProbeData(graph, previous.getData());
                 data.gbuffer.readFrom(graph, opaqueData, vk::ImageLayout::eGeneral);
-                data.gi.hashGrid = HashGrid::write(graph, spawnScreenProbes.getData().gi.hashGrid);
+                data.gi.hashGrid = HashGrid::write(graph, previous.getData().gi.hashGrid);
             },
-            [bindBaseGIUpdateInputs, framebufferSize, preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
-                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Update GI cells");
+            [countMultiplier, bindBaseGIUpdateInputs, bindGIRayBuffers, framebufferSize, preparePushConstant, pipelineFullName = Carrot::sprintf("lighting/gi/%s", pipelineName.c_str())]
+            (const Render::CompiledPass& pass, const Render::Context& frame, const GIUpdateData& data, vk::CommandBuffer& cmds) {
+                TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "GI pass");
 
-                auto pipeline = frame.renderer.getOrCreatePipeline("lighting/gi/trace-rays", (std::uint64_t)&pass);
+                auto pipeline = frame.renderer.getOrCreatePipeline(pipelineFullName, (std::uint64_t)&pass);
 
                 PushConstantRT block;
                 bindBaseGIUpdateInputs(block, data, pass.getGraph(), frame, *pipeline, cmds);
-
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameCount).view, 1, 0);
-                // 1-1 not used
-                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedRays, frame.frameCount).view, 1, 2);
+                bindGIRayBuffers(*pipeline, data, pass.getGraph(), frame);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const i64 probesCountX = (block.frameWidth+ProbeScreenSize-1) / ProbeScreenSize;
                 const i64 probesCountY = (block.frameHeight+ProbeScreenSize-1) / ProbeScreenSize;
-                const i64 spawnedRayCount = MaxRaysPerProbe * probesCountX * probesCountY;
+                const i64 spawnedRayCount = countMultiplier * probesCountX * probesCountY;
                 const i64 groups = (spawnedRayCount + 31) / 32;
                 cmds.dispatch(groups, 1, 1);
             });
+        };
+
+        auto reorderSpawnedRays = addDispatchPass(spawnScreenProbes, "reorder-rays", 1);
+        auto spawnGIRays = addDispatchPass(reorderSpawnedRays, "spawn-rays", 1);
+        auto traceGIRays = addDispatchPass(spawnGIRays, "trace-rays", MaxRaysPerProbe);
 
         auto& lightingPass = graph.addPass<Carrot::Render::PassData::LightingResources>("lighting",
                                                                  [&](GraphBuilder& graph, Pass<Carrot::Render::PassData::LightingResources>& pass, Carrot::Render::PassData::LightingResources& resolveData)
@@ -662,6 +688,9 @@ namespace Carrot::Render {
             FrameResource output;
 
             FrameResource screenProbes;
+            FrameResource spawnedProbes;
+            FrameResource emptyProbes;
+            FrameResource reprojectedProbes;
         };
         auto& debugGICells = graph.addPass<GIDebug>("debug-gi",
             [&](GraphBuilder& graph, Pass<GIDebug>& pass, GIDebug& data) {
@@ -670,6 +699,9 @@ namespace Carrot::Render {
                 data.gi.hashGrid = HashGrid::write(graph, traceGIRays.getData().gi.hashGrid);
                 data.output = graph.createStorageTarget("gi-debug", vk::Format::eR8G8B8A8Unorm, framebufferSize, vk::ImageLayout::eGeneral);
                 data.screenProbes = graph.write(traceGIRays.getData().screenProbes, {}, {});
+                data.spawnedProbes = graph.write(traceGIRays.getData().spawnedProbes, {}, {});
+                data.emptyProbes = graph.write(traceGIRays.getData().emptyProbes, {}, {});
+                data.reprojectedProbes = graph.write(traceGIRays.getData().reprojectedProbes, {}, {});
             },
             [preparePushConstant](const Render::CompiledPass& pass, const Render::Context& frame, const GIDebug& data, vk::CommandBuffer& cmds) {
                 TracyVkZone(GetEngine().tracyCtx[frame.swapchainIndex], cmds, "Debug GI cells");
@@ -685,6 +717,9 @@ namespace Carrot::Render {
                 frame.renderer.bindStorageImage(*pipeline, frame, outputTexture, 1, 0, vk::ImageAspectFlagBits::eColor, vk::ImageViewType::e2D, 0, vk::ImageLayout::eGeneral);
                 data.gbuffer.bindInputs(*pipeline, frame, pass.getGraph(), 2, vk::ImageLayout::eShaderReadOnlyOptimal);
                 frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.screenProbes, frame.frameCount).view, 1, 1);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.spawnedProbes, frame.frameCount).view, 1, 2);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.emptyProbes, frame.frameCount).view, 1, 3);
+                frame.renderer.bindBuffer(*pipeline, frame, pass.getGraph().getBuffer(data.reprojectedProbes, frame.frameCount).view, 1, 4);
                 pipeline->bind({}, frame, cmds, vk::PipelineBindPoint::eCompute);
 
                 const std::size_t localSize = 32;

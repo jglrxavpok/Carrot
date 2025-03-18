@@ -9,6 +9,7 @@ MATERIAL_SYSTEM_SET(1)
 const uint MAX_REUSE = 5;
 const uint LOCAL_SIZE = 256;
 layout (local_size_x = LOCAL_SIZE) in;
+layout (local_size_y = 1) in;
 
 layout(push_constant) uniform PushConstant {
     uint maxCellIndex;

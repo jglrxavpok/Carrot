@@ -1,11 +1,13 @@
+#include <lighting/gi/types.glsl>
 #define HARDWARE_SUPPORTS_RAY_TRACING 1 // TODO
 
 // Trace rays to update world-space probes
 
-layout(constant_id = 0) const uint LocalSize = 32;
+layout(constant_id = 0) const uint LocalSizeX = 32;
+layout(constant_id = 1) const uint LocalSizeY = 1;
 const uint ScreenProbeSize = 8;
 layout (local_size_x_id = 0) in;
-layout (local_size_y_id = 0) in;
+layout (local_size_y_id = 1) in;
 
 layout(push_constant) uniform PushConstant {
     uint frameCount;
@@ -49,19 +51,6 @@ DEFINE_CAMERA_SET(5)
 
 #include <lighting/rt.include.glsl>
 
-struct ScreenProbe {
-    ivec3 radiance;
-    uint sampleCount;
-    vec3 worldPos;
-    vec3 normal;
-};
-
-// position, in screen space of the pixel that will spawn the rays used to fill the GI grid
-struct SpawnedRay {
-    ivec2 screenPixelPos;
-    uint probeIndex;
-};
-
 layout(set = 1, binding = 0, scalar) buffer ScreenProbes {
     ScreenProbe[] probes;
 };
@@ -69,7 +58,20 @@ layout(set = 1, binding = 1, scalar) readonly buffer PreviousFrameScreenProbes {
     ScreenProbe[] previousFrameProbes;
 };
 
-layout(set = 1, binding = 2, scalar) buffer SpawnedRays {
+layout(set = 1, binding = 2, scalar) buffer SpawnedProbes {
+    uint spawnedProbeCount;
+    uint[] spawnedProbes;
+};
+
+layout(set = 1, binding = 3, scalar) buffer EmptyProbes {
+    uint count;
+    uint[] indices; // index into 'spawnedProbes'
+} emptyProbes;
+layout(set = 1, binding = 4, scalar) buffer ReprojectedProbes {
+    uint count;
+    uint[] indices; // index into 'spawnedProbes'
+} reprojectedProbes;
+layout(set = 1, binding = 5, scalar) buffer SpawnedRays {
     uint spawnedRayCount;
     SpawnedRay[] spawnedRays;
 };
@@ -84,7 +86,6 @@ shared uint reprojectionScore;
 const float probeCellSize = 1.0f;
 
 uint getReprojectedProbeIndex(vec2 uv, vec2 motionVector) {
-    //return 0xFFFFu;
     const uint probesPerWidth = (push.frameWidth+ScreenProbeSize-1) / ScreenProbeSize;
 
     // reproject temporally, and check if pixel is reusable
@@ -145,21 +146,26 @@ void spawnScreenProbes() {
         return;
     }
     uint reusedPixel = reprojectionScore & 0xFFFFu;
-    ivec2 startPixel;
+    const uint spawnedIndex = atomicAdd(spawnedProbeCount, 1);
+    spawnedProbes[spawnedIndex] = probeIndex;
+
     if(reusedPixel == 0xFFFFu) {
         // no reuse
-        startPixel = pixel;
         probes[probeIndex].worldPos = worldPosCurrentPixel;
         probes[probeIndex].normal = normalCurrentPixel;
         probes[probeIndex].radiance = ivec3(0);
         probes[probeIndex].sampleCount = 0;
+        probes[probeIndex].bestPixel = pixel;
+
+        const uint emptyIndex = atomicAdd(emptyProbes.count, 1);
+        //emptyProbes.indices[emptyIndex] = spawnedIndex;
+        emptyProbes.indices[emptyIndex] = probeIndex;
     } else {
         // reuse
         const ivec2 screenTileStart = ivec2(gl_WorkGroupID.xy * uvec2(ScreenProbeSize));
         const uint localPixel = reprojectionScore & 0xFFFFu;
         const ivec2 posInTile = ivec2(localPixel % ScreenProbeSize, localPixel / ScreenProbeSize);
         const ivec2 reprojectedPixelPos = screenTileStart + posInTile;
-        startPixel = reprojectedPixelPos;
         const vec2 reprojectedUV = (vec2(reprojectedPixelPos) + vec2(0.5)) / size;
         const GBuffer reprojectedGBuffer = unpackGBuffer(reprojectedUV);
 
@@ -170,19 +176,47 @@ void spawnScreenProbes() {
         probes[probeIndex].sampleCount = reprojectedProbe.sampleCount;
         probes[probeIndex].worldPos = (cbo.inverseView * vec4(reprojectedGBuffer.viewPosition, 1)).xyz;
         probes[probeIndex].normal = inverseNormalView * reprojectedGBuffer.viewTBN[2];
-    }
+        probes[probeIndex].bestPixel = reprojectedPixelPos;
 
-    const uint MAX_RAYS_PER_PROBE = 5;
-    uint spawnedRayIndex = atomicAdd(spawnedRayCount, MAX_RAYS_PER_PROBE);
-    for(int i = 0; i < MAX_RAYS_PER_PROBE; i++) {
-        spawnedRays[spawnedRayIndex+i].probeIndex = probeIndex;
-        spawnedRays[spawnedRayIndex+i].screenPixelPos = startPixel;
+        const uint reprojectedIndex = atomicAdd(reprojectedProbes.count, 1);
+        reprojectedProbes.indices[reprojectedIndex] = spawnedIndex;
     }
 }
 
 // KERNEL
 void reorderSpawnedRays() {
-    // TODO
+    // bound checks
+    if(reprojectedProbes.count == 0) {
+        return;
+    }
+
+    const uint emptyProbeIndex = gl_GlobalInvocationID.x;
+    if(emptyProbeIndex >= emptyProbes.count) {
+        return;
+    }
+
+    uint probeIndex = emptyProbes.indices[emptyProbeIndex];
+    // pick a reprojected probe to steal from
+    uint indexToSteal = emptyProbeIndex % reprojectedProbes.count;
+
+    // change which probe index the reprojected probe points to, and make it point to our empty probe
+    atomicExchange(spawnedProbes[reprojectedProbes.indices[indexToSteal]], probeIndex);
+}
+
+// KERNEL
+void spawnRays() {
+    const uint MaxRaysPerProbe = 15;
+    const uint spawnedProbeIndex = gl_GlobalInvocationID.x;
+
+    if(spawnedProbeIndex >= spawnedProbeCount) {
+        return;
+    }
+
+    const uint startRayIndex = atomicAdd(spawnedRayCount, MaxRaysPerProbe);
+    const uint probeIndex = spawnedProbes[spawnedProbeIndex];
+    for(int i = 0; i < MaxRaysPerProbe; i++) {
+        spawnedRays[i + startRayIndex].probeIndex = probeIndex;
+    }
 }
 
 // KERNEL
@@ -192,10 +226,10 @@ void traceRays() {
     if(rayIndex >= spawnedRayCount) {
         return;
     }
-    ivec2 pixel = spawnedRays[rayIndex].screenPixelPos;
-    uint probeIndex = spawnedRays[rayIndex].probeIndex;
-
+    const uint probeIndex = spawnedRays[rayIndex].probeIndex;
+    const ivec2 pixel = probes[probeIndex].bestPixel;
     uvec2 size = uvec2(push.frameWidth, push.frameHeight);
+
     if(pixel.x >= size.x || pixel.y >= size.y) {
         return;
     }
