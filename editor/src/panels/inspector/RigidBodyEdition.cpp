@@ -393,6 +393,10 @@ namespace Peeler {
             validIDs
         );
 
+        multiEditField(edition, "Apply rotation", components, +[](Carrot::ECS::PhysicsCharacterComponent& c) -> bool& {
+            return c.applyRotation;
+        });
+
         if(components.size() == 1) {
             auto& component = components[0];
             bool modified = drawColliderUI(edition, component->getEntity(), component->character.getCollider(), -1, nullptr);

@@ -17,6 +17,7 @@
 #include "engine/render/VulkanRenderer.h"
 #include <core/utils/TOML.h>
 #include <engine/ecs/components/ErrorComponent.h>
+#include <engine/ecs/components/MissingComponent.h>
 
 namespace Carrot {
     Scene::~Scene() {
@@ -383,6 +384,10 @@ namespace Carrot {
                                 continue;
                             }
                             Carrot::DocumentElement doc = loadDocumentFromVFS(childPath);
+                            if (!componentLib.has(componentName)) {
+                                self.addComponent(std::make_unique<ECS::MissingComponent>(self, componentName, doc));
+                                continue;
+                            }
                             if(pPrefab != nullptr) {
                                 if (!pPrefab->hasChildWithID(prefabChildID)) {
                                     auto pErrorComponent = std::make_unique<ECS::ErrorComponent>(self);

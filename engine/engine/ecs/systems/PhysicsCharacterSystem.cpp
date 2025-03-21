@@ -24,11 +24,16 @@ namespace Carrot::ECS {
     }
 
     void PhysicsCharacterSystem::postPhysics() {
-        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
+        parallelForEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
             const bool inWorld = characterComp.character.isInWorld();
             if(inWorld) {
                 characterComp.character.postPhysics();
-                transformComp.setGlobalTransform(characterComp.character.getWorldTransform());
+
+                Math::Transform characterWorldTransform = characterComp.character.getWorldTransform();
+                if (!characterComp.applyRotation) {
+                    characterWorldTransform.rotation = transformComp.computeFinalOrientation();
+                }
+                transformComp.setGlobalTransform(characterWorldTransform);
             }
         });
     }

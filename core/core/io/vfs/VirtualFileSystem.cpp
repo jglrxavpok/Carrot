@@ -264,6 +264,13 @@ namespace Carrot::IO {
         // end of current root
         if (currentPoint == std::filesystem::directory_iterator{}) {
             rootIndex++;
+
+            if (rootIndex >= pRoots->size()) {
+                setEnd();
+            }
+
+            step();
+            return;
         }
 
         if (rootIndex >= pRoots->size()) {

@@ -33,6 +33,9 @@ namespace Carrot::Scripting {
         CSField* EntityUserPointerField = nullptr;
         CSClass* EntityWithComponentsClass = nullptr;
 
+        CSClass* PrefabClass = nullptr;
+        CSField* PrefabPointerField = nullptr;
+
         CSClass* CarrotObjectClass = nullptr;
         CSField* CarrotObjectHandleField = nullptr;
         CSClass* CarrotReferenceClass = nullptr;
@@ -166,7 +169,8 @@ namespace Carrot::Scripting {
 
         static ECS::Entity convertToEntity(MonoObject* entityMonoObj);
 
-        static std::shared_ptr<Scripting::CSObject> entityToCSObject(ECS::Entity& e);
+        static std::shared_ptr<Scripting::CSObject> entityToCSObject(ECS::Entity e);
+        static std::shared_ptr<Scripting::CSObject> prefabToCSObject(ECS::Prefab& e);
 
         static MonoObject* GetComponent(MonoObject* entityMonoObj, MonoString* namespaceStr, MonoString* classStr);
 
@@ -258,6 +262,9 @@ namespace Carrot::Scripting {
         CSClass* getHardcodedComponentClass(const ComponentID& componentID);
 
     private:
+        void addPrefabBindingTypes();
+        void addPrefabBindingMethods();
+
         void loadEngineAssembly();
 
         // used when triggering a game dll load for the first time: remove engine dll from old app domain. It will be reloaded in the new domain after

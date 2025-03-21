@@ -25,6 +25,9 @@ namespace Carrot::ECS {
             }
             character.setCollisionLayer(collisionLayer);
         }
+        if (doc.contains("apply_rotation")) {
+            applyRotation = doc["apply_rotation"].getAsBool();
+        }
     }
 
     Carrot::DocumentElement PhysicsCharacterComponent::serialise() const {
@@ -32,12 +35,14 @@ namespace Carrot::ECS {
         obj["mass"] = character.getMass();
         obj["collider"] = character.getCollider().serialise();
         obj["layer"] = GetPhysics().getCollisionLayers().getLayer(character.getCollisionLayer()).name;
+        obj["apply_rotation"] = applyRotation;
         return obj;
     }
 
     std::unique_ptr <Carrot::ECS::Component> PhysicsCharacterComponent::duplicate(const Carrot::ECS::Entity& newOwner) const {
         auto result = std::make_unique<PhysicsCharacterComponent>(newOwner);
         result->character = character;
+        result->applyRotation = applyRotation;
         return result;
     }
 

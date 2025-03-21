@@ -53,6 +53,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/ErrorComponent.cpp
         ${EngineRoot}ecs/components/LightComponent.cpp
         ${EngineRoot}ecs/components/LuaScriptComponent.cpp
+        ${EngineRoot}ecs/components/MissingComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/NavMeshComponent.cpp
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
@@ -156,6 +157,8 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/CSharpBindings.cpp
         ${EngineRoot}scripting/CSharpReflectionHelper.cpp
         ${EngineRoot}scripting/LuaScript.cpp
+
+        ${EngineRoot}scripting/bindings/PrefabBindings.cpp
 
         ${EngineRoot}scripting/bindings/all.cpp
         ${EngineRoot}scripting/bindings/glm.cpp

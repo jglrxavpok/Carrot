@@ -9,6 +9,7 @@ namespace Carrot::ECS {
     public:
         Carrot::Physics::Character character;
         bool firstFrame = true;
+        bool applyRotation = true; // copy rotation from physics character to transform
 
         explicit PhysicsCharacterComponent(Carrot::ECS::Entity entity);
 

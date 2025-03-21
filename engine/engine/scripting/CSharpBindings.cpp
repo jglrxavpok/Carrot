@@ -100,6 +100,8 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::Hide", HideEntity);
         mono_add_internal_call("Carrot.Entity::Show", ShowEntity);
 
+        addPrefabBindingMethods();
+
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalScale", _GetLocalScale);
@@ -503,6 +505,8 @@ namespace Carrot::Scripting {
             LOAD_FIELD(RayCastSettings, IgnoreLayers);
         }
 
+        addPrefabBindingTypes();
+
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
         SystemTypeFullNameProperty = typeClass->findProperty("FullName");
@@ -633,7 +637,7 @@ namespace Carrot::Scripting {
         return pWorld->wrap(entityID);
     }
 
-    std::shared_ptr<Scripting::CSObject> CSharpBindings::entityToCSObject(ECS::Entity& e) {
+    std::shared_ptr<Scripting::CSObject> CSharpBindings::entityToCSObject(ECS::Entity e) {
         ECS::EntityID uuid = e.getID();
         ECS::World* worldPtr = &e.getWorld();
         void* args[2] = {

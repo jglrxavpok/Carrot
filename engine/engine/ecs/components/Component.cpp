@@ -37,6 +37,10 @@ namespace Carrot::ECS {
         return storage.getAllIDs();
     }
 
+    bool ComponentLibrary::has(const Storage::ID& id) const {
+        return storage.has(id);
+    }
+
     void ComponentLibrary::registerBindings(sol::state& d, sol::usertype<Entity>& u) {
         for(const auto& f : usertypeDefinitionSuppliers) {
             f(d);

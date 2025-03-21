@@ -104,6 +104,8 @@ namespace Carrot::ECS {
         [[nodiscard]] std::unique_ptr<Component> create(const Storage::ID& id, const Entity& entity) const;
         [[nodiscard]] std::vector<std::string> getAllIDs() const;
 
+        bool has(const Storage::ID& id) const;
+
         void registerBindings(sol::state& d, sol::usertype<Entity>& uEntity);
 
         void remove(const Storage::ID& id);
