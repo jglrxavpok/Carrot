@@ -25,7 +25,7 @@ namespace Carrot::ECS {
             auto result = std::make_unique<RigidBodyComponent>(newOwner);
             result->rigidbody = rigidbody;
             result->wasActive = wasActive;
-            result->firstTick = firstTick;
+            result->firstTick = true;
             return result;
         }
 
