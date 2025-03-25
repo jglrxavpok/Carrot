@@ -7,12 +7,14 @@
 #include <unordered_map>
 #include <thread>
 #include <mutex>
+#include <functional>
+#include <core/async/Locks.h>
 
 namespace Carrot {
     template<typename T>
     class ThreadLocal {
     private:
-        std::mutex valueGuard;
+        Async::SpinLock valueGuard;
         std::unordered_map<std::thread::id, T> value;
         std::function<T()> initializer = []() { return T{}; };
 
@@ -26,15 +28,10 @@ namespace Carrot {
 
         T& get() {
             auto id = std::this_thread::get_id();
-            auto iterator = value.find(id);
-            if(iterator == value.end()) {
-                std::lock_guard lk(valueGuard);
-                {
-                    auto it = value.find(id);
-                    if(it == value.end()) {
-                        value[id] = initializer();
-                    }
-                }
+            Async::LockGuard lk(valueGuard);
+            auto it = value.find(id);
+            if(it == value.end()) {
+                value[id] = initializer();
             }
             return value.at(id);
         }

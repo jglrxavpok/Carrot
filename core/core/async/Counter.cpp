@@ -36,7 +36,7 @@ namespace Carrot::Async {
         verify(currentValue > 0, "Trying to decrement counter at 0");
 
         if(currentValue == 1) {
-            sleepCondition.notify_one();
+            sleepCondition.notify_all();
             if(toContinue) {
                 toContinue();
             }

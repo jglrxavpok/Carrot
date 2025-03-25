@@ -177,6 +177,8 @@ namespace Carrot {
 
         TaskQueue reusableTaskData;
         std::atomic<bool> running = true;
+
+        // counts must be the same below
         std::vector<std::thread> parallelThreads;
 
         friend class Engine;

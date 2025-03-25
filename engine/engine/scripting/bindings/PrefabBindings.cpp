@@ -37,7 +37,7 @@ namespace Carrot::Scripting {
         char* prefabPath = mono_string_to_utf8(path);
         CLEANUP(mono_free(prefabPath));
 
-        auto pPrefab = GetAssetServer().blockingLoadPrefab(prefabPath);
+        auto pPrefab = GetAssetServer().loadPrefab(prefabPath);
         return instance().prefabToCSObject(*pPrefab)->toMono();
     }
 

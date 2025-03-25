@@ -1275,17 +1275,17 @@ namespace Peeler {
 
     void Application::tick(double frameTime) {
         if(wantsToLoadProject && projectToLoad != EmptyProject) {
-            if (loadStateMachineReady.isIdle()) {
+            /*if (loadStateMachineReady.isIdle()) {
                 loadStateMachineReady.increment();
-                projectLoadStateMachine = std::make_unique<Cider::Fiber>([this](Cider::FiberHandle& f) {
-                    if (deferredLoad(f)) {
+                projectLoadStateMachine = std::make_unique<Cider::Fiber>([this](Cider::FiberHandle& f) {*/
+                    if (deferredLoad(*(Cider::FiberHandle*)nullptr)) {
                         wantsToLoadProject = false;
                         projectToLoad = std::filesystem::path{};
                     }
-                    loadStateMachineReady.decrement();
+                    /*loadStateMachineReady.decrement();
                 }, loadStateMachineStack.asSpan());
 
-            }
+            }*/
         }
         if(!loadStateMachineReady.isIdle()) {
             return;
@@ -1568,6 +1568,7 @@ namespace Peeler {
             }
         }
 
+        currentScene.clear(); // clear all references to C# code
         reloadGameAssembly();
         settings.currentProject = projectToLoad;
         settings.addToRecentProjects(projectToLoad);

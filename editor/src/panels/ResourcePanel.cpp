@@ -389,7 +389,7 @@ namespace Peeler {
 
     void ResourcePanel::fillPrefabContextPopup(const Carrot::IO::VFS::Path& vfsPath) {
         if(ImGui::MenuItem("Add to scene as prefab")) {
-            auto pPrefab = GetAssetServer().blockingLoadPrefab(vfsPath);
+            auto pPrefab = GetAssetServer().loadPrefab(vfsPath);
             if(pPrefab) {
                 pPrefab->instantiate(app.currentScene.world);
             } else {

@@ -6,6 +6,9 @@
 
 #include <mono/utils/mono-forward.h>
 
+#include "core/memory/ThreadLocal.hpp"
+#include "mono/metadata/object.h"
+
 namespace Carrot::Scripting {
 
     class CSAppDomain {
@@ -13,9 +16,17 @@ namespace Carrot::Scripting {
         explicit CSAppDomain(MonoDomain* domain);
         ~CSAppDomain();
 
+        void setCurrent();
+        void registerCurrentThread();
+        void unregisterCurrentThread();
+        void prepareForUnload();
+        MonoThread* getCurrentThread();
+
         MonoDomain* toMono() const;
 
     private:
+        ThreadLocal<MonoThread*> pMonoThread;
+        bool preparedForUnload = false;
         MonoDomain* domain = nullptr;
     };
 

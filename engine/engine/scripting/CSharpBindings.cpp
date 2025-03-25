@@ -36,6 +36,9 @@
 #include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
 
+#include "mono/metadata/mono-gc.h"
+#include "mono/metadata/threads.h"
+
 namespace Carrot::Scripting {
     static thread_local std::stack<TracyCZoneCtx> ProfilingZones_TLS;
 
@@ -277,6 +280,7 @@ namespace Carrot::Scripting {
         GetCSharpScripting().unloadAssembly(std::move(gameModule));
         GetCSharpScripting().unloadAssembly(std::move(baseModule));
 
+        appDomain->prepareForUnload();
         appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
     }
 
@@ -418,6 +422,7 @@ namespace Carrot::Scripting {
     void CSharpBindings::loadEngineAssembly() {
         verify(!appDomain, "There is already an app domain, the flow is wrong: we should never have an already loaded game assembly at this point");
         appDomain = GetCSharpScripting().makeAppDomain(gameModuleLocation.toString());
+        appDomain->setCurrent();
 
         auto& engine = GetCSharpScripting();
         baseModule = engine.loadAssembly(getEngineDllPath(), nullptr, getEnginePdbPath());
@@ -559,10 +564,42 @@ namespace Carrot::Scripting {
         unloadCallbacks();
         verify(appDomain, "There is no app domain, the flow is wrong: we should have a loaded engine assembly at this point!")
 
+        appDomain->prepareForUnload();
         // clears the assemblies from the scripting engine
         GetCSharpScripting().unloadAssembly(std::move(baseModule));
+#if 0
+        // detach all worker threads from Mono
+        TaskScheduler& taskScheduler = GetTaskScheduler();
+        std::size_t assetLoadingThreadCount = taskScheduler.assetLoadingParallelismAmount();
+        std::size_t frameParallelThreadCount = taskScheduler.frameParallelWorkParallelismAmount();
+        // send as many *blocking* tasks as there are threads, to ensure they are all synchronised and each thread gets a single task
+        Async::Counter synchronisation;
+        synchronisation.increment(assetLoadingThreadCount + frameParallelThreadCount);
 
-        appDomain = nullptr; // clears the associated assembly & classes from Mono runtime
+        Async::Counter waitAllThreads;
+        TaskDescription desc;
+        desc.name = "Unregister thread for Mono";
+        desc.joiner = &waitAllThreads;
+        desc.task = [&](TaskHandle& task) {
+            synchronisation.decrement();
+            synchronisation.sleepWait(); // not a fiber suspend, by design: I want to ensure each thread get its own task.
+
+            // at this point, all tasks should have been dispatched
+            appDomain->unregisterCurrentThread();
+        };
+        for (i32 threadIndex = 0; threadIndex < assetLoadingThreadCount; threadIndex++) {
+            TaskDescription copiedDesc = desc;
+            taskScheduler.schedule(std::move(copiedDesc), TaskScheduler::AssetLoading);
+        }
+        for (i32 threadIndex = 0; threadIndex < frameParallelThreadCount; threadIndex++) {
+            TaskDescription copiedDesc = desc;
+            taskScheduler.schedule(std::move(copiedDesc), TaskScheduler::FrameParallelWork);
+        }
+        waitAllThreads.sleepWait();
+        //appDomain->unregisterCurrentThread();
+#endif
+
+        appDomain = nullptr;
     }
 
     //

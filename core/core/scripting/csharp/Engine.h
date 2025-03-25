@@ -42,6 +42,7 @@ namespace Carrot::Scripting {
         CSClass* findClass(const std::string& namespaceName, const std::string& className);
 
         MonoDomain* getRootDomain() const;
+        void setRootDomainAsMain();
 
     private:
         std::vector<std::weak_ptr<CSAssembly>> loadedAssemblies;

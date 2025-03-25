@@ -69,8 +69,7 @@ namespace Carrot {
         LoadTaskProc<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstanceTask(const Carrot::IO::VFS::Path& path);
         std::shared_ptr<Carrot::Render::AnimatedModel::Handle> loadAnimatedModelInstance(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
 
-        std::shared_ptr<ECS::Prefab> blockingLoadPrefab(const Carrot::IO::VFS::Path& path);
-        std::shared_ptr<ECS::Prefab> loadPrefab(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path);
+        std::shared_ptr<ECS::Prefab> loadPrefab(const Carrot::IO::VFS::Path& path);
 
         /// Intended for use by Prefab only: next call to loadPrefab with the VFS path will return the input prefab.
         /// This is meant to populate the asset server when a new prefab is created from the editor, so that further calls to loadPrefab find the new prefab.

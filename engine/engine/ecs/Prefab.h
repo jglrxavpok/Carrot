@@ -96,7 +96,7 @@ private:
     Prefab() = default;
 
     /// Loads this prefab from the given VFS path
-    void load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset);
+    void load(const Carrot::IO::VFS::Path& prefabAsset);
 
     /// Instantiate a copy of this prefab, EXCLUDING its children.
     /// This is repeatively used to recursively create all instances of the hierarchy, and *then* link everything (see instantiate)

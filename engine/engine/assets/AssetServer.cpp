@@ -226,25 +226,11 @@ namespace Carrot {
         return pAnimatedModel->requestHandle();
     }
 
-    std::shared_ptr<ECS::Prefab> AssetServer::blockingLoadPrefab(const Carrot::IO::VFS::Path& path) {
-        Async::Counter sync;
-        const std::string modelPath = path.toString();
-        std::shared_ptr<Carrot::ECS::Prefab> result;
-        GetTaskScheduler().schedule(TaskDescription {
-                .name = "Load prefab " + path.toString(),
-                .task = [&](TaskHandle& task) {
-                    result = loadPrefab(task, path);
-                },
-                .joiner = &sync,
-        }, TaskScheduler::AssetLoading);
-        sync.busyWait();
-        return result;
-    }
-
-    std::shared_ptr<ECS::Prefab> AssetServer::loadPrefab(Carrot::TaskHandle& currentTask, const Carrot::IO::VFS::Path& path) {
+    std::shared_ptr<ECS::Prefab> AssetServer::loadPrefab(const Carrot::IO::VFS::Path& path) {
+        // not on a fiber because this seems to deadlock/crash Mono and I can't figure it out -> TODO: continue research or replace Mono
         return prefabs.getOrCompute(path.toString(), [&]() {
             auto pPrefab = ECS::Prefab::makePrefab();
-            pPrefab->load(currentTask, path);
+            pPrefab->load(path);
             return pPrefab;
         });
     }

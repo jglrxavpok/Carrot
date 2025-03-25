@@ -37,7 +37,7 @@ namespace Carrot::ECS {
         return result;
     }
 
-    void Prefab::load(TaskHandle& task, const Carrot::IO::VFS::Path& prefabAsset) {
+    void Prefab::load(const Carrot::IO::VFS::Path& prefabAsset) {
         path = prefabAsset;
         internalScene.deserialise(prefabAsset);
         internalScene.world.tick(0.0f); // ensure entities are properly added

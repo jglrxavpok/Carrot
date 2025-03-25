@@ -74,6 +74,8 @@
 #include "engine/ecs/components/TextComponent.h"
 #include "engine/ecs/components/TransformComponent.h"
 #include "engine/ecs/systems/LuaSystems.h"
+#include "mono/jit/jit.h"
+#include "mono/metadata/threads.h"
 #include "utils/Time.h"
 
 #include "vr/VRInterface.h"
@@ -556,11 +558,11 @@ void Carrot::Engine::initWindow() {
 }
 
 void Carrot::Engine::initVulkan() {
+    initScripting();
     renderer.lateInit();
 
     createCameras();
 
-    initScripting();
     initECS();
     initGame();
 
@@ -570,6 +572,41 @@ void Carrot::Engine::initVulkan() {
 
 void Carrot::Engine::initScripting() {
     scriptingEngine = std::make_unique<Scripting::ScriptingEngine>();
+    if (false)
+    {
+        // attach all worker threads to Mono
+        TaskScheduler& taskScheduler = GetTaskScheduler();
+        std::size_t assetLoadingThreadCount = taskScheduler.assetLoadingParallelismAmount();
+        std::size_t frameParallelThreadCount = taskScheduler.frameParallelWorkParallelismAmount();
+        // send as many *blocking* tasks as there are threads, to ensure they are all synchronised and each thread gets a single task
+        Async::Counter synchronisation;
+        synchronisation.increment(assetLoadingThreadCount + frameParallelThreadCount);
+
+        Async::Counter waitAllThreads;
+        TaskDescription desc;
+        desc.name = "Register thread for Mono";
+        desc.joiner = &waitAllThreads;
+        desc.task = [&](TaskHandle& task) {
+            synchronisation.decrement();
+            synchronisation.sleepWait(); // not a fiber suspend, by design: I want to ensure each thread get its own task.
+
+            // at this point, all tasks should have been dispatched
+            //mono_thread_attach(scriptingEngine->getRootDomain());
+            mono_jit_thread_attach(scriptingEngine->getRootDomain());
+        };
+        for (i32 threadIndex = 0; threadIndex < assetLoadingThreadCount; threadIndex++) {
+            TaskDescription copiedDesc = desc;
+            taskScheduler.schedule(std::move(copiedDesc), TaskScheduler::AssetLoading);
+        }
+        for (i32 threadIndex = 0; threadIndex < frameParallelThreadCount; threadIndex++) {
+            TaskDescription copiedDesc = desc;
+            taskScheduler.schedule(std::move(copiedDesc), TaskScheduler::FrameParallelWork);
+        }
+        //mono_thread_attach(scriptingEngine->getRootDomain());
+       // mono_jit_thread_attach(scriptingEngine->getRootDomain());
+        waitAllThreads.sleepWait();
+    }
+
     csBindings = std::make_unique<Scripting::CSharpBindings>();
 
     sceneManager.initScripting();

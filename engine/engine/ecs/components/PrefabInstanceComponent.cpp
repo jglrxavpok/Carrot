@@ -11,7 +11,7 @@ namespace Carrot::ECS {
         if(doc.contains("prefab_path")) {
             auto& pathObj = doc["prefab_path"];
             Carrot::IO::VFS::Path vfsPath { pathObj.getAsString() };
-            prefab = GetAssetServer().blockingLoadPrefab(vfsPath);
+            prefab = GetAssetServer().loadPrefab(vfsPath);
             childID = Carrot::UUID::fromString(doc["child_id"].getAsString());
         }
     }

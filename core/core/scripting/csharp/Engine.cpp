@@ -59,6 +59,7 @@ namespace Carrot::Scripting {
     std::unique_ptr<CSAppDomain> ScriptingEngine::makeAppDomain(const std::string& domainName) {
         std::string nameCopy = domainName;
         MonoDomain* appDomain = mono_domain_create_appdomain(nameCopy.data(), nullptr);
+        mono_debug_domain_create(appDomain);
         return std::make_unique<CSAppDomain>(appDomain);
     }
 
@@ -89,6 +90,10 @@ namespace Carrot::Scripting {
         //mono_jit_cleanup(rootDomain);
     }
 
+    void ScriptingEngine::setRootDomainAsMain() {
+        mono_domain_set(rootDomain, false);
+    }
+
     std::shared_ptr<CSAssembly> ScriptingEngine::loadAssembly(const Carrot::IO::Resource& input,
                                                               MonoDomain* appDomain,
                                                               std::optional<Carrot::IO::Resource> symbolInput) {
@@ -110,7 +115,7 @@ namespace Carrot::Scripting {
             mono_debug_open_image_from_memory(image, pdbBytes.get(), symbolInput->getSize());
         }
 
-        CLEANUP(mono_image_close(image));
+        //CLEANUP(mono_image_close(image));
 
         const std::filesystem::path fullPath = GetVFS().resolve(IO::VFS::Path{ input.getName() });
         MonoAssembly* assembly = mono_assembly_load_from_full(image, input.getName().c_str(), &status, false);

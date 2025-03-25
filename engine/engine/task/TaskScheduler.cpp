@@ -128,9 +128,6 @@ namespace Carrot {
 
     TaskScheduler::~TaskScheduler() {
         running = false;
-        for(auto& [_, queue] : taskQueues) {
-            //queue.();
-        }
         for (auto& t : parallelThreads) {
             t.join();
         }
