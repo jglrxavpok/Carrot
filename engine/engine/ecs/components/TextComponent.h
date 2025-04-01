@@ -20,6 +20,9 @@ namespace Carrot::ECS {
         std::string_view getText() const;
         void setText(std::string_view text);
 
+        const glm::vec4& getColor() const;
+        void setColor(const glm::vec4& newColor);
+
     public:
         Carrot::DocumentElement serialise() const override;
 
@@ -40,6 +43,8 @@ namespace Carrot::ECS {
         bool needsRefresh = false;
         std::string text;
         std::string previousText;
+        glm::vec4 color{1.0f};
+        glm::vec4 previousColor{1.0f};
         std::filesystem::path fontPath;
         std::shared_ptr<Carrot::Render::Font> font;
         Carrot::Render::RenderableText renderableText;

@@ -21,6 +21,8 @@ namespace Carrot::ECS {
             return "PhysicsCharacter";
         }
 
+        void dispatchEventsPostPhysicsMainThread();
+
         std::unique_ptr<Carrot::ECS::Component> duplicate(const Carrot::ECS::Entity& newOwner) const override;
     };
 }

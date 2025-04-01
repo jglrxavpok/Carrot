@@ -5,6 +5,8 @@
 #pragma once
 
 namespace Carrot::Physics {
+    class BaseBody;
+
     struct BodyUserData {
         enum class Type {
             Rigidbody,
@@ -12,6 +14,6 @@ namespace Carrot::Physics {
         };
 
         Type type;
-        void* ptr;
+        BaseBody* ptr;
     };
 }

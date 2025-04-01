@@ -116,12 +116,9 @@ public:
     }
 
     void openScene(const std::string& sceneName) {
-        rapidjson::Document sceneDoc;
         try {
-            Carrot::IO::Resource sceneData = sceneName;
-            sceneDoc.Parse(sceneData.readText());
             scene.clear();
-            scene.deserialise(sceneDoc);
+            scene.deserialise(sceneName.c_str());
         } catch (std::exception& e) {
             Carrot::Log::error("Failed to open scene: %s", e.what());
             scene.clear();

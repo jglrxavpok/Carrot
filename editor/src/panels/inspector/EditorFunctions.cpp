@@ -225,6 +225,10 @@ namespace Peeler {
             +[](Carrot::ECS::TextComponent& c) { return c.getText(); },
             +[](Carrot::ECS::TextComponent& c, const std::string_view& v) { c.setText(v); },
             Helpers::Limits<std::string_view> { .multiline = true });
+
+        multiEditField(edition, "Color", components,
+            +[](Carrot::ECS::TextComponent& c) { return Helpers::RGBAColorWrapper(c.getColor()); },
+            +[](Carrot::ECS::TextComponent& c, const Helpers::RGBAColorWrapper& v) { c.setColor(v.rgba); });
     }
 
     void editNavMeshComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::NavMeshComponent*>& components) {

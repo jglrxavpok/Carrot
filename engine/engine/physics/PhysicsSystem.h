@@ -73,7 +73,7 @@ namespace Carrot::Physics {
 
     }
 
-    class PhysicsSystem {
+    class PhysicsSystem: public JPH::ContactListener {
     public:
         constexpr static double TimeStep = 1.0 / 60.0;
         static PhysicsSystem& getInstance();
@@ -127,6 +127,18 @@ namespace Carrot::Physics {
          */
         bool raycast(const RayCastSettings& settings, RaycastInfo& raycastInfo);
 
+    public:
+        JPH::SharedMutex* lockReadBody(const JPH::BodyID& bodyID);
+        JPH::SharedMutex* lockWriteBody(const JPH::BodyID& bodyID);
+
+        void unlockReadBody(JPH::SharedMutex* mutex);
+        void unlockWriteBody(JPH::SharedMutex* mutex);
+
+        // gets the body corresponding to the given bodyID, assuming a lock is already held on that body
+        JPH::Body* lockedGetBody(const JPH::BodyID& bodyID);
+
+    public: // ContactListener interface
+        void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override;
 
     private:
         explicit PhysicsSystem();
@@ -153,15 +165,6 @@ namespace Carrot::Physics {
         bool paused = false;
 
     private:
-        JPH::SharedMutex* lockReadBody(const JPH::BodyID& bodyID);
-        JPH::SharedMutex* lockWriteBody(const JPH::BodyID& bodyID);
-
-        void unlockReadBody(JPH::SharedMutex* mutex);
-        void unlockWriteBody(JPH::SharedMutex* mutex);
-
-        // gets the body corresponding to the given bodyID, assuming a lock is already held on that body
-        JPH::Body* lockedGetBody(const JPH::BodyID& bodyID);
-
         JPH::BodyID createRigidbody(const JPH::BodyCreationSettings& creationSettings);
         void destroyRigidbody(const JPH::BodyID& bodyID);
 
@@ -177,5 +180,6 @@ namespace Carrot::Physics {
 
         friend class Character;
         friend class RigidBody;
+        friend class BaseBody;
     };
 }

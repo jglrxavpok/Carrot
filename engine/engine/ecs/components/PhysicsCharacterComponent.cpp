@@ -46,4 +46,8 @@ namespace Carrot::ECS {
         return result;
     }
 
+    void PhysicsCharacterComponent::dispatchEventsPostPhysicsMainThread() {
+        character.dispatchEventsPostPhysicsMainThread();
+    }
+
 } // Carrot::ECS

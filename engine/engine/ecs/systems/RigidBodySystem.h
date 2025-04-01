@@ -15,6 +15,7 @@ namespace Carrot::ECS {
         explicit RigidBodySystem(const Carrot::DocumentElement& doc, World& world): RigidBodySystem(world) {}
 
         void tick(double dt) override;
+        void postPhysics() override;
 
         std::unique_ptr<System> duplicate(World& newOwner) const override;
 

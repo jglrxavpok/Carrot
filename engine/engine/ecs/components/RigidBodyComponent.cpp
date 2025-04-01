@@ -36,6 +36,12 @@ namespace Carrot::ECS {
             }
             rigidbody.setCollisionLayer(collisionLayer);
         }
+        if (doc.contains("friction")) {
+            rigidbody.setFriction(doc["friction"].getAsDouble());
+        }
+        if (doc.contains("linear_damping")) {
+            rigidbody.setLinearDamping(doc["linear_damping"].getAsDouble());
+        }
 
         for(const auto& colliderData : doc["colliders"].getAsArray()) {
             rigidbody.addColliderDirectly(Physics::Collider::load(colliderData));
@@ -51,6 +57,8 @@ namespace Carrot::ECS {
         obj["free_translation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getTranslationAxes());
         obj["free_rotation_axes"] = Carrot::DocumentHelpers::write(rigidbody.getRotationAxes());
         obj["layer"] = GetPhysics().getCollisionLayers().getLayer(rigidbody.getCollisionLayer()).name;
+        obj["friction"] = rigidbody.getFriction();
+        obj["linear_damping"] = rigidbody.getLinearDamping();
 
         Carrot::DocumentElement colliders{ DocumentType::Array };
         for(const auto& collider : rigidbody.getColliders()) {
@@ -97,6 +105,18 @@ namespace Carrot::ECS {
     void RigidBodyComponent::unload() {
         wasActive = rigidbody.isActive();
         rigidbody.setActive(false);
+    }
+
+    void RigidBodyComponent::dispatchEventsPostPhysicsMainThread() {
+        rigidbody.dispatchEventsPostPhysicsMainThread();
+    }
+
+    bool& RigidBodyComponent::getRegisteredForContactsRef() {
+        return registeredForContacts;
+    }
+
+    std::shared_ptr<Scripting::CSObject>& RigidBodyComponent::getCallbacksHolder() {
+        return callbacksHolder;
     }
 
 }

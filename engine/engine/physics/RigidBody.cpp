@@ -11,59 +11,8 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 
 namespace Carrot::Physics {
-    RigidBody::BodyAccessWrite::BodyAccessWrite(const JPH::BodyID& bodyID) {
-        if(!bodyID.IsInvalid()) {
-            mutex = GetPhysics().lockWriteBody(bodyID);
-            body = GetPhysics().lockedGetBody(bodyID);
-            verify(body != nullptr, "Invalid bodyID");
-        }
-    }
-
-    RigidBody::BodyAccessWrite::~BodyAccessWrite() {
-        if(mutex) {
-            GetPhysics().unlockWriteBody(mutex);
-        }
-    }
-
-    JPH::Body* RigidBody::BodyAccessWrite::operator->() {
-        return body;
-    }
-
-    RigidBody::BodyAccessWrite::operator bool() {
-        return body != nullptr;
-    }
-
-    JPH::Body* RigidBody::BodyAccessWrite::get() {
-        return body;
-    }
-
-    RigidBody::BodyAccessRead::BodyAccessRead(const JPH::BodyID& bodyID) {
-        if(!bodyID.IsInvalid()) {
-            mutex = GetPhysics().lockReadBody(bodyID);
-            body = GetPhysics().lockedGetBody(bodyID);
-            verify(body != nullptr, "Invalid bodyID");
-        }
-    }
-
-    RigidBody::BodyAccessRead::~BodyAccessRead() {
-        if(mutex) {
-            GetPhysics().unlockReadBody(mutex);
-        }
-    }
-
-    const JPH::Body* RigidBody::BodyAccessRead::operator->() {
-        return body;
-    }
-
-    RigidBody::BodyAccessRead::operator bool() {
-        return body != nullptr;
-    }
-
-    const JPH::Body* RigidBody::BodyAccessRead::get() {
-        return body;
-    }
-
     RigidBody::RigidBody() {
+        bodyTemplate.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     }
 
     RigidBody::RigidBody(const RigidBody& toCopy): RigidBody() {
@@ -291,6 +240,30 @@ namespace Carrot::Physics {
             body->SetLinearVelocity(Carrot::carrotToJolt(velocity));
         } else {
             bodyTemplate.mLinearVelocity = Carrot::carrotToJolt(velocity);
+        }
+    }
+
+    float RigidBody::getFriction() const {
+        return bodyTemplate.mFriction;
+    }
+
+    void RigidBody::setFriction(float friction) {
+        BodyAccessWrite body{bodyID};
+        bodyTemplate.mFriction = friction;
+        if (body) {
+            body->SetFriction(friction);
+        }
+    }
+
+    float RigidBody::getLinearDamping() const {
+        return bodyTemplate.mLinearDamping;
+    }
+
+    void RigidBody::setLinearDamping(float friction) {
+        BodyAccessWrite body{bodyID};
+        bodyTemplate.mLinearDamping = friction;
+        if (body) {
+            body->GetMotionProperties()->SetLinearDamping(friction);
         }
     }
 

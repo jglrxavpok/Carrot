@@ -408,7 +408,7 @@ namespace Peeler {
         float colorArr[4] { colorValue.r, colorValue.g, colorValue.b, colorValue.a };
         if(ImGui::ColorPicker4(id, colorArr)) {
             for(Helpers::RGBAColorWrapper& v : values) {
-                v.rgba = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorValue[3] };
+                v.rgba = glm::vec4 { colorArr[0], colorArr[1], colorArr[2], colorArr[3] };
             }
             return true;
         }

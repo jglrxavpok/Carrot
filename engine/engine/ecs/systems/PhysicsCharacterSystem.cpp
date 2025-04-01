@@ -36,6 +36,10 @@ namespace Carrot::ECS {
                 transformComp.setGlobalTransform(characterWorldTransform);
             }
         });
+
+        forEachEntity([&](Carrot::ECS::Entity& entity, Carrot::ECS::TransformComponent& transformComp, Carrot::ECS::PhysicsCharacterComponent& characterComp) {
+            characterComp.dispatchEventsPostPhysicsMainThread();
+        });
     }
 
     void PhysicsCharacterSystem::onFrame(Carrot::Render::Context renderContext) {

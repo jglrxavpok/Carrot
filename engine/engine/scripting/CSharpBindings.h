@@ -52,7 +52,10 @@ namespace Carrot::Scripting {
 
         CSClass* TransformComponentClass = nullptr;
         CSClass* TextComponentClass = nullptr;
+
         CSClass* RigidBodyComponentClass = nullptr;
+        CSMethod* RigidBodyOnContactAddedMethod = nullptr;
+
         CSClass* ColliderClass = nullptr;
         CSClass* CharacterComponentClass = nullptr;
 
@@ -234,6 +237,13 @@ namespace Carrot::Scripting {
 
         static glm::vec3 _GetRigidBodyVelocity(MonoObject* comp);
         static void _SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value);
+        static void _RigidBodyRegisterForContacts(MonoObject* comp);
+
+        static bool _RigidBodyGetRegisteredForContacts(MonoObject* comp);
+        static void _RigidBodySetRegisteredForContacts(MonoObject* comp, bool);
+
+        static MonoObject* _RigidBodyGetCallbacksHolder(MonoObject* comp);
+        static void _RigidBodySetCallbacksHolder(MonoObject* comp, MonoObject* holder);
 
         static std::uint64_t GetRigidBodyColliderCount(MonoObject* comp);
         static MonoObject* GetRigidBodyCollider(MonoObject* comp, std::uint64_t index);

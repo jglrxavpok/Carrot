@@ -11,6 +11,9 @@
 #include <engine/math/Transform.h>
 #include "Colliders.h"
 #include "BodyUserData.h"
+#include "core/async/Locks.h"
+#include "eventpp/callbacklist.h"
+#include <engine/physics/PhysicsBody.h>
 
 namespace Carrot::ECS {
     class RigidBodyComponent;
@@ -23,7 +26,7 @@ namespace Carrot::Physics {
         Kinematic,
     };
 
-    class RigidBody {
+    class RigidBody: public BaseBody {
     public:
         explicit RigidBody();
 
@@ -65,6 +68,12 @@ namespace Carrot::Physics {
         float getMass() const;
         void setMass(float mass);
 
+        float getFriction() const;
+        void setFriction(float newValue);
+
+        float getLinearDamping() const;
+        void setLinearDamping(float newValue);
+
         glm::vec3 getVelocity() const;
         void setVelocity(const glm::vec3& velocity);
 
@@ -98,34 +107,6 @@ namespace Carrot::Physics {
 
         void setupDOFConstraint();
         void destroyJoltRepresentation();
-
-        struct BodyAccessWrite {
-            BodyAccessWrite(const JPH::BodyID& bodyID);
-            ~BodyAccessWrite();
-
-            JPH::Body* operator->();
-            operator bool();
-
-            JPH::Body* get();
-
-        private:
-            JPH::SharedMutex* mutex = nullptr;
-            JPH::Body* body = nullptr;
-        };
-
-        struct BodyAccessRead {
-            BodyAccessRead(const JPH::BodyID& bodyID);
-            ~BodyAccessRead();
-
-            const JPH::Body* operator->();
-            operator bool();
-
-            const JPH::Body* get();
-
-        private:
-            JPH::SharedMutex* mutex = nullptr;
-            JPH::Body* body = nullptr;
-        };
 
         std::vector<std::unique_ptr<Collider>> colliders;
         BodyType bodyType = BodyType::Dynamic;

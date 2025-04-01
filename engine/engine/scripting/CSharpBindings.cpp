@@ -36,6 +36,7 @@
 #include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
 
+#include "engine/ecs/systems/RigidBodySystem.h"
 #include "mono/metadata/mono-gc.h"
 #include "mono/metadata/threads.h"
 
@@ -127,6 +128,12 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", GetRigidBodyCollider);
         mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
         mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", _RigidBodyRegisterForContacts);
+
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetRegisteredForContacts", _RigidBodyGetRegisteredForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetRegisteredForContacts", _RigidBodySetRegisteredForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetCallbacksHolder", _RigidBodyGetCallbacksHolder);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetCallbacksHolder", _RigidBodySetCallbacksHolder);
 
         mono_add_internal_call("Carrot.RigidBodyComponent::Raycast", RaycastRigidbody);
         mono_add_internal_call("Carrot.CharacterComponent::Raycast", RaycastCharacter);
@@ -480,7 +487,12 @@ namespace Carrot::Scripting {
 
         LOAD_CLASS(TransformComponent);
         LOAD_CLASS(TextComponent);
-        LOAD_CLASS(RigidBodyComponent);
+
+        {
+            LOAD_CLASS(RigidBodyComponent);
+            RigidBodyOnContactAddedMethod = RigidBodyComponentClass->findMethod("_OnContactAdded");
+        }
+
         LOAD_CLASS(CharacterComponent);
         LOAD_CLASS(NavMeshComponent);
         LOAD_CLASS(CameraComponent);
@@ -852,6 +864,77 @@ namespace Carrot::Scripting {
         ECS::Entity entity = convertToEntity(ownerEntity);
         entity.getComponent<ECS::RigidBodyComponent>()->rigidbody.setVelocity(value);
     }
+
+    void CSharpBindings::_RigidBodyRegisterForContacts(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        Physics::RigidBody& rigidBody = entity.getComponent<ECS::RigidBodyComponent>()->rigidbody;
+        rigidBody.addContactListener([entity](const JPH::BodyID& otherBody) {
+            if (!entity.exists()) {
+                return;
+            }
+
+            // main thread, post physics: allowed to lock
+            Physics::BodyAccessRead body{ otherBody };
+            Physics::BodyUserData& userData = *(Physics::BodyUserData*)body->GetUserData();
+            if (userData.type != Physics::BodyUserData::Type::Rigidbody) {
+                return; // TODO: support characters too
+            }
+
+            std::optional<ECS::Entity> otherEntity = ECS::RigidBodySystem::entityFromBody(entity.getWorld(), *static_cast<Physics::RigidBody*>(userData.ptr));
+            if (!otherEntity.has_value()) {
+                return;
+            }
+
+            if (!otherEntity->exists()) {
+                return;
+            }
+
+            std::shared_ptr<CSObject> selfEntityObj = entityToCSObject(entity);
+            std::shared_ptr<CSObject> otherEntityObj = entityToCSObject(otherEntity.value());
+            void* compArgs[] = {
+                selfEntityObj->toMono(),
+            };
+
+            auto& inst = instance();
+            auto compObj = inst.RigidBodyComponentClass->newObject(compArgs);
+
+            void* args[] = {
+                otherEntityObj->toMono()
+            };
+            inst.RigidBodyOnContactAddedMethod->invoke(*compObj, args);
+        }, true);
+        rigidBody.addContactListener([&rigidBody](const JPH::BodyID& otherBody) {
+            rigidBody.addPostPhysicsContactAddedEvent(otherBody);
+        }, false);
+    }
+
+    bool CSharpBindings::_RigidBodyGetRegisteredForContacts(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::RigidBodyComponent>()->getRegisteredForContactsRef();
+    }
+
+    void CSharpBindings::_RigidBodySetRegisteredForContacts(MonoObject* comp, bool v) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::RigidBodyComponent>()->getRegisteredForContactsRef() = v;
+    }
+
+    MonoObject* CSharpBindings::_RigidBodyGetCallbacksHolder(MonoObject* comp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& pHolder = entity.getComponent<ECS::RigidBodyComponent>()->getCallbacksHolder();
+        return pHolder ? pHolder->toMono() : nullptr;
+    }
+
+    void CSharpBindings::_RigidBodySetCallbacksHolder(MonoObject* comp, MonoObject* holder) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        auto& pHolder = entity.getComponent<ECS::RigidBodyComponent>()->getCallbacksHolder();
+        pHolder = std::make_shared<CSObject>(holder);
+    }
+
 
     std::uint64_t CSharpBindings::GetRigidBodyColliderCount(MonoObject* comp) {
         auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(comp));

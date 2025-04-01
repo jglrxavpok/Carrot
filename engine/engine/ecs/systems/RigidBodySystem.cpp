@@ -27,6 +27,12 @@ namespace Carrot::ECS {
         });
     }
 
+    void RigidBodySystem::postPhysics() {
+        forEachEntity([&](Carrot::ECS::Entity& entity, TransformComponent& transformComponent, RigidBodyComponent& rigidBodyComp) {
+            rigidBodyComp.dispatchEventsPostPhysicsMainThread();
+        });
+    }
+
     std::unique_ptr<System> RigidBodySystem::duplicate(World& newOwner) const {
         return std::make_unique<RigidBodySystem>(newOwner);
     }

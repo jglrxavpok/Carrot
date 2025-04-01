@@ -11,6 +11,7 @@
 #include <engine/physics/Colliders.h>
 #include <glm/glm.hpp>
 #include "BodyUserData.h"
+#include "PhysicsBody.h"
 
 namespace Carrot::Physics {
 
@@ -18,12 +19,12 @@ namespace Carrot::Physics {
      * Represents a physics body designed to be used for player and NPCs.
      * By default, has the shape of a capsule.
      */
-    class Character {
+    class Character: public BaseBody {
     public:
         Character();
         Character(const Character&);
         Character(Character&&);
-        ~Character();
+        ~Character() override;
 
         Character& operator=(const Character&);
         Character& operator=(Character&&);

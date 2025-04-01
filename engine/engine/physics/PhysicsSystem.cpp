@@ -19,6 +19,8 @@
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 
+#include "PhysicsBody.h"
+
 using namespace JPH;
 
 namespace Carrot::Physics {
@@ -102,6 +104,8 @@ namespace Carrot::Physics {
         jolt->Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs, cMaxContactConstraints, broadphaseLayerInterface, objectVsBPFilter, objectLayerPairFilter);
 
         jolt->SetGravity(Carrot::carrotToJolt(glm::vec3{0,0,-9.8f}));
+
+        jolt->SetContactListener(this);
     }
 
     void PhysicsSystem::tick(double deltaTime, std::function<void()> prePhysicsCallback, std::function<void()> postPhysicsCallback) {
@@ -311,6 +315,13 @@ namespace Carrot::Physics {
     void PhysicsSystem::destroyRigidbody(const JPH::BodyID& bodyID) {
         jolt->GetBodyInterface().RemoveBody(bodyID);
         jolt->GetBodyInterface().DestroyBody(bodyID);
+    }
+
+    void PhysicsSystem::OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) {
+        BodyUserData* bodyUserData1 = (BodyUserData*)inBody1.GetUserData();
+        BodyUserData* bodyUserData2 = (BodyUserData*)inBody2.GetUserData();
+        bodyUserData1->ptr->onContactAdded(inBody2.GetID());
+        bodyUserData2->ptr->onContactAdded(inBody1.GetID());
     }
 
 }

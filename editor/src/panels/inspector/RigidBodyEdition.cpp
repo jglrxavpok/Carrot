@@ -523,6 +523,28 @@ namespace Peeler {
             validIDs
         );
 
+        multiEditField(edition, "Mass", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.getMass();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const float& newValue) {
+                c.rigidbody.setMass(newValue);
+            });
+        multiEditField(edition, "Friction", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.getFriction();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const float& newValue) {
+                c.rigidbody.setFriction(newValue);
+            });
+        multiEditField(edition, "Linear damping", components,
+            +[](Carrot::ECS::RigidBodyComponent& c) {
+                return c.rigidbody.getLinearDamping();
+            },
+            +[](Carrot::ECS::RigidBodyComponent& c, const float& newValue) {
+                c.rigidbody.setLinearDamping(newValue);
+            });
+
         // handle axis locking
         {
             multiEditField(edition, "Lock translation", components,

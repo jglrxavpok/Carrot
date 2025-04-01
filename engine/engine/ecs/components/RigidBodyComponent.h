@@ -7,6 +7,8 @@
 #include "Component.h"
 #include <engine/physics/RigidBody.h>
 
+#include "core/scripting/csharp/CSObject.h"
+
 namespace Carrot::ECS {
     struct RigidBodyComponent: IdentifiableComponent<RigidBodyComponent> {
         Physics::RigidBody rigidbody;
@@ -31,6 +33,10 @@ namespace Carrot::ECS {
 
         void reload();
         void unload();
+        void dispatchEventsPostPhysicsMainThread();
+
+        bool& getRegisteredForContactsRef();
+        std::shared_ptr<Scripting::CSObject>& getCallbacksHolder();
 
         static const char* getTypeName(const Physics::BodyType& type);
         static Physics::BodyType getTypeFromName(const std::string& name);
@@ -38,6 +44,10 @@ namespace Carrot::ECS {
     private:
         bool firstTick = true;
         bool wasActive = true;
+
+        // scripting stuff, because C# component are transient
+        bool registeredForContacts = false;
+        std::shared_ptr<Scripting::CSObject> callbacksHolder;
 
         friend class RigidBodySystem;
     };

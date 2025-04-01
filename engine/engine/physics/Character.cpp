@@ -213,10 +213,10 @@ namespace Carrot::Physics {
                                                    Carrot::carrotToJolt(worldTransform.rotation),
                                                    (std::uint64_t)this,
                                                    GetPhysics().jolt.get());
-        JPH::SharedMutex* bodyMutex = GetPhysics().lockWriteBody(physics->GetBodyID());
-        JPH::Body* body = GetPhysics().lockedGetBody(physics->GetBodyID());
-        body->SetUserData((std::uint64_t)&bodyUserData);
-        GetPhysics().unlockWriteBody(bodyMutex);
+        {
+            BodyAccessWrite body(physics->GetBodyID());
+            body->SetUserData((std::uint64_t)&bodyUserData);
+        }
         if(wasInWorld) {
             addToWorld();
         }
