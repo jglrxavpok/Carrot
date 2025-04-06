@@ -36,6 +36,7 @@
 #include <tracy/TracyC.h>
 #include <engine/ecs/components/Kinematics.h>
 
+#include "engine/ecs/components/ModelComponent.h"
 #include "engine/ecs/systems/RigidBodySystem.h"
 #include "mono/metadata/mono-gc.h"
 #include "mono/metadata/threads.h"
@@ -105,6 +106,7 @@ namespace Carrot::Scripting {
         mono_add_internal_call("Carrot.Entity::Show", ShowEntity);
 
         addPrefabBindingMethods();
+        addModelBindingMethods();
 
         mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
         mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
@@ -123,6 +125,8 @@ namespace Carrot::Scripting {
 
         mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
         mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
+        mono_add_internal_call("Carrot.TextComponent::_GetColor", _GetTextColor);
+        mono_add_internal_call("Carrot.TextComponent::_SetColor", _SetTextColor);
 
         mono_add_internal_call("Carrot.RigidBodyComponent::GetColliderCount", GetRigidBodyColliderCount);
         mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", GetRigidBodyCollider);
@@ -523,6 +527,7 @@ namespace Carrot::Scripting {
         }
 
         addPrefabBindingTypes();
+        addModelBindingTypes();
 
         auto* typeClass = engine.findClass("System", "Type");
         verify(typeClass, "Something is very wrong!");
@@ -564,6 +569,10 @@ namespace Carrot::Scripting {
             hardcodedComponents["Carrot.Components.AnimatedModelComponent"] = {
                     .id = ECS::AnimatedModelComponent::getID(),
                     .clazz = AnimatedModelComponentClass,
+            };
+            hardcodedComponents["Carrot.Components.ModelComponent"] = {
+                    .id = ECS::ModelComponent::getID(),
+                    .clazz = ModelComponentClass,
             };
         }
 
@@ -851,6 +860,18 @@ namespace Carrot::Scripting {
         char* valueStr = mono_string_to_utf8(value);
         CLEANUP(mono_free(valueStr));
         entity.getComponent<ECS::TextComponent>()->setText(valueStr);
+    }
+
+    glm::vec4 CSharpBindings::_GetTextColor(MonoObject* textComp) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        return entity.getComponent<ECS::TextComponent>()->getColor();
+    }
+
+    void CSharpBindings::_SetTextColor(MonoObject* textComp, glm::vec4 value) {
+        auto ownerEntity = instance().ComponentOwnerField->get(Scripting::CSObject(textComp));
+        ECS::Entity entity = convertToEntity(ownerEntity);
+        entity.getComponent<ECS::TextComponent>()->setColor(value);
     }
 
     glm::vec3 CSharpBindings::_GetRigidBodyVelocity(MonoObject* comp) {

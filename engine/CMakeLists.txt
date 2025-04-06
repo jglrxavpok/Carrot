@@ -158,6 +158,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}scripting/CSharpReflectionHelper.cpp
         ${EngineRoot}scripting/LuaScript.cpp
 
+        ${EngineRoot}scripting/bindings/ModelBindings.cpp
         ${EngineRoot}scripting/bindings/PrefabBindings.cpp
 
         ${EngineRoot}scripting/bindings/all.cpp

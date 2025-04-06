@@ -39,10 +39,29 @@ namespace Peeler {
     }
 
     void Application::drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID) {
+        if (isCurrentlyPlaying()) {
+            return; // keep fps for game
+        }
         struct Warning {
             std::string message;
             std::optional<std::function<void()>> quickFix;
         };
+
+        // static to reuse across entities and frames
+        static Carrot::Vector<std::string> missingLogicSystems;
+        static Carrot::Vector<std::string> missingRenderSystems;
+
+        static std::unordered_set<std::string> sceneLogicSystems;
+        static std::unordered_set<std::string> sceneRenderSystems;
+        static std::unordered_set<std::string> prefabLogicSystems;
+        static std::unordered_set<std::string> prefabRenderSystems;
+
+        missingLogicSystems.clear();
+        missingRenderSystems.clear();
+        sceneLogicSystems.clear();
+        sceneRenderSystems.clear();
+        prefabLogicSystems.clear();
+        prefabRenderSystems.clear();
 
         ImGui::PushID(uniqueWidgetID);
         CLEANUP(ImGui::PopID());
@@ -54,13 +73,6 @@ namespace Peeler {
         if (const auto pPrefabComponent = entity.getComponent<Carrot::ECS::PrefabInstanceComponent>()) {
             auto pPrefab = pPrefabComponent->prefab;
             if (pPrefabComponent->childID == Carrot::ECS::Prefab::PrefabRootUUID) {
-                Carrot::Vector<std::string> missingLogicSystems;
-                Carrot::Vector<std::string> missingRenderSystems;
-
-                std::unordered_set<std::string> sceneLogicSystems;
-                std::unordered_set<std::string> sceneRenderSystems;
-                std::unordered_set<std::string> prefabLogicSystems;
-                std::unordered_set<std::string> prefabRenderSystems;
                 for (const Carrot::ECS::System* pSystem : currentScene.world.getLogicSystems()) {
                     sceneLogicSystems.insert(pSystem->getName());
                 }
@@ -92,7 +104,7 @@ namespace Peeler {
                         message += systemName;
                         message += '\n';
                     }
-                    warnings.emplaceBack(message, [&systemsLib, this, missingLogicSystems]() {
+                    warnings.emplaceBack(message, [&systemsLib, this]() {
                         undoStack.push<AddSystemsCommand>(missingLogicSystems, false);
                     });
                 }
@@ -103,7 +115,7 @@ namespace Peeler {
                         message += systemName;
                         message += '\n';
                     }
-                    warnings.emplaceBack(message, [&systemsLib, this, missingRenderSystems]() {
+                    warnings.emplaceBack(message, [&systemsLib, this]() {
                         undoStack.push<AddSystemsCommand>(missingRenderSystems, true);
                     });
                 }

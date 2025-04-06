@@ -10,6 +10,11 @@ namespace Carrot {
             get => _GetText();
             set => _SetText(value);
         }
+        
+        public Vec4 Color {
+            get => _GetColor();
+            set => _SetColor(value);
+        }
 
         private TextComponent(Entity owner) : base(owner) {
         }
@@ -19,5 +24,11 @@ namespace Carrot {
         
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void _SetText(string newText);
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern Vec4 _GetColor();
+        
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private extern void _SetColor(Vec4 v);
     }
 }

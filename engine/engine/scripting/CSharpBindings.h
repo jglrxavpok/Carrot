@@ -66,6 +66,7 @@ namespace Carrot::Scripting {
         CSClass* CameraComponentClass = nullptr;
         CSClass* KinematicsComponentClass = nullptr;
         CSClass* AnimatedModelComponentClass = nullptr;
+        CSClass* ModelComponentClass = nullptr;
 
         CSClass* RaycastInfoClass = nullptr;
         CSField* RaycastInfoWorldPointField = nullptr;
@@ -234,6 +235,8 @@ namespace Carrot::Scripting {
 
         static MonoString* _GetText(MonoObject* textComponent);
         static void _SetText(MonoObject* textComponent, MonoString* value);
+        static glm::vec4 _GetTextColor(MonoObject* textComponent);
+        static void _SetTextColor(MonoObject* textComponent, glm::vec4 value);
 
         static glm::vec3 _GetRigidBodyVelocity(MonoObject* comp);
         static void _SetRigidBodyVelocity(MonoObject* comp, glm::vec3 value);
@@ -274,6 +277,8 @@ namespace Carrot::Scripting {
     private:
         void addPrefabBindingTypes();
         void addPrefabBindingMethods();
+        void addModelBindingTypes();
+        void addModelBindingMethods();
 
         void loadEngineAssembly();
 
