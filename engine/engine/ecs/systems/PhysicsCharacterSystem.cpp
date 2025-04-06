@@ -14,6 +14,9 @@ namespace Carrot::ECS {
             const bool inWorld = characterComp.character.isInWorld();
             if(characterComp.firstFrame || !inWorld) {
                 characterComp.character.setWorldTransform(transformComp.computeGlobalPhysicsTransform());
+                if (characterComp.firstFrame) {
+                    characterComp.character.addToWorld();
+                }
                 characterComp.firstFrame = false;
             }
 
