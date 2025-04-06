@@ -58,6 +58,11 @@ namespace Carrot::ECS {
         const std::string& getName(const EntityID& entityID) const;
         const std::string& getName(const Entity& entity) const;
 
+        /**
+         * Ensures entities are added to the global entity list.
+         * Not thread-safe, should only be called by ::tick, or when you really know no one else is using this World instance
+         */
+        void flushEntityCreationAndRemoval();
         void tick(double dt);
         void prePhysics();
         void postPhysics();

@@ -258,7 +258,7 @@ namespace Carrot::ECS {
         recurse(root);
     }
 
-    void World::tick(double dt) {
+    void World::flushEntityCreationAndRemoval() {
         for(const auto& toAdd : entitiesToAdd) {
             entities.push_back(toAdd);
         }
@@ -308,6 +308,10 @@ namespace Carrot::ECS {
         entitiesToAdd.clear();
         entitiesToRemove.clear();
         entitiesUpdated.clear();
+    }
+
+    void World::tick(double dt) {
+        flushEntityCreationAndRemoval();
 
         if(!frozenLogic) {
             for(const auto& logic : logicSystems) {

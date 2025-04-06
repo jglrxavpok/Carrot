@@ -40,7 +40,7 @@ namespace Carrot::ECS {
     void Prefab::load(const Carrot::IO::VFS::Path& prefabAsset) {
         path = prefabAsset;
         internalScene.deserialise(prefabAsset);
-        internalScene.world.tick(0.0f); // ensure entities are properly added
+        internalScene.world.flushEntityCreationAndRemoval(); // ensure entities are properly added
     }
 
     bool Prefab::hasChildWithID(const Carrot::ECS::EntityID& childID) const {

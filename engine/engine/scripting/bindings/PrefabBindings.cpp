@@ -54,7 +54,7 @@ namespace Carrot::Scripting {
     }
 
     void CSharpBindings::addPrefabBindingTypes() {
-        LOAD_CLASS(Prefab, "Prefab");
+        LOAD_CLASS(Prefab);
         PrefabPointerField = PrefabClass->findField("_pointer");
         verify(PrefabPointerField, "Missing Carrot.Prefab::_pointer field in Carrot.dll !");
     }
