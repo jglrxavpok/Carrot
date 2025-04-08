@@ -38,6 +38,7 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Audio\Music.cs" />
         <Compile Include="Audio\SFX.cs" />
         <Compile Include="Audio\SoundSource.cs" />
         <Compile Include="CameraComponent.cs" />

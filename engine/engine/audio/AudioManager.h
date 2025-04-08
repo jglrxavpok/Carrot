@@ -8,6 +8,8 @@
 #include <engine/audio/AudioThread.h>
 #include <core/io/Resource.h>
 
+#include "Music.h"
+
 namespace Carrot::Audio {
     class SFX;
 
@@ -33,7 +35,7 @@ namespace Carrot::Audio {
         /**
          * Loads the wanted music. Meant to be streamed from the given resource, and have a single instance playing.
          */
-        std::unique_ptr<Sound> loadMusic(const Carrot::IO::Resource& musicFile);
+        std::shared_ptr<Music> loadMusic(const Carrot::IO::Resource& musicFile);
 
         /**
          * Ticks this manager, mostly for book-keeping reasons

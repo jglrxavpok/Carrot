@@ -22,8 +22,9 @@ std::vector<float> Carrot::VorbisDecoder::extractSamples(size_t sampleCount) {
     std::vector<float> result{};
     size_t totalSamples = sampleCount*getChannelCount();
     result.resize(totalSamples);
-    unsigned int read = stb_vorbis_get_samples_float_interleaved(vorbis, getChannelCount(), result.data(), totalSamples);
-    result.resize(read);
+    unsigned int readSamplesPerChannel = stb_vorbis_get_samples_float_interleaved(vorbis, getChannelCount(), result.data(), totalSamples);
+    unsigned int readTotal = readSamplesPerChannel * getChannelCount();
+    result.resize(readTotal);
     return result;
 }
 

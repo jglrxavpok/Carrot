@@ -101,6 +101,7 @@ set(ENGINE-SOURCES
 
         ${EngineRoot}audio/AudioManager.cpp
         ${EngineRoot}audio/AudioThread.cpp
+        ${EngineRoot}audio/Music.cpp
         ${EngineRoot}audio/OpenAL.cpp
         ${EngineRoot}audio/SFX.cpp
         ${EngineRoot}audio/SoundSource.cpp
