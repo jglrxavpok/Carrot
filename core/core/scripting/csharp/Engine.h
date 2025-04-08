@@ -41,6 +41,8 @@ namespace Carrot::Scripting {
         /// Finds a given class inside all currently loaded assemblies
         CSClass* findClass(const std::string& namespaceName, const std::string& className);
 
+        CSClass* getParentClass(CSClass& child);
+
         MonoDomain* getRootDomain() const;
         void setRootDomainAsMain();
 

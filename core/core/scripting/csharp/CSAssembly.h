@@ -25,6 +25,12 @@ namespace Carrot::Scripting {
         CSClass* findClass(const std::string& namespaceName, const std::string& className);
 
         /**
+         * Attemps to find the parent class of the input. Not thread-safe
+         * Returns nullptr if there is no parent class
+         */
+        CSClass* getParentClass(CSClass& child);
+
+        /**
          * Finds the subclasses of a given parent class. 'parentClass' is NOT considered to be a subclass
          * @param parentClass the class to find subclasses of. Must not be nullptr
          * @return a vector containing the subclasses. Empty if none.

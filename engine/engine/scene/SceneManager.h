@@ -34,13 +34,19 @@ namespace Carrot {
          * Note: because this does not change viewport bindings, binding the main scene, and calling 'changeScene'
          *  will ensure the main scene is still drawn to its bound viewports
          */
-        Scene& changeScene(const Carrot::IO::VFS::Path& scenePath);
+        Scene& queueChangeScene(const Carrot::IO::VFS::Path& scenePath);
 
         /**
          * Deletes the given scene from memory.
          * This call MUST be the last access to 'scene', because the SceneManager WILL delete the instance
          */
         void deleteScene(Scene&& scene);
+
+        /**
+         * Changes the main scene to a new scene, if the game wants to.
+         * If no such change was queued, does nothing
+         */
+        void swapMainScene();
 
     public: // main scene
         /**
@@ -75,6 +81,7 @@ namespace Carrot {
     private:
         void* bindingsImpl = nullptr;
 
+        std::unique_ptr<Scene> pMainSceneReplacement; // non-nullptr when the game wants to swap the main scene for another
         std::unique_ptr<Scene> pMainScene; // init in initScripting because World has a dependency on CSharpBindings
         std::list<Scene> scenes;
         friend struct Bindings;

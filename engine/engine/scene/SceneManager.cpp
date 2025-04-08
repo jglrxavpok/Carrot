@@ -15,7 +15,7 @@
 namespace Carrot {
 
     Scene& SceneManager::getMainScene() {
-        verify(pMainScene, "Main scen")
+        verify(pMainScene, "Main scene")
         return *pMainScene;
     }
 
@@ -40,17 +40,16 @@ namespace Carrot {
         return addTo;
     }
 
-    Scene& SceneManager::changeScene(const Carrot::IO::VFS::Path& scenePath) {
-        rapidjson::Document sceneDoc;
-        Scene& mainScene = getMainScene();
+    Scene& SceneManager::queueChangeScene(const Carrot::IO::VFS::Path& scenePath) {
+        pMainSceneReplacement = std::make_unique<Scene>();
         try {
-            mainScene.clear();
-            mainScene.deserialise(scenePath);
+            pMainSceneReplacement->clear();
+            pMainSceneReplacement->deserialise(scenePath);
         } catch (std::exception& e) {
             Carrot::Log::error("Failed to open scene: %s", e.what());
-            mainScene.clear();
+            pMainSceneReplacement->clear();
         }
-        return mainScene;
+        return *pMainSceneReplacement;
     }
 
     void SceneManager::deleteScene(Scene&& scene) {
@@ -61,6 +60,18 @@ namespace Carrot {
             }
         }
     }
+
+    void SceneManager::swapMainScene() {
+        if (pMainSceneReplacement) {
+            pMainScene->copyFrom(*pMainSceneReplacement);
+            pMainScene->world.unfreezeLogic();
+            pMainScene->world.broadcastStartEvent();
+            pMainScene->load();
+
+            pMainSceneReplacement = nullptr;
+        }
+    }
+
 
     Scene* SceneManager::SceneIterator::operator*() {
         verify(index <= pManager->scenes.size(), "Dereferencing an invalid iterator");
@@ -112,11 +123,11 @@ namespace Carrot {
             return GetCSharpBindings().requestCarrotReference(self().SceneClass, &GetSceneManager().getMainScene())->toMono();
         }
 
-        static MonoObject* ChangeScene(MonoString* vfsPathObj) {
+        static MonoObject* QueueChangeScene(MonoString* vfsPathObj) {
             char* vfsPath = mono_string_to_utf8(vfsPathObj);
             CLEANUP(mono_free(vfsPath));
 
-            return GetCSharpBindings().requestCarrotReference(self().SceneClass, &GetSceneManager().changeScene(vfsPath))->toMono();
+            return GetCSharpBindings().requestCarrotReference(self().SceneClass, &GetSceneManager().queueChangeScene(vfsPath))->toMono();
         }
 
         static MonoObject* LoadScene(MonoString* vfsPathObj) {
@@ -145,7 +156,7 @@ namespace Carrot {
             });
 
             mono_add_internal_call("Carrot.SceneManager::GetMainScene", GetMainScene);
-            mono_add_internal_call("Carrot.SceneManager::ChangeScene", ChangeScene);
+            mono_add_internal_call("Carrot.SceneManager::QueueChangeScene", QueueChangeScene);
             mono_add_internal_call("Carrot.SceneManager::LoadScene", LoadScene);
             mono_add_internal_call("Carrot.SceneManager::LoadSceneAdditive", LoadSceneAdditive);
             mono_add_internal_call("Carrot.SceneManager::Delete", Delete);

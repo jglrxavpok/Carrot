@@ -9,9 +9,10 @@ namespace Carrot {
          * Call 'clear' + 'deserialize' on the main scene.
          * Note: because this does not change viewport bindings, binding the main scene, and calling 'changeScene'
          *  will ensure the main scene is still drawn to its bound viewports
+         * Note 2: the scene change will be applied at the beginning of the next frame (to avoid issues with entities/systems being destroyed while we are still using them)
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern Scene ChangeScene(string vfsPath);
+        public static extern Scene QueueChangeScene(string vfsPath);
         
         /**
          * Loads the scene at the given path and add it to the scene list.

@@ -451,7 +451,7 @@ void Carrot::Engine::run() {
         auto tickStartTime = std::chrono::steady_clock::now();
         Time::updateTime();
         {
-            ZoneScopedN("Tick");
+            ScopedMarker("Tick");
             TracyPlot("Tick lag", lag.count());
             TracyPlot("Estimated FPS", currentFPS);
             TracyPlot("Estimated VRAM usage", static_cast<std::int64_t>(Carrot::DeviceMemory::TotalMemoryUsed.load()));
@@ -464,8 +464,11 @@ void Carrot::Engine::run() {
                 tick(timeBetweenUpdates.count());
                 lag -= timeBetweenUpdates;
 
-                Carrot::IO::ActionSet::updatePrePollAllSets(*this);
-                Carrot::IO::ActionSet::resetAllDeltas();
+                {
+                    ScopedMarker("Prepoll inputs & reset deltas");
+                    Carrot::IO::ActionSet::updatePrePollAllSets(*this);
+                    Carrot::IO::ActionSet::resetAllDeltas();
+                }
             }
         }
         auto tickTimeElapsed = std::chrono::steady_clock::now() - tickStartTime;
@@ -1369,6 +1372,7 @@ Carrot::ASBuilder& Carrot::Engine::getASBuilder() {
 void Carrot::Engine::tick(double deltaTime) {
     ZoneScoped;
     currentTime += deltaTime;
+    sceneManager.swapMainScene();
     {
         ZoneScopedN("Game tick");
         game->tick(deltaTime);

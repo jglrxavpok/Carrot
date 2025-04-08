@@ -62,6 +62,14 @@ namespace Carrot::Scripting {
         }
     }
 
+    CSClass* CSAssembly::getParentClass(CSClass& child) {
+        MonoClass* pMonoClass = mono_class_get_parent(child.toMono());
+        if (!pMonoClass) {
+            return nullptr;
+        }
+        return findClass(mono_class_get_namespace(pMonoClass), mono_class_get_name(pMonoClass)); // to add to cache
+    }
+
     CSClass* CSAssembly::findClass(const std::string& namespaceName, const std::string& className) {
         ClassKey key { namespaceName, className };
         auto it = classCache.find(key);

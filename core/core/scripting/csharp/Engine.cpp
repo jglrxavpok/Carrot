@@ -226,6 +226,18 @@ namespace Carrot::Scripting {
         return nullptr;
     }
 
+    CSClass* ScriptingEngine::getParentClass(CSClass& child) {
+        for(auto& pModule : loadedAssemblies) {
+            if(auto m = pModule.lock()) {
+                auto* clazz = m->getParentClass(child);
+                if(clazz) {
+                    return clazz;
+                }
+            }
+        }
+        return nullptr;
+    }
+
     MonoDomain* ScriptingEngine::getRootDomain() const {
         return rootDomain;
     }
