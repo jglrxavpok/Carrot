@@ -1084,6 +1084,7 @@ namespace Peeler {
         savedScene.clear();
         GetPhysics().pause();
         GetEngine().ungrabCursor();
+        GetAudioManager().stopAllSounds();
         stopSimulationRequested = false;
     }
 

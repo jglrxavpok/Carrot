@@ -155,6 +155,7 @@ namespace AL {
         ALuint getALSource();
 
         void updateGain(float gain);
+        void updatePitch(float pitch);
 
         void setPosition(const glm::vec3& position);
 

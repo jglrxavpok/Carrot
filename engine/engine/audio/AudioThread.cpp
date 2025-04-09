@@ -27,6 +27,12 @@ namespace Carrot::Audio {
                     currentSources.emplace_back(std::move(pNewSource));
                 }
             }
+            if (requestedStopAllSources) {
+                for(auto& source : currentSources) {
+                    source->stop();
+                }
+                requestedStopAllSources = false;
+            }
             for(auto& source : currentSources) {
                 source->updateAudio();
             }
@@ -34,6 +40,10 @@ namespace Carrot::Audio {
             currentSources.erase(std::remove_if(currentSources.begin(), currentSources.end(), [](auto& s) { return s->isReadyForCleanup(); }), currentSources.end());
             std::this_thread::yield();
         }
+    }
+
+    void AudioThread::requestStopAllSources() {
+        requestedStopAllSources = true;
     }
 
     void AudioThread::registerSoundSource(std::shared_ptr<SoundSource> source) {

@@ -27,6 +27,10 @@ namespace Carrot::Audio {
         GetAudioManager().registerSoundSource(shared_from_this());
     }
 
+    void SoundSource::stop() {
+        source.stop();
+    }
+
     void SoundSource::updateAudio() {
         source.unqueue(source.getProcessedBufferCount());
 
@@ -57,7 +61,12 @@ namespace Carrot::Audio {
     }
 
     bool SoundSource::isReadyForCleanup() {
-        return cleanupPolicy == CleanupPolicy::OnSoundEnd && (!currentSound || currentSound->hasBeenFullyRead()) && !isPlaying() && !looping;
+        return cleanupPolicy == CleanupPolicy::OnSoundEnd && (!currentSound || currentSound->hasBeenFullyRead()) && !isPlaying();
+    }
+
+    void SoundSource::setPitch(float pitch) {
+        this->pitch = pitch;
+        source.updatePitch(pitch);
     }
 
     void SoundSource::setGain(float gain) {

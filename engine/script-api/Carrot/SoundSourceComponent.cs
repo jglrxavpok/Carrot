@@ -12,11 +12,11 @@ namespace Carrot {
         
         public SoundSourceComponent(Entity owner) : base(owner) { }
         
-        public void Play(SFX sound) {
+        public void Play(SFX sound, float pitch = 1.0f) {
             SoundSource source = _FindFreeSource();
             if (source != null) {
                 source.SetGain(Gain);
-                sound.Play(source);
+                sound.Play(source, pitch);
             }
         }
 

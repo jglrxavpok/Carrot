@@ -26,6 +26,12 @@ namespace Carrot::Audio {
         }
     }
 
+    void Music::stop() {
+        if (pSourceSource->isPlaying()) {
+            pSourceSource->stop();
+        }
+    }
+
     void Music::setLooping(bool b) {
         pSourceSource->setLooping(b);
     }

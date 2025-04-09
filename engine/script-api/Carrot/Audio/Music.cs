@@ -15,6 +15,12 @@ namespace Carrot.Audio {
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void Play();
+        
+        /**
+         * Stops playing this Music
+         */
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern void Stop();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern void SetLooping(bool loop);

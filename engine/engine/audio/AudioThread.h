@@ -13,7 +13,17 @@
 
 namespace Carrot::Audio {
     class AudioThread {
+    public:
+        AudioThread();
+        ~AudioThread();
+
+        void registerSoundSource(std::shared_ptr<SoundSource> source);
+
+        // Requests to stop playing all audio sources, useful for scene transitions
+        void requestStopAllSources();
+
     private:
+        bool requestedStopAllSources = false;
         bool running = false;
         std::thread backingThread;
         std::mutex sourceMutex;
@@ -21,11 +31,5 @@ namespace Carrot::Audio {
         ThreadSafeQueue<std::shared_ptr<SoundSource>> newSources;
 
         void threadCode();
-
-    public:
-        AudioThread();
-        ~AudioThread();
-
-        void registerSoundSource(std::shared_ptr<SoundSource> source);
     };
 }

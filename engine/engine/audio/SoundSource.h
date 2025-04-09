@@ -30,11 +30,14 @@ namespace Carrot::Audio {
         bool looping = false;
         std::size_t queuedBufferCount = 0;
         float gain = 1.0f;
+        float pitch = 1.0f;
 
     public:
         explicit SoundSource();
 
         void play(std::unique_ptr<Sound>&& sound);
+
+        void stop();
 
         void updateAudio();
 
@@ -47,10 +50,12 @@ namespace Carrot::Audio {
         bool isReadyForCleanup();
 
         void setGain(float gain);
+        void setPitch(float pitch);
 
         void setPosition(const glm::vec3& position);
 
-        float getGain() const { return gain; };
+        float getGain() const { return gain; }
+        float getPitch() const { return pitch; }
 
         ~SoundSource();
     };

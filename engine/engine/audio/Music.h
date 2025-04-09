@@ -21,6 +21,7 @@ namespace Carrot::Audio {
         explicit Music(const Carrot::IO::Resource& audioFile);
 
         void play();
+        void stop();
         void setLooping(bool b);
 
     private:

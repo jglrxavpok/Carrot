@@ -79,6 +79,10 @@ namespace AL {
         alSourcef(source, AL_GAIN, gain);
     }
 
+    void Source::updatePitch(float pitch) {
+        alSourcef(source, AL_PITCH, pitch);
+    }
+
     void Source::setPosition(const glm::vec3& position) {
         alSource3f(source, AL_POSITION, position.x, position.y, position.z);
     }

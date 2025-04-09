@@ -42,6 +42,8 @@ namespace Carrot::Audio {
          */
         void tick(double deltaTime);
 
+        void stopAllSounds();
+
     private:
         void registerSoundSource(std::shared_ptr<SoundSource> source);
 

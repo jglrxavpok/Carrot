@@ -15,6 +15,6 @@ namespace Carrot.Audio {
          * Plays this SFX through the given source
          */
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern void Play(SoundSource source);
+        public extern void Play(SoundSource source, float pitch = 1.0f);
     }
 }

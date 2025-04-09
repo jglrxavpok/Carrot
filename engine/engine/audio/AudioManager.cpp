@@ -48,6 +48,10 @@ namespace Carrot::Audio {
         // TODO: cleanup loadedSFXs map
     }
 
+    void AudioManager::stopAllSounds() {
+        thread.requestStopAllSources();
+    }
+
     void AudioManager::registerSoundSource(std::shared_ptr<SoundSource> source) {
        verify(source != nullptr, "nullptr source, not allowed");
        thread.registerSoundSource(source);
@@ -73,11 +77,12 @@ namespace Carrot::Audio {
             return GetCSharpBindings().requestCarrotObject<SFXHandle>(self().SFXClass, GetAudioManager().loadSFX(vfsPathStr)).toMono();
         }
 
-        static void SFXPlay(MonoObject* sfxObj, MonoObject* soundSourceObj) {
+        static void SFXPlay(MonoObject* sfxObj, MonoObject* soundSourceObj, float pitch) {
             auto& pSFX = getObject<SFXHandle>(sfxObj);
             auto& pSoundSource = getObject<SoundSourceHandle>(soundSourceObj);
 
             std::unique_ptr<Sound> newInstance = pSFX->createInstance();
+            pSoundSource->setPitch(pitch);
             pSoundSource->play(std::move(newInstance));
         }
 
@@ -96,6 +101,11 @@ namespace Carrot::Audio {
         static void MusicSetLooping(MonoObject* musicObj, bool loop) {
             auto& pMusic = getObject<MusicHandle>(musicObj);
             pMusic->setLooping(loop);
+        }
+
+        static void MusicStop(MonoObject* musicObj) {
+            auto& pMusic = getObject<MusicHandle>(musicObj);
+            pMusic->stop();
         }
 
         static MonoObject* SoundSourceCreate() {
@@ -129,6 +139,7 @@ namespace Carrot::Audio {
 
             mono_add_internal_call("Carrot.Audio.Music::Load", MusicLoad);
             mono_add_internal_call("Carrot.Audio.Music::Play", MusicPlay);
+            mono_add_internal_call("Carrot.Audio.Music::Stop", MusicStop);
             mono_add_internal_call("Carrot.Audio.Music::SetLooping", MusicSetLooping);
 
             mono_add_internal_call("Carrot.Audio.SoundSource::Create", SoundSourceCreate);
