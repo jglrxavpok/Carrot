@@ -25,7 +25,7 @@ std::vector<float> Carrot::MP3Decoder::extractSamples(size_t sampleCount) {
     std::vector<float> buffer;
     buffer.resize(sampleCount * mp3.channels);
     auto read = drmp3_read_pcm_frames_f32(&mp3, sampleCount, buffer.data());
-    buffer.resize(read);
+    buffer.resize(read * mp3.channels);
     return buffer;
 }
 
