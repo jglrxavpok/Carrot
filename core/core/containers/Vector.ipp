@@ -7,6 +7,11 @@
 #include <algorithm> // for std::sort
 
 namespace Carrot {
+    template<typename TElement>
+    constexpr std::size_t getVectorElementAlignment() {
+        return std::max(__STDCPP_DEFAULT_NEW_ALIGNMENT__, alignof(TElement));
+    }
+
 #define VECTOR_TEMPLATE template<typename TElement, typename Traits> requires IsValidVectorTraits<Traits>
     VECTOR_TEMPLATE
     Vector<TElement, Traits>::Vector(Allocator& allocator): allocator(allocator) {}
@@ -122,7 +127,7 @@ namespace Carrot {
         }
 
         if(newSize > capacity()) {
-            this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), alignof(TElement));
+            this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
         }
 
         if constexpr (Traits::CallConstructorAndDestructorOnResize) {
@@ -144,7 +149,7 @@ namespace Carrot {
             }
         }
         this->elementCount = std::min(this->elementCount, newSize);
-        this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), alignof(TElement));
+        this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
     }
 
     VECTOR_TEMPLATE
@@ -208,7 +213,7 @@ namespace Carrot {
             o.elementCount = 0;
         } else {
             // allocate required storage
-            this->allocation = this->allocator.reallocate(allocation, o.allocation.size, alignof(TElement));
+            this->allocation = this->allocator.reallocate(allocation, o.allocation.size, getVectorElementAlignment<TElement>());
             TElement* pData = data();
 
             // move elements

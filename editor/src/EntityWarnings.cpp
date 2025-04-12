@@ -44,7 +44,7 @@ namespace Peeler {
         }
         struct Warning {
             std::string message;
-            std::optional<std::function<void()>> quickFix;
+            std::function<void()> quickFix;
         };
 
         // static to reuse across entities and frames
@@ -66,7 +66,8 @@ namespace Peeler {
         ImGui::PushID(uniqueWidgetID);
         CLEANUP(ImGui::PopID());
 
-        Carrot::Vector<Warning> warnings;
+        //Carrot::Vector<Warning> warnings;
+        std::vector<Warning> warnings; // wtf why does std::vector work but not mine?
         auto& systemsLib = Carrot::ECS::getSystemLibrary();
 
         // check if current scene has all systems of the prefab
@@ -104,7 +105,7 @@ namespace Peeler {
                         message += systemName;
                         message += '\n';
                     }
-                    warnings.emplaceBack(message, [&systemsLib, this]() {
+                    warnings.emplace_back(message, [&systemsLib, this]() {
                         undoStack.push<AddSystemsCommand>(missingLogicSystems, false);
                     });
                 }
@@ -115,7 +116,7 @@ namespace Peeler {
                         message += systemName;
                         message += '\n';
                     }
-                    warnings.emplaceBack(message, [&systemsLib, this]() {
+                    warnings.emplace_back(message, [&systemsLib, this]() {
                         undoStack.push<AddSystemsCommand>(missingRenderSystems, true);
                     });
                 }
@@ -142,9 +143,9 @@ namespace Peeler {
 
                 Warning& warning = warnings[warningIndex];
                 ImGui::TextUnformatted(warning.message.c_str());
-                if (warning.quickFix.has_value()) {
+                if (warning.quickFix) {
                     if(ImGui::Button("Quick fix")) {
-                        (warning.quickFix.value())();
+                        (warning.quickFix)();
                     }
                 }
             }
