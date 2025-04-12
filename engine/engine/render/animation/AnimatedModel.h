@@ -24,7 +24,7 @@ namespace Carrot::Render {
 
         class Handle {
         public:
-            bool visible = true;
+            bool visible = false;
 
             Handle(const std::shared_ptr<AnimatedModel>& parent);
             ~Handle();
