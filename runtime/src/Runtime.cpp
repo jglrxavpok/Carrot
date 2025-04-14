@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
 class RuntimeGame: public Carrot::CarrotGame {
 public:
-    RuntimeGame(Carrot::Engine& engine): Carrot::CarrotGame(engine) {
+    RuntimeGame(Carrot::Engine& engine): Carrot::CarrotGame(engine), scene(engine.getSceneManager().getMainScene()) {
         // TODO: deduplicate from Peeler.cpp
         const auto& projectToLoad = s_ProjectPath;
         GetVFS().addRoot("game", std::filesystem::absolute(projectToLoad).parent_path());
@@ -156,7 +156,7 @@ public:
     }
 
 private:
-    Carrot::Scene scene;
+    Carrot::Scene& scene;
 };
 
 void Carrot::Engine::initGame() {
