@@ -1,10 +1,18 @@
 # Building the engine
+
 ## Requirements
 1. You need to install the Vulkan SDK. I currently use the 1.3.268.0 LunarG SDK.
-2. You need to install a Lua distribution. LuaJIT or Vanilla Lua are both supported by sol3 and should work out-of-the-box.
-3. You need a Mono installation. Path is expected to be inside MONO_SDK_PATH environment variable. (https://www.mono-project.com/download/stable/)
+2. You need to install a Lua distribution. LuaJIT or Vanilla Lua are both supported by sol3 and should work out-of-the-box. On Linux, liblua5.1-dev should work.
+3. (Linux) You may need to install `xorg-dev` for GLFW (as per its documentation).
+4. (Linux) You may need to install `libgtk-3-dev` for nativefiledialog.
+5. (Linux) You may need to install `libxcb-glx0-dev` for OpenXR.
+6. You need a Mono installation. Path is expected to be inside MONO_SDK_PATH environment variable. (https://www.mono-project.com/download/stable/)
    * For instance, I have to use "C:\Program Files\Mono" after running an installer from the Mono download page.
-4. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
+7. To build OpenXR-Hpp (required dependency), you will need a Python 3.9+ install.
+Go into `thirdparty/OpenXR-Hpp` and run `generate-openxr-hpp.sh` (or .ps1). If you have the error ` cannot import name 'soft_unicode' from 'markupsafe'`, you need to remove markupsafe & jinja2 from your installed packages on Linux (see https://github.com/KhronosGroup/OpenXR-SDK-Source/issues/416).
+8. Then you can open the CMake project with your IDE, or generate the project via the command line.
+
+TODO: automate and remove dependencies where possible
 
 ## Steps
 

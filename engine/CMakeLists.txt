@@ -108,7 +108,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}audio/Sound.cpp
         ${EngineRoot}audio/SoundListener.cpp
 
-        ${EngineRoot}audio/decoders/noDecoder.cpp
+        ${EngineRoot}audio/decoders/NoDecoder.cpp
         ${EngineRoot}audio/decoders/MP3Decoder.cpp
         ${EngineRoot}audio/decoders/VorbisDecoder.cpp
         ${EngineRoot}audio/decoders/WavDecoder.cpp
@@ -316,10 +316,14 @@ set(THIRDPARTY-SOURCES
 set(ALL_BASE_LIBS
         CarrotCore fertilizer-lib
         Vulkan::Vulkan spirv-cross-core spirv-cross-glsl spirv-cross-reflect glfw glm OpenAL SPIRV ${LUA_LIBRARIES} Jolt
-        OpenEXR::OpenEXR
         OpenXR::headers
         OpenXR::openxr_loader
+        OpenEXR::OpenEXR
         ${ADDITIONAL_LIBS})
+
+add_dependencies(CarrotCore
+        OpenXR::headers
+        OpenXR::openxr_loader)
 
 message("ENGINE ADDITIONAL LIBS = " ${ALL_BASE_LIBS})
 

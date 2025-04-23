@@ -122,8 +122,15 @@ function(add_core_includes Target)
 
     # METIS
     target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/)
-    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/gklib.lib)
-    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/metis.lib)
+
+    if(WIN32)
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/GKlib.lib)
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/metis.lib)
+    else()
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libGKlib.a)
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libmetis.a)
+    endif()
+
 
 endfunction()
 
