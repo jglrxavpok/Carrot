@@ -7,13 +7,10 @@
 #include <spirv_cross.hpp>
 #include <spirv_parser.hpp>
 #include <string>
-#include "engine/vulkan/VulkanDriver.h"
 #include <map>
-#include <engine/render/shaders/Specialization.h>
 #include <engine/render/NamedBinding.h>
 #include <core/io/Resource.h>
 #include "engine/render/shaders/ShaderSource.h"
-#include <span>
 
 namespace Carrot {
     class ShaderModule {

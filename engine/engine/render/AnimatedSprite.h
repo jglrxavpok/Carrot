@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <engine/render/VulkanRenderer.h>
 #include "TextureAtlas.h"
 #include "Sprite.h"
 

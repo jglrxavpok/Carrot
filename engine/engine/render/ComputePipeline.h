@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include "engine/Engine.h"
-#include "engine/render/resources/BufferView.h"
+#include <engine/render/resources/BufferView.h>
 #include <string>
 #include <utility>
-#include "core/io/Resource.h"
+#include <core/io/Resource.h>
+#include <engine/vulkan/SwapchainAware.h>
 
 namespace Carrot {
     struct ComputeBinding {
@@ -43,6 +43,8 @@ namespace std {
 }
 
 namespace Carrot {
+    class Engine;
+
     using SpecializationConstant = std::uint32_t; // does not support anything else for now
 
     class ComputePipeline: public SwapchainAware {

@@ -8,6 +8,8 @@
 #include <engine/render/resources/ResourceAllocator.h>
 #include <core/render/Animation.h>
 #include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/VulkanRenderer.h>
+#include <engine/Engine.h>
 #include <utility>
 
 namespace Carrot::Render {

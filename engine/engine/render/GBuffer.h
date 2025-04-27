@@ -4,11 +4,12 @@
 
 #pragma once
 #include "engine/vulkan/SwapchainAware.h"
-#include "engine/render/VulkanRenderer.h"
 #include "engine/render/RenderGraph.h"
 
 // TODO: Delete this class and move methods to renderer
 namespace Carrot {
+    class RayTracer;
+
     class GBuffer: public SwapchainAware {
     public:
         explicit GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer);

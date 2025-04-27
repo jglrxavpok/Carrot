@@ -4,13 +4,12 @@
 
 #pragma once
 #include "engine/vulkan/SwapchainAware.h"
-#include "engine/render/VulkanRenderer.h"
 #include "engine/RenderPasses.h"
-#include "engine/render/lighting/Lights.h"
-#include "engine/render/resources/Texture.h"
 #include "engine/render/RenderGraph.h"
 
 namespace Carrot {
+    class VulkanRenderer;
+
     /// Class responsible for creating acceleration structures & scene information buffers and updating them
     /// Modeled on NVIDIA's tutorial: https://nvpro-samples.github.io/vk_raytracing_tutorial_KHR/
     class RayTracer: public SwapchainAware {

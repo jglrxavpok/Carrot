@@ -5,7 +5,8 @@
 #include "BufferView.h"
 #include "ResourceAllocator.h"
 #include "engine/utils/Macros.h"
-#include "engine/Engine.h"
+#include "engine/vulkan/VulkanDriver.h"
+#include "engine/render/VulkanRenderer.h"
 #include "Buffer.h"
 
 Carrot::BufferView::BufferView(Carrot::ResourceAllocator* allocator, Carrot::Buffer& buffer, vk::DeviceSize start, vk::DeviceSize size):

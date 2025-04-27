@@ -6,8 +6,6 @@
 
 #include "engine/render/resources/SingleMesh.h"
 #include "engine/render/resources/Pipeline.h"
-#include "engine/Engine.h"
-#include "engine/render/VulkanRenderer.h"
 
 namespace Peeler {
     class GridRenderer {

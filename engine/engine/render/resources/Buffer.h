@@ -5,7 +5,6 @@
 #pragma once
 
 #include <set>
-#include <engine/vulkan/VulkanDriver.h>
 #include <engine/vulkan/DebugNameable.h>
 #include <engine/vulkan/DeviceAddressable.h>
 #include <engine/render/resources/DeviceMemory.h>
@@ -14,6 +13,7 @@
 #include "BufferAllocation.h"
 
 namespace Carrot {
+    class VulkanDriver;
     class Engine;
     class ResourceAllocator;
 
@@ -74,6 +74,7 @@ namespace Carrot {
 
         template<typename T>
         T* map();
+        void* mapGeneric();
 
         void unmap();
 

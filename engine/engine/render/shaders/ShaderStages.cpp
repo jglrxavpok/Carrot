@@ -3,6 +3,7 @@
 //
 
 #include "ShaderStages.h"
+#include <engine/vulkan/VulkanDriver.h>
 
 Carrot::ShaderStages::ShaderStages(
     const Carrot::Vector<Render::ShaderSource>& resources,

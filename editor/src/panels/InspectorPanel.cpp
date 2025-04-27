@@ -11,11 +11,13 @@
 
 #include "../Peeler.h"
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/assets/AssetServer.h>
 #include <engine/ecs/components/CSharpComponent.h>
 #include <engine/ecs/EntityTypes.h>
 #include <engine/ecs/Prefab.h>
 #include <engine/ecs/World.h>
 #include <engine/scripting/CSharpBindings.h>
+#include <engine/Engine.h>
 #include <panels/inspector/EditorFunctions.h>
 
 namespace Peeler {

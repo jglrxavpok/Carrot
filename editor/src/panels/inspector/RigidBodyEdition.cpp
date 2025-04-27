@@ -417,7 +417,7 @@ namespace Peeler {
     };
 
     template<>
-    static bool editMultiple<AxisLockWrapper>(const char* id, std::span<AxisLockWrapper> values, const Helpers::Limits<AxisLockWrapper>& limits) {
+    inline bool editMultiple<AxisLockWrapper>(const char* id, std::span<AxisLockWrapper> values, const Helpers::Limits<AxisLockWrapper>& limits) {
         enum class State {
             LOCKED,
             UNLOCKED,

@@ -32,6 +32,8 @@
 #include <engine/console/Console.h>
 #include <engine/vulkan/VulkanDefines.h>
 #include <filesystem>
+#include <engine/Engine.h>
+#include <engine/assets/AssetServer.h>
 
 static constexpr std::size_t SingleFrameAllocatorSize = 16 * 1024 * 1024; // 16MiB per frame-in-flight
 static Carrot::RuntimeOption DebugRenderPacket("Debug Render Packets", false);
@@ -985,6 +987,14 @@ void Carrot::VulkanRenderer::onFrame(const Carrot::Render::Context& renderContex
     }
 
     asBuilder->onFrame(renderContext);
+}
+
+std::size_t Carrot::VulkanRenderer::getSwapchainImageCount() const {
+    return driver.getSwapchainImageCount();
+}
+
+vk::Device& Carrot::VulkanRenderer::getLogicalDevice() {
+    return driver.getLogicalDevice();
 }
 
 Carrot::Engine& Carrot::VulkanRenderer::getEngine() {

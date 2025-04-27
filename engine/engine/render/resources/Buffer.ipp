@@ -91,10 +91,5 @@ void Carrot::Buffer::cmdStageCopy(vk::CommandBuffer& cmds, uint64_t offset, cons
 
 template<typename T>
 T* Carrot::Buffer::map() {
-    if(mappedPtr) {
-       return reinterpret_cast<T*>(mappedPtr);
-    }
-    void* ptr = driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), 0, VK_WHOLE_SIZE);
-    mappedPtr = ptr;
-    return reinterpret_cast<T*>(ptr);
+    return reinterpret_cast<T*>(mapGeneric());
 }

@@ -35,17 +35,17 @@ namespace Peeler {
 
         explicit Application(Carrot::Engine& engine);
 
-        void setupCamera(Carrot::Render::Context renderContext) override;
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void setupCamera(const Carrot::Render::Context& renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         void tick(double frameTime) override;
         void prePhysics() override;
         void postPhysics() override;
 
-        void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+        void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
                                      vk::CommandBuffer& commands) override;
 
-        void recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+        void recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
                                           vk::CommandBuffer& commands) override;
 
         void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;

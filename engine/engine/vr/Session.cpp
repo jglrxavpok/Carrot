@@ -3,6 +3,9 @@
 //
 
 #include "Session.h"
+
+#include <engine/Engine.h>
+
 #include "VRInterface.h"
 #include "engine/utils/Macros.h"
 #include "engine/render/VulkanRenderer.h"
@@ -266,8 +269,8 @@ namespace Carrot::VR {
 
     xr::UniqueActionSet Session::createActionSet(std::string_view name) {
         xr::ActionSetCreateInfo createInfo;
-        strcpy_s(createInfo.actionSetName, sizeof(createInfo.actionSetName), name.data());
-        strcpy_s(createInfo.localizedActionSetName, sizeof(createInfo.localizedActionSetName), name.data());
+        Carrot::strcpy(createInfo.actionSetName, sizeof(createInfo.actionSetName), name.data());
+        Carrot::strcpy(createInfo.localizedActionSetName, sizeof(createInfo.localizedActionSetName), name.data());
         return vr.getXRInstance().createActionSetUnique(createInfo);
     }
 

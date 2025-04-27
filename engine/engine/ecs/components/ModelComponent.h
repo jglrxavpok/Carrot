@@ -5,6 +5,7 @@
 #pragma once
 #include "engine/ecs/components/Component.h"
 #include "engine/render/Model.h"
+#include "engine/render/ModelRenderer.h"
 #include "engine/render/AsyncResource.hpp"
 #include "engine/assets/AssetServer.h"
 #include "engine/render/raytracing/ASBuilder.h"

@@ -22,6 +22,7 @@ namespace Carrot {
 
 namespace Carrot::Render {
     struct ClusterModel;
+    class ModelRenderer;
 
     struct MaterialOverride {
         std::size_t meshIndex = 0;

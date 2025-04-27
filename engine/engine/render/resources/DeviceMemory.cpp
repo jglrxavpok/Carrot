@@ -25,7 +25,7 @@ namespace Carrot {
         }
 
         size = allocInfo.allocationSize;
-        vkMemory = GetEngine().getLogicalDevice().allocateMemory(allocInfo, GetEngine().getAllocator());
+        vkMemory = GetVulkanDriver().getLogicalDevice().allocateMemory(allocInfo, GetEngine().getAllocator());
 
         TotalMemoryUsed += size;
         MemoryUsedByLocation.getOrCompute(sourceLocation, []() { return 0; }) += size;

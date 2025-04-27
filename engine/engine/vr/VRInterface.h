@@ -6,7 +6,10 @@
 
 #include <memory>
 #include "engine/vr/Session.h"
-#include "engine/Engine.h"
+
+namespace Carrot {
+    class Engine;
+}
 
 namespace Carrot::VR {
     //! Interface to communicate with OpenXR. Carrot does not expose all of OpenXR directly (contrary to Vulkan)

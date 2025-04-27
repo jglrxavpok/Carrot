@@ -13,13 +13,13 @@
 
 #include <core/render/ImageFormats.h>
 #include <engine/render/resources/Buffer.h>
+#include <engine/vulkan/VulkanDriver.h>
 #include "stb_image.h"
 #include <core/io/Logging.hpp>
 #include <core/io/FileFormats.h>
 #include <engine/utils/Profiling.h>
 #include <core/async/Coroutines.hpp>
 #include <engine/task/TaskScheduler.h>
-#include <engine/Engine.h>
 #include <engine/render/resources/ResourceAllocator.h>
 
 /*static*/ Carrot::Async::SpinLock Carrot::Image::AliveImagesAccess{};

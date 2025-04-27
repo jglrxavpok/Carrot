@@ -5,17 +5,19 @@
 #pragma once
 
 #include <engine/vulkan/DebugNameable.h>
-#include <engine/vulkan/VulkanDriver.h>
 #include <engine/render/resources/DeviceMemory.h>
 #include <memory>
 #include <set>
 #include <functional>
 #include <unordered_set>
 #include <engine/render/Skybox.hpp>
+#include <engine/render/resources/BufferView.h>
 #include <core/io/Resource.h>
 #include <core/async/Locks.h>
 
 namespace Carrot {
+    class VulkanDriver;
+
     /// Abstraction over Vulkan images. Manages lifetime and memory
     class Image: public DebugNameable {
     private:

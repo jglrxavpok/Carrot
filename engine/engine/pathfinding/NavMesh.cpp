@@ -74,7 +74,7 @@ namespace Carrot::AI {
 
             allVertices.reserve(allVertices.size() + primitive.vertices.size());
             for(const auto& v : primitive.vertices) {
-                allVertices.emplace_back(v.pos.xyz);
+                allVertices.emplace_back(v.pos.xyz());
             }
 
             for (std::size_t i = 0; i < indexCount; i += 3) {
@@ -84,9 +84,9 @@ namespace Carrot::AI {
 
                 NavMeshTriangle& newTriangle = triangles.emplace_back();
                 newTriangle.index = triangles.size()-1;
-                newTriangle.triangle.a = primitive.vertices[index0].pos.xyz;
-                newTriangle.triangle.b = primitive.vertices[index1].pos.xyz;
-                newTriangle.triangle.c = primitive.vertices[index2].pos.xyz;
+                newTriangle.triangle.a = primitive.vertices[index0].pos.xyz();
+                newTriangle.triangle.b = primitive.vertices[index1].pos.xyz();
+                newTriangle.triangle.c = primitive.vertices[index2].pos.xyz();
 
                 newTriangle.globalVertexIndices[0] = index0 + vertexIndexOffset;
                 newTriangle.globalVertexIndices[1] = index1 + vertexIndexOffset;
@@ -294,8 +294,8 @@ namespace Carrot::AI {
             // assume ZUp + entities don't move 100% vertically
             const auto& vertices = portalVertices.at(triangleIndexA).at(triangleIndexB);
             Math::Segment2D segment;
-            segment.first = triangleA.center.xy;
-            segment.second = triangleB.center.xy;
+            segment.first = triangleA.center.xy();
+            segment.second = triangleB.center.xy();
 
             auto& portal = portals.emplace_back();
             if(segment.getSignedDistance(vertices[0]) < 0) {

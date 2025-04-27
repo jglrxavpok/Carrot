@@ -7,10 +7,11 @@
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <engine/render/resources/Pipeline.h>
 #include <core/expressions/Expressions.h>
-#include "engine/Engine.h"
 
 namespace Carrot {
+    struct Engine;
     struct Particle;
 
     class ComputePipeline;

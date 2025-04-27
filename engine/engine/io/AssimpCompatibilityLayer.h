@@ -6,7 +6,6 @@
 
 #include <core/io/vfs/VirtualFileSystem.h>
 #include <core/io/Resource.h>
-#include <engine/Engine.h>
 #include <assimp/IOStream.hpp>
 #include <assimp/IOSystem.hpp>
 

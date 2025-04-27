@@ -19,7 +19,11 @@
 #include <engine/render/resources/Pipeline.h>
 
 #include "MaterialSystem.h"
-#include "raytracing/AccelerationStructure.h"
+#include <core/memory/OptionalRef.h>
+#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/AccelerationStructure.h>
+
+#include <engine/task/TaskScheduler.h>
 #include "resources/LightMesh.h"
 
 /**

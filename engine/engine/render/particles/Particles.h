@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <engine/Engine.h>
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>

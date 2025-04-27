@@ -85,97 +85,97 @@ namespace Carrot::Scripting {
 
         loadEngineAssembly();
 
-        mono_add_internal_call("Carrot.Utilities::_GetMaxComponentCountUncached", _GetMaxComponentCountUncached);
-        mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", BeginProfilingZone);
-        mono_add_internal_call("Carrot.Utilities::EndProfilingZone", EndProfilingZone);
-        mono_add_internal_call("Carrot.Signature::GetComponentIndex", GetComponentIndex);
-        mono_add_internal_call("Carrot.System::LoadEntities", LoadEntities);
-        mono_add_internal_call("Carrot.System::_Query", _QueryECS);
-        mono_add_internal_call("Carrot.System::FindEntityByName", FindEntityByName);
-        mono_add_internal_call("Carrot.Entity::GetComponent", GetComponent);
-        mono_add_internal_call("Carrot.Entity::GetName", GetName);
-        mono_add_internal_call("Carrot.Entity::Remove", Remove);
-        mono_add_internal_call("Carrot.Entity::GetChildren", GetEntityChildren);
-        mono_add_internal_call("Carrot.Entity::GetParent", GetParent);
-        mono_add_internal_call("Carrot.Entity::SetParent", SetParent);
-        mono_add_internal_call("Carrot.Entity::ReParent", ReParent);
-        mono_add_internal_call("Carrot.Entity::Duplicate", Duplicate);
-        mono_add_internal_call("Carrot.Entity::Exists", EntityExists);
-        mono_add_internal_call("Carrot.Entity::IsVisible", IsEntityVisible);
-        mono_add_internal_call("Carrot.Entity::Hide", HideEntity);
-        mono_add_internal_call("Carrot.Entity::Show", ShowEntity);
+        mono_add_internal_call("Carrot.Utilities::_GetMaxComponentCountUncached", (void*)_GetMaxComponentCountUncached);
+        mono_add_internal_call("Carrot.Utilities::BeginProfilingZone", (void*)BeginProfilingZone);
+        mono_add_internal_call("Carrot.Utilities::EndProfilingZone", (void*)EndProfilingZone);
+        mono_add_internal_call("Carrot.Signature::GetComponentIndex", (void*)GetComponentIndex);
+        mono_add_internal_call("Carrot.System::LoadEntities", (void*)LoadEntities);
+        mono_add_internal_call("Carrot.System::_Query", (void*)_QueryECS);
+        mono_add_internal_call("Carrot.System::FindEntityByName", (void*)FindEntityByName);
+        mono_add_internal_call("Carrot.Entity::GetComponent", (void*)GetComponent);
+        mono_add_internal_call("Carrot.Entity::GetName", (void*)GetName);
+        mono_add_internal_call("Carrot.Entity::Remove", (void*)Remove);
+        mono_add_internal_call("Carrot.Entity::GetChildren", (void*)GetEntityChildren);
+        mono_add_internal_call("Carrot.Entity::GetParent", (void*)GetParent);
+        mono_add_internal_call("Carrot.Entity::SetParent", (void*)SetParent);
+        mono_add_internal_call("Carrot.Entity::ReParent", (void*)ReParent);
+        mono_add_internal_call("Carrot.Entity::Duplicate", (void*)Duplicate);
+        mono_add_internal_call("Carrot.Entity::Exists", (void*)EntityExists);
+        mono_add_internal_call("Carrot.Entity::IsVisible", (void*)IsEntityVisible);
+        mono_add_internal_call("Carrot.Entity::Hide", (void*)HideEntity);
+        mono_add_internal_call("Carrot.Entity::Show", (void*)ShowEntity);
 
         addPrefabBindingMethods();
         addModelBindingMethods();
 
-        mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", _GetLocalPosition);
-        mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", _SetLocalPosition);
-        mono_add_internal_call("Carrot.TransformComponent::_GetLocalScale", _GetLocalScale);
-        mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", _SetLocalScale);
-        mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", _GetEulerAngles);
-        mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", _SetEulerAngles);
-        mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", _GetWorldPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_GetLocalPosition", (void*)_GetLocalPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_SetLocalPosition", (void*)_SetLocalPosition);
+        mono_add_internal_call("Carrot.TransformComponent::_GetLocalScale", (void*)_GetLocalScale);
+        mono_add_internal_call("Carrot.TransformComponent::_SetLocalScale", (void*)_SetLocalScale);
+        mono_add_internal_call("Carrot.TransformComponent::_GetEulerAngles", (void*)_GetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::_SetEulerAngles", (void*)_SetEulerAngles);
+        mono_add_internal_call("Carrot.TransformComponent::_GetWorldPosition", (void*)_GetWorldPosition);
 
-        mono_add_internal_call("Carrot.CharacterComponent::Teleport", TeleportCharacter);
-        mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", _GetCharacterVelocity);
-        mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", _SetCharacterVelocity);
-        mono_add_internal_call("Carrot.CharacterComponent::IsOnGround", _IsCharacterOnGround);
-        mono_add_internal_call("Carrot.CharacterComponent::EnablePhysics", EnableCharacterPhysics);
-        mono_add_internal_call("Carrot.CharacterComponent::DisablePhysics", DisableCharacterPhysics);
+        mono_add_internal_call("Carrot.CharacterComponent::Teleport", (void*)TeleportCharacter);
+        mono_add_internal_call("Carrot.CharacterComponent::_GetVelocity", (void*)_GetCharacterVelocity);
+        mono_add_internal_call("Carrot.CharacterComponent::_SetVelocity", (void*)_SetCharacterVelocity);
+        mono_add_internal_call("Carrot.CharacterComponent::IsOnGround", (void*)_IsCharacterOnGround);
+        mono_add_internal_call("Carrot.CharacterComponent::EnablePhysics", (void*)EnableCharacterPhysics);
+        mono_add_internal_call("Carrot.CharacterComponent::DisablePhysics", (void*)DisableCharacterPhysics);
 
-        mono_add_internal_call("Carrot.TextComponent::_GetText", _GetText);
-        mono_add_internal_call("Carrot.TextComponent::_SetText", _SetText);
-        mono_add_internal_call("Carrot.TextComponent::_GetColor", _GetTextColor);
-        mono_add_internal_call("Carrot.TextComponent::_SetColor", _SetTextColor);
+        mono_add_internal_call("Carrot.TextComponent::_GetText", (void*)_GetText);
+        mono_add_internal_call("Carrot.TextComponent::_SetText", (void*)_SetText);
+        mono_add_internal_call("Carrot.TextComponent::_GetColor", (void*)_GetTextColor);
+        mono_add_internal_call("Carrot.TextComponent::_SetColor", (void*)_SetTextColor);
 
-        mono_add_internal_call("Carrot.RigidBodyComponent::GetColliderCount", GetRigidBodyColliderCount);
-        mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", GetRigidBodyCollider);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", _GetRigidBodyVelocity);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", _SetRigidBodyVelocity);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", _RigidBodyRegisterForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetColliderCount", (void*)GetRigidBodyColliderCount);
+        mono_add_internal_call("Carrot.RigidBodyComponent::GetCollider", (void*)GetRigidBodyCollider);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetVelocity", (void*)_GetRigidBodyVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetVelocity", (void*)_SetRigidBodyVelocity);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_RegisterForContacts", (void*)_RigidBodyRegisterForContacts);
 
-        mono_add_internal_call("Carrot.RigidBodyComponent::_GetRegisteredForContacts", _RigidBodyGetRegisteredForContacts);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_SetRegisteredForContacts", _RigidBodySetRegisteredForContacts);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_GetCallbacksHolder", _RigidBodyGetCallbacksHolder);
-        mono_add_internal_call("Carrot.RigidBodyComponent::_SetCallbacksHolder", _RigidBodySetCallbacksHolder);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetRegisteredForContacts", (void*)_RigidBodyGetRegisteredForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetRegisteredForContacts", (void*)_RigidBodySetRegisteredForContacts);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_GetCallbacksHolder", (void*)_RigidBodyGetCallbacksHolder);
+        mono_add_internal_call("Carrot.RigidBodyComponent::_SetCallbacksHolder", (void*)_RigidBodySetCallbacksHolder);
 
-        mono_add_internal_call("Carrot.RigidBodyComponent::Raycast", RaycastRigidbody);
-        mono_add_internal_call("Carrot.CharacterComponent::Raycast", RaycastCharacter);
+        mono_add_internal_call("Carrot.RigidBodyComponent::Raycast", (void*)RaycastRigidbody);
+        mono_add_internal_call("Carrot.CharacterComponent::Raycast", (void*)RaycastCharacter);
 
-        mono_add_internal_call("Carrot.NavMeshComponent::GetClosestPointInMesh", GetClosestPointInMesh);
-        mono_add_internal_call("Carrot.NavMeshComponent::PathFind", PathFind);
+        mono_add_internal_call("Carrot.NavMeshComponent::GetClosestPointInMesh", (void*)GetClosestPointInMesh);
+        mono_add_internal_call("Carrot.NavMeshComponent::PathFind", (void*)PathFind);
 
-        mono_add_internal_call("Carrot.KinematicsComponent::_GetLocalVelocity", _GetKinematicsLocalVelocity);
-        mono_add_internal_call("Carrot.KinematicsComponent::_SetLocalVelocity", _SetKinematicsLocalVelocity);
+        mono_add_internal_call("Carrot.KinematicsComponent::_GetLocalVelocity", (void*)_GetKinematicsLocalVelocity);
+        mono_add_internal_call("Carrot.KinematicsComponent::_SetLocalVelocity", (void*)_SetKinematicsLocalVelocity);
 
         {
-            mono_add_internal_call("Carrot.Physics.Collider::Raycast", RaycastCollider);
+            mono_add_internal_call("Carrot.Physics.Collider::Raycast", (void*)RaycastCollider);
         }
 
-        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::SelectAnimation", SelectAnimatedModelAnimation);
-        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationIndex", _GetAnimatedModelAnimationIndex);
-        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationIndex", _SetAnimatedModelAnimationIndex);
-        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationTime", _GetAnimatedModelAnimationTime);
-        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationTime", _SetAnimatedModelAnimationTime);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::SelectAnimation", (void*)SelectAnimatedModelAnimation);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationIndex", (void*)_GetAnimatedModelAnimationIndex);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationIndex", (void*)_SetAnimatedModelAnimationIndex);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_GetAnimationTime", (void*)_GetAnimatedModelAnimationTime);
+        mono_add_internal_call("Carrot.Components.AnimatedModelComponent::_SetAnimationTime", (void*)_SetAnimatedModelAnimationTime);
 
-        mono_add_internal_call("Carrot.Input.ActionSet::Create", CreateActionSet);
-        mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", _ActivateActionSet);
-        mono_add_internal_call("Carrot.Input.ActionSet::_AddToActionSet", _AddToActionSet);
+        mono_add_internal_call("Carrot.Input.ActionSet::Create", (void*)CreateActionSet);
+        mono_add_internal_call("Carrot.Input.ActionSet::_ActivateActionSet", (void*)_ActivateActionSet);
+        mono_add_internal_call("Carrot.Input.ActionSet::_AddToActionSet", (void*)_AddToActionSet);
 
-        mono_add_internal_call("Carrot.Input.Action::SuggestBinding", SuggestBinding);
+        mono_add_internal_call("Carrot.Input.Action::SuggestBinding", (void*)SuggestBinding);
 
-        mono_add_internal_call("Carrot.Input.BoolInputAction::Create", CreateBoolInputAction);
-        mono_add_internal_call("Carrot.Input.BoolInputAction::IsPressed", IsBoolInputPressed);
-        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustPressed", WasBoolInputJustPressed);
-        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustReleased", WasBoolInputJustReleased);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::Create", (void*)CreateBoolInputAction);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::IsPressed", (void*)IsBoolInputPressed);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustPressed", (void*)WasBoolInputJustPressed);
+        mono_add_internal_call("Carrot.Input.BoolInputAction::WasJustReleased", (void*)WasBoolInputJustReleased);
 
-        mono_add_internal_call("Carrot.Input.FloatInputAction::Create", CreateFloatInputAction);
-        mono_add_internal_call("Carrot.Input.FloatInputAction::GetValue", GetFloatInputValue);
+        mono_add_internal_call("Carrot.Input.FloatInputAction::Create", (void*)CreateFloatInputAction);
+        mono_add_internal_call("Carrot.Input.FloatInputAction::GetValue", (void*)GetFloatInputValue);
 
-        mono_add_internal_call("Carrot.Input.Vec2InputAction::Create", CreateVec2InputAction);
-        mono_add_internal_call("Carrot.Input.Vec2InputAction::_GetValue", _GetVec2InputValue);
+        mono_add_internal_call("Carrot.Input.Vec2InputAction::Create", (void*)CreateVec2InputAction);
+        mono_add_internal_call("Carrot.Input.Vec2InputAction::_GetValue", (void*)_GetVec2InputValue);
 
-        mono_add_internal_call("Carrot.Input.Aim::GetDirectionFromScreen", GetAimDirectionFromScreen);
+        mono_add_internal_call("Carrot.Input.Aim::GetDirectionFromScreen", (void*)GetAimDirectionFromScreen);
     }
 
     CSharpBindings::~CSharpBindings() {

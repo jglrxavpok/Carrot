@@ -4,6 +4,7 @@
 
 #include "Particles.h"
 #include <core/utils/RNG.h>
+#include <engine/Engine.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include "imgui.h"
 #include "engine/render/resources/Buffer.h"

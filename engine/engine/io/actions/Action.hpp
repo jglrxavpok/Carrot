@@ -103,31 +103,31 @@ namespace Carrot::IO {
 
     public:
         bool isPressed() const requires IsBoolInput<type> {
-            return state.bValue;
+            return state.b.value;
         }
 
         bool wasJustPressed() const requires IsBoolInput<type> {
-            return state.bValue && !state.bPreviousValue;
+            return state.b.value && !state.b.previousValue;
         }
 
         bool wasJustReleased() const requires IsBoolInput<type> {
-            return !state.bValue && state.bPreviousValue;
+            return !state.b.value && state.b.previousValue;
         }
 
         float getValue() const requires IsFloatInput<type> {
-            return state.fValue;
+            return state.f.value;
         }
 
         float getDelta() const requires IsFloatInput<type> {
-            return state.fValue - state.fPreviousValue;
+            return state.f.value - state.f.previousValue;
         }
 
         glm::vec2 getValue() const requires IsVec2Input<type> {
-            return state.vValue;
+            return state.v2.value;
         }
 
         glm::vec2 getDelta() const requires IsVec2Input<type> {
-            return state.vValue - state.vPreviousValue;
+            return state.v2.value - state.v2.previousValue;
         }
 
         const ActionPose& getValue() const requires IsPoseInput<type> {
@@ -139,15 +139,15 @@ namespace Carrot::IO {
         }
 
         void forceValue(bool v) requires IsBoolInput<type> {
-            state.bValue = v;
+            state.b.value = v;
         }
 
         void forceValue(float v) requires IsFloatInput<type> {
-            state.fValue = v;
+            state.f.value = v;
         }
 
         void forceValue(const glm::vec2& v) requires IsVec2Input<type> {
-            state.vValue = v;
+            state.v2.value = v;
         }
 
         void forceValue(const ActionPose& v) requires IsPoseInput<type> {
@@ -170,18 +170,18 @@ namespace Carrot::IO {
         std::string name;
         std::vector<ActionBinding> suggestedBindings;
         union State {
-            struct {
-                bool bValue;
-                bool bPreviousValue;
-            };
-            struct {
-                float fValue;
-                float fPreviousValue;
-            };
-            struct {
-                glm::vec2 vValue;
-                glm::vec2 vPreviousValue;
-            };
+            struct BoolState {
+                bool value;
+                bool previousValue;
+            } b;
+            struct FloatValue {
+                float value;
+                float previousValue;
+            } f;
+            struct Vec2Value {
+                glm::vec2 value;
+                glm::vec2 previousValue;
+            } v2;
         } state;
 
         // non-trivial constructor so keeping it inside the union is not great

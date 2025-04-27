@@ -134,18 +134,18 @@ namespace Carrot::Audio {
                 LOAD_CLASS_NS("Carrot.Audio", Music);
             });
 
-            mono_add_internal_call("Carrot.Audio.SFX::Load", SFXLoad);
-            mono_add_internal_call("Carrot.Audio.SFX::Play", SFXPlay);
+            mono_add_internal_call("Carrot.Audio.SFX::Load", (void*)SFXLoad);
+            mono_add_internal_call("Carrot.Audio.SFX::Play", (void*)SFXPlay);
 
-            mono_add_internal_call("Carrot.Audio.Music::Load", MusicLoad);
-            mono_add_internal_call("Carrot.Audio.Music::Play", MusicPlay);
-            mono_add_internal_call("Carrot.Audio.Music::Stop", MusicStop);
-            mono_add_internal_call("Carrot.Audio.Music::SetLooping", MusicSetLooping);
+            mono_add_internal_call("Carrot.Audio.Music::Load", (void*)MusicLoad);
+            mono_add_internal_call("Carrot.Audio.Music::Play", (void*)MusicPlay);
+            mono_add_internal_call("Carrot.Audio.Music::Stop", (void*)MusicStop);
+            mono_add_internal_call("Carrot.Audio.Music::SetLooping", (void*)MusicSetLooping);
 
-            mono_add_internal_call("Carrot.Audio.SoundSource::Create", SoundSourceCreate);
-            mono_add_internal_call("Carrot.Audio.SoundSource::SetGain", SoundSourceSetGain);
-            mono_add_internal_call("Carrot.Audio.SoundSource::SetPosition", SoundSourceSetPosition);
-            mono_add_internal_call("Carrot.Audio.SoundSource::IsPlaying", SoundSourceIsPlaying);
+            mono_add_internal_call("Carrot.Audio.SoundSource::Create", (void*)SoundSourceCreate);
+            mono_add_internal_call("Carrot.Audio.SoundSource::SetGain", (void*)SoundSourceSetGain);
+            mono_add_internal_call("Carrot.Audio.SoundSource::SetPosition", (void*)SoundSourceSetPosition);
+            mono_add_internal_call("Carrot.Audio.SoundSource::IsPlaying", (void*)SoundSourceIsPlaying);
         }
     };
 

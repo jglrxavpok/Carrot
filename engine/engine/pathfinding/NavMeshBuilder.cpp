@@ -1080,9 +1080,9 @@ namespace Carrot::AI {
             const std::size_t prevI = prev(i);
             const std::size_t nextI = next(i);
 
-            const glm::vec2 point0 = output.points[contourIndices[prevI]].xy;
-            const glm::vec2 point1 = output.points[contourIndices[i]].xy;
-            const glm::vec2 point2 = output.points[contourIndices[nextI]].xy;
+            const glm::vec2 point0 = output.points[contourIndices[prevI]].xy();
+            const glm::vec2 point1 = output.points[contourIndices[i]].xy();
+            const glm::vec2 point2 = output.points[contourIndices[nextI]].xy();
 
             //Carrot::Log::info("v %f %f %f", point1.x, point1.y, point1.z);
 
@@ -1104,9 +1104,9 @@ namespace Carrot::AI {
                 const std::size_t prevI = prev(i);
                 const std::size_t nextI = next(i);
                 Math::Triangle t {
-                        glm::vec3(output.points[contourIndices[prevI]].xy, 0.0f),
-                        glm::vec3(output.points[contourIndices[i]].xy, 0.0f),
-                        glm::vec3(output.points[contourIndices[nextI]].xy, 0.0f),
+                        glm::vec3(output.points[contourIndices[prevI]].xy(), 0.0f),
+                        glm::vec3(output.points[contourIndices[i]].xy(), 0.0f),
+                        glm::vec3(output.points[contourIndices[nextI]].xy(), 0.0f),
                 };
 
                 const glm::vec3 edge0 = t.b - t.a;
@@ -1137,7 +1137,7 @@ namespace Carrot::AI {
                         continue;
                     }
 
-                    const glm::vec3 p = glm::vec3(output.points[contourIndices[j]].xy, 0.0f);
+                    const glm::vec3 p = glm::vec3(output.points[contourIndices[j]].xy(), 0.0f);
                   //  if(t.isPointInside(p)) {
                     if(triangleArea2(t.c, t.a, p) >= 0.0f && triangleArea2(t.a, t.b, p) >= 0.0f && triangleArea2(t.b, t.c, p) >= 0.0f) {
                         otherPointInTriangle = true;

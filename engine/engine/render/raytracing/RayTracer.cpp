@@ -11,6 +11,12 @@
 #include "SceneElement.h"
 #include <iostream>
 
+#include <engine/Capabilities.h>
+
+#include <engine/render/VulkanRenderer.h>
+#include <engine/vulkan/VulkanDriver.h>
+#include <engine/Engine.h>
+
 constexpr int maxInstances = 301;
 
 static constexpr float ResolutionScale = 0.5f;

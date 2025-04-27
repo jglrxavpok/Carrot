@@ -24,6 +24,7 @@
 #include <engine/render/ModelRenderer.h>
 #include <engine/render/ClusterManager.h>
 #include <engine/task/TaskScheduler.h>
+#include <engine/Engine.h>
 
 Carrot::Model::Model(Carrot::Engine& engine, const Carrot::IO::Resource& file): engine(engine), resource(file) {}
 
@@ -236,7 +237,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                                                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                          vk::MemoryPropertyFlagBits::eDeviceLocal);
         animationData->setDebugNames(Carrot::sprintf("Carrot::Animation %s", debugName.c_str()));
-        animationData->stageUploadWithOffsets(make_pair(0ull, std::span(gpuAnimationData)));
+        animationData->stageUploadWithOffsets(make_pair(0ul, std::span(gpuAnimationData)));
 
         animationBoneTransformData.resize(allAnimations.size());
         for (std::size_t i = 0; i < allAnimations.size(); ++i) {

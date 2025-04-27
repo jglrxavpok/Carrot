@@ -9,6 +9,7 @@
 
 #include "engine/render/resources/Texture.h"
 #include "engine/render/RenderPassData.h"
+#include "engine/render/resources/BufferAllocation.h"
 #include "core/utils/UUID.h"
 
 namespace Carrot::VR {
@@ -52,7 +53,7 @@ namespace Carrot::Render {
         /// Sets which render pass is the creator of the texture with the given ID
         void setCreatorID(const Carrot::UUID& resourceID, const Carrot::UUID& creatorID);
 
-    private:
+    public:
         /**
          * Represents the various versions of a buffer across time.
          * Actually multiple buffers in a trenchcoat
@@ -72,6 +73,7 @@ namespace Carrot::Render {
         private:
             Vector<Carrot::BufferAllocation> buffers;
         };
+    private:
 
         VulkanDriver& driver;
         std::vector<std::unordered_map<Carrot::UUID, Carrot::Render::Texture::Ref>> textures;

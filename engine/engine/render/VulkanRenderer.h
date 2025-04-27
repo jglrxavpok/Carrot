@@ -10,7 +10,6 @@
 #include <functional>
 #include <core/ThreadSafeQueue.hpp>
 
-#include <engine/vulkan/VulkanDriver.h>
 #include <engine/render/ImGuiBackend.h>
 #include <engine/render/resources/PerFrame.h>
 #include <engine/render/resources/Pipeline.h>
@@ -30,6 +29,13 @@
 #include <core/async/Coroutines.hpp>
 #include <core/async/Locks.h>
 #include <core/async/ParallelMap.hpp>
+
+#include <engine/render/raytracing/ASBuilder.h>
+#include <engine/render/raytracing/RayTracer.h>
+#include <engine/render/ClusterManager.h>
+#include <engine/render/GBuffer.h>
+#include <engine/render/VisibilityBuffer.h>
+#include <engine/utils/DeferredDestruction.h>
 
 namespace sol {
     class state;
@@ -113,7 +119,7 @@ namespace Carrot {
         static constexpr double BlinkDuration = 0.100f;
 
         explicit VulkanRenderer(VulkanDriver& driver, Configuration config);
-        ~VulkanRenderer();
+        virtual ~VulkanRenderer();
 
         /// Init everything that is not immediately needed during construction. Allows to initialise resources during a loading screen
         void lateInit();
@@ -145,7 +151,7 @@ namespace Carrot {
 
     public:
         std::uint32_t getFrameCount() const { return frameCount; }
-        std::size_t getSwapchainImageCount() { return driver.getSwapchainImageCount(); };
+        std::size_t getSwapchainImageCount() const;
         VulkanDriver& getVulkanDriver() { return driver; };
 
         ASBuilder& getASBuilder() { return *asBuilder; };
@@ -155,7 +161,7 @@ namespace Carrot {
         Render::VisibilityBuffer& getVisibilityBuffer() { return *visibilityBuffer; };
         Render::ClusterManager& getMeshletManager() { return *clusterManager; };
 
-        vk::Device& getLogicalDevice() { return driver.getLogicalDevice(); };
+        vk::Device& getLogicalDevice();
 
         Mesh& getFullscreenQuad() { return *fullscreenQuad; }
 

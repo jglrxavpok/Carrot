@@ -5,14 +5,23 @@
 #pragma once
 #include <core/SparseArray.hpp>
 
-#include "engine/Engine.h"
 #include "AccelerationStructure.h"
 #include <glm/matrix.hpp>
-#include <core/utils/WeakPool.hpp>
 #include <core/async/Locks.h>
 #include "SceneElement.h"
+#include "engine/render/resources/PerFrame.h"
+#include "engine/vulkan/SwapchainAware.h"
+#include "tracy/TracyVulkan.hpp"
 
 namespace Carrot {
+    class Mesh;
+    class VulkanRenderer;
+
+    namespace Render {
+        struct Context;
+        struct PrecomputedBLAS;
+    }
+
     struct GeometryInput {
         std::vector<vk::AccelerationStructureGeometryKHR> geometries{};
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges{};

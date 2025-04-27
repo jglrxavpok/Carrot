@@ -4,10 +4,11 @@
 
 #pragma once
 #include <memory>
-#include "Engine.h"
 #include "render/resources/Image.h"
 
 namespace Carrot {
+    class Engine;
+
     class LoadingScreen {
     private:
         Engine& engine;

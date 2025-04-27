@@ -6,6 +6,8 @@
 #include "AutocompleteField.h"
 
 #include <utility>
+#include <core/utils/stringmanip.h>
+
 #include "imgui_internal.h"
 #include "imgui_stdlib.h"
 
@@ -125,7 +127,7 @@ namespace Carrot {
                                     ImGuiInputTextFlags_CallbackHistory;
 
         char inputBuffer[256] = { '\0' };
-        strcpy_s(inputBuffer, imguiInputBuffer.c_str());
+        Carrot::strcpy(inputBuffer, imguiInputBuffer.c_str());
         auto prevInput = imguiInputBuffer;
         constexpr const char* const fieldID = "Command##autocomplete";
         bool pressedEnter = ImGui::InputText(fieldID, inputBuffer, sizeof(inputBuffer), flags, InputCallback, this);

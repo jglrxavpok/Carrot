@@ -11,6 +11,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <engine/utils/Profiling.h>
 
+#include "VulkanRenderer.h"
+
 namespace Carrot::Render {
 
     std::unique_ptr<Carrot::Mesh> Sprite::spriteMesh = nullptr;

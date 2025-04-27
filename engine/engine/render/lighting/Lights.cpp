@@ -202,13 +202,13 @@ namespace Carrot::Render {
     }
 
     LightType Light::fromString(std::string_view str) {
-        if(_stricmp(str.data(), "point") == 0) {
+        if(stricmp(str.data(), "point") == 0) {
             return LightType::Point;
         }
-        if(_stricmp(str.data(), "directional") == 0) {
+        if(stricmp(str.data(), "directional") == 0) {
             return LightType::Directional;
         }
-        if(_stricmp(str.data(), "spot") == 0) {
+        if(stricmp(str.data(), "spot") == 0) {
             return LightType::Spot;
         }
         verify(false, "Unknown light type!");

@@ -85,13 +85,13 @@ namespace Carrot::ECS {
     }
 
     Physics::BodyType RigidBodyComponent::getTypeFromName(const std::string& name) {
-        if(_stricmp(name.c_str(), "Dynamic") == 0) {
+        if(stricmp(name.c_str(), "Dynamic") == 0) {
             return Physics::BodyType::Dynamic;
         }
-        if(_stricmp(name.c_str(), "Kinematic") == 0) {
+        if(stricmp(name.c_str(), "Kinematic") == 0) {
             return Physics::BodyType::Kinematic;
         }
-        if(_stricmp(name.c_str(), "Static") == 0) {
+        if(stricmp(name.c_str(), "Static") == 0) {
             return Physics::BodyType::Static;
         }
         verify(false, "invalid string");

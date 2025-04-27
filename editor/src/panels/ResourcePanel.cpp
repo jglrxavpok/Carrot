@@ -12,6 +12,7 @@
 #include <core/io/Logging.hpp>
 #include <engine/edition/DragDropTypes.h>
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/Engine.h>
 #include <engine/ecs/Prefab.h>
 
 namespace Peeler {

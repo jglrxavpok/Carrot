@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <engine/vulkan/VulkanDriver.h>
 #include <core/io/Resource.h>
 #include <engine/render/resources/Mesh.h>
 #include <glm/glm.hpp>

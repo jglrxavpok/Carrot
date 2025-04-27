@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/RenderContext.h"
 #include "engine/render/resources/Texture.h"
 #include "core/utils/UUID.h"

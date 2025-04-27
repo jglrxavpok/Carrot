@@ -3,6 +3,8 @@
 //
 
 #include "GridRenderer.h"
+
+#include <engine/Engine.h>
 #include <engine/render/RenderPacket.h>
 
 namespace Peeler {

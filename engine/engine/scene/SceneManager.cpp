@@ -155,11 +155,11 @@ namespace Carrot {
                 LOAD_CLASS(Scene);
             });
 
-            mono_add_internal_call("Carrot.SceneManager::GetMainScene", GetMainScene);
-            mono_add_internal_call("Carrot.SceneManager::QueueChangeScene", QueueChangeScene);
-            mono_add_internal_call("Carrot.SceneManager::LoadScene", LoadScene);
-            mono_add_internal_call("Carrot.SceneManager::LoadSceneAdditive", LoadSceneAdditive);
-            mono_add_internal_call("Carrot.SceneManager::Delete", Delete);
+            mono_add_internal_call("Carrot.SceneManager::GetMainScene", (void*)GetMainScene);
+            mono_add_internal_call("Carrot.SceneManager::QueueChangeScene", (void*)QueueChangeScene);
+            mono_add_internal_call("Carrot.SceneManager::LoadScene", (void*)LoadScene);
+            mono_add_internal_call("Carrot.SceneManager::LoadSceneAdditive", (void*)LoadSceneAdditive);
+            mono_add_internal_call("Carrot.SceneManager::Delete", (void*)Delete);
         }
     };
 

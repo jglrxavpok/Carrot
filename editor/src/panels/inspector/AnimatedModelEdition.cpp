@@ -3,7 +3,6 @@
 //
 
 #include "EditorFunctions.h"
-#include <engine/Engine.h>
 #include <engine/ecs/components/AnimatedModelComponent.h>
 #include <engine/edition/DragDropTypes.h>
 

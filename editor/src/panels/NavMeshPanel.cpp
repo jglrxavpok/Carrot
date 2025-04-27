@@ -5,6 +5,7 @@
 #include "NavMeshPanel.h"
 #include <core/io/Files.h>
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/Engine.h>
 #include <engine/ecs/components/TransformComponent.h>
 #include <engine/ecs/components/ModelComponent.h>
 #include "../Peeler.h"

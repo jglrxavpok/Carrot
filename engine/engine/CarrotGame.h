@@ -5,9 +5,14 @@
 #pragma once
 
 #include "vulkan/SwapchainAware.h"
-#include "Engine.h"
 
 namespace Carrot {
+    class Engine;
+
+    namespace Render {
+        struct Context;
+    }
+
     class CarrotGame: public SwapchainAware {
     protected:
         Carrot::Engine& engine;
@@ -16,10 +21,10 @@ namespace Carrot {
         explicit CarrotGame(Carrot::Engine& engine): engine(engine) {};
 
         //! Called once per viewport per frame. Push your render calls here.
-        virtual void onFrame(Carrot::Render::Context renderContext) = 0;
+        virtual void onFrame(const Carrot::Render::Context& renderContext) = 0;
 
         //! Called once per viewport per frame per eye. Setup your camera here to work properly in VR. Also called if not in VR, just before onFrame
-        virtual void setupCamera(Carrot::Render::Context renderContext) {};
+        virtual void setupCamera(const Carrot::Render::Context& renderContext) {};
 
         virtual void tick(double frameTime) = 0;
         virtual void prePhysics() {};
@@ -27,8 +32,8 @@ namespace Carrot {
 
         [[deprecated]] virtual void onMouseMove(double dx, double dy) {};
 
-        virtual void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
-        virtual void recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {};
+        virtual void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
+        virtual void recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {};
 
         virtual void changeGraphicsWaitSemaphores(std::uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {};
 

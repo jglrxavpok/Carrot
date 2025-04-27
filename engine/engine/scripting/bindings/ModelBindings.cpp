@@ -30,7 +30,7 @@ namespace Carrot::Scripting {
     }
 
     void CSharpBindings::addModelBindingMethods() {
-        mono_add_internal_call("Carrot.Components.ModelComponent::_GetColor", _GetColor);
-        mono_add_internal_call("Carrot.Components.ModelComponent::_SetColor", _SetColor);
+        mono_add_internal_call("Carrot.Components.ModelComponent::_GetColor", (void*)_GetColor);
+        mono_add_internal_call("Carrot.Components.ModelComponent::_SetColor", (void*)_SetColor);
     }
 }

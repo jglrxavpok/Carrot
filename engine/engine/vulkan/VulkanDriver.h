@@ -11,6 +11,7 @@
 #include <set>
 #include <core/memory/NakedPtr.hpp>
 #include <engine/render/resources/BufferAllocation.h>
+#include <engine/utils/DeferredDestruction.h>
 #include <GLFW/glfw3.h>
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/vulkan/SynchronizedQueue.h"
@@ -18,6 +19,7 @@
 #include "engine/Configuration.h"
 #include "engine/Window.h"
 #include "engine/render/resources/DeviceMemory.h"
+#include "engine/render/TextureRepository.h"
 
 namespace sol {
     class state;
@@ -50,34 +52,6 @@ namespace Carrot {
         bool isComplete() const;
     };
 
-    template<typename TResource>
-    class DeferredDestruction {
-    public:
-        explicit DeferredDestruction(std::string name, TResource&& toDestroy, std::size_t framesBeforeDestruction):
-            countdown(framesBeforeDestruction),
-            resourceName(std::move(name))
-            {
-            resource = std::move(toDestroy);
-        };
-        explicit DeferredDestruction(const std::string& name, TResource&& toDestroy): DeferredDestruction(name, std::move(toDestroy), MAX_FRAMES_IN_FLIGHT) {};
-
-        bool isReadyForDestruction() const {
-            return countdown == 0;
-        }
-
-        void tickDown() {
-            if(countdown > 0)
-                countdown--;
-        }
-
-    private:
-        std::string resourceName; // destroyed AFTER the resource, helps debug use-after-free
-    public:
-        TResource resource{};
-    private:
-        std::size_t countdown = 0; /* number of frames before destruction (swapchain image count by default)*/
-    };
-
     using DeferredImageDestruction = DeferredDestruction<vk::UniqueImage>;
     using DeferredImageViewDestruction = DeferredDestruction<vk::UniqueImageView>;
     using DeferredMemoryDestruction = DeferredDestruction<Carrot::DeviceMemory>;
@@ -93,7 +67,7 @@ namespace Carrot {
     public:
         VulkanDriver(Carrot::Window& window, Configuration config, Engine* engine, Carrot::VR::Interface* vrInterface);
 
-        ~VulkanDriver();
+        virtual ~VulkanDriver();
 
         /// Gets the queue indices of a given physical device
         QueueFamilies findQueueFamilies(const vk::PhysicalDevice& device);

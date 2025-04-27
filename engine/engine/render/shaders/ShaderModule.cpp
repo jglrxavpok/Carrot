@@ -13,6 +13,7 @@
 #include "engine/render/NamedBinding.h"
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
+#include <engine/vulkan/VulkanDriver.h>
 
 static Carrot::Log::Category category { "Shader" };
 

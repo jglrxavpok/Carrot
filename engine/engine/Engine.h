@@ -2,9 +2,7 @@
 // Created by jglrxavpok on 21/11/2020.
 //
 #pragma once
-#include <map>
 #include <memory>
-#include <optional>
 #include <vector>
 #include <set>
 #include <future>
@@ -18,13 +16,8 @@ namespace Carrot {
 #include <engine/Window.h>
 #include <engine/vulkan/SwapchainAware.h>
 #include <GLFW/glfw3.h>
-#include "core/memory/NakedPtr.hpp"
 #include <engine/Settings.h>
-#include "engine/render/IDTypes.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
-#include "imgui.h"
-#include "backends/imgui_impl_vulkan.h"
-#include "backends/imgui_impl_glfw.h"
 
 #include "engine/vulkan/VulkanDriver.h"
 #include "engine/render/VulkanRenderer.h"
@@ -39,6 +32,10 @@ namespace Carrot {
 #include <engine/audio/AudioManager.h>
 #include <engine/assets/AssetServer.h>
 #include <core/io/vfs/VirtualFileSystem.h>
+#include <engine/vr/Session.h>
+#include <engine/vr/VRInterface.h>
+#include <core/scripting/csharp/Engine.h>
+#include <engine/CarrotGame.h>
 
 namespace sol {
     class state;
@@ -134,7 +131,7 @@ namespace Carrot {
     public:
 
         /// Cleanup resources
-        ~Engine();
+        virtual ~Engine();
 
         /// Vulkan logical device
         vk::Device& getLogicalDevice();

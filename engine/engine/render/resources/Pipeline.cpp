@@ -17,6 +17,7 @@
 #include <engine/utils/Profiling.h>
 #include <engine/Engine.h>
 #include <engine/render/VulkanRenderer.h>
+#include <engine/render/shaders/Specialization.h>
 
 static Carrot::Lookup PolygonModes = std::array {
         Carrot::LookupEntry<vk::PolygonMode>(vk::PolygonMode::eFill, "fill"),

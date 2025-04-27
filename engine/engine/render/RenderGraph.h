@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "engine/vulkan/VulkanDriver.h"
 #include "RenderPass.h"
 #include "RenderContext.h"
 #include <list>
@@ -12,6 +11,7 @@
 
 namespace Carrot {
     class Window;
+    class BufferAllocation;
 }
 
 namespace Carrot::Render {

@@ -4,6 +4,15 @@
 #include <engine/ecs/components/Component.h>
 
 namespace Carrot::ECS {
+    class PrefabInstanceComponent;
+}
+
+template<>
+inline const char* Carrot::Identifiable<Carrot::ECS::PrefabInstanceComponent>::getStringRepresentation() {
+    return "PrefabInstanceComponent";
+}
+
+namespace Carrot::ECS {
 
     class PrefabInstanceComponent: public Carrot::ECS::IdentifiableComponent<PrefabInstanceComponent> {
     public:
@@ -24,9 +33,4 @@ namespace Carrot::ECS {
 
     private:
     };
-}
-
-template<>
-inline const char* Carrot::Identifiable<Carrot::ECS::PrefabInstanceComponent>::getStringRepresentation() {
-    return "PrefabInstanceComponent";
 }

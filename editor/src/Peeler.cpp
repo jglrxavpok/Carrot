@@ -52,6 +52,7 @@
 #include <engine/ecs/components/ErrorComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
 #include <core/io/FileSystemOS.h>
+#include <engine/Engine.h>
 #include <engine/edition/Widgets.h>
 
 #include "../../asset_tools/sceneconverter/SceneConverter.h"
@@ -61,7 +62,7 @@ namespace fs = std::filesystem;
 namespace Peeler {
     Application* Instance = nullptr;
 
-    void Application::setupCamera(Carrot::Render::Context renderContext) {
+    void Application::setupCamera(const Carrot::Render::Context& renderContext) {
         if(renderContext.pViewport == &gameViewport) {
             cameraController.applyTo(gameViewport.getSizef(), gameViewport.getCamera());
 
@@ -74,7 +75,7 @@ namespace Peeler {
         }
     }
 
-    void Application::onFrame(Carrot::Render::Context renderContext) {
+    void Application::onFrame(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
         if(renderContext.pViewport == &engine.getMainViewport()) {
             ZoneScopedN("Main viewport");
@@ -1328,12 +1329,12 @@ namespace Peeler {
         currentScene.postPhysics();
     }
 
-    void Application::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+    void Application::recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
                                               vk::CommandBuffer& commands) {
         // no op, everything is done inside gameViewport
     }
 
-    void Application::recordTransparentGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext,
+    void Application::recordTransparentGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext,
                                                    vk::CommandBuffer& commands) {
         // no op, everything is done inside gameViewport
     }

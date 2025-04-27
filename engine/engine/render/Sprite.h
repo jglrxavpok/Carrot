@@ -5,19 +5,20 @@
 #pragma once
 #include "engine/render/resources/Buffer.h"
 #include "engine/render/resources/Pipeline.h"
+#include "engine/render/resources/Mesh.h"
 #include "engine/render/resources/Texture.h"
 #include "core/math/Rect2D.hpp"
 #include "engine/render/InstanceData.h"
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/detail/type_quat.hpp>
-#include "engine/render/VulkanRenderer.h"
-#include "engine/render/resources/BufferView.h"
 
 namespace sol {
     class state;
 }
 
 namespace Carrot::Render {
+    class MaterialHandle;
+
     class Sprite {
     public:
         glm::mat4 parentTransform{1.0f};
@@ -46,7 +47,7 @@ namespace Carrot::Render {
     public:
         virtual void tick(double deltaTime) {}
         void onFrame(const Carrot::Render::Context& renderContext) const;
-        [[deprecated("Rendering done via onFrame")]] void soloGBufferRender(const vk::RenderPass& renderPass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) const {}
+        [[deprecated("Rendering done via onFrame")]] void soloGBufferRender(const vk::RenderPass& renderPass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const {}
 
     public:
         const Texture& getTexture() const { return *texture; }

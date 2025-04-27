@@ -14,6 +14,8 @@
 #include "engine/render/GBufferDrawData.h"
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/resources/LightMesh.h"
+#include "engine/vulkan/VulkanDriver.h"
+#include "engine/Engine.h"
 
 extern Carrot::RuntimeOption DrawBoundingSpheres;
 
@@ -21,7 +23,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     engine(engine), model(std::move(animatedModel)), maxInstanceCount(maxInstanceCount) {
 
     // TODO: don't crash if there are no skinned meshes inside model
-    instanceBuffer = std::make_unique<Buffer>(engine.getVulkanDriver(),
+    instanceBuffer = std::make_unique<Buffer>(GetVulkanDriver(),
                                               maxInstanceCount*sizeof(AnimatedInstanceData),
                                               vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eStorageBuffer,
                                               vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
@@ -33,7 +35,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     uint64_t maxVertexCount = 0;
 
     forEachMesh([&](std::uint32_t meshIndex, std::uint32_t materialSlot, Carrot::Mesh::Ref& mesh) {
-        indirectBuffers[mesh->getMeshID()] = std::make_shared<Buffer>(engine.getVulkanDriver(),
+        indirectBuffers[mesh->getMeshID()] = std::make_shared<Buffer>(GetVulkanDriver(),
                                                                       maxInstanceCount * sizeof(vk::DrawIndexedIndirectCommand),
                                                                       vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                                                       vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -45,7 +47,7 @@ Carrot::AnimatedInstances::AnimatedInstances(Carrot::Engine& engine, std::shared
     });
 
     // TODO: swapchainlength-buffering?
-    flatVertices = std::make_unique<Buffer>(engine.getVulkanDriver(),
+    flatVertices = std::make_unique<Buffer>(GetVulkanDriver(),
                                             sizeof(SkinnedVertex) * vertexCountPerInstance,
                                             vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
                                             vk::MemoryPropertyFlagBits::eDeviceLocal,

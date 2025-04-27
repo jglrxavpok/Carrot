@@ -5,6 +5,7 @@
 #include "Character.h"
 #include <engine/physics/PhysicsSystem.h>
 #include <engine/utils/conversions.h>
+#include <engine/utils/Macros.h>
 
 namespace Carrot::Physics {
     static const float cCollisionTolerance = 0.05f;

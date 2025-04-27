@@ -10,9 +10,11 @@
 namespace Carrot {
     class Pipeline;
     struct RenderContext;
+    class Window;
 }
 
 namespace Carrot::Render {
+    struct Context;
     class GraphBuilder;
     class Graph;
 

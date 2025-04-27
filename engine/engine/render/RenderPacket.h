@@ -22,6 +22,7 @@ namespace Carrot {
     class VulkanRenderer;
 
     namespace Render {
+        struct Context;
         class Viewport;
     }
 }
@@ -157,6 +158,6 @@ namespace Carrot::Render {
         std::size_t pushConstantCount = 0;
         PushConstant* pushConstants[MAX_PUSH_CONSTANTS];
 
-        friend class VulkanRenderer;
+        friend class ::Carrot::VulkanRenderer;
     };
 }

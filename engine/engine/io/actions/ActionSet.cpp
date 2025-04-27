@@ -48,13 +48,13 @@ namespace Carrot::IO {
     void ActionSet::deactivate() {
         active = false;
         for(auto& input : boolInputs) {
-            input->state.bPreviousValue = input->state.bValue = false;
+            input->state.b.previousValue = input->state.b.value = false;
         }
         for(auto& input : floatInputs) {
-            input->state.fPreviousValue = input->state.fValue = 0.0f;
+            input->state.f.previousValue = input->state.f.value = 0.0f;
         }
         for(auto& input : vec2Inputs) {
-            input->state.vPreviousValue = input->state.vValue = {0.0f, 0.0f};
+            input->state.v2.previousValue = input->state.v2.value = {0.0f, 0.0f};
         }
     }
 
@@ -87,13 +87,13 @@ namespace Carrot::IO {
         if(!active)
             return;
         for(auto& input : boolInputs) {
-            input->state.bPreviousValue = input->state.bValue;
+            input->state.b.previousValue = input->state.b.value;
         }
         for(auto& input : floatInputs) {
-            input->state.fPreviousValue = input->state.fValue;
+            input->state.f.previousValue = input->state.f.value;
         }
         for(auto& input : vec2Inputs) {
-            input->state.vPreviousValue = input->state.vValue;
+            input->state.v2.previousValue = input->state.v2.value;
         }
     }
 
@@ -139,9 +139,9 @@ namespace Carrot::IO {
                 const auto& bindings = getMappedBindings(input);
                 if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
                     if(isReleased) {
-                        input->state.bValue = false;
+                        input->state.b.value = false;
                     } else {
-                        input->state.bValue |= isPressed;
+                        input->state.b.value |= isPressed;
                     }
                 }
             }
@@ -152,7 +152,7 @@ namespace Carrot::IO {
                 const auto& bindings = getMappedBindings(input);
                 if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
                     // TODO: handle case if multiple physical inputs are bound to this action
-                    input->state.fValue = newValue;
+                    input->state.f.value = newValue;
                 }
             }
         };
@@ -163,9 +163,9 @@ namespace Carrot::IO {
                 if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
                     // TODO: handle case if multiple physical inputs are bound to this action
                     if(additive) {
-                        input->state.vValue += newValue;
+                        input->state.v2.value += newValue;
                     } else {
-                        input->state.vValue = newValue;
+                        input->state.v2.value = newValue;
                     }
                 }
             }
@@ -306,21 +306,21 @@ namespace Carrot::IO {
         for(auto& boolInput : boolInputs) {
             xr::ActionStateBoolean actionState = vrSession.getActionStateBoolean(*boolInput);
             if(actionState.isActive) {
-                boolInput->state.bValue = (bool) actionState.currentState;
+                boolInput->state.b.value = (bool) actionState.currentState;
             }
         }
 
         for(auto& floatInput : floatInputs) {
             xr::ActionStateFloat actionState = vrSession.getActionStateFloat(*floatInput);
             if(actionState.isActive) {
-                floatInput->state.fValue = actionState.currentState;
+                floatInput->state.f.value = actionState.currentState;
             }
         }
 
         for(auto& vec2Input : vec2Inputs) {
             xr::ActionStateVector2f actionState = vrSession.getActionStateVector2f(*vec2Input);
             if(actionState.isActive) {
-                vec2Input->state.vValue = glm::vec2(actionState.currentState.x, actionState.currentState.y);
+                vec2Input->state.v2.value = glm::vec2(actionState.currentState.x, actionState.currentState.y);
             }
         }
 
@@ -348,7 +348,7 @@ namespace Carrot::IO {
             for(auto& input : vec2Inputs) {
                 const auto& bindings = getMappedBindings(input);
                 if (std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
-                    input->state.vValue = {};
+                    input->state.v2.value = {};
                 }
             }
         }

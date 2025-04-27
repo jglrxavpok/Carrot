@@ -8,7 +8,6 @@
 #include <core/containers/Pair.hpp>
 #include <core/containers/Vector.hpp>
 
-#include "engine/vulkan/VulkanDriver.h"
 #include "BufferView.h"
 #include "Buffer.h"
 #include "SingleFrameStackGPUAllocator.h"
@@ -17,6 +16,10 @@
 struct VmaVirtualAllocationCreateInfo;
 
 namespace Carrot {
+    namespace Render {
+        struct Context;
+    }
+
     class ResourceAllocator {
     public:
         explicit ResourceAllocator(VulkanDriver& device);

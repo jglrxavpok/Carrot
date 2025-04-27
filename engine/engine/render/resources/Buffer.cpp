@@ -131,6 +131,16 @@ const std::string& Carrot::Buffer::getDebugName() const {
     return debugName;
 }
 
+void* Carrot::Buffer::mapGeneric() {
+    if(mappedPtr) {
+        return mappedPtr;
+    }
+    void* ptr = driver.getLogicalDevice().mapMemory(memory.getVulkanMemory(), 0, VK_WHOLE_SIZE);
+    mappedPtr = ptr;
+    return ptr;
+}
+
+
 void Carrot::Buffer::unmap() {
     verify(mappedPtr != nullptr, "Must be mapped!");
     driver.getLogicalDevice().unmapMemory(memory.getVulkanMemory());

@@ -13,7 +13,6 @@
 #include "core/io/Strings.h"
 #include "engine/render/TextureRepository.h"
 #include "engine/utils/Macros.h"
-#include "engine/render/resources/BufferView.h"
 #include <iostream>
 #include <map>
 #include <set>
@@ -21,8 +20,8 @@
 #include <core/io/Serialisation.h>
 
 #include "engine/vulkan/CustomTracyVulkan.h"
-#include "engine/Engine.h"
 
+#include "engine/Engine.h"
 #include "engine/vr/VRInterface.h"
 
 #include "engine/utils/AftermathIntegration.h"
@@ -86,11 +85,11 @@ static std::atomic<bool> breakOnVulkanError = false;
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverityBits,
+        vk::DebugUtilsMessageTypeFlagsEXT messageType,
+        const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
-
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity = static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(messageSeverityBits);
     if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         Carrot::Log::info("Validation layer: %s", pCallbackData->pMessage);
     }
@@ -200,7 +199,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
 {
     ZoneScoped;
 
-    vk::DynamicLoader dl;
+    vk::detail::DynamicLoader dl;
     VULKAN_HPP_DEFAULT_DISPATCHER.init(dl);
 
     createInstance();

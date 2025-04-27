@@ -2,6 +2,9 @@
 // Created by jglrxavpok on 13/07/2021.
 //
 #include "VRInterface.h"
+
+#include <engine/Engine.h>
+
 #include "engine/utils/Macros.h"
 #include "core/io/Logging.hpp"
 #include "core/utils/stringmanip.h"
@@ -48,9 +51,9 @@ namespace Carrot::VR {
         createInfo.enabledExtensionCount = extensions.size();
         createInfo.enabledExtensionNames = extensions.data();
         createInfo.applicationInfo.engineVersion = engine.getConfiguration().engineVersion;
-        strcpy_s(createInfo.applicationInfo.engineName, sizeof(createInfo.applicationInfo.engineName), engine.getConfiguration().engineName);
+        Carrot::strcpy(createInfo.applicationInfo.engineName, sizeof(createInfo.applicationInfo.engineName), engine.getConfiguration().engineName);
         createInfo.applicationInfo.applicationVersion = engine.getConfiguration().applicationVersion;
-        strcpy_s(createInfo.applicationInfo.applicationName, sizeof(createInfo.applicationInfo.applicationName), engine.getConfiguration().applicationName.c_str());
+        Carrot::strcpy(createInfo.applicationInfo.applicationName, sizeof(createInfo.applicationInfo.applicationName), engine.getConfiguration().applicationName.c_str());
         createInfo.applicationInfo.apiVersion = xr::Version(engine.getConfiguration().openXRApiVersion);
 
         createInfo.next = &debugCreate;

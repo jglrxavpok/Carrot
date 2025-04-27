@@ -11,17 +11,5 @@
 namespace Carrot {
     void VulkanRenderer::registerUsertype(sol::state& destination) {
         auto carrotNamespace = destination["Carrot"].get_or_create<sol::table>();
-        carrotNamespace.new_usertype<VulkanRenderer>("VulkanRenderer",
-                                                     sol::no_constructor,
-                                                     "getOrCreateTexture", &VulkanRenderer::getOrCreateTexture,
-                                                     "getVulkanDriver", &VulkanRenderer::getVulkanDriver,
-                                                     "getEngine", &VulkanRenderer::getEngine,
-                                                     "getOrCreatePipeline", &VulkanRenderer::getOrCreatePipeline,
-                                                     "getOrCreateRenderPassSpecificPipeline", &VulkanRenderer::getOrCreateRenderPassSpecificPipeline,
-                                                     "getSwapchainImageCount", &VulkanRenderer::getSwapchainImageCount,
-                                                     "getFullscreenQuad", &VulkanRenderer::getFullscreenQuad,
-                                                     "getRayTracer", &VulkanRenderer::getRayTracer
-                                                     // TODO: add other bindings
-                                                     );
     }
 }

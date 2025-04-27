@@ -2,6 +2,7 @@
 // Created by jglrxavpok on 31/01/2024.
 //
 #include <Peeler.h>
+#include <engine/Engine.h>
 #include <engine/render/TextureRepository.h>
 
 using namespace Carrot::Render;

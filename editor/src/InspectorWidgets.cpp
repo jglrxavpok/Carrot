@@ -8,7 +8,9 @@
 #include <engine/render/resources/Pipeline.h>
 #include <panels/InspectorPanel.h>
 #include <core/io/Logging.hpp>
+#include <engine/Engine.h>
 #include <engine/assets/AssetServer.h>
+#include <engine/render/VulkanRenderer.h>
 
 // TODO: asset browser
 

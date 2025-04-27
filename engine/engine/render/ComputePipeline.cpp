@@ -3,6 +3,9 @@
 //
 
 #include "ComputePipeline.h"
+
+#include <engine/Engine.h>
+
 #include "engine/render/resources/ResourceAllocator.h"
 #include "engine/utils/Macros.h"
 

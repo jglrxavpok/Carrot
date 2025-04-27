@@ -5,7 +5,6 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "engine/vulkan/VulkanDriver.h"
 #include "ShaderModule.h"
 #include <map>
 #include <core/containers/Vector.hpp>

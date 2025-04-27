@@ -5,7 +5,6 @@
 #pragma once
 
 #include "Component.h"
-#include "engine/render/VulkanRenderer.h"
 #include "engine/render/lighting/Lights.h"
 
 namespace Carrot::ECS {

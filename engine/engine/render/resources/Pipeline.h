@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "engine/vulkan/VulkanDriver.h"
 #include "engine/vulkan/SwapchainAware.h"
 #include "engine/render/IDTypes.h"
 #include "engine/render/shaders/ShaderStages.h"
@@ -11,10 +10,17 @@
 #include "engine/render/shaders/ShaderSource.h"
 #include <core/utils/Lookup.hpp>
 
+#include "engine/vulkan/DebugNameable.h"
+
 namespace Carrot {
+    namespace Render {
+        struct Context;
+    }
+
     class Material;
 
     class Buffer;
+    class VulkanDriver;
 
     // TODO: needs to be removed and replaced by data-oriented design
     enum class PipelineType {

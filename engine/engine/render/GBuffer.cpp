@@ -5,10 +5,13 @@
 #include "GBuffer.h"
 
 #include <core/io/Logging.hpp>
+#include <engine/Engine.h>
 
 #include "engine/render/raytracing/ASBuilder.h"
 #include "engine/render/Skybox.hpp"
 #include "resources/ResourceAllocator.h"
+#include <engine/render/VulkanRenderer.h>
+#include <engine/vulkan/VulkanDriver.h>
 
 Carrot::GBuffer::GBuffer(Carrot::VulkanRenderer& renderer, Carrot::RayTracer& raytracer): renderer(renderer), raytracer(raytracer) {
 

@@ -3,12 +3,16 @@
 //
 
 #pragma once
-#include "engine/Engine.h"
+
+#include <core/async/ParallelMap.hpp>
+#include <engine/render/resources/BufferAllocation.h>
 
 namespace Carrot {
+    class VulkanDriver;
+
     class AccelerationStructure {
     public:
-        static Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> ASByStartAddress;
+        static Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> ASByStartAddress;
 
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo);
         explicit AccelerationStructure(VulkanDriver& engine, vk::AccelerationStructureCreateInfoKHR& createInfo, Carrot::BufferAllocation&& preAllocatedMemory);

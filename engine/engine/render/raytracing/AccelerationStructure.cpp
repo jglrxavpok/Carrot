@@ -5,6 +5,10 @@
 #include "AccelerationStructure.h"
 #include <engine/render/resources/Buffer.h>
 #include <engine/render/resources/ResourceAllocator.h>
+#include <engine/vulkan/VulkanDriver.h>
+#include <tracy/Tracy.hpp>
+
+#include "engine/utils/Macros.h"
 
 Carrot::Async::ParallelMap<vk::DeviceAddress, const Carrot::AccelerationStructure*> Carrot::AccelerationStructure::ASByStartAddress;
 

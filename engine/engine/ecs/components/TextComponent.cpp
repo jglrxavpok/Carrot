@@ -4,10 +4,15 @@
 
 #include "TextComponent.h"
 #include <core/utils/ImGuiUtils.hpp>
+#include <engine/render/VulkanRenderer.h>
 
 #include "core/io/DocumentHelpers.h"
 
 namespace Carrot::ECS {
+
+    TextComponent::TextComponent(Entity entity, const std::filesystem::path& fontFile)
+    : IdentifiableComponent<TextComponent>(std::move(entity)), fontPath(fontFile), font(GetRenderer().getOrCreateFront(fontFile.string())) {};
+
     TextComponent::TextComponent(const Carrot::DocumentElement& doc, Entity entity): TextComponent(entity, doc["font"].getAsString()) {
         setText(doc["text"].getAsString());
         if (auto colorIter = doc.getAsObject().find("color"); colorIter.isValid()) {

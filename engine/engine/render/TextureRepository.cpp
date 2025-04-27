@@ -3,6 +3,9 @@
 //
 
 #include "TextureRepository.h"
+
+#include <engine/vulkan/VulkanDriver.h>
+
 #include "core/utils/Assert.h"
 #include "engine/utils/Macros.h"
 #include "engine/task/TaskScheduler.h"

@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 #include <span>
+#include <core/utils/Types.h>
 
 namespace Carrot {
     std::vector<std::string> splitString(const std::string& toSplit, const std::string& delimiter);
@@ -32,4 +33,29 @@ namespace Carrot {
      * Replace occurrences of 'toReplace' inside 'str' with 'toReplaceWith'
      */
     std::string replace(const std::string& str, const std::string& toReplace, const std::string_view& toReplaceWith);
+
+    template<i32 BufferSize>
+    void strcpy(char (&dest)[BufferSize], const char* input) {
+        i32 i = 0;
+        for (; i < BufferSize && *input != '\0'; i++) {
+            dest[i] = *input;
+            ++input;
+        }
+        dest[i] = '\0';
+    }
+
+    template<i32 BufferSize>
+    void strcpy(char (&dest)[BufferSize], i32 copySize, const char* input) {
+        i32 i = 0;
+        for (; i < BufferSize && *input != '\0' && i < copySize; i++) {
+            dest[i] = *input;
+            ++input;
+        }
+        dest[i] = '\0';
+    }
+
+    template<i32 BufferSize>
+    void strncpy(char (&dest)[BufferSize], const char* input, i32 copySize) {
+        strcpy(dest, copySize, input);
+    }
 }

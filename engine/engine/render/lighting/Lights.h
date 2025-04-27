@@ -31,21 +31,21 @@ namespace Carrot::Render {
         float intensity = 1.0f;
 
         union {
-            struct PointLight {
+            struct {
                 glm::vec3 position;
                 float constantAttenuation;
                 float linearAttenuation;
                 float quadraticAttenuation;
             } point;
 
-            struct SpotLight {
+            struct {
                 glm::vec3 position;
                 glm::vec3 direction;
                 float cutoffCosAngle;
                 float outerCutoffCosAngle;
             } spot;
 
-            struct DirectionalLight {
+            struct {
                 glm::vec3 direction;
             } directional;
         };

@@ -60,7 +60,7 @@ namespace Carrot::Scripting {
     }
 
     void CSharpBindings::addPrefabBindingMethods() {
-        mono_add_internal_call("Carrot.Prefab::Load", _Load);
-        mono_add_internal_call("Carrot.Prefab::Instantiate", _Instantiate);
+        mono_add_internal_call("Carrot.Prefab::Load", (void*)_Load);
+        mono_add_internal_call("Carrot.Prefab::Instantiate", (void*)_Instantiate);
     }
 }

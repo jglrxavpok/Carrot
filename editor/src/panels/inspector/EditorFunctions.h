@@ -11,9 +11,14 @@
 #include <core/utils/ImGuiUtils.hpp>
 #include <engine/ecs/Prefab.h>
 #include <engine/edition/DragDropTypes.h>
+#include <engine/Engine.h>
 
 namespace Carrot::ECS {
     class CSharpComponent;
+}
+
+namespace Carrot::Render {
+    using bool32 = uint32_t;
 }
 
 namespace Peeler {
@@ -166,23 +171,23 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<glm::vec2>(const char* id, std::span<glm::vec2> vectors, const Helpers::Limits<glm::vec2>& limits) {
+    inline bool editMultiple<glm::vec2>(const char* id, std::span<glm::vec2> vectors, const Helpers::Limits<glm::vec2>& limits) {
         return editMultipleVec<2>(id, vectors, limits);
     }
 
     template<>
-    static bool editMultiple<glm::vec3>(const char* id, std::span<glm::vec3> vectors, const Helpers::Limits<glm::vec3>& limits) {
+    inline bool editMultiple<glm::vec3>(const char* id, std::span<glm::vec3> vectors, const Helpers::Limits<glm::vec3>& limits) {
         return editMultipleVec<3>(id, vectors, limits);
     }
 
     template<>
-    static bool editMultiple<glm::vec4>(const char* id, std::span<glm::vec4> vectors, const Helpers::Limits<glm::vec4>& limits) {
+    inline bool editMultiple<glm::vec4>(const char* id, std::span<glm::vec4> vectors, const Helpers::Limits<glm::vec4>& limits) {
         return editMultipleVec<4>(id, vectors, limits);
     }
 
     // maybe merge with function editMultipleVec3, but for now copy paste will do
     template<>
-    static bool editMultiple<glm::quat>(const char* id, std::span<glm::quat> values, const Helpers::Limits<glm::quat>& limits) {
+    inline bool editMultiple<glm::quat>(const char* id, std::span<glm::quat> values, const Helpers::Limits<glm::quat>& limits) {
         bool modified = false;
         ImGui::BeginGroup();
         ImGui::PushID(id);
@@ -225,7 +230,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<bool>(const char* id, std::span<bool> values, const Helpers::Limits<bool>& limits) {
+    inline bool editMultiple<bool>(const char* id, std::span<bool> values, const Helpers::Limits<bool>& limits) {
         int tristate = -1;
         if(Helpers::all(values)) {
             tristate = 1;
@@ -242,7 +247,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Carrot::Render::bool32>(const char* id, std::span<Carrot::Render::bool32> values, const Helpers::Limits<Carrot::Render::bool32>& limits) {
+    inline bool editMultiple<Carrot::Render::bool32>(const char* id, std::span<Carrot::Render::bool32> values, const Helpers::Limits<Carrot::Render::bool32>& limits) {
         Carrot::Vector<bool> asBools;
         asBools.resize(values.size());
         for(std::int64_t i = 0; i < asBools.size(); i++) {
@@ -258,7 +263,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<float>(const char* id, std::span<float> values, const Helpers::Limits<float>& limits) {
+    inline bool editMultiple<float>(const char* id, std::span<float> values, const Helpers::Limits<float>& limits) {
         float sameValue = values[0];
         bool areSame = true;
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -305,7 +310,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<std::int32_t>(const char* id, std::span<std::int32_t> values, const Helpers::Limits<std::int32_t>& limits) {
+    inline bool editMultiple<std::int32_t>(const char* id, std::span<std::int32_t> values, const Helpers::Limits<std::int32_t>& limits) {
         int sameValue = values[0]; // ImGui uses int
         bool areSame = true;
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -352,7 +357,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Helpers::AngleWrapper>(const char* id, std::span<Helpers::AngleWrapper> values, const Helpers::Limits<Helpers::AngleWrapper>& limits) {
+    inline bool editMultiple<Helpers::AngleWrapper>(const char* id, std::span<Helpers::AngleWrapper> values, const Helpers::Limits<Helpers::AngleWrapper>& limits) {
         float sameValue = values[0].radianValue;
         bool areSame = true;
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -374,7 +379,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Helpers::CosAngleWrapper>(const char* id, std::span<Helpers::CosAngleWrapper> values, const Helpers::Limits<Helpers::CosAngleWrapper>& limits) {
+    inline bool editMultiple<Helpers::CosAngleWrapper>(const char* id, std::span<Helpers::CosAngleWrapper> values, const Helpers::Limits<Helpers::CosAngleWrapper>& limits) {
         Carrot::Vector<Helpers::AngleWrapper> asAngles;
         asAngles.resize(values.size());
         for(std::int64_t i = 0; i < asAngles.size(); i++) {
@@ -390,7 +395,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Helpers::RGBColorWrapper>(const char* id, std::span<Helpers::RGBColorWrapper> values, const Helpers::Limits<Helpers::RGBColorWrapper>& limits) {
+    inline bool editMultiple<Helpers::RGBColorWrapper>(const char* id, std::span<Helpers::RGBColorWrapper> values, const Helpers::Limits<Helpers::RGBColorWrapper>& limits) {
         const glm::vec3& colorValue = values[0].rgb;
         float colorArr[3] { colorValue.r, colorValue.g, colorValue.b };
         if(ImGui::ColorPicker3(id, colorArr)) {
@@ -403,7 +408,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Helpers::RGBAColorWrapper>(const char* id, std::span<Helpers::RGBAColorWrapper> values, const Helpers::Limits<Helpers::RGBAColorWrapper>& limits) {
+    inline bool editMultiple<Helpers::RGBAColorWrapper>(const char* id, std::span<Helpers::RGBAColorWrapper> values, const Helpers::Limits<Helpers::RGBAColorWrapper>& limits) {
         const glm::vec4& colorValue = values[0].rgba;
         float colorArr[4] { colorValue.r, colorValue.g, colorValue.b, colorValue.a };
         if(ImGui::ColorPicker4(id, colorArr)) {
@@ -416,7 +421,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<std::string_view>(const char* id, std::span<std::string_view> values, const Helpers::Limits<std::string_view>& limits) {
+    inline bool editMultiple<std::string_view>(const char* id, std::span<std::string_view> values, const Helpers::Limits<std::string_view>& limits) {
         static std::string sameValue; // expected to have its contents copied immediatly after returning out of this function
         sameValue = std::string { values[0] };
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -444,7 +449,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<std::string>(const char* id, std::span<std::string> values, const Helpers::Limits<std::string>& limits) {
+    inline bool editMultiple<std::string>(const char* id, std::span<std::string> values, const Helpers::Limits<std::string>& limits) {
         std::string sameValue = std::string { values[0] };
         for(std::size_t i = 1; i < values.size(); i++) {
             if(values[i] != sameValue) {
@@ -471,7 +476,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Carrot::ECS::Entity>(const char* id, std::span<Carrot::ECS::Entity> values, const Helpers::Limits<Carrot::ECS::Entity>& limits) {
+    inline bool editMultiple<Carrot::ECS::Entity>(const char* id, std::span<Carrot::ECS::Entity> values, const Helpers::Limits<Carrot::ECS::Entity>& limits) {
         Carrot::ECS::Entity sameValue { values[0] };
         const char* nameOverride = nullptr;
         for(std::size_t i = 1; i < values.size(); i++) {
@@ -491,7 +496,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Carrot::IO::VFS::Path>(const char* id, std::span<Carrot::IO::VFS::Path> values, const Helpers::Limits<Carrot::IO::VFS::Path>& limits) {
+    inline bool editMultiple<Carrot::IO::VFS::Path>(const char* id, std::span<Carrot::IO::VFS::Path> values, const Helpers::Limits<Carrot::IO::VFS::Path>& limits) {
         std::string pathStr = values[0].toString();
 
         for(const auto& v : values) {
@@ -537,7 +542,7 @@ namespace Peeler {
     }
 
     template<>
-    static bool editMultiple<Carrot::Render::Texture::Ref>(const char* id, std::span<Carrot::Render::Texture::Ref> values, const Helpers::Limits<Carrot::Render::Texture::Ref>& limits) {
+    inline bool editMultiple<Carrot::Render::Texture::Ref>(const char* id, std::span<Carrot::Render::Texture::Ref> values, const Helpers::Limits<Carrot::Render::Texture::Ref>& limits) {
         Carrot::Vector<Carrot::IO::VFS::Path> paths;
         paths.ensureReserve(values.size());
         for(const auto& texture : values) {

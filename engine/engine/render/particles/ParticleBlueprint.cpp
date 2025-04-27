@@ -3,6 +3,9 @@
 //
 
 #include "ParticleBlueprint.h"
+
+#include <engine/Engine.h>
+
 #include "core/io/IO.h"
 #include "core/io/Resource.h"
 #include "engine/render/ComputePipeline.h"
@@ -57,7 +60,7 @@ std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBluepr
         .fragmentLength = static_cast<std::uint32_t>(blueprint.fragmentShaderCode.size() * sizeof(std::uint32_t)),
         .opaque = blueprint.opaque,
     };
-    strncpy_s(h.magic, Carrot::ParticleBlueprint::Magic, sizeof(h.magic));
+    Carrot::strncpy(h.magic, Carrot::ParticleBlueprint::Magic, sizeof(h.magic));
     out.write(reinterpret_cast<const char *>(&h), sizeof(h));
     out.write(reinterpret_cast<const char*>(blueprint.computeShaderCode.data()), h.computeLength);
     out.write(reinterpret_cast<const char*>(blueprint.fragmentShaderCode.data()), h.fragmentLength);

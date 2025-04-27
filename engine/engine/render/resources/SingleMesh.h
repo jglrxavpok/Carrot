@@ -6,6 +6,7 @@
 
 #include "Mesh.h"
 #include "LightMesh.h"
+#include "engine/vulkan/VulkanDriver.h"
 
 namespace Carrot {
     /// Mesh that uploads the given vertices and indices to a single buffer.
