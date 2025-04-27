@@ -28,7 +28,7 @@ namespace Carrot::Math {
     }
 
     Plane& Plane::operator=(const glm::vec4& abcd) {
-        normal = abcd.xyz;
+        normal = abcd.xyz();
         distanceFromOrigin = abcd.w;
         return *this;
     }

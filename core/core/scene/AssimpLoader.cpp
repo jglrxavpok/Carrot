@@ -156,8 +156,8 @@ namespace Carrot::Render {
             primitive.hadTangents = true;
 
             glm::vec4 position = {vec.x, vec.y, vec.z, 1.0f};
-            primitive.minPos = glm::min(primitive.minPos, glm::vec3{ position.xyz });
-            primitive.maxPos = glm::max(primitive.maxPos, glm::vec3{ position.xyz });
+            primitive.minPos = glm::min(primitive.minPos, glm::vec3{ position.xyz() });
+            primitive.maxPos = glm::max(primitive.maxPos, glm::vec3{ position.xyz() });
 
             if(usesSkinning) {
                 skinnedVertices.push_back({

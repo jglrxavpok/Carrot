@@ -7,7 +7,6 @@
 #include <functional>
 #include <optional>
 #include <list>
-#include <xhash>
 #include <cider/Mutex.h>
 
 #include "core/Macros.h"

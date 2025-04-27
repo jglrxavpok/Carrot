@@ -45,8 +45,7 @@ namespace Carrot::Threads {
         HRESULT hr = SetThreadDescription(static_cast<HANDLE>(nativeHandle), description);
         verify(!FAILED(hr), "Failed to set thread name");
 #elif __has_include(<unistd.h>)
-        auto handle = thread.native_handle();
-        pthread_setname_np(handle, name.data());
+        pthread_setname_np((pthread_t)nativeHandle, name.data());
 #else
 #error "Don't know how to set thread name on this OS. Please fix."
 #endif

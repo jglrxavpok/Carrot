@@ -74,13 +74,13 @@ namespace Carrot::IO {
         std::string extension = Carrot::toString(extensionU8);
 #define CHECK(ext) \
     do {           \
-        if(_stricmp(extension.c_str(), "." #ext) == 0) { \
+        if(stricmp(extension.c_str(), "." #ext) == 0) { \
             return FileFormat:: ext; \
         } \
     } while(0)
         CHECK(PNG);
         CHECK(JPEG);
-        if(_stricmp(extension.c_str(), ".jpg") == 0) {
+        if(stricmp(extension.c_str(), ".jpg") == 0) {
             return FileFormat::JPEG;
         }
 

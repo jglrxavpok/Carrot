@@ -12,6 +12,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <WinPixEventRuntime/pix3.h>
+#else
+#define PIXBeginEvent(color, name)
+#define PIXEndEvent()
 #endif
 
 namespace Carrot::Profiling {

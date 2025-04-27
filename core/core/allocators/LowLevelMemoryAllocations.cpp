@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <core/utils/Profiling.h>
 #include <mimalloc.h>
-//#include <mimalloc-new-delete.h>
 #include <core/allocators/LowLevelMemoryAllocations.h>
 
 #define USE_DEFAULT_ALLOCATOR 0

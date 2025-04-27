@@ -4,7 +4,7 @@
 
 #include "stringmanip.h"
 #include <cctype>
-#include <codecvt>
+#include <cstring>
 #include <core/Macros.h>
 
 std::vector<std::string> Carrot::splitString(const std::string& toSplit, const std::string& delimiter) {
@@ -62,24 +62,32 @@ std::string Carrot::toUpperCase(const std::string& str) {
     return result;
 }
 
+struct WStringConverter32: std::codecvt_utf8<char32_t> {
+    ~WStringConverter32() = default;
+};
+
 std::string Carrot::toString(std::u8string_view wstr) {
     if(wstr.empty())
         return "";
-    static std::wstring_convert<std::codecvt<char8_t,char,std::mbstate_t>,char8_t> converter;
-    return converter.to_bytes(&wstr[0], &wstr[wstr.size()-1] + sizeof(char8_t));
+
+    // assume char8_t = char
+    std::string str;
+    str.resize(wstr.size());
+    memcpy(str.data(), wstr.data(), str.size());
+    return str;
 }
 
 std::string Carrot::toString(std::u32string_view u32str) {
     if(u32str.empty())
         return "";
-    static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
+    static std::wstring_convert<WStringConverter32, char32_t> converter;
     return converter.to_bytes(&u32str[0], &u32str[u32str.size()-1] + sizeof(char32_t));
 }
 
 std::u32string Carrot::toU32String(std::string_view str) {
     if(str.empty())
         return U"";
-    static std::wstring_convert<std::codecvt<char32_t,char,std::mbstate_t>,char32_t> converter;
+    static std::wstring_convert<WStringConverter32, char32_t> converter;
     return converter.from_bytes(str.data());
 }
 

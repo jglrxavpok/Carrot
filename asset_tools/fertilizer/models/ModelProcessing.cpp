@@ -150,7 +150,7 @@ namespace Fertilizer {
             verify(!duplicatedVertex.newIndex.has_value(), "Programming error: duplicated vertex must not already have an index in the new mesh");
 
             VertexKey key {
-                .pos = duplicatedVertex.vertex.pos.xyz,
+                .pos = duplicatedVertex.vertex.pos.xyz(),
                 .uv = duplicatedVertex.vertex.uv,
                 .color = duplicatedVertex.vertex.color,
                 .normal = duplicatedVertex.vertex.normal,
@@ -210,9 +210,9 @@ namespace Fertilizer {
             Carrot::Vertex& b = mesh.vertices[face * 3 + 1].vertex;
             Carrot::Vertex& c = mesh.vertices[face * 3 + 2].vertex;
 
-            glm::vec3 ab = (b.pos - a.pos).xyz;
-            glm::vec3 bc = (c.pos - b.pos).xyz;
-            glm::vec3 ac = (c.pos - a.pos).xyz;
+            glm::vec3 ab = (b.pos - a.pos).xyz();
+            glm::vec3 bc = (c.pos - b.pos).xyz();
+            glm::vec3 ac = (c.pos - a.pos).xyz();
 
             if(glm::dot(ab, ab) <= Epsilon
             || glm::dot(bc, bc) <= Epsilon
@@ -255,12 +255,12 @@ namespace Fertilizer {
             bool needsRegeneration = false;
             for(std::size_t j = 0; j < 3; j++) {
                 const glm::vec3& normal = mesh.vertices[i + j].vertex.normal;
-                const glm::vec3 tangent = mesh.vertices[i + j].vertex.tangent.xyz;
+                const glm::vec3 tangent = mesh.vertices[i + j].vertex.tangent.xyz();
                 needsRegeneration |= isCloseToCollinear(normal, tangent);
             }
 
             if(needsRegeneration) {
-                const glm::vec3 edge = mesh.vertices[i + 1].vertex.pos.xyz - mesh.vertices[i + 0].vertex.pos.xyz;
+                const glm::vec3 edge = mesh.vertices[i + 1].vertex.pos.xyz() - mesh.vertices[i + 0].vertex.pos.xyz();
                 for (std::size_t j = 0; j < 3; j++) {
                     glm::vec4& tangentW = mesh.vertices[i + j].vertex.tangent;
                     tangentW = glm::vec4(glm::normalize(edge), 1.0f); // W=1.0f but no thought was put behind this value
@@ -295,7 +295,7 @@ namespace Fertilizer {
         std::size_t index = 0;
 
         glm::vec3 getPosition() const {
-            return vertices[index].pos.xyz;
+            return vertices[index].pos.xyz();
         }
     };
 
@@ -716,7 +716,7 @@ namespace Fertilizer {
                 indicesCPU.resize(firstIndexIndex + meshlet.indexCount);
 
                 for(std::size_t index = 0; index < meshlet.vertexCount; index++) {
-                    verticesCPU[index + firstVertexIndex] = glm::vec3 { primitive.vertices[primitive.meshletVertexIndices[index + meshlet.vertexOffset]].pos.xyz };
+                    verticesCPU[index + firstVertexIndex] = glm::vec3 { primitive.vertices[primitive.meshletVertexIndices[index + meshlet.vertexOffset]].pos.xyz() };
                 }
                 for(std::size_t index = 0; index < meshlet.indexCount; index++) {
                     indicesCPU[index + firstIndexIndex] = static_cast<std::uint16_t>(primitive.meshletIndices[index + meshlet.indexOffset]);
@@ -853,7 +853,7 @@ namespace Fertilizer {
 
             // remap simplified index buffer to mesh-wide vertex indices
             for(auto& index : indexBuffer) {
-                const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz };
+                const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz() };
                 min = glm::min(min, vertexPos);
                 max = glm::max(max, vertexPos);
             }
@@ -1013,7 +1013,7 @@ namespace Fertilizer {
                     for(auto& index : simplifiedIndexBuffer) {
                         index = group2meshVertexRemap[index];
 
-                        const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz };
+                        const glm::vec3 vertexPos = glm::vec3 { primitive.vertices[index].pos.xyz() };
                         min = glm::min(min, vertexPos);
                         max = glm::max(max, vertexPos);
                     }

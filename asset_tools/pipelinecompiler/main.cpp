@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <core/Macros.h>
+#include <core/io/FileSystemOS.h>
 #include <core/utils/stringmanip.h>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
@@ -21,7 +22,7 @@ void printUsage() {
 }
 
 bool hasShaderCompiler() {
-    return std::filesystem::exists("shadercompiler.exe");
+    return Carrot::IO::hasExecutableInWorkingDirectory("shadercompiler");
 }
 
 int main(int argc, char** argv) {
@@ -153,7 +154,7 @@ int main(int argc, char** argv) {
         outputFile << outFilename.c_str() << ": ";
 
         auto addDependency = [&](const std::filesystem::path& dependencyPath) {
-            std::wstring path = dependencyPath.c_str();
+            std::wstring path = dependencyPath.wstring();
             // replace separators
             for(std::size_t i = 0; i < path.size(); i++) {
                 if(path[i] == L'\\') {

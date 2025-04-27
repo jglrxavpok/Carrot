@@ -12,7 +12,6 @@
 #include <iomanip>
 #include <list>
 #include <cassert>
-#include <strstream>
 #include "core/utils/stringmanip.h"
 #include <source_location>
 

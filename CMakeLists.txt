@@ -137,6 +137,7 @@ set(OPENXR_SDK_SRC_DIR ${ProjectRoot}thirdparty/OpenXR-SDK-Source)
 set(OPENXR_SDK_BUILD_DIR ${CMAKE_BINARY_DIR}/thirdparty/OpenXR-SDK-Source)
 add_subdirectory(thirdparty/OpenXR-Hpp)
 
+set(MI_OVERRIDE FALSE)
 add_subdirectory(thirdparty/mimalloc)
 add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
@@ -190,6 +191,7 @@ endfunction()
 
 function(add_core_precompiled_headers Target)
     target_precompile_headers(${Target} PRIVATE
+            "$<$<COMPILE_LANGUAGE:CXX>:<core/utils/PortabilityHelper.h$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<glm/glm.hpp$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<chrono$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<unordered_map$<ANGLE-R>>"
@@ -198,6 +200,7 @@ function(add_core_precompiled_headers Target)
             "$<$<COMPILE_LANGUAGE:CXX>:<string$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<memory$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<algorithm$<ANGLE-R>>"
+            "$<$<COMPILE_LANGUAGE:CXX>:<cstring$<ANGLE-R>>"
             "$<$<COMPILE_LANGUAGE:CXX>:<core/utils/Types.h$<ANGLE-R>>"
     )
 endfunction()

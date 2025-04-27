@@ -3,15 +3,29 @@
 //
 
 #include "FileSystemOS.h"
+
 #include "core/utils/stringmanip.h"
 
 #ifdef _WIN32
     #include <windows.h>
-#else
-
+#elifdef __linux__
+    #include <sys/stat.h>
 #endif
 
 namespace Carrot::IO {
+    bool hasExecutableInWorkingDirectory(const char* exeName) {
+#ifdef _WIN32
+        return std::filesystem::exists(Carrot::sprintf("%s.exe", exeName));
+#else
+        struct stat sb{};
+        if (stat(exeName, &sb) == 0) {
+            return std::filesystem::exists(exeName) && sb.st_mode & S_IXUSR;
+        } else {
+            return false;
+        }
+#endif
+    }
+
     std::filesystem::path getExecutablePath() {
 #ifdef _WIN32
         std::size_t bufferSize = 256;
@@ -31,6 +45,22 @@ namespace Carrot::IO {
         } while(true);
 
         return {buffer.c_str()};
+#elifdef __linux__
+        struct stat64 stats{};
+        if (lstat64("/proc/self/exe", &stats) == -1) {
+            throw std::runtime_error("Could not lstat64 own exe??");
+        }
+
+        const i64 bufferSize = stats.st_size+1;
+        std::string buffer;
+        buffer.resize(bufferSize);
+        const i64 readSize = readlink("/proc/self/exe", buffer.data(), buffer.size());
+        if (readSize == -1) {
+            throw std::runtime_error("Could not readlink own exe??");
+        }
+
+        buffer.resize(readSize);
+        return buffer;
 #else
         static_assert(false, "Not supported on this OS. Please fix.");
 #endif
@@ -45,6 +75,15 @@ namespace Carrot::IO {
         } else {
             return false;
         }
+#elifdef __linux__
+        int returnValue = system(Carrot::sprintf("open %s", filepath.c_str()).c_str());
+        if (returnValue == -1) {
+            return false;
+        }
+        if (returnValue == 127) {
+            return false;
+        }
+        return true;
 #else
         static_assert(false, "Not supported on this OS. Please fix.");
 #endif

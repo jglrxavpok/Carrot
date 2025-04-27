@@ -29,6 +29,7 @@ set(CORE-SOURCES
         ${CoreRoot}io/Strings.cpp
         ${CoreRoot}io/vfs/VirtualFileSystem.cpp
 
+        ${CoreRoot}io/linux/PlatformFileHandle.cpp
         ${CoreRoot}io/windows/PlatformFileHandle.cpp
 
         ${CoreRoot}math/AABB.cpp
@@ -62,6 +63,7 @@ set(CORE-SOURCES
         ${CoreRoot}utils/Identifiable.cpp
         ${CoreRoot}utils/ImGuiUtils.cpp
         ${CoreRoot}utils/Profiling.cpp
+        ${CoreRoot}utils/single_file_header_impls.cpp
         ${CoreRoot}utils/stringmanip.cpp
         ${CoreRoot}utils/TOML.cpp
         ${CoreRoot}utils/UserNotifications.cpp

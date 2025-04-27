@@ -3,10 +3,7 @@
 //
 
 #pragma once
-
-namespace std::filesystem {
-    class path;
-}
+#include <filesystem>
 
 namespace Carrot::SceneConverter {
     void convert(const std::filesystem::path& scenePath, const std::filesystem::path& outputRoot);

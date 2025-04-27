@@ -15,6 +15,7 @@
 
 #define RGBCX_IMPLEMENTATION
 #include <array>
+#include <mutex>
 #include <rgbcx.h>
 #include <core/allocators/StackAllocator.h>
 

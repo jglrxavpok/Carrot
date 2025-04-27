@@ -15,6 +15,7 @@
 
 // imports from glslang
 #include "ShaderCompiler.h"
+#include "core/utils/PortabilityHelper.h"
 
 void showUsage() {
     std::cerr <<
@@ -74,7 +75,7 @@ int main(int argc, const char** argv) {
         std::filesystem::path relativeOutput = std::filesystem::relative(outFilename, std::filesystem::current_path());
         outputFile << outFilename << ": ";
         for(const auto& includedFile : includedFiles) {
-            std::wstring path = includedFile.c_str();
+            std::wstring path = includedFile.wstring();
             // replace separators
             for(std::size_t i = 0; i < path.size(); i++) {
                 if(path[i] == L'\\') {
