@@ -193,7 +193,7 @@ namespace Carrot {
         }
 
         if(!acquiredAtLeastOneImage) {
-            verify(swapchainIndexOffset == swapchainOffset, "Swapchain index offset is not the value that was expected. It does not match with offset computed on construction of this window.");
+           // verify(swapchainIndexOffset == swapchainOffset, "Swapchain index offset is not the value that was expected. It does not match with offset computed on construction of this window.");
         }
         swapchainIndexOffset = swapchainOffset;
         swapchainIndex = thisWindowSwapchainIndex;

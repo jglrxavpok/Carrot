@@ -20,3 +20,4 @@ TODO: automate and remove dependencies where possible
 1. Install the requirements
 2. Git clone this repository, with the option `--recurse-submodules` active.
 3. Build Peeler (which is the editor) to ensure the entire engine & libraries compile correctly.
+4. If you use GDB as your debugger, you will need to run the GDB command `handle SIGXCPU SIG33 SIG35 SIG36 SIG37 SIG38 SIGPWR nostop noprint` to disable GDB panicking with the signals used internally by Mono (you can add it to your .gdbinit file)

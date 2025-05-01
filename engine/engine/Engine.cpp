@@ -15,6 +15,8 @@
 #include <vector>
 #include <set>
 #include <core/async/OSThreads.h>
+#include <core/io/IO.h>
+
 #include "engine/constants.h"
 #include "engine/render/resources/Image.h"
 #include "engine/render/resources/SingleMesh.h"
@@ -253,6 +255,9 @@ void Carrot::Engine::initConsole() {
 }
 
 void Carrot::Engine::initInputStructures() {
+    // Probably could also update GLFW version to make it know about my Xbox Series controller
+    glfwUpdateGamepadMappings(Carrot::IO::readFileAsText("resources/misc/gamecontrollerdb.txt").c_str());
+
     for (int joystickID = 0; joystickID <= GLFW_JOYSTICK_LAST; ++joystickID) {
         if(glfwJoystickPresent(joystickID) && glfwJoystickIsGamepad(joystickID)) {
             activeJoysticks.insert(joystickID);

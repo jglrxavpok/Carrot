@@ -283,6 +283,7 @@ function(copy_all_resources)
     copy_resources(maps)
     copy_resources(scenes)
     copy_resources(text)
+    copy_resources(misc)
 endfunction()
 
 function(make_asan_target Target)
