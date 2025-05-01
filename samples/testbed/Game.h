@@ -45,7 +45,7 @@ namespace Game {
 
         void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
 

@@ -1,6 +1,7 @@
 #include <cstdio>
+#include <core/io/IO.h>
+
 #include "engine/Engine.h"
-#include "engine/io/IO.h"
 #include "engine/audio/OpenAL.hpp"
 #include "engine/audio/Sound.h"
 #include "engine/audio/SoundSource.h"
@@ -12,17 +13,17 @@ namespace Game {
     public:
         explicit Game(Carrot::Engine& engine): Carrot::CarrotGame(engine) {};
 
-        void onFrame(Carrot::Render::Context renderContext) override {};
+        void onFrame(const Carrot::Render::Context& renderContext) override {};
 
         void tick(double frameTime) override {};
 
-        void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override {};
+        void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) override {};
 
         void onMouseMove(double dx, double dy) override {};
 
-        void changeGraphicsWaitSemaphores(uint32_t frameIndex, vector<vk::Semaphore>& semaphores, vector<vk::PipelineStageFlags>& waitStages) override {};
+        void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override {};
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override {};
+        void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override {};
 
         void onSwapchainImageCountChange(size_t newCount) override {};
     };
@@ -35,6 +36,7 @@ int main() {
         auto alDevice = AL::openDefaultDevice();
         auto context = alDevice.createContext();
         context.makeCurrent();
+        AL::checkALError();
 
         drwav wav;
         if (!drwav_init_memory(&wav, coinPCM.data(), coinPCM.size(), nullptr)) {
@@ -51,7 +53,7 @@ int main() {
         } else {
             format = AL_FORMAT_STEREO_FLOAT32;
         }
-        auto buffer = make_shared<AL::Buffer>();
+        auto buffer = std::make_shared<AL::Buffer>();
         buffer->upload(format, wav.sampleRate, pDecodedInterleavedPCMFrames,
                        numberOfSamplesActuallyDecoded * wav.channels * sizeof(float));
 
@@ -63,7 +65,7 @@ int main() {
 
         source.unqueue(source.getProcessedBufferCount());
 
-        auto buffer2 = make_shared<AL::Buffer>();
+        auto buffer2 = std::make_shared<AL::Buffer>();
         buffer2->upload(format, wav.sampleRate, pDecodedInterleavedPCMFrames,
                         numberOfSamplesActuallyDecoded * wav.channels * sizeof(float));
 
@@ -76,20 +78,20 @@ int main() {
     }
 
     using namespace Carrot;
-    {
-        shared_ptr<SoundSource> source = make_shared<SoundSource>();
+    /*{
+        std::shared_ptr<Audio::SoundSource> source = std::make_shared<Audio::SoundSource>();
      //   source->setLooping(true);
-        source->play(Sound::loadSoundEffect("resources/sounds/coin.wav"));
+        source->play(Audio::Sound::loadSoundEffect("resources/sounds/coin.wav"));
         while(source->isPlaying());
     }
 
     {
-        shared_ptr<SoundSource> source = make_shared<SoundSource>();
+        std::shared_ptr<Audio::SoundSource> source = std::make_shared<Audio::SoundSource>();
        // source->setLooping(true);
         source->play(Sound::loadMusic("resources/musics/mus_mettaton_ex.ogg"));
         source->setGain(0.3f);
         while(source->isPlaying());
-    }
+    }*/
 //    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
     return 0;
