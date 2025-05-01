@@ -45,6 +45,11 @@ namespace Carrot {
          * \param allocator allocator to use for this vector. Allocator::getDefault() by default
          */
         explicit Vector(Allocator& allocator = Allocator::getDefault());
+        /**
+         * \brief Creates a Vector with n default-constructed elements and sets its corresponding allocator.
+         * \param allocator allocator to use for this vector. Allocator::getDefault() by default
+         */
+        explicit Vector(std::size_t n, Allocator& allocator = Allocator::getDefault());
         Vector(std::initializer_list<TElement> initList, Allocator& allocator = Allocator::getDefault());
         Vector(std::span<const TElement> initList, Allocator& allocator = Allocator::getDefault());
         Vector(const Vector& toCopy);

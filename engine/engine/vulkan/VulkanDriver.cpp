@@ -1393,10 +1393,10 @@ void Carrot::VulkanDriver::onDeviceLost() {
         Carrot::Log::error(err_msg.str().c_str(), "Aftermath Error");
         Carrot::Log::flush();
     }
+#endif
 
     // Terminate on failure
     exit(1);
-#endif
 }
 
 void Carrot::VulkanDriver::setMarker(vk::CommandBuffer& cmds, const std::string& markerData) {

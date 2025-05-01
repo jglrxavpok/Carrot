@@ -113,7 +113,7 @@ void* Carrot::alloc(std::size_t size, std::size_t alignment) {
 #ifdef WIN32
     auto ptr = _aligned_malloc(size, alignment);
 #else
-    void* ptr = std::aligned_alloc(size, alignment);
+    void* ptr = std::aligned_alloc(alignment, size);
 #endif
     OnNew(ptr, size);
     return ptr;
@@ -124,7 +124,7 @@ void Carrot::free(void* p) {
 #ifdef WIN32
     _aligned_free(p);
 #else
-    free(p);
+    ::free(p);
 #endif
 }
 #endif

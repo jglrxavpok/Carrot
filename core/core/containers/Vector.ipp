@@ -18,6 +18,16 @@ namespace Carrot {
     Vector<TElement, Traits>::Vector(Allocator& allocator): allocator(allocator) {}
 
     VECTOR_TEMPLATE
+    Vector<TElement, Traits>::Vector(std::size_t n, Allocator& allocator): Vector(allocator) {
+        this->allocation = this->allocator.allocate(n * sizeof(TElement), getVectorElementAlignment<TElement>());
+        this->elementCount = n;
+        TElement* pData = data();
+        for (std::size_t i = 0; i < this->elementCount; ++i) {
+            new (&pData[i]) TElement();
+        }
+    }
+
+    VECTOR_TEMPLATE
     Vector<TElement, Traits>::Vector(std::initializer_list<TElement> initList, Allocator& allocator): Vector(allocator) {
         *this = initList;
     }
@@ -128,7 +138,7 @@ namespace Carrot {
         }
 
         if(newSize > capacity()) {
-            this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
+            setCapacity(newSize);
         }
 
         if constexpr (Traits::CallConstructorAndDestructorOnResize) {
@@ -150,7 +160,19 @@ namespace Carrot {
             }
         }
         this->elementCount = std::min(this->elementCount, newSize);
-        this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
+
+        if constexpr (std::is_trivially_move_assignable_v<TElement>) {
+            this->allocation = this->allocator.reallocate(this->allocation, newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
+        } else {
+            MemoryBlock oldAlloc = this->allocation;
+            TElement* pOldData = static_cast<TElement*>(oldAlloc.ptr);
+            this->allocation = this->allocator.allocate(newSize * sizeof(TElement), getVectorElementAlignment<TElement>());
+            TElement* pData = data();
+            for (std::size_t i = 0; i < this->elementCount; i++) {
+                new (&pData[i]) TElement(std::move(pOldData[i]));
+            }
+            this->allocator.deallocate(oldAlloc);
+        }
     }
 
     VECTOR_TEMPLATE

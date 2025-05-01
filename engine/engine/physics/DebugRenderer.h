@@ -15,7 +15,7 @@ namespace Carrot::Render {
 }
 
 namespace Carrot::Physics {
-    class DebugRenderer: public JPH::DebugRenderer {
+    class DebugRenderer: public ::JPH::DebugRenderer {
     public:
         DebugRenderer(Carrot::Render::Viewport& debugViewport);
 

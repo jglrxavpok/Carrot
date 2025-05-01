@@ -490,9 +490,6 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
         TracyVkCtx tracyContext;
     };
 
-    // TODO: reuse memory
-    Carrot::Vector<BLASBucket> buckets;
-
     struct PerBlas {
         vk::AccelerationStructureBuildGeometryInfoKHR buildInfo;
         vk::DeviceSize allocationSize;
@@ -505,7 +502,8 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
     };
     static_assert(BLASBuildBucketCount < (1<<6), "too many buckets for current PerBlas structure, because of 6bit bucket index. Change structure if need more buckets");
 
-    buckets.resize(BLASBuildBucketCount);
+    // TODO: reuse memory
+    Carrot::Vector<BLASBucket> buckets{BLASBuildBucketCount};
 
     Carrot::Vector<PerBlas> perBlas;
     perBlas.resize(blasCount);

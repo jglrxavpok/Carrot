@@ -80,8 +80,13 @@ set(CORE-THIRDPARTY-SOURCES
 
 # TODO: Seems like my Release build of Mono is broken?
 #if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Debug/mono-2.0-sgen.lib")
-    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Debug/*.dll")
+if(WIN32)
+    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Windows/Debug/mono-2.0-sgen.lib")
+    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Windows/Debug/*.dll")
+else ()
+    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Linux/Debug/libmonosgen-2.0.a")
+    set(MonoDLLs "")
+endif ()
 #else()
 #    file(GLOB MonoLibs "${ProjectRoot}thirdparty/mono/lib/${Arch}/Release/mono-2.0-sgen.lib")
 #    file(GLOB MonoDLLs "${ProjectRoot}thirdparty/mono/bin/${Arch}/Release/*.dll")
@@ -118,19 +123,19 @@ function(add_core_includes Target)
     target_link_libraries("${Target}" PUBLIC mimalloc-static)
     target_link_libraries("${Target}" PUBLIC tomlplusplus::tomlplusplus)
 
-    # PIX on Windows
-    target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/)
-    target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.lib)
-
     # METIS
     target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/)
 
     if(WIN32)
-        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/GKlib.lib)
-        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/metis.lib)
+        # PIX on Windows
+        target_include_directories("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/)
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/WinPixEventRuntime/WinPixEventRuntime.lib)
+
+        # METIS libs
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/GKlib.lib ${ProjectRoot}thirdparty/libMETIS/metis.lib)
     else()
-        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libGKlib.a)
-        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libmetis.a)
+        # GKlib is added twice to ensure CMake puts GKlib before metis during link, otherwise metis does not find symbols of GKlib
+        target_link_libraries("${Target}" PUBLIC ${ProjectRoot}thirdparty/libMETIS/libGKlib.a ${ProjectRoot}thirdparty/libMETIS/libmetis.a ${ProjectRoot}thirdparty/libMETIS/libGKlib.a)
     endif()
 
 

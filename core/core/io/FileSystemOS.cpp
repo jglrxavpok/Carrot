@@ -51,7 +51,7 @@ namespace Carrot::IO {
             throw std::runtime_error("Could not lstat64 own exe??");
         }
 
-        const i64 bufferSize = stats.st_size+1;
+        const i64 bufferSize = stats.st_size ? stats.st_size+1 : 1024;
         std::string buffer;
         buffer.resize(bufferSize);
         const i64 readSize = readlink("/proc/self/exe", buffer.data(), buffer.size());

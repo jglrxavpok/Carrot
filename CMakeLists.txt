@@ -107,6 +107,7 @@ add_subdirectory(thirdparty/nativefiledialog-extended)
 add_subdirectory(thirdparty/openexr)
 
 set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF)
+set(CPP_RTTI_ENABLED ON)
 add_subdirectory(thirdparty/JoltPhysics/Build)
 target_compile_definitions(Jolt PUBLIC "$<$<CONFIG:RelWithDebInfo>:NDEBUG;JPH_PROFILE_ENABLED;JPH_DEBUG_RENDERER>")
 
