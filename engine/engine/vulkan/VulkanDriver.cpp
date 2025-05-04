@@ -687,7 +687,7 @@ bool Carrot::VulkanDriver::checkDeviceExtensionSupport(const vk::PhysicalDevice&
     }
 
     if(!required.empty()) {
-        std::cerr << "Device is missing following extensions: " << std::endl;
+        std::cerr << "Device " << logicalDevice.getProperties().deviceName << " is missing following extensions: " << std::endl;
         for(const auto& requiredExt : required) {
             std::cerr << '\t' << requiredExt << std::endl;
         }
@@ -1409,7 +1409,7 @@ void Carrot::VulkanDriver::setMarker(vk::CommandBuffer& cmds, const std::string&
 
 bool Carrot::VulkanDriver::hasDebugNames() const {
 #ifdef IS_DEBUG_BUILD
-    return false;
+    return true;
 #else
     return true;
 #endif

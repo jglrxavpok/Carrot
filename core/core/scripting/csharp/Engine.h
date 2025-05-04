@@ -49,6 +49,7 @@ namespace Carrot::Scripting {
     private:
         std::vector<std::weak_ptr<CSAssembly>> loadedAssemblies;
         std::shared_ptr<CSAssembly> mscorlib;
+        void* libMonoDynamicLib = nullptr;
     };
 
 } // Carrot::Scripting

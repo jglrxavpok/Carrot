@@ -3,8 +3,15 @@
 //
 
 #include "Engine.h"
+
+#ifdef __linux__
+#include <dlfcn.h>
+#endif
+
 #include "mono/metadata/threads.h"
 #include "mono/metadata/mono-debug.h"
+#include <mono/metadata/mono-config.h>
+#include <mono/utils/mono-logger.h>
 #include <core/io/Logging.hpp>
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
@@ -26,6 +33,8 @@ namespace Carrot::Scripting {
     ScriptingEngine::ScriptingEngine() {
         std::lock_guard l { runtimeMutex };
         if(!runtimeReady.test_and_set()) {
+            //mono_trace_set_level_string("debug");
+
             mono_set_assemblies_path("monolib");
 
             static const char* options[] = {
@@ -34,6 +43,21 @@ namespace Carrot::Scripting {
             };
 
             mono_jit_parse_options(sizeof(options)/sizeof(char*), (char**)options);
+
+            const char* sdkPath = std::getenv("MONO_SDK_PATH");
+            verify(sdkPath != nullptr, "No Mono SDK found, make sure the 'MONO_SDK_PATH' environment variable is set, pointing to the root folder of a Mono installation");
+#ifdef __linux__
+            fs::path configPath = sdkPath;
+            configPath /= "etc/mono/config";
+
+            mono_set_dirs((fs::path{sdkPath} / "lib").c_str(), (fs::path{sdkPath} / "etc").c_str());
+            mono_config_parse(nullptr);
+
+            // Necessary for loading libmono-native, otherwise complains about undefined symbols
+            libMonoDynamicLib = dlopen("monolib/libmonosgen-2.0.so", RTLD_NOW | RTLD_GLOBAL);
+            verify(libMonoDynamicLib, "Could not load 'monolib/libmonosgen-2.0.so'");
+#endif
+
             mono_debug_init(MONO_DEBUG_FORMAT_MONO);
 
             rootDomain = mono_jit_init("CarrotMonoRuntime");
@@ -78,6 +102,9 @@ namespace Carrot::Scripting {
     }
 
     ScriptingEngine::~ScriptingEngine() {
+#ifdef __linux__
+        dlclose(libMonoDynamicLib);
+#endif
         // From the docs: https://www.mono-project.com/docs/advanced/embedding/
         // Note that for current versions of Mono, the mono runtime can’t be reloaded into the same process, so call mono_jit_cleanup() only if you’re never going to initialize it again.
 

@@ -3,6 +3,10 @@
 #error PIXEL_TYPE is not defined.
 #endif
 
+#ifndef TEXTURE_FORMAT
+#error TEXTURE_FORMAT is not defined.
+#endif
+
 #ifndef PIXEL_SWIZZLE
 #error PIXEL_SWIZZLE(v) is not defined. Result must match with PIXEL_TYPE.
 #endif
@@ -24,8 +28,8 @@ DEFINE_GBUFFER_INPUTS(0)
 
 #include <includes/gbuffer_unpack.glsl>
 
-layout(r8, set = 1, binding = 0) uniform readonly image2D inputImage;
-layout(r8, set = 1, binding = 1) uniform writeonly image2D outputImage;
+layout(TEXTURE_FORMAT, set = 1, binding = 0) uniform readonly image2D inputImage;
+layout(TEXTURE_FORMAT, set = 1, binding = 1) uniform writeonly image2D outputImage;
 
 layout(push_constant) uniform PushConstant {
     uint iterationIndex;

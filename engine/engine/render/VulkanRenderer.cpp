@@ -99,6 +99,8 @@ Carrot::VulkanRenderer::VulkanRenderer(VulkanDriver& driver, Configuration confi
         asyncCopySemaphores[i] = driver.getLogicalDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo{});
         DebugNameable::nameSingle("Async Copy semaphore", *asyncCopySemaphores[i]);
     }
+    renderData.pAsyncCopyQueue = &asyncCopiesQueues[0];
+    mainData.pAsyncCopyQueue = &asyncCopiesQueues[1];
 
     createCameraSetResources();
     createViewportSetResources();
@@ -651,10 +653,11 @@ void Carrot::VulkanRenderer::unbindUniformBuffer(Pipeline& pipeline, const Rende
     }
 }
 
-void Carrot::VulkanRenderer::newFrame() {
+void Carrot::VulkanRenderer::newFrame(u32 engineFrameIndex) {
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
 
+    currentEngineFrame = engineFrameIndex;
     {
         ZoneScopedN("ImGui backend new frame");
         imGuiBackend.newFrame();
@@ -807,6 +810,7 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
         ZoneScopedN("ImGui Render");
         Console::instance().renderToImGui(getEngine());
         ImGui::Render();
+        // TODO: should be after render wait?
         imGuiBackend.render(renderContext, GetEngine().getMainWindow().getWindowID(), ImGui::GetDrawData());
 
         ImGui::UpdatePlatformWindows();
@@ -820,10 +824,12 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     // swap double-buffered data
     {
         recordingRenderContext.copyFrom(renderContext);
+        currentRendererFrame = renderContext.frameCount;
         bufferPointer = 1 - bufferPointer;
         renderData.perDrawData.clear();
         renderData.perDrawOffsets.clear();
 
+        std::swap(renderData.pAsyncCopyQueue, mainData.pAsyncCopyQueue);
         renderData.perDrawOffsetCount = mainData.perDrawOffsetCount.load();
         mainData.perDrawOffsetCount = 0;
         renderData.perDrawElementCount = mainData.perDrawElementCount.load();
@@ -1458,8 +1464,9 @@ vk::Semaphore Carrot::VulkanRenderer::fetchACopySemaphore() {
     return r;
 }
 
-void Carrot::VulkanRenderer::queueAsyncCopy(Carrot::BufferView source, Carrot::BufferView destination) {
-    asyncCopiesQueue.push(AsyncCopyDesc{source, destination});
+void Carrot::VulkanRenderer::queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination) {
+    auto* pAsyncCopyQueue = onRenderThread ? renderData.pAsyncCopyQueue : mainData.pAsyncCopyQueue;
+    pAsyncCopyQueue->push(AsyncCopyDesc{source, destination});
 }
 
 
@@ -1467,6 +1474,7 @@ void Carrot::VulkanRenderer::submitAsyncCopies(const Carrot::Render::Context& ma
     ASSERT_RENDER_THREAD();
     updatePerDrawBuffers(mainRenderContext);
 
+    auto& asyncCopiesQueue = *renderData.pAsyncCopyQueue;
     bool needAsyncCopies = false;
     vk::CommandBuffer cmds = GetVulkanDriver().recordStandaloneTransferBuffer([&](vk::CommandBuffer& cmds) {
         AsyncCopyDesc copyDesc;

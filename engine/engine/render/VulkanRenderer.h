@@ -145,7 +145,7 @@ namespace Carrot {
         void afterFrameCommand(const CommandBufferConsumer& command);
 
         /// Call at start of frame (sets ups ImGui stuff)
-        void newFrame();
+        void newFrame(u32 engineFrameIndex);
         void preFrame(const Render::Context& renderContext);
         void postFrame();
 
@@ -294,8 +294,8 @@ namespace Carrot {
         vk::Semaphore fetchACopySemaphore();
 
         /// Queues a copy that will be performed before rendering the current frame.
-        /// Both source and destination must be valid until the next frame!
-        void queueAsyncCopy(Carrot::BufferView source, Carrot::BufferView destination);
+        /// Buffers pointed by both source and destination must be valid until the next frame!
+        void queueAsyncCopy(bool onRenderThread, const Carrot::BufferView& source, const Carrot::BufferView& destination);
 
         /// Adds SemaphoreSubmitInfo corresponding to the copy semaphores that will be signaled for this frame (ie fetched via fetchACopySemaphore)
         /// This will also reset the underlying pool (to let semaphores be reused for next frame)
@@ -357,9 +357,17 @@ namespace Carrot {
         Render::PerFrame<UniquePtr<Carrot::Buffer>> perDrawBuffers;
         Render::PerFrame<vk::DescriptorSet> perDrawDescriptorSets;
 
+        struct AsyncCopyDesc {
+            BufferView source;
+            BufferView destination;
+        };
+        std::array<ThreadSafeQueue<AsyncCopyDesc>, 2> asyncCopiesQueues;
+
         struct {
             std::atomic<std::uint32_t> perDrawElementCount{0};
             std::atomic<std::uint32_t> perDrawOffsetCount{0};
+
+            ThreadSafeQueue<AsyncCopyDesc>* pAsyncCopyQueue = nullptr;
         } mainData;
 
         struct {
@@ -369,6 +377,8 @@ namespace Carrot {
 
             std::vector<GBufferDrawData> perDrawData;
             std::vector<std::uint32_t> perDrawOffsets;
+
+            ThreadSafeQueue<AsyncCopyDesc>* pAsyncCopyQueue = nullptr;
         } renderData;
 
         std::unique_ptr<ASBuilder> asBuilder = nullptr;
@@ -421,17 +431,13 @@ namespace Carrot {
         ThreadSafeQueue<vk::Semaphore> semaphoresQueueForCurrentFrame;
         Render::PerFrame<vk::UniqueSemaphore> asyncCopySemaphores;
 
-        struct AsyncCopyDesc {
-            BufferView source;
-            BufferView destination;
-        };
-        ThreadSafeQueue<AsyncCopyDesc> asyncCopiesQueue;
-
     private:
         bool hasBlinked = false;
         double blinkTime = -1.0;
 
-        std::uint32_t frameCount = 0;
+        u32 frameCount = 0;
+        u32 currentEngineFrame = 0;
+        u32 currentRendererFrame = 0;
         float latestRecordTime = 0.0f;
 
         int renderDebugType = 0;

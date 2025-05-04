@@ -11,10 +11,13 @@ namespace Carrot::IO {
         const char* openMode = "";
         switch (openModeEnum) {
         case OpenMode::AlreadyExistingReadWrite:
+            openMode = "r+b";
+            break;
+
         case OpenMode::NewOrExistingReadWrite:
         case OpenMode::NewReadWrite:
             // TODO: check if file already exists?
-            openMode = "r+b";
+            openMode = "w+b";
             break;
 
         case OpenMode::Append:

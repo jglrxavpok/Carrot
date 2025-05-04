@@ -51,6 +51,7 @@ namespace Carrot::Render {
             vk::SemaphoreCreateInfo semaphoreInfo{};
             for(std::size_t i = 0; i < imageCount; i++) {
                 v.bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+                DebugNameable::nameSingle("ImGui buffer copy sync", *v.bufferCopySync[i]);
 
                 v.rebindTextures[i] = true;
             }
@@ -265,7 +266,7 @@ namespace Carrot::Render {
             stagingBuffer.subView(0, vertexBuffer.getSize()).cmdCopyTo(cmds, vertexBuffer);
             stagingBuffer.subView(vertexBuffer.getSize(), indexBuffer.getSize()).cmdCopyTo(cmds, indexBuffer);
         }, false/* don't wait for this copy */, {}, static_cast<vk::PipelineStageFlags2>(0), *copySyncSemaphore);
-        renderer.getEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
+        renderer.getEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *copySyncSemaphore);
 
         Render::Packet& packet = renderer.makeRenderPacket(Render::PassEnum::ImGui, Render::PacketType::DrawIndexedInstanced, renderContext);
         packet.pipeline = pImpl->perWindow[windowID].pipeline;
@@ -391,6 +392,7 @@ namespace Carrot::Render {
             vk::SemaphoreCreateInfo semaphoreInfo{};
             for(std::size_t i = 0; i < newCount; i++) {
                 v.bufferCopySync[i] = renderer.getLogicalDevice().createSemaphoreUnique(semaphoreInfo, renderer.getVulkanDriver().getAllocationCallbacks());
+                DebugNameable::nameSingle("ImGui buffer copy sync", *v.bufferCopySync[i]);
 
                 v.rebindTextures[i] = true;
             }

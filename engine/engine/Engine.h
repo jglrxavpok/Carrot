@@ -390,7 +390,7 @@ namespace Carrot {
 
         TaskScheduler& getTaskScheduler();
 
-        void addWaitSemaphoreBeforeRendering(const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore);
+        void addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore);
 
     public:
         IO::VFS& getVFS() { return vfs; }
@@ -449,7 +449,7 @@ namespace Carrot {
         std::vector<vk::CommandBuffer> mainCommandBuffers{};
         std::vector<vk::UniqueSemaphore> renderFinishedSemaphore{};
         std::vector<vk::UniqueFence> inFlightFences{};
-        std::vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>> additionalWaitSemaphores{};
+        Render::PerFrame<Carrot::Vector<std::pair<vk::PipelineStageFlags, vk::Semaphore>>> additionalWaitSemaphores{};
         vk::UniqueQueryPool timingQueryPool{};
         std::array<std::uint64_t, 2*MAX_FRAMES_IN_FLIGHT * 2 /* one at start of frame, one at end. x2 due to availability value*/> timestampsWithAvailability{};
 

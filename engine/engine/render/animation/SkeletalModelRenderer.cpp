@@ -72,7 +72,7 @@ namespace Carrot::Render {
 
                 skinningPipelinesOfThisFrame[meshIndex]->dispatch(vertexGroups, 1, 1, &(*semaphore));
 
-                GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *semaphore);
+                GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *semaphore);
 
                 meshIndex++;
             }
@@ -207,6 +207,7 @@ namespace Carrot::Render {
 
                 pipelinesForThisFrame.emplace_back(builder.build());
                 semaphoresForThisFrame.emplace_back(GetVulkanDevice().createSemaphoreUnique({}));
+                DebugNameable::nameSingle("Skinning pipeline", *semaphoresForThisFrame[imageIndex]);
 
                 // create corresponding rendering meshes
                 renderingMeshes[imageIndex].emplace_back(std::make_shared<Carrot::LightMesh>(outputBufferView, mesh->getIndexBuffer(), sizeof(OutputVertexFormat), sizeof(std::uint32_t)));

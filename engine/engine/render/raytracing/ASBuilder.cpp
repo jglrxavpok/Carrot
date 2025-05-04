@@ -320,6 +320,7 @@ void Carrot::ASBuilder::createSemaphores() {
     tlasBuildTimelineSemaphore = GetVulkanDevice().createSemaphoreUnique(vk::SemaphoreCreateInfo {
         .pNext = &timelineCreateInfo
     });
+    DebugNameable::nameSingle("TLAS build", *tlasBuildTimelineSemaphore);
 }
 
 void Carrot::ASBuilder::onFrame(const Carrot::Render::Context& renderContext) {
@@ -815,13 +816,17 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
             });
         }
 
+        // TODO: reuse memory
+        std::unordered_set<vk::Semaphore> alreadyWaitedOn;
         for(auto& blas : toBuild) {
-            // TODO: deduplicate semaphores inside list? Is it even useful?
             vk::Semaphore boundSemaphore = blas->getBoundSemaphore(renderContext.frameCount);
             if(boundSemaphore != VK_NULL_HANDLE) {
-                vk::SemaphoreSubmitInfo& submitInfo = waitSemaphoreList.emplaceBack();
-                submitInfo.semaphore = boundSemaphore;
-                submitInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
+                auto [_, isNew] = alreadyWaitedOn.emplace(boundSemaphore);
+                if (isNew) {
+                    vk::SemaphoreSubmitInfo& submitInfo = waitSemaphoreList.emplaceBack();
+                    submitInfo.semaphore = boundSemaphore;
+                    submitInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
+                }
             }
         }
         vk::SemaphoreSubmitInfo signalInfo {
@@ -1093,7 +1098,7 @@ void Carrot::ASBuilder::buildTopLevelAS(const Carrot::Render::Context& renderCon
         .pSignalSemaphoreInfos = &signalInfo,
     });
 
-    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[renderContext.swapchainIndex]);
+    GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eAllCommands, *tlasBuildSemaphore[renderContext.swapchainIndex]);
 
     prevPrimitiveCount = vkInstances.size();
 }

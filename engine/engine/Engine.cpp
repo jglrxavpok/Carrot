@@ -429,7 +429,7 @@ void Carrot::Engine::run() {
 
         {
             ZoneScopedN("Setup frame");
-            renderer.newFrame();
+            renderer.newFrame(frames);
 
             {
                 ZoneScopedN("nextFrameAwaiter.resume_all()");
@@ -799,8 +799,8 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
             .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
         });
 
-
-        for(auto [stage, semaphore] : additionalWaitSemaphores) {
+        auto& additionalWaitSemaphoresForThisFrame = additionalWaitSemaphores[mainRenderContext.frameCount % additionalWaitSemaphores.size()];
+        for(auto [stage, semaphore] : additionalWaitSemaphoresForThisFrame) {
             vk::PipelineStageFlags2 mask;
             mask = static_cast<vk::PipelineStageFlags2>(static_cast<VkPipelineStageFlags>(stage));
             waitSemaphores.emplace_back(vk::SemaphoreSubmitInfo {
@@ -808,7 +808,7 @@ void Carrot::Engine::recordMainCommandBufferAndPresent(std::uint8_t _frameIndex,
                 .stageMask = mask,
             });
         }
-        additionalWaitSemaphores.clear();
+        additionalWaitSemaphoresForThisFrame.clear();
 
         vk::CommandBufferSubmitInfo commandBufferInfo {
             .commandBuffer = mainCommandBuffers[frameIndex],
@@ -1160,6 +1160,8 @@ void Carrot::Engine::createSynchronizationObjects() {
         DebugNameable::nameSingle("Render finished", *renderFinishedSemaphore[i]);
         inFlightFences[i] = getLogicalDevice().createFenceUnique(fenceInfo, vkDriver.getAllocationCallbacks());
     }
+
+    additionalWaitSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 }
 
 void Carrot::Engine::createTimingQueryPools() {
@@ -1701,8 +1703,13 @@ Carrot::TaskScheduler& Carrot::Engine::getTaskScheduler() {
     return taskScheduler;
 }
 
-void Carrot::Engine::addWaitSemaphoreBeforeRendering(const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore) {
-    additionalWaitSemaphores.push_back({stage, semaphore});
+void Carrot::Engine::addWaitSemaphoreBeforeRendering(const Render::Context& renderContext, const vk::PipelineStageFlags& stage, const vk::Semaphore& semaphore) {
+    for (const auto& [_, sem] : additionalWaitSemaphores[renderContext.frameCount % additionalWaitSemaphores.size()]) {
+        if (sem == semaphore) {
+            return;
+        }
+    }
+    additionalWaitSemaphores[renderContext.frameCount % additionalWaitSemaphores.size()].pushBack({stage, semaphore});
 }
 
 void Carrot::Engine::grabCursor() {

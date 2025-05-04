@@ -114,7 +114,7 @@ void Carrot::BufferView::uploadForFrame(const void* data, vk::DeviceSize length,
     Carrot::BufferView staging = GetRenderer().getSingleFrameHostBuffer(length);
     staging.directUpload(data, length, 0);
 
-    GetRenderer().queueAsyncCopy(staging, this->subView(offset, length));
+    GetRenderer().queueAsyncCopy(false, staging, this->subView(offset, length));
 }
 
 void Carrot::BufferView::uploadForFrameOnRenderThread(const void* data, vk::DeviceSize length, vk::DeviceSize offset) {
@@ -122,7 +122,7 @@ void Carrot::BufferView::uploadForFrameOnRenderThread(const void* data, vk::Devi
     Carrot::BufferView staging = GetRenderer().getSingleFrameHostBufferOnRenderThread(length);
     staging.directUpload(data, length, 0);
 
-    GetRenderer().queueAsyncCopy(staging, this->subView(offset, length));
+    GetRenderer().queueAsyncCopy(true, staging, this->subView(offset, length));
 }
 
 void Carrot::BufferView::copyToAndWait(Carrot::BufferView destination) const {

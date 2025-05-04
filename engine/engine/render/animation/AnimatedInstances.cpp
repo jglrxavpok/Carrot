@@ -5,6 +5,7 @@
 #include "AnimatedInstances.h"
 
 #include <utility>
+#include <core/io/Logging.hpp>
 #include <engine/console/RuntimeOption.hpp>
 #include <engine/render/resources/ResourceAllocator.h>
 
@@ -329,6 +330,7 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
         commands.end();
 
         skinningSemaphores.emplace_back(std::move(engine.getLogicalDevice().createSemaphoreUnique({})));
+        DebugNameable::nameSingle(Carrot::sprintf("Skinning semaphore %s", this->getModel().getOriginatingResource().getName().c_str()), *skinningSemaphores[i]);
     }
 
     Render::PerFrame<vk::Semaphore> semaphores;
@@ -342,16 +344,17 @@ void Carrot::AnimatedInstances::createSkinningComputePipeline() {
     }
 }
 
-vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
+vk::Semaphore& Carrot::AnimatedInstances::onFrame(const Render::Context& renderContext) {
     ZoneScoped;
 
+    const std::size_t modFrameIndex = renderContext.frameCount % BufferingCount;
     if(GetCapabilities().supportsRaytracing) {
         verify(raytracingBLASes.size() == raytracingInstances.size(), "There must be as many BLASes as there are RT instances!");
         for(std::size_t instanceIndex = 0; instanceIndex < maxInstanceCount; instanceIndex ++) {
             for (i32 bufferingIndex = 0; bufferingIndex < BufferingCount; bufferingIndex++) {
                 const i32 globalIndex = instanceIndex * BufferingCount + bufferingIndex;
                 auto& instance = raytracingInstances[globalIndex];
-                if (bufferingIndex == frameIndex % BufferingCount) {
+                if (bufferingIndex == modFrameIndex % BufferingCount) {
                     auto& blas = raytracingBLASes[globalIndex];
 
                     const AnimatedInstanceData& animatedInstanceData = getInstance(instanceIndex);
@@ -371,10 +374,10 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
     // submit skinning command buffer
     // start skinning as soon as possible, even if that means we will have a frame of delay (render before update)
     vk::CommandBufferSubmitInfo commandBufferInfo {
-        .commandBuffer = skinningCommandBuffers[frameIndex],
+        .commandBuffer = skinningCommandBuffers[modFrameIndex],
     };
     vk::SemaphoreSubmitInfo signalInfo {
-        .semaphore = *skinningSemaphores[frameIndex],
+        .semaphore = *skinningSemaphores[modFrameIndex],
         .stageMask = vk::PipelineStageFlagBits2::eAllCommands,
     };
     GetVulkanDriver().submitCompute(vk::SubmitInfo2 {
@@ -385,8 +388,21 @@ vk::Semaphore& Carrot::AnimatedInstances::onFrame(std::size_t frameIndex) {
             .signalSemaphoreInfoCount = 1,
             .pSignalSemaphoreInfos = &signalInfo,
     });
-    GetEngine().addWaitSemaphoreBeforeRendering(vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[frameIndex]);
-    return *skinningSemaphores[frameIndex];
+
+    bool hasRaytracedInstances = false;
+    if (GetCapabilities().supportsRaytracing) {
+        for(std::size_t instanceIndex = 0; instanceIndex < maxInstanceCount; instanceIndex ++) {
+            if (getInstance(instanceIndex).raytraced) {
+                hasRaytracedInstances = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasRaytracedInstances) { // otherwise, the raytracing code will wait on the semaphore
+        GetEngine().addWaitSemaphoreBeforeRendering(renderContext, vk::PipelineStageFlagBits::eVertexInput, *skinningSemaphores[modFrameIndex]);
+    }
+    return *skinningSemaphores[modFrameIndex];
 }
 
 void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass) {
@@ -396,7 +412,7 @@ void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderCont
 void Carrot::AnimatedInstances::render(const Carrot::Render::Context& renderContext, Carrot::Render::PassName renderPass, std::size_t instanceCount) {
     verify(instanceCount <= maxInstanceCount, "instanceCount > maxInstanceCount !");
     currentInstanceCount = instanceCount;
-    onFrame(renderContext.frameCount % BufferingCount);
+    onFrame(renderContext);
 
     Carrot::GBufferDrawData data;
 

@@ -14,10 +14,10 @@ DEFINE_CAMERA_SET(1)
 
 #include "includes/gbuffer_unpack.glsl"
 
-layout(r8, set = 2, binding = 0) uniform readonly image2D noisyInputImage;
-layout(r8, set = 2, binding = 1) uniform readonly image2D lastFrameSuperSamplesImage;
+layout(rgba32f, set = 2, binding = 0) uniform readonly image2D noisyInputImage;
+layout(rgba32f, set = 2, binding = 1) uniform readonly image2D lastFrameSuperSamplesImage;
 
-layout(r8, set = 2, binding = 2) uniform writeonly image2D outputImage;
+layout(rgba32f, set = 2, binding = 2) uniform writeonly image2D outputImage;
 layout(rgba32f, set = 2, binding = 3) uniform writeonly image2D historyLengthImage;
 layout(rgba32f, set = 2, binding = 4) uniform readonly image2D lastFrameHistoryLengthImage;
 layout(set = 2, binding = 5) uniform texture2D previousViewPos;
