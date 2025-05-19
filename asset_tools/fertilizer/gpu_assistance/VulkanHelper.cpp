@@ -62,13 +62,13 @@ namespace Fertilizer {
         return *vkDevice;
     }
 
-    vk::detail::DispatchLoaderDynamic& VulkanHelper::getDispatcher() {
+    VK_DISPATCHER_TYPE& VulkanHelper::getDispatcher() {
         return *dispatch;
     }
 
     VulkanHelper::VulkanHelper() {
         // Providing a function pointer resolving vkGetInstanceProcAddr, just the few functions not depending an an instance or a device are fetched
-        dispatch = std::make_unique<vk::detail::DispatchLoaderDynamic>(vkGetInstanceProcAddr);
+        dispatch = std::make_unique<VK_DISPATCHER_TYPE>(vkGetInstanceProcAddr);
         dispatch->init(dl);
 
         vk::ApplicationInfo appInfo {
@@ -168,7 +168,7 @@ namespace Fertilizer {
         vkDevice->freeCommandBuffers(*vkComputeCommandPool, cmds, *dispatch);
     }
 
-    vk::PhysicalDevice VulkanHelper::findPhysicalDevice(vk::detail::DispatchLoaderDynamic& dispatch) {
+    vk::PhysicalDevice VulkanHelper::findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch) {
         const std::vector<vk::PhysicalDevice> devices = vkInstance->enumeratePhysicalDevices(dispatch);
 
         for (const auto& physicalDevice : devices) {

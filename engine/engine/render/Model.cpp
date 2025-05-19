@@ -237,7 +237,7 @@ void Carrot::Model::loadInner(TaskHandle& task, Carrot::Engine& engine, const Ca
                                                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
                                                          vk::MemoryPropertyFlagBits::eDeviceLocal);
         animationData->setDebugNames(Carrot::sprintf("Carrot::Animation %s", debugName.c_str()));
-        animationData->stageUploadWithOffsets(make_pair(0ul, std::span(gpuAnimationData)));
+        animationData->stageUploadWithOffsets(make_pair(static_cast<u64>(0), std::span(gpuAnimationData)));
 
         animationBoneTransformData.resize(allAnimations.size());
         for (std::size_t i = 0; i < allAnimations.size(); ++i) {

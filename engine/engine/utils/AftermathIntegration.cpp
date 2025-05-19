@@ -38,6 +38,8 @@
 
 #ifdef AFTERMATH_ENABLE
 #include <GFSDK_Aftermath_GpuCrashDump.h>
+
+#include "engine/render/resources/Image.h"
 #include "engine/utils/NsightAftermathHelpers.h"
 
 static std::mutex mut{};

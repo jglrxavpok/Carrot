@@ -8,7 +8,7 @@
 
 #ifdef _WIN32
     #include <windows.h>
-#elifdef __linux__
+#elif defined(__linux__)
     #include <sys/stat.h>
 #endif
 
@@ -45,7 +45,7 @@ namespace Carrot::IO {
         } while(true);
 
         return {buffer.c_str()};
-#elifdef __linux__
+#elif defined(__linux__)
         struct stat64 stats{};
         if (lstat64("/proc/self/exe", &stats) == -1) {
             throw std::runtime_error("Could not lstat64 own exe??");
@@ -75,7 +75,7 @@ namespace Carrot::IO {
         } else {
             return false;
         }
-#elifdef __linux__
+#elif defined(__linux__)
         int returnValue = system(Carrot::sprintf("open %s", filepath.c_str()).c_str());
         if (returnValue == -1) {
             return false;

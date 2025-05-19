@@ -20,10 +20,18 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_hash.hpp>
 
+#ifdef _MSC_VER
+#define VK_DISPATCHER_TYPE vk::DispatchLoaderDynamic
+#define VK_LOADER_TYPE vk::DynamicLoader
+#else
+#define VK_DISPATCHER_TYPE vk::detail::DispatchLoaderDynamic
+#define VK_LOADER_TYPE vk::detail::DynamicLoader
+#endif
+
 namespace Fertilizer {
     struct GPUBuffer {
-        vk::UniqueHandle<vk::DeviceMemory, vk::detail::DispatchLoaderDynamic> vkMemory;
-        vk::UniqueHandle<vk::Buffer, vk::detail::DispatchLoaderDynamic> vkBuffer;
+        vk::UniqueHandle<vk::DeviceMemory, VK_DISPATCHER_TYPE> vkMemory;
+        vk::UniqueHandle<vk::Buffer, VK_DISPATCHER_TYPE> vkBuffer;
     };
 
     /**
@@ -43,7 +51,7 @@ namespace Fertilizer {
         GPUBuffer newDeviceLocalBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
         vk::Device getDevice();
 
-        vk::detail::DispatchLoaderDynamic& getDispatcher();
+        VK_DISPATCHER_TYPE& getDispatcher();
 
         static vk::TransformMatrixKHR glmToRTTransformMatrix(const glm::mat4& mat);
 
@@ -51,16 +59,16 @@ namespace Fertilizer {
     private:
         GPUBuffer newBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags);
 
-        vk::PhysicalDevice findPhysicalDevice(vk::detail::DispatchLoaderDynamic& dispatch);
+        vk::PhysicalDevice findPhysicalDevice(VK_DISPATCHER_TYPE& dispatch);
         std::uint32_t findMemoryType(vk::PhysicalDevice device, std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
-        vk::detail::DynamicLoader dl;
-        std::unique_ptr<vk::detail::DispatchLoaderDynamic> dispatch;
-        vk::UniqueHandle<vk::Instance, vk::detail::DispatchLoaderDynamic> vkInstance;
+        VK_LOADER_TYPE dl;
+        std::unique_ptr<VK_DISPATCHER_TYPE> dispatch;
+        vk::UniqueHandle<vk::Instance, VK_DISPATCHER_TYPE> vkInstance;
         vk::PhysicalDevice vkPhysicalDevice;
-        vk::UniqueHandle<vk::Device, vk::detail::DispatchLoaderDynamic> vkDevice;
+        vk::UniqueHandle<vk::Device, VK_DISPATCHER_TYPE> vkDevice;
         vk::Queue vkComputeQueue;
-        vk::UniqueHandle<vk::CommandPool, vk::detail::DispatchLoaderDynamic> vkComputeCommandPool;
+        vk::UniqueHandle<vk::CommandPool, VK_DISPATCHER_TYPE> vkComputeCommandPool;
     };
 
 } // Fertilizer

@@ -592,7 +592,7 @@ void Carrot::ASBuilder::buildBottomLevels(const Carrot::Render::Context& renderC
                     verify(blas.pPrecomputedBLAS->getHeader().accelerationStructureSerializedSize == blas.pPrecomputedBLAS->blasBytes.size(), "Header and actual data don't have the same size?");
                     perBlas[index].allocationSize = blas.pPrecomputedBLAS->getHeader().accelerationStructureRuntimeSize;
                     perBlas[index].serializedSize = blas.pPrecomputedBLAS->getHeader().accelerationStructureSerializedSize;
-                    perBlas[index].storageOffset = totalSerializedSize.fetch_add(Carrot::Math::alignUp(perBlas[index].serializedSize, 256ul) /* ensure all offsets are aligned to 256 bytes */);
+                    perBlas[index].storageOffset = totalSerializedSize.fetch_add(Carrot::Math::alignUp(perBlas[index].serializedSize, static_cast<vk::DeviceSize>(256)) /* ensure all offsets are aligned to 256 bytes */);
                     perBlas[index].compatiblePrecomputed = true;
                     return;
                 }

@@ -12,7 +12,7 @@
 
 #ifdef _WIN32
 #include "windows/PlatformFileHandle.h"
-#elifdef __linux__
+#elif defined(__linux__)
 #include "linux/PlatformFileHandle.h"
 #else
 #error No implementation of PlatformFileHandle for this platform.

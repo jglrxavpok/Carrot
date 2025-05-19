@@ -19,6 +19,7 @@
 #include <core/containers/Vector.hpp>
 #include <core/io/Serialisation.h>
 
+#include "VulkanDefines.h"
 #include "engine/vulkan/CustomTracyVulkan.h"
 
 #include "engine/Engine.h"
@@ -199,7 +200,7 @@ Carrot::VulkanDriver::VulkanDriver(Carrot::Window& window, Configuration config,
 {
     ZoneScoped;
 
-    vk::detail::DynamicLoader dl;
+    VK_LOADER_TYPE dl;
     VULKAN_HPP_DEFAULT_DISPATCHER.init(dl);
 
     createInstance();
@@ -358,7 +359,7 @@ void Carrot::VulkanDriver::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& 
     createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 
     //createInfo.messageType |= vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance; // OpenXR seem to do a blit with GENERAL as image layout, at least on my end
-    createInfo.pfnUserCallback = debugCallback;
+    createInfo.pfnUserCallback = (PFN_vkDebugUtilsMessengerCallbackEXT)debugCallback;
     createInfo.pUserData = nullptr;
 }
 

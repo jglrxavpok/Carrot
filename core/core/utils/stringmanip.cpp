@@ -4,6 +4,7 @@
 
 #include "stringmanip.h"
 #include <cctype>
+#include <codecvt>
 #include <cstring>
 #include <core/Macros.h>
 
