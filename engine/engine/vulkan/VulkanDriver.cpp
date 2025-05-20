@@ -359,7 +359,7 @@ void Carrot::VulkanDriver::setupMessenger(vk::DebugUtilsMessengerCreateInfoEXT& 
     createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 
     //createInfo.messageType |= vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance; // OpenXR seem to do a blit with GENERAL as image layout, at least on my end
-    createInfo.pfnUserCallback = (PFN_vkDebugUtilsMessengerCallbackEXT)debugCallback;
+    createInfo.pfnUserCallback = (VULKAN_HPP_NAMESPACE::PFN_DebugUtilsMessengerCallbackEXT)debugCallback;
     createInfo.pUserData = nullptr;
 }
 
