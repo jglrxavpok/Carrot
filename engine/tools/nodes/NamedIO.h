@@ -140,7 +140,7 @@ namespace Tools {
                 }
             }
 
-            strcpy_s(nameImGuiBuffer, name.c_str());
+            Carrot::strcpy(nameImGuiBuffer, name.c_str());
         }
 
     private:

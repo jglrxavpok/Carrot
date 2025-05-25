@@ -17,7 +17,7 @@ namespace Tools {
                           "Condition is: " + condition;
         }
 
-        const char *what() const override {
+        const char *what() const noexcept override {
             return fullMessage.c_str();
         }
 

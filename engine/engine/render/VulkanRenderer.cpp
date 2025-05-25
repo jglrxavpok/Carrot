@@ -806,6 +806,9 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
     ZoneScoped;
     ASSERT_NOT_RENDER_THREAD();
 
+    // wait for previous frame
+    waitForRenderToComplete();
+
     {
         ZoneScopedN("ImGui Render");
         Console::instance().renderToImGui(getEngine());
@@ -817,8 +820,6 @@ void Carrot::VulkanRenderer::startRecord(std::uint8_t frameIndex, const Carrot::
         ImGui::RenderPlatformWindowsDefault(nullptr, (void*)&renderContext.swapchainIndex);
     }
 
-    // wait for previous frame
-    waitForRenderToComplete();
     recordingFrameIndex = frameIndex;
 
     // swap double-buffered data

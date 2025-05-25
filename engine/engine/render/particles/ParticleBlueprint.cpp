@@ -68,10 +68,12 @@ std::ostream& Carrot::operator<<(std::ostream& out, const Carrot::ParticleBluepr
 }
 
 std::unique_ptr<Carrot::ComputePipeline> Carrot::ParticleBlueprint::buildComputePipeline(Carrot::Engine& engine, const vk::DescriptorBufferInfo particleBuffer, const vk::DescriptorBufferInfo statisticsBuffer) const {
+    // TODO: replace with Carrot::Pipeline
     return ComputePipelineBuilder(engine)
             .shader(Carrot::IO::Resource({(std::uint8_t*)computeShaderCode.data(), computeShaderCode.size() * sizeof(std::uint32_t)}))
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer)
-            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 1, particleBuffer)
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 0, 0, statisticsBuffer) // TODO: don't add
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 0, particleBuffer)
+            .bufferBinding(vk::DescriptorType::eStorageBuffer, 1, 1, statisticsBuffer)
             .build();
 }
 

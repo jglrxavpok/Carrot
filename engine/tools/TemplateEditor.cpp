@@ -73,8 +73,8 @@ void Tools::TemplateEditor::performLoad(std::filesystem::path fileToOpen) {
 
     title = description["title"].GetString();
     menuLocation = description["menu_location"].GetString();
-    strcpy_s(titleImGuiBuffer, title.c_str());
-    strcpy_s(menuLocationImGuiBuffer, menuLocation.c_str());
+    Carrot::strcpy(titleImGuiBuffer, title.c_str());
+    Carrot::strcpy(menuLocationImGuiBuffer, menuLocation.c_str());
 
     if(description.HasMember("graph")) {
         graph.loadFromJSON(description["graph"]);

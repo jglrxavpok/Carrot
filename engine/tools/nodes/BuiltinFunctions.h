@@ -32,11 +32,11 @@ namespace Tools {
     };
 
 #define NODE(Type, InternalName)                                                                                                                    \
-    class Type ## Node: public FloatFunction<Carrot:: ## Type ## Expression> {                                                                      \
+    class Type ## Node: public FloatFunction<Carrot:: Type ## Expression> {                                                                      \
     public:                                                                                                                                         \
-        explicit Type ## Node(Tools::EditorGraph& graph): Tools::FloatFunction<Carrot:: ## Type ## Expression>(graph, #Type, #InternalName) {}      \
+        explicit Type ## Node(Tools::EditorGraph& graph): Tools::FloatFunction<Carrot:: Type ## Expression>(graph, #Type, #InternalName) {}      \
                                                                                                                                                     \
-        explicit Type ## Node(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::FloatFunction<Carrot:: ## Type ## Expression>(graph, #Type, #InternalName, json) {}  \
+        explicit Type ## Node(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::FloatFunction<Carrot:: Type ## Expression>(graph, #Type, #InternalName, json) {}  \
     }                                                                                                                                               \
 
     NODE(Sin, sin);

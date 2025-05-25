@@ -34,9 +34,9 @@ static std::uint32_t MaxPreviewParticles = 10000;
 
 Tools::ParticleEditor::ParticleEditor(Carrot::Engine& engine)
 : Tools::ProjectMenuHolder(), engine(engine), settings("particle_editor"), templateEditor(engine),
-updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph(), previewViewport(engine.createViewport())
+updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previewRenderGraph(), previewViewport(engine.createViewport(engine.getMainWindow()))
 {
-    previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver());
+    previewRenderGraphBuilder = std::make_unique<Carrot::Render::GraphBuilder>(engine.getVulkanDriver(), engine.getMainWindow());
     struct TmpPass {
         Carrot::Render::FrameResource color;
     };
@@ -44,7 +44,8 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
     auto& tmpPass = previewRenderGraphBuilder->addPass<TmpPass>("tmp-test",
     [this](Carrot::Render::GraphBuilder& builder, Carrot::Render::Pass<TmpPass>& pass, TmpPass& data) {
         vk::ClearValue clearColor = vk::ClearColorValue(std::array{0.0f,0.0f,0.0f,0.0f});
-        data.color = builder.createRenderTarget(vk::Format::eR8G8B8A8Unorm,
+        data.color = builder.createRenderTarget("preview",
+                                                vk::Format::eR8G8B8A8Unorm,
                                                 vk::Extent3D{.width = 500, .height = 500, .depth = 1},
                                                 vk::AttachmentLoadOp::eClear,
                                                 clearColor,
@@ -247,7 +248,7 @@ void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& fi
 }
 
 void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
-    if(&renderContext.pViewport == &previewViewport) {
+    if(renderContext.pViewport == &previewViewport) {
         if(previewSystem) {
             previewSystem->onFrame(renderContext);
 
@@ -308,8 +309,8 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
         auto& viewport = *ImGui::GetMainViewport();
         ImGui::SetNextWindowViewport(viewport.ID);
         ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
-        ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize().width,
-                                        engine.getVulkanDriver().getFinalRenderSize().height - menuBarHeight));
+        ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).width,
+                                        engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).height - menuBarHeight));
         if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
             if(ImGui::BeginTabBar("ParticleEditorTabs")) {
                 if(ImGui::BeginTabItem("Update##tab particle editor")) {
@@ -339,7 +340,7 @@ void Tools::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderCont
     ImGui::SetNextWindowSize(previewSize, ImGuiCond_FirstUseEver);
     if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground)) {
         auto windowSize = ImGui::GetContentRegionAvail();
-        auto& texture = renderContext.renderer.getVulkanDriver().getTextureRepository().get(previewColorTexture, renderContext.swapchainIndex);
+        auto& texture = renderContext.renderer.getVulkanDriver().getResourceRepository().getTexture(previewColorTexture, renderContext.swapchainIndex);
         ImGui::Image(texture.getImguiID(), windowSize);
         // TODO camera controls
     }
@@ -412,6 +413,6 @@ void Tools::ParticleEditor::onSwapchainImageCountChange(size_t newCount) {
     previewRenderGraph->onSwapchainImageCountChange(newCount);
 }
 
-void Tools::ParticleEditor::onSwapchainSizeChange(int newWidth, int newHeight) {
-    previewRenderGraph->onSwapchainSizeChange(newWidth, newHeight);
+void Tools::ParticleEditor::onSwapchainSizeChange(Carrot::Window& w, int newWidth, int newHeight) {
+    previewRenderGraph->onSwapchainSizeChange(w, newWidth, newHeight);
 }

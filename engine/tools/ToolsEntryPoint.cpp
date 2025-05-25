@@ -18,17 +18,17 @@ namespace Tools {
     public:
         explicit Tools(Carrot::Engine& engine);
 
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
 
         void tick(double frameTime) override;
 
-        void recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) override;
+        void recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) override;
 
         void onMouseMove(double dx, double dy) override;
 
         void changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) override;
 
-        void onSwapchainSizeChange(int newWidth, int newHeight) override;
+        void onSwapchainSizeChange(Carrot::Window& window, int newWidth, int newHeight) override;
 
         void onSwapchainImageCountChange(size_t newCount) override;
     };
@@ -39,31 +39,31 @@ Tools::Tools::Tools(Carrot::Engine& engine): Carrot::CarrotGame(engine), particl
     NFD_Init();
 }
 
-void Tools::Tools::onFrame(Carrot::Render::Context renderContext) {
+void Tools::Tools::onFrame(const Carrot::Render::Context& renderContext) {
     particleEditor.onFrame(renderContext);
 }
 void Tools::Tools::tick(double frameTime) {
     particleEditor.tick(frameTime);
 }
-void Tools::Tools::recordOpaqueGBufferPass(vk::RenderPass pass, Carrot::Render::Context renderContext, vk::CommandBuffer& commands) {}
+void Tools::Tools::recordOpaqueGBufferPass(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) {}
 void Tools::Tools::onMouseMove(double dx, double dy) {}
 void Tools::Tools::changeGraphicsWaitSemaphores(uint32_t frameIndex, std::vector<vk::Semaphore>& semaphores, std::vector<vk::PipelineStageFlags>& waitStages) {}
 
-void Tools::Tools::onSwapchainSizeChange(int newWidth, int newHeight) {
-    particleEditor.onSwapchainSizeChange(newWidth, newHeight);
+void Tools::Tools::onSwapchainSizeChange(Carrot::Window& w, int newWidth, int newHeight) {
+    particleEditor.onSwapchainSizeChange(w, newWidth, newHeight);
 }
 
 void Tools::Tools::onSwapchainImageCountChange(size_t newCount) {
     particleEditor.onSwapchainImageCountChange(newCount);
 }
 
-int main() {
+int main(int argc, char** argv) {
     Carrot::Configuration config;
-    config.raytracingSupport = Carrot::RaytracingSupport::NotSupported;
+    config.raytracingSupport = Carrot::RaytracingSupport::Required;
     config.icon32 = "resources/icon32.png";
     config.icon64 = "resources/icon64.png";
     config.icon128 = "resources/icon128.png";
-    Carrot::Engine engine{config};
+    Carrot::Engine engine{argc, argv, config};
     engine.run();
 
     return 0;

@@ -3,9 +3,16 @@
 //
 
 #include "ParticleShaderGenerator.h"
+
+#include <fstream>
+
 #include "core/expressions/ExpressionVisitor.h"
 #include <stack>
+#include <strstream>
 #include <utility>
+#include <SPIRV/disassemble.h>
+#include <SPIRV/SpvBuilder.h>
+
 #include "tools/nodes/VariableNodes.h"
 #include "tools/nodes/TerminalNodes.h"
 #include "SPIRV/GLSL.std.450.h"
@@ -16,10 +23,10 @@ namespace Tools {
     struct Variables {
         Id glslImport;
 
-        Id position;
-        Id life;
-        Id velocity;
-        Id size;
+        spv::Builder::AccessChain position;
+        spv::Builder::AccessChain life;
+        spv::Builder::AccessChain velocity;
+        spv::Builder::AccessChain size;
         Id particleIndex;
         Id emissionID;
 
@@ -34,8 +41,40 @@ namespace Tools {
             } fragment;
         };
 
+        struct {
+            Id floatType;
+        } types;
+
         ParticleShaderMode shaderMode;
     };
+
+    spv::Builder::AccessChain accessChain(spv::Builder& builder, Id resultType, Id base, const std::vector<Id>& offsets) {
+        builder.clearAccessChain();
+        builder.setAccessChainLValue(base);
+        for (const Id& offset : offsets) {
+            builder.accessChainPush(offset, {}, 0);
+        }
+        verify(resultType == builder.getResultingAccessChainType(), "resultType is not valid");
+        return builder.getAccessChain();
+    }
+
+    spv::Id accessChainLoad(spv::Builder& builder, const spv::Builder::AccessChain& accessChain) {
+        builder.setAccessChain(accessChain);
+        return builder.accessChainLoad(spv::NoPrecision, spv::NoPrecision, spv::NoPrecision, builder.getResultingAccessChainType());
+    }
+
+    void accessChainStore(spv::Builder& builder, const spv::Builder::AccessChain& accessChain, const Id& valueToStore) {
+        builder.setAccessChain(accessChain);
+        builder.accessChainStore(valueToStore, spv::DecorationNonUniform);
+    }
+
+    spv::Builder::AccessChain continueChain(spv::Builder& builder, const spv::Builder::AccessChain& accessChain, const std::vector<Id>& valueToStore) {
+        builder.setAccessChain(accessChain);
+        for (const Id& o : valueToStore) {
+            builder.accessChainPush(o, {}, 0);
+        }
+        return builder.getAccessChain();
+    }
 
     class SPIRVisitor: public Carrot::ExpressionVisitor {
     public:
@@ -62,14 +101,14 @@ namespace Tools {
             const auto& var = expression.getVariableName();
 
             if(var == VariableNode::getInternalName(VariableNodeType::GetSize)) {
-                ids.push(builder.createLoad(vars.size, spv::NoPrecision));
+                ids.push(accessChainLoad(builder, vars.size));
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetVelocity)) {
-                auto access = builder.createAccessChain(spv::StorageClassStorageBuffer, vars.velocity, {builder.makeIntConstant(expression.getSubIndex())});
-                ids.push(builder.createLoad(access, spv::NoPrecision));
+                auto access = accessChainLoad(builder, continueChain(builder, vars.velocity, {builder.makeIntConstant(expression.getSubIndex())}));
+                ids.push(access);
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetLife)) {
-                ids.push(vars.life);
+                ids.push(accessChainLoad(builder, vars.life));
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetParticleIndex)) {
                 ids.push(vars.particleIndex);
@@ -78,9 +117,9 @@ namespace Tools {
                 ids.push(vars.emissionID);
                 types.push(Carrot::ExpressionTypes::Float);
             } else if(var == VariableNode::getInternalName(VariableNodeType::GetPosition)) {
-                auto access = builder.createAccessChain(spv::StorageClassStorageBuffer, vars.position,
-                                                        {builder.makeIntConstant(expression.getSubIndex())});
-                ids.push(builder.createLoad(access, spv::NoPrecision));
+                auto access = accessChainLoad(builder, continueChain(builder, vars.position,
+                                                        {builder.makeIntConstant(expression.getSubIndex())}));
+                ids.push(access);
                 types.push(Carrot::ExpressionTypes::Float);
             }
         // === COMPUTE ===
@@ -92,9 +131,8 @@ namespace Tools {
         // === FRAGMENT ===
             else if(var == VariableNode::getInternalName(VariableNodeType::GetFragmentPosition)) {
                 assert(vars.shaderMode == ParticleShaderMode::Fragment);
-                auto access = builder.createAccessChain(spv::StorageClassFunction, vars.fragment.fragmentPosition,
-                                                        {builder.makeIntConstant(expression.getSubIndex())});
-                ids.push(builder.createLoad(access, spv::NoPrecision));
+                auto access = accessChainLoad(builder, accessChain(builder, vars.types.floatType, vars.fragment.fragmentPosition, {builder.makeIntConstant(expression.getSubIndex())}));
+                ids.push(access);
                 types.push(Carrot::ExpressionTypes::Float);
             }
         // ================
@@ -113,20 +151,20 @@ namespace Tools {
         // === COMPUTE ===
             if(var == TerminalNode::getInternalName(TerminalNodeType::SetSize)) {
                 throwInvalidType(Carrot::ExpressionTypes::Float, typeToStore, "set size");
-                builder.createStore(popID(), vars.size);
+                accessChainStore(builder, vars.size, popID());
             } else if(var == TerminalNode::getInternalName(TerminalNodeType::SetVelocity)) {
                 throwInvalidType(Carrot::ExpressionTypes::Float, typeToStore, "set velocity component");
-                auto access = builder.createAccessChain(spv::StorageClassStorageBuffer, vars.velocity,
+                auto access = continueChain(builder, vars.velocity,
                                                         {builder.makeIntConstant(expression.getSubIndex())});
-                builder.createStore(popID(), access);
+                accessChainStore(builder, access, popID());
             }
         // === FRAGMENT ===
             else if(var == TerminalNode::getInternalName(TerminalNodeType::SetOutputColor)) {
                 throwInvalidType(Carrot::ExpressionTypes::Float, typeToStore, "set output color component");
                 assert(vars.shaderMode == ParticleShaderMode::Fragment);
-                auto access = builder.createAccessChain(spv::StorageClassFunction, vars.fragment.particleColor,
+                auto access = accessChain(builder, vars.types.floatType, vars.fragment.particleColor,
                                                         {builder.makeIntConstant(expression.getSubIndex())});
-                builder.createStore(popID(), access);
+                accessChainStore(builder, access, popID());
             }
             else if(var == TerminalNode::getInternalName(TerminalNodeType::DiscardPixel)) {
                 throwInvalidType(Carrot::ExpressionTypes::Bool, typeToStore, "discard pixel");
@@ -415,8 +453,9 @@ namespace Tools {
         Builder builder(spv::SpvVersion::Spv_1_5, 0, &logger);
 
         builder.setSource(spv::SourceLanguageGLSL, 450);
-        builder.setSourceFile(projectName);
+        builder.setDebugSourceFile(projectName);
         builder.addCapability(spv::CapabilityShader);
+        builder.addCapability(spv::CapabilityShaderNonUniform);
         auto glslImport = builder.import("GLSL.std.450");
         builder.setMemoryModel(spv::AddressingModelLogical, spv::MemoryModelGLSL450);
 
@@ -471,9 +510,9 @@ namespace Tools {
         builder.addMemberDecoration(storageBufferParticles, 0, spv::DecorationOffset, 0);
 
         auto descriptorSet = builder.createVariable(spv::NoPrecision, spv::StorageClassStorageBuffer, storageBufferParticles);
-        builder.addName(descriptorSet, "DescriptorSet0");
-        builder.addDecoration(descriptorSet, spv::DecorationDescriptorSet, 0);
-        builder.addDecoration(descriptorSet, spv::DecorationBinding, 1);
+        builder.addName(descriptorSet, "particleData");
+        builder.addDecoration(descriptorSet, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(descriptorSet, spv::DecorationBinding, 0);
 
         switch(shaderMode) {
             case ParticleShaderMode::Compute:
@@ -488,16 +527,33 @@ namespace Tools {
         std::vector<uint32_t> output;
         builder.dump(output);
 
+
+
         std::cout << "SpvBuilder output:\n";
         std::cerr << logger.getAllMessages();
-        std::cout << "\n=== END of SpvBuilder output ===";
+        std::cout << "\nDisassembly:\n";
+
+        std::stringstream sstream{};
+        spv::Disassemble(sstream, output);
+        std::cout << sstream.str();
+
+        std::cout << "\n=== spir-v cross: ===\n";
+
+        {
+            std::ofstream out {"spvbuilder.bin", std::ios::binary};
+            out.write(reinterpret_cast<const std::ostream::char_type*>(output.data()), output.size() * sizeof(std::uint32_t));
+        }
+
+        system("spirv-cross -V spvbuilder.bin");
+
+        std::cout << "\n=== END of SpvBuilder output ===\n";
 
         return std::move(output);
     }
 
     void ParticleShaderGenerator::generateFragment(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         spv::Block* functionBlock;
-        Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, &functionBlock);
+        Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, {}, &functionBlock);
 
         auto uint32Type = builder.makeUintType(32);
         auto float32Type = builder.makeFloatType(32);
@@ -549,19 +605,18 @@ layout(location = 0) in flat uint particleIndex;
         builder.addName(varFragmentPosition, "fragmentPosition");
 
         auto particleIndex = builder.createLoad(varParticleIndex, spv::NoPrecision);
-        auto velocityAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(2)});
-        auto positionAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(0)});
-        auto lifeAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(1)});
-        auto sizeAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(3)});
 
-        auto varEmissionID = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, uint32Type);
-        auto emissionIDAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(4)});
-        builder.createStore(builder.createLoad(emissionIDAccess, spv::NoPrecision), varEmissionID);
-        auto emissionID = builder.createLoad(varEmissionID, spv::NoPrecision);
+        auto velocityAccess = accessChain(builder, vec3Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(2)});
+        auto positionAccess = accessChain(builder, vec3Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(0)});
+        auto lifeAccess = accessChain(builder, float32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(1)});
+        auto sizeAccess = accessChain(builder, float32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(3)});
+
+        auto emissionIDAccess = accessChain(builder, uint32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(4)});
 
         auto castParticleID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, particleIndex);
 
         auto varFinalColor = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, vec4Type);
+        builder.addName(varFinalColor, "finalColor");
         auto float1 = builder.makeFloatConstant(1.0f);
         builder.createStore(builder.createCompositeConstruct(vec4Type, {float1, float1, float1, float1}), varFinalColor);
 
@@ -571,14 +626,17 @@ layout(location = 0) in flat uint particleIndex;
         vars.shaderMode = shaderMode;
         vars.fragment.particleColor = varFinalColor;
         vars.fragment.fragmentPosition = varFragmentPosition;
-        vars.emissionID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, emissionID);
+        vars.emissionID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, accessChainLoad(builder, emissionIDAccess));
         vars.position = positionAccess;
-        vars.life = builder.createLoad(lifeAccess, spv::NoPrecision);
+        vars.life = lifeAccess;
         vars.velocity = velocityAccess;
         vars.size = sizeAccess;
         vars.particleIndex = castParticleID;
+        vars.types.floatType = float32Type;
         for(auto& expr : expressions) {
             builder.getStringId(expr->toString());
+
+            builder.setDebugSourceLocation(0, expr->toString().c_str());
 
             SPIRVisitor exprBuilder(builder, vars);
             exprBuilder.visit(expr);
@@ -602,8 +660,9 @@ layout(location = 0) in flat uint particleIndex;
 
     void ParticleShaderGenerator::generateCompute(spv::Builder& builder, spv::Id glslImport, spv::Id descriptorSet, const std::vector<std::shared_ptr<Carrot::Expression>>& expressions) {
         spv::Block* functionBlock;
-        Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, &functionBlock);
+        Function* mainFunction = builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "main", {}, {}, {}, &functionBlock);
 
+        auto int32Type = builder.makeIntType(32);
         auto uint32Type = builder.makeUintType(32);
         auto float32Type = builder.makeFloatType(32);
         auto vec3Type = builder.makeVectorType(float32Type, 3);
@@ -619,8 +678,8 @@ layout(location = 0) in flat uint particleIndex;
         builder.addMemberDecoration(particleStatsType, 1, spv::DecorationOffset, 4);
 
         auto particleStats = builder.createVariable(spv::NoPrecision, spv::StorageClassStorageBuffer, particleStatsType);
-        builder.addDecoration(particleStats, spv::DecorationDescriptorSet, 0);
-        builder.addDecoration(particleStats, spv::DecorationBinding, 0);
+        builder.addDecoration(particleStats, spv::DecorationDescriptorSet, 1);
+        builder.addDecoration(particleStats, spv::DecorationBinding, 1);
         builder.addName(particleStats, "particleStats");
 
         auto globalInvocationId = builder.createVariable(spv::NoPrecision,
@@ -632,61 +691,58 @@ layout(location = 0) in flat uint particleIndex;
 
         auto gl_WorkGroupSize = builder.makeCompositeConstant(builder.makeVectorType(builder.makeUintType(32), 3),
                                                               std::vector{
-                                                                      builder.makeIntConstant(1024),
-                                                                      builder.makeIntConstant(1),
-                                                                      builder.makeIntConstant(1)
+                                                                      builder.makeUintConstant(1024),
+                                                                      builder.makeUintConstant(1),
+                                                                      builder.makeUintConstant(1)
                                                               });
         builder.addDecoration(gl_WorkGroupSize, spv::DecorationBuiltIn, spv::BuiltIn::BuiltInWorkgroupSize);
 
-        auto dtAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, particleStats, std::vector<Id>{builder.makeIntConstant(0)});
+        auto dtAccess = accessChain(builder, float32Type, particleStats, std::vector<Id>{builder.makeIntConstant(0)});
+        auto dt = accessChainLoad(builder, dtAccess);
+        builder.addName(dt, "dt");
 
-        auto varParticleIndex = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, uint32Type);
-        auto globalInvocationAccess = builder.createAccessChain(spv::StorageClassInput, globalInvocationId, std::vector<Id>{builder.makeUintConstant(0)});
-        auto tmpParticleIndex = builder.createLoad(globalInvocationAccess, spv::NoPrecision);
-        builder.createStore(tmpParticleIndex, varParticleIndex);
+        auto particleIndexLoaded = accessChainLoad(builder, accessChain(builder, uint32Type, globalInvocationId, std::vector<Id>{builder.makeIntConstant(0)}));
+        auto particleIndexVar = builder.createVariable(spv::NoPrecision, StorageClass::StorageClassFunction, int32Type, "particleIndex");
+        builder.createStore(builder.createOp(spv::Op::OpBitcast, int32Type, std::vector<Id>{particleIndexLoaded}), particleIndexVar);
 
-        auto particleIndex = builder.createLoad(varParticleIndex, spv::NoPrecision);
+        auto particleIndex = builder.createLoad(particleIndexVar, spv::NoPrecision);
 
-        auto varEmissionID = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, uint32Type);
-        auto emissionIDAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(4)});
-        builder.createStore(emissionIDAccess, varEmissionID);
-        auto emissionID = builder.createLoad(varEmissionID, spv::NoPrecision);
+        auto emissionIDAccess = accessChain(builder, uint32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(4)});
+        auto emissionID = accessChainLoad(builder, emissionIDAccess);
+        builder.addName(emissionID, "emissionID");
 
-        auto velocityAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(2)});
-        auto positionAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(0)});
-        auto lifeAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(1)});
-        auto sizeAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(3)});
+        auto velocityAccess = accessChain(builder, vec3Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(2)});
+        auto velocity = accessChainLoad(builder, velocityAccess);
+        builder.addName(velocity, "velocity");
 
-        auto varDT = builder.createVariable(spv::NoPrecision, spv::StorageClassFunction, float32Type);
-        builder.addName(varDT, "dt");
+        auto positionAccess = accessChain(builder, vec3Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(0)});
+        auto position = accessChainLoad(builder, positionAccess);
 
-        auto particleCountAccess = builder.createAccessChain(spv::StorageClassStorageBuffer, particleStats, std::vector<Id>{builder.makeIntConstant(1)});
-        auto particleCount = builder.createLoad(particleCountAccess, spv::NoPrecision);
+        auto lifeAccess = accessChain(builder, float32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(1)});
+        auto life = accessChainLoad(builder, lifeAccess);
+        builder.addName(life, "life");
+
+        auto sizeAccess = accessChain(builder, float32Type, descriptorSet, {builder.makeIntConstant(0), particleIndex, builder.makeIntConstant(3)});
+
+        auto particleCountAccess = accessChain(builder, uint32Type, particleStats, std::vector<Id>{builder.makeIntConstant(1)});
 
 
         // Generate: if(particleIndex >= totalCount)
         {
+            auto particleCount = accessChainLoad(builder, particleCountAccess);
             auto shouldContinue = builder.createBinOp(spv::OpUGreaterThanEqual, builder.makeBoolType(), particleIndex, particleCount);
             spv::Builder::If ifValidIndex(shouldContinue, spv::SelectionControlMaskNone, builder);
             builder.makeReturn(false);
             ifValidIndex.makeEndIf();
         }
 
-        auto dtTmp = builder.createLoad(dtAccess, spv::NoPrecision);
-        builder.createStore(dtTmp, varDT);
-
         // update position
-        auto dt = builder.createLoad(varDT, spv::NoPrecision);
-
-        auto velocity = builder.createLoad(velocityAccess, spv::NoPrecision);
         auto velocityTimesDeltaTime = builder.createBinOp(spv::OpVectorTimesScalar, vec3Type, velocity, dt);
-        auto position = builder.createLoad(positionAccess, spv::NoPrecision);
         auto updatedPosition = builder.createBinOp(spv::OpFAdd, vec3Type, velocityTimesDeltaTime, position);
-        builder.createStore(updatedPosition, positionAccess);
+        accessChainStore(builder, positionAccess, updatedPosition);
 
-        auto tmpLife = builder.createLoad(lifeAccess, spv::NoPrecision);
-        auto updatedLife = builder.createBinOp(spv::OpFSub, float32Type, tmpLife, dt);
-        builder.createStore(updatedLife, lifeAccess);
+        auto updatedLife = builder.createBinOp(spv::OpFSub, float32Type, life, dt);
+        accessChainStore(builder, lifeAccess, updatedLife);
 
         auto castParticleID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, particleIndex);
 
@@ -697,10 +753,11 @@ layout(location = 0) in flat uint particleIndex;
         vars.compute.deltaTime = dt;
         vars.emissionID = builder.createUnaryOp(spv::OpConvertUToF, float32Type, emissionID);
         vars.position = positionAccess;
-        vars.life = builder.createLoad(lifeAccess, spv::NoPrecision);
+        vars.life = lifeAccess;
         vars.velocity = velocityAccess;
         vars.size = sizeAccess;
         vars.particleIndex = castParticleID;
+        vars.types.floatType = float32Type;
         for(auto& expr : expressions) {
             builder.getStringId(expr->toString());
 
