@@ -332,13 +332,13 @@ rapidjson::Value Tools::EditorGraph::toJSON(rapidjson::Document& document) {
     rapidjson::Value result;
     result.SetObject();
 
-    auto& nodeArray = rapidjson::Value().SetArray();
+    auto nodeArray = rapidjson::Value(rapidjson::kArrayType);
     for(const auto& [id, node] : id2node) {
         nodeArray.PushBack(node->toJSON(document), document.GetAllocator());
     }
     result.AddMember("nodes", nodeArray, document.GetAllocator());
 
-    auto& linkArray = rapidjson::Value().SetArray();
+    auto linkArray = rapidjson::Value(rapidjson::kArrayType);
     for(const auto& link : links) {
         if(auto to = link.to.lock()) {
             if (auto from = link.from.lock()) {

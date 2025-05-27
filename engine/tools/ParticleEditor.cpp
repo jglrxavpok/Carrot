@@ -208,6 +208,12 @@ void Tools::ParticleEditor::updateRenderGraph(Carrot::Render::Context renderCont
 }
 
 void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
+    rapidjson::Document document;
+    document.SetObject();
+
+    document.AddMember("update_graph", updateGraph.toJSON(document), document.GetAllocator());
+    document.AddMember("render_graph", renderGraph.toJSON(document), document.GetAllocator());
+
     FILE* fp = fopen(path.string().c_str(), "wb"); // non-Windows use "w"
 
     char writeBuffer[65536];
@@ -215,11 +221,6 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
 
     rapidjson::PrettyWriter<rapidjson::FileWriteStream> writer(os);
 
-    rapidjson::Document document;
-    document.SetObject();
-
-    document.AddMember("update_graph", updateGraph.toJSON(document), document.GetAllocator());
-    document.AddMember("render_graph", renderGraph.toJSON(document), document.GetAllocator());
     document.Accept(writer);
     fclose(fp);
 
@@ -257,7 +258,7 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
             });
         }
 
-    } else {
+    } else if (renderContext.pViewport == &GetEngine().getMainViewport()) {
         float menuBarHeight = 0;
         if(ImGui::BeginMainMenuBar()) {
             if(ImGui::BeginMenu("Project")) {
@@ -361,7 +362,7 @@ void Tools::ParticleEditor::reloadPreview() {
     previewSystem = std::make_unique<Carrot::ParticleSystem>(engine, *previewBlueprint, MaxPreviewParticles);
 
     auto& emitter = *previewSystem->createEmitter();
-    emitter.setRate(10.0f);
+    emitter.setRate(100.0f);
 }
 
 void Tools::ParticleEditor::tick(double deltaTime) {
