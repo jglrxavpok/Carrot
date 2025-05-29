@@ -339,7 +339,7 @@ void Tools::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderCont
     ImVec2 previewSize { 200, 200 };
     ImGui::SetNextWindowPos(ImVec2(WINDOW_WIDTH/2 - previewSize.x/2, WINDOW_HEIGHT - previewSize.y/2), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(previewSize, ImGuiCond_FirstUseEver);
-    if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground)) {
+    if(ImGui::Begin("preview##preview", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
         auto windowSize = ImGui::GetContentRegionAvail();
         auto& texture = renderContext.renderer.getVulkanDriver().getResourceRepository().getTexture(previewColorTexture, renderContext.swapchainIndex);
         ImGui::Image(texture.getImguiID(), windowSize);
@@ -368,6 +368,16 @@ void Tools::ParticleEditor::reloadPreview() {
 void Tools::ParticleEditor::tick(double deltaTime) {
     updateGraph.tick(deltaTime);
     renderGraph.tick(deltaTime);
+
+    if (reloadCooldown > 0) {
+        reloadCooldown -= deltaTime;
+    } else {
+        if (updateGraph.getLastChangeTime() > lastReloadTime || renderGraph.getLastChangeTime() > lastReloadTime) {
+            reloadPreview();
+            lastReloadTime = std::chrono::steady_clock::now();
+            reloadCooldown = 0.5f;
+        }
+    }
 
     if(previewSystem) {
         previewSystem->tick(deltaTime);

@@ -157,12 +157,12 @@ void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
 
 void Tools::EditorGraph::addLink(Tools::Link link) {
     links.push_back(link);
-    hasUnsavedChanges = true;
+    markDirty();
 }
 
 void Tools::EditorGraph::removeLink(const Link& link) {
     Carrot::removeIf(links, [&](const auto& l) { return l.id == link.id; });
-    hasUnsavedChanges = true;
+    markDirty();
 }
 
 void Tools::EditorGraph::unregisterPin(std::shared_ptr<Pin> pin) {
@@ -201,7 +201,7 @@ void Tools::EditorGraph::removeNode(const Tools::EditorNode& node) {
     id2uuid.erase(uuid2id[node.getID()]);
     uuid2id.erase(node.getID());
 
-    hasUnsavedChanges = true;
+    markDirty();
 }
 
 Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin& to) {
@@ -419,6 +419,15 @@ std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExp
     return std::move(result);
 }
 
+void Tools::EditorGraph::markDirty() {
+    hasUnsavedChanges = true;
+    lastChangeTime = std::chrono::steady_clock::now();
+}
+
+std::chrono::time_point<std::chrono::steady_clock> Tools::EditorGraph::getLastChangeTime() const {
+    return lastChangeTime;
+}
+
 void Tools::EditorGraph::resetChangeFlag() {
     hasUnsavedChanges = false;
 }
@@ -497,6 +506,7 @@ void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu
             switch(validity) {
                 case NodeValidity::Possible:
                     init(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
+                    markDirty();
                     break;
 
                 case NodeValidity::TerminalOfSameTypeAlreadyExists:

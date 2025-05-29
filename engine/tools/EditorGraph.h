@@ -143,6 +143,8 @@ namespace Tools {
         std::unique_ptr<NodeLibraryMenu> rootMenu = nullptr;
         NodeLibraryMenu* currentMenu = nullptr;
         ImGuiTextures imguiTextures;
+
+        std::chrono::time_point<std::chrono::steady_clock> lastChangeTime{};
         bool hasUnsavedChanges = false;
 
         std::uint32_t nextFreeEditorID();
@@ -274,6 +276,9 @@ namespace Tools {
     public:
         void resetChangeFlag();
         bool hasChanges() const;
+
+        void markDirty();
+        std::chrono::time_point<std::chrono::steady_clock> getLastChangeTime() const;
 
     public:
         Carrot::Engine& getEngine() {

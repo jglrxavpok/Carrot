@@ -85,7 +85,7 @@ void Carrot::ParticleSystem::pushDataToGPU() {
     ZoneScoped;
     if(usedParticleCount > 0) {
         particleBuffer.getBuffer().stageUploadWithOffset(particleBuffer.getStart(), particlePool.data(), sizeof(Particle)*usedParticleCount);
-        updateParticlesCompute->dispatch(ceil(1024.0f / usedParticleCount),1,1);
+        updateParticlesCompute->dispatch(ceil(usedParticleCount / 1024.0f),1,1);
     }
 }
 

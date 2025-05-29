@@ -49,6 +49,8 @@ namespace Tools {
         EditorSettings settings;
         EditorGraph updateGraph;
         EditorGraph renderGraph;
+        double reloadCooldown = 0.0;
+        std::chrono::time_point<std::chrono::steady_clock> lastReloadTime{};
         TemplateEditor templateEditor;
         std::unique_ptr<Carrot::Render::Graph> previewRenderGraph = nullptr;
         std::unique_ptr<Carrot::Render::GraphBuilder> previewRenderGraphBuilder = nullptr;
