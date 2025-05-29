@@ -23,9 +23,9 @@ namespace Tools {
             }
         }
 
-        void renderCenter() override {
+        bool renderCenter() override {
             ImGui::SetNextItemWidth(200);
-            ImGui::DragFloat("##Value", &value, 1.0f);
+            return ImGui::DragFloat("##Value", &value, 1.0f);
         }
 
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
@@ -58,9 +58,9 @@ namespace Tools {
             }
         }
 
-        void renderCenter() override {
+        bool renderCenter() override {
             ImGui::SetNextItemWidth(200);
-            ImGui::Checkbox("##Value", &value);
+            return ImGui::Checkbox("##Value", &value);
         }
 
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {

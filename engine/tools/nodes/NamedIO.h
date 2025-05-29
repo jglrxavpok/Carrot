@@ -55,9 +55,11 @@ namespace Tools {
             }
         }
 
-        void renderCenter() override {
+        bool renderCenter() override {
+            bool modified = false;
             ImGui::SetNextItemWidth(200);
             if(ImGui::InputTextWithHint("##name", "IO name...", nameImGuiBuffer, sizeof(nameImGuiBuffer))) {
+                modified = true;
                 name = nameImGuiBuffer;
             }
             ImGui::SetNextItemWidth(200);
@@ -83,6 +85,7 @@ namespace Tools {
                             input->expressionType = type;
                         }
                     }
+                    modified = true;
                 }
 
                 Tools::NodeEditor::EndNodeCombo();
@@ -110,8 +113,10 @@ namespace Tools {
                         }
                     }
                     dimensions = newDimensionCount;
+                    modified = true;
                 }
             }
+            return true;
         }
 
     private:

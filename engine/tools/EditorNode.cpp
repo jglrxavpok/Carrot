@@ -20,7 +20,7 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
     graph.reserveID(id);
 }
 
-void Tools::EditorNode::draw() {
+bool Tools::EditorNode::draw() {
     ed::BeginNode(graph.getEditorID(id));
 
     ImGui::PushID(graph.getEditorID(id));
@@ -51,7 +51,7 @@ void Tools::EditorNode::draw() {
     ImGui::EndVertical();
 
     ImGui::BeginVertical("center");
-    renderCenter();
+    bool modified = renderCenter();
     ImGui::EndVertical();
 
     if(inputs.empty()) {
@@ -90,7 +90,13 @@ void Tools::EditorNode::draw() {
     position = ed::GetNodePosition(graph.getEditorID(id));
 
     updatePosition = false;
+    return modified;
 }
+
+bool Tools::EditorNode::renderCenter() {
+    return false;
+}
+
 
 Tools::Input& Tools::EditorNode::newInput(std::string name, Carrot::ExpressionType type) {
     auto result = std::make_shared<Input>(*this, type, inputs.size(), graph.nextID(), name);

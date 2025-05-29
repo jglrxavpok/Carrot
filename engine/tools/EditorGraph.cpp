@@ -36,7 +36,9 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
     ed::Begin(name.c_str());
 
     for(auto& [id, node] : id2node) {
-        node->draw();
+        if (node->draw()) {
+            markDirty();
+        }
     }
 
     for(const auto& link : links) {

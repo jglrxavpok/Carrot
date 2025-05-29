@@ -76,8 +76,11 @@ namespace Tools {
 
         EditorNode& setPosition(ImVec2 position);
 
-        void draw();
-        virtual void renderCenter() {};
+        // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
+        bool draw();
+
+        // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
+        virtual bool renderCenter();
 
         const std::string& getTitle() const { return title; };
         const std::string& getInternalName() const { return internalName; };
