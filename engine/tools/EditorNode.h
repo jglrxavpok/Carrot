@@ -65,6 +65,7 @@ namespace Tools {
     private:
         Carrot::UUID id;
         bool updatePosition = true;
+        bool followingMouseUntilClick = false;
         ImVec2 position{};
 
     public:
@@ -75,6 +76,7 @@ namespace Tools {
         virtual ~EditorNode();
 
         EditorNode& setPosition(ImVec2 position);
+        void followMouseUntilClick();
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
         bool draw();

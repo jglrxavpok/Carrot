@@ -21,15 +21,32 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
 }
 
 bool Tools::EditorNode::draw() {
-    ed::BeginNode(graph.getEditorID(id));
+    u32 nodeID = graph.getEditorID(id);
+    const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
 
-    ImGui::PushID(graph.getEditorID(id));
+    ed::BeginNode(nodeID);
+
+    ImGui::PushID(nodeID);
+
+    // draw header background
+    {
+        const float headerHeight = ed::GetStyle().NodePadding.y + ImGui::GetTextLineHeightWithSpacing();
+        const auto borderWidth = ed::GetStyle().NodeBorderWidth;
+        ImVec2 min = ed::GetNodePosition(nodeID);
+        ImVec2 max = min;
+        max.x += nodeSize.x;
+        max.y += headerHeight;
+
+        min.x += borderWidth;
+        min.y += borderWidth;
+        max.x -= borderWidth;
+        max.y -= borderWidth;
+        // todo: custom header color
+        ImGui::GetWindowDrawList()->AddRectFilled(min, max, ImColor(0.3f, 0.3f,0.3f,0.3f), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+    }
 
     ImGui::BeginVertical("node");
-    ImGui::Spring();
-
     ImGui::Text("%s", title.c_str());
-
     ImGui::Spring();
 
     ImGui::BeginHorizontal("content");
@@ -38,12 +55,13 @@ bool Tools::EditorNode::draw() {
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
+    float lineHeight = ImGui::GetTextLineHeight();
     for (auto& pin : inputs) {
         ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
         ImGui::BeginHorizontal(&pin->id);
         ImGui::Text("> %s", pin->name.c_str());
         auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(10,10));
+        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
 
         ImGui::EndHorizontal();
         ed::EndPin();
@@ -66,7 +84,7 @@ bool Tools::EditorNode::draw() {
         ImGui::BeginHorizontal(&pin->id);
 
         auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(10,10));
+        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
         ImGui::Text("%s >", pin->name.c_str());
 
         ImGui::EndHorizontal();
@@ -85,9 +103,20 @@ bool Tools::EditorNode::draw() {
     ed::EndNode();
 
     if(updatePosition) {
-        ed::SetNodePosition(graph.getEditorID(id), position);
+        ed::SetNodePosition(nodeID, position);
+    } else if (followingMouseUntilClick) {
+        ImVec2 mousePos = ImGui::GetMousePos();
+        if (ed::IsActive() && ImGui::IsMousePosValid(&mousePos)) {
+            ImVec2 nodePos;
+            nodePos.x = mousePos.x - nodeSize.x/2;
+            nodePos.y = mousePos.y - ImGui::GetTextLineHeight()/2;
+            ed::SetNodePosition(nodeID, nodePos);
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                followingMouseUntilClick = false;
+            }
+        }
     }
-    position = ed::GetNodePosition(graph.getEditorID(id));
+    position = ed::GetNodePosition(nodeID);
 
     updatePosition = false;
     return modified;
@@ -117,6 +146,11 @@ Tools::EditorNode& Tools::EditorNode::setPosition(ImVec2 position) {
     updatePosition = true;
     return *this;
 }
+
+void Tools::EditorNode::followMouseUntilClick() {
+    followingMouseUntilClick = true;
+}
+
 
 Tools::EditorNode::~EditorNode() {
 

@@ -17,7 +17,7 @@
 namespace ed = ax::NodeEditor;
 
 Tools::EditorGraph::EditorGraph(Carrot::Engine& engine, std::string name): engine(engine), name(std::move(name)) {
-    // TODO: config.NavigateButtonIndex = 2;
+    config.NavigateButtonIndex = 2; // pan graph with middle button (left = select, right = popup menu)
     g_Context = ed::CreateEditor(&config);
 
     ed::SetCurrentEditor(g_Context);
@@ -501,15 +501,17 @@ void Tools::EditorGraph::addTemplatesToLibrary() {
 void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu) {
     for(const auto& internalName : menu.getEntries()) {
         auto& nodeCreator = nodeLibrary[internalName];
-        auto title = internalName2title[internalName];
+        const auto& title = internalName2title[internalName];
         auto& init = (*nodeCreator);
         if(ImGui::MenuItem(title.c_str())) {
-            auto validity = init.getValidity(*this);
+            NodeValidity validity = init.getValidity(*this);
             switch(validity) {
-                case NodeValidity::Possible:
-                    init(*this).setPosition(ed::ScreenToCanvas(ImGui::GetMousePos()));
+                case NodeValidity::Possible: {
+                    auto& node = init(*this);
+                    node.setPosition(ImVec2(0,0));
+                    node.followMouseUntilClick(); // makes it easier to position the node after creating it
                     markDirty();
-                    break;
+                } break;
 
                 case NodeValidity::TerminalOfSameTypeAlreadyExists:
                     addTemporaryLabel("Terminal node of same type already exists!");

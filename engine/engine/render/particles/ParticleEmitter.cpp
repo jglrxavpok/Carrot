@@ -25,9 +25,9 @@ void Carrot::ParticleEmitter::tick(double deltaTime) {
         particle->id = spawnedParticles;
         bool b = Carrot::RNG::randomFloat() > 0.5f;
         if(b) {
-            particle->life = Math::Pi*2.0f * 10.0f;
+            particle->life = Math::Pi*2.0f;// * 10.0f;
         } else {
-            particle->life = Math::Pi*1.0f * 10.0f;
+            particle->life = Math::Pi*1.0f;// * 10.0f;
         }
         particle->size = 1.0f;
         particle->position = position;
