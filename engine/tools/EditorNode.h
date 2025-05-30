@@ -82,7 +82,17 @@ namespace Tools {
         bool draw();
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
+        // Draws the title bar of the node
+        virtual bool renderHeaderWidgets();
+
+        // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
+        // Draws the interior of the node
         virtual bool renderCenter();
+
+        /// Render the pins for this node. Will be called while already being at the correct location, just draw your ImGui/node editor widgets
+        /// Return true if the contents of the node have been modified (like renderCenter & renderHeaderWidgets)
+        virtual bool renderInputPins();
+        virtual bool renderOutputPins();
 
         const std::string& getTitle() const { return title; };
         const std::string& getInternalName() const { return internalName; };
@@ -102,6 +112,6 @@ namespace Tools {
         virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const = 0;
 
     private:
-
+        ImDrawListSplitter drawListSplitter;
     };
 }

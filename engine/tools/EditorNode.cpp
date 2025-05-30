@@ -21,18 +21,34 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
 }
 
 bool Tools::EditorNode::draw() {
+    bool modified = false;
     u32 nodeID = graph.getEditorID(id);
     const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
+    const ImVec2 nodePosition = ed::GetNodePosition(nodeID);
 
     ed::BeginNode(nodeID);
 
     ImGui::PushID(nodeID);
 
-    // draw header background
+    ImGui::BeginVertical("node");
+
+    // split channel to draw background behind "title bar". The draw is split to compute size of title bar after drawing it, while still drawing the background behind it
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    drawList->ChannelsSplit(2); // background + foreground
+
+    // channel 1 = foreground, decided by node
     {
-        const float headerHeight = ed::GetStyle().NodePadding.y + ImGui::GetTextLineHeightWithSpacing();
+        drawList->ChannelsSetCurrent(1);
+        modified |= renderHeaderWidgets();
+        ImGui::Spring();
+    }
+
+    // draw header background on channel 0
+    {
+        drawList->ChannelsSetCurrent(0);
+        const float headerHeight = ImGui::GetCursorPosY() - nodePosition.y;
         const auto borderWidth = ed::GetStyle().NodeBorderWidth;
-        ImVec2 min = ed::GetNodePosition(nodeID);
+        ImVec2 min = nodePosition;
         ImVec2 max = min;
         max.x += nodeSize.x;
         max.y += headerHeight;
@@ -42,12 +58,10 @@ bool Tools::EditorNode::draw() {
         max.x -= borderWidth;
         max.y -= borderWidth;
         // todo: custom header color
-        ImGui::GetWindowDrawList()->AddRectFilled(min, max, ImColor(0.3f, 0.3f,0.3f,0.3f), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+        drawList->AddRectFilled(min, max, ImColor(0.3f, 0.3f,0.3f,0.3f), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
     }
 
-    ImGui::BeginVertical("node");
-    ImGui::Text("%s", title.c_str());
-    ImGui::Spring();
+    drawList->ChannelsMerge();
 
     ImGui::BeginHorizontal("content");
 
@@ -55,21 +69,11 @@ bool Tools::EditorNode::draw() {
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(0, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-    float lineHeight = ImGui::GetTextLineHeight();
-    for (auto& pin : inputs) {
-        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
-        ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("> %s", pin->name.c_str());
-        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
-
-        ImGui::EndHorizontal();
-        ed::EndPin();
-    }
+    modified |= renderInputPins();
     ImGui::EndVertical();
 
     ImGui::BeginVertical("center");
-    bool modified = renderCenter();
+    modified |= renderCenter();
     ImGui::EndVertical();
 
     if(inputs.empty()) {
@@ -79,17 +83,7 @@ bool Tools::EditorNode::draw() {
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-    for (auto& pin : outputs) {
-        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
-        ImGui::BeginHorizontal(&pin->id);
-
-        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
-        ImGui::Text("%s >", pin->name.c_str());
-
-        ImGui::EndHorizontal();
-        ed::EndPin();
-    }
+    modified |= renderOutputPins();
     ImGui::EndVertical();
 
     if(outputs.empty()) {
@@ -126,6 +120,41 @@ bool Tools::EditorNode::renderCenter() {
     return false;
 }
 
+bool Tools::EditorNode::renderHeaderWidgets() {
+    ImGui::Text("%s", title.c_str());
+    return false;
+}
+
+bool Tools::EditorNode::renderInputPins() {
+    const float lineHeight = ImGui::GetTextLineHeight();
+    for (auto& pin : inputs) {
+        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
+        ImGui::BeginHorizontal(&pin->id);
+        ImGui::Text("> %s", pin->name.c_str());
+        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
+
+        ImGui::EndHorizontal();
+        ed::EndPin();
+    }
+    return false;
+}
+
+bool Tools::EditorNode::renderOutputPins() {
+    const float lineHeight = ImGui::GetTextLineHeight();
+    for (auto& pin : outputs) {
+        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
+        ImGui::BeginHorizontal(&pin->id);
+
+        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
+        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
+        ImGui::Text("%s >", pin->name.c_str());
+
+        ImGui::EndHorizontal();
+        ed::EndPin();
+    }
+    return false;
+}
 
 Tools::Input& Tools::EditorNode::newInput(std::string name, Carrot::ExpressionType type) {
     auto result = std::make_shared<Input>(*this, type, inputs.size(), graph.nextID(), name);

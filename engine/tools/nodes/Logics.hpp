@@ -4,150 +4,62 @@
 
 #pragma once
 
-#include "../EditorNode.h"
+#include <tools/EditorNode.h>
+#include <tools/nodes/BinaryFunctionNode.h>
 
 namespace Tools {
-    class LessNode: public EditorNode {
-    public:
-        explicit LessNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Less", "float_less") {
-            init();
-        }
 
-        explicit LessNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Less", "float_less", json) {
-            init();
-        }
+    struct LessNode: BinaryFunctionNode {
+        explicit LessNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Less", "float_less", Carrot::ExpressionTypes::Bool) {}
+        explicit LessNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Less", "float_less", Carrot::ExpressionTypes::Bool, json) {}
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::LessExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::LessExpression>(left, right);
         }
     };
 
-    class LessOrEqualsNode: public EditorNode {
-    public:
-        explicit LessOrEqualsNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Less or Equals", "float_less_or_equals") {
-            init();
-        }
+    struct LessOrEqualsNode: BinaryFunctionNode {
+        explicit LessOrEqualsNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Less or Equals", "float_less_or_equals", Carrot::ExpressionTypes::Bool) {}
+        explicit LessOrEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Less or Equals", "float_less_or_equals", Carrot::ExpressionTypes::Bool, json) {}
 
-        explicit LessOrEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Less or Equals", "float_less_or_equals", json) {
-            init();
-        }
-
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::LessOrEqualsExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::LessOrEqualsExpression>(left, right);
         }
     };
 
-    class GreaterNode: public EditorNode {
-    public:
-        explicit GreaterNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Greater", "float_greater") {
-            init();
-        }
+    struct GreaterNode: BinaryFunctionNode {
+        explicit GreaterNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Greater", "float_greater", Carrot::ExpressionTypes::Bool) {}
+        explicit GreaterNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Greater", "float_greater", Carrot::ExpressionTypes::Bool, json) {}
 
-        explicit GreaterNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Greater", "float_greater", json) {
-            init();
-        }
-
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::GreaterExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::GreaterExpression>(left, right);
         }
     };
 
-    class GreaterOrEqualsNode: public EditorNode {
-    public:
-        explicit GreaterOrEqualsNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Greater or Equals", "float_greater_or_equals") {
-            init();
-        }
+    struct GreaterOrEqualsNode: BinaryFunctionNode {
+        explicit GreaterOrEqualsNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Greater or Equals", "float_greater_or_equals", Carrot::ExpressionTypes::Bool) {}
+        explicit GreaterOrEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Greater or Equals", "float_greater_or_equals", Carrot::ExpressionTypes::Bool, json) {}
 
-        explicit GreaterOrEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Greater or Equals", "float_greater_or_equals", json) {
-            init();
-        }
-
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::GreaterOrEqualsExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::GreaterOrEqualsExpression>(left, right);
         }
     };
 
-    class EqualsNode: public EditorNode {
-    public:
-        explicit EqualsNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Equals", "float_equals") {
-            init();
-        }
+    struct EqualsNode: BinaryFunctionNode {
+        explicit EqualsNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Equals", "float_equals", Carrot::ExpressionTypes::Bool) {}
+        explicit EqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Equals", "float_equals", Carrot::ExpressionTypes::Bool, json) {}
 
-        explicit EqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Equals", "float_equals", json) {
-            init();
-        }
-
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::EqualsExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::EqualsExpression>(left, right);
         }
     };
 
-    class NotEqualsNode: public EditorNode {
-    public:
-        explicit NotEqualsNode(Tools::EditorGraph& graph): Tools::EditorNode(graph, "Not Equals", "float_not_equals") {
-            init();
-        }
+    struct NotEqualsNode: BinaryFunctionNode {
+        explicit NotEqualsNode(Tools::EditorGraph& graph): Tools::BinaryFunctionNode(graph, "Not Equals", "float_not_equals", Carrot::ExpressionTypes::Bool) {}
+        explicit NotEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::BinaryFunctionNode(graph, "Not Equals", "float_not_equals", Carrot::ExpressionTypes::Bool, json) {}
 
-        explicit NotEqualsNode(Tools::EditorGraph& graph, const rapidjson::Value& json): Tools::EditorNode(graph, "Not Equals", "float_not_equals", json) {
-            init();
-        }
-
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
-            return std::make_shared<Carrot::NotEqualsExpression>(inputExprs[0], inputExprs[1]);
-        }
-
-    private:
-        void init() {
-            newInput("Op 1", Carrot::ExpressionTypes::Float);
-            newInput("Op 2", Carrot::ExpressionTypes::Float);
-
-            newOutput("Result", Carrot::ExpressionTypes::Bool);
+        std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const override {
+            return std::make_shared<Carrot::NotEqualsExpression>(left, right);
         }
     };
 
