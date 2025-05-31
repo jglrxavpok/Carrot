@@ -99,3 +99,7 @@ namespace ImGui {
         return ret;
     }
 }
+
+namespace ImGuiUtils {
+    const ImColor& getCarrotColor();
+}

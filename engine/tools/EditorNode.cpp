@@ -57,8 +57,8 @@ bool Tools::EditorNode::draw() {
         min.y += borderWidth;
         max.x -= borderWidth;
         max.y -= borderWidth;
-        // todo: custom header color
-        drawList->AddRectFilled(min, max, ImColor(0.3f, 0.3f,0.3f,0.3f), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
+
+        drawList->AddRectFilled(min, max, getHeaderColor(), ed::GetStyle().NodeRounding, ImDrawFlags_RoundCornersTop);
     }
 
     drawList->ChannelsMerge();
@@ -189,6 +189,10 @@ void Tools::EditorNode::followMouseUntilClick() {
 
 Tools::EditorNode::~EditorNode() {
 
+}
+
+ImColor Tools::EditorNode::getHeaderColor() const {
+    return ImColor(0.3f, 0.3f, 0.3f, 0.3f);
 }
 
 rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {

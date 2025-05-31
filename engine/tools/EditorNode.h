@@ -100,6 +100,8 @@ namespace Tools {
         const std::vector<std::shared_ptr<Input>>& getInputs() const { return inputs; };
         const std::vector<std::shared_ptr<Output>>& getOutputs() const { return outputs; };
 
+        virtual ImColor getHeaderColor() const;
+
     public:
         const Carrot::UUID& getID() const { return id; };
 

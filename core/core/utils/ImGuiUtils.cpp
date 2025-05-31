@@ -48,3 +48,11 @@ namespace ImGui {
         return clicked;
     }
 }
+
+namespace ImGuiUtils {
+    static ImColor CarrotColor{0xFF, 0x81, 0x46};
+
+    const ImColor& getCarrotColor() {
+        return CarrotColor;
+    }
+}
