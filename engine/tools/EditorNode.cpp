@@ -5,6 +5,8 @@
 #include "EditorNode.h"
 
 #include <utility>
+#include <core/utils/ImGuiUtils.hpp>
+
 #include "imgui_internal.h"
 #include "EditorGraph.h"
 #include "core/utils/JSON.h"
@@ -21,6 +23,8 @@ Tools::EditorNode::EditorNode(EditorGraph& graph, std::string title, std::string
 }
 
 bool Tools::EditorNode::draw() {
+    handlePosition();
+
     bool modified = false;
     u32 nodeID = graph.getEditorID(id);
     const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
@@ -95,8 +99,6 @@ bool Tools::EditorNode::draw() {
 
     ImGui::PopID();
     ed::EndNode();
-
-    handlePosition();
     return modified;
 }
 
@@ -131,33 +133,70 @@ bool Tools::EditorNode::renderHeaderWidgets() {
     return false;
 }
 
-bool Tools::EditorNode::renderInputPins() {
+void Tools::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
+    // style inspired by Blender
+    const ed::Style& style = ed::GetStyle();
     const float lineHeight = ImGui::GetTextLineHeight();
-    for (auto& pin : inputs) {
-        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
-        ImGui::BeginHorizontal(&pin->id);
-        ImGui::Text("> %s", pin->name.c_str());
-        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
+    const float circleRadius = lineHeight/2;
+    const float innerCircleRadius = lineHeight/2 - 1;
+    ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
-        ImGui::EndHorizontal();
-        ed::EndPin();
+    bool isConnected = false;
+    if (isOutput) {
+        isConnected = graph.hasLinksStartingFrom(pin);
+    } else {
+        isConnected = graph.hasLinksLeadingTo(pin);
+    }
+
+    auto drawPinCircle = [&](ImVec2 pinCircleCursorPosition) {
+        pinCircleCursorPosition.y += circleRadius;
+        pDrawList->AddCircleFilled(pinCircleCursorPosition, circleRadius, ImColor(style.Colors[ed::StyleColor_NodeBorder]));
+
+        ImColor innerColor = ImGuiUtils::getCarrotColor();
+        if (!isConnected) {
+            innerColor.Value.x *= 0.3f;
+            innerColor.Value.y *= 0.3f;
+            innerColor.Value.z *= 0.3f;
+        }
+        pDrawList->AddCircleFilled(pinCircleCursorPosition, innerCircleRadius, innerColor);
+    };
+    if (!isOutput) { // force pin to be on left border of node
+        const float cursorX = position.x;
+        ImGui::SetCursorPosX(cursorX);
+
+        ImVec2 pinCirclePosition = ImGui::GetCursorPos();
+        drawPinCircle(pinCirclePosition);
+    } else { // otherwise, we force the pin to be on right border of node, but this requires to compute the size of the pin first
+        const float pinWidth = ImGui::CalcTextSize(pin.name.c_str()).x /*text*/ + ImGui::GetStyle().ItemSpacing.x + lineHeight /*icon*/ + style.NodePadding.z;
+        const float cursorX = position.x + ed::GetNodeSize(graph.getEditorID(id)).x - pinWidth;
+        ImGui::SetCursorPosX(cursorX);
+
+        ImVec2 pinCirclePosition = ImGui::GetCursorPos() + ImVec2(pinWidth, 0);
+        drawPinCircle(pinCirclePosition);
+    }
+
+    ed::BeginPin(graph.getEditorID(pin.id), isOutput ? ed::PinKind::Output : ed::PinKind::Input);
+    ImGui::BeginHorizontal(&pin.id);
+    if (!isOutput) {
+        ImGui::Dummy(ImVec2(circleRadius/2, circleRadius*2));
+    }
+    ImGui::TextUnformatted(pin.name.c_str());
+    auto icon = graph.getImGuiTextures().getExpressionType(pin.getExpressionType());
+    ImGui::Image(icon, ImVec2(lineHeight, lineHeight));
+    ImGui::EndHorizontal();
+    ed::EndPin();
+}
+
+bool Tools::EditorNode::renderInputPins() {
+    for (auto& pin : inputs) {
+        renderSinglePin(false, *pin);
     }
     return false;
 }
 
 bool Tools::EditorNode::renderOutputPins() {
-    const float lineHeight = ImGui::GetTextLineHeight();
     for (auto& pin : outputs) {
-        ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
-        ImGui::BeginHorizontal(&pin->id);
-
-        auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-        ImGui::Image(icon, ImVec2(lineHeight,lineHeight));
-        ImGui::Text("%s >", pin->name.c_str());
-
-        ImGui::EndHorizontal();
-        ed::EndPin();
+        renderSinglePin(true, *pin);
     }
     return false;
 }

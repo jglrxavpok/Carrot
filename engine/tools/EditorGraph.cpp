@@ -256,6 +256,28 @@ Tools::LinkPossibility Tools::EditorGraph::canLink(Tools::Pin& from, Tools::Pin&
     return LinkPossibility::Possible;
 }
 
+bool Tools::EditorGraph::hasLinksLeadingTo(const Tools::Pin& to) const {
+    for(const auto& link : links) {
+        if(auto linkTo = link.to.lock()) {
+            if(linkTo->id == to.id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Tools::EditorGraph::hasLinksStartingFrom(const Tools::Pin& from) const {
+    for(const auto& link : links) {
+        if(auto linkTo = link.from.lock()) {
+            if(linkTo->id == from.id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::vector<Tools::Link> Tools::EditorGraph::getLinksLeadingTo(const Tools::Pin& to) const {
     std::vector<Tools::Link> result;
     for(const auto& link : links) {

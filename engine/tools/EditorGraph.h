@@ -203,6 +203,8 @@ namespace Tools {
         void clear();
 
     public:
+        bool hasLinksStartingFrom(const Tools::Pin& from) const;
+        bool hasLinksLeadingTo(const Tools::Pin& to) const;
         std::vector<Tools::Link> getLinksStartingFrom(const Tools::Pin& from) const;
         std::vector<Tools::Link> getLinksLeadingTo(const Tools::Pin& to) const;
         const std::unordered_map<Carrot::UUID, std::shared_ptr<EditorNode>>& getNodes() { return id2node; };

@@ -33,7 +33,7 @@ namespace Tools {
         explicit Pin(EditorNode& owner, Carrot::ExpressionType exprType, std::uint32_t pinIndex, Carrot::UUID id, std::string n): owner(owner), expressionType(exprType), pinIndex(pinIndex), id(id), name(std::move(n)) {}
 
         virtual PinType getType() const = 0;
-        Carrot::ExpressionType getExpressionType() { return expressionType; };
+        Carrot::ExpressionType getExpressionType() const { return expressionType; };
 
         rapidjson::Value toJSONReference(rapidjson::Document& document) const;
     };
@@ -115,6 +115,7 @@ namespace Tools {
 
     protected:
         void handlePosition(); // updates the position of this node, based on user input
+        void renderSinglePin(bool isOutput, const Pin& pin);
 
     private:
         ImDrawListSplitter drawListSplitter;
