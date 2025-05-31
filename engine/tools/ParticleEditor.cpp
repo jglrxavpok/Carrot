@@ -28,6 +28,8 @@
 #include <engine/render/resources/ResourceAllocator.h>
 #include <rapidjson/prettywriter.h>
 
+#include "nodes/CommentNode.h"
+
 namespace ed = ax::NodeEditor;
 
 static std::uint32_t MaxPreviewParticles = 10000;
@@ -136,6 +138,9 @@ updateGraph(engine, "UpdateEditor"), renderGraph(engine, "RenderEditor"), previe
         templateEditor.getGraph().addToLibrary<TerminalNodeType::SetVelocity>();
         templateEditor.getGraph().addToLibrary<TerminalNodeType::SetSize>();
     }
+
+    updateGraph.addToLibrary<CommentNode>("comment", "Comment");
+    renderGraph.addToLibrary<CommentNode>("comment", "Comment");
 
     renderGraph.addTemplatesToLibrary();
     updateGraph.addTemplatesToLibrary();

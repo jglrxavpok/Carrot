@@ -6,6 +6,7 @@ set(ToolsSources
         ${ToolsRoot}EditorNode.cpp
         ${ToolsRoot}TemplateEditor.cpp
         ${ToolsRoot}nodes/BinaryFunctionNode.cpp
+        ${ToolsRoot}nodes/CommentNode.cpp
         ${ToolsRoot}nodes/TerminalNodes.cpp
         ${ToolsRoot}nodes/NodeEditorUtils.cpp
         ${ToolsRoot}nodes/NodeWithVariants.cpp

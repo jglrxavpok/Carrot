@@ -2,132 +2,27 @@
     "update_graph": {
         "nodes": [
             {
-                "x": -136.0,
-                "y": 143.0,
-                "node_id": "7519b0bf-14ee-4de8-99a4-ee1bbf4b693d",
-                "node_type": "sin"
-            },
-            {
-                "x": -136.0,
-                "y": 47.0,
-                "node_id": "bb759f1f-d83a-4725-a1dd-3ba21154a544",
-                "node_type": "cos"
-            },
-            {
-                "x": 584.0,
-                "y": -113.0,
-                "node_id": "5022d25d-7cff-4952-bb12-fab58456152a",
-                "node_type": "set_size"
-            },
-            {
-                "x": -272.0,
-                "y": -3.0,
-                "node_id": "e73e5cf2-f5b4-480b-b90f-bcd1a812823d",
-                "node_type": "get_life"
-            },
-            {
-                "x": -377.0,
-                "y": 89.0,
-                "node_id": "0dcb6689-12b5-49e7-a28e-cdefd465fa9e",
-                "node_type": "mult",
+                "x": -912.0,
+                "y": -336.0,
+                "node_id": "a38c0ab7-ef75-49b9-9dc6-1bc712ef114f",
+                "node_type": "comment",
                 "extra": {
-                    "current_variant": 0
+                    "comment": "Compute acceleration",
+                    "size": [
+                        1440.0,
+                        560.0
+                    ]
                 }
             },
             {
-                "x": -490.0,
-                "y": 344.0,
-                "node_id": "4af1bce4-ec6c-4b9c-8600-9ff0ff5e5386",
-                "node_type": "float_constant",
-                "extra": {
-                    "value": 1.0
-                }
+                "x": 423.0,
+                "y": 269.0,
+                "node_id": "5fdda8cc-8831-47f2-8f92-71503506f4b3",
+                "node_type": "get_velocity"
             },
             {
-                "x": 40.0,
-                "y": 137.0,
-                "node_id": "14e93483-af26-45d9-bbe2-919c62f1bc2d",
-                "node_type": "mult",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": 30.0,
-                "y": -39.0,
-                "node_id": "8f85e44d-377b-4cf2-b765-4edce2d762a5",
-                "node_type": "mult",
-                "extra": {
-                    "constant": 0.10000000149011612,
-                    "current_variant": 1
-                }
-            },
-            {
-                "x": -341.0,
-                "y": 255.0,
-                "node_id": "084fc483-d589-4cfd-b631-65fbbc76d9ad",
-                "node_type": "get_delta_time"
-            },
-            {
-                "x": -136.0,
-                "y": 219.0,
-                "node_id": "ea577305-268f-40d8-ba98-b8fd0115c824",
-                "node_type": "mult",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": -874.0,
-                "y": -101.0,
-                "node_id": "f91dac1b-56f5-42cd-9f9b-bc6fa1c85490",
-                "node_type": "get_emission_id"
-            },
-            {
-                "x": 711.0,
-                "y": 251.0,
-                "node_id": "7f3bb279-9459-43cf-8382-5a589826e103",
-                "node_type": "add",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": 135.0,
-                "y": 361.0,
-                "node_id": "d8b4fb28-c917-45a8-bc53-8ef839387d38",
-                "node_type": "mult",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": -282.0,
-                "y": 472.0,
-                "node_id": "a8459aa6-2a75-42e7-9d77-df949fa4b1f1",
-                "node_type": "float_constant",
-                "extra": {
-                    "value": -1.0
-                }
-            },
-            {
-                "x": 711.0,
-                "y": 171.0,
-                "node_id": "388785d6-09e7-4662-966a-fd39323ac9ea",
-                "node_type": "add",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": 952.0,
-                "y": 107.0,
-                "node_id": "b9be9eae-8732-482f-847c-5b7198b570e9",
-                "node_type": "set_velocity"
-            },
-            {
-                "x": -746.0,
-                "y": 168.0,
+                "x": -702.0,
+                "y": -100.0,
                 "node_id": "68ee85a1-cc45-49c7-bea5-1fb83f73dd3f",
                 "node_type": "float_constant",
                 "extra": {
@@ -135,14 +30,8 @@
                 }
             },
             {
-                "x": 391.0,
-                "y": 233.0,
-                "node_id": "5fdda8cc-8831-47f2-8f92-71503506f4b3",
-                "node_type": "get_velocity"
-            },
-            {
-                "x": 558.0,
-                "y": 73.0,
+                "x": 686.0,
+                "y": -167.0,
                 "node_id": "f140f2d3-4d34-4cb2-beb2-e2ee436acbbe",
                 "node_type": "add",
                 "extra": {
@@ -150,8 +39,8 @@
                 }
             },
             {
-                "x": -1034.0,
-                "y": 24.0,
+                "x": -862.0,
+                "y": -164.0,
                 "node_id": "9fae2ead-f087-48be-b957-6e0733ce89dd",
                 "node_type": "float_constant",
                 "extra": {
@@ -159,8 +48,8 @@
                 }
             },
             {
-                "x": 40.0,
-                "y": 59.0,
+                "x": 182.0,
+                "y": -169.0,
                 "node_id": "12bbff1f-26d0-4b02-bff8-a2e50dda26ad",
                 "node_type": "mult",
                 "extra": {
@@ -168,12 +57,136 @@
                 }
             },
             {
-                "x": -633.0,
-                "y": 11.0,
+                "x": -542.0,
+                "y": -231.0,
                 "node_id": "13f89b22-86d1-4a37-be8a-d4cd789ce0e6",
                 "node_type": "mod",
                 "extra": {
                     "current_variant": 0
+                }
+            },
+            {
+                "x": -341.0,
+                "y": -97.0,
+                "node_id": "084fc483-d589-4cfd-b631-65fbbc76d9ad",
+                "node_type": "get_delta_time"
+            },
+            {
+                "x": -329.0,
+                "y": -231.0,
+                "node_id": "0dcb6689-12b5-49e7-a28e-cdefd465fa9e",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": -430.0,
+                "y": -4.0,
+                "node_id": "4af1bce4-ec6c-4b9c-8600-9ff0ff5e5386",
+                "node_type": "float_constant",
+                "extra": {
+                    "value": 1.0
+                }
+            },
+            {
+                "x": 182.0,
+                "y": -57.0,
+                "node_id": "14e93483-af26-45d9-bbe2-919c62f1bc2d",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": -99.0,
+                "y": -105.0,
+                "node_id": "ea577305-268f-40d8-ba98-b8fd0115c824",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": -88.0,
+                "y": -273.0,
+                "node_id": "bb759f1f-d83a-4725-a1dd-3ba21154a544",
+                "node_type": "cos"
+            },
+            {
+                "x": 24.0,
+                "y": -433.0,
+                "node_id": "5022d25d-7cff-4952-bb12-fab58456152a",
+                "node_type": "set_size"
+            },
+            {
+                "x": -351.0,
+                "y": -433.0,
+                "node_id": "e73e5cf2-f5b4-480b-b90f-bcd1a812823d",
+                "node_type": "get_life"
+            },
+            {
+                "x": -88.0,
+                "y": -177.0,
+                "node_id": "7519b0bf-14ee-4de8-99a4-ee1bbf4b693d",
+                "node_type": "sin"
+            },
+            {
+                "x": 686.0,
+                "y": 9.0,
+                "node_id": "7f3bb279-9459-43cf-8382-5a589826e103",
+                "node_type": "add",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": -238.0,
+                "y": 108.0,
+                "node_id": "a8459aa6-2a75-42e7-9d77-df949fa4b1f1",
+                "node_type": "float_constant",
+                "extra": {
+                    "value": -1.0
+                }
+            },
+            {
+                "x": 686.0,
+                "y": -73.0,
+                "node_id": "388785d6-09e7-4662-966a-fd39323ac9ea",
+                "node_type": "add",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": 904.0,
+                "y": -85.0,
+                "node_id": "b9be9eae-8732-482f-847c-5b7198b570e9",
+                "node_type": "set_velocity"
+            },
+            {
+                "x": 182.0,
+                "y": 39.0,
+                "node_id": "d8b4fb28-c917-45a8-bc53-8ef839387d38",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": -698.0,
+                "y": -225.0,
+                "node_id": "f91dac1b-56f5-42cd-9f9b-bc6fa1c85490",
+                "node_type": "get_emission_id"
+            },
+            {
+                "x": -210.0,
+                "y": -439.0,
+                "node_id": "8f85e44d-377b-4cf2-b765-4edce2d762a5",
+                "node_type": "mult",
+                "extra": {
+                    "constant": 0.10000000149011612,
+                    "current_variant": 1
                 }
             }
         ],

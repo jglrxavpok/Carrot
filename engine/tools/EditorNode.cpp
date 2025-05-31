@@ -96,6 +96,14 @@ bool Tools::EditorNode::draw() {
     ImGui::PopID();
     ed::EndNode();
 
+    handlePosition();
+    return modified;
+}
+
+void Tools::EditorNode::handlePosition() {
+    u32 nodeID = graph.getEditorID(id);
+    const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
+
     if(updatePosition) {
         ed::SetNodePosition(nodeID, position);
     } else if (followingMouseUntilClick) {
@@ -111,9 +119,7 @@ bool Tools::EditorNode::draw() {
         }
     }
     position = ed::GetNodePosition(nodeID);
-
     updatePosition = false;
-    return modified;
 }
 
 bool Tools::EditorNode::renderCenter() {

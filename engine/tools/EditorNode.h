@@ -79,7 +79,7 @@ namespace Tools {
         void followMouseUntilClick();
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
-        bool draw();
+        virtual bool draw();
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
         // Draws the title bar of the node
@@ -110,6 +110,9 @@ namespace Tools {
         rapidjson::Value toJSON(rapidjson::Document& doc) const;
 
         virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const = 0;
+
+    protected:
+        void handlePosition(); // updates the position of this node, based on user input
 
     private:
         ImDrawListSplitter drawListSplitter;

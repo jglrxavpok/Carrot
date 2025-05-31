@@ -30,6 +30,15 @@ namespace Carrot::Exceptions {
 #define TODO throw Carrot::Exceptions::TodoException();
 #define DISCARD(x) static_cast<void>((x))
 
+// TODO: use std::unreachable when switching to C++23
+
+// from https://en.cppreference.com/w/cpp/utility/unreachable.html
+#ifdef defined(_MSV_VER) && !defined(__clang__)
+#define UNREACHABLE __assume(false)
+#else
+#define UNREACHABLE __builtin_unreachable()
+#endif
+
 struct DeferredCleanup {
     std::function<void()> cleanup;
 
