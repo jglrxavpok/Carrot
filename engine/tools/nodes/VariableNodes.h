@@ -39,7 +39,7 @@ namespace Tools {
     public:
         VariableNodeType getTerminalType() const { return nodeType; };
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
             return make_shared<Carrot::GetVariableExpression>(getType(nodeType, outputIndex), getInternalName(nodeType), outputIndex);
         };
 

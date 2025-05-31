@@ -18,7 +18,7 @@ namespace Tools {
         bool renderHeaderWidgets() override;
         bool renderCenter() override;
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override;
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override;
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override;
 
     private:
         std::string commentTitle; // text chosen by user for this comment

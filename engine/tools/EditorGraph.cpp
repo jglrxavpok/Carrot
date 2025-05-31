@@ -44,7 +44,12 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
     for(const auto& link : links) {
         if(auto input = link.to.lock()) {
             if(auto output = link.from.lock()) {
-                ed::Link(getEditorID(link.id), getEditorID(input->id), getEditorID(output->id));
+                const u32 linkID = getEditorID(link.id);
+                ImColor linkColor = IM_COL32_BLACK;
+                if (coloredLinkUUIDs.contains(link.id)) {
+                    linkColor = ImGuiUtils::getCarrotColor();
+                }
+                ed::Link(linkID, getEditorID(output->id), getEditorID(input->id), linkColor);
             }
         }
     }
@@ -157,7 +162,7 @@ void Tools::EditorGraph::registerPin(std::shared_ptr<Tools::Pin> pin) {
     id2pin[pin->id] = std::move(pin);
 }
 
-void Tools::EditorGraph::addLink(Tools::Link link) {
+void Tools::EditorGraph::addLink(const Tools::Link& link) {
     links.push_back(link);
     markDirty();
 }
@@ -165,6 +170,14 @@ void Tools::EditorGraph::addLink(Tools::Link link) {
 void Tools::EditorGraph::removeLink(const Link& link) {
     Carrot::removeIf(links, [&](const auto& l) { return l.id == link.id; });
     markDirty();
+}
+
+void Tools::EditorGraph::addColoredLink(const Carrot::UUID& linkID) {
+    coloredLinkUUIDs.insert(linkID);
+}
+
+void Tools::EditorGraph::removeColoredLinks() {
+    coloredLinkUUIDs.clear();
 }
 
 void Tools::EditorGraph::unregisterPin(std::shared_ptr<Pin> pin) {
@@ -409,12 +422,12 @@ void Tools::EditorGraph::addTemporaryLabel(const std::string& text) {
     tmpLabels.emplace_back(std::move(TemporaryLabel(text)));
 }
 
-std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExpressionsFromTerminalNodes() const {
+std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorGraph::generateExpressionsFromTerminalNodes(std::unordered_set<Carrot::UUID>& activeLinks) const {
     std::vector<std::shared_ptr<Carrot::Expression>> result;
 
     for(const auto& terminalNode : terminalNodes) {
         if(auto node = terminalNode.lock()) {
-            result.push_back(node->toExpression(0));
+            result.push_back(node->toExpression(0, activeLinks));
         }
     }
 

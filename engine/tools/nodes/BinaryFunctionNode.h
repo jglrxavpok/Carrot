@@ -19,7 +19,7 @@ namespace Tools {
         virtual std::shared_ptr<Carrot::Expression> toExpression(std::shared_ptr<Carrot::Expression> left, std::shared_ptr<Carrot::Expression> right) const = 0;
 
     public:
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, u8 variantIndex) const override;
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, u8 variantIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override;
         bool renderHeaderWidgets(u8 variantIndex) override;
         bool renderCenter(u8 variantIndex) override;
         rapidjson::Value serialiseToJSON(rapidjson::Document& doc, u8 variantIndex) const override;

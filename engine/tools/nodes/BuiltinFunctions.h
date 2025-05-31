@@ -18,8 +18,10 @@ namespace Tools {
             init();
         }
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex) const override {
-            auto inputExprs = getExpressionsFromInput();
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t pinIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override {
+            auto inputExprs = getExpressionsFromInput(activeLinks);
+            if (inputExprs[0] == nullptr)
+                return nullptr;
             return std::make_shared<Expr>(inputExprs[0]);
         }
 

@@ -44,14 +44,14 @@ namespace Tools {
             );
         }
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override {
             if constexpr (isInput) {
                 auto placeholderData = std::make_shared<NamedInputPlaceholderData>();
                 placeholderData->name = getIOName();
                 placeholderData->index = outputIndex;
                 return std::make_shared<Carrot::PlaceholderExpression>(placeholderData, getType());
             } else {
-                return getExpressionsFromInput()[outputIndex];
+                return getExpressionsFromInput(activeLinks)[outputIndex];
             }
         }
 

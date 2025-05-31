@@ -237,8 +237,9 @@ void Tools::ParticleEditor::saveToFile(std::filesystem::path path) {
 }
 
 void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& filename) {
-    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
-    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
+    std::unordered_set<Carrot::UUID> activeLinks; // not read from during generation (only used for visualisation)
+    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
+    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
     ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, getCurrentProjectName());
     ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, getCurrentProjectName());
 
@@ -298,7 +299,8 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
 
             if(ImGui::BeginMenu("Tests")) {
                 if(ImGui::MenuItem("Print tree")) {
-                    auto expressions = renderGraph.generateExpressionsFromTerminalNodes();
+                    std::unordered_set<Carrot::UUID> activeLinks;
+                    auto expressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
                     for(const auto& expr : expressions) {
                         std::cout << expr->toString() << '\n';
                     }
@@ -354,8 +356,21 @@ void Tools::ParticleEditor::UIParticlePreview(Carrot::Render::Context renderCont
 }
 
 void Tools::ParticleEditor::reloadPreview() {
-    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes();
-    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes();
+    std::unordered_set<Carrot::UUID> activeLinks;
+    auto colorActiveLinks = [&](EditorGraph& graph) {
+        graph.removeColoredLinks();
+        for (const auto& uuid : activeLinks) {
+            graph.addColoredLink(uuid);
+        }
+    };
+
+    auto updateExpressions = updateGraph.generateExpressionsFromTerminalNodes(activeLinks);
+    colorActiveLinks(updateGraph);
+
+    activeLinks.clear();
+    auto fragmentExpressions = renderGraph.generateExpressionsFromTerminalNodes(activeLinks);
+    colorActiveLinks(renderGraph);
+
     ParticleShaderGenerator updateGenerator(ParticleShaderMode::Compute, "ParticleEditor-Preview");
     ParticleShaderGenerator fragmentGenerator(ParticleShaderMode::Fragment, "ParticleEditor-Preview");
 

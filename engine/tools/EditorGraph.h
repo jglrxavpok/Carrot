@@ -137,6 +137,7 @@ namespace Tools {
         Carrot::Engine& engine;
         std::string name;
         std::vector<Link> links;
+        std::unordered_set<Carrot::UUID> coloredLinkUUIDs;
         std::vector<TemporaryLabel> tmpLabels;
         bool zoomToContent = false;
         ed::EditorContext* g_Context = nullptr;
@@ -206,8 +207,10 @@ namespace Tools {
         std::vector<Tools::Link> getLinksLeadingTo(const Tools::Pin& to) const;
         const std::unordered_map<Carrot::UUID, std::shared_ptr<EditorNode>>& getNodes() { return id2node; };
 
-        void addLink(Tools::Link link);
+        void addLink(const Tools::Link& link);
         void removeLink(const Tools::Link& link);
+        void removeColoredLinks();
+        void addColoredLink(const Carrot::UUID& linkID);
 
         LinkPossibility canLink(Pin& from, Pin& to);
 
@@ -290,7 +293,7 @@ namespace Tools {
 
         rapidjson::Value toJSON(rapidjson::Document& document);
 
-        std::vector<std::shared_ptr<Carrot::Expression>> generateExpressionsFromTerminalNodes() const;
+        std::vector<std::shared_ptr<Carrot::Expression>> generateExpressionsFromTerminalNodes(std::unordered_set<Carrot::UUID>& activeLinks) const;
 
         friend class NodeLibraryMenuScope;
     };

@@ -115,7 +115,7 @@ namespace Tools {
         return r;
     }
 
-    std::shared_ptr<Carrot::Expression> CommentNode::toExpression(uint32_t outputIndex) const {
+    std::shared_ptr<Carrot::Expression> CommentNode::toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
         return nullptr;
     }
 

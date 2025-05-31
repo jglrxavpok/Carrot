@@ -24,7 +24,7 @@ namespace Tools {
         }
 
         bool renderCenter() override {
-            ImGui::SetNextItemWidth(200);
+            ImGui::SetNextItemWidth(50);
             return ImGui::DragFloat("##Value", &value, 1.0f);
         }
 
@@ -34,7 +34,7 @@ namespace Tools {
             );
         }
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override {
             return std::make_shared<Carrot::ConstantExpression>(value);
         }
 
@@ -59,7 +59,7 @@ namespace Tools {
         }
 
         bool renderCenter() override {
-            ImGui::SetNextItemWidth(200);
+            ImGui::SetNextItemWidth(50);
             return ImGui::Checkbox("##Value", &value);
         }
 
@@ -69,7 +69,7 @@ namespace Tools {
             );
         }
 
-        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const override {
+        std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override {
             return std::make_shared<Carrot::ConstantExpression>(value);
         }
 

@@ -61,8 +61,8 @@ namespace Tools {
         return result;
     }
 
-    std::shared_ptr<Carrot::Expression> NodeWithVariants::toExpression(uint32_t outputIndex) const {
-        return toExpression(outputIndex, currentVariant);
+    std::shared_ptr<Carrot::Expression> NodeWithVariants::toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
+        return toExpression(outputIndex, currentVariant, activeLinks);
     }
 
 

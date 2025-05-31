@@ -42,23 +42,32 @@ namespace Tools {
         }
     }
 
-    std::shared_ptr<Carrot::Expression> BinaryFunctionNode::toExpression(uint32_t outputIndex, u8 variantIndex) const {
+    std::shared_ptr<Carrot::Expression> BinaryFunctionNode::toExpression(uint32_t outputIndex, u8 variantIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
         verify(outputIndex == 0, "BinaryFunctionNode only has a single output");
 
-        auto inputs = getExpressionsFromInput();
+        auto inputs = getExpressionsFromInput(activeLinks);
         switch (currentVariant) {
             case TwoInputsVariant: {
                 verify(inputs.size() == 2, "Invalid input count");
+                if (inputs[0] == nullptr || inputs[1] == nullptr) {
+                    return nullptr;
+                }
                 return toExpression(inputs[0], inputs[1]);
             } break;
 
             case InputAndConstantVariant: {
                 verify(inputs.size() == 1, "Invalid input count");
+                if (inputs[0] == nullptr) {
+                    return nullptr;
+                }
                 return toExpression(inputs[0], std::make_shared<Carrot::ConstantExpression>(constant));
             } break;
 
             case ConstantAndInputVariant: {
                 verify(inputs.size() == 1, "Invalid input count");
+                if (inputs[0] == nullptr) {
+                    return nullptr;
+                }
                 return toExpression(std::make_shared<Carrot::ConstantExpression>(constant), inputs[0]);
             } break;
 

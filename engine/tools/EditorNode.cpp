@@ -210,15 +210,19 @@ rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {
     return object;
 }
 
-std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressionsFromInput() const {
+std::vector<std::shared_ptr<Carrot::Expression>> Tools::EditorNode::getExpressionsFromInput(std::unordered_set<Carrot::UUID>& activeLinks) const {
     std::vector<std::shared_ptr<Carrot::Expression>> expressions;
     size_t inputIndex = 0;
     for(const auto& input : inputs) {
         bool foundOne = false;
         for(const auto& link : graph.getLinksLeadingTo(*input)) {
             if(auto pinFrom = link.from.lock()) {
-                expressions.push_back(pinFrom->owner.toExpression(pinFrom->pinIndex));
-                foundOne = true;
+                auto expr = pinFrom->owner.toExpression(pinFrom->pinIndex, activeLinks);
+                if (expr != nullptr) {
+                    activeLinks.insert(link.id);
+                    expressions.push_back(expr);
+                    foundOne = true;
+                }
             }
         }
 

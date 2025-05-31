@@ -57,7 +57,7 @@ namespace Tools {
         Input& newInput(std::string name, Carrot::ExpressionType type);
         Output& newOutput(std::string name, Carrot::ExpressionType type);
 
-        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput() const;
+        [[nodiscard]] std::vector<std::shared_ptr<Carrot::Expression>> getExpressionsFromInput(std::unordered_set<Carrot::UUID>& activeLinks) const;
         std::string title;
         std::string internalName;
         EditorGraph& graph;
@@ -111,7 +111,7 @@ namespace Tools {
         }
         rapidjson::Value toJSON(rapidjson::Document& doc) const;
 
-        virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex) const = 0;
+        virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const = 0;
 
     protected:
         void handlePosition(); // updates the position of this node, based on user input

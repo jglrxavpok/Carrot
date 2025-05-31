@@ -197,7 +197,7 @@ namespace Tools {
         internalGraph->loadFromJSON(graphJson);
     }
 
-    std::shared_ptr<Carrot::Expression> TemplateNode::toExpression(uint32_t outputIndex) const {
+    std::shared_ptr<Carrot::Expression> TemplateNode::toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
         //  find corresponding output inside internalGraph
         //  generate expression from internalGraph starting from output
         //  -> how to handle Named Inputs ?
@@ -207,7 +207,9 @@ namespace Tools {
         std::shared_ptr<Carrot::Expression> outputExpression = nullptr;
         std::vector<std::shared_ptr<Carrot::Expression>> inputExpressions{inputs.size()};
 
-        auto templateInputs = getExpressionsFromInput();
+        auto templateInputs = getExpressionsFromInput(activeLinks);
+
+        std::unordered_set<Carrot::UUID> internalActiveLinks; // not visible to exterior
 
         for(const auto& [id, node] : internalGraph->getNodes()) {
             if(auto output = std::dynamic_pointer_cast<NamedOutputNode>(node)) {
@@ -227,7 +229,7 @@ namespace Tools {
                 if(outputExpression) {
                     throw std::runtime_error("Found another output corresponding to the same named output node! Node is "+output->getIOName());
                 }
-                outputExpression = output->toExpression(coordinateOffset);
+                outputExpression = output->toExpression(coordinateOffset, internalActiveLinks);
             }
 
             if(auto input = std::dynamic_pointer_cast<NamedInputNode>(node)) {
@@ -243,7 +245,7 @@ namespace Tools {
             }
         }
 
-        auto internalExpressions = internalGraph->generateExpressionsFromTerminalNodes();
+        auto internalExpressions = internalGraph->generateExpressionsFromTerminalNodes(internalActiveLinks);
 
         PlaceholderRemapper remapper{inputPinIndices, inputExpressions};
         std::vector<std::shared_ptr<Carrot::Expression>> remappedInternalExpressions;

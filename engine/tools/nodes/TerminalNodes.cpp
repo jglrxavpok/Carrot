@@ -103,12 +103,16 @@ namespace Tools {
         }
     }
 
-    std::shared_ptr<Carrot::Expression> TerminalNode::toExpression(uint32_t pinIndex) const {
+    std::shared_ptr<Carrot::Expression> TerminalNode::toExpression(uint32_t pinIndex, std::unordered_set<Carrot::UUID>& activeLinks) const {
         std::vector<std::shared_ptr<Carrot::Expression>> expressions;
 
         std::uint32_t index = 0;
-        for(const auto& input : getExpressionsFromInput()) {
+
+        std::unordered_set<Carrot::UUID> activeLinksToThisNode;
+        for(const auto& input : getExpressionsFromInput(activeLinksToThisNode)) {
             if(input != nullptr) {
+                activeLinks.insert(activeLinksToThisNode.begin(), activeLinksToThisNode.end());
+                activeLinksToThisNode.clear();
                 expressions.push_back(std::make_shared<Carrot::SetVariableExpression>(getInternalName(nodeType), input, index));
             }
 
