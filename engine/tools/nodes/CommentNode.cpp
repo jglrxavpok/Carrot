@@ -28,16 +28,14 @@ namespace Tools {
         ImGui::BeginHorizontal("horizontal");
         ImGui::Spring(1);
 
+        const float inputWidth = std::max(ImGui::CalcTextSize(commentTitle.c_str()).x + ImGui::GetStyle().WindowPadding.x*2, 100.0f);;
         if (!editingComment) {
-            ImVec2 buttonSize { 0, 0 };
-            buttonSize.x = std::max(ImGui::CalcTextSize(commentTitle.c_str()).x, 100.0f);
-
-            if (ImGui::Button(commentTitle.c_str(), buttonSize)) {
+            if (ImGui::Button(commentTitle.c_str(), ImVec2(inputWidth, 0))) {
                 editingComment = true;
             }
             showingTextBox = false;
         } else {
-            ImGui::SetNextItemWidth(100);
+            ImGui::SetNextItemWidth(inputWidth);
             if (ImGui::InputText("##comment text", commentTitle, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 editingComment = false;
             }
