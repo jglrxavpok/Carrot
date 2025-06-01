@@ -93,6 +93,11 @@ static std::unordered_set<int> activeJoysticks{};
 #include "LPP_API_x64_CPP.h"
 static std::optional<lpp::LppSynchronizedAgent> optLPPAgent;
 #endif
+#if USE_JETLIVE
+#include <jet/live/Live.hpp>
+static std::optional<jet::Live> optJetLive;
+static bool queueJetLiveReload = false;
+#endif
 
 Carrot::Engine::SetterHack::SetterHack(Carrot::Engine* e) {
     Carrot::Engine::instance = e;
@@ -140,6 +145,32 @@ renderer(vkDriver, config), screenQuad(std::make_unique<SingleMesh>(
         // enable Live++ for all loaded modules
         const char* modulePath = lpp::LppGetCurrentModulePathANSI();
         optLPPAgent->EnableModuleANSI(modulePath, lpp::LPP_MODULES_OPTION_NONE, nullptr, nullptr);
+    }
+#endif
+#ifdef USE_JETLIVE
+    if (settings.useCppHotReloading) {
+        struct CarrotLiveListener: jet::ILiveListener {
+            Carrot::Log::Category category { "Hot reload" };
+
+            void onLog(jet::LogSeverity severity, const std::string& message) override {
+                switch (severity) {
+                    case jet::LogSeverity::kDebug:
+                        Carrot::Log::debug(category, "%s", message.c_str());
+                        break;
+                    case jet::LogSeverity::kInfo:
+                        Carrot::Log::info(category, "%s", message.c_str());
+                        break;
+                    case jet::LogSeverity::kWarning:
+                        Carrot::Log::warn(category, "%s", message.c_str());
+                        break;
+                    case jet::LogSeverity::kError:
+                        Carrot::Log::error(category, "%s", message.c_str());
+                        break;
+                }
+            }
+        };
+        std::unique_ptr<jet::ILiveListener> listener = std::make_unique<CarrotLiveListener>();
+        optJetLive.emplace(std::move(listener));
     }
 #endif
 
@@ -363,6 +394,16 @@ void Carrot::Engine::run() {
 #if USE_LIVEPP
         if (optLPPAgent.has_value() && optLPPAgent->WantsReload(lpp::LPP_RELOAD_OPTION_SYNCHRONIZE_WITH_RELOAD)) {
             optLPPAgent->Reload(lpp::LPP_RELOAD_BEHAVIOUR_WAIT_UNTIL_CHANGES_ARE_APPLIED);
+        }
+#endif
+#ifdef USE_JETLIVE
+        if (optJetLive.has_value()) {
+            optJetLive->update();
+
+            if (queueJetLiveReload) {
+                optJetLive->tryReload();
+                queueJetLiveReload = false;
+            }
         }
 #endif
 
@@ -1310,6 +1351,13 @@ void Carrot::Engine::onKeyEvent(Window& which, int key, int scancode, int action
     if(key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_RELEASE) {
         Console::instance().toggleVisibility();
     }
+
+#ifdef USE_JETLIVE
+    // cannot replicate Live++ shortcut as it is a shortcut for TTY on Linux
+    if (key == GLFW_KEY_R && action == GLFW_RELEASE && (mods & GLFW_MOD_SHIFT) && (mods & GLFW_MOD_CONTROL)) {
+        queueJetLiveReload = true;
+    }
+#endif
 
     if(which != mainWindow) {
         return;

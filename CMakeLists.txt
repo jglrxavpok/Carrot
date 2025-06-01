@@ -1,7 +1,10 @@
+# If using Ninja, use -d keepdepfile to ensure JetLive works properly!
+
 cmake_minimum_required(VERSION 3.22)
 project(Carrot)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # required for JetLive
 
 list(APPEND CMAKE_PREFIX_PATH "cmake_modules/")
 
@@ -11,8 +14,11 @@ set(Arch "x64")
 set(Platform "win64") # TODO: auto-detect
 set(ProjectRoot "${CMAKE_CURRENT_SOURCE_DIR}/")
 
-# Live++ support
+# Hot reloading support
+set(HAS_JETLIVE false)
+set(HAS_LIVEPP false)
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    # Under MSVC, attempt to use Live++
     add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
     if(EXISTS "${ProjectRoot}LivePP/API/x64/LPP_API.h")
         set(HAS_LIVEPP true)
@@ -22,7 +28,16 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         set(HAS_LIVEPP false)
         message("No Live++ support.")
     endif()
-endif()
+else()
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # otherwise, in debug, attempt to use jet-live
+        set(HAS_JETLIVE true)
+        include(thirdparty/jet-live/cmake/jet_live_setup.cmake)
+        set(JET_LIVE_BUILD_EXAMPLE OFF)
+        set(JET_LIVE_SHARED OFF)
+        add_subdirectory(thirdparty/jet-live)
+    endif ()
+endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Release")
     set(IS_RELEASE_BUILD True)
@@ -178,7 +193,13 @@ function(add_includes Target)
         target_compile_options(${Target} PRIVATE "$<$<C_COMPILER_ID:MSVC>:/bigobj>")
         target_compile_options(${Target} PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 
-    endif()
+    else()
+        # jet-live support:
+        if(HAS_JETLIVE)
+            target_compile_definitions("${Target}" PRIVATE USE_JETLIVE=1)
+            target_link_libraries(${Target} PUBLIC jet-live)
+        endif ()
+    endif ()
 
     if(NsightAftermath_FOUND)
         target_include_directories("${Target}" PRIVATE ${NsightAftermath_INCLUDE_DIRS})
@@ -308,3 +329,5 @@ add_subdirectory(engine/tools)
 add_subdirectory(editor)
 add_subdirectory(runtime)
 add_subdirectory(tests)
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/.gdbinit" DESTINATION "${CMAKE_BINARY_DIR}/.gdbinit")

@@ -10,7 +10,7 @@ namespace Carrot {
         for (int i = 0; i < argc; i++) {
             std::string_view s { argv[i] };
             if (s == "-nolivepp") {
-                useLivePP = false;
+                useCppHotReloading = false;
             }
             if (s == "-noaftermath") {
                 useAftermath = false;

@@ -22,7 +22,7 @@ namespace Carrot {
         /**
          * Enable the use of Live++ hot reloading
          */
-        bool useLivePP = true;
+        bool useCppHotReloading = true;
 
         /**
          * Enable the use of Aftermath (crash reporting on Nvidia GPUs)
