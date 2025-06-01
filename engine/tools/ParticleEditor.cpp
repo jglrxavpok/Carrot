@@ -255,6 +255,24 @@ void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& fi
 }
 
 void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
+
+    // TODO: move to init
+    {
+        ed::Style& style = ed::GetStyle();
+
+        // colors taken from Blender's node editor
+        style.Colors[ed::StyleColor_Bg] = ImColor(29, 29, 29, 255);
+        style.Colors[ed::StyleColor_Grid] = ImColor(40, 40, 40, 255);
+
+        style.Colors[ed::StyleColor_NodeBorder] = ImColor(18, 18, 18, 255);
+        style.Colors[ed::StyleColor_SelNodeBorder] = ImColor(237, 237, 237, 255);
+        style.Colors[ed::StyleColor_HovNodeBorder] = style.Colors[ed::StyleColor_NodeBorder];
+        style.Colors[ed::StyleColor_NodeBg] = ImColor(48, 48, 48, 255);
+
+        style.Colors[ed::StyleColor_GroupBg] = ImColor(5, 5, 5, 255);
+        style.Colors[ed::StyleColor_GroupBorder] = style.Colors[ed::StyleColor_NodeBorder];
+    }
+
     if(renderContext.pViewport == &previewViewport) {
         if(previewSystem) {
             previewSystem->onFrame(renderContext);

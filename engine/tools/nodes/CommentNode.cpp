@@ -22,8 +22,6 @@ namespace Tools {
         const float commentAlpha = 0.75f;
 
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, commentAlpha);
-        ed::PushStyleColor(ed::StyleColor_NodeBg, ImColor(255, 255, 255, 64));
-        ed::PushStyleColor(ed::StyleColor_NodeBorder, ImColor(255, 255, 255, 64));
         ed::BeginNode(groupID);
         ImGui::PushID(groupID);
         ImGui::BeginVertical("content");
@@ -57,7 +55,6 @@ namespace Tools {
         ImGui::EndVertical();
         ImGui::PopID();
         ed::EndNode();
-        ed::PopStyleColor(2);
         ImGui::PopStyleVar();
 
         if (ed::BeginGroupHint(groupID))
