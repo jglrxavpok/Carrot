@@ -168,6 +168,8 @@ namespace Tools {
         };
 
     public:
+        inline const static ImVec2 PaddingDummySize { 4.0f, 0.0f };
+
         explicit EditorGraph(Carrot::Engine& engine, std::string name);
         ~EditorGraph();
 

@@ -271,6 +271,9 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
 
         style.Colors[ed::StyleColor_GroupBg] = ImColor(5, 5, 5, 255);
         style.Colors[ed::StyleColor_GroupBorder] = style.Colors[ed::StyleColor_NodeBorder];
+
+        style.NodePadding.x = 0;
+        style.NodePadding.z = 0;
     }
 
     if(renderContext.pViewport == &previewViewport) {

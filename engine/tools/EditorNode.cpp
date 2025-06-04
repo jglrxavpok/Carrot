@@ -43,8 +43,13 @@ bool Tools::EditorNode::draw() {
     // channel 1 = foreground, decided by node
     {
         drawList->ChannelsSetCurrent(1);
+
+        // compensate for the 0 padding of nodes (used to render IO pins properly)
+        ImGui::Dummy(EditorGraph::PaddingDummySize);
+        ImGui::SameLine();
         modified |= renderHeaderWidgets();
-        ImGui::Spring();
+        ImGui::SameLine();
+        ImGui::Dummy(EditorGraph::PaddingDummySize);
     }
 
     // draw header background on channel 0
@@ -76,13 +81,18 @@ bool Tools::EditorNode::draw() {
     modified |= renderInputPins();
     ImGui::EndVertical();
 
+    if (!inputs.empty()) {
+        ImGui::Spring();
+    }
+
     ImGui::BeginVertical("center");
     modified |= renderCenter();
     ImGui::EndVertical();
 
-    if(inputs.empty()) {
-        ImGui::Spring(1);
+    if (!outputs.empty()) {
+        ImGui::Spring();
     }
+
     ImGui::BeginVertical("outputs");
     ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
     ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
@@ -161,28 +171,31 @@ void Tools::EditorNode::renderSinglePin(bool isOutput, const Pin& pin) {
         pDrawList->AddCircleFilled(pinCircleCursorPosition, innerCircleRadius, innerColor);
     };
     if (!isOutput) { // force pin to be on left border of node
-        const float cursorX = position.x;
-        ImGui::SetCursorPosX(cursorX);
-
         ImVec2 pinCirclePosition = ImGui::GetCursorPos();
         drawPinCircle(pinCirclePosition);
     } else { // otherwise, we force the pin to be on right border of node, but this requires to compute the size of the pin first
+        const float currentCursorX = ImGui::GetCursorPosX();
         const float pinWidth = ImGui::CalcTextSize(pin.name.c_str()).x /*text*/ + ImGui::GetStyle().ItemSpacing.x + lineHeight /*icon*/ + style.NodePadding.z;
         const float cursorX = position.x + ed::GetNodeSize(graph.getEditorID(id)).x - pinWidth;
         ImGui::SetCursorPosX(cursorX);
 
         ImVec2 pinCirclePosition = ImGui::GetCursorPos() + ImVec2(pinWidth, 0);
         drawPinCircle(pinCirclePosition);
+        ImGui::SetCursorPosX(currentCursorX);
     }
 
     ed::BeginPin(graph.getEditorID(pin.id), isOutput ? ed::PinKind::Output : ed::PinKind::Input);
     ImGui::BeginHorizontal(&pin.id);
     if (!isOutput) {
-        ImGui::Dummy(ImVec2(circleRadius/2, circleRadius*2));
+        ImGui::Dummy(ImVec2(circleRadius/2, 1));
     }
     ImGui::TextUnformatted(pin.name.c_str());
     auto icon = graph.getImGuiTextures().getExpressionType(pin.getExpressionType());
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x/2 /*remove some spacing, icon is too fat otherwise*/);
     ImGui::Image(icon, ImVec2(lineHeight, lineHeight));
+    if (isOutput) {
+        ImGui::Dummy(ImVec2(circleRadius/2, 1));
+    }
     ImGui::EndHorizontal();
     ed::EndPin();
 }

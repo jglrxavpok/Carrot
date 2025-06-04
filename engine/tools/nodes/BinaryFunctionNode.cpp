@@ -113,10 +113,14 @@ namespace Tools {
         switch (currentVariant) {
             case InputAndConstantVariant:
                 modified |= EditorNode::renderInputPins();
+                ImGui::Dummy(EditorGraph::PaddingDummySize);
+                ImGui::SameLine();
                 ImGui::SetNextItemWidth(constantInputWidth);
                 modified |= ImGui::DragFloat("Constant", &constant);
                 break;
             case ConstantAndInputVariant:
+                ImGui::Dummy(EditorGraph::PaddingDummySize);
+                ImGui::SameLine();
                 ImGui::SetNextItemWidth(constantInputWidth);
                 modified |= ImGui::DragFloat("Constant", &constant);
                 modified |= EditorNode::renderInputPins();
