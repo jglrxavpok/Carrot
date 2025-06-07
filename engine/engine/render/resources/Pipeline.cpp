@@ -465,6 +465,9 @@ void Carrot::Pipeline::bind(vk::RenderPass pass, const Carrot::Render::Context& 
 }
 
 void Carrot::Pipeline::bindOnlyDescriptorSets(const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands, vk::PipelineBindPoint bindPoint, std::vector<std::uint32_t> dynamicOffsets) const {
+    if (description.setCount == 0) {
+        return;
+    }
     std::vector<vk::DescriptorSet> setsToBind { description.setCount, VK_NULL_HANDLE };
     for(std::uint32_t i = 0; i < setsToBind.size(); i++) {
         setsToBind[i] = getDescriptorSets(renderContext, i)[renderContext.swapchainIndex];

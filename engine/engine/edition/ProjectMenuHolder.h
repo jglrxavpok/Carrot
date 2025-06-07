@@ -9,6 +9,7 @@
 #include <engine/render/RenderContext.h>
 #include <core/utils/stringmanip.h>
 #include <IconsFontAwesome5.h>
+#include <engine/io/actions/ActionSet.h>
 
 namespace Tools {
     class ProjectMenuHolder {
@@ -25,7 +26,20 @@ namespace Tools {
             openRecentItemName = ICON_FA_FOLDER_OPEN "  Open Recent##" + settings.getName();
             saveItemName = ICON_FA_SAVE "  Save##" + settings.getName();
             saveAsItemName = ICON_FA_SAVE "  Save as...##" + settings.getName();
+
+            initShortcuts();
         }
+
+        /// Loads the shortcuts for this editor
+        virtual void initShortcuts();
+
+        /// Checks if shortcuts are being used, and call corresponding code for each shortcut
+        virtual void handleShortcuts(const Carrot::Render::Context& frame);
+
+        virtual void onCutShortcut(const Carrot::Render::Context& frame);
+        virtual void onCopyShortcut(const Carrot::Render::Context& frame);
+        virtual void onPasteShortcut(const Carrot::Render::Context& frame);
+        virtual void onDuplicateShortcut(const Carrot::Render::Context& frame);
 
         void drawProjectMenu() {
             assert(settings);
@@ -94,7 +108,7 @@ namespace Tools {
             unsavedChangePopupIsOpen = true;
         }
 
-        virtual void onFrame(Carrot::Render::Context renderContext) {
+        virtual void onFrame(const Carrot::Render::Context& renderContext) {
             assert(settings);
             if(cantSavePopup) {
                 tryingToOpenFile = false;
@@ -261,6 +275,12 @@ namespace Tools {
         bool unsavedChangePopupIsOpen = false;
         std::function<void()> onContinueAction;
         std::function<void()> onCancelAction;
+
+        Carrot::IO::ActionSet shortcuts{"editor_shortcuts"};
+        Carrot::IO::BoolInputAction duplicate{"duplicate"};
+        Carrot::IO::BoolInputAction copy{"copy"};
+        Carrot::IO::BoolInputAction cut{"cut"};
+        Carrot::IO::BoolInputAction paste{"paste"};
 
     private: // popup control
         bool tryingToOpenFile = false;

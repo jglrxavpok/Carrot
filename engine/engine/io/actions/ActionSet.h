@@ -51,6 +51,7 @@ namespace Carrot::IO {
 
     public:
         static void updatePrePollAllSets(Carrot::Engine& engine);
+        static void updatePostPollAllSets();
         static void resetAllDeltas();
         static void syncXRActions();
         static std::vector<ActionSet*>& getSetList();
@@ -62,6 +63,7 @@ namespace Carrot::IO {
         };
 
         void updatePrePoll();
+        void updatePostPoll();
         void resetDeltas();
         void prepareForUse(Carrot::Engine& engine);
         void pollXRActions();
@@ -75,6 +77,9 @@ namespace Carrot::IO {
         std::vector<Vec2InputAction*> vec2Inputs;
         std::vector<PoseInputAction*> poseInputs;
         std::vector<VibrationOutputAction*> vibrationOutputs;
+
+        // action "path" to state. Needs this indirection for multi-key inputs
+        std::unordered_map<Identifier, InputState> inputStates;
 
         Carrot::UUID keyCallback;
         Carrot::UUID gamepadButtonCallback;

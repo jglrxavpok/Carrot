@@ -184,6 +184,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}edition/DragDropTypes.cpp
         ${EngineRoot}edition/EditorSettings.cpp
         ${EngineRoot}edition/FreeCameraController.cpp
+        ${EngineRoot}edition/ProjectMenuHolder.cpp
         ${EngineRoot}edition/Widgets.cpp
 
         ${EngineRoot}pathfinding/AStar.cpp

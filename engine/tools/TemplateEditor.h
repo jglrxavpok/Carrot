@@ -18,7 +18,7 @@ namespace Tools {
 
     public:
         void tick(double deltaTime);
-        void onFrame(Carrot::Render::Context renderContext) override;
+        void onFrame(const Carrot::Render::Context& renderContext) override;
         void open();
 
         void performLoad(std::filesystem::path path) override;

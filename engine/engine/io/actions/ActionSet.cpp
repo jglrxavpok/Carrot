@@ -43,6 +43,13 @@ namespace Carrot::IO {
 
     void ActionSet::activate() {
         active = true;
+        for(auto& input : boolInputs) {
+            for (auto& binding : getMappedBindings(input)) {
+                for (const auto& p : binding.paths) {
+                    inputStates[p] = {};
+                }
+            }
+        }
     }
 
     void ActionSet::deactivate() {
@@ -56,6 +63,7 @@ namespace Carrot::IO {
         for(auto& input : vec2Inputs) {
             input->state.v2.previousValue = input->state.v2.value = {0.0f, 0.0f};
         }
+        inputStates.clear();
     }
 
     void ActionSet::add(BoolInputAction& input) {
@@ -97,6 +105,32 @@ namespace Carrot::IO {
         }
     }
 
+    void ActionSet::updatePostPoll() {
+        if (!active) {
+            return;
+        }
+        for(auto& input : boolInputs) {
+            input->state.b.value = false;
+            const auto& bindings = getMappedBindings(input);
+            for (const ActionBinding& binding : bindings) {
+                bool allActive = true;
+                for (const Identifier& p : binding.paths) {
+                    auto stateIter = inputStates.find(p);
+                    if (stateIter != inputStates.end()) {
+                        allActive &= stateIter->second.b.value;
+                    } else {
+                        allActive = false;
+                    }
+                }
+
+                if (allActive) {
+                    input->state.b.value = true;
+                    break; // no need to check more bindings
+                }
+            }
+        }
+    }
+
     void ActionSet::syncXRActions() {
         std::vector<ActionSet*> setsToSync;
         setsToSync.reserve(getSetList().size());
@@ -115,6 +149,7 @@ namespace Carrot::IO {
         GetEngine().getVRSession().syncActionSets(setsToSync);
 
         for(auto* set : setsToSync) {
+            set->updatePostPoll();
             set->pollXRActions();
         }
     }
@@ -130,21 +165,32 @@ namespace Carrot::IO {
         }
     }
 
+    void ActionSet::updatePostPollAllSets() {
+        for(auto* set : getSetList()) {
+            if(!set->isActive())
+                continue;
+            set->updatePostPoll();
+        }
+    }
+
     void ActionSet::prepareForUse(Carrot::Engine& engine) {
         if(readyForUse)
             return;
 
         auto changeButtonInput = [this](const ActionBinding& bindingPath, bool isPressed, bool isReleased) {
-            for(auto& input : boolInputs) {
-                const auto& bindings = getMappedBindings(input);
-                if(std::find(WHOLE_CONTAINER(bindings), bindingPath) != bindings.end()) {
+            for (const auto& path : bindingPath.paths) {
+                auto stateIter = inputStates.find(path);
+                if (stateIter != inputStates.end()) {
+                    InputState& state = stateIter->second;
                     if(isReleased) {
-                        input->state.b.value = false;
+                        state.b.value = false;
                     } else {
-                        input->state.b.value |= isPressed;
+                        state.b.value |= isPressed;
                     }
                 }
             }
+
+            // inputs will be updated in "updatePostPoll"
         };
 
         auto changeAxisInput = [this](const ActionBinding& bindingPath, float newValue) {

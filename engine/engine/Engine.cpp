@@ -460,6 +460,7 @@ void Carrot::Engine::run() {
             glfwPollEvents();
             pollKeysVec2();
             pollGamepads();
+            IO::ActionSet::updatePostPollAllSets();
             if(config.runInVR) {
                 IO::ActionSet::syncXRActions();
             }

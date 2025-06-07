@@ -1209,13 +1209,13 @@ namespace Carrot::Scripting {
         CLEANUP(mono_free(bindingStr));
         if(mono_object_isinst(actionObj, instance().BoolInputActionClass->toMono())) {
             auto& action = getObject<Carrot::IO::BoolInputAction>(actionObj);
-            action.suggestBinding(bindingStr);
+            action.suggestBinding(Identifier { bindingStr });
         } else if(mono_object_isinst(actionObj, instance().FloatInputActionClass->toMono())) {
             auto& action = getObject<Carrot::IO::FloatInputAction>(actionObj);
-            action.suggestBinding(bindingStr);
+            action.suggestBinding(Identifier { bindingStr });
         } else if(mono_object_isinst(actionObj, instance().Vec2InputActionClass->toMono())) {
             auto& action = getObject<Carrot::IO::Vec2InputAction>(actionObj);
-            action.suggestBinding(bindingStr);
+            action.suggestBinding(Identifier { bindingStr });
         } else {
             MonoClass* objClass = mono_object_get_class(actionObj);
             CSClass c{ instance().appDomain->toMono(), objClass };

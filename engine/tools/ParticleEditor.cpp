@@ -254,7 +254,7 @@ void Tools::ParticleEditor::generateParticleFile(const std::filesystem::path& fi
     });
 }
 
-void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
+void Tools::ParticleEditor::onFrame(const Carrot::Render::Context& renderContext) {
 
     // TODO: move to init
     {
@@ -288,6 +288,7 @@ void Tools::ParticleEditor::onFrame(Carrot::Render::Context renderContext) {
     } else if (renderContext.pViewport == &GetEngine().getMainViewport()) {
         float menuBarHeight = 0;
         if(ImGui::BeginMainMenuBar()) {
+            handleShortcuts(renderContext);
             if(ImGui::BeginMenu("Project")) {
                 drawProjectMenu();
 

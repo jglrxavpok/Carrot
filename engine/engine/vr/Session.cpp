@@ -434,9 +434,10 @@ namespace Carrot::VR {
                     if(!binding.isOpenXR()) {
                         continue;
                     }
+                    verify(binding.paths.size() == 1, "OpenXR bindings must have a single path");
                     xr::ActionSuggestedBinding xrBinding;
                     xrBinding.action = a->getXRAction();
-                    xrBinding.binding = GetEngine().getVRSession().makeXRPath(binding.path);
+                    xrBinding.binding = GetEngine().getVRSession().makeXRPath(std::string{ binding.paths[0] });
                     perProfileBindings[binding.interactionProfile].data.push_back(xrBinding);
                 }
             }

@@ -31,7 +31,7 @@ Carrot::RayTracer::RayTracer(Carrot::VulkanRenderer& renderer): renderer(rendere
     rayTracingProperties = properties.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
 }
 
-void Carrot::RayTracer::onFrame(Carrot::Render::Context renderContext) {
+void Carrot::RayTracer::onFrame(const Carrot::Render::Context& renderContext) {
     if(!available)
         return;
     if(renderContext.pViewport != &renderer.getEngine().getMainViewport())

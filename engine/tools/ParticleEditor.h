@@ -28,7 +28,7 @@ namespace Tools {
     public:
         explicit ParticleEditor(Carrot::Engine& engine);
 
-        void onFrame(Carrot::Render::Context renderContext);
+        void onFrame(const Carrot::Render::Context& renderContext) override;
         void tick(double deltaTime);
 
         ~ParticleEditor();

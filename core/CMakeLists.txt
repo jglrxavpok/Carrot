@@ -61,6 +61,7 @@ set(CORE-SOURCES
 
         ${CoreRoot}utils/CarrotTinyGLTF.cpp
         ${CoreRoot}utils/Identifiable.cpp
+        ${CoreRoot}utils/Identifier.cpp
         ${CoreRoot}utils/ImGuiUtils.cpp
         ${CoreRoot}utils/Profiling.cpp
         ${CoreRoot}utils/single_file_header_impls.cpp

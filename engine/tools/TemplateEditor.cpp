@@ -25,7 +25,7 @@ void Tools::TemplateEditor::tick(double deltaTime) {
     graph.tick(deltaTime);
 }
 
-void Tools::TemplateEditor::onFrame(Carrot::Render::Context renderContext) {
+void Tools::TemplateEditor::onFrame(const Carrot::Render::Context& renderContext) {
     if(!isOpen)
         return;
     if(ImGui::Begin("Template Editor", &isOpen, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar)) {

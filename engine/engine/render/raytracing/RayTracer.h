@@ -4,10 +4,12 @@
 
 #pragma once
 #include "engine/vulkan/SwapchainAware.h"
-#include "engine/RenderPasses.h"
-#include "engine/render/RenderGraph.h"
 
 namespace Carrot {
+    namespace Render {
+        struct Context;
+    }
+
     class VulkanRenderer;
 
     /// Class responsible for creating acceleration structures & scene information buffers and updating them
@@ -24,7 +26,7 @@ namespace Carrot {
 
         explicit RayTracer(VulkanRenderer& renderer);
 
-        void onFrame(Render::Context renderContext);
+        void onFrame(const Render::Context& renderContext);
 
         void onSwapchainImageCountChange(std::size_t newCount) override;
 

@@ -13,6 +13,8 @@
 #include "engine/io/actions/InputVectors.h"
 #include "engine/vr/includes.h"
 #include "core/utils/Assert.h"
+#include <core/containers/Vector.hpp>
+#include <core/utils/Identifier.h>
 
 namespace Carrot::VR {
     class Session;
@@ -26,6 +28,21 @@ namespace Carrot::IO {
 
         PoseInput,
         VibrationOutput,
+    };
+
+    union InputState {
+        struct BoolState {
+            bool value;
+            bool previousValue;
+        } b;
+        struct FloatValue {
+            float value;
+            float previousValue;
+        } f;
+        struct Vec2Value {
+            glm::vec2 value;
+            glm::vec2 previousValue;
+        } v2;
     };
 
     //! Represents a pose that an action can return (in most cases, the pose of the VR controllers)
@@ -42,25 +59,22 @@ namespace Carrot::IO {
         //! Used for OpenXR (https://registry.khronos.org/OpenXR/specs/1.0/html/xrspec.html#semantic-path-interaction-profiles). Unused for non-OpenXR bindings
         std::string interactionProfile = CarrotInteractionProfile;
 
-        //! Path of the suggested binding
-        std::string path;
+        //! Paths of the suggested binding (for multiple buttons)
+        Carrot::Vector<Identifier> paths;
 
         ActionBinding() = default;
 
         //! Creates a non-OpenXR binding with the given path
-        ActionBinding(std::string_view p): path(p) {};
-        //! Creates a non-OpenXR binding with the given path
-        ActionBinding(const char* p): path(p) {};
-        //! Creates a non-OpenXR binding with the given path
-        ActionBinding(const std::string& p): path(p) {};
+        ActionBinding(Identifier p);
 
-        inline bool isOpenXR() const {
-            return interactionProfile != CarrotInteractionProfile;
-        }
+        //! Creates a non-OpenXR binding with the given paths, one for each required input (ie use this for multi-button inputs)
+        ActionBinding(std::initializer_list<Identifier> paths);
 
-        inline bool operator==(const ActionBinding& other) const {
-            return interactionProfile == other.interactionProfile && path == other.path;
-        }
+        bool isOpenXR() const;
+
+        bool operator==(const ActionBinding& other) const;
+
+        ActionBinding operator+(const ActionBinding& other) const;
     };
 
     template<ActionType type>
@@ -98,6 +112,7 @@ namespace Carrot::IO {
 
     public:
         void suggestBinding(ActionBinding binding) {
+            verify(binding.paths.size() == 1 || type == ActionType::BoolInput, "Only BoolInput supports multi-inputs");
             suggestedBindings.emplace_back(std::move(binding));
         }
 
@@ -169,20 +184,7 @@ namespace Carrot::IO {
     private:
         std::string name;
         std::vector<ActionBinding> suggestedBindings;
-        union State {
-            struct BoolState {
-                bool value;
-                bool previousValue;
-            } b;
-            struct FloatValue {
-                float value;
-                float previousValue;
-            } f;
-            struct Vec2Value {
-                glm::vec2 value;
-                glm::vec2 previousValue;
-            } v2;
-        } state;
+        InputState state{};
 
         // non-trivial constructor so keeping it inside the union is not great
         struct {
@@ -233,33 +235,33 @@ namespace Carrot::IO {
     using VibrationOutputAction = Action<ActionType::VibrationOutput>;
 
     inline ActionBinding GLFWKeyBinding(int glfwCode) {
-        return Carrot::sprintf("/user/glfw/keyboard/%d", glfwCode);
+        return Identifier { Carrot::sprintf("/user/glfw/keyboard/%d", glfwCode) };
     }
 
     inline ActionBinding GLFWMouseButtonBinding(int buttonID) {
-        return Carrot::sprintf("/user/glfw/mouse/%d", buttonID);
+        return Identifier { Carrot::sprintf("/user/glfw/mouse/%d", buttonID) };
     }
 
     inline ActionBinding GLFWGamepadButtonBinding(int gamepadID, int buttonID) {
-        return Carrot::sprintf("/user/glfw/gamepad/%d/button/%d", gamepadID, buttonID);
+        return Identifier { Carrot::sprintf("/user/glfw/gamepad/%d/button/%d", gamepadID, buttonID) };
     }
 
     inline ActionBinding GLFWGamepadAxisBinding(int gamepadID, int axisID) {
-        return Carrot::sprintf("/user/glfw/gamepad/%d/axis/%d", gamepadID, axisID);
+        return Identifier { Carrot::sprintf("/user/glfw/gamepad/%d/axis/%d", gamepadID, axisID) };
     }
 
     inline ActionBinding GLFWGamepadVec2Binding(int gamepadID, Carrot::IO::GameInputVectorType vectorType) {
-        return Carrot::sprintf("/user/glfw/gamepad/%d/vec2/%d", gamepadID, vectorType);
+        return Identifier { Carrot::sprintf("/user/glfw/gamepad/%d/vec2/%d", gamepadID, vectorType) };
     }
 
     inline ActionBinding GLFWKeysVec2Binding(Carrot::IO::GameInputVectorType vectorType) {
-        return Carrot::sprintf("/user/glfw/keys/vec2/%d", vectorType);
+        return Identifier { Carrot::sprintf("/user/glfw/keys/vec2/%d", vectorType) };
     }
 
-    static const ActionBinding GLFWMousePositionBinding = "/user/glfw/mouse/pos";
-    static const ActionBinding GLFWMouseDeltaBinding = "/user/glfw/mouse/delta";
-    static const ActionBinding GLFWMouseWheel = "/user/glfw/mouse/wheel";
-    static const ActionBinding GLFWGrabbedMouseDeltaBinding = "/user/glfw/mouse/delta_grabbed";
+    static const ActionBinding GLFWMousePositionBinding = Identifier { "/user/glfw/mouse/pos" };
+    static const ActionBinding GLFWMouseDeltaBinding = Identifier { "/user/glfw/mouse/delta" };
+    static const ActionBinding GLFWMouseWheel = Identifier { "/user/glfw/mouse/wheel" };
+    static const ActionBinding GLFWGrabbedMouseDeltaBinding = Identifier { "/user/glfw/mouse/delta_grabbed" };
 
     // Input profiles
     constexpr static const char* const SimpleController = "/interaction_profiles/khr/simple_controller";
@@ -275,7 +277,7 @@ namespace Carrot::IO {
     inline ActionBinding OpenXRBinding(const std::string& interactionProfile, const std::string& path) {
         ActionBinding binding;
         binding.interactionProfile = interactionProfile;
-        binding.path = path;
+        binding.paths.emplaceBack(path);
         return binding;
     }
 }
