@@ -15,7 +15,7 @@ Carrot::LoadingScreen::LoadingScreen(Engine& engine): engine(engine) {
 
     // prepare pipeline
     vk::AttachmentDescription output {
-            .format = vk::Format::eB8G8R8A8Unorm,
+            .format = vk::Format::eB8G8R8A8Srgb,
 
             .loadOp = vk::AttachmentLoadOp::eClear,
             .storeOp = vk::AttachmentStoreOp::eStore,
