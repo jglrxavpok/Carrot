@@ -95,7 +95,129 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
         zoomToContent = false;
     }
 
+    // shortcut handling
+    {
+        // used for cut functionality
+        Carrot::Vector<EditorNode*> copiedNodes;
+        Carrot::Vector<Link*> copiedLinks;
+
+        auto copyToClipboard = [&](Clipboard& clipboard) {
+            Carrot::Vector<ed::NodeId> selectedGraphNodes;
+            selectedGraphNodes.resize(ed::GetSelectedObjectCount());
+
+            int nodeCount = ed::GetSelectedNodes(selectedGraphNodes.data(), static_cast<int>(selectedGraphNodes.size()));
+
+            selectedGraphNodes.resize(nodeCount);
+
+            if (nodeCount == 0) {
+                return;
+            }
+
+            clipboard.links.clear();
+            clipboard.nodes.clear();
+
+            clipboard.boundsMin = { +INFINITY, +INFINITY };
+            clipboard.boundsMax = { -INFINITY, -INFINITY };
+
+            std::unordered_map<EditorNode*, u32> remap;
+            std::unordered_set<EditorNode*> copiedNodesSet;
+            for (const ed::NodeId& nodeID : selectedGraphNodes) {
+                auto iter = this->id2uuid.find(nodeID.Get());
+                if(iter == id2uuid.end()) {
+                    continue;
+                }
+
+                auto iter2 = id2node.find(iter->second);
+                if(iter2 == id2node.end()) {
+                    continue;
+                }
+
+                EditorNode* pNode = iter2->second.get();
+                remap[pNode] = static_cast<u32>(clipboard.nodes.size());
+                clipboard.nodes.emplaceBack(pNode->toJSON(clipboard.jsonAllocator));
+                clipboard.boundsMin = glm::min(clipboard.boundsMin, pNode->getPosition());
+                clipboard.boundsMax = glm::min(clipboard.boundsMax, pNode->getPosition() + pNode->getSize());
+
+                copiedNodes.emplaceBack(pNode);
+                copiedNodesSet.insert(pNode);
+            }
+
+            for (auto& graphLink : links) {
+                // if one of the lock() returns nullptr below, this means we are looking at a link referencing a node that was just deleted
+                // unlikely, but could happen if the user is quick enough
+                if (auto pPinFrom = graphLink.from.lock()) {
+                    if (auto pPinTo = graphLink.to.lock()) {
+                        if (!copiedNodesSet.contains(&pPinFrom->owner)) {
+                            continue;
+                        }
+                        if (!copiedNodesSet.contains(&pPinTo->owner)) {
+                            continue;
+                        }
+                        ClipboardLink& link = clipboard.links.emplaceBack();
+                        link.nodeFrom = remap[&pPinFrom->owner];
+                        link.nodeTo = remap[&pPinTo->owner];
+                        link.pinFrom = pPinFrom->pinIndex;
+                        link.pinTo = pPinTo->pinIndex;
+                        copiedLinks.emplaceBack(&graphLink);
+                    }
+                }
+            }
+        };
+
+        auto pasteFromClipboard = [&](Clipboard& clipboard) {
+            Carrot::Vector<EditorNode*> remap; // works because the data structure for nodes is stable
+            remap.ensureReserve(clipboard.nodes.size());
+            for (const auto& serializedNode : clipboard.nodes) {
+                rapidjson::Value copy{};
+                copy.CopyFrom(serializedNode, clipboard.jsonAllocator);
+
+                // generate a new UUID for the copied node to avoid conflicts if we attempt to duplicate the node
+                Carrot::UUID newUUID{};
+                copy["node_id"] = rapidjson::Value(newUUID.toString().c_str(), clipboard.jsonAllocator);
+
+                EditorNode& instantiatedNode = loadSingleNode(copy);
+                remap.emplaceBack(&instantiatedNode);
+
+                // TODO: follow mouse, while using clipboard.boundsMin/Max
+            }
+
+            for (const auto& serializedLink : clipboard.links) {
+                addLink(Link {
+                    .id = nextID(),
+                    .from = remap[serializedLink.nodeFrom]->getOutputs()[serializedLink.pinFrom],
+                    .to = remap[serializedLink.nodeTo]->getInputs()[serializedLink.pinTo],
+                });
+            }
+        };
+
+        if (cutQueued) {
+            copyToClipboard(clipboard);
+
+            for (auto& pLink : copiedLinks) {
+                removeLink(*pLink);
+            }
+            for (auto& pNode : copiedNodes) {
+                removeNode(*pNode);
+            }
+        } else if (copyQueued) {
+            copyToClipboard(clipboard);
+        } else if (pasteQueued) {
+            pasteFromClipboard(clipboard);
+        } else if (duplicateQueued) {
+            Clipboard localClipboard;
+            copyToClipboard(localClipboard);
+            pasteFromClipboard(localClipboard);
+        }
+
+        cutQueued = false;
+        copyQueued = false;
+        pasteQueued = false;
+        duplicateQueued = false;
+    }
+
     ed::End();
+
+    isFocused = ImGui::IsWindowFocused();
 
     if(ImGui::BeginPopupContextWindow("##popup")) {
         if (ImGui::BeginMenu("Add node")) {
@@ -119,6 +241,34 @@ void Tools::EditorGraph::tick(double deltaTime) {
     }
 
     tmpLabels.erase(std::find_if(tmpLabels.begin(), tmpLabels.end(), [&](const auto& l) { return l.remainingTime < 0.0f; }), tmpLabels.end());
+}
+
+void Tools::EditorGraph::onCutShortcut(const Carrot::Render::Context& frame) {
+    if (!isFocused) {
+        return;
+    }
+    cutQueued = true;
+}
+
+void Tools::EditorGraph::onCopyShortcut(const Carrot::Render::Context& frame) {
+    if (!isFocused) {
+        return;
+    }
+    copyQueued = true;
+}
+
+void Tools::EditorGraph::onPasteShortcut(const Carrot::Render::Context& frame) {
+    if (!isFocused) {
+        return;
+    }
+    pasteQueued = true;
+}
+
+void Tools::EditorGraph::onDuplicateShortcut(const Carrot::Render::Context& frame) {
+    if (!isFocused) {
+        return;
+    }
+    duplicateQueued = true;
 }
 
 void Tools::EditorGraph::handleLinkCreation(std::shared_ptr<Tools::Pin> pinA, std::shared_ptr<Tools::Pin> pinB) {
@@ -308,17 +458,21 @@ Tools::EditorGraph::~EditorGraph() {
     g_Context = nullptr;
 }
 
+Tools::EditorNode& Tools::EditorGraph::loadSingleNode(const rapidjson::Value& nodeJSON) {
+    std::string internalName = nodeJSON["node_type"].GetString();
+    auto& initialiser = nodeLibrary[internalName];
+    if(initialiser) {
+        return (*initialiser)(*this, nodeJSON);
+    } else {
+        throw ParseError("Unknown internalName: " + internalName);
+    }
+}
+
 void Tools::EditorGraph::loadFromJSON(const rapidjson::Value& json) {
     clear();
     auto nodeArray = json["nodes"].GetArray();
     for(const auto& nodeJSON : nodeArray) {
-        std::string internalName = nodeJSON["node_type"].GetString();
-        auto& initialiser = nodeLibrary[internalName];
-        if(initialiser) {
-            (*initialiser)(*this, nodeJSON);
-        } else {
-            throw ParseError("Unknown internalName: " + internalName);
-        }
+        loadSingleNode(nodeJSON);
     }
 
     auto getPin = [&](const rapidjson::Value& json) -> std::shared_ptr<Pin> {
@@ -371,7 +525,7 @@ rapidjson::Value Tools::EditorGraph::toJSON(rapidjson::Document& document) {
 
     auto nodeArray = rapidjson::Value(rapidjson::kArrayType);
     for(const auto& [id, node] : id2node) {
-        nodeArray.PushBack(node->toJSON(document), document.GetAllocator());
+        nodeArray.PushBack(node->toJSON(document.GetAllocator()), document.GetAllocator());
     }
     result.AddMember("nodes", nodeArray, document.GetAllocator());
 

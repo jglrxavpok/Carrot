@@ -46,9 +46,9 @@ namespace Tools {
         }
 
     public:
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
-                                     .AddMember("template_name", Carrot::JSON::makeRef(templateName), doc.GetAllocator())
+                                     .AddMember("template_name", Carrot::JSON::makeRef(templateName), allocator)
             );
         }
 

@@ -84,10 +84,10 @@ namespace Tools {
         return EditorNode::renderHeaderWidgets(); // NOLINT(*-parent-virtual-call) (on purpose, otherwise infinite recursion)
     }
 
-    rapidjson::Value BinaryFunctionNode::serialiseToJSON(rapidjson::Document& doc, u8 variantIndex) const {
+    rapidjson::Value BinaryFunctionNode::serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator, u8 variantIndex) const {
         rapidjson::Value result{rapidjson::kObjectType};
         if (currentVariant == InputAndConstantVariant || currentVariant == ConstantAndInputVariant) {
-            result.AddMember("constant", constant, doc.GetAllocator());
+            result.AddMember("constant", constant, allocator);
         }
         return result;
     }

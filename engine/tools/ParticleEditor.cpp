@@ -341,14 +341,17 @@ void Tools::ParticleEditor::onFrame(const Carrot::Render::Context& renderContext
         ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
         ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).width,
                                         engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).height - menuBarHeight));
+        focusedGraph = Graph::None;
         if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
             if(ImGui::BeginTabBar("ParticleEditorTabs")) {
                 if(ImGui::BeginTabItem("Update##tab particle editor")) {
                     updateUpdateGraph(renderContext);
+                    focusedGraph = Graph::Update;
                     ImGui::EndTabItem();
                 }
                 if(ImGui::BeginTabItem("Render##tab particle editor")) {
                     updateRenderGraph(renderContext);
+                    focusedGraph = Graph::Render;
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();
@@ -468,4 +471,56 @@ void Tools::ParticleEditor::onSwapchainImageCountChange(size_t newCount) {
 
 void Tools::ParticleEditor::onSwapchainSizeChange(Carrot::Window& w, int newWidth, int newHeight) {
     previewRenderGraph->onSwapchainSizeChange(w, newWidth, newHeight);
+}
+
+void Tools::ParticleEditor::onCutShortcut(const Carrot::Render::Context& frame) {
+    switch(focusedGraph) {
+        case Graph::Render:
+            renderGraph.onCutShortcut(frame);
+            break;
+
+        case Graph::Update:
+            updateGraph.onCutShortcut(frame);
+            break;
+    }
+    templateEditor.onCutShortcut(frame);
+}
+
+void Tools::ParticleEditor::onCopyShortcut(const Carrot::Render::Context& frame) {
+    switch(focusedGraph) {
+        case Graph::Render:
+            renderGraph.onCopyShortcut(frame);
+            break;
+
+        case Graph::Update:
+            updateGraph.onCopyShortcut(frame);
+            break;
+    }
+    templateEditor.onCopyShortcut(frame);
+}
+
+void Tools::ParticleEditor::onPasteShortcut(const Carrot::Render::Context& frame) {
+    switch(focusedGraph) {
+        case Graph::Render:
+            renderGraph.onPasteShortcut(frame);
+            break;
+
+        case Graph::Update:
+            updateGraph.onPasteShortcut(frame);
+            break;
+    }
+    templateEditor.onPasteShortcut(frame);
+}
+
+void Tools::ParticleEditor::onDuplicateShortcut(const Carrot::Render::Context& frame) {
+    switch(focusedGraph) {
+        case Graph::Render:
+            renderGraph.onDuplicateShortcut(frame);
+            break;
+
+        case Graph::Update:
+            updateGraph.onDuplicateShortcut(frame);
+            break;
+    }
+    templateEditor.onDuplicateShortcut(frame);
 }

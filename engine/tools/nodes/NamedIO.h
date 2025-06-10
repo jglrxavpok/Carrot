@@ -36,11 +36,11 @@ namespace Tools {
         uint32_t getDimensionCount() const { return dimensions; };
 
     public:
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
-                                     .AddMember("name", Carrot::JSON::makeRef(name), doc.GetAllocator())
-                                     .AddMember("type", Carrot::JSON::makeRef(type.name()), doc.GetAllocator())
-                                     .AddMember("dimensions", dimensions, doc.GetAllocator())
+                                     .AddMember("name", Carrot::JSON::makeRef(name), allocator)
+                                     .AddMember("type", Carrot::JSON::makeRef(type.name()), allocator)
+                                     .AddMember("dimensions", dimensions, allocator)
             );
         }
 

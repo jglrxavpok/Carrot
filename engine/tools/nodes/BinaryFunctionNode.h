@@ -22,7 +22,7 @@ namespace Tools {
         std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, u8 variantIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override;
         bool renderHeaderWidgets(u8 variantIndex) override;
         bool renderCenter(u8 variantIndex) override;
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc, u8 variantIndex) const override;
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& doc, u8 variantIndex) const override;
         void onVariantChanged(u8 oldVariant) override;
         bool renderInputPins(u8 variantIndex) override;
         bool renderOutputPins(u8 variantIndex) override;

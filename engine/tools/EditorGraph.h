@@ -147,6 +147,33 @@ namespace Tools {
 
         std::chrono::time_point<std::chrono::steady_clock> lastChangeTime{};
         bool hasUnsavedChanges = false;
+        bool isFocused = false;
+
+        // shortcuts
+        bool cutQueued = false;
+        bool copyQueued = false;
+        bool pasteQueued = false;
+        bool duplicateQueued = false;
+
+        struct ClipboardLink {
+            u32 nodeFrom = 0; // index into 'nodes' below
+            u32 pinFrom = 0;
+
+            u32 nodeTo = 0; // index into 'nodes' below
+            u32 pinTo = 0;
+        };
+
+        // used to store nodes and links when user copies/cuts nodes and/or links, not intended for serialization
+        struct Clipboard {
+            rapidjson::MemoryPoolAllocator<> jsonAllocator;
+            Carrot::Vector<rapidjson::Value> nodes;
+            Carrot::Vector<ClipboardLink> links;
+
+            glm::vec2 boundsMin{};
+            glm::vec2 boundsMax{};
+        };
+
+        Clipboard clipboard;
 
         std::uint32_t nextFreeEditorID();
         static void showLabel(const std::string& text, ImColor color = ImColor(255, 32, 32, 255));
@@ -179,6 +206,12 @@ namespace Tools {
 
         void onFrame(Carrot::Render::Context renderContext);
         void tick(double deltaTime);
+
+    public:
+        void onCutShortcut(const Carrot::Render::Context& frame);
+        void onCopyShortcut(const Carrot::Render::Context& frame);
+        void onPasteShortcut(const Carrot::Render::Context& frame);
+        void onDuplicateShortcut(const Carrot::Render::Context& frame);
 
     public:
         void addTemporaryLabel(const std::string& text);
@@ -293,6 +326,7 @@ namespace Tools {
         }
 
     public:
+        EditorNode& loadSingleNode(const rapidjson::Value& nodeJSON);
         void loadFromJSON(const rapidjson::Value& json);
 
         rapidjson::Value toJSON(rapidjson::Document& document);

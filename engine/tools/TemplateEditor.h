@@ -28,6 +28,12 @@ namespace Tools {
         bool showUnsavedChangesPopup() override;
 
     public:
+        void onCutShortcut(const Carrot::Render::Context& frame) override;
+        void onCopyShortcut(const Carrot::Render::Context& frame) override;
+        void onPasteShortcut(const Carrot::Render::Context& frame) override;
+        void onDuplicateShortcut(const Carrot::Render::Context& frame) override;
+
+    public:
         EditorGraph& getGraph() { return graph; };
 
     private:

@@ -18,7 +18,7 @@ namespace Tools {
         virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, u8 variantIndex, std::unordered_set<Carrot::UUID>& activeLinks) const = 0;
         virtual bool renderHeaderWidgets(u8 variantIndex) = 0;
         virtual bool renderCenter(u8 variantIndex) = 0;
-        virtual rapidjson::Value serialiseToJSON(rapidjson::Document& doc, u8 variantIndex) const = 0;
+        virtual rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator, u8 variantIndex) const = 0;
         virtual void onVariantChanged(u8 oldVariant) {};
         virtual bool renderInputPins(u8 variantIndex);
         virtual bool renderOutputPins(u8 variantIndex);
@@ -27,7 +27,7 @@ namespace Tools {
         std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const final;
         bool renderHeaderWidgets() final;
         bool renderCenter() final;
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const final;
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const final;
         bool renderInputPins() final;
         bool renderOutputPins() final;
 

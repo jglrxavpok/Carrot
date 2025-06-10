@@ -8,6 +8,9 @@ namespace Tools {
     void ProjectMenuHolder::initShortcuts() {
         // TODO: base on settings
         cut.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_X));
+        copy.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_C));
+        paste.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_V));
+        duplicate.suggestBinding(Carrot::IO::GLFWKeyBinding(GLFW_KEY_LEFT_CONTROL) + Carrot::IO::GLFWKeyBinding(GLFW_KEY_D));
 
         shortcuts.add(cut);
         shortcuts.add(copy);
@@ -17,13 +20,13 @@ namespace Tools {
     }
 
     void ProjectMenuHolder::handleShortcuts(const Carrot::Render::Context& frame) {
-        if (cut.wasJustReleased()) {
+        if (cut.wasJustPressed()) {
             onCutShortcut(frame);
-        } else if (copy.wasJustReleased()) {
+        } else if (copy.wasJustPressed()) {
             onCopyShortcut(frame);
-        } else if (duplicate.wasJustReleased()) {
+        } else if (duplicate.wasJustPressed()) {
             onDuplicateShortcut(frame);
-        } else if (paste.wasJustReleased()) {
+        } else if (paste.wasJustPressed()) {
             onPasteShortcut(frame);
         }
     }

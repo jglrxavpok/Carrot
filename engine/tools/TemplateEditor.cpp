@@ -139,3 +139,19 @@ void Tools::TemplateEditor::saveToFile(std::filesystem::path path) {
 bool Tools::TemplateEditor::showUnsavedChangesPopup() {
     return hasUnsavedChanges;
 }
+
+void Tools::TemplateEditor::onCutShortcut(const Carrot::Render::Context& frame) {
+    graph.onCutShortcut(frame);
+}
+
+void Tools::TemplateEditor::onCopyShortcut(const Carrot::Render::Context& frame) {
+    graph.onCopyShortcut(frame);
+}
+
+void Tools::TemplateEditor::onPasteShortcut(const Carrot::Render::Context& frame) {
+    graph.onPasteShortcut(frame);
+}
+
+void Tools::TemplateEditor::onDuplicateShortcut(const Carrot::Render::Context& frame) {
+    graph.onDuplicateShortcut(frame);
+}

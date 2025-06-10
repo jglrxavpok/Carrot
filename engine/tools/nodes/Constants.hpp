@@ -28,9 +28,9 @@ namespace Tools {
             return ImGui::DragFloat("##Value", &value, 1.0f);
         }
 
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
-                        .AddMember("value", value, doc.GetAllocator())
+                        .AddMember("value", value, allocator)
             );
         }
 
@@ -63,9 +63,9 @@ namespace Tools {
             return ImGui::Checkbox("##Value", &value);
         }
 
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override {
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const override {
             return std::move(rapidjson::Value(rapidjson::kObjectType)
-                                     .AddMember("value", value, doc.GetAllocator())
+                                     .AddMember("value", value, allocator)
             );
         }
 

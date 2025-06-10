@@ -27,7 +27,7 @@ bool Tools::EditorNode::draw() {
 
     bool modified = false;
     u32 nodeID = graph.getEditorID(id);
-    const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
+    nodeSize = ed::GetNodeSize(nodeID);
     const ImVec2 nodePosition = ed::GetNodePosition(nodeID);
 
     ed::BeginNode(nodeID);
@@ -114,7 +114,6 @@ bool Tools::EditorNode::draw() {
 
 void Tools::EditorNode::handlePosition() {
     u32 nodeID = graph.getEditorID(id);
-    const ImVec2 nodeSize = ed::GetNodeSize(nodeID);
 
     if(updatePosition) {
         ed::SetNodePosition(nodeID, position);
@@ -234,10 +233,21 @@ Tools::EditorNode& Tools::EditorNode::setPosition(ImVec2 position) {
     return *this;
 }
 
+Tools::EditorNode& Tools::EditorNode::setPosition(glm::vec2 position) {
+    return setPosition(ImVec2 { position.x, position.y });
+}
+
+glm::vec2 Tools::EditorNode::getPosition() const {
+    return glm::vec2 { position.x, position.y };
+}
+
+glm::vec2 Tools::EditorNode::getSize() const {
+    return glm::vec2 { nodeSize.x, nodeSize.y };
+}
+
 void Tools::EditorNode::followMouseUntilClick() {
     followingMouseUntilClick = true;
 }
-
 
 Tools::EditorNode::~EditorNode() {
 
@@ -247,17 +257,17 @@ ImColor Tools::EditorNode::getHeaderColor() const {
     return ImColor(0.3f, 0.3f, 0.3f, 0.3f);
 }
 
-rapidjson::Value Tools::EditorNode::toJSON(rapidjson::Document& doc) const {
+rapidjson::Value Tools::EditorNode::toJSON(rapidjson::MemoryPoolAllocator<>& allocator) const {
     rapidjson::Value object(rapidjson::kObjectType);
-    object.AddMember("x", position.x, doc.GetAllocator());
-    object.AddMember("y", position.y, doc.GetAllocator());
+    object.AddMember("x", position.x, allocator);
+    object.AddMember("y", position.y, allocator);
     auto uuidStr = id.toString();
-    object.AddMember("node_id", Carrot::JSON::makeRef(uuidStr), doc.GetAllocator());
-    object.AddMember("node_type", rapidjson::StringRef(internalName.c_str()), doc.GetAllocator());
+    object.AddMember("node_id", rapidjson::Value(uuidStr.c_str(), allocator), allocator);
+    object.AddMember("node_type", rapidjson::Value(internalName.c_str(), allocator), allocator);
 
-    auto serialised = serialiseToJSON(doc);
+    auto serialised = serialiseToJSON(allocator);
     if(!serialised.IsNull() && serialised.IsObject()) {
-        object.AddMember("extra", serialised, doc.GetAllocator());
+        object.AddMember("extra", serialised, allocator);
     }
     return object;
 }

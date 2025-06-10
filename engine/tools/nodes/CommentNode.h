@@ -17,7 +17,7 @@ namespace Tools {
         bool draw() override;
         bool renderHeaderWidgets() override;
         bool renderCenter() override;
-        rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const override;
+        rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const override;
         std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const override;
 
     private:

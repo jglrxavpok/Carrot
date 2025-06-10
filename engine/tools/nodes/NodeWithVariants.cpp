@@ -55,9 +55,9 @@ namespace Tools {
         return EditorNode::renderInputPins();
     }
 
-    rapidjson::Value NodeWithVariants::serialiseToJSON(rapidjson::Document& doc) const {
-        rapidjson::Value result = serialiseToJSON(doc, currentVariant);
-        result.AddMember("current_variant", currentVariant, doc.GetAllocator());
+    rapidjson::Value NodeWithVariants::serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const {
+        rapidjson::Value result = serialiseToJSON(allocator, currentVariant);
+        result.AddMember("current_variant", currentVariant, allocator);
         return result;
     }
 

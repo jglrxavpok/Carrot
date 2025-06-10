@@ -67,6 +67,7 @@ namespace Tools {
         bool updatePosition = true;
         bool followingMouseUntilClick = false;
         ImVec2 position{};
+        ImVec2 nodeSize{};
 
     public:
         explicit EditorNode(EditorGraph& graph, std::string title, std::string internalName);
@@ -76,6 +77,9 @@ namespace Tools {
         virtual ~EditorNode();
 
         EditorNode& setPosition(ImVec2 position);
+        EditorNode& setPosition(glm::vec2 position);
+        glm::vec2 getPosition() const;
+        glm::vec2 getSize() const;
         void followMouseUntilClick();
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
@@ -106,10 +110,10 @@ namespace Tools {
         const Carrot::UUID& getID() const { return id; };
 
     public:
-        virtual rapidjson::Value serialiseToJSON(rapidjson::Document& doc) const {
+        virtual rapidjson::Value serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const {
             return rapidjson::Value();
         }
-        rapidjson::Value toJSON(rapidjson::Document& doc) const;
+        rapidjson::Value toJSON(rapidjson::MemoryPoolAllocator<>& allocator) const;
 
         virtual std::shared_ptr<Carrot::Expression> toExpression(uint32_t outputIndex, std::unordered_set<Carrot::UUID>& activeLinks) const = 0;
 

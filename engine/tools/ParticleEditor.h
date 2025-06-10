@@ -18,6 +18,12 @@
 namespace Tools {
     class ParticleEditor: public SwapchainAware, public ProjectMenuHolder {
     public:
+        enum class Graph {
+            None,
+            Render,
+            Update,
+        };
+
         void clear();
         bool showUnsavedChangesPopup() override;
 
@@ -34,6 +40,11 @@ namespace Tools {
         ~ParticleEditor();
 
     public:
+        void onCutShortcut(const Carrot::Render::Context& frame) override;
+        void onCopyShortcut(const Carrot::Render::Context& frame) override;
+        void onPasteShortcut(const Carrot::Render::Context& frame) override;
+        void onDuplicateShortcut(const Carrot::Render::Context& frame) override;
+
         static void addCommonInputs(Tools::EditorGraph& graph);
         static void addCommonOperators(Tools::EditorGraph& graph);
         static void addCommonLogic(Tools::EditorGraph& graph);
@@ -46,6 +57,7 @@ namespace Tools {
 
     private:
         Carrot::Engine& engine;
+        Graph focusedGraph;
         EditorSettings settings;
         EditorGraph updateGraph;
         EditorGraph renderGraph;

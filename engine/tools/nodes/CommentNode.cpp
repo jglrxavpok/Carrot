@@ -103,10 +103,10 @@ namespace Tools {
         return false;
     }
 
-    rapidjson::Value CommentNode::serialiseToJSON(rapidjson::Document& doc) const {
+    rapidjson::Value CommentNode::serialiseToJSON(rapidjson::MemoryPoolAllocator<>& allocator) const {
         rapidjson::Value r{rapidjson::kObjectType};
-        r.AddMember("comment", rapidjson::Value{commentTitle, doc.GetAllocator()}, doc.GetAllocator());
-        r.AddMember("size", Carrot::JSON::write(glm::vec2{size.x, size.y}, doc.GetAllocator()), doc.GetAllocator());
+        r.AddMember("comment", rapidjson::Value{commentTitle, allocator}, allocator);
+        r.AddMember("size", Carrot::JSON::write(glm::vec2{size.x, size.y}, allocator), allocator);
         return r;
     }
 
