@@ -136,7 +136,7 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
                 remap[pNode] = static_cast<u32>(clipboard.nodes.size());
                 clipboard.nodes.emplaceBack(pNode->toJSON(clipboard.jsonAllocator));
                 clipboard.boundsMin = glm::min(clipboard.boundsMin, pNode->getPosition());
-                clipboard.boundsMax = glm::min(clipboard.boundsMax, pNode->getPosition() + pNode->getSize());
+                clipboard.boundsMax = glm::max(clipboard.boundsMax, pNode->getPosition() + pNode->getSize());
 
                 copiedNodes.emplaceBack(pNode);
                 copiedNodesSet.insert(pNode);
@@ -167,6 +167,7 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
         auto pasteFromClipboard = [&](Clipboard& clipboard) {
             Carrot::Vector<EditorNode*> remap; // works because the data structure for nodes is stable
             remap.ensureReserve(clipboard.nodes.size());
+            const glm::vec2 center = (clipboard.boundsMin + clipboard.boundsMax) / 2.0f;
             for (const auto& serializedNode : clipboard.nodes) {
                 rapidjson::Value copy{};
                 copy.CopyFrom(serializedNode, clipboard.jsonAllocator);
@@ -178,7 +179,8 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
                 EditorNode& instantiatedNode = loadSingleNode(copy);
                 remap.emplaceBack(&instantiatedNode);
 
-                // TODO: follow mouse, while using clipboard.boundsMin/Max
+                const glm::vec2 offsetFromCenter = instantiatedNode.getPosition() - center;
+                instantiatedNode.followMouseUntilClick(offsetFromCenter);
             }
 
             for (const auto& serializedLink : clipboard.links) {
@@ -698,7 +700,7 @@ void Tools::EditorGraph::recurseDrawNodeLibraryMenus(const NodeLibraryMenu& menu
                 case NodeValidity::Possible: {
                     auto& node = init(*this);
                     node.setPosition(ImVec2(0,0));
-                    node.followMouseUntilClick(); // makes it easier to position the node after creating it
+                    node.followMouseUntilClick({}); // makes it easier to position the node after creating it
                     markDirty();
                 } break;
 

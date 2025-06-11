@@ -118,11 +118,16 @@ void Tools::EditorNode::handlePosition() {
     if(updatePosition) {
         ed::SetNodePosition(nodeID, position);
     } else if (followingMouseUntilClick) {
-        ImVec2 mousePos = ImGui::GetMousePos();
+        const ImVec2 mousePos = ImGui::GetMousePos();
         if (ed::IsActive() && ImGui::IsMousePosValid(&mousePos)) {
             ImVec2 nodePos;
-            nodePos.x = mousePos.x - nodeSize.x/2;
-            nodePos.y = mousePos.y - ImGui::GetTextLineHeight()/2;
+            if (offsetFromMouse.has_value()) { // code asked for specific position relative to mouse
+                nodePos.x = mousePos.x + offsetFromMouse->x;
+                nodePos.y = mousePos.y + offsetFromMouse->y;
+            } else { // header centered on mouse
+                nodePos.x = mousePos.x - nodeSize.x/2;
+                nodePos.y = mousePos.y - ImGui::GetTextLineHeight()/2;
+            }
             ed::SetNodePosition(nodeID, nodePos);
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 followingMouseUntilClick = false;
@@ -245,8 +250,9 @@ glm::vec2 Tools::EditorNode::getSize() const {
     return glm::vec2 { nodeSize.x, nodeSize.y };
 }
 
-void Tools::EditorNode::followMouseUntilClick() {
+void Tools::EditorNode::followMouseUntilClick(std::optional<glm::vec2> offsetFromMouse) {
     followingMouseUntilClick = true;
+    this->offsetFromMouse = offsetFromMouse;
 }
 
 Tools::EditorNode::~EditorNode() {

@@ -66,6 +66,7 @@ namespace Tools {
         Carrot::UUID id;
         bool updatePosition = true;
         bool followingMouseUntilClick = false;
+        std::optional<glm::vec2> offsetFromMouse{};
         ImVec2 position{};
         ImVec2 nodeSize{};
 
@@ -80,7 +81,11 @@ namespace Tools {
         EditorNode& setPosition(glm::vec2 position);
         glm::vec2 getPosition() const;
         glm::vec2 getSize() const;
-        void followMouseUntilClick();
+
+        // Makes the node follow the mouse until the user clicks. 'offsetFromMouse' is used to make the node appear at a specific location relative to the mouse
+        // This is used when moving groups of nodes at once.
+        // If set to empty, the node will have its header centered on the mouse
+        void followMouseUntilClick(std::optional<glm::vec2> offsetFromMouse);
 
         // return true if the contents of the node was changed, can be used to reload previews, show that there are unsaved changes, etc
         virtual bool draw();
