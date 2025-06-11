@@ -96,119 +96,137 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
     }
 
     // shortcut handling
-    {
-        // used for cut functionality
-        Carrot::Vector<EditorNode*> copiedNodes;
-        Carrot::Vector<Link*> copiedLinks;
+    // used for cut functionality
+    Carrot::Vector<EditorNode*> copiedNodes;
+    Carrot::Vector<Link*> copiedLinks;
 
-        auto copyToClipboard = [&](Clipboard& clipboard) {
-            Carrot::Vector<ed::NodeId> selectedGraphNodes;
-            selectedGraphNodes.resize(ed::GetSelectedObjectCount());
+    auto copyToClipboard = [&](Clipboard& clipboard) {
+        Carrot::Vector<ed::NodeId> selectedGraphNodes;
+        selectedGraphNodes.resize(ed::GetSelectedObjectCount());
 
-            int nodeCount = ed::GetSelectedNodes(selectedGraphNodes.data(), static_cast<int>(selectedGraphNodes.size()));
+        int nodeCount = ed::GetSelectedNodes(selectedGraphNodes.data(), static_cast<int>(selectedGraphNodes.size()));
 
-            selectedGraphNodes.resize(nodeCount);
+        selectedGraphNodes.resize(nodeCount);
 
-            if (nodeCount == 0) {
-                return;
+        if (nodeCount == 0) {
+            return;
+        }
+
+        clipboard.links.clear();
+        clipboard.nodes.clear();
+
+        clipboard.boundsMin = { +INFINITY, +INFINITY };
+        clipboard.boundsMax = { -INFINITY, -INFINITY };
+
+        std::unordered_map<EditorNode*, u32> remap;
+        std::unordered_set<EditorNode*> copiedNodesSet;
+        for (const ed::NodeId& nodeID : selectedGraphNodes) {
+            auto iter = this->id2uuid.find(nodeID.Get());
+            if(iter == id2uuid.end()) {
+                continue;
             }
 
-            clipboard.links.clear();
-            clipboard.nodes.clear();
-
-            clipboard.boundsMin = { +INFINITY, +INFINITY };
-            clipboard.boundsMax = { -INFINITY, -INFINITY };
-
-            std::unordered_map<EditorNode*, u32> remap;
-            std::unordered_set<EditorNode*> copiedNodesSet;
-            for (const ed::NodeId& nodeID : selectedGraphNodes) {
-                auto iter = this->id2uuid.find(nodeID.Get());
-                if(iter == id2uuid.end()) {
-                    continue;
-                }
-
-                auto iter2 = id2node.find(iter->second);
-                if(iter2 == id2node.end()) {
-                    continue;
-                }
-
-                EditorNode* pNode = iter2->second.get();
-                remap[pNode] = static_cast<u32>(clipboard.nodes.size());
-                clipboard.nodes.emplaceBack(pNode->toJSON(clipboard.jsonAllocator));
-                clipboard.boundsMin = glm::min(clipboard.boundsMin, pNode->getPosition());
-                clipboard.boundsMax = glm::max(clipboard.boundsMax, pNode->getPosition() + pNode->getSize());
-
-                copiedNodes.emplaceBack(pNode);
-                copiedNodesSet.insert(pNode);
+            auto iter2 = id2node.find(iter->second);
+            if(iter2 == id2node.end()) {
+                continue;
             }
 
-            for (auto& graphLink : links) {
-                // if one of the lock() returns nullptr below, this means we are looking at a link referencing a node that was just deleted
-                // unlikely, but could happen if the user is quick enough
-                if (auto pPinFrom = graphLink.from.lock()) {
-                    if (auto pPinTo = graphLink.to.lock()) {
-                        if (!copiedNodesSet.contains(&pPinFrom->owner)) {
-                            continue;
-                        }
-                        if (!copiedNodesSet.contains(&pPinTo->owner)) {
-                            continue;
-                        }
-                        ClipboardLink& link = clipboard.links.emplaceBack();
-                        link.nodeFrom = remap[&pPinFrom->owner];
-                        link.nodeTo = remap[&pPinTo->owner];
-                        link.pinFrom = pPinFrom->pinIndex;
-                        link.pinTo = pPinTo->pinIndex;
-                        copiedLinks.emplaceBack(&graphLink);
+            EditorNode* pNode = iter2->second.get();
+            remap[pNode] = static_cast<u32>(clipboard.nodes.size());
+            clipboard.nodes.emplaceBack(pNode->toJSON(clipboard.jsonAllocator));
+            clipboard.boundsMin = glm::min(clipboard.boundsMin, pNode->getPosition());
+            clipboard.boundsMax = glm::max(clipboard.boundsMax, pNode->getPosition() + pNode->getSize());
+
+            copiedNodes.emplaceBack(pNode);
+            copiedNodesSet.insert(pNode);
+        }
+
+        for (auto& graphLink : links) {
+            // if one of the lock() returns nullptr below, this means we are looking at a link referencing a node that was just deleted
+            // unlikely, but could happen if the user is quick enough
+            if (auto pPinFrom = graphLink.from.lock()) {
+                if (auto pPinTo = graphLink.to.lock()) {
+                    if (!copiedNodesSet.contains(&pPinFrom->owner)) {
+                        continue;
                     }
+                    if (!copiedNodesSet.contains(&pPinTo->owner)) {
+                        continue;
+                    }
+                    ClipboardLink& link = clipboard.links.emplaceBack();
+                    link.nodeFrom = remap[&pPinFrom->owner];
+                    link.nodeTo = remap[&pPinTo->owner];
+                    link.pinFrom = pPinFrom->pinIndex;
+                    link.pinTo = pPinTo->pinIndex;
+                    copiedLinks.emplaceBack(&graphLink);
                 }
             }
-        };
+        }
+    };
 
-        auto pasteFromClipboard = [&](Clipboard& clipboard) {
-            Carrot::Vector<EditorNode*> remap; // works because the data structure for nodes is stable
-            remap.ensureReserve(clipboard.nodes.size());
-            const glm::vec2 center = (clipboard.boundsMin + clipboard.boundsMax) / 2.0f;
-            for (const auto& serializedNode : clipboard.nodes) {
-                rapidjson::Value copy{};
-                copy.CopyFrom(serializedNode, clipboard.jsonAllocator);
+    auto pasteFromClipboard = [&](Clipboard& clipboard) {
+        Carrot::Vector<EditorNode*> remap; // works because the data structure for nodes is stable
+        remap.ensureReserve(clipboard.nodes.size());
+        const glm::vec2 center = (clipboard.boundsMin + clipboard.boundsMax) / 2.0f;
+        for (const auto& serializedNode : clipboard.nodes) {
+            rapidjson::Value copy{};
+            copy.CopyFrom(serializedNode, clipboard.jsonAllocator);
 
-                // generate a new UUID for the copied node to avoid conflicts if we attempt to duplicate the node
-                Carrot::UUID newUUID{};
-                copy["node_id"] = rapidjson::Value(newUUID.toString().c_str(), clipboard.jsonAllocator);
+            // generate a new UUID for the copied node to avoid conflicts if we attempt to duplicate the node
+            Carrot::UUID newUUID{};
+            copy["node_id"] = rapidjson::Value(newUUID.toString().c_str(), clipboard.jsonAllocator);
 
-                EditorNode& instantiatedNode = loadSingleNode(copy);
-                remap.emplaceBack(&instantiatedNode);
+            EditorNode& instantiatedNode = loadSingleNode(copy);
+            remap.emplaceBack(&instantiatedNode);
 
-                const glm::vec2 offsetFromCenter = instantiatedNode.getPosition() - center;
-                instantiatedNode.followMouseUntilClick(offsetFromCenter);
-            }
+            const glm::vec2 offsetFromCenter = instantiatedNode.getPosition() - center;
+            instantiatedNode.followMouseUntilClick(offsetFromCenter);
+        }
 
-            for (const auto& serializedLink : clipboard.links) {
-                addLink(Link {
-                    .id = nextID(),
-                    .from = remap[serializedLink.nodeFrom]->getOutputs()[serializedLink.pinFrom],
-                    .to = remap[serializedLink.nodeTo]->getInputs()[serializedLink.pinTo],
-                });
-            }
-        };
+        for (const auto& serializedLink : clipboard.links) {
+            addLink(Link {
+                .id = nextID(),
+                .from = remap[serializedLink.nodeFrom]->getOutputs()[serializedLink.pinFrom],
+                .to = remap[serializedLink.nodeTo]->getInputs()[serializedLink.pinTo],
+            });
+        }
+    };
+
+    auto issueCutCommand = [&]() {
+        copyToClipboard(clipboard);
+
+        for (auto& pLink : copiedLinks) {
+            removeLink(*pLink);
+        }
+        for (auto& pNode : copiedNodes) {
+            removeNode(*pNode);
+        }
+    };
+
+    auto issueCopyCommand = [&]() {
+        copyToClipboard(clipboard);
+    };
+
+    auto issuePasteCommand = [&]() {
+        pasteFromClipboard(clipboard);
+    };
+
+    auto issueDuplicateCommand = [&]() {
+        Clipboard localClipboard;
+        copyToClipboard(localClipboard);
+        pasteFromClipboard(localClipboard);
+    };
+
+    {
+
 
         if (cutQueued) {
-            copyToClipboard(clipboard);
-
-            for (auto& pLink : copiedLinks) {
-                removeLink(*pLink);
-            }
-            for (auto& pNode : copiedNodes) {
-                removeNode(*pNode);
-            }
+            issueCutCommand();
         } else if (copyQueued) {
-            copyToClipboard(clipboard);
+            issueCopyCommand();
         } else if (pasteQueued) {
-            pasteFromClipboard(clipboard);
+            issuePasteCommand();
         } else if (duplicateQueued) {
-            Clipboard localClipboard;
-            copyToClipboard(localClipboard);
-            pasteFromClipboard(localClipboard);
+            issueDuplicateCommand();
         }
 
         cutQueued = false;
@@ -226,6 +244,19 @@ void Tools::EditorGraph::onFrame(Carrot::Render::Context renderContext) {
             recurseDrawNodeLibraryMenus(*rootMenu);
 
             ImGui::EndMenu();
+        }
+
+        if (ImGui::MenuItem("Cut")) {
+            issueCutCommand();
+        }
+        if (ImGui::MenuItem("Copy")) {
+            issueCopyCommand();
+        }
+        if (ImGui::MenuItem("Paste")) {
+            issuePasteCommand();
+        }
+        if (ImGui::MenuItem("Duplicate")) {
+            issueDuplicateCommand();
         }
         ImGui::EndPopup();
     }
