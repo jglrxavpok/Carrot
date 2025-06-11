@@ -112,19 +112,19 @@ void main() {
 
     uint clusterID = activeClusters[gl_LocalInvocationIndex + gl_WorkGroupID.x * TASK_WORKGROUP_SIZE];
 
-    if(clusterID >= push.maxCluster) {
-        return;
-    }
-    bool culled = cull(clusterID);
+    bool shouldRender = clusterID < push.maxCluster;
 
-    if(!culled) {
-        uint index = atomicAdd(meshletCount, 1);
-        OUT.clusterInstanceIDs[index] = clusterID;
+    if(shouldRender) {
+        bool culled = cull(clusterID);
+
+        if(!culled) {
+            uint index = atomicAdd(meshletCount, 1);
+            OUT.clusterInstanceIDs[index] = clusterID;
+        }
     }
 
     barrier();
 
-    if(gl_LocalInvocationIndex == 0) {
-        EmitMeshTasksEXT(meshletCount, 1, 1);
-    }
+    // Values are taken from arguments provided by the first invocation, it actually is undefined behavior to call EmitMeshTasksEXT in a non-uniform control flow
+    EmitMeshTasksEXT(meshletCount, 1, 1);
 }
