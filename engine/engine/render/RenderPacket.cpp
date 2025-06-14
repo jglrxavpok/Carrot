@@ -264,6 +264,13 @@ namespace Carrot::Render {
                 break;
             }
 
+            case PacketType::Procedural: {
+                for(const auto& cmd : commands) {
+                    cmds.draw(cmd.procedural.vertexCount, cmd.procedural.instanceCount, 0, 0);
+                }
+                break;
+            }
+
             case PacketType::Mesh: {
                 Carrot::Vector<vk::DrawMeshTasksIndirectCommandEXT> drawMeshTasks { tempAllocator };
                 drawMeshTasks.ensureReserve(commands.size());
@@ -303,6 +310,7 @@ namespace Carrot::Render {
 
             case PacketType::Compute:
             case PacketType::Mesh:
+            case PacketType::Procedural:
                 verify(!vertexBuffer, "Cannot use index buffer in compute or mesh shaders");
                 verify(!indexBuffer, "Cannot use index buffer in compute or mesh shaders");
                 break;

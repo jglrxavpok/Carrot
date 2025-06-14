@@ -50,6 +50,7 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
 
     renderingPipeline->checkForReloadableShaders();
 
+    // push particle update
     if(gotUpdated) {
         engine.addFrameTask([this, renderContext]() {
             if(usedParticleCount <= 0)
@@ -60,9 +61,10 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
 
             ZoneScopedN("Sort particles");
             // sort by distance to camera
+            const glm::vec3 cameraPos = camera.computePosition();
             std::sort(&particlePool[0], &particlePool[usedParticleCount], [&](const Particle& a, const Particle& b) {
-                auto toA = a.position - camera.getPosition();
-                auto toB = b.position - camera.getPosition();
+                auto toA = a.position - cameraPos;
+                auto toB = b.position - cameraPos;
 
                 return glm::dot(toA, toA) > glm::dot(toB, toB);
             });
@@ -71,6 +73,15 @@ void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContex
 
         gotUpdated = false;
     }
+
+    // draw particles
+    const Carrot::Render::PassName targetPass = isOpaque() ? Carrot::Render::PassEnum::TransparentGBuffer : Carrot::Render::PassEnum::OpaqueGBuffer;
+    Render::Packet& packet = renderContext.renderer.makeRenderPacket(targetPass, Carrot::Render::PacketType::Procedural, renderContext);
+    packet.pipeline = renderingPipeline;
+    Render::PacketCommand& command = packet.commands.emplace_back();
+    command.procedural.instanceCount = 1;
+    command.procedural.vertexCount = 6 * usedParticleCount;
+    renderContext.renderer.render(packet);
 }
 
 void Carrot::ParticleSystem::pullDataFromGPU() {

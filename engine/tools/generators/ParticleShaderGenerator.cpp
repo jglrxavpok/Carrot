@@ -474,7 +474,7 @@ namespace Tools {
             uint id;
         };
 
-        layout(set = 0, binding = 1) buffer Particles {
+        layout(set = 1, binding = 0) buffer Particles {
             Particle particles[MAX_PARTICLE_COUNT];
         };
          */

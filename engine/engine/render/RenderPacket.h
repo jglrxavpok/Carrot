@@ -34,8 +34,14 @@ namespace Carrot::Render {
         Unknown = 0,
         DrawIndexedInstanced,
         DrawUnindexedInstanced,
-        Compute,
-        Mesh
+        Compute, // compute shader, no geometry expected
+        Mesh, // mesh shader, your responsibility to provide the geometry via bindings
+        Procedural, // shaders generate the geometry
+    };
+
+    struct ProceduralCommand {
+        u32 vertexCount = 0;
+        u32 instanceCount = 1;
     };
 
     union PacketCommand {
@@ -43,6 +49,7 @@ namespace Carrot::Render {
         vk::DrawIndirectCommand drawUnindexedInstanced;
         vk::DispatchIndirectCommand compute;
         vk::DrawMeshTasksIndirectCommandEXT drawMeshTasks;
+        ProceduralCommand procedural;
 
         PacketCommand() {
             memset(this, 0, sizeof(PacketCommand));

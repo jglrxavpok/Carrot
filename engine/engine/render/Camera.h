@@ -34,6 +34,10 @@ namespace Carrot {
         const glm::vec3& getTarget() const;
         const glm::vec3& getPosition() const;
 
+        // Computes the world position of this camera, based on its viewMatrix.
+        // For PoseAndLookAt positions, this is the same as calling getPosition, but with an additional copy
+        glm::vec3 computePosition() const;
+
     public:
         void setTargetAndPosition(const glm::vec3& target, const glm::vec3& position);
         void setViewProjection(const glm::mat4& view, const glm::mat4& projection);

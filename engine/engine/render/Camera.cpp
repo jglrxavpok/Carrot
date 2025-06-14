@@ -56,13 +56,23 @@ namespace Carrot {
         return position;
     }
 
+    glm::vec3 Camera::computePosition() const {
+        if (type == ControlType::PoseAndLookAt) {
+            return position;
+        } else if (type == ControlType::ViewProjection) {
+            return viewMatrix[3];
+        }
+        TODO; // unhandled case
+        return {};
+    }
+
     glm::vec3& Camera::getTargetRef() {
         verify(type == ControlType::PoseAndLookAt, "Cannot get TARGET vector on non pose-and-look-at cameras!");
         return target;
     }
 
     glm::vec3& Camera::getPositionRef() {
-        verify(type == ControlType::PoseAndLookAt, "Cannot get POSITION vector on non pose-and-look-at cameras!");
+        verify(type == ControlType::PoseAndLookAt, "Cannot get POSITION ref vector on non pose-and-look-at cameras!");
         return position;
     }
 
