@@ -84,17 +84,28 @@ int main(int argc, char** argv) {
             return false;
         }
 
-        auto entryPointIter = value.FindMember("entry_point");
-        if(entryPointIter == value.MemberEnd()) {
-            std::cerr << memberName << " is missing 'entryPoint' field" << std::endl;
-            return false;
-        }
-
         // make sure pipeline refers to compiled shader
         const std::string shaderPath{ fileIter->value.GetString(), fileIter->value.GetStringLength() };
 
+        std::string entryPointName;
+        auto entryPointIter = value.FindMember("entry_point");
+        if(entryPointIter != value.MemberEnd()) {
+            entryPointName = entryPointIter->value.GetString();
+        } else {
+            const std::filesystem::path extension = std::filesystem::path{shaderPath}.extension();
+            if (extension == ".glsl") {
+                std::cerr << memberName << " is missing 'entryPoint' field. Required for GLSL file" << std::endl;
+                return false;
+            } else if (extension == ".slang") {
+                entryPointName = ShaderCompiler::InferEntryPointName;
+            } else {
+                std::cerr << memberName << " is missing 'entryPoint' field. Unknown extension: " << extension << std::endl;
+                return false;
+            }
+        }
+
         // removes file & entry object by a single path (which contains entry point name)
-        const std::string compiledShaderPath = ShaderCompiler::createCompiledShaderName(fileIter->value.GetString(), entryPointIter->value.GetString());
+        const std::string compiledShaderPath = ShaderCompiler::createCompiledShaderName(fileIter->value.GetString(), entryPointName.c_str());
         value = rapidjson::Value{ compiledShaderPath.c_str(), d.GetAllocator() };
 
         const std::filesystem::path shaderAbsoluteInputPath = basePath / shaderPath;
@@ -106,7 +117,7 @@ int main(int argc, char** argv) {
             shaderAbsoluteOutputPath.string().data(),
             stage,
             dependencies,
-            entryPointIter->value.GetString()
+            entryPointName.c_str()
             );
 
         dependencies.push_back(shaderAbsoluteInputPath);

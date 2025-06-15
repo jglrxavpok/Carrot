@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace ShaderCompiler {
+    inline const char* InferEntryPointName = "$$$$";
 
     enum class Stage {
         Vertex,
@@ -20,6 +21,7 @@ namespace ShaderCompiler {
         RayClosestHit,
     };
 
+    const char* convertToStr(ShaderCompiler::Stage stage);
     std::string createCompiledShaderName(const char* shaderFilename, const char* entryPointName);
 
     int compileShader(const char* basePath, const char* inputFilepath, const char* outputFilepath, Stage stage, std::vector<std::filesystem::path>& dependencies, const char* entryPointName);

@@ -59,7 +59,7 @@ namespace Carrot::Render {
         Carrot::Log::debug("Creating watcher on file '%s'", filepath.u8string().c_str());
 
         watcher = GetEngine().createFileWatcher([this, commandArgs = metadata.commandArguments](const std::filesystem::path& p) {
-            std::string command = "shadercompiler";
+            std::string command = "./shadercompiler";
             for(size_t i = 0; i < commandArgs.size(); i++) {
                 command += " ";
                 command += "\"";

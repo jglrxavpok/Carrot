@@ -12,50 +12,12 @@
 #include <core/utils/stringmanip.h>
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/prettywriter.h>
-#include <SPIRV/Logger.h>
-#include <SPIRV/SpvTools.h>
-#include <SPIRV/GlslangToSpv.h>
 
 #include "FileIncluder.h"
-#include "glslang/Public/ShaderLang.h"
-#include "glslang/Public/ResourceLimits.h"
+#include "GlslCompiler.h"
+#include "SlangCompiler.h"
 
 namespace ShaderCompiler {
-
-    EShLanguage convertToGLSLang(ShaderCompiler::Stage stage) {
-        switch(stage) {
-            case ShaderCompiler::Stage::Compute:
-                return EShLanguage::EShLangCompute;
-
-            case ShaderCompiler::Stage::Vertex:
-                return EShLanguage::EShLangVertex;
-
-            case ShaderCompiler::Stage::Fragment:
-                return EShLanguage::EShLangFragment;
-
-            case ShaderCompiler::Stage::Mesh:
-                return EShLanguage::EShLangMesh;
-
-            case ShaderCompiler::Stage::Task:
-                return EShLanguage::EShLangTask;
-
-            case ShaderCompiler::Stage::RayGen:
-                return EShLanguage::EShLangRayGen;
-
-            case ShaderCompiler::Stage::RayMiss:
-                return EShLanguage::EShLangMiss;
-
-            case ShaderCompiler::Stage::RayAnyHit:
-                return EShLanguage::EShLangAnyHit;
-
-            case ShaderCompiler::Stage::RayClosestHit:
-                return EShLanguage::EShLangClosestHit;
-
-            default:
-                throw std::invalid_argument("Unknown stage");
-        }
-    }
-
     const char* convertToStr(ShaderCompiler::Stage stage) {
         switch(stage) {
             case ShaderCompiler::Stage::Compute:
@@ -116,84 +78,24 @@ namespace ShaderCompiler {
             std::filesystem::create_directories(outputPath.parent_path());
         }
 
-        EShLanguage stage = convertToGLSLang(stageCarrot);
-        const char* stageStr = convertToStr(stageCarrot);
-
-        glslang::TShader shader(stage);
-
-        shader.setEntryPoint("main");
-        shader.setSourceEntryPoint(entryPointName);
-        shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
-        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
-        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
-
-        std::ifstream file(inputFile, std::ios::in);
-
-        std::string filecontents;
-
-        std::string line;
-        while (getline(file, line)) {
-            if (!filecontents.empty()) {
-                filecontents += '\n';
-            }
-            filecontents += line;
-        }
-
-        std::string preamble = R"(
-    #extension GL_GOOGLE_include_directive : enable
-    #extension GL_ARB_separate_shader_objects : enable
-    #extension GL_EXT_control_flow_attributes: enable
-    #extension GL_EXT_samplerless_texture_functions: enable
-    #extension GL_ARB_shader_draw_parameters: enable
-    )";
-        auto filepath = inputFile.string();
-        std::array strs {
-            filecontents.c_str(),
-        };
-        std::array names {
-                filepath.c_str(),
-        };
-        shader.setPreamble(preamble.c_str());
-        shader.setStringsWithLengthsAndNames(strs.data(), nullptr, names.data(), strs.size());
-
-        ShaderCompiler::FileIncluder includer { basePath };
-        TBuiltInResource Resources = *GetDefaultResources();
-        if(!shader.parse(&Resources, 460, false, EShMsgDefault, includer)) {
-            std::cerr << "Failed shader compilation. " << shader.getInfoLog() << std::endl;
-            return -4;
-        }
-
-        glslang::TProgram program;
-        program.addShader(&shader);
-        if(!program.link(EShMsgDefault)) {
-            std::cerr << "Failed shader linking. " << program.getInfoLog() << std::endl;
-            return -5;
-        }
-
-        auto& shaders = program.getShaders(stage);
-        if(shaders.empty()) {
-            std::cerr << "No program of type " << stageStr << " has been linked. This should NOT happen!!" << std::endl;
-            return -6;
-        }
-
-        if(!program.mapIO()) {
-            std::cerr << "Failed shader linking (glslang mapIO). " << program.getInfoLog() << std::endl;
-            return -7;
-        }
-
+        const std::filesystem::path extension = inputFile.extension();
         std::vector<std::uint32_t> spirv;
-        spv::SpvBuildLogger logger;
-        glslang::SpvOptions spvOptions;
+        const char* stageStr = convertToStr(stageCarrot);
+        ShaderCompiler::FileIncluder includer{ basePath };
+        if (extension == ".glsl") {
+            int result = GlslCompiler::compileToSpirv(basePath, stageCarrot, entryPointName, inputFile, spirv, includer);
+            if (result != 0) {
+                return result;
+            }
+        } else if (extension == ".slang") {
+            int result = SlangCompiler::compileToSpirv(basePath, stageCarrot, entryPointName, inputFile, spirv, includer);
+            if (result != 0) {
+                return result;
+            }
+        } else {
+            throw std::invalid_argument(Carrot::sprintf("File %s has extension %s which is not supported: only glsl and slang are supported", inputFile.string().c_str(), extension.string().c_str()));
+        }
 
-        // TODO: argument
-        spvOptions.generateDebugInfo = true;
-        spvOptions.stripDebugInfo = false;
-
-        spvOptions.disableOptimizer = true;
-        spvOptions.optimizeSize = false;
-        spvOptions.disassemble = false;
-        spvOptions.validate = true;
-        glslang::GlslangToSpv(*program.getIntermediate(stage), spirv, &logger, &spvOptions);
 
         {
             std::ofstream outputFile(outputPath, std::ios::binary);

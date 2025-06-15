@@ -91,3 +91,6 @@
 [submodule "thirdparty/jet-live"]
 	path = thirdparty/jet-live
 	url = https://github.com/ddovod/jet-live
+[submodule "thirdparty/slang"]
+	path = thirdparty/slang
+	url = https://github.com/shader-slang/slang

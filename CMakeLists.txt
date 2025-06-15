@@ -161,6 +161,13 @@ add_subdirectory(thirdparty/mimalloc)
 add_subdirectory(thirdparty/bc7enc_rdo)
 add_subdirectory(thirdparty/tomlplusplus)
 
+# Without this, on Linux, libslang.so conflicts with another dynamic library of the same name, but used for networking
+#  this makes slangc crash on init with this error:
+# symbol lookup error: /usr/local/bin/slangc: undefined symbol: _Z29slang_createGlobalSessionImplPK22SlangGlobalSessionDescPKN5Slang25GlobalSessionInternalDescEPPN5slang14IGlobalSessionE
+set(SLANG_LIB_TYPE STATIC)
+set(SLANG_ENABLE_SLANG_GLSLANG FALSE)
+add_subdirectory(thirdparty/slang)
+
 function(add_includes Target)
     add_core_includes(${Target})
     target_include_directories(${Target} PUBLIC ${ProjectRoot}engine/)

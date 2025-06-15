@@ -37,7 +37,7 @@ void main() {
     uint particleIndex = gl_VertexIndex / 6;
     outParticleIndex = particleIndex;
 
-    #define particle particles[nonuniformEXT(particleIndex)]
+    #define particle particles[(particleIndex)]
 
     mat3 inverseRotation = mat3(cbo.inverseView);
     inPosition = inverseRotation * inPosition;

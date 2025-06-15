@@ -8,8 +8,7 @@
   "depthWrite": true,
   "depthTest": true,
   "vertexShader": {
-    "file": "resources/shaders/particles.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/particles.vertex.slang"
   },
   "fragmentShader": {
     "file": "resources/shaders/particles.fragment.glsl",
