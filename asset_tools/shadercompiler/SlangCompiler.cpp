@@ -40,7 +40,7 @@ namespace SlangCompiler {
     }
 
     int compileToSpirv(const char* basePath, ShaderCompiler::Stage stageCarrot, const char* entryPointName, std::filesystem::path inputFile, std::vector<std::uint32_t>& spirv, ShaderCompiler::FileIncluder& includer) {
-        const bool inferEntryPointName = strcasecmp(entryPointName, ShaderCompiler::InferEntryPointName) != 0;
+        const bool inferEntryPointName = strcasecmp(entryPointName, ShaderCompiler::InferEntryPointName) == 0;
 
         // create global session. This probably wastes some time recreating it for each compiled shader, but each shader is considered independent from a build-system point-of-view
         Slang::ComPtr<IGlobalSession> globalSession;
@@ -52,13 +52,23 @@ namespace SlangCompiler {
         }
 
         std::vector<CompilerOptionEntry> compilerOptions;
-        compilerOptions.emplace_back(CompilerOptionEntry {
-            .name = CompilerOptionName::EntryPointName,
-            .value = CompilerOptionValue {
-                .kind = CompilerOptionValueKind::String,
-                .stringValue0 = entryPointName
-            }
-        });
+        if (inferEntryPointName) {
+            compilerOptions.emplace_back(CompilerOptionEntry {
+                .name = CompilerOptionName::Stage,
+                .value = CompilerOptionValue {
+                    .kind = CompilerOptionValueKind::Int,
+                    .intValue0 = (int)toSlangStage(stageCarrot)
+                }
+            });
+        } else {
+            compilerOptions.emplace_back(CompilerOptionEntry {
+                .name = CompilerOptionName::EntryPointName,
+                .value = CompilerOptionValue {
+                    .kind = CompilerOptionValueKind::String,
+                    .stringValue0 = entryPointName
+                }
+            });
+        }
         compilerOptions.emplace_back(CompilerOptionEntry {
             .name = CompilerOptionName::Profile,
             .value = CompilerOptionValue {
@@ -108,6 +118,29 @@ namespace SlangCompiler {
             return result;
         }
 
+        Slang::ComPtr<IComponentType> programWithEntryPoints;
+        result = request->getProgramWithEntryPoints(programWithEntryPoints.writeRef());
+        if (result < 0) {
+            std::cerr << "Slang getProgramWithEntryPoints failed with error " << result << std::endl;
+            std::cerr << request->getDiagnosticOutput() << std::endl;
+            return result;
+        }
+
+        SlangStage expectedStage = toSlangStage(stageCarrot);
+        ProgramLayout* layout = programWithEntryPoints->getLayout();
+        Slang::ComPtr<IBlob> code;
+        for (SlangUInt entryPointIndex = 0; entryPointIndex < layout->getEntryPointCount(); entryPointIndex++) {
+            EntryPointReflection* entryPoint = layout->getEntryPointByIndex(entryPointIndex);
+            if (entryPoint->getStage() == expectedStage) {
+                programWithEntryPoints->getEntryPointCode(entryPointIndex, 0, code.writeRef());
+            }
+        }
+
+        if (!code) {
+            std::cerr << "No entry point correspond to stage " << ShaderCompiler::convertToStr(stageCarrot) << std::endl;
+            return -1;
+        }
+
         // gather dependencies to create files required for hot reloading and CMake recompilation
         int dependencyCount = request->getDependencyFileCount();
         includer.includedFiles.reserve(dependencyCount);
@@ -116,8 +149,8 @@ namespace SlangCompiler {
         }
 
         // extract SPIR-V
-        std::size_t bytecodeSize = 0;
-        const void* pBytecode = request->getCompileRequestCode(&bytecodeSize);
+        std::size_t bytecodeSize = code->getBufferSize();
+        const void* pBytecode = code->getBufferPointer();
         verify(bytecodeSize % sizeof(std::uint32_t) == 0, "Returned bytecode is not multiple of sizeof(u32) ?");
         spirv.resize(bytecodeSize / sizeof(std::uint32_t));
         memcpy(spirv.data(), pBytecode, bytecodeSize);

@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         }
 
         // removes file & entry object by a single path (which contains entry point name)
-        const std::string compiledShaderPath = ShaderCompiler::createCompiledShaderName(fileIter->value.GetString(), entryPointName.c_str());
+        const std::string compiledShaderPath = ShaderCompiler::createCompiledShaderName(fileIter->value.GetString(), stage, entryPointName.c_str());
         value = rapidjson::Value{ compiledShaderPath.c_str(), d.GetAllocator() };
 
         const std::filesystem::path shaderAbsoluteInputPath = basePath / shaderPath;

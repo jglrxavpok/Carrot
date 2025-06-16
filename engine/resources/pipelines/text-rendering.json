@@ -11,12 +11,10 @@
     "MAX_MATERIALS": 1
   },
   "vertexShader": {
-    "file": "resources/shaders/text-rendering.vertex.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/text-rendering.slang"
   },
   "fragmentShader": {
-    "file": "resources/shaders/text-rendering.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/text-rendering.slang"
   },
   "descriptorSets": [
     {

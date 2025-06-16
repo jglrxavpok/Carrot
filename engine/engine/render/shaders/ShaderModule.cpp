@@ -114,9 +114,9 @@ void Carrot::ShaderModule::createBindingsSet(vk::ShaderStageFlagBits stage,
                 .descriptorType = type,
                 .descriptorCount = count,
                 .stageFlags = stage,
-        }, resource.name};
+        }, setID, resource.name};
 
-        auto existing = std::find_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.name == bindingToAdd.name; });
+        auto existing = std::find_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.setID == bindingToAdd.setID && b.vkBinding.binding == bindingToAdd.vkBinding.binding; });
         if(existing != bindings.end()) {
             if(bindingToAdd.areSame(*existing)) {
                 existing->vkBinding.stageFlags |= stage;

@@ -7,15 +7,17 @@
 namespace Carrot {
     struct NamedBinding {
         vk::DescriptorSetLayoutBinding vkBinding;
+        u32 setID;
         std::string name;
 
         bool areSame( NamedBinding const& rhs ) const
         {
-            return ( rhs.vkBinding.descriptorType == vkBinding.descriptorType )
+            return ( rhs.setID == setID )
+                   && ( rhs.vkBinding.descriptorType == vkBinding.descriptorType )
                    && ( rhs.vkBinding.descriptorCount == vkBinding.descriptorCount )
                    && ( rhs.vkBinding.binding == vkBinding.binding )
-                   && ( rhs.vkBinding.pImmutableSamplers == vkBinding.pImmutableSamplers )
-                   && ( rhs.name == name );
+                   && ( rhs.vkBinding.pImmutableSamplers == vkBinding.pImmutableSamplers );
+                   //&& ( rhs.name == name );
         }
     };
 }

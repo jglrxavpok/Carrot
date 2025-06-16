@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ShaderCompiler {
-    inline const char* InferEntryPointName = "$$$$";
+    inline const char* InferEntryPointName = "(inferred)";
 
     enum class Stage {
         Vertex,
@@ -22,7 +22,7 @@ namespace ShaderCompiler {
     };
 
     const char* convertToStr(ShaderCompiler::Stage stage);
-    std::string createCompiledShaderName(const char* shaderFilename, const char* entryPointName);
+    std::string createCompiledShaderName(const char* shaderFilename, Stage stage, const char* entryPointName);
 
     int compileShader(const char* basePath, const char* inputFilepath, const char* outputFilepath, Stage stage, std::vector<std::filesystem::path>& dependencies, const char* entryPointName);
 }

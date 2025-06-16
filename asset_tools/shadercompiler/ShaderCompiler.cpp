@@ -52,10 +52,12 @@ namespace ShaderCompiler {
         }
     }
 
-    std::string createCompiledShaderName(const char* shaderFilename, const char* entryPointName) {
+    std::string createCompiledShaderName(const char* shaderFilename, Stage stage, const char* entryPointName) {
         std::filesystem::path compiled{ shaderFilename };
         compiled += '#';
         compiled += entryPointName;
+        compiled += '-';
+        compiled += convertToStr(stage);
         compiled += ".spv";
         return compiled.string();
     }
