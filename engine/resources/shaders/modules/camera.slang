@@ -15,6 +15,14 @@ public struct CameraBufferObject {
 }
 
 public struct Camera {
-    public CameraBufferObject cbo;
-    public CameraBufferObject previousFrameCBO;
+    ConstantBuffer<CameraBufferObject> cbo;
+    ConstantBuffer<CameraBufferObject> previousFrameCBO;
+
+    public CameraBufferObject CurrentFrame() {
+        return cbo;
+    }
+
+    public CameraBufferObject PreviousFrame() {
+        return previousFrameCBO;
+    }
 }

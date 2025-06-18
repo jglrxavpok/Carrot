@@ -45,7 +45,8 @@ VSOutput vertex(int vertexID: SV_VertexID) {
 
     const Particle particle = particles.list[particleIndex];
 
-    mat3 inverseRotation = mat3(camera.cbo.inverseView);
+    const CameraBufferObject cbo = camera.CurrentFrame();
+    mat3 inverseRotation = mat3(cbo.inverseView);
     inPosition = inverseRotation * inPosition;
 
     float size = particle.size;
@@ -53,8 +54,8 @@ VSOutput vertex(int vertexID: SV_VertexID) {
 
     inPosition += particle.position;
 
-    vec4 viewPosition = camera.cbo.view * vec4(inPosition, 1.0);
-    o.hPos = camera.cbo.jitteredProjection * viewPosition;
+    vec4 viewPosition = cbo.view * vec4(inPosition, 1.0);
+    o.hPos = cbo.jitteredProjection * viewPosition;
 
     return o;
 }

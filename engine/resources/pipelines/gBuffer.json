@@ -22,10 +22,10 @@
   "depthTest": true,
   "vertexShader": {
     "file": "resources/shaders/gBuffer.vertex.glsl",
+    "_todo": "replacewith slang",
     "entry_point": "main"
   },
   "fragmentShader": {
-    "file": "resources/shaders/gBuffer.fragment.glsl",
-    "entry_point": "main"
+    "file": "resources/shaders/raster/draw_gbuffer.slang"
   }
 }
