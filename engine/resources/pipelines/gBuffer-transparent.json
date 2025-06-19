@@ -1,35 +1,4 @@
 {
-  "type": "gbuffer",
-  "subpassIndex": 0,
-  "vertexFormat": "Vertex",
-  "cull": false,
-  "alphaBlending": true,
-  "descriptorSets": [
-    {
-      "type": "camera",
-      "setID": 0
-    },
-    {
-      "type": "materials",
-      "setID": 1
-    },
-    {
-      "type": "viewport",
-      "setID": 2
-    },
-    {
-      "type": "per_draw",
-      "setID": 3
-    }
-  ],
-  "depthWrite": true,
-  "depthTest": true,
-  "vertexShader": {
-    "file": "resources/shaders/gBuffer.vertex.glsl",
-    "entry_point": "main"
-  },
-  "fragmentShader": {
-    "file": "resources/shaders/gBuffer-transparent.fragment.glsl",
-    "entry_point": "main"
-  }
+  "_import": "gBuffer.json",
+  "todo": "maybe replace with a forward pass?"
 }

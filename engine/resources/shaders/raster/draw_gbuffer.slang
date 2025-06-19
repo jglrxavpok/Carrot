@@ -3,10 +3,12 @@ import modules.camera;
 import modules.gbuffer;
 import modules.per_object;
 import modules.materials;
+import modules.viewport;
 
 ParameterBlock<Camera> camera;
 ParameterBlock<MaterialSystem> materialSystem;
 ParameterBlock<PerObjectDrawBuffers> objects;
+ParameterBlock<Viewport> viewport;
 
 mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
     vec3 N_ = normalize(input.N);
@@ -18,17 +20,28 @@ mat3 computeNormalMappingMatrix(in VSGBufferOutput input) {
 }
 
 [shader("pixel")]
-EncodedGBuffer pixel(in VSGBufferOutput input) {
+EncodedGBuffer pixel(in VSGBufferOutput input, float4 fragCoords: SV_Position) {
     GBuffer result;
 
-    const Material material = materialSystem.materials[objects.Load(input.inDrawID).materialIndex];
+    const ObjectDrawData object = objects.Load(input.inDrawID);
+    const Material material = materialSystem.materials[object.materialIndex];
     const MaterialOutput output = material.Compute(materialSystem, materialSystem.linearSampler, input.uv);
 
-    if (output.albedo.a < 0.01) {
+    vec4 albedo = output.albedo;
+    albedo *= input.vertexColor;
+    if (albedo.a < 0.01) {
         discard;
     }
 
-    result.albedo = output.albedo + vec4(result.emissiveColor, 0);
+    if (albedo.a < 1.0) {
+        // TODO: animate dithering? -> need smarter AA
+        if (materialSystem.Dither(uvec2(fragCoords.xy)) >= albedo.a) {
+            discard;
+        }
+    }
+    albedo.a = 1; // alpha done via dithering
+
+    result.albedo = albedo + vec4(result.emissiveColor, 0);
     result.emissiveColor = output.emissive;
 
     const mat3 toView = computeNormalMappingMatrix(input);

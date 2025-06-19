@@ -68,7 +68,7 @@ public struct MaterialSystem {
     public ConstantBuffer<Texture2D[]> textures;
     public SamplerState linearSampler;
     public SamplerState nearestSampler;
-    public ConstantBuffer<GlobalTextures> globalTextures;
+    public ConstantBuffer<GlobalTextures, ScalarDataLayout> globalTextures;
 
     public float4 SampleAlbedo(in Material mat, in SamplerState sampler, float2 uv) {
         return textures[mat.albedo].Sample(sampler, uv);
@@ -76,5 +76,11 @@ public struct MaterialSystem {
 
     public float4 Sample(uint textureIndex, in SamplerState sampler, float2 uv) {
         return textures[textureIndex].Sample(sampler, uv);
+    }
+
+    public float Dither(uvec2 coords) {
+        const uint DitherSize = 8;
+        const vec2 ditherUV = vec2(coords % DitherSize) / DitherSize;
+        return textures[globalTextures.dithering].Sample(nearestSampler, ditherUV).r;
     }
 }
