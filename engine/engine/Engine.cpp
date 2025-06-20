@@ -43,6 +43,7 @@
 #include <engine/ecs/systems/SoundListenerSystem.h>
 
 #include "ecs/components/PrefabInstanceComponent.h"
+#include "ecs/systems/SystemParticles.h"
 #include "engine/io/actions/ActionDebug.h"
 #include "engine/render/Sprite.h"
 #include "engine/physics/PhysicsSystem.h"
@@ -684,6 +685,7 @@ void Carrot::Engine::initECS() {
         components.add<Carrot::ECS::SoundListenerComponent>();
         components.add<Carrot::ECS::BillboardComponent>();
         components.add<Carrot::ECS::PrefabInstanceComponent>();
+        components.add<Carrot::ECS::ParticleEmitterComponent>();
     }
 
     {
@@ -700,6 +702,7 @@ void Carrot::Engine::initECS() {
         systems.addUniquePtrBased<Carrot::ECS::PhysicsCharacterSystem>();
         systems.addUniquePtrBased<Carrot::ECS::SoundListenerSystem>();
         systems.addUniquePtrBased<Carrot::ECS::BillboardSystem>();
+        systems.addUniquePtrBased<Carrot::ECS::SystemParticles>();
 
         systems.addUniquePtrBased<Carrot::ECS::LuaRenderSystem>();
         systems.addUniquePtrBased<Carrot::ECS::LuaUpdateSystem>();

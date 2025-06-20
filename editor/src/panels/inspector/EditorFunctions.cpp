@@ -26,6 +26,7 @@
 #include <Peeler.h>
 #include <core/allocators/StackAllocator.h>
 #include <engine/ecs/Prefab.h>
+#include <engine/ecs/components/ParticleEmitterComponent.h>
 #include <engine/ecs/components/PrefabInstanceComponent.h>
 
 namespace Peeler {
@@ -246,6 +247,7 @@ namespace Peeler {
 
     void editRigidBodyComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::RigidBodyComponent*>& components);
     void editPhysicsCharacterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PhysicsCharacterComponent*>& components);
+    void editParticleEmitterComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::ParticleEmitterComponent*>& components);
 
     void editPrefabComponent(EditContext& edition, const Carrot::Vector<Carrot::ECS::PrefabInstanceComponent*>& components) {
         auto getPath = [&](std::int64_t index) -> Carrot::IO::VFS::Path {
@@ -281,6 +283,7 @@ namespace Peeler {
         registerFunction(inspector, editPhysicsCharacterComponent);
         registerFunction(inspector, editNavMeshComponent);
         registerFunction(inspector, editPrefabComponent);
+        registerFunction(inspector, editParticleEmitterComponent);
     }
 
     void registerDisplayNames(InspectorPanel& inspector) {
@@ -296,5 +299,6 @@ namespace Peeler {
         inspector.registerComponentDisplayName(Carrot::ECS::NavMeshComponent::getID(), ICON_FA_ROUTE "  NavMesh");
         inspector.registerComponentDisplayName(Carrot::ECS::SoundListenerComponent::getID(), ICON_FA_PODCAST "  SoundListener");
         inspector.registerComponentDisplayName(Carrot::ECS::PrefabInstanceComponent::getID(), ICON_FA_TOOLBOX "  PrefabInstance");
+        inspector.registerComponentDisplayName(Carrot::ECS::ParticleEmitterComponent::getID(), ICON_FA_MAGIC "  ParticleEmitter");
     }
 }

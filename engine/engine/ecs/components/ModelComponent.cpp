@@ -88,6 +88,18 @@ namespace Carrot::ECS {
         }
     }
 
+    std::unique_ptr<Component> ModelComponent::duplicate(const Entity& newOwner) const {
+        auto result = std::make_unique<ModelComponent>(newOwner);
+        asyncModel.forceWait();
+        result->asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(Carrot::IO::VFS::Path { asyncModel->getOriginatingResource().getName() })));
+        result->isTransparent = isTransparent;
+        result->color = color;
+        result->modelRenderer = modelRenderer;
+        result->castsShadows = castsShadows;
+        result->rendererStorage = rendererStorage.clone();
+        return result;
+    }
+
     void ModelComponent::setFile(const IO::VFS::Path& path) {
         asyncModel = std::move(AsyncModelResource(GetAssetServer().loadModelTask(path)));
         modelRenderer = nullptr;

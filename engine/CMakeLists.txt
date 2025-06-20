@@ -56,6 +56,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/components/MissingComponent.cpp
         ${EngineRoot}ecs/components/ModelComponent.cpp
         ${EngineRoot}ecs/components/NavMeshComponent.cpp
+        ${EngineRoot}ecs/components/ParticleEmitterComponent.cpp
         ${EngineRoot}ecs/components/PhysicsCharacterComponent.cpp
         ${EngineRoot}ecs/components/PrefabInstanceComponent.cpp
         ${EngineRoot}ecs/components/RigidBodyComponent.cpp
@@ -74,6 +75,7 @@ set(ENGINE-SOURCES
         ${EngineRoot}ecs/systems/System.cpp
         ${EngineRoot}ecs/systems/SystemHandleLights.cpp
         ${EngineRoot}ecs/systems/SystemKinematics.cpp
+        ${EngineRoot}ecs/systems/SystemParticles.cpp
         ${EngineRoot}ecs/systems/SoundListenerSystem.cpp
         ${EngineRoot}ecs/systems/SpriteRenderSystem.cpp
         ${EngineRoot}ecs/systems/SystemSinPosition.cpp

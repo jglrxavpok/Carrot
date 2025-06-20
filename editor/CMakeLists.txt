@@ -20,6 +20,7 @@ set(EditorSources
         ${EditorRoot}panels/inspector/CSharpEdition.cpp
         ${EditorRoot}panels/inspector/EditorFunctions.cpp
         ${EditorRoot}panels/inspector/ModelEdition.cpp
+        ${EditorRoot}panels/inspector/ParticleEdition.cpp
         ${EditorRoot}panels/inspector/RigidBodyEdition.cpp
 
         ${EditorRoot}panels/InspectorPanel.cpp

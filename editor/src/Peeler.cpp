@@ -349,7 +349,7 @@ namespace Peeler {
                     if(ImGui::Button("Create")) {
                         GetTaskScheduler().schedule(Carrot::TaskDescription {
                             .name = "Load new project",
-                            .task = [=](Carrot::TaskHandle& h) {
+                            .task = [=, this](Carrot::TaskHandle& h) {
                                 if (deferredLoad(h.getFiberHandle())) {
                                     std::filesystem::path projectFolder = projectPath;
                                     projectFolder /= projectName;
@@ -1476,7 +1476,8 @@ namespace Peeler {
         GetVFS().removeRoot("game");
         if(projectToLoad == EmptyProject) {
             currentScene.clear();
-            scenePath = "game://scenes/main.json";
+            knownScenes.clear();
+            scenePath = "game://scenes/main";
             addDefaultSystems(currentScene);
             hasUnsavedChanges = false;
             settings.currentProject.reset();

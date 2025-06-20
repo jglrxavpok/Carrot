@@ -4,6 +4,7 @@ set(CORE-SOURCES
         ${CoreRoot}allocators/MallocAllocator.cpp
         ${CoreRoot}allocators/LowLevelMemoryAllocations.cpp
         ${CoreRoot}allocators/StackAllocator.cpp
+        ${CoreRoot}allocators/TrackingAllocator.cpp
 
         ${CoreRoot}async/Coroutines.cpp
         ${CoreRoot}async/Counter.cpp

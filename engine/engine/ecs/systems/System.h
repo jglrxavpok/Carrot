@@ -123,7 +123,7 @@ namespace Carrot::ECS {
     class LogicSystem: public SignedSystem<SystemType::Logic, RequiredComponents...> {
     public:
         explicit LogicSystem(World& world): SignedSystem<SystemType::Logic, RequiredComponents...>(world) {};
-        explicit LogicSystem(const rapidjson::Value& json, World& world): LogicSystem<RequiredComponents...>(world) {};
+        explicit LogicSystem(const Carrot::DocumentElement& doc, World& world): LogicSystem<RequiredComponents...>(world) {};
 
         void onFrame(Carrot::Render::Context renderContext) override {};
     };
@@ -132,7 +132,7 @@ namespace Carrot::ECS {
     class RenderSystem: public SignedSystem<SystemType::Render, RequiredComponents...> {
     public:
         explicit RenderSystem(World& world): SignedSystem<SystemType::Render, RequiredComponents...>(world) {};
-        explicit RenderSystem(const rapidjson::Value& json, World& world): RenderSystem<RequiredComponents...>(world) {};
+        explicit RenderSystem(const Carrot::DocumentElement& doc, World& world): RenderSystem<RequiredComponents...>(world) {};
 
         void tick(double dt) override {};
     };
