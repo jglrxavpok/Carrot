@@ -28,7 +28,8 @@ namespace Carrot::ECS {
                 return;
             }
 
-            emitter.emitter->getPosition() = transform.computeFinalPosition();
+            emitter.emitter->setPosition(transform.computeFinalPosition());
+            emitter.emitter->setRotation(transform.computeFinalOrientation());
         });
         for (auto& [_, pStorage] : particles) {
             pStorage->particleSystem.tick(dt);
@@ -75,6 +76,7 @@ namespace Carrot::ECS {
             // make the component reference an emitter inside the system
             emitter.emitter = iter->second->particleSystem.createEmitter();
             emitter.emitter->setRate(emitter.getSpawnRatePerSecond());
+            emitter.emitter->setEmittingInWorldSpace(emitter.isInWorldSpace());
         });
     }
 

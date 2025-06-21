@@ -31,5 +31,14 @@ namespace Peeler {
                 .min = 0.0f,
             }
         );
+
+        multiEditField(edition, "Emit in world space", components,
+            +[](Carrot::ECS::ParticleEmitterComponent& c) {
+                return c.isInWorldSpace();
+            },
+            +[](Carrot::ECS::ParticleEmitterComponent& c, const bool& v) {
+                c.setInWorldSpace(v);
+            }
+        );
     }
 }

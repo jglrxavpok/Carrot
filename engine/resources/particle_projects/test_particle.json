@@ -2,35 +2,6 @@
     "update_graph": {
         "nodes": [
             {
-                "x": -880.0,
-                "y": -336.0,
-                "node_id": "a38c0ab7-ef75-49b9-9dc6-1bc712ef114f",
-                "node_type": "comment",
-                "extra": {
-                    "comment": "Compute acceleration",
-                    "size": [
-                        1360.0,
-                        720.0
-                    ]
-                }
-            },
-            {
-                "x": -698.0,
-                "y": -225.0,
-                "node_id": "f91dac1b-56f5-42cd-9f9b-bc6fa1c85490",
-                "node_type": "get_emission_id"
-            },
-            {
-                "x": -210.0,
-                "y": -439.0,
-                "node_id": "8f85e44d-377b-4cf2-b765-4edce2d762a5",
-                "node_type": "mult",
-                "extra": {
-                    "constant": 0.10000000149011612,
-                    "current_variant": 1
-                }
-            },
-            {
                 "x": 686.0,
                 "y": -167.0,
                 "node_id": "f140f2d3-4d34-4cb2-beb2-e2ee436acbbe",
@@ -49,85 +20,39 @@
                 }
             },
             {
-                "x": 182.0,
-                "y": -169.0,
-                "node_id": "12bbff1f-26d0-4b02-bff8-a2e50dda26ad",
+                "x": -210.0,
+                "y": -439.0,
+                "node_id": "8f85e44d-377b-4cf2-b765-4edce2d762a5",
                 "node_type": "mult",
                 "extra": {
-                    "current_variant": 0
+                    "constant": 0.10000000149011612,
+                    "current_variant": 1
                 }
             },
             {
-                "x": -542.0,
-                "y": -231.0,
-                "node_id": "13f89b22-86d1-4a37-be8a-d4cd789ce0e6",
-                "node_type": "mod",
+                "x": -698.0,
+                "y": -225.0,
+                "node_id": "f91dac1b-56f5-42cd-9f9b-bc6fa1c85490",
+                "node_type": "get_emission_id"
+            },
+            {
+                "x": -880.0,
+                "y": -336.0,
+                "node_id": "a38c0ab7-ef75-49b9-9dc6-1bc712ef114f",
+                "node_type": "comment",
                 "extra": {
-                    "current_variant": 0
+                    "comment": "Compute acceleration",
+                    "size": [
+                        1360.0,
+                        680.0
+                    ]
                 }
-            },
-            {
-                "x": -341.0,
-                "y": -97.0,
-                "node_id": "084fc483-d589-4cfd-b631-65fbbc76d9ad",
-                "node_type": "get_delta_time"
-            },
-            {
-                "x": -99.0,
-                "y": -105.0,
-                "node_id": "ea577305-268f-40d8-ba98-b8fd0115c824",
-                "node_type": "mult",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
-                "x": -88.0,
-                "y": -273.0,
-                "node_id": "bb759f1f-d83a-4725-a1dd-3ba21154a544",
-                "node_type": "cos"
-            },
-            {
-                "x": 423.0,
-                "y": 269.0,
-                "node_id": "5fdda8cc-8831-47f2-8f92-71503506f4b3",
-                "node_type": "get_velocity"
-            },
-            {
-                "x": -702.0,
-                "y": -100.0,
-                "node_id": "68ee85a1-cc45-49c7-bea5-1fb83f73dd3f",
-                "node_type": "float_constant",
-                "extra": {
-                    "value": 0.009999999776482582
-                }
-            },
-            {
-                "x": 24.0,
-                "y": -433.0,
-                "node_id": "5022d25d-7cff-4952-bb12-fab58456152a",
-                "node_type": "set_size"
-            },
-            {
-                "x": -351.0,
-                "y": -433.0,
-                "node_id": "e73e5cf2-f5b4-480b-b90f-bcd1a812823d",
-                "node_type": "get_life"
             },
             {
                 "x": -88.0,
                 "y": -177.0,
                 "node_id": "7519b0bf-14ee-4de8-99a4-ee1bbf4b693d",
                 "node_type": "sin"
-            },
-            {
-                "x": 182.0,
-                "y": -57.0,
-                "node_id": "14e93483-af26-45d9-bbe2-919c62f1bc2d",
-                "node_type": "mult",
-                "extra": {
-                    "current_variant": 0
-                }
             },
             {
                 "x": -329.0,
@@ -145,6 +70,90 @@
                 "node_type": "float_constant",
                 "extra": {
                     "value": 1.0
+                }
+            },
+            {
+                "x": -702.0,
+                "y": -100.0,
+                "node_id": "68ee85a1-cc45-49c7-bea5-1fb83f73dd3f",
+                "node_type": "float_constant",
+                "extra": {
+                    "value": 0.009999999776482582
+                }
+            },
+            {
+                "x": 423.0,
+                "y": 269.0,
+                "node_id": "5fdda8cc-8831-47f2-8f92-71503506f4b3",
+                "node_type": "get_velocity"
+            },
+            {
+                "x": -88.0,
+                "y": -273.0,
+                "node_id": "bb759f1f-d83a-4725-a1dd-3ba21154a544",
+                "node_type": "cos"
+            },
+            {
+                "x": -99.0,
+                "y": -105.0,
+                "node_id": "ea577305-268f-40d8-ba98-b8fd0115c824",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": 24.0,
+                "y": -433.0,
+                "node_id": "5022d25d-7cff-4952-bb12-fab58456152a",
+                "node_type": "set_size"
+            },
+            {
+                "x": -351.0,
+                "y": -433.0,
+                "node_id": "e73e5cf2-f5b4-480b-b90f-bcd1a812823d",
+                "node_type": "get_life"
+            },
+            {
+                "x": -341.0,
+                "y": -97.0,
+                "node_id": "084fc483-d589-4cfd-b631-65fbbc76d9ad",
+                "node_type": "get_delta_time"
+            },
+            {
+                "x": -542.0,
+                "y": -231.0,
+                "node_id": "13f89b22-86d1-4a37-be8a-d4cd789ce0e6",
+                "node_type": "mod",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": 182.0,
+                "y": -169.0,
+                "node_id": "12bbff1f-26d0-4b02-bff8-a2e50dda26ad",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": 182.0,
+                "y": 39.0,
+                "node_id": "d8b4fb28-c917-45a8-bc53-8ef839387d38",
+                "node_type": "mult",
+                "extra": {
+                    "current_variant": 0
+                }
+            },
+            {
+                "x": 686.0,
+                "y": 9.0,
+                "node_id": "7f3bb279-9459-43cf-8382-5a589826e103",
+                "node_type": "add",
+                "extra": {
+                    "current_variant": 0
                 }
             },
             {
@@ -172,18 +181,9 @@
                 }
             },
             {
-                "x": 686.0,
-                "y": 9.0,
-                "node_id": "7f3bb279-9459-43cf-8382-5a589826e103",
-                "node_type": "add",
-                "extra": {
-                    "current_variant": 0
-                }
-            },
-            {
                 "x": 182.0,
-                "y": 39.0,
-                "node_id": "d8b4fb28-c917-45a8-bc53-8ef839387d38",
+                "y": -57.0,
+                "node_id": "14e93483-af26-45d9-bbe2-919c62f1bc2d",
                 "node_type": "mult",
                 "extra": {
                     "current_variant": 0
@@ -496,45 +496,12 @@
     "render_graph": {
         "nodes": [
             {
-                "x": 728.0,
-                "y": 393.0,
-                "node_id": "38d64b41-20f6-4aea-84e9-0ff491d27bc7",
-                "node_type": "set_output_color"
-            },
-            {
-                "x": 15.0,
-                "y": 109.0,
-                "node_id": "4cf491dc-a3fe-4aca-a784-a86a21e0b0fb",
-                "node_type": "get_fragment_position"
-            },
-            {
-                "x": 1.0,
-                "y": 351.0,
-                "node_id": "c96a0b08-9f6f-4045-a457-e481b6259993",
-                "node_type": "get_life"
-            },
-            {
-                "x": 776.0,
-                "y": 111.0,
-                "node_id": "b08b17ca-f7d0-4081-a785-b08689d58e0e",
-                "node_type": "discard_pixel"
-            },
-            {
-                "x": 215.0,
-                "y": 109.0,
-                "node_id": "8a34d59a-ea2a-4161-9b55-464c5b03ecaf",
-                "node_type": "template",
+                "x": 184.0,
+                "y": 347.0,
+                "node_id": "95aa391d-40b9-4eec-ba37-0b86c3575472",
+                "node_type": "div",
                 "extra": {
-                    "template_name": "vec2sqlength"
-                }
-            },
-            {
-                "x": 482.0,
-                "y": 108.0,
-                "node_id": "cae00f5e-ecd7-440c-b3ac-7315fc7a90da",
-                "node_type": "float_greater_or_equals",
-                "extra": {
-                    "constant": 0.05000000074505806,
+                    "constant": 10.0,
                     "current_variant": 1
                 }
             },
@@ -548,14 +515,47 @@
                 }
             },
             {
-                "x": 184.0,
-                "y": 347.0,
-                "node_id": "95aa391d-40b9-4eec-ba37-0b86c3575472",
-                "node_type": "div",
+                "x": 482.0,
+                "y": 108.0,
+                "node_id": "cae00f5e-ecd7-440c-b3ac-7315fc7a90da",
+                "node_type": "float_greater_or_equals",
                 "extra": {
-                    "constant": 10.0,
+                    "constant": 0.05000000074505806,
                     "current_variant": 1
                 }
+            },
+            {
+                "x": 215.0,
+                "y": 109.0,
+                "node_id": "8a34d59a-ea2a-4161-9b55-464c5b03ecaf",
+                "node_type": "template",
+                "extra": {
+                    "template_name": "vec2sqlength"
+                }
+            },
+            {
+                "x": 776.0,
+                "y": 111.0,
+                "node_id": "b08b17ca-f7d0-4081-a785-b08689d58e0e",
+                "node_type": "discard_pixel"
+            },
+            {
+                "x": 1.0,
+                "y": 351.0,
+                "node_id": "c96a0b08-9f6f-4045-a457-e481b6259993",
+                "node_type": "get_life"
+            },
+            {
+                "x": 15.0,
+                "y": 109.0,
+                "node_id": "4cf491dc-a3fe-4aca-a784-a86a21e0b0fb",
+                "node_type": "get_fragment_position"
+            },
+            {
+                "x": 728.0,
+                "y": 393.0,
+                "node_id": "38d64b41-20f6-4aea-84e9-0ff491d27bc7",
+                "node_type": "set_output_color"
             }
         ],
         "links": [

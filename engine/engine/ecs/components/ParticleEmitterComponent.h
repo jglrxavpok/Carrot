@@ -32,10 +32,15 @@ namespace Carrot::ECS {
         /// Change how many particles are spawned per second
         void setSpawnRatePerSecond(float newRate);
 
+        /// Should the particles follow the position & rotation of the emitter (false) or be independent (true) ?
+        bool isInWorldSpace() const;
+        void setInWorldSpace(bool inWorldSpace);
+
     private:
+        // particle settings, private to update emitter only when required
         struct Settings {
-            // particle settings, private to update emitter only when required
             float spawnRatePerSecond = 1.0f;
+            bool worldSpace = false; // should the particles follow the position & rotation of the emitter (false) or be independent (true)
         } settings;
     };
 }

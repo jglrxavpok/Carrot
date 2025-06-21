@@ -18,6 +18,10 @@ namespace Carrot::ECS {
             if (auto spawnRateIter = settingsView.find("spawn_rate"); spawnRateIter.isValid()) {
                 settings.spawnRatePerSecond = spawnRateIter->second.getAsDouble();
             }
+
+            if (auto worldSpaceIter = settingsView.find("emit_in_world_space"); worldSpaceIter.isValid()) {
+                settings.worldSpace = worldSpaceIter->second.getAsBool();
+            }
         }
     }
 
@@ -32,6 +36,7 @@ namespace Carrot::ECS {
         Carrot::DocumentElement doc;
         doc["file"] = particleFile.toString();
         doc["settings"]["spawn_rate"] = settings.spawnRatePerSecond;
+        doc["settings"]["emit_in_world_space"] = settings.worldSpace;
         return doc;
     }
 
@@ -48,5 +53,16 @@ namespace Carrot::ECS {
             emitter->setRate(newRate);
         }
         settings.spawnRatePerSecond = newRate;
+    }
+
+    bool ParticleEmitterComponent::isInWorldSpace() const {
+        return settings.worldSpace;
+    }
+
+    void ParticleEmitterComponent::setInWorldSpace(bool inWorldSpace) {
+        if (inWorldSpace != settings.worldSpace && emitter) {
+            emitter->setEmittingInWorldSpace(inWorldSpace);
+        }
+        settings.worldSpace = inWorldSpace;
     }
 }

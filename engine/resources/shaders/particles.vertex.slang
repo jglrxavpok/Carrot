@@ -52,7 +52,8 @@ VSOutput vertex(int vertexID: SV_VertexID) {
     float size = particle.size;
     inPosition *= size;
 
-    inPosition += particle.position;
+    const Emitter emitter = particles.emitters.Load(particle.emitterID);
+    inPosition += (emitter.transform * vec4(particle.position, 1)).xyz;
 
     vec4 viewPosition = cbo.view * vec4(inPosition, 1.0);
     o.hPos = cbo.jitteredProjection * viewPosition;

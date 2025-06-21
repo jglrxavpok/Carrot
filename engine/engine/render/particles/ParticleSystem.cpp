@@ -30,15 +30,22 @@ Carrot::ParticleSystem::ParticleSystem(Carrot::Engine& engine, Carrot::ParticleB
 
     particlePool.resize(maxParticleCount);
 
-    renderingPipeline = blueprint.buildRenderingPipeline(engine);
-    onSwapchainImageCountChange(engine.getSwapchainImageCount());
+    emitterData = engine.getResourceAllocator().allocateStagingBuffer(sizeof(ParticleEmitter));
 
+    renderingPipeline = blueprint.buildRenderingPipeline(engine);
     updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
+
+    onSwapchainImageCountChange(engine.getSwapchainImageCount());
 
     statistics = statisticsBuffer.map<ParticleStatistics>();
 }
 
 void Carrot::ParticleSystem::onFrame(const Carrot::Render::Context& renderContext) {
+    // clear old data
+    if (!emitterDataGraveyard.empty()) {
+        emitterDataGraveyard.clear();
+    }
+
 #if DEBUG_PARTICLES
     if(ImGui::Begin("Debug ParticleSystem")) {
         ImGui::Text("Alive particle count: %lli", usedParticleCount);
@@ -134,9 +141,43 @@ void Carrot::ParticleSystem::updateParticles(double deltaTime) {
     statistics->deltaTime = deltaTime;
 }
 
+Carrot::EmitterData& Carrot::ParticleSystem::getEmitterData(u32 emitterID) {
+    verify(emitterData.view.getSize() > sizeof(EmitterData) * emitterID, "Emitter ID outside of emitterData!");
+    return emitterData.view.map<EmitterData>()[emitterID];
+}
+
 std::shared_ptr<Carrot::ParticleEmitter> Carrot::ParticleSystem::createEmitter() {
-    emitters.emplace_back(std::make_shared<ParticleEmitter>(*this));
-    return emitters[emitters.size()-1];
+    u32 index = nextEmitterID++;
+    emitters.emplaceBack(std::make_shared<ParticleEmitter>(*this, index));
+
+    // allocate new buffer and copy data if the current buffer is too small
+    const u32 emitterCountOnGPU = emitterData.view.getSize() / sizeof(EmitterData);
+    if (index >= emitterCountOnGPU) {
+        const u32 nextCount = emitterCountOnGPU*2;
+        BufferAllocation newBuffer = GetResourceAllocator().allocateStagingBuffer(sizeof(EmitterData) * nextCount);
+        GetRenderer().queueAsyncCopy(false, emitterData.view, newBuffer.view);
+
+        // old 'emitterData' must stay alive for the next frame (for the async copy to be done)
+        emitterDataGraveyard.emplaceBack(std::move(emitterData));
+        emitterData = std::move(newBuffer);
+
+        for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
+            auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, GetEngine().getMainViewport()), 1)[i];
+
+            const vk::DescriptorBufferInfo emitterBufferInfo = emitterData.view.asBufferInfo();
+            vk::WriteDescriptorSet writeEmitters = {
+                .dstSet = set,
+                .dstBinding = 2,
+                .descriptorCount = 1,
+                .descriptorType = vk::DescriptorType::eStorageBuffer,
+                .pBufferInfo = &emitterBufferInfo,
+            };
+
+            engine.getLogicalDevice().updateDescriptorSets({writeEmitters}, {});
+        }
+    }
+
+    return emitters.back();
 }
 
 Carrot::Particle* Carrot::ParticleSystem::getFreeParticle() {
@@ -175,20 +216,25 @@ void Carrot::ParticleSystem::onSwapchainImageCountChange(std::size_t newCount) {
     for (int i = 0; i < engine.getSwapchainImageCount(); ++i) {
         auto set = renderingPipeline->getDescriptorSets(GetEngine().newRenderContext(i, GetEngine().getMainViewport()), 1)[i];
 
-        vk::DescriptorBufferInfo bufferInfo {
-            .buffer = particleBuffer.getVulkanBuffer(),
-            .offset = particleBuffer.getStart(),
-            .range = particleBuffer.getSize(),
-        };
-        vk::WriteDescriptorSet write = {
+        const vk::DescriptorBufferInfo particleBufferInfo = particleBuffer.asBufferInfo();
+        vk::WriteDescriptorSet writeParticles = {
                 .dstSet = set,
                 .dstBinding = 0,
                 .descriptorCount = 1,
                 .descriptorType = vk::DescriptorType::eStorageBuffer,
-                .pBufferInfo = &bufferInfo,
+                .pBufferInfo = &particleBufferInfo,
         };
 
-        engine.getLogicalDevice().updateDescriptorSets(write, {});
+        const vk::DescriptorBufferInfo emitterBufferInfo = emitterData.view.asBufferInfo();
+        vk::WriteDescriptorSet writeEmitters = {
+            .dstSet = set,
+            .dstBinding = 2,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eStorageBuffer,
+            .pBufferInfo = &emitterBufferInfo,
+        };
+
+        engine.getLogicalDevice().updateDescriptorSets({writeParticles, writeEmitters}, {});
     }
 }
 

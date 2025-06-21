@@ -7,8 +7,11 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
+#include <core/allocators/TrackingAllocator.h>
 #include <engine/render/resources/BufferView.h>
 #include <engine/render/ComputePipeline.h>
+#include <engine/render/resources/BufferAllocation.h>
+
 #include "ParticleBlueprint.h"
 #include "engine/render/BasicRenderable.h"
 
@@ -19,16 +22,21 @@ namespace Carrot {
     struct Particle;
 
     struct Particle {
-        alignas(16) glm::vec3 position{0.0f};
+        glm::vec3 position{0.0f};
         float life = -1.0f;
 
-        alignas(16) glm::vec3 velocity{0.0f};
+        glm::vec3 velocity{0.0f};
         float size = 1.0f;
 
-        alignas(16) std::uint32_t id = 0;
+        std::uint32_t id = 0;
+        std::uint32_t emitterID = 0;
 
         static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions();
         static std::vector<vk::VertexInputBindingDescription> getBindingDescription();
+    };
+
+    struct EmitterData {
+        glm::mat4 emitterTransform;
     };
 
     struct ParticleStatistics {
@@ -37,17 +45,8 @@ namespace Carrot {
     };
 
     class ParticleEmitter {
-    private:
-        ParticleSystem& system;
-        glm::vec3 position{0.0f};
-        float rate = 1.0f; //! Particles per second
-
-        float rateError = 0.0f;
-        std::uint64_t spawnedParticles = 0;
-        float time = 0.0f;
-
     public:
-        explicit ParticleEmitter(ParticleSystem& system);
+        explicit ParticleEmitter(ParticleSystem& system, u32 emitterID);
 
         float getRate() const {
             return rate;
@@ -57,15 +56,36 @@ namespace Carrot {
             this->rate = rate;
         }
 
-        glm::vec3& getPosition() {
-            return position;
-        }
-
         const glm::vec3& getPosition() const {
             return position;
         }
 
+        void setPosition(const glm::vec3& newPosition);
+
+        void setRotation(const glm::quat& rotation);
+        const glm::quat& getRotation() const;
+
+        bool isEmittingInWorldSpace() const;
+        void setEmittingInWorldSpace(bool inWorldSpace);
+
         void tick(double deltaTime);
+
+    private:
+        ParticleSystem& system;
+        glm::vec3 position{0.0f};
+        glm::quat rotation = glm::identity<glm::quat>();
+
+        bool needEmitterTransformUpdate = true;
+        glm::mat4 emitterTransform; // result of position+rotation, sent to particles
+
+        float rate = 1.0f; //! Particles per second
+
+        float rateError = 0.0f;
+        std::uint64_t spawnedParticles = 0;
+        float time = 0.0f;
+        bool emitInWorldSpace = false;
+        u32 emitterID = 0;
+
     };
 
     class ParticleSystem: public SwapchainAware, public Render::BasicRenderable {
@@ -95,6 +115,10 @@ namespace Carrot {
         bool isOpaque() const;
 
     private:
+        /// Data on the GPU for a given emitter. Not pointer-stable, do not store
+        Carrot::EmitterData& getEmitterData(u32 emitterID);
+        friend class ParticleEmitter;
+
         void render(vk::RenderPass pass, const Carrot::Render::Context& renderContext, vk::CommandBuffer& commands) const;
         void pullDataFromGPU();
         void pushDataToGPU();
@@ -103,17 +127,22 @@ namespace Carrot {
         ParticleBlueprint& blueprint;
         Carrot::Engine& engine;
 
+        Carrot::TrackingAllocator allocator { Carrot::Allocator::getDefault() };
+
         /// All particles will be kept inside this buffer, sorted by lifetime each frame
         ///  oldParticleCount will keep the number of particles active last frame, while
         ///  usedParticleCount will keep the number of all active particles.
         ///  Before a call to initNewParticles, usedParticleCount-oldParticleCount represent the newly created particle during the frame
         Carrot::BufferView particleBuffer;
-        std::vector<Particle> particlePool;
+        Carrot::BufferAllocation emitterData;
+        Carrot::Vector<Carrot::BufferAllocation> emitterDataGraveyard { allocator }; // vector because multiple reallocations could happen on the same frame
+        Vector<Particle> particlePool { allocator };
         std::size_t oldParticleCount = 0;
         std::size_t usedParticleCount = 0;
 
-        std::vector<std::shared_ptr<ParticleEmitter>> emitters;
+        Vector<std::shared_ptr<ParticleEmitter>> emitters { allocator };
         std::uint64_t maxParticleCount;
+        u64 nextEmitterID = 0;
 
         std::shared_ptr<Pipeline> renderingPipeline = nullptr;
         std::shared_ptr<ComputePipeline> updateParticlesCompute = nullptr;

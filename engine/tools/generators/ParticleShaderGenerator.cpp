@@ -463,7 +463,6 @@ namespace Tools {
         auto float32Type = builder.makeFloatType(32);
         auto vec3Type = builder.makeVectorType(float32Type, 3);
         /*
-         layout(constant_id = 0) const uint MAX_PARTICLE_COUNT = 1000;
 
         struct Particle {
             vec3 position;
@@ -472,10 +471,20 @@ namespace Tools {
             float size;
 
             uint id;
+            uint emitterID
         };
 
-        layout(set = 1, binding = 0) buffer Particles {
-            Particle particles[MAX_PARTICLE_COUNT];
+        struct Emitter {
+            mat4 emitterTransform;
+        }
+
+        layout(set = 1, binding = 0, scalar) buffer Particles {
+            Particle particles[];
+        };
+
+        // TODO: unavailable for pixel & compute stages for now (only vertex)
+        layout(set = 1, binding = 1, scalar) uniform Emitters {
+            Emitter emitter[];
         };
          */
         auto particleType = builder.makeStructType(std::vector<Id>{
@@ -484,6 +493,7 @@ namespace Tools {
                 vec3Type,
                 float32Type,
 
+                uint32Type,
                 uint32Type
         }, "Particle");
         builder.addMemberName(particleType, 0, "position");
@@ -491,19 +501,21 @@ namespace Tools {
         builder.addMemberName(particleType, 2, "velocity");
         builder.addMemberName(particleType, 3, "size");
         builder.addMemberName(particleType, 4, "id");
+        builder.addMemberName(particleType, 5, "emitterID");
 
         builder.addMemberDecoration(particleType, 0, spv::DecorationOffset, 0);
         builder.addMemberDecoration(particleType, 1, spv::DecorationOffset, 12);
         builder.addMemberDecoration(particleType, 2, spv::DecorationOffset, 16);
         builder.addMemberDecoration(particleType, 3, spv::DecorationOffset, 28);
         builder.addMemberDecoration(particleType, 4, spv::DecorationOffset, 32);
+        builder.addMemberDecoration(particleType, 5, spv::DecorationOffset, 36);
 
         auto maxParticleCount = builder.makeIntConstant(1000, true);
         builder.addName(maxParticleCount, "MAX_PARTICLE_COUNT");
         builder.addDecoration(maxParticleCount, spv::DecorationSpecId, 0);
 
         auto particleArrayType = builder.makeArrayType(particleType, maxParticleCount, 0);
-        builder.addDecoration(particleArrayType, spv::DecorationArrayStride, 48);
+        builder.addDecoration(particleArrayType, spv::DecorationArrayStride, 40);
         auto storageBufferParticles = builder.makeStructType(std::vector<Id>{particleArrayType}, "Particles");
         builder.addMemberName(storageBufferParticles, 0, "particles");
         builder.addDecoration(storageBufferParticles, spv::DecorationBlock);
@@ -673,7 +685,6 @@ layout(location = 0) in flat uint particleIndex;
         builder.addMemberName(particleStatsType, 1, "particleCount");
 
         builder.addDecoration(particleStatsType, spv::DecorationBlock);
-
         builder.addMemberDecoration(particleStatsType, 0, spv::DecorationOffset, 0);
         builder.addMemberDecoration(particleStatsType, 1, spv::DecorationOffset, 4);
 
