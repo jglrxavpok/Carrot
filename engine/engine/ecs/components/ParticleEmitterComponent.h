@@ -14,6 +14,7 @@ namespace Carrot {
 namespace Carrot::ECS {
     class ParticleEmitterComponent: public IdentifiableComponent<ParticleEmitterComponent> {
     public:
+        // references to the .particle file
         Carrot::IO::VFS::Path particleFile;
 
         std::shared_ptr<Carrot::ParticleEmitter> emitter;

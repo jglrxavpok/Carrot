@@ -61,10 +61,14 @@ namespace Carrot::ECS {
     void SystemParticles::reloadParticleSystems() {
         particles.clear();
         forEachEntity([&](Entity& entity, TransformComponent& transform, ParticleEmitterComponent& emitter) {
+            emitter.emitter = nullptr; // reset in case of error
+
             // load each particle system
             const IO::VFS::Path& particleFile = emitter.particleFile;
             if (particleFile.isEmpty()) {
-                emitter.emitter = nullptr;
+                return;
+            }
+            if (!GetVFS().exists(particleFile)) {
                 return;
             }
             auto [iter, wasNew] = particles.try_emplace(particleFile);

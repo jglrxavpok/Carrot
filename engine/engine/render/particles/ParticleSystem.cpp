@@ -108,6 +108,14 @@ void Carrot::ParticleSystem::pushDataToGPU() {
 }
 
 void Carrot::ParticleSystem::tick(double deltaTime) {
+    // reload if changed
+    if (blueprint.hasHotReloadPending()) {
+        renderingPipeline = blueprint.buildRenderingPipeline(engine);
+        updateParticlesCompute = blueprint.buildComputePipeline(engine, particleBuffer.asBufferInfo(), statisticsBuffer.asBufferInfo());
+
+        blueprint.clearHotReloadFlag();
+    }
+
     pullDataFromGPU();
 
     for(auto& emitter : emitters) {

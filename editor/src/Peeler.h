@@ -20,6 +20,7 @@
 #include "panels/ResourcePanel.h"
 #include "layers/ISceneViewLayer.h"
 #include <commands/UndoStack.h>
+#include <tools/ParticleEditor.h>
 
 namespace Peeler {
     extern Application* Instance;
@@ -71,6 +72,13 @@ namespace Peeler {
 
         bool drawCantSavePopup() override;
 
+    public: // tools
+        /// Request to open the given file inside the particle editor.
+        /// Can fail if:
+        /// - the editor is open with unsaved changes, and the user canels the load
+        /// - the input file does not exist
+        void requestOpenParticleEditor(const Carrot::IO::VFS::Path& particleFile);
+
     public:
         Carrot::ECS::Entity addEntity(std::optional<Carrot::ECS::Entity> parent = {});
         void changeEntityParent(const Carrot::ECS::EntityID& entityToChange, std::optional<Carrot::ECS::Entity> newParent);
@@ -99,6 +107,7 @@ namespace Peeler {
         void drawEntityWarnings(Carrot::ECS::Entity entity, const char* uniqueWidgetID);
         void drawScenesMenu();
         void drawSettingsMenu();
+        void drawToolsMenu();
         void drawNewSceneWindow();
         void drawPhysicsSettingsWindow();
 
@@ -202,6 +211,7 @@ namespace Peeler {
 
         bool showNewScenePopup = false;
         bool showPhysicsSettings = false;
+        bool showParticleEditor = false;
 
     public: // for layers
         Carrot::Render::Viewport& gameViewport;
@@ -237,6 +247,9 @@ namespace Peeler {
         ResourcePanel resourcePanel;
         InspectorPanel inspectorPanel;
         NavMeshPanel navMeshPanel;
+
+    private:
+        Carrot::UniquePtr<Tools::ParticleEditor> pParticleEditor;
 
     private: // Scene manipulation
         bool movingGameViewCamera = false;

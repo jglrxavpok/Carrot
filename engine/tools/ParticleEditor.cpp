@@ -287,7 +287,7 @@ void Tools::ParticleEditor::onFrame(const Carrot::Render::Context& renderContext
 
     } else if (renderContext.pViewport == &GetEngine().getMainViewport()) {
         float menuBarHeight = 0;
-        if(ImGui::BeginMainMenuBar()) {
+        if(ImGui::BeginMenuBar()) {
             handleShortcuts(renderContext);
             if(ImGui::BeginMenu("Project")) {
                 drawProjectMenu();
@@ -333,31 +333,28 @@ void Tools::ParticleEditor::onFrame(const Carrot::Render::Context& renderContext
             }
 
             menuBarHeight = ImGui::GetWindowSize().y;
-            ImGui::EndMainMenuBar();
+            ImGui::EndMenuBar();
         }
 
-        auto& viewport = *ImGui::GetMainViewport();
+        /*auto& viewport = *ImGui::GetMainViewport();
         ImGui::SetNextWindowViewport(viewport.ID);
         ImGui::SetNextWindowPos(ImVec2(viewport.Pos.x, viewport.Pos.y+menuBarHeight));
         ImGui::SetNextWindowSize(ImVec2(engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).width,
-                                        engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).height - menuBarHeight));
+                                        engine.getVulkanDriver().getFinalRenderSize(engine.getMainWindow()).height - menuBarHeight));*/
         focusedGraph = Graph::None;
-        if(ImGui::Begin("ParticleEditorWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-            if(ImGui::BeginTabBar("ParticleEditorTabs")) {
-                if(ImGui::BeginTabItem("Update##tab particle editor")) {
-                    updateUpdateGraph(renderContext);
-                    focusedGraph = Graph::Update;
-                    ImGui::EndTabItem();
-                }
-                if(ImGui::BeginTabItem("Render##tab particle editor")) {
-                    updateRenderGraph(renderContext);
-                    focusedGraph = Graph::Render;
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
+        if(ImGui::BeginTabBar("ParticleEditorTabs")) {
+            if(ImGui::BeginTabItem("Update##tab particle editor")) {
+                updateUpdateGraph(renderContext);
+                focusedGraph = Graph::Update;
+                ImGui::EndTabItem();
             }
+            if(ImGui::BeginTabItem("Render##tab particle editor")) {
+                updateRenderGraph(renderContext);
+                focusedGraph = Graph::Render;
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
         }
-        ImGui::End();
 
         templateEditor.onFrame(renderContext);
 

@@ -72,7 +72,7 @@ add_library(Peeler-Lib ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Lib)
 add_editor_defines(Peeler-Lib)
 target_include_directories(Peeler-Lib PUBLIC ${EditorIncludes})
-target_link_libraries(Peeler-Lib PUBLIC Engine-Base ${EditorLibs})
+target_link_libraries(Peeler-Lib PUBLIC Carrot-Tools-Lib ${EditorLibs})
 
 add_library(Peeler-Renderdoc-Lib ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Renderdoc-Lib)

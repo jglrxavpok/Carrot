@@ -77,6 +77,19 @@ namespace Peeler {
 
     void Application::onFrame(const Carrot::Render::Context& renderContext) {
         ZoneScoped;
+
+        if (pParticleEditor) {
+            bool keepOpen = true;
+            if (ImGui::Begin(ICON_FA_MAGIC "  Particle Editor", &keepOpen, ImGuiWindowFlags_MenuBar)) {
+                pParticleEditor->onFrame(renderContext);
+            }
+            ImGui::End();
+
+            if (!keepOpen) {
+                // TODO: pParticleEditor->attemptClose();
+            }
+        }
+
         if(renderContext.pViewport == &engine.getMainViewport()) {
             ZoneScopedN("Main viewport");
             UIEditor(renderContext);
@@ -164,6 +177,11 @@ namespace Peeler {
 
             if(ImGui::BeginMenu(ICON_FA_TOOLS "  Settings")) {
                 drawSettingsMenu();
+                ImGui::EndMenu();
+            }
+
+            if(ImGui::BeginMenu(ICON_FA_HAMMER "  Tools")) {
+                drawToolsMenu();
                 ImGui::EndMenu();
             }
 
@@ -857,6 +875,14 @@ namespace Peeler {
         }
     }
 
+    void Application::drawToolsMenu() {
+        if (ImGui::MenuItem(ICON_FA_MAGIC "  Particle editor", nullptr, &showParticleEditor)) {
+            if (!pParticleEditor) {
+                pParticleEditor = Carrot::makeUnique<Tools::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
+            }
+        }
+    }
+
     void Application::drawNewSceneWindow() {
         if(!showNewScenePopup) {
             return;
@@ -1314,6 +1340,10 @@ namespace Peeler {
         }
         flushLayers();
 
+        if (pParticleEditor) {
+            pParticleEditor->tick(frameTime);
+        }
+
         if(movingGameViewCamera && !isPlaying) {
             cameraController.move(moveCamera.getValue().x, moveCamera.getValue().y, moveCameraUp.getValue() - moveCameraDown.getValue(),
                 turnCamera.getValue().x, turnCamera.getValue().y,
@@ -1618,6 +1648,19 @@ namespace Peeler {
             }
         }
 
+        if (description.HasMember("open_tools")) {
+            showParticleEditor = false;
+            showPhysicsSettings = false;
+            for (const auto& tools : description["open_tools"].GetArray()) {
+                std::string_view openedTool { tools.GetString(), tools.GetStringLength() };
+                if (openedTool == "particle_editor") {
+                    showParticleEditor = true;
+                } else if (openedTool == "physics_settings") {
+                    showPhysicsSettings = true;
+                }
+            }
+        }
+
         updateWindowTitle();
 
         if (needToSave) {
@@ -1661,6 +1704,18 @@ namespace Peeler {
 
         {
             document.AddMember("camera", cameraController.serialise(document), document.GetAllocator());
+        }
+
+        {
+            rapidjson::Value openedTools{ rapidjson::kArrayType };
+            if (showParticleEditor) {
+                openedTools.PushBack(rapidjson::Value{"particle_editor", document.GetAllocator()}, document.GetAllocator());
+            }
+            if (showPhysicsSettings) {
+                openedTools.PushBack(rapidjson::Value{"physics_settings", document.GetAllocator()}, document.GetAllocator());
+            }
+
+            document.AddMember("open_tools", openedTools, document.GetAllocator());
         }
 
         {
@@ -1867,6 +1922,19 @@ namespace Peeler {
             return Carrot::Widgets::drawMessageBox("Cannot save", "Scene has errors!", Carrot::Widgets::MessageBoxIcon::Error, Carrot::Widgets::MessageBoxButtons::Ok) != Carrot::Widgets::MessageBoxButtons::Ok;
         }
         return true;
+    }
+
+    void Application::requestOpenParticleEditor(const Carrot::IO::VFS::Path& particleFile) {
+        if (!pParticleEditor) {
+            pParticleEditor = Carrot::makeUnique<Tools::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
+        }
+
+        std::optional<std::filesystem::path> path = GetVFS().safeResolve(particleFile);
+        if (!path.has_value()) {
+            return;
+        }
+
+        pParticleEditor->scheduleLoad(path.value());
     }
 
     void Application::markDirty() {

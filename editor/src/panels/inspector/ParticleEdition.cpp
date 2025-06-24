@@ -20,6 +20,24 @@ namespace Peeler {
             }
         );
 
+        const Carrot::IO::VFS::Path& firstParticleFile = components[0]->particleFile;
+        bool allSame = true;
+        for (i32 i = 1; i < components.size(); i++) {
+            if (components[i]->particleFile != firstParticleFile) {
+                allSame = false;
+                break;
+            }
+        }
+
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!allSame);
+        if (ImGui::Button(ICON_FA_EDIT "  Edit")) {
+            Carrot::IO::VFS::Path projectPath = firstParticleFile;
+            projectPath = { projectPath.getRoot(), projectPath.getPath().withExtension(".json") };
+            edition.editor.requestOpenParticleEditor(projectPath);
+        }
+        ImGui::EndDisabled();
+
         multiEditField(edition, "Spawn rate (per second)", components,
             +[](Carrot::ECS::ParticleEmitterComponent& c) {
                 return c.getSpawnRatePerSecond();
