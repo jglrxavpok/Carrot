@@ -27,6 +27,9 @@ set(EditorSources
         ${EditorRoot}panels/NavMeshPanel.cpp
         ${EditorRoot}panels/ResourcePanel.cpp
 
+        ${EditorRoot}particle_editor/ParticleEditor.cpp
+        ${EditorRoot}particle_editor/TemplateEditor.cpp
+
         ${EditorRoot}ecs/systems/CameraRenderer.cpp
         ${EditorRoot}ecs/systems/CharacterPositionSetterSystem.cpp
         ${EditorRoot}ecs/systems/CollisionShapeRenderer.cpp
@@ -72,7 +75,7 @@ add_library(Peeler-Lib ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Lib)
 add_editor_defines(Peeler-Lib)
 target_include_directories(Peeler-Lib PUBLIC ${EditorIncludes})
-target_link_libraries(Peeler-Lib PUBLIC Carrot-Tools-Lib ${EditorLibs})
+target_link_libraries(Peeler-Lib PUBLIC Engine-Base ${EditorLibs})
 
 add_library(Peeler-Renderdoc-Lib ${EditorSources} ${ImGuizmoSources})
 add_includes(Peeler-Renderdoc-Lib)

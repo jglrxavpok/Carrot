@@ -332,7 +332,6 @@ endfunction()
 
 add_subdirectory(engine)
 add_subdirectory(samples)
-add_subdirectory(engine/tools)
 add_subdirectory(editor)
 add_subdirectory(runtime)
 add_subdirectory(tests)

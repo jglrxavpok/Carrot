@@ -878,7 +878,7 @@ namespace Peeler {
     void Application::drawToolsMenu() {
         if (ImGui::MenuItem(ICON_FA_MAGIC "  Particle editor", nullptr, &showParticleEditor)) {
             if (!pParticleEditor) {
-                pParticleEditor = Carrot::makeUnique<Tools::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
+                pParticleEditor = Carrot::makeUnique<Peeler::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
             }
         }
     }
@@ -1926,7 +1926,7 @@ namespace Peeler {
 
     void Application::requestOpenParticleEditor(const Carrot::IO::VFS::Path& particleFile) {
         if (!pParticleEditor) {
-            pParticleEditor = Carrot::makeUnique<Tools::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
+            pParticleEditor = Carrot::makeUnique<Peeler::ParticleEditor>(Carrot::Allocator::getDefault(), engine);
         }
 
         std::optional<std::filesystem::path> path = GetVFS().safeResolve(particleFile);

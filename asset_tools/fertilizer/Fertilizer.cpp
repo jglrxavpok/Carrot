@@ -9,6 +9,8 @@
 #include <iostream>
 #include <unordered_map>
 #include <filesystem>
+#include <ParticleProcessing.h>
+
 #include "core/utils/stringmanip.h"
 
 namespace Fertilizer {
@@ -36,6 +38,8 @@ namespace Fertilizer {
             { ".fbx", { ".gltf", processAssimp } },
 
         { ".hdr", { ".ktx2",  processEnvironmentMap } },
+
+        { ".particle", { ".cparticle",  processParticleFile } },
     };
 
     bool isSupportedFormat(const fspath& input) {

@@ -298,44 +298,18 @@ namespace Carrot::Render {
 
             handlePinMouseInteraction(i);
         }
-        /*
-        for (auto& pin : inputs) {
-            ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Input);
-            ImGui::BeginHorizontal(&pin->id);
-            ImGui::Text("> %s", pin->name.c_str());
-            auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-            ImGui::Image(icon, ImVec2(10,10));
-
-            ImGui::EndHorizontal();
-            ed::EndPin();
-        }
-         */
         ImGui::EndVertical();
 
         ImGui::BeginVertical("center");
         ImGui::Text("%s", pass->getName().data());
-        //renderCenter();
         ImGui::EndVertical();
 
 
-        /*if(inputs.empty()) */{
-            ImGui::Spring(1);
-        }
+        ImGui::Spring(1);
         ImGui::BeginVertical("outputs");
         ed::PushStyleVar(ed::StyleVar_PivotAlignment, ImVec2(1.0f, 0.5f));
         ed::PushStyleVar(ed::StyleVar_PivotSize, ImVec2(0, 0));
 
-       /* for (auto& pin : outputs) {
-            ed::BeginPin(graph.getEditorID(pin->id), ed::PinKind::Output);
-            ImGui::BeginHorizontal(&pin->id);
-
-            auto icon = graph.getImGuiTextures().getExpressionType(pin->getExpressionType());
-            ImGui::Image(icon, ImVec2(10,10));
-            ImGui::Text("%s >", pin->name.c_str());
-
-            ImGui::EndHorizontal();
-            ed::EndPin();
-        }*/
         for(const auto& o : pass->getOutputs()) {
             ed::BeginPin(getOutputPinID(o.id), ed::PinKind::Output);
             ImGui::Text("%s >", o.name.c_str());
@@ -345,9 +319,7 @@ namespace Carrot::Render {
         }
         ImGui::EndVertical();
 
-        /*if(outputs.empty()) */{
-            ImGui::Spring(1);
-        }
+        ImGui::Spring(1);
 
         ImGui::EndHorizontal();
         ImGui::EndVertical();

@@ -20,7 +20,7 @@
 #include "panels/ResourcePanel.h"
 #include "layers/ISceneViewLayer.h"
 #include <commands/UndoStack.h>
-#include <tools/ParticleEditor.h>
+#include <particle_editor/ParticleEditor.h>
 
 namespace Peeler {
     extern Application* Instance;
@@ -249,7 +249,7 @@ namespace Peeler {
         NavMeshPanel navMeshPanel;
 
     private:
-        Carrot::UniquePtr<Tools::ParticleEditor> pParticleEditor;
+        Carrot::UniquePtr<Peeler::ParticleEditor> pParticleEditor;
 
     private: // Scene manipulation
         bool movingGameViewCamera = false;
